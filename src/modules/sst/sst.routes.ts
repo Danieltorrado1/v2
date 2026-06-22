@@ -1,0 +1,504 @@
+import { Router } from 'express';
+
+import { authMiddleware } from '../../middlewares/authMiddleware';
+import { requirePermissions } from '../../middlewares/roleMiddleware';
+import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
+import {
+  createSstAccidenteHandler,
+  createSstAccionInspeccionHandler,
+  createSstAccionAccidenteHandler,
+  createSstDotacionEppEntregaHandler,
+  createSstDotacionEppHandler,
+  createSstExamenOcupacionalHandler,
+  createSstExamenPersonaHandler,
+  createSstInspeccionHallazgoHandler,
+  createSstInspeccionHandler,
+  createSstMatrizRiesgoHandler,
+  createSstPlanAnualActividadHandler,
+  createSstPlanAnualHandler,
+  createSstCapacitacionHandler,
+  createSstCapacitacionPersonaHandler,
+  calculateSstIndicadoresHandler,
+  closeSstAccionInspeccionHandler,
+  closeSstPlanAccionHandler,
+  createSstEventoHandler,
+  createSstPlanAccionHandler,
+  deactivateSstAccidenteHandler,
+  deactivateSstAccionInspeccionHandler,
+  deactivateSstAccionAccidenteHandler,
+  deactivateSstDotacionEppEntregaHandler,
+  deactivateSstDotacionEppHandler,
+  deactivateSstExamenOcupacionalHandler,
+  deactivateSstExamenPersonaHandler,
+  deactivateSstInspeccionHallazgoHandler,
+  deactivateSstInspeccionHandler,
+  deactivateSstMatrizRiesgoHandler,
+  deactivateSstPlanAnualActividadHandler,
+  deactivateSstPlanAnualHandler,
+  deactivateSstCapacitacionHandler,
+  deactivateSstCapacitacionPersonaHandler,
+  deactivateSstEventoHandler,
+  getSstAccidentesAlertasHandler,
+  getSstAccidentesDashboardHandler,
+  getSstAccidentesHandler,
+  getSstAccionesInspeccionHandler,
+  getSstAccionesAccidenteHandler,
+  getSstDotacionEppAlertasHandler,
+  getSstDotacionEppDashboardHandler,
+  getSstDotacionEppEntregasHandler,
+  getSstDotacionEppHandler,
+  getSstExamenesAlertasHandler,
+  getSstExamenesDashboardHandler,
+  getSstExamenesOcupacionalesHandler,
+  getSstExamenesPersonaHandler,
+  getSstAlertasHandler,
+  getSstCapacitacionesHandler,
+  getSstCapacitacionesPersonaHandler,
+  getSstDashboardCapacitacionesHandler,
+  getSstDashboardGeneralAlertasHandler,
+  getSstDashboardGeneralHandler,
+  getSstEventoHandler,
+  getSstEventosHandler,
+  getSstIndicadoresHandler,
+  getSstInspeccionHallazgosHandler,
+  getSstInspeccionesAlertasHandler,
+  getSstInspeccionesDashboardHandler,
+  getSstInspeccionesHandler,
+  getSstMatrizRiesgosAlertasHandler,
+  getSstMatrizRiesgosDashboardHandler,
+  getSstMatrizRiesgosHandler,
+  getSstPlanAnualActividadesHandler,
+  getSstPlanAnualAlertasHandler,
+  getSstPlanAnualDashboardHandler,
+  getSstPlanAnualHandler,
+  getSstPlanAccionHandler,
+  getSstPlanesAccionHandler,
+  updateSstAccidenteHandler,
+  updateSstAccionInspeccionHandler,
+  updateSstAccionAccidenteHandler,
+  updateSstDotacionEppEntregaHandler,
+  updateSstDotacionEppHandler,
+  updateSstExamenOcupacionalHandler,
+  updateSstExamenPersonaHandler,
+  updateSstInspeccionHallazgoHandler,
+  updateSstInspeccionHandler,
+  updateSstMatrizRiesgoHandler,
+  updateSstPlanAnualActividadHandler,
+  updateSstPlanAnualHandler,
+  updateSstCapacitacionHandler,
+  updateSstCapacitacionPersonaHandler,
+  updateSstEventoHandler,
+  updateSstPlanAccionHandler
+} from './sst.controller';
+
+const sstRoutes = Router();
+
+sstRoutes.use(authMiddleware);
+sstRoutes.use(tenantMiddleware);
+
+sstRoutes.get(
+  '/capacitaciones',
+  requirePermissions('sst.capacitaciones.read'),
+  getSstCapacitacionesHandler
+);
+sstRoutes.post(
+  '/capacitaciones',
+  requirePermissions('sst.capacitaciones.write'),
+  createSstCapacitacionHandler
+);
+sstRoutes.patch(
+  '/capacitaciones/:id',
+  requirePermissions('sst.capacitaciones.write'),
+  updateSstCapacitacionHandler
+);
+sstRoutes.patch(
+  '/capacitaciones/:id/deactivate',
+  requirePermissions('sst.capacitaciones.write'),
+  deactivateSstCapacitacionHandler
+);
+sstRoutes.get(
+  '/capacitaciones-persona',
+  requirePermissions('sst.capacitaciones.read'),
+  getSstCapacitacionesPersonaHandler
+);
+sstRoutes.post(
+  '/capacitaciones-persona',
+  requirePermissions('sst.capacitaciones.write'),
+  createSstCapacitacionPersonaHandler
+);
+sstRoutes.patch(
+  '/capacitaciones-persona/:id',
+  requirePermissions('sst.capacitaciones.write'),
+  updateSstCapacitacionPersonaHandler
+);
+sstRoutes.patch(
+  '/capacitaciones-persona/:id/deactivate',
+  requirePermissions('sst.capacitaciones.write'),
+  deactivateSstCapacitacionPersonaHandler
+);
+sstRoutes.get(
+  '/dotacion-epp',
+  requirePermissions('sst.dotacion_epp.read'),
+  getSstDotacionEppHandler
+);
+sstRoutes.post(
+  '/dotacion-epp',
+  requirePermissions('sst.dotacion_epp.write'),
+  createSstDotacionEppHandler
+);
+sstRoutes.patch(
+  '/dotacion-epp/:id',
+  requirePermissions('sst.dotacion_epp.write'),
+  updateSstDotacionEppHandler
+);
+sstRoutes.patch(
+  '/dotacion-epp/:id/deactivate',
+  requirePermissions('sst.dotacion_epp.write'),
+  deactivateSstDotacionEppHandler
+);
+sstRoutes.get(
+  '/dotacion-epp-entregas',
+  requirePermissions('sst.dotacion_epp.read'),
+  getSstDotacionEppEntregasHandler
+);
+sstRoutes.post(
+  '/dotacion-epp-entregas',
+  requirePermissions('sst.dotacion_epp.write'),
+  createSstDotacionEppEntregaHandler
+);
+sstRoutes.patch(
+  '/dotacion-epp-entregas/:id',
+  requirePermissions('sst.dotacion_epp.write'),
+  updateSstDotacionEppEntregaHandler
+);
+sstRoutes.patch(
+  '/dotacion-epp-entregas/:id/deactivate',
+  requirePermissions('sst.dotacion_epp.write'),
+  deactivateSstDotacionEppEntregaHandler
+);
+sstRoutes.get(
+  '/dotacion-epp/dashboard',
+  requirePermissions('sst.dotacion_epp.dashboard'),
+  getSstDotacionEppDashboardHandler
+);
+sstRoutes.get(
+  '/dotacion-epp/alertas',
+  requirePermissions('sst.dotacion_epp.alertas'),
+  getSstDotacionEppAlertasHandler
+);
+sstRoutes.get(
+  '/examenes-ocupacionales',
+  requirePermissions('sst.examenes.read'),
+  getSstExamenesOcupacionalesHandler
+);
+sstRoutes.post(
+  '/examenes-ocupacionales',
+  requirePermissions('sst.examenes.write'),
+  createSstExamenOcupacionalHandler
+);
+sstRoutes.patch(
+  '/examenes-ocupacionales/:id',
+  requirePermissions('sst.examenes.write'),
+  updateSstExamenOcupacionalHandler
+);
+sstRoutes.patch(
+  '/examenes-ocupacionales/:id/deactivate',
+  requirePermissions('sst.examenes.write'),
+  deactivateSstExamenOcupacionalHandler
+);
+sstRoutes.get(
+  '/examenes-persona',
+  requirePermissions('sst.examenes.read'),
+  getSstExamenesPersonaHandler
+);
+sstRoutes.post(
+  '/examenes-persona',
+  requirePermissions('sst.examenes.write'),
+  createSstExamenPersonaHandler
+);
+sstRoutes.patch(
+  '/examenes-persona/:id',
+  requirePermissions('sst.examenes.write'),
+  updateSstExamenPersonaHandler
+);
+sstRoutes.patch(
+  '/examenes-persona/:id/deactivate',
+  requirePermissions('sst.examenes.write'),
+  deactivateSstExamenPersonaHandler
+);
+sstRoutes.get(
+  '/examenes-ocupacionales/dashboard',
+  requirePermissions('sst.examenes.dashboard'),
+  getSstExamenesDashboardHandler
+);
+sstRoutes.get(
+  '/examenes-ocupacionales/alertas',
+  requirePermissions('sst.examenes.alertas'),
+  getSstExamenesAlertasHandler
+);
+sstRoutes.get(
+  '/accidentes',
+  requirePermissions('sst.accidentes.read'),
+  getSstAccidentesHandler
+);
+sstRoutes.post(
+  '/accidentes',
+  requirePermissions('sst.accidentes.write'),
+  createSstAccidenteHandler
+);
+sstRoutes.patch(
+  '/accidentes/:id',
+  requirePermissions('sst.accidentes.write'),
+  updateSstAccidenteHandler
+);
+sstRoutes.patch(
+  '/accidentes/:id/deactivate',
+  requirePermissions('sst.accidentes.write'),
+  deactivateSstAccidenteHandler
+);
+sstRoutes.get(
+  '/accidentes/:id/acciones',
+  requirePermissions('sst.accidentes.read'),
+  getSstAccionesAccidenteHandler
+);
+sstRoutes.post(
+  '/accidentes/:id/acciones',
+  requirePermissions('sst.accidentes.write'),
+  createSstAccionAccidenteHandler
+);
+sstRoutes.patch(
+  '/acciones-accidente/:id',
+  requirePermissions('sst.accidentes.write'),
+  updateSstAccionAccidenteHandler
+);
+sstRoutes.patch(
+  '/acciones-accidente/:id/deactivate',
+  requirePermissions('sst.accidentes.write'),
+  deactivateSstAccionAccidenteHandler
+);
+sstRoutes.get(
+  '/accidentes/dashboard',
+  requirePermissions('sst.accidentes.dashboard'),
+  getSstAccidentesDashboardHandler
+);
+sstRoutes.get(
+  '/accidentes/alertas',
+  requirePermissions('sst.accidentes.alertas'),
+  getSstAccidentesAlertasHandler
+);
+sstRoutes.get(
+  '/inspecciones',
+  requirePermissions('sst.inspecciones.read'),
+  getSstInspeccionesHandler
+);
+sstRoutes.post(
+  '/inspecciones',
+  requirePermissions('sst.inspecciones.write'),
+  createSstInspeccionHandler
+);
+sstRoutes.get(
+  '/inspecciones/dashboard',
+  requirePermissions('sst.inspecciones.dashboard'),
+  getSstInspeccionesDashboardHandler
+);
+sstRoutes.get(
+  '/inspecciones/alertas',
+  requirePermissions('sst.inspecciones.alertas'),
+  getSstInspeccionesAlertasHandler
+);
+sstRoutes.patch(
+  '/inspecciones/:id',
+  requirePermissions('sst.inspecciones.write'),
+  updateSstInspeccionHandler
+);
+sstRoutes.patch(
+  '/inspecciones/:id/deactivate',
+  requirePermissions('sst.inspecciones.write'),
+  deactivateSstInspeccionHandler
+);
+sstRoutes.get(
+  '/inspecciones/:id/hallazgos',
+  requirePermissions('sst.inspecciones.read'),
+  getSstInspeccionHallazgosHandler
+);
+sstRoutes.post(
+  '/hallazgos',
+  requirePermissions('sst.inspecciones.write'),
+  createSstInspeccionHallazgoHandler
+);
+sstRoutes.patch(
+  '/hallazgos/:id',
+  requirePermissions('sst.inspecciones.write'),
+  updateSstInspeccionHallazgoHandler
+);
+sstRoutes.patch(
+  '/hallazgos/:id/deactivate',
+  requirePermissions('sst.inspecciones.write'),
+  deactivateSstInspeccionHallazgoHandler
+);
+sstRoutes.get(
+  '/acciones-inspeccion',
+  requirePermissions('sst.inspecciones.read'),
+  getSstAccionesInspeccionHandler
+);
+sstRoutes.post(
+  '/acciones-inspeccion',
+  requirePermissions('sst.inspecciones.write'),
+  createSstAccionInspeccionHandler
+);
+sstRoutes.patch(
+  '/acciones-inspeccion/:id',
+  requirePermissions('sst.inspecciones.write'),
+  updateSstAccionInspeccionHandler
+);
+sstRoutes.patch(
+  '/acciones-inspeccion/:id/cerrar',
+  requirePermissions('sst.inspecciones.write'),
+  closeSstAccionInspeccionHandler
+);
+sstRoutes.patch(
+  '/acciones-inspeccion/:id/deactivate',
+  requirePermissions('sst.inspecciones.write'),
+  deactivateSstAccionInspeccionHandler
+);
+sstRoutes.get(
+  '/matriz-riesgos',
+  requirePermissions('sst.riesgos.read'),
+  getSstMatrizRiesgosHandler
+);
+sstRoutes.post(
+  '/matriz-riesgos',
+  requirePermissions('sst.riesgos.write'),
+  createSstMatrizRiesgoHandler
+);
+sstRoutes.get(
+  '/matriz-riesgos/dashboard',
+  requirePermissions('sst.riesgos.dashboard'),
+  getSstMatrizRiesgosDashboardHandler
+);
+sstRoutes.get(
+  '/matriz-riesgos/alertas',
+  requirePermissions('sst.riesgos.alertas'),
+  getSstMatrizRiesgosAlertasHandler
+);
+sstRoutes.patch(
+  '/matriz-riesgos/:id',
+  requirePermissions('sst.riesgos.write'),
+  updateSstMatrizRiesgoHandler
+);
+sstRoutes.patch(
+  '/matriz-riesgos/:id/deactivate',
+  requirePermissions('sst.riesgos.write'),
+  deactivateSstMatrizRiesgoHandler
+);
+sstRoutes.get(
+  '/dashboard-general',
+  requirePermissions('sst.dashboard_general.read'),
+  getSstDashboardGeneralHandler
+);
+sstRoutes.get(
+  '/dashboard-general/alertas',
+  requirePermissions('sst.dashboard_general.read'),
+  getSstDashboardGeneralAlertasHandler
+);
+sstRoutes.get(
+  '/plan-anual',
+  requirePermissions('sst.plan.read'),
+  getSstPlanAnualHandler
+);
+sstRoutes.post(
+  '/plan-anual',
+  requirePermissions('sst.plan.write'),
+  createSstPlanAnualHandler
+);
+sstRoutes.patch(
+  '/plan-anual/:id',
+  requirePermissions('sst.plan.write'),
+  updateSstPlanAnualHandler
+);
+sstRoutes.patch(
+  '/plan-anual/:id/deactivate',
+  requirePermissions('sst.plan.write'),
+  deactivateSstPlanAnualHandler
+);
+sstRoutes.get(
+  '/plan-anual/:id/actividades',
+  requirePermissions('sst.plan.read'),
+  getSstPlanAnualActividadesHandler
+);
+sstRoutes.post(
+  '/plan-anual/actividades',
+  requirePermissions('sst.plan.write'),
+  createSstPlanAnualActividadHandler
+);
+sstRoutes.patch(
+  '/plan-anual/actividades/:id',
+  requirePermissions('sst.plan.write'),
+  updateSstPlanAnualActividadHandler
+);
+sstRoutes.patch(
+  '/plan-anual/actividades/:id/deactivate',
+  requirePermissions('sst.plan.write'),
+  deactivateSstPlanAnualActividadHandler
+);
+sstRoutes.get(
+  '/plan-anual/dashboard',
+  requirePermissions('sst.plan.dashboard'),
+  getSstPlanAnualDashboardHandler
+);
+sstRoutes.get(
+  '/plan-anual/alertas',
+  requirePermissions('sst.plan.alertas'),
+  getSstPlanAnualAlertasHandler
+);
+sstRoutes.get(
+  '/dashboard',
+  requirePermissions('sst.dashboard.read'),
+  getSstDashboardCapacitacionesHandler
+);
+sstRoutes.get(
+  '/alertas',
+  requirePermissions('sst.alertas.read'),
+  getSstAlertasHandler
+);
+
+sstRoutes.get('/eventos', requirePermissions('sst.read'), getSstEventosHandler);
+sstRoutes.get('/eventos/:id', requirePermissions('sst.read'), getSstEventoHandler);
+sstRoutes.post('/eventos', requirePermissions('sst.eventos.create'), createSstEventoHandler);
+sstRoutes.patch('/eventos/:id', requirePermissions('sst.eventos.update'), updateSstEventoHandler);
+sstRoutes.patch(
+  '/eventos/:id/deactivate',
+  requirePermissions('sst.eventos.deactivate'),
+  deactivateSstEventoHandler
+);
+
+sstRoutes.get('/planes-accion', requirePermissions('sst.planes.read'), getSstPlanesAccionHandler);
+sstRoutes.get(
+  '/planes-accion/:id',
+  requirePermissions('sst.planes.read'),
+  getSstPlanAccionHandler
+);
+sstRoutes.post(
+  '/planes-accion',
+  requirePermissions('sst.planes.create'),
+  createSstPlanAccionHandler
+);
+sstRoutes.patch(
+  '/planes-accion/:id',
+  requirePermissions('sst.planes.update'),
+  updateSstPlanAccionHandler
+);
+sstRoutes.patch(
+  '/planes-accion/:id/cerrar',
+  requirePermissions('sst.planes.close'),
+  closeSstPlanAccionHandler
+);
+
+sstRoutes.get('/indicadores', requirePermissions('sst.indicadores.read'), getSstIndicadoresHandler);
+sstRoutes.post(
+  '/indicadores/calcular',
+  requirePermissions('sst.indicadores.calculate'),
+  calculateSstIndicadoresHandler
+);
+
+export { sstRoutes };

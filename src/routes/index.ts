@@ -1,0 +1,50 @@
+import { Router } from 'express';
+
+import { alertasRoutes, notificacionesRoutes } from '../modules/alertas/alertas.routes';
+import { auditoriaRoutes } from '../modules/auditoria/auditoria.routes';
+import { authRouter } from '../modules/auth/auth.routes';
+import { coberturaRoutes } from '../modules/cobertura/cobertura.routes';
+import { dashboardRoutes } from '../modules/dashboard/dashboard.routes';
+import { documentosRoutes } from '../modules/documentos/documentos.routes';
+import { expedientesRoutes } from '../modules/expedientes/expedientes.routes';
+import { healthRouter } from '../modules/health/health.routes';
+import { importacionesRoutes } from '../modules/importaciones/importaciones.routes';
+import { nominaRoutes } from '../modules/nomina/nomina.routes';
+import { tenantRoutes } from '../modules/tenant/tenant.routes';
+import { plantillasRoutes } from '../modules/plantillas/plantillas.routes';
+import { personasRoutes } from '../modules/personas/personas.routes';
+import { repositorioDocumentalRoutes } from '../modules/repositorioDocumental/repositorioDocumental.routes';
+import { reportesRoutes } from '../modules/reportes/reportes.routes';
+import { evaluacionesRoutes } from '../modules/evaluaciones/evaluaciones.routes';
+import { sstIndicadoresRoutes } from '../modules/sstIndicadores/sstIndicadores.routes';
+import { sstRoutes } from '../modules/sst/sst.routes';
+import { systemRoutes } from '../modules/system/system.routes';
+import { usersRouter } from '../modules/users/users.routes';
+import { vinculacionesRoutes } from '../modules/vinculaciones/vinculaciones.routes';
+
+const apiRouter = Router();
+
+apiRouter.use('/alertas', alertasRoutes);
+apiRouter.use('/auditoria', auditoriaRoutes);
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/cobertura', coberturaRoutes);
+apiRouter.use('/dashboard', dashboardRoutes);
+apiRouter.use('/documentos', documentosRoutes);
+apiRouter.use('/expedientes', expedientesRoutes);
+apiRouter.use('/health', healthRouter);
+apiRouter.use('/importaciones', importacionesRoutes);
+apiRouter.use('/nomina', nominaRoutes);
+apiRouter.use('/tenant', tenantRoutes);
+apiRouter.use('/plantillas', plantillasRoutes);
+apiRouter.use('/notificaciones', notificacionesRoutes);
+apiRouter.use('/personas', personasRoutes);
+apiRouter.use('/evaluaciones', evaluacionesRoutes);
+apiRouter.use('/repositorio', repositorioDocumentalRoutes);
+apiRouter.use('/reportes', reportesRoutes);
+apiRouter.use('/sst/indicadores', sstIndicadoresRoutes);
+apiRouter.use('/sst', sstRoutes);
+apiRouter.use('/system', systemRoutes);
+apiRouter.use('/users', usersRouter);
+apiRouter.use('/vinculaciones', vinculacionesRoutes);
+
+export { apiRouter };

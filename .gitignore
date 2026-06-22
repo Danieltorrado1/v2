@@ -1,0 +1,15 @@
+node_modules/
+dist/
+
+.env
+.env.local
+.env.production
+
+coverage/
+*.log
+
+.vscode/
+.idea/
+
+uploads/
+temp/
