@@ -28,6 +28,8 @@ export interface PaginatedVinculaciones {
 
 export interface ListVinculacionesParams {
   persona_id?: number;
+  empresa_id?: number;
+  contrato_id?: number;
   page?: number;
   limit?: number;
 }

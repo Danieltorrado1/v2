@@ -4,9 +4,14 @@ import { evaluacionesApi } from "../../services/evaluacionesApi";
 import { personasApi, type Persona } from "../../services/personasApi";
 import { getArray, getNumber, getString, fmtNum, fmtPercent, fmtDateLoose } from "../../lib/payloadHelpers";
 
-// Empresa/contrato fijos hasta que exista un selector de empresa/contrato (fase futura).
-const TENANT_PARAMS = { empresa_id: 1, contrato_id: 3 };
-const LIST_PARAMS = { ...TENANT_PARAMS, limit: 100 };
+interface TenantProps {
+  empresaId?: number;
+  contratoId?: number;
+}
+
+function tenantKeyOf(props: TenantProps): string {
+  return `${props.empresaId ?? ""}:${props.contratoId ?? ""}`;
+}
 
 // ── Mocks de respaldo — uno por tab, usados solo si su endpoint falla ────────
 const MOCK_DASHBOARD_GENERAL = {
@@ -60,7 +65,7 @@ interface DashboardState {
 }
 
 // ── Hooks de datos — cada tab se resuelve de forma independiente ────────────
-function useEvaluacionesList(fetcher: () => Promise<unknown>, mockItems: unknown[], label: string): ListState {
+function useEvaluacionesList(fetcher: () => Promise<unknown>, mockItems: unknown[], label: string, tenantKey: string): ListState {
   const [state, setState] = useState<ListState>({ status: "loading", items: [], source: "real" });
 
   useEffect(() => {
@@ -77,7 +82,7 @@ function useEvaluacionesList(fetcher: () => Promise<unknown>, mockItems: unknown
       });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tenantKey]);
 
   return state;
 }
@@ -91,15 +96,16 @@ function personaNombreCompleto(p: Persona): string | null {
 // enriquece con GET /personas/:id (endpoint real ya usado como fallback en
 // personasApi). Si la resolución falla para alguna fila, esa fila simplemente
 // muestra el persona_id sin bloquear el resto de la tabla.
-function usePlanesMejora(): ListState {
+function usePlanesMejora(props: TenantProps): ListState {
   const [state, setState] = useState<ListState>({ status: "loading", items: [], source: "real" });
+  const tenantKey = tenantKeyOf(props);
 
   useEffect(() => {
     let active = true;
 
     (async () => {
       try {
-        const res = await evaluacionesApi.getPlanesMejora(LIST_PARAMS);
+        const res = await evaluacionesApi.getPlanesMejora({ empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 });
         const items = getArray(res, ["items"]);
         const personaIds = Array.from(new Set(
           items.map(item => getNumber(item, ["persona_id"])).filter((id): id is number => id !== null)
@@ -130,12 +136,13 @@ function usePlanesMejora(): ListState {
     })();
 
     return () => { active = false; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantKey]);
 
   return state;
 }
 
-function useEvaluacionesDashboard(fetcher: () => Promise<unknown>, mockData: unknown, label: string): DashboardState {
+function useEvaluacionesDashboard(fetcher: () => Promise<unknown>, mockData: unknown, label: string, tenantKey: string): DashboardState {
   const [state, setState] = useState<DashboardState>({ status: "loading", data: null, source: "real" });
 
   useEffect(() => {
@@ -152,7 +159,7 @@ function useEvaluacionesDashboard(fetcher: () => Promise<unknown>, mockData: unk
       });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tenantKey]);
 
   return state;
 }
@@ -259,8 +266,9 @@ function KpiCard({ label, value, status, source }: { label: string; value: strin
   );
 }
 
-function ResumenTab() {
-  const dashboard = useEvaluacionesDashboard(() => evaluacionesApi.getDashboardGeneral(TENANT_PARAMS), MOCK_DASHBOARD_GENERAL, "dashboard-general");
+function ResumenTab(props: TenantProps) {
+  const tenantParams = { empresa_id: props.empresaId, contrato_id: props.contratoId };
+  const dashboard = useEvaluacionesDashboard(() => evaluacionesApi.getDashboardGeneral(tenantParams), MOCK_DASHBOARD_GENERAL, "dashboard-general", tenantKeyOf(props));
   const { status, data, source } = dashboard;
 
   return (
@@ -284,8 +292,9 @@ function ResumenTab() {
 }
 
 // ── Evaluaciones (por persona) ───────────────────────────────────────────────
-function EvaluacionesTab() {
-  const state = useEvaluacionesList(() => evaluacionesApi.getEvaluacionesPersona(LIST_PARAMS), MOCK_EVALUACIONES_PERSONA, "evaluaciones-persona");
+function EvaluacionesTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useEvaluacionesList(() => evaluacionesApi.getEvaluacionesPersona(listParams), MOCK_EVALUACIONES_PERSONA, "evaluaciones-persona", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -307,8 +316,13 @@ function EvaluacionesTab() {
 }
 
 // ── Ranking ───────────────────────────────────────────────────────────────────
-function RankingTab() {
-  const state = useEvaluacionesList(() => evaluacionesApi.getDashboardGeneralRanking({ ...TENANT_PARAMS, limit: 25 }), MOCK_RANKING, "dashboard-general/ranking");
+function RankingTab(props: TenantProps) {
+  const state = useEvaluacionesList(
+    () => evaluacionesApi.getDashboardGeneralRanking({ empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 25 }),
+    MOCK_RANKING,
+    "dashboard-general/ranking",
+    tenantKeyOf(props)
+  );
   return (
     <TableShell
       state={state}
@@ -329,8 +343,8 @@ function RankingTab() {
 }
 
 // ── Planes de mejora ──────────────────────────────────────────────────────────
-function PlanesMejoraTab() {
-  const state = usePlanesMejora();
+function PlanesMejoraTab(props: TenantProps) {
+  const state = usePlanesMejora(props);
   return (
     <TableShell
       state={state}
@@ -360,8 +374,13 @@ function PlanesMejoraTab() {
 }
 
 // ── Alertas ───────────────────────────────────────────────────────────────────
-function AlertasTab() {
-  const state = useEvaluacionesList(() => evaluacionesApi.getDashboardGeneralAlertas({ ...TENANT_PARAMS, limit: 100 }), MOCK_ALERTAS, "dashboard-general/alertas");
+function AlertasTab(props: TenantProps) {
+  const state = useEvaluacionesList(
+    () => evaluacionesApi.getDashboardGeneralAlertas({ empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 }),
+    MOCK_ALERTAS,
+    "dashboard-general/alertas",
+    tenantKeyOf(props)
+  );
   return (
     <TableShell
       state={state}
@@ -392,8 +411,9 @@ const TABS: { id: EvalTabId; label: string }[] = [
   { id: "alertas", label: "Alertas" },
 ];
 
-export function EvaluacionesModule() {
+export function EvaluacionesModule({ empresaId, contratoId }: TenantProps = {}) {
   const [tab, setTab] = useState<EvalTabId>("resumen");
+  const tenantProps: TenantProps = { empresaId, contratoId };
 
   return (
     <div className="p-6 space-y-5 max-w-none">
@@ -416,11 +436,11 @@ export function EvaluacionesModule() {
         </div>
       </div>
 
-      {tab === "resumen" && <ResumenTab />}
-      {tab === "evaluaciones" && <EvaluacionesTab />}
-      {tab === "ranking" && <RankingTab />}
-      {tab === "planes-mejora" && <PlanesMejoraTab />}
-      {tab === "alertas" && <AlertasTab />}
+      {tab === "resumen" && <ResumenTab {...tenantProps} />}
+      {tab === "evaluaciones" && <EvaluacionesTab {...tenantProps} />}
+      {tab === "ranking" && <RankingTab {...tenantProps} />}
+      {tab === "planes-mejora" && <PlanesMejoraTab {...tenantProps} />}
+      {tab === "alertas" && <AlertasTab {...tenantProps} />}
     </div>
   );
 }

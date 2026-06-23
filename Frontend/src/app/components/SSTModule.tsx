@@ -3,9 +3,14 @@ import { Loader2 } from "lucide-react";
 import { sstApi } from "../../services/sstApi";
 import { getArray, getNumber, getString, fmtNum, fmtPercent, fmtDateLoose } from "../../lib/payloadHelpers";
 
-// Empresa/contrato fijos hasta que exista un selector de empresa/contrato (fase futura).
-const TENANT_PARAMS = { empresa_id: 1, contrato_id: 3 };
-const LIST_PARAMS = { ...TENANT_PARAMS, limit: 100 };
+interface TenantProps {
+  empresaId?: number;
+  contratoId?: number;
+}
+
+function tenantKeyOf(props: TenantProps): string {
+  return `${props.empresaId ?? ""}:${props.contratoId ?? ""}`;
+}
 
 // ── Mocks de respaldo — uno por sub-módulo, usados solo si su endpoint falla ─
 const MOCK_DASHBOARD_GENERAL = {
@@ -86,7 +91,7 @@ interface DashboardState {
 }
 
 // ── Hooks de datos — cada tab se resuelve de forma independiente ────────────
-function useSstList(fetcher: () => Promise<unknown>, mockItems: unknown[], label: string): ListState {
+function useSstList(fetcher: () => Promise<unknown>, mockItems: unknown[], label: string, tenantKey: string): ListState {
   const [state, setState] = useState<ListState>({ status: "loading", items: [], source: "real" });
 
   useEffect(() => {
@@ -103,22 +108,23 @@ function useSstList(fetcher: () => Promise<unknown>, mockItems: unknown[], label
       });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tenantKey]);
 
   return state;
 }
 
 // Plan anual no expone un listado plano de actividades: se listan los planes y
 // se agregan las actividades de cada uno (ambos son endpoints reales del backend).
-function usePlanAnualActividades(): ListState {
+function usePlanAnualActividades(props: TenantProps): ListState {
   const [state, setState] = useState<ListState>({ status: "loading", items: [], source: "real" });
+  const tenantKey = tenantKeyOf(props);
 
   useEffect(() => {
     let active = true;
 
     (async () => {
       try {
-        const plansRes = await sstApi.getPlanAnual({ ...TENANT_PARAMS, limit: 50 });
+        const plansRes = await sstApi.getPlanAnual({ empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 50 });
         const plans = getArray(plansRes, ["items"]);
         const planIds = plans
           .map(plan => getNumber(plan, ["id"]))
@@ -144,12 +150,13 @@ function usePlanAnualActividades(): ListState {
     })();
 
     return () => { active = false; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantKey]);
 
   return state;
 }
 
-function useSstDashboard(fetcher: () => Promise<unknown>, mockData: unknown, label: string): DashboardState {
+function useSstDashboard(fetcher: () => Promise<unknown>, mockData: unknown, label: string, tenantKey: string): DashboardState {
   const [state, setState] = useState<DashboardState>({ status: "loading", data: null, source: "real" });
 
   useEffect(() => {
@@ -166,7 +173,7 @@ function useSstDashboard(fetcher: () => Promise<unknown>, mockData: unknown, lab
       });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tenantKey]);
 
   return state;
 }
@@ -284,8 +291,9 @@ function KpiCard({ label, value, status, source }: { label: string; value: strin
   );
 }
 
-function ResumenTab() {
-  const dashboard = useSstDashboard(() => sstApi.getDashboardGeneral(TENANT_PARAMS), MOCK_DASHBOARD_GENERAL, "dashboard-general");
+function ResumenTab(props: TenantProps) {
+  const tenantParams = { empresa_id: props.empresaId, contrato_id: props.contratoId };
+  const dashboard = useSstDashboard(() => sstApi.getDashboardGeneral(tenantParams), MOCK_DASHBOARD_GENERAL, "dashboard-general", tenantKeyOf(props));
   const { status, data, source } = dashboard;
 
   const dotacionVigente = (() => {
@@ -318,8 +326,13 @@ function ResumenTab() {
 }
 
 // ── Alertas consolidadas ─────────────────────────────────────────────────────
-function AlertasTab() {
-  const state = useSstList(() => sstApi.getDashboardGeneralAlertas({ ...TENANT_PARAMS, limit: 100 }), MOCK_ALERTAS, "alertas consolidadas");
+function AlertasTab(props: TenantProps) {
+  const state = useSstList(
+    () => sstApi.getDashboardGeneralAlertas({ empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 }),
+    MOCK_ALERTAS,
+    "alertas consolidadas",
+    tenantKeyOf(props)
+  );
   return (
     <TableShell
       state={state}
@@ -341,8 +354,9 @@ function AlertasTab() {
 }
 
 // ── Capacitaciones ───────────────────────────────────────────────────────────
-function CapacitacionesTab() {
-  const state = useSstList(() => sstApi.getCapacitacionesPersona(LIST_PARAMS), MOCK_CAPACITACIONES, "capacitaciones");
+function CapacitacionesTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useSstList(() => sstApi.getCapacitacionesPersona(listParams), MOCK_CAPACITACIONES, "capacitaciones", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -362,8 +376,9 @@ function CapacitacionesTab() {
 }
 
 // ── Dotación / EPP ───────────────────────────────────────────────────────────
-function DotacionTab() {
-  const state = useSstList(() => sstApi.getDotacionEppEntregas(LIST_PARAMS), MOCK_DOTACION, "dotación-epp");
+function DotacionTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useSstList(() => sstApi.getDotacionEppEntregas(listParams), MOCK_DOTACION, "dotación-epp", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -384,8 +399,9 @@ function DotacionTab() {
 }
 
 // ── Exámenes ocupacionales ───────────────────────────────────────────────────
-function ExamenesTab() {
-  const state = useSstList(() => sstApi.getExamenesPersona(LIST_PARAMS), MOCK_EXAMENES, "examenes-persona");
+function ExamenesTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useSstList(() => sstApi.getExamenesPersona(listParams), MOCK_EXAMENES, "examenes-persona", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -407,8 +423,9 @@ function ExamenesTab() {
 }
 
 // ── Accidentes / incidentes ──────────────────────────────────────────────────
-function AccidentesTab() {
-  const state = useSstList(() => sstApi.getAccidentes(LIST_PARAMS), MOCK_ACCIDENTES, "accidentes");
+function AccidentesTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useSstList(() => sstApi.getAccidentes(listParams), MOCK_ACCIDENTES, "accidentes", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -429,8 +446,9 @@ function AccidentesTab() {
 }
 
 // ── Inspecciones ──────────────────────────────────────────────────────────────
-function InspeccionesTab() {
-  const state = useSstList(() => sstApi.getInspecciones(LIST_PARAMS), MOCK_INSPECCIONES, "inspecciones");
+function InspeccionesTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useSstList(() => sstApi.getInspecciones(listParams), MOCK_INSPECCIONES, "inspecciones", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -450,8 +468,9 @@ function InspeccionesTab() {
 }
 
 // ── Matriz de riesgos ────────────────────────────────────────────────────────
-function RiesgosTab() {
-  const state = useSstList(() => sstApi.getMatrizRiesgos(LIST_PARAMS), MOCK_RIESGOS, "matriz-riesgos");
+function RiesgosTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useSstList(() => sstApi.getMatrizRiesgos(listParams), MOCK_RIESGOS, "matriz-riesgos", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -471,8 +490,8 @@ function RiesgosTab() {
 }
 
 // ── Plan anual ────────────────────────────────────────────────────────────────
-function PlanAnualTab() {
-  const state = usePlanAnualActividades();
+function PlanAnualTab(props: TenantProps) {
+  const state = usePlanAnualActividades(props);
   return (
     <TableShell
       state={state}
@@ -493,8 +512,9 @@ function PlanAnualTab() {
 }
 
 // ── Indicadores SST ───────────────────────────────────────────────────────────
-function IndicadoresTab() {
-  const state = useSstList(() => sstApi.getIndicadoresHistorico(TENANT_PARAMS), MOCK_INDICADORES_HISTORICO, "indicadores/historico");
+function IndicadoresTab(props: TenantProps) {
+  const tenantParams = { empresa_id: props.empresaId, contrato_id: props.contratoId };
+  const state = useSstList(() => sstApi.getIndicadoresHistorico(tenantParams), MOCK_INDICADORES_HISTORICO, "indicadores/historico", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -537,8 +557,9 @@ const TABS: { id: SstTab; label: string }[] = [
   { id: "indicadores", label: "Indicadores" },
 ];
 
-export function SSTModule() {
+export function SSTModule({ empresaId, contratoId }: TenantProps = {}) {
   const [tab, setTab] = useState<SstTab>("resumen");
+  const tenantProps: TenantProps = { empresaId, contratoId };
 
   return (
     <div className="p-6 space-y-5 max-w-none">
@@ -561,16 +582,16 @@ export function SSTModule() {
         </div>
       </div>
 
-      {tab === "resumen" && <ResumenTab />}
-      {tab === "alertas" && <AlertasTab />}
-      {tab === "capacitaciones" && <CapacitacionesTab />}
-      {tab === "dotacion" && <DotacionTab />}
-      {tab === "examenes" && <ExamenesTab />}
-      {tab === "accidentes" && <AccidentesTab />}
-      {tab === "inspecciones" && <InspeccionesTab />}
-      {tab === "riesgos" && <RiesgosTab />}
-      {tab === "plan-anual" && <PlanAnualTab />}
-      {tab === "indicadores" && <IndicadoresTab />}
+      {tab === "resumen" && <ResumenTab {...tenantProps} />}
+      {tab === "alertas" && <AlertasTab {...tenantProps} />}
+      {tab === "capacitaciones" && <CapacitacionesTab {...tenantProps} />}
+      {tab === "dotacion" && <DotacionTab {...tenantProps} />}
+      {tab === "examenes" && <ExamenesTab {...tenantProps} />}
+      {tab === "accidentes" && <AccidentesTab {...tenantProps} />}
+      {tab === "inspecciones" && <InspeccionesTab {...tenantProps} />}
+      {tab === "riesgos" && <RiesgosTab {...tenantProps} />}
+      {tab === "plan-anual" && <PlanAnualTab {...tenantProps} />}
+      {tab === "indicadores" && <IndicadoresTab {...tenantProps} />}
     </div>
   );
 }

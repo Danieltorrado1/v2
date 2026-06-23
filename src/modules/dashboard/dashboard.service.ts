@@ -331,7 +331,7 @@ export const getDashboardResumen = async (query: DashboardQuery): Promise<Dashbo
 
   if (query.contrato_id) {
     contratoParams.push(query.contrato_id);
-    contratoConditions.push(`c.id::text = $${contratoParams.length}`);
+    contratoConditions.push(`c.id::text = $${filters.params.length + contratoParams.length}`);
   }
 
   const contratosWhereSql =
@@ -375,25 +375,23 @@ export const getDashboardResumen = async (query: DashboardQuery): Promise<Dashbo
       SELECT
         (SELECT COUNT(*)::int FROM empresas) AS total_empresas,
         (SELECT COUNT(*)::int FROM contratos_filtrados) AS total_contratos,
-        (
-          SELECT COUNT(*)::int
-          FROM contratos c
-          ${contratosWhereSql ? `${contratosWhereSql} AND` : 'WHERE'} COALESCE(c.activo, TRUE) = TRUE
-        ) AS contratos_activos,
+        -- contratos no tiene columna activo (no hay borrado lógico a ese nivel),
+        -- así que todo contrato filtrado se considera activo.
+        (SELECT COUNT(*)::int FROM contratos_filtrados) AS contratos_activos,
         (SELECT COUNT(*)::int FROM personas_filtradas) AS total_personas,
-        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado = 'ACTIVA') AS vinculaciones_activas,
-        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado = 'RETIRADA') AS vinculaciones_retiradas,
-        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado = 'SUSPENDIDA') AS vinculaciones_suspendidas,
+        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'ACTIVA') AS vinculaciones_activas,
+        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'RETIRADA') AS vinculaciones_retiradas,
+        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'SUSPENDIDA') AS vinculaciones_suspendidas,
         (
           SELECT COUNT(*)::int
           FROM documentos_union
-          WHERE fecha_vencimiento < $${filters.params.length + 1}
+          WHERE fecha_vencimiento < $${filters.params.length + contratoParams.length + 1}
         ) AS documentos_vencidos,
         (
           SELECT COUNT(*)::int
           FROM documentos_union
-          WHERE fecha_vencimiento >= $${filters.params.length + 1}
-            AND fecha_vencimiento <= $${filters.params.length + 2}
+          WHERE fecha_vencimiento >= $${filters.params.length + contratoParams.length + 1}
+            AND fecha_vencimiento <= $${filters.params.length + contratoParams.length + 2}
         ) AS documentos_por_vencer,
         (
           SELECT COUNT(*)::int
@@ -447,7 +445,7 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
         (SELECT COUNT(*)::int FROM personas_filtradas) AS total_personas,
         (SELECT COUNT(*)::int FROM personas_filtradas WHERE activo = TRUE) AS personas_activas,
         (SELECT COUNT(*)::int FROM personas_filtradas WHERE activo = FALSE) AS personas_inactivas,
-        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado = 'ACTIVA') AS vinculaciones_activas,
+        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'ACTIVA') AS vinculaciones_activas,
         (
           SELECT COUNT(*)::int
           FROM vinculaciones_filtradas
@@ -592,7 +590,7 @@ export const getDashboardDocumentos = async (
       WITH documentos_union AS (
         SELECT
           dp.tipo_documento_id::text AS tipo_documento_id,
-          td.nombre AS tipo_documento_nombre,
+          td.nombre_documento AS tipo_documento_nombre,
           dp.fecha_vencimiento
         FROM documentos_persona dp
         INNER JOIN tipos_documentos td ON td.id = dp.tipo_documento_id
@@ -602,7 +600,7 @@ export const getDashboardDocumentos = async (
 
         SELECT
           dv.tipo_documento_id::text AS tipo_documento_id,
-          td.nombre AS tipo_documento_nombre,
+          td.nombre_documento AS tipo_documento_nombre,
           dv.fecha_vencimiento
         FROM documentos_vinculacion dv
         INNER JOIN tipos_documentos td ON td.id = dv.tipo_documento_id

@@ -43,8 +43,10 @@ function Kpi({ label, value, trend, up, sub, spark, color }: {
 }
 
 // ── KPIs reales (backend Empiria V2) ─────────────────────────────────────────
-// Empresa/contrato fijos hasta que exista un selector de empresa/contrato (fase futura).
-const TENANT_PARAMS = { empresa_id: 1, contrato_id: 3 };
+interface TenantParams {
+  empresa_id?: number;
+  contrato_id?: number;
+}
 
 type KpiFormat = "number" | "percent" | "currency";
 type KpiStatus = "loading" | "ready" | "fallback";
@@ -81,67 +83,65 @@ const REAL_KPI_CARDS: RealKpiCardDef[] = [
   { key: "liquidaciones_pagadas",   label: "Liquidaciones pagadas",   format: "currency" },
 ];
 
-const REAL_KPI_SOURCES: RealKpiSource[] = [
-  {
-    sourceKey: "dashboard_resumen",
-    // FALLBACK: GET /dashboard/resumen responde 500 hoy en el backend
-    // ("column c.activo does not exist") — bug existente, no se toca el backend en esta fase.
-    fetchValues: () => dashboardApi.getResumen(TENANT_PARAMS).then(r => ({ total_personas: r.total_personas })),
-    fallbackValues: { total_personas: 226 },
-  },
-  {
-    sourceKey: "dashboard_documentos",
-    // FALLBACK: GET /dashboard/documentos responde 500 hoy en el backend
-    // ("column td.nombre does not exist") — bug existente, no se toca el backend en esta fase.
-    fetchValues: () =>
-      dashboardApi.getDocumentos(TENANT_PARAMS).then(r => ({ cumplimiento_documental: r.cumplimiento_documental_promedio })),
-    fallbackValues: { cumplimiento_documental: 88 },
-  },
-  {
-    sourceKey: "sst_dashboard_general",
-    fetchValues: () =>
-      dashboardApi.getSstDashboardGeneral(TENANT_PARAMS).then(r => ({
-        alertas_sst: r.resumen.alertas_total,
-        cumplimiento_sst: r.resumen.cumplimiento_general_sst,
-      })),
-    fallbackValues: { alertas_sst: 5, cumplimiento_sst: 80 },
-  },
-  {
-    sourceKey: "evaluaciones_dashboard_general",
-    fetchValues: () =>
-      dashboardApi.getEvaluacionesDashboardGeneral(TENANT_PARAMS).then(r => ({ promedio_desempeno: r.promedio_general })),
-    fallbackValues: { promedio_desempeno: 4.2 },
-  },
-  {
-    sourceKey: "nomina_vacaciones_dashboard",
-    fetchValues: () =>
-      dashboardApi.getVacacionesDashboard(TENANT_PARAMS).then(r => ({ vacaciones_pendientes: r.solicitudes_pendientes })),
-    fallbackValues: { vacaciones_pendientes: 3 },
-  },
-  {
-    sourceKey: "nomina_prima_dashboard",
-    fetchValues: () => dashboardApi.getPrimaDashboard(TENANT_PARAMS).then(r => ({ prima_pagada: r.valor_total_pagado })),
-    fallbackValues: { prima_pagada: 1100000 },
-  },
-  {
-    sourceKey: "nomina_cesantias_dashboard",
-    fetchValues: () =>
-      dashboardApi.getCesantiasDashboard(TENANT_PARAMS).then(r => ({ cesantias_consignadas: r.valor_total_consignado })),
-    fallbackValues: { cesantias_consignadas: 1100000 },
-  },
-  {
-    sourceKey: "nomina_intereses_cesantias_dashboard",
-    fetchValues: () =>
-      dashboardApi.getInteresesCesantiasDashboard(TENANT_PARAMS).then(r => ({ intereses_pagados: r.valor_total_pagado })),
-    fallbackValues: { intereses_pagados: 66000 },
-  },
-  {
-    sourceKey: "nomina_liquidaciones_finales_dashboard",
-    fetchValues: () =>
-      dashboardApi.getLiquidacionesFinalesDashboard(TENANT_PARAMS).then(r => ({ liquidaciones_pagadas: r.valor_total_pagado })),
-    fallbackValues: { liquidaciones_pagadas: 3580000 },
-  },
-];
+function buildRealKpiSources(tenantParams: TenantParams): RealKpiSource[] {
+  return [
+    {
+      sourceKey: "dashboard_resumen",
+      fetchValues: () => dashboardApi.getResumen(tenantParams).then(r => ({ total_personas: r.total_personas })),
+      fallbackValues: { total_personas: 226 },
+    },
+    {
+      sourceKey: "dashboard_documentos",
+      fetchValues: () =>
+        dashboardApi.getDocumentos(tenantParams).then(r => ({ cumplimiento_documental: r.cumplimiento_documental_promedio })),
+      fallbackValues: { cumplimiento_documental: 88 },
+    },
+    {
+      sourceKey: "sst_dashboard_general",
+      fetchValues: () =>
+        dashboardApi.getSstDashboardGeneral(tenantParams).then(r => ({
+          alertas_sst: r.resumen.alertas_total,
+          cumplimiento_sst: r.resumen.cumplimiento_general_sst,
+        })),
+      fallbackValues: { alertas_sst: 5, cumplimiento_sst: 80 },
+    },
+    {
+      sourceKey: "evaluaciones_dashboard_general",
+      fetchValues: () =>
+        dashboardApi.getEvaluacionesDashboardGeneral(tenantParams).then(r => ({ promedio_desempeno: r.promedio_general })),
+      fallbackValues: { promedio_desempeno: 4.2 },
+    },
+    {
+      sourceKey: "nomina_vacaciones_dashboard",
+      fetchValues: () =>
+        dashboardApi.getVacacionesDashboard(tenantParams).then(r => ({ vacaciones_pendientes: r.solicitudes_pendientes })),
+      fallbackValues: { vacaciones_pendientes: 3 },
+    },
+    {
+      sourceKey: "nomina_prima_dashboard",
+      fetchValues: () => dashboardApi.getPrimaDashboard(tenantParams).then(r => ({ prima_pagada: r.valor_total_pagado })),
+      fallbackValues: { prima_pagada: 1100000 },
+    },
+    {
+      sourceKey: "nomina_cesantias_dashboard",
+      fetchValues: () =>
+        dashboardApi.getCesantiasDashboard(tenantParams).then(r => ({ cesantias_consignadas: r.valor_total_consignado })),
+      fallbackValues: { cesantias_consignadas: 1100000 },
+    },
+    {
+      sourceKey: "nomina_intereses_cesantias_dashboard",
+      fetchValues: () =>
+        dashboardApi.getInteresesCesantiasDashboard(tenantParams).then(r => ({ intereses_pagados: r.valor_total_pagado })),
+      fallbackValues: { intereses_pagados: 66000 },
+    },
+    {
+      sourceKey: "nomina_liquidaciones_finales_dashboard",
+      fetchValues: () =>
+        dashboardApi.getLiquidacionesFinalesDashboard(tenantParams).then(r => ({ liquidaciones_pagadas: r.valor_total_pagado })),
+      fallbackValues: { liquidaciones_pagadas: 3580000 },
+    },
+  ];
+}
 
 function formatKpiValue(value: number, format: KpiFormat): string {
   if (format === "currency") {
@@ -153,10 +153,11 @@ function formatKpiValue(value: number, format: KpiFormat): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(2);
 }
 
-function useRealDashboardKpis(): Record<string, KpiState> {
+function useRealDashboardKpis(tenantParams: TenantParams): Record<string, KpiState> {
+  const sources = buildRealKpiSources(tenantParams);
   const [states, setStates] = useState<Record<string, KpiState>>(() => {
     const initial: Record<string, KpiState> = {};
-    REAL_KPI_SOURCES.forEach(source => {
+    sources.forEach(source => {
       Object.entries(source.fallbackValues).forEach(([key, value]) => {
         initial[key] = { status: "loading", value };
       });
@@ -164,9 +165,11 @@ function useRealDashboardKpis(): Record<string, KpiState> {
     return initial;
   });
 
+  const tenantKey = `${tenantParams.empresa_id ?? ""}:${tenantParams.contrato_id ?? ""}`;
+
   useEffect(() => {
     // Cada fuente se resuelve de forma independiente: si una falla, no bloquea a las demás.
-    REAL_KPI_SOURCES.forEach(source => {
+    buildRealKpiSources(tenantParams).forEach(source => {
       source.fetchValues()
         .then(values => {
           setStates(prev => {
@@ -188,7 +191,8 @@ function useRealDashboardKpis(): Record<string, KpiState> {
           });
         });
     });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantKey]);
 
   return states;
 }
@@ -528,9 +532,9 @@ function Personal() {
 // ── Root ────────────────────────────────────────────────────────────────────
 type View = "general" | "personal";
 
-export function DashboardHome() {
+export function DashboardHome({ empresaId, contratoId }: { empresaId?: number; contratoId?: number } = {}) {
   const [view, setView] = useState<View>("general");
-  const kpiStates = useRealDashboardKpis();
+  const kpiStates = useRealDashboardKpis({ empresa_id: empresaId, contrato_id: contratoId });
 
   return (
     <div className="p-6 space-y-5 max-w-screen-xl mx-auto">

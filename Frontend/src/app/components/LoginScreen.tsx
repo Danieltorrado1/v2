@@ -5,10 +5,10 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card, CardContent, CardHeader } from "./ui/card";
 import { Alert, AlertDescription } from "./ui/alert";
-import { login } from "../../services/authApi";
+import { login, type AuthUser } from "../../services/authApi";
 
 interface LoginScreenProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (user: AuthUser) => void;
 }
 
 export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
@@ -23,8 +23,8 @@ export function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     setLoading(true);
 
     try {
-      await login(email, password);
-      onLoginSuccess();
+      const user = await login(email, password);
+      onLoginSuccess(user);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesión");
     } finally {

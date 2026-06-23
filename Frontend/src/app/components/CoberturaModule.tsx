@@ -5,10 +5,12 @@ import { vinculacionesApi, type Vinculacion } from "../../services/vinculaciones
 import { personasApi, type Persona } from "../../services/personasApi";
 import { getArray, getNumber, getString, fmtNum, fmtPercent, fmtDateLoose } from "../../lib/payloadHelpers";
 
-// Contrato fijo hasta que exista un selector de empresa/contrato (fase futura).
 // El endpoint /cobertura/resumen no filtra por empresa_id, solo por contrato_id.
-const CONTRATO_PARAMS = { contrato_id: 3 };
 const MAX_PAGES = 20; // límite defensivo de paginación — no bloquea la pantalla ante datasets grandes
+
+interface CoberturaProps {
+  contratoId?: number;
+}
 
 type RowStatus = "loading" | "ready";
 type DataSource = "real" | "fallback";
@@ -40,8 +42,8 @@ function personaNombreCompleto(p: Persona): string | null {
 // /cobertura/resumen está paginado (máx. 100 por página) y no expone un total
 // agregado: se recorren todas las páginas reales para tener el dataset completo
 // que alimenta Resumen/Instituciones/Sedes/Modalidades/Indicadores.
-async function fetchAllCoberturaResumen(extra: Record<string, unknown> = {}): Promise<unknown[]> {
-  const first = await coberturaApi.getResumen({ ...CONTRATO_PARAMS, ...extra, page: 1, limit: 100 });
+async function fetchAllCoberturaResumen(contratoId: number | undefined, extra: Record<string, unknown> = {}): Promise<unknown[]> {
+  const first = await coberturaApi.getResumen({ contrato_id: contratoId, ...extra, page: 1, limit: 100 });
   const items = getArray(first, ["items"]);
   const totalPages = Math.min(getNumber(first, ["pagination", "total_pages"]) ?? (items.length > 0 ? 1 : 0), MAX_PAGES);
 
@@ -51,7 +53,7 @@ async function fetchAllCoberturaResumen(extra: Record<string, unknown> = {}): Pr
 
   const rest = await Promise.all(
     Array.from({ length: totalPages - 1 }, (_, i) => i + 2).map(page =>
-      coberturaApi.getResumen({ ...CONTRATO_PARAMS, ...extra, page, limit: 100 })
+      coberturaApi.getResumen({ contrato_id: contratoId, ...extra, page, limit: 100 })
         .then(res => getArray(res, ["items"]))
         .catch(() => [] as unknown[])
     )
@@ -60,12 +62,12 @@ async function fetchAllCoberturaResumen(extra: Record<string, unknown> = {}): Pr
   return [...items, ...rest.flat()];
 }
 
-function useCoberturaResumenAll(label: string): ListState {
+function useCoberturaResumenAll(contratoId: number | undefined, label: string): ListState {
   const [state, setState] = useState<ListState>({ status: "loading", items: [], source: "real" });
 
   useEffect(() => {
     let active = true;
-    fetchAllCoberturaResumen()
+    fetchAllCoberturaResumen(contratoId)
       .then(items => { if (active) setState({ status: "ready", items, source: "real" }); })
       .catch(error => {
         if (!active) return;
@@ -74,7 +76,7 @@ function useCoberturaResumenAll(label: string): ListState {
       });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [contratoId]);
 
   return state;
 }
@@ -85,7 +87,7 @@ function useCoberturaResumenAll(label: string): ListState {
 // se resuelve el nombre del manipulador encadenando vinculacion_id → persona_id
 // (GET /vinculaciones/:id y GET /personas/:id, ambos endpoints reales). Si la
 // resolución de nombre falla para una fila puntual, esa fila muestra el id crudo.
-function useCoberturaAsignaciones(): ListState {
+function useCoberturaAsignaciones(contratoId: number | undefined): ListState {
   const [state, setState] = useState<ListState>({ status: "loading", items: [], source: "real" });
 
   useEffect(() => {
@@ -93,7 +95,7 @@ function useCoberturaAsignaciones(): ListState {
 
     (async () => {
       try {
-        const resumenItems = await fetchAllCoberturaResumen();
+        const resumenItems = await fetchAllCoberturaResumen(contratoId);
         const candidateIds = resumenItems
           .filter(item => (getNumber(item, ["asignados_cobertura"]) ?? 0) > 0)
           .map(item => getString(item, ["id"]))
@@ -151,7 +153,8 @@ function useCoberturaAsignaciones(): ListState {
     })();
 
     return () => { active = false; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contratoId]);
 
   return state;
 }
@@ -329,8 +332,8 @@ function KpiCard({ label, value, status, source }: { label: string; value: strin
 }
 
 // ── Resumen ───────────────────────────────────────────────────────────────────
-function ResumenTab() {
-  const state = useCoberturaResumenAll("resumen");
+function ResumenTab({ contratoId }: CoberturaProps) {
+  const state = useCoberturaResumenAll(contratoId, "resumen");
   const { status, items, source } = state;
 
   const institucionesCount = aggregateBy(items, i => getString(i, ["institucion_id"]) ?? getString(i, ["institucion_nombre"]) ?? "—", i => getString(i, ["institucion_nombre"]) ?? "—").length;
@@ -363,8 +366,8 @@ function ResumenTab() {
 }
 
 // ── Instituciones ─────────────────────────────────────────────────────────────
-function InstitucionesTab() {
-  const state = useCoberturaResumenAll("instituciones");
+function InstitucionesTab({ contratoId }: CoberturaProps) {
+  const state = useCoberturaResumenAll(contratoId, "instituciones");
   const rows = aggregateBy(
     state.items,
     i => getString(i, ["institucion_id"]) ?? getString(i, ["institucion_nombre"]) ?? "—",
@@ -397,8 +400,8 @@ function InstitucionesTab() {
 }
 
 // ── Sedes ─────────────────────────────────────────────────────────────────────
-function SedesTab() {
-  const state = useCoberturaResumenAll("sedes");
+function SedesTab({ contratoId }: CoberturaProps) {
+  const state = useCoberturaResumenAll(contratoId, "sedes");
   const rows = aggregateBy(
     state.items,
     i => `${getString(i, ["institucion_id"]) ?? "—"}::${getString(i, ["sede_id"]) ?? getString(i, ["sede_nombre"]) ?? "—"}`,
@@ -431,8 +434,8 @@ function SedesTab() {
 }
 
 // ── Modalidades ───────────────────────────────────────────────────────────────
-function ModalidadesTab() {
-  const state = useCoberturaResumenAll("modalidades");
+function ModalidadesTab({ contratoId }: CoberturaProps) {
+  const state = useCoberturaResumenAll(contratoId, "modalidades");
   const rows = aggregateBy(
     state.items,
     i => getString(i, ["modalidad_base"]) ?? "—",
@@ -464,8 +467,8 @@ function ModalidadesTab() {
 }
 
 // ── Asignaciones ──────────────────────────────────────────────────────────────
-function AsignacionesTab() {
-  const state = useCoberturaAsignaciones();
+function AsignacionesTab({ contratoId }: CoberturaProps) {
+  const state = useCoberturaAsignaciones(contratoId);
   return (
     <TableShell
       state={state}
@@ -518,8 +521,8 @@ function NovedadesTab() {
 }
 
 // ── Indicadores ───────────────────────────────────────────────────────────────
-function IndicadoresTab() {
-  const state = useCoberturaResumenAll("indicadores");
+function IndicadoresTab({ contratoId }: CoberturaProps) {
+  const state = useCoberturaResumenAll(contratoId, "indicadores");
   const { status, items, source } = state;
 
   const requeridos = items.reduce((sum, i) => sum + (getNumber(i, ["manipuladores_requeridos"]) ?? 0), 0);
@@ -604,7 +607,7 @@ const TABS: { id: CoberturaTabId; label: string }[] = [
   { id: "indicadores", label: "Indicadores" },
 ];
 
-export function CoberturaModule() {
+export function CoberturaModule({ contratoId }: CoberturaProps = {}) {
   const [tab, setTab] = useState<CoberturaTabId>("resumen");
 
   return (
@@ -628,13 +631,13 @@ export function CoberturaModule() {
         </div>
       </div>
 
-      {tab === "resumen" && <ResumenTab />}
-      {tab === "instituciones" && <InstitucionesTab />}
-      {tab === "sedes" && <SedesTab />}
-      {tab === "modalidades" && <ModalidadesTab />}
-      {tab === "asignaciones" && <AsignacionesTab />}
+      {tab === "resumen" && <ResumenTab contratoId={contratoId} />}
+      {tab === "instituciones" && <InstitucionesTab contratoId={contratoId} />}
+      {tab === "sedes" && <SedesTab contratoId={contratoId} />}
+      {tab === "modalidades" && <ModalidadesTab contratoId={contratoId} />}
+      {tab === "asignaciones" && <AsignacionesTab contratoId={contratoId} />}
       {tab === "novedades" && <NovedadesTab />}
-      {tab === "indicadores" && <IndicadoresTab />}
+      {tab === "indicadores" && <IndicadoresTab contratoId={contratoId} />}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   tenantUserIdParamSchema
 } from './tenant.schemas';
 import {
+  getTenantMeContext,
   getUserAccess,
   grantUserContratoAccess,
   grantUserEmpresaAccess,
@@ -29,13 +30,12 @@ const getActorUserId = (req: Request): string => {
 };
 
 export const getTenantMeHandler = asyncHandler(async (req: Request, res: Response) => {
+  const tenant = req.tenant ?? { contratoIds: [], empresaIds: [], isGlobalAdmin: false };
+  const context = await getTenantMeContext(tenant);
+
   return successResponse(res, {
     message: 'Tenant context retrieved successfully',
-    data: req.tenant ?? {
-      contratoIds: [],
-      empresaIds: [],
-      isGlobalAdmin: false
-    }
+    data: context
   });
 });
 

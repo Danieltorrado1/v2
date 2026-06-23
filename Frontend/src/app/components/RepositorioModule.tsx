@@ -8,9 +8,6 @@ import {
 import { personasApi } from "../../services/personasApi";
 import { fmtDateLoose, fmtNum } from "../../lib/payloadHelpers";
 
-// Empresa/contrato fijos hasta que exista un selector de empresa/contrato (fase futura).
-const TENANT_PARAMS = { empresa_id: 1, contrato_id: 3 };
-
 type FetchStatus = "loading" | "ready" | "error";
 
 function personaNombreCompleto(p: RepositorioDocumento["persona"]): string {
@@ -19,14 +16,16 @@ function personaNombreCompleto(p: RepositorioDocumento["persona"]): string {
   return partes.length > 0 ? partes.join(" ") : "—";
 }
 
-function useRepositorioOverview() {
+function useRepositorioOverview(tenantParams: { empresa_id?: number; contrato_id?: number }) {
   const [listState, setListState] = useState<{ status: FetchStatus; items: RepositorioDocumento[] }>({ status: "loading", items: [] });
   const [indicadoresState, setIndicadoresState] = useState<{ status: FetchStatus; data: RepositorioDocumentosIndicadoresResult | null }>({ status: "loading", data: null });
   const [totalPersonasState, setTotalPersonasState] = useState<{ status: FetchStatus; total: number }>({ status: "loading", total: 0 });
 
+  const tenantKey = `${tenantParams.empresa_id ?? ""}:${tenantParams.contrato_id ?? ""}`;
+
   useEffect(() => {
     let active = true;
-    repositorioApi.listDocumentos({ ...TENANT_PARAMS, limit: 100 })
+    repositorioApi.listDocumentos({ ...tenantParams, limit: 100 })
       .then(res => { if (active) setListState({ status: "ready", items: res.items ?? [] }); })
       .catch(error => {
         if (!active) return;
@@ -34,7 +33,7 @@ function useRepositorioOverview() {
         setListState({ status: "error", items: [] });
       });
 
-    repositorioApi.getIndicadores(TENANT_PARAMS)
+    repositorioApi.getIndicadores(tenantParams)
       .then(data => { if (active) setIndicadoresState({ status: "ready", data }); })
       .catch(error => {
         if (!active) return;
@@ -54,7 +53,8 @@ function useRepositorioOverview() {
       });
 
     return () => { active = false; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantKey]);
 
   return { listState, indicadoresState, totalPersonasState };
 }
@@ -73,14 +73,15 @@ function Kpi({ label, value, status, accent }: { label: string; value: string; s
   );
 }
 
-export function RepositorioModule() {
-  const { listState, indicadoresState, totalPersonasState } = useRepositorioOverview();
+export function RepositorioModule({ empresaId, contratoId }: { empresaId?: number; contratoId?: number } = {}) {
+  const tenantParams = { empresa_id: empresaId, contrato_id: contratoId };
+  const { listState, indicadoresState, totalPersonasState } = useRepositorioOverview(tenantParams);
   const [exportState, setExportState] = useState<{ status: "idle" | "loading" | "error" }>({ status: "idle" });
 
   async function handleExport() {
     setExportState({ status: "loading" });
     try {
-      const blob = await repositorioApi.exportCsv(TENANT_PARAMS);
+      const blob = await repositorioApi.exportCsv(tenantParams);
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;

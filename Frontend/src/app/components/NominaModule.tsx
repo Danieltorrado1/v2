@@ -3,9 +3,14 @@ import { Loader2 } from "lucide-react";
 import { nominaApi } from "../../services/nominaApi";
 import { getArray, getNumber, getString, fmtNum, fmtCurrency, fmtDateLoose } from "../../lib/payloadHelpers";
 
-// Empresa/contrato fijos hasta que exista un selector de empresa/contrato (fase futura).
-const TENANT_PARAMS = { empresa_id: 1, contrato_id: 3 };
-const LIST_PARAMS = { ...TENANT_PARAMS, limit: 100 };
+interface TenantProps {
+  empresaId?: number;
+  contratoId?: number;
+}
+
+function tenantKeyOf(props: TenantProps): string {
+  return `${props.empresaId ?? ""}:${props.contratoId ?? ""}`;
+}
 
 // ── Mocks de respaldo — uno por sub-módulo, usados solo si su endpoint falla ─
 const MOCK_VACACIONES = [
@@ -49,7 +54,7 @@ interface KpiState {
 }
 
 // ── Hooks de datos — cada sub-módulo se resuelve de forma independiente ─────
-function useNominaList(fetcher: () => Promise<unknown>, mockItems: unknown[], label: string): ListState {
+function useNominaList(fetcher: () => Promise<unknown>, mockItems: unknown[], label: string, tenantKey: string): ListState {
   const [state, setState] = useState<ListState>({ status: "loading", items: [], source: "real" });
 
   useEffect(() => {
@@ -66,12 +71,12 @@ function useNominaList(fetcher: () => Promise<unknown>, mockItems: unknown[], la
       });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tenantKey]);
 
   return state;
 }
 
-function useNominaDashboardValue(fetcher: () => Promise<unknown>, field: string, mockValue: number, label: string): KpiState {
+function useNominaDashboardValue(fetcher: () => Promise<unknown>, field: string, mockValue: number, label: string, tenantKey: string): KpiState {
   const [state, setState] = useState<KpiState>({ status: "loading", value: mockValue, source: "real" });
 
   useEffect(() => {
@@ -91,7 +96,7 @@ function useNominaDashboardValue(fetcher: () => Promise<unknown>, field: string,
       });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tenantKey]);
 
   return state;
 }
@@ -211,12 +216,14 @@ function NominaKpiCard({ label, state, format }: { label: string; state: KpiStat
   );
 }
 
-function ResumenTab() {
-  const vacacionesDash = useNominaDashboardValue(() => nominaApi.getVacacionesDashboard(TENANT_PARAMS), "solicitudes_pendientes", 3, "vacaciones");
-  const primaDash = useNominaDashboardValue(() => nominaApi.getPrimaDashboard(TENANT_PARAMS), "valor_total_pagado", 1100000, "prima");
-  const cesantiasDash = useNominaDashboardValue(() => nominaApi.getCesantiasDashboard(TENANT_PARAMS), "valor_total_consignado", 1100000, "cesantías");
-  const interesesDash = useNominaDashboardValue(() => nominaApi.getInteresesCesantiasDashboard(TENANT_PARAMS), "valor_total_pagado", 66000, "intereses cesantías");
-  const liquidacionesDash = useNominaDashboardValue(() => nominaApi.getLiquidacionesFinalesDashboard(TENANT_PARAMS), "valor_total_pagado", 862000, "liquidaciones finales");
+function ResumenTab(props: TenantProps) {
+  const tenantParams = { empresa_id: props.empresaId, contrato_id: props.contratoId };
+  const tenantKey = tenantKeyOf(props);
+  const vacacionesDash = useNominaDashboardValue(() => nominaApi.getVacacionesDashboard(tenantParams), "solicitudes_pendientes", 3, "vacaciones", tenantKey);
+  const primaDash = useNominaDashboardValue(() => nominaApi.getPrimaDashboard(tenantParams), "valor_total_pagado", 1100000, "prima", tenantKey);
+  const cesantiasDash = useNominaDashboardValue(() => nominaApi.getCesantiasDashboard(tenantParams), "valor_total_consignado", 1100000, "cesantías", tenantKey);
+  const interesesDash = useNominaDashboardValue(() => nominaApi.getInteresesCesantiasDashboard(tenantParams), "valor_total_pagado", 66000, "intereses cesantías", tenantKey);
+  const liquidacionesDash = useNominaDashboardValue(() => nominaApi.getLiquidacionesFinalesDashboard(tenantParams), "valor_total_pagado", 862000, "liquidaciones finales", tenantKey);
 
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
@@ -230,8 +237,9 @@ function ResumenTab() {
 }
 
 // ── Tablas por sub-módulo ────────────────────────────────────────────────────
-function VacacionesTab() {
-  const state = useNominaList(() => nominaApi.getVacaciones(LIST_PARAMS), MOCK_VACACIONES, "vacaciones");
+function VacacionesTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useNominaList(() => nominaApi.getVacaciones(listParams), MOCK_VACACIONES, "vacaciones", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -253,8 +261,9 @@ function VacacionesTab() {
   );
 }
 
-function PrimaTab() {
-  const state = useNominaList(() => nominaApi.getPrima(LIST_PARAMS), MOCK_PRIMA, "prima");
+function PrimaTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useNominaList(() => nominaApi.getPrima(listParams), MOCK_PRIMA, "prima", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -275,8 +284,9 @@ function PrimaTab() {
   );
 }
 
-function CesantiasTab() {
-  const state = useNominaList(() => nominaApi.getCesantias(LIST_PARAMS), MOCK_CESANTIAS, "cesantias");
+function CesantiasTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useNominaList(() => nominaApi.getCesantias(listParams), MOCK_CESANTIAS, "cesantias", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -297,8 +307,9 @@ function CesantiasTab() {
   );
 }
 
-function InteresesTab() {
-  const state = useNominaList(() => nominaApi.getInteresesCesantias(LIST_PARAMS), MOCK_INTERESES, "intereses-cesantias");
+function InteresesTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useNominaList(() => nominaApi.getInteresesCesantias(listParams), MOCK_INTERESES, "intereses-cesantias", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -319,8 +330,9 @@ function InteresesTab() {
   );
 }
 
-function LiquidacionesTab() {
-  const state = useNominaList(() => nominaApi.getLiquidacionesFinales(LIST_PARAMS), MOCK_LIQUIDACIONES, "liquidaciones-finales");
+function LiquidacionesTab(props: TenantProps) {
+  const listParams = { empresa_id: props.empresaId, contrato_id: props.contratoId, limit: 100 };
+  const state = useNominaList(() => nominaApi.getLiquidacionesFinales(listParams), MOCK_LIQUIDACIONES, "liquidaciones-finales", tenantKeyOf(props));
   return (
     <TableShell
       state={state}
@@ -358,8 +370,9 @@ const TABS: { id: NominaTab; label: string }[] = [
   { id: "liquidaciones", label: "Liquidaciones Finales" },
 ];
 
-export function NominaModule() {
+export function NominaModule({ empresaId, contratoId }: TenantProps = {}) {
   const [tab, setTab] = useState<NominaTab>("resumen");
+  const tenantProps: TenantProps = { empresaId, contratoId };
 
   return (
     <div className="p-6 space-y-5 max-w-none">
@@ -382,12 +395,12 @@ export function NominaModule() {
         </div>
       </div>
 
-      {tab === "resumen" && <ResumenTab />}
-      {tab === "vacaciones" && <VacacionesTab />}
-      {tab === "prima" && <PrimaTab />}
-      {tab === "cesantias" && <CesantiasTab />}
-      {tab === "intereses" && <InteresesTab />}
-      {tab === "liquidaciones" && <LiquidacionesTab />}
+      {tab === "resumen" && <ResumenTab {...tenantProps} />}
+      {tab === "vacaciones" && <VacacionesTab {...tenantProps} />}
+      {tab === "prima" && <PrimaTab {...tenantProps} />}
+      {tab === "cesantias" && <CesantiasTab {...tenantProps} />}
+      {tab === "intereses" && <InteresesTab {...tenantProps} />}
+      {tab === "liquidaciones" && <LiquidacionesTab {...tenantProps} />}
     </div>
   );
 }

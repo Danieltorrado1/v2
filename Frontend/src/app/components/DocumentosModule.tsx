@@ -14,9 +14,6 @@ import {
 } from "../../services/alertasApi";
 import { fmtDateLoose, fmtNum } from "../../lib/payloadHelpers";
 
-// Empresa/contrato fijos hasta que exista un selector de empresa/contrato (fase futura).
-const TENANT_PARAMS = { empresa_id: 1, contrato_id: 3 };
-
 type FetchStatus = "loading" | "ready" | "error";
 
 export interface PersonaFilterChip {
@@ -100,18 +97,18 @@ function useRepositorioDocumentosData(filtros: RepositorioFiltros) {
   return { listState, indicadoresState };
 }
 
-function useAlertasDocumentales(personaId?: number, contratoId?: string) {
+function useAlertasDocumentales(empresaId?: number, personaId?: number, contratoId?: string | number) {
   const [state, setState] = useState<{ status: FetchStatus; items: AlertaDocumentalItem[]; total: number }>({
     status: "loading", items: [], total: 0,
   });
 
-  const key = JSON.stringify({ personaId, contratoId });
+  const key = JSON.stringify({ empresaId, personaId, contratoId });
 
   useEffect(() => {
     let active = true;
     setState(prev => ({ ...prev, status: "loading" }));
     alertasApi.listDocumentales({
-      ...TENANT_PARAMS,
+      empresa_id: empresaId,
       persona_id: personaId,
       contrato_id: contratoId || undefined,
       estado: "ACTIVA",
@@ -154,24 +151,27 @@ function SectionError({ label }: { label: string }) {
 
 // ── Tab Documentos ───────────────────────────────────────────────────────────
 function DocumentosTab({
-  personaFilter, onClearPersonaFilter,
-}: { personaFilter: PersonaFilterChip | null; onClearPersonaFilter: () => void }) {
+  empresaId, contratoId, personaFilter, onClearPersonaFilter,
+}: { empresaId?: number; contratoId?: number; personaFilter: PersonaFilterChip | null; onClearPersonaFilter: () => void }) {
   const [search, setSearch] = useState("");
-  const [contratoId, setContratoId] = useState("");
+  // Permite acotar a otro contrato puntual sin perder el tenant global (vacío = usar el seleccionado en el TopNav).
+  const [contratoIdInput, setContratoIdInput] = useState("");
   const [tipoDocumentoId, setTipoDocumentoId] = useState("");
   const [estado, setEstado] = useState<EstadoDocumental | "">("");
 
+  const effectiveContratoId = contratoIdInput || contratoId;
+
   const filtros: RepositorioFiltros = {
-    ...TENANT_PARAMS,
+    empresa_id: empresaId,
     persona_id: personaFilter ? personaFilter.id : undefined,
-    contrato_id: !personaFilter && contratoId ? contratoId : undefined,
+    contrato_id: !personaFilter ? effectiveContratoId : undefined,
     tipo_documento_id: tipoDocumentoId || undefined,
     estado_documental: estado || undefined,
     search: !personaFilter && search ? search : undefined,
   };
 
   const { listState, indicadoresState } = useRepositorioDocumentosData(filtros);
-  const faltantes = useAlertasDocumentales(personaFilter?.id, contratoId);
+  const faltantes = useAlertasDocumentales(empresaId, personaFilter?.id, effectiveContratoId);
   const faltantesTotal = faltantes.items.filter(a => a.tipo_alerta === "DOCUMENTO_FALTANTE").length;
 
   const tiposDisponibles = indicadoresState.data?.documentos_por_tipo ?? [];
@@ -210,9 +210,9 @@ function DocumentosTab({
         {!personaFilter && (
           <input
             className="w-32 px-2.5 py-1.5 rounded-xl border border-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
-            placeholder="Contrato (ID)"
-            value={contratoId}
-            onChange={e => setContratoId(e.target.value.replace(/[^0-9]/g, ""))}
+            placeholder={contratoId ? `Contrato (${contratoId})` : "Contrato (ID)"}
+            value={contratoIdInput}
+            onChange={e => setContratoIdInput(e.target.value.replace(/[^0-9]/g, ""))}
           />
         )}
         <select
@@ -286,8 +286,8 @@ function DocumentosTab({
 }
 
 // ── Tab Alertas ──────────────────────────────────────────────────────────────
-function AlertasTab({ personaFilter }: { personaFilter: PersonaFilterChip | null }) {
-  const alertas = useAlertasDocumentales(personaFilter?.id);
+function AlertasTab({ empresaId, contratoId, personaFilter }: { empresaId?: number; contratoId?: number; personaFilter: PersonaFilterChip | null }) {
+  const alertas = useAlertasDocumentales(empresaId, personaFilter?.id, contratoId);
 
   const conteo = (sev: SeveridadAlertaDocumental) => alertas.items.filter(a => a.severidad === sev).length;
 
@@ -339,7 +339,9 @@ function AlertasTab({ personaFilter }: { personaFilter: PersonaFilterChip | null
 }
 
 // ── Root ────────────────────────────────────────────────────────────────────
-export function DocumentosModule({ initialPersonaFilter = null }: { initialPersonaFilter?: PersonaFilterChip | null }) {
+export function DocumentosModule({
+  empresaId, contratoId, initialPersonaFilter = null,
+}: { empresaId?: number; contratoId?: number; initialPersonaFilter?: PersonaFilterChip | null }) {
   const [tab, setTab] = useState<"documentos" | "alertas">("documentos");
   const [personaFilter, setPersonaFilter] = useState<PersonaFilterChip | null>(initialPersonaFilter);
 
@@ -364,8 +366,8 @@ export function DocumentosModule({ initialPersonaFilter = null }: { initialPerso
         </div>
       </div>
 
-      {tab === "documentos" && <DocumentosTab personaFilter={personaFilter} onClearPersonaFilter={() => setPersonaFilter(null)} />}
-      {tab === "alertas" && <AlertasTab personaFilter={personaFilter} />}
+      {tab === "documentos" && <DocumentosTab empresaId={empresaId} contratoId={contratoId} personaFilter={personaFilter} onClearPersonaFilter={() => setPersonaFilter(null)} />}
+      {tab === "alertas" && <AlertasTab empresaId={empresaId} contratoId={contratoId} personaFilter={personaFilter} />}
     </div>
   );
 }

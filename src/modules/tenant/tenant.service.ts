@@ -3,6 +3,7 @@ import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
 import { AppError } from '../../utils/AppError';
+import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import { findUserProfileById, UserProfile } from '../users/users.service';
 
@@ -42,6 +43,40 @@ interface UserAccessResult {
   usuario: UserProfile;
 }
 
+interface TenantMeEmpresaRow extends QueryResultRow {
+  id: string;
+  nombre_empresa: string;
+}
+
+interface TenantMeContratoRow extends QueryResultRow {
+  empresa_id: string | null;
+  entidad_contratante: string | null;
+  id: string;
+  numero_contrato: string | null;
+}
+
+export interface TenantMeEmpresa {
+  id: number;
+  nombre_empresa: string;
+}
+
+export interface TenantMeContrato {
+  empresa_id: number | null;
+  entidad_contratante: string | null;
+  id: number;
+  numero_contrato: string | null;
+}
+
+export interface TenantMeContext {
+  contratoIds: number[];
+  contratos: TenantMeContrato[];
+  contrato_default_id: number | null;
+  empresaIds: number[];
+  empresas: TenantMeEmpresa[];
+  empresa_default_id: number | null;
+  isGlobalAdmin: boolean;
+}
+
 const toNumber = (value: number | string): number => {
   const parsed = typeof value === 'number' ? value : Number(value);
 
@@ -50,6 +85,80 @@ const toNumber = (value: number | string): number => {
   }
 
   return parsed;
+};
+
+const toNullableNumber = (value: number | string | null): number | null => {
+  if (value === null) {
+    return null;
+  }
+
+  return toNumber(value);
+};
+
+// Empresas/contratos "disponibles" para el selector de tenant del frontend.
+// Un ADMINISTRADOR (isGlobalAdmin) no tiene empresaIds/contratoIds explícitos
+// (bypassea el alcance en todos lados), así que para él se listan todas las
+// empresas/contratos; para el resto se resuelven los nombres de los ids que ya
+// le otorgó tenantMiddleware.
+export const getTenantMeContext = async (tenant: TenantAccessContext): Promise<TenantMeContext> => {
+  const empresasResult = tenant.isGlobalAdmin
+    ? await dbQuery<TenantMeEmpresaRow>(
+        `SELECT id::text AS id, nombre_empresa FROM empresas ORDER BY nombre_empresa ASC`
+      )
+    : tenant.empresaIds.length === 0
+      ? null
+      : await dbQuery<TenantMeEmpresaRow>(
+          `SELECT id::text AS id, nombre_empresa FROM empresas WHERE id = ANY($1::bigint[]) ORDER BY nombre_empresa ASC`,
+          [tenant.empresaIds]
+        );
+
+  const contratosResult = tenant.isGlobalAdmin
+    ? await dbQuery<TenantMeContratoRow>(
+        `
+          SELECT id::text AS id, numero_contrato, entidad_contratante, empresa_id::text AS empresa_id
+          FROM contratos
+          ORDER BY numero_contrato ASC NULLS LAST, id ASC
+        `
+      )
+    : tenant.contratoIds.length === 0
+      ? null
+      : await dbQuery<TenantMeContratoRow>(
+          `
+            SELECT id::text AS id, numero_contrato, entidad_contratante, empresa_id::text AS empresa_id
+            FROM contratos
+            WHERE id = ANY($1::bigint[])
+            ORDER BY numero_contrato ASC NULLS LAST, id ASC
+          `,
+          [tenant.contratoIds]
+        );
+
+  const empresas: TenantMeEmpresa[] = (empresasResult?.rows ?? []).map((row) => ({
+    id: toNumber(row.id),
+    nombre_empresa: row.nombre_empresa
+  }));
+
+  const contratos: TenantMeContrato[] = (contratosResult?.rows ?? []).map((row) => ({
+    id: toNumber(row.id),
+    numero_contrato: row.numero_contrato,
+    entidad_contratante: row.entidad_contratante,
+    empresa_id: toNullableNumber(row.empresa_id)
+  }));
+
+  const empresa_default_id = empresas[0]?.id ?? null;
+  const contrato_default_id =
+    (empresa_default_id !== null
+      ? contratos.find((contrato) => contrato.empresa_id === empresa_default_id)?.id
+      : contratos[0]?.id) ?? null;
+
+  return {
+    isGlobalAdmin: tenant.isGlobalAdmin,
+    empresaIds: tenant.empresaIds,
+    contratoIds: tenant.contratoIds,
+    empresas,
+    contratos,
+    empresa_default_id,
+    contrato_default_id
+  };
 };
 
 const ensureAdminAccessLocked = async (client: PoolClient, userId: string): Promise<void> => {

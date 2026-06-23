@@ -739,13 +739,15 @@ function personaActiva(vinculaciones: Vinculacion[] | undefined): boolean | null
 
 type FetchStatus = "loading" | "ready" | "error";
 
-function useRealPersonasData(search: string) {
+function useRealPersonasData(search: string, empresaId?: number, contratoId?: number) {
   const [personasStatus, setPersonasStatus] = useState<FetchStatus>("loading");
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [vinculacionesStatus, setVinculacionesStatus] = useState<FetchStatus>("loading");
   const [vinculacionesByPersona, setVinculacionesByPersona] = useState<Map<number, Vinculacion[]>>(new Map());
 
   // Búsqueda por nombre o documento — delegada al backend (filtro `search`), con debounce.
+  // GET /personas no admite filtrar por empresa/contrato (una persona puede tener
+  // varias vinculaciones), así que el tenant solo se aplica a las vinculaciones.
   useEffect(() => {
     const handle = setTimeout(() => {
       personasApi.list({ search: search || undefined, limit: 100 })
@@ -761,9 +763,9 @@ function useRealPersonasData(search: string) {
     return () => clearTimeout(handle);
   }, [search]);
 
-  // Vinculaciones: una sola carga de la colección (no depende de la búsqueda).
+  // Vinculaciones: una sola carga de la colección, filtrada por el tenant activo.
   useEffect(() => {
-    vinculacionesApi.list({ limit: 100 })
+    vinculacionesApi.list({ empresa_id: empresaId, contrato_id: contratoId, limit: 100 })
       .then(res => {
         const grouped = new Map<number, Vinculacion[]>();
         res.items.forEach(v => {
@@ -778,7 +780,7 @@ function useRealPersonasData(search: string) {
         console.warn("[personas] GET /vinculaciones falló, mostrando vinculación como no disponible:", error);
         setVinculacionesStatus("error");
       });
-  }, []);
+  }, [empresaId, contratoId]);
 
   return { personasStatus, personas, vinculacionesStatus, vinculacionesByPersona };
 }
@@ -1528,12 +1530,16 @@ function RealOperariosView({
 }
 
 export function OperariosModule({
+  empresaId,
+  contratoId,
   onVerDocumentos,
 }: {
+  empresaId?: number;
+  contratoId?: number;
   onVerDocumentos?: (personaId: number, personaNombre: string) => void;
 } = {}) {
   const [search, setSearch] = useState("");
-  const { personasStatus, personas, vinculacionesStatus, vinculacionesByPersona } = useRealPersonasData(search);
+  const { personasStatus, personas, vinculacionesStatus, vinculacionesByPersona } = useRealPersonasData(search, empresaId, contratoId);
 
   if (personasStatus === "loading") {
     return (
