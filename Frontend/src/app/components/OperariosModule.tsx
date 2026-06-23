@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Search, Upload, Download, UserPlus,
   CheckCircle2, XCircle, AlertCircle,
   ChevronRight, X, Phone, Mail, MapPin, Calendar,
-  FileText, Shield, History, ArrowRight, Building2,
+  FileText, Shield, History, ArrowRight, Building2, Loader2,
 } from "lucide-react";
 import { DEFAULT_EMPRESA_CONFIGS } from "./empresaConfig";
+import { personasApi, type Persona } from "../../services/personasApi";
+import { vinculacionesApi, type Vinculacion } from "../../services/vinculacionesApi";
+import { expedientesApi, type ExpedienteLaboralPayload } from "../../services/expedientesApi";
 
 const TODAY         = new Date("2026-06-12");
 const CURRENT_MONTH = TODAY.getMonth();
@@ -268,7 +271,8 @@ function PeriodoRow({ p }: { p: Periodo }) {
   );
 }
 
-export function OperariosModule() {
+// Vista de respaldo (mock) — se muestra solo si GET /personas falla por completo.
+function MockOperariosView() {
   const [search,     setSearch]     = useState("");
   const [municipio,  setMun]        = useState("Todos");
   const [estadoFil,  setEstadoFil]  = useState("Todos");
@@ -301,6 +305,9 @@ export function OperariosModule() {
                 Operarios Manipuladores
               </h1>
               <p className="text-muted-foreground text-xs mt-0.5">{filtered.length} registros · PAE Meta departamento</p>
+              <p className="text-[10.5px] mt-1" style={{ color: "#f59e0b", fontWeight: 500 }}>
+                ● Sin conexión con el servidor — mostrando datos de ejemplo
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card text-xs text-muted-foreground hover:bg-secondary transition-colors" style={{ boxShadow: "var(--shadow-card)" }}>
@@ -709,5 +716,819 @@ export function OperariosModule() {
         );
       })()}
     </div>
+  );
+}
+
+// ── Vista real (backend Empiria V2) ─────────────────────────────────────────
+// GET /personas, GET /vinculaciones, GET /expedientes/personas/:id.
+// Si /personas falla, OperariosModule cae por completo a MockOperariosView.
+
+function nombreCompletoPersona(p: Persona): string {
+  return [p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido].filter(Boolean).join(" ");
+}
+
+function inicialesPersona(p: Persona): string {
+  return `${p.primer_nombre[0] ?? ""}${p.primer_apellido[0] ?? ""}`.toUpperCase();
+}
+
+// null = sin vinculación registrada (estado desconocido, no se asume activo ni retirado)
+function personaActiva(vinculaciones: Vinculacion[] | undefined): boolean | null {
+  if (!vinculaciones || vinculaciones.length === 0) return null;
+  return vinculaciones.some(v => v.estado_vinculacion === "ACTIVA" && v.fecha_fin === null);
+}
+
+type FetchStatus = "loading" | "ready" | "error";
+
+function useRealPersonasData(search: string) {
+  const [personasStatus, setPersonasStatus] = useState<FetchStatus>("loading");
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [vinculacionesStatus, setVinculacionesStatus] = useState<FetchStatus>("loading");
+  const [vinculacionesByPersona, setVinculacionesByPersona] = useState<Map<number, Vinculacion[]>>(new Map());
+
+  // Búsqueda por nombre o documento — delegada al backend (filtro `search`), con debounce.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      personasApi.list({ search: search || undefined, limit: 100 })
+        .then(res => {
+          setPersonas(res.items);
+          setPersonasStatus("ready");
+        })
+        .catch(error => {
+          console.warn("[personas] GET /personas falló, usando fallback mock:", error);
+          setPersonasStatus("error");
+        });
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [search]);
+
+  // Vinculaciones: una sola carga de la colección (no depende de la búsqueda).
+  useEffect(() => {
+    vinculacionesApi.list({ limit: 100 })
+      .then(res => {
+        const grouped = new Map<number, Vinculacion[]>();
+        res.items.forEach(v => {
+          const list = grouped.get(v.persona_id) ?? [];
+          list.push(v);
+          grouped.set(v.persona_id, list);
+        });
+        setVinculacionesByPersona(grouped);
+        setVinculacionesStatus("ready");
+      })
+      .catch(error => {
+        console.warn("[personas] GET /vinculaciones falló, mostrando vinculación como no disponible:", error);
+        setVinculacionesStatus("error");
+      });
+  }, []);
+
+  return { personasStatus, personas, vinculacionesStatus, vinculacionesByPersona };
+}
+
+interface ExpedienteCacheEntry {
+  status: FetchStatus;
+  data?: ExpedienteLaboralPayload;
+}
+
+function useExpedienteCompleto(personaId: number | null) {
+  const [cache, setCache] = useState<Record<number, ExpedienteCacheEntry>>({});
+
+  useEffect(() => {
+    if (personaId === null || cache[personaId]) return;
+    setCache(prev => ({ ...prev, [personaId]: { status: "loading" } }));
+    expedientesApi.getPersonaConsolidado(personaId)
+      .then(data => setCache(prev => ({ ...prev, [personaId]: { status: "ready", data } })))
+      .catch(error => {
+        console.warn(`[personas] Expediente de persona ${personaId} no disponible:`, error);
+        setCache(prev => ({ ...prev, [personaId]: { status: "error" } }));
+      });
+  }, [personaId, cache]);
+
+  return personaId === null ? undefined : cache[personaId];
+}
+
+// ── Helpers defensivos ───────────────────────────────────────────────────────
+// El payload de /expedientes/personas/:id es grande y anidado. Estos helpers
+// evitan que un campo ausente, renombrado o con otro tipo rompa la pantalla.
+function getNested(obj: unknown, path: string[]): unknown {
+  let current: unknown = obj;
+  for (const key of path) {
+    if (current === null || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[key];
+  }
+  return current;
+}
+
+function getNumber(obj: unknown, path: string[]): number | null {
+  const value = getNested(obj, path);
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function getString(obj: unknown, path: string[]): string | null {
+  const value = getNested(obj, path);
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function getArray<T = unknown>(obj: unknown, path: string[]): T[] {
+  const value = getNested(obj, path);
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+// Intenta varias rutas candidatas (por si el backend usa otro nombre de campo)
+// y devuelve la primera que resuelva a un valor utilizable.
+function firstNumber(obj: unknown, paths: string[][]): number | null {
+  for (const path of paths) {
+    const value = getNumber(obj, path);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+function firstString(obj: unknown, paths: string[][]): string | null {
+  for (const path of paths) {
+    const value = getString(obj, path);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+function VinculacionRows({ vinculaciones }: { vinculaciones: Vinculacion[] }) {
+  return (
+    <div className="divide-y divide-border/60">
+      {vinculaciones.map(v => {
+        const activa = v.estado_vinculacion === "ACTIVA" && v.fecha_fin === null;
+        return (
+          <div key={v.id} className="flex items-center gap-1.5 py-0.5">
+            <span className="text-[11px] text-muted-foreground tabular-nums">{fmt(v.fecha_inicio)}</span>
+            <ArrowRight size={9} className="text-muted-foreground/50 flex-shrink-0" />
+            {v.fecha_fin
+              ? <span className="text-[11px] text-muted-foreground tabular-nums">{fmt(v.fecha_fin)}</span>
+              : <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 leading-none" style={{ fontWeight: 600 }}>ACTIVO</span>}
+            <span className={`text-[10px] flex-shrink-0 ${activa ? "text-emerald-600" : "text-muted-foreground"}`}>{v.estado_vinculacion}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Formatters defensivos (nunca lanzan, devuelven undefined si no hay dato) ─
+function fmtNum(value: number | null): string | undefined {
+  if (value === null) return undefined;
+  return Number.isInteger(value) ? value.toString() : value.toFixed(2);
+}
+
+function fmtPercent(value: number | null): string | undefined {
+  return value === null ? undefined : `${Math.round(value)}%`;
+}
+
+function fmtCurrency(value: number | null): string | undefined {
+  if (value === null) return undefined;
+  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(value);
+}
+
+// Acepta "YYYY-MM-DD" o timestamps ISO ("YYYY-MM-DDTHH:mm:ss...") sin lanzar.
+function fmtDateLoose(value: string | null): string | undefined {
+  if (!value) return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return value;
+  const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  const monthIndex = parseInt(match[2], 10) - 1;
+  return months[monthIndex] ? `${match[3]} ${months[monthIndex]} ${match[1]}` : value;
+}
+
+// ── Pestañas del Expediente 360 ──────────────────────────────────────────────
+type DetailTab = "resumen" | "vinculaciones" | "documentos" | "sst" | "nomina" | "evaluaciones" | "timeline";
+
+const DETAIL_TABS: { id: DetailTab; label: string }[] = [
+  { id: "resumen", label: "Resumen" },
+  { id: "vinculaciones", label: "Vinculaciones" },
+  { id: "documentos", label: "Documentos" },
+  { id: "sst", label: "SST" },
+  { id: "nomina", label: "Nómina" },
+  { id: "evaluaciones", label: "Evaluaciones" },
+  { id: "timeline", label: "Timeline" },
+];
+
+function ExpedienteSectionStatus({ status }: { status: FetchStatus }) {
+  if (status === "loading") {
+    return (
+      <div className="flex items-center gap-2 py-3 text-muted-foreground">
+        <Loader2 size={13} className="animate-spin" /> <span className="text-[12px]">Cargando…</span>
+      </div>
+    );
+  }
+  if (status === "error") {
+    return <p className="text-[11.5px] text-amber-600 py-1">No se pudo cargar esta sección.</p>;
+  }
+  return null;
+}
+
+function StatGrid({ items }: { items: { label: string; value?: string }[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+      {items.map(item => <DataField key={item.label} label={item.label} value={item.value} />)}
+    </div>
+  );
+}
+
+function TabResumen({
+  persona, expediente, status,
+}: { persona: Persona; expediente?: ExpedienteLaboralPayload; status: FetchStatus }) {
+  const num = (field: string) => fmtNum(firstNumber(expediente, [["indicadores", field]]));
+  const riesgoDocumental = firstString(expediente, [["indicadores", "riesgo_documental", "nivel"]]) ?? undefined;
+
+  return (
+    <div className="space-y-5">
+      <Section title="Datos de la persona">
+        <StatGrid items={[
+          { label: "Nombre completo", value: nombreCompletoPersona(persona) },
+          { label: "Documento", value: persona.numero_documento },
+          { label: "Teléfono", value: persona.telefono ?? undefined },
+          { label: "Correo", value: persona.correo ?? undefined },
+        ]} />
+      </Section>
+      <Section title="Indicadores generales">
+        <ExpedienteSectionStatus status={status} />
+        {status === "ready" && (
+          <StatGrid items={[
+            { label: "Vinculaciones totales", value: num("vinculaciones_total") },
+            { label: "Vinculaciones activas", value: num("vinculaciones_activas") },
+            { label: "Documentos totales", value: num("documentos_total") },
+            { label: "Documentos vencidos", value: num("documentos_vencidos") },
+            { label: "Alertas activas", value: num("alertas_total") },
+            { label: "Riesgo documental", value: riesgoDocumental },
+            { label: "Evaluaciones totales", value: num("evaluaciones_total") },
+            { label: "Promedio desempeño", value: num("promedio_desempeno") },
+          ]} />
+        )}
+      </Section>
+    </div>
+  );
+}
+
+function TabVinculaciones({
+  expediente, status, fallbackVinculaciones, fallbackStatus,
+}: {
+  expediente?: ExpedienteLaboralPayload;
+  status: FetchStatus;
+  fallbackVinculaciones: Vinculacion[];
+  fallbackStatus: FetchStatus;
+}) {
+  const fromExpediente = status === "ready" ? getArray<Record<string, unknown>>(expediente, ["vinculaciones"]) : [];
+  const usingFallback = fromExpediente.length === 0;
+  const list: Record<string, unknown>[] = usingFallback
+    ? (fallbackVinculaciones as unknown as Record<string, unknown>[])
+    : fromExpediente;
+
+  return (
+    <div className="space-y-3">
+      {status === "loading" && <ExpedienteSectionStatus status="loading" />}
+      {status === "error" && (
+        <p className="text-[11.5px] text-amber-600">
+          No se pudo cargar el expediente — mostrando vinculaciones ya cargadas{fallbackStatus === "error" ? " (no disponibles)" : ""}.
+        </p>
+      )}
+      {(status === "ready" || status === "error") && (
+        list.length === 0 ? (
+          <p className="text-[11.5px] text-muted-foreground italic">Sin vinculaciones registradas</p>
+        ) : (
+          list.map((v, i) => {
+            const contratoId = firstNumber(v, [["contrato_id"]]);
+            const empresaId = firstNumber(v, [["empresa_id"]]);
+            const estado = firstString(v, [["estado_vinculacion"]]);
+            const fechaInicio = firstString(v, [["fecha_inicio"]]);
+            const fechaFin = firstString(v, [["fecha_fin"]]);
+            const cargoId = firstNumber(v, [["contrato_cargo_id"], ["cargo_id"]]);
+            const cargoNombre = firstString(v, [["cargo_nombre"], ["contrato_cargo_nombre"], ["cargo", "nombre"]]);
+            const key = firstNumber(v, [["id"]]) ?? i;
+            return (
+              <div key={key} className="rounded-xl border border-border p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[12px] text-foreground" style={{ fontWeight: 600 }}>
+                    Contrato {contratoId !== null ? `#${contratoId}` : "—"}
+                  </span>
+                  {estado && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded-md border leading-none ${estado === "ACTIVA" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-secondary text-muted-foreground border-border"}`}
+                      style={{ fontWeight: 600 }}
+                    >
+                      {estado}
+                    </span>
+                  )}
+                </div>
+                <StatGrid items={[
+                  { label: "Empresa", value: empresaId !== null ? `#${empresaId}` : undefined },
+                  { label: "Cargo", value: cargoNombre ?? (cargoId !== null ? `#${cargoId}` : undefined) },
+                  { label: "Fecha inicio", value: fmtDateLoose(fechaInicio) },
+                  { label: "Fecha fin", value: fechaFin ? fmtDateLoose(fechaFin) : "Activo" },
+                ]} />
+              </div>
+            );
+          })
+        )
+      )}
+      {status === "ready" && usingFallback && fallbackVinculaciones.length > 0 && (
+        <p className="text-[10.5px] text-muted-foreground italic">El expediente no trajo vinculaciones; mostrando datos ya cargados.</p>
+      )}
+    </div>
+  );
+}
+
+function TabDocumentos({ expediente, status }: { expediente?: ExpedienteLaboralPayload; status: FetchStatus }) {
+  const num = (field: string) => fmtNum(firstNumber(expediente, [["indicadores", field]]));
+  const nivel = status === "ready" ? firstString(expediente, [["indicadores", "riesgo_documental", "nivel"]]) : null;
+  const alertasTotal = status === "ready" ? firstNumber(expediente, [["indicadores", "alertas_total"]]) : null;
+
+  return (
+    <div className="space-y-5">
+      <Section title="Documentos">
+        <ExpedienteSectionStatus status={status} />
+        {status === "ready" && (
+          <StatGrid items={[
+            { label: "Total documentos", value: num("documentos_total") },
+            { label: "Vigentes", value: num("documentos_vigentes") },
+            { label: "Vencidos", value: num("documentos_vencidos") },
+            { label: "Por vencer (30 días)", value: num("documentos_por_vencer_30_dias") },
+            { label: "De persona", value: num("documentos_persona") },
+            { label: "De vinculación", value: num("documentos_vinculacion") },
+          ]} />
+        )}
+      </Section>
+      <Section title="Documentos faltantes (checklist)">
+        {status === "ready" && (
+          <StatGrid items={[
+            { label: "Requisitos totales", value: num("checklist_total_requisitos") },
+            { label: "Cargados", value: num("checklist_cargados") },
+            { label: "Faltantes", value: num("checklist_faltantes") },
+            { label: "Vencidos", value: num("checklist_vencidos") },
+            { label: "Cumplimiento promedio", value: fmtPercent(firstNumber(expediente, [["indicadores", "checklist_cumplimiento_promedio"]])) },
+          ]} />
+        )}
+      </Section>
+      <Section title="Alertas documentales">
+        {status === "ready" && (
+          nivel === null && alertasTotal === null
+            ? <p className="text-[11.5px] text-muted-foreground italic">Sin alertas documentales disponibles</p>
+            : (
+              <StatGrid items={[
+                { label: "Riesgo documental", value: nivel ?? undefined },
+                { label: "Alertas activas", value: fmtNum(alertasTotal) },
+                { label: "Alertas críticas", value: num("alertas_criticas") },
+                { label: "Alertas altas", value: num("alertas_altas") },
+              ]} />
+            )
+        )}
+      </Section>
+    </div>
+  );
+}
+
+function TabSST({ expediente, status }: { expediente?: ExpedienteLaboralPayload; status: FetchStatus }) {
+  const num = (field: string) => fmtNum(firstNumber(expediente, [["indicadores", field]]));
+  const pct = (field: string) => fmtPercent(firstNumber(expediente, [["indicadores", field]]));
+
+  return (
+    <div className="space-y-5">
+      <ExpedienteSectionStatus status={status} />
+      {status === "ready" && (
+        <>
+          <Section title="Capacitaciones">
+            <StatGrid items={[
+              { label: "Totales", value: num("sst_capacitaciones_total") },
+              { label: "Vigentes", value: num("sst_capacitaciones_vigentes") },
+              { label: "Vencidas", value: num("sst_capacitaciones_vencidas") },
+            ]} />
+          </Section>
+          <Section title="Exámenes ocupacionales">
+            <StatGrid items={[
+              { label: "Totales", value: num("sst_examenes_total") },
+              { label: "Vigentes", value: num("sst_examenes_vigentes") },
+              { label: "Vencidos", value: num("sst_examenes_vencidos") },
+              { label: "No aptos", value: num("sst_examenes_no_aptos") },
+              { label: "Con restricciones", value: num("sst_examenes_con_restricciones") },
+              { label: "Cumplimiento", value: pct("sst_examenes_cumplimiento_porcentaje") },
+            ]} />
+          </Section>
+          <Section title="Dotación EPP">
+            <StatGrid items={[
+              { label: "Entregas totales", value: num("sst_dotacion_entregas_total") },
+              { label: "Vigentes", value: num("sst_dotacion_vigentes") },
+              { label: "Vencidas", value: num("sst_dotacion_vencidas") },
+              { label: "Cumplimiento", value: pct("sst_dotacion_cumplimiento_porcentaje") },
+            ]} />
+          </Section>
+          <Section title="Accidentes e incidentes">
+            <StatGrid items={[
+              { label: "Totales", value: num("sst_accidentes_total") },
+              { label: "Abiertos", value: num("sst_accidentes_abiertos") },
+              { label: "Graves", value: num("sst_accidentes_graves") },
+              { label: "Con incapacidad", value: num("sst_accidentes_incapacidad") },
+            ]} />
+          </Section>
+          <Section title="Inspecciones">
+            <StatGrid items={[
+              { label: "Totales", value: num("sst_inspecciones_total") },
+              { label: "Acciones abiertas", value: num("sst_acciones_inspeccion_abiertas") },
+              { label: "Acciones vencidas", value: num("sst_acciones_inspeccion_vencidas") },
+              { label: "Hallazgos totales", value: num("sst_hallazgos_total") },
+              { label: "Hallazgos críticos", value: num("sst_hallazgos_criticos") },
+            ]} />
+          </Section>
+          <Section title="Matriz de riesgos">
+            <StatGrid items={[
+              { label: "Riesgos totales", value: num("sst_riesgos_total") },
+              { label: "Riesgos altos", value: num("sst_riesgos_altos") },
+              { label: "Riesgos críticos", value: num("sst_riesgos_criticos") },
+            ]} />
+          </Section>
+          <Section title="Cumplimiento SST general">
+            <StatGrid items={[{ label: "Cumplimiento", value: pct("sst_cumplimiento_porcentaje") }]} />
+          </Section>
+        </>
+      )}
+    </div>
+  );
+}
+
+function TabNomina({ expediente, status }: { expediente?: ExpedienteLaboralPayload; status: FetchStatus }) {
+  const num = (field: string) => fmtNum(firstNumber(expediente, [["indicadores", field]]));
+  const money = (field: string) => fmtCurrency(firstNumber(expediente, [["indicadores", field]]));
+  const date = (field: string) => fmtDateLoose(firstString(expediente, [["indicadores", field]]));
+
+  return (
+    <div className="space-y-5">
+      <ExpedienteSectionStatus status={status} />
+      {status === "ready" && (
+        <>
+          <Section title="Vacaciones">
+            <StatGrid items={[
+              { label: "Días pendientes", value: num("vacaciones_dias_pendientes") },
+              { label: "Solicitudes totales", value: num("vacaciones_solicitudes_total") },
+              { label: "Última solicitud", value: date("vacaciones_ultima_solicitud") },
+            ]} />
+          </Section>
+          <Section title="Prima">
+            <StatGrid items={[
+              { label: "Pagada", value: money("prima_pagada") },
+              { label: "Total", value: money("prima_total") },
+              { label: "Última prima", value: date("ultima_prima") },
+            ]} />
+          </Section>
+          <Section title="Cesantías">
+            <StatGrid items={[
+              { label: "Consignadas", value: money("cesantias_consignadas") },
+              { label: "Total", value: money("cesantias_total") },
+              { label: "Última cesantía", value: date("ultima_cesantia") },
+            ]} />
+          </Section>
+          <Section title="Intereses de cesantías">
+            <StatGrid items={[
+              { label: "Pagados", value: money("intereses_cesantias_pagados") },
+              { label: "Total", value: money("intereses_cesantias_total") },
+              { label: "Último pago", value: date("ultimo_interes_cesantias") },
+            ]} />
+          </Section>
+          <Section title="Liquidaciones finales">
+            <StatGrid items={[
+              { label: "Pagadas", value: money("liquidaciones_finales_pagadas") },
+              { label: "Total", value: money("liquidaciones_finales_total") },
+              { label: "Última liquidación", value: date("ultima_liquidacion_final") },
+            ]} />
+          </Section>
+        </>
+      )}
+    </div>
+  );
+}
+
+function TabEvaluaciones({ expediente, status }: { expediente?: ExpedienteLaboralPayload; status: FetchStatus }) {
+  const num = (field: string) => fmtNum(firstNumber(expediente, [["indicadores", field]]));
+  const str = (field: string) => firstString(expediente, [["indicadores", field]]) ?? undefined;
+  const date = (field: string) => fmtDateLoose(firstString(expediente, [["indicadores", field]]));
+
+  return (
+    <div className="space-y-5">
+      <ExpedienteSectionStatus status={status} />
+      {status === "ready" && (
+        <Section title="Desempeño">
+          <StatGrid items={[
+            { label: "Evaluaciones totales", value: num("evaluaciones_total") },
+            { label: "Promedio desempeño", value: num("promedio_desempeno") },
+            { label: "Clasificación", value: str("clasificacion_desempeno") },
+            { label: "Última evaluación", value: date("ultima_evaluacion") },
+            { label: "Planes de mejora abiertos", value: num("planes_mejora_abiertos") },
+            { label: "Planes de mejora vencidos", value: num("planes_mejora_vencidos") },
+          ]} />
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function TabTimeline({ expediente, status }: { expediente?: ExpedienteLaboralPayload; status: FetchStatus }) {
+  return (
+    <div className="space-y-5">
+      <ExpedienteSectionStatus status={status} />
+      {status === "ready" && (() => {
+        const eventos = getArray<Record<string, unknown>>(expediente, ["auditoria"]);
+        if (eventos.length === 0) {
+          return <p className="text-[11.5px] text-muted-foreground italic">Sin eventos disponibles</p>;
+        }
+        const sorted = [...eventos].sort((a, b) => {
+          const da = firstString(a, [["fecha_evento"], ["created_at"]]) ?? "";
+          const db = firstString(b, [["fecha_evento"], ["created_at"]]) ?? "";
+          return da < db ? 1 : da > db ? -1 : 0;
+        });
+        return (
+          <Section title="Últimos eventos">
+            <div className="space-y-2.5">
+              {sorted.map((ev, i) => {
+                const descripcion = firstString(ev, [["descripcion"]]) ?? firstString(ev, [["accion"]]) ?? "Evento sin descripción";
+                const fecha = firstString(ev, [["fecha_evento"], ["created_at"]]);
+                const usuario = firstString(ev, [["usuario", "nombre"], ["usuario", "email"]]);
+                const modulo = firstString(ev, [["modulo"]]);
+                const key = firstNumber(ev, [["id"]]) ?? i;
+                return (
+                  <div key={key} className="flex items-start gap-3 py-2 border-b border-border/60 last:border-b-0">
+                    <div className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0 mt-1.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] text-foreground leading-snug">{descripcion}</p>
+                      <p className="text-[10.5px] text-muted-foreground mt-0.5">
+                        {fecha ? fmtDateLoose(fecha) : "Fecha desconocida"}
+                        {modulo ? ` · ${modulo}` : ""}
+                        {usuario ? ` · ${usuario}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        );
+      })()}
+    </div>
+  );
+}
+
+function RealOperariosView({
+  personas, vinculacionesByPersona, vinculacionesStatus, searchInputValue,
+}: {
+  personas: Persona[];
+  vinculacionesByPersona: Map<number, Vinculacion[]>;
+  vinculacionesStatus: FetchStatus;
+  searchInputValue: { value: string; onChange: (value: string) => void };
+}) {
+  const [estadoFil, setEstadoFil] = useState("Todos");
+  const [selectedId, setSel] = useState<number | null>(null);
+  const [detailTab, setDetailTab] = useState<DetailTab>("resumen");
+
+  const filtered = personas.filter(p => {
+    if (estadoFil === "Todos") return true;
+    const activa = personaActiva(vinculacionesByPersona.get(p.id));
+    return estadoFil === "Activo" ? activa === true : activa !== true;
+  });
+
+  const selected = personas.find(p => p.id === selectedId) ?? null;
+  const selectedVinculaciones = selectedId !== null ? vinculacionesByPersona.get(selectedId) ?? [] : [];
+  const expediente = useExpedienteCompleto(selectedId);
+
+  function selectPersona(id: number | null) {
+    setSel(id);
+    setDetailTab("resumen");
+  }
+
+  return (
+    <div className="flex h-full">
+      {/* ── LIST PANEL ── */}
+      <div className={`flex flex-col ${selected ? "w-[58%]" : "w-full"} transition-all duration-200`}>
+        <div className="px-6 py-4 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "1.1rem", letterSpacing: "-0.02em" }}>
+                Operarios Manipuladores
+              </h1>
+              <p className="text-muted-foreground text-xs mt-0.5">{filtered.length} registros</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-border bg-card text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                placeholder="Buscar por nombre o documento…"
+                value={searchInputValue.value}
+                onChange={e => searchInputValue.onChange(e.target.value)}
+              />
+            </div>
+            <select className="px-2.5 py-1.5 rounded-xl border border-border bg-card text-xs focus:outline-none focus:ring-2 focus:ring-accent/30" value={estadoFil} onChange={e => setEstadoFil(e.target.value)}>
+              {ESTADOS.map(e => <option key={e}>{e}</option>)}
+            </select>
+          </div>
+          {vinculacionesStatus === "error" && (
+            <p className="text-[10.5px] mt-2" style={{ color: "#f59e0b", fontWeight: 500 }}>
+              ● Vinculaciones no disponibles — mostrando solo datos de la persona
+            </p>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="bg-card rounded-2xl overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border" style={{ background: "#fafafa" }}>
+                  <th className="text-left px-5 py-3 text-[10px] text-muted-foreground uppercase tracking-wide" style={{ fontWeight: 600 }}>Empleado</th>
+                  <th className="text-left px-3 py-3 text-[10px] text-muted-foreground uppercase tracking-wide" style={{ fontWeight: 600 }}>Contacto</th>
+                  <th className="text-left px-3 py-3 text-[10px] text-muted-foreground uppercase tracking-wide" style={{ fontWeight: 600 }}>Vinculación</th>
+                  <th className="w-8" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p, idx) => {
+                  const isSelected = p.id === selectedId;
+                  const vinculaciones = vinculacionesByPersona.get(p.id);
+                  const activa = personaActiva(vinculaciones);
+
+                  return (
+                    <tr
+                      key={p.id}
+                      onClick={() => selectPersona(isSelected ? null : p.id)}
+                      className={`border-b border-border cursor-pointer transition-colors last:border-b-0 ${isSelected ? "bg-emerald-50/60" : "hover:bg-muted/40"}`}
+                    >
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-[11px]"
+                            style={{ background: `linear-gradient(${avatarGradients[idx % avatarGradients.length]})`, fontWeight: 700 }}
+                          >
+                            {inicialesPersona(p)}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-[13px] text-foreground leading-tight" style={{ fontWeight: 500 }}>{nombreCompletoPersona(p)}</p>
+                              {activa !== null && (
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded-md border leading-none ${activa ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-red-50 text-red-600 border-red-100"}`}
+                                  style={{ fontWeight: 600 }}
+                                >
+                                  {activa ? "ACTIVO" : "RETIRADO"}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">CC {p.numero_documento}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <p className="text-[12px] text-foreground">{p.correo || "—"}</p>
+                        <p className="text-[11px] text-muted-foreground">{p.telefono || "—"}</p>
+                      </td>
+
+                      <td className="px-3 py-3">
+                        {vinculacionesStatus === "loading" && <span className="text-[11px] text-muted-foreground">Cargando…</span>}
+                        {vinculacionesStatus === "error" && <span className="text-[11px] text-muted-foreground">No disponible</span>}
+                        {vinculacionesStatus === "ready" && (
+                          vinculaciones && vinculaciones.length > 0
+                            ? <VinculacionRows vinculaciones={vinculaciones} />
+                            : <span className="text-[11px] text-muted-foreground">Sin vinculación registrada</span>
+                        )}
+                      </td>
+
+                      <td className="px-3 py-3">
+                        <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isSelected ? "rotate-90 text-accent" : ""}`} />
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-8 text-center text-[12px] text-muted-foreground">
+                      Sin resultados para esta búsqueda
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ── DETAIL PANEL — Expediente 360 ── */}
+      {selected && (
+        <div className="w-[42%] border-l border-border bg-background overflow-y-auto flex-shrink-0">
+          <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border z-10">
+            <div className="flex items-center justify-between px-5 py-3">
+              <h2 style={{ fontWeight: 600, fontSize: "0.875rem" }}>Expediente 360</h2>
+              <button onClick={() => selectPersona(null)} className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:bg-secondary transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="flex px-5 gap-1 pb-3 overflow-x-auto">
+              {DETAIL_TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setDetailTab(tab.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs transition-all flex-shrink-0 ${detailTab === tab.id ? "bg-foreground text-card" : "text-muted-foreground hover:bg-muted"}`}
+                  style={{ fontWeight: detailTab === tab.id ? 600 : 400 }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-5 space-y-5">
+            {/* Hero profile card — siempre visible, no depende del expediente */}
+            <div
+              className="rounded-2xl overflow-hidden"
+              style={{ background: "linear-gradient(135deg, #0f1923 0%, #1a3a5c 100%)", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}
+            >
+              <div className="px-5 pt-5 pb-4 flex items-start gap-4">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center text-white flex-shrink-0 border-2 border-white/20"
+                  style={{ background: "linear-gradient(135deg, #10b981, #059669)", fontSize: "1.15rem", fontWeight: 700, letterSpacing: "-0.02em" }}
+                >
+                  {inicialesPersona(selected)}
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <p style={{ fontWeight: 600, fontSize: "0.9375rem", color: "#fff", letterSpacing: "-0.01em" }}>{nombreCompletoPersona(selected)}</p>
+                  <p style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>CC {selected.numero_documento}</p>
+                </div>
+              </div>
+              <div className="flex border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+                <div className="flex-1 flex items-center gap-2 px-4 py-2.5 border-r" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+                  <Phone size={11} style={{ color: "rgba(255,255,255,0.4)", flexShrink: 0 }} />
+                  <span style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.65)" }}>{selected.telefono || "Sin teléfono"}</span>
+                </div>
+                <div className="flex-1 flex items-center gap-2 px-4 py-2.5">
+                  <Mail size={11} style={{ color: "rgba(255,255,255,0.4)", flexShrink: 0 }} />
+                  <span style={{ fontSize: "0.6875rem", color: "#34d399" }} className="truncate">{selected.correo || "Sin correo"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Contenido de la pestaña activa */}
+            {detailTab === "resumen" && (
+              <TabResumen persona={selected} expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+            )}
+            {detailTab === "vinculaciones" && (
+              <TabVinculaciones
+                expediente={expediente?.data}
+                status={expediente?.status ?? "loading"}
+                fallbackVinculaciones={selectedVinculaciones}
+                fallbackStatus={vinculacionesStatus}
+              />
+            )}
+            {detailTab === "documentos" && (
+              <TabDocumentos expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+            )}
+            {detailTab === "sst" && (
+              <TabSST expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+            )}
+            {detailTab === "nomina" && (
+              <TabNomina expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+            )}
+            {detailTab === "evaluaciones" && (
+              <TabEvaluaciones expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+            )}
+            {detailTab === "timeline" && (
+              <TabTimeline expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function OperariosModule() {
+  const [search, setSearch] = useState("");
+  const { personasStatus, personas, vinculacionesStatus, vinculacionesByPersona } = useRealPersonasData(search);
+
+  if (personasStatus === "loading") {
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground gap-2">
+        <Loader2 size={16} className="animate-spin" />
+        <span className="text-sm">Cargando colaboradores…</span>
+      </div>
+    );
+  }
+
+  // GET /personas falló por completo: se conserva la vista mock como fallback.
+  if (personasStatus === "error") {
+    return <MockOperariosView />;
+  }
+
+  return (
+    <RealOperariosView
+      personas={personas}
+      vinculacionesByPersona={vinculacionesByPersona}
+      vinculacionesStatus={vinculacionesStatus}
+      searchInputValue={{ value: search, onChange: setSearch }}
+    />
   );
 }

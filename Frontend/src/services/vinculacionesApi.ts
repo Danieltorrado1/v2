@@ -1,21 +1,23 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 
-const BASE_PATH = "/personas";
+const BASE_PATH = "/vinculaciones";
 
-export interface Persona {
+export type VinculacionEstado = "ACTIVA" | "RETIRADA" | "SUSPENDIDA";
+
+export interface Vinculacion {
   id: number;
-  numero_documento: string;
-  primer_nombre: string;
-  segundo_nombre: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-  telefono: string | null;
-  correo: string | null;
-  municipio_residencia_id: number | null;
+  persona_id: number;
+  empresa_id: number;
+  contrato_id: number;
+  contrato_cargo_id: number;
+  tipo_vinculacion_id: number;
+  estado_vinculacion: VinculacionEstado;
+  fecha_inicio: string;
+  fecha_fin: string | null;
 }
 
-export interface PaginatedPersonas {
-  items: Persona[];
+export interface PaginatedVinculaciones {
+  items: Vinculacion[];
   pagination: {
     page: number;
     limit: number;
@@ -24,9 +26,8 @@ export interface PaginatedPersonas {
   };
 }
 
-export interface ListPersonasParams {
-  search?: string;
-  numero_documento?: string;
+export interface ListVinculacionesParams {
+  persona_id?: number;
   page?: number;
   limit?: number;
 }
@@ -37,16 +38,13 @@ function toQuery(params: Record<string, unknown> = {}): string {
   return `?${new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString()}`;
 }
 
-export const personasApi = {
+export const vinculacionesApi = {
   get: <T = unknown>(path: string = ""): Promise<T> => apiGet<T>(`${BASE_PATH}${path}`),
   post: <T = unknown>(path: string, body?: unknown): Promise<T> => apiPost<T>(`${BASE_PATH}${path}`, body),
   patch: <T = unknown>(path: string, body?: unknown): Promise<T> => apiPatch<T>(`${BASE_PATH}${path}`, body),
   delete: <T = unknown>(path: string): Promise<T> => apiDelete<T>(`${BASE_PATH}${path}`),
 
-  // GET /personas — listado real con búsqueda por nombre/documento/correo/teléfono (filtro `search`).
-  list: (params: ListPersonasParams = {}): Promise<PaginatedPersonas> =>
-    apiGet<PaginatedPersonas>(`${BASE_PATH}${toQuery(params)}`),
-
-  // GET /personas/:id — usado como fallback si una fila no trae los datos completos en el listado.
-  getById: (id: number | string): Promise<Persona> => apiGet<Persona>(`${BASE_PATH}/${id}`),
+  // GET /vinculaciones — colección completa (alcance ya filtrado por tenant en el backend).
+  list: (params: ListVinculacionesParams = {}): Promise<PaginatedVinculaciones> =>
+    apiGet<PaginatedVinculaciones>(`${BASE_PATH}${toQuery(params)}`),
 };
