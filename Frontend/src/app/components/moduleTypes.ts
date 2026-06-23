@@ -1,0 +1,16 @@
+export type ModuleId =
+  | "dashboard"
+  | "operarios"
+  | "equipo-minimo"
+  | "calculadora"
+  | "cobertura"
+  | "nomina"
+  | "novedades"
+  | "sst"
+  | "dotacion"
+  | "documentos"
+  | "repositorio"
+  | "evaluacion"
+  | "colaboradores"
+  | "configuracion"
+  | "empresa";
