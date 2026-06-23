@@ -1038,13 +1038,29 @@ function TabVinculaciones({
   );
 }
 
-function TabDocumentos({ expediente, status }: { expediente?: ExpedienteLaboralPayload; status: FetchStatus }) {
+function TabDocumentos({
+  expediente, status, persona, onVerDocumentos,
+}: {
+  expediente?: ExpedienteLaboralPayload;
+  status: FetchStatus;
+  persona: Persona;
+  onVerDocumentos?: (personaId: number, personaNombre: string) => void;
+}) {
   const num = (field: string) => fmtNum(firstNumber(expediente, [["indicadores", field]]));
   const nivel = status === "ready" ? firstString(expediente, [["indicadores", "riesgo_documental", "nivel"]]) : null;
   const alertasTotal = status === "ready" ? firstNumber(expediente, [["indicadores", "alertas_total"]]) : null;
 
   return (
     <div className="space-y-5">
+      {onVerDocumentos && (
+        <button
+          onClick={() => onVerDocumentos(persona.id, nombreCompletoPersona(persona))}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card text-xs text-muted-foreground hover:bg-secondary transition-colors"
+          style={{ boxShadow: "var(--shadow-card)" }}
+        >
+          <FileText size={13} /> Ver documentos
+        </button>
+      )}
       <Section title="Documentos">
         <ExpedienteSectionStatus status={status} />
         {status === "ready" && (
@@ -1275,12 +1291,13 @@ function TabTimeline({ expediente, status }: { expediente?: ExpedienteLaboralPay
 }
 
 function RealOperariosView({
-  personas, vinculacionesByPersona, vinculacionesStatus, searchInputValue,
+  personas, vinculacionesByPersona, vinculacionesStatus, searchInputValue, onVerDocumentos,
 }: {
   personas: Persona[];
   vinculacionesByPersona: Map<number, Vinculacion[]>;
   vinculacionesStatus: FetchStatus;
   searchInputValue: { value: string; onChange: (value: string) => void };
+  onVerDocumentos?: (personaId: number, personaNombre: string) => void;
 }) {
   const [estadoFil, setEstadoFil] = useState("Todos");
   const [selectedId, setSel] = useState<number | null>(null);
@@ -1484,7 +1501,12 @@ function RealOperariosView({
               />
             )}
             {detailTab === "documentos" && (
-              <TabDocumentos expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+              <TabDocumentos
+                expediente={expediente?.data}
+                status={expediente?.status ?? "loading"}
+                persona={selected}
+                onVerDocumentos={onVerDocumentos}
+              />
             )}
             {detailTab === "sst" && (
               <TabSST expediente={expediente?.data} status={expediente?.status ?? "loading"} />
@@ -1505,7 +1527,11 @@ function RealOperariosView({
   );
 }
 
-export function OperariosModule() {
+export function OperariosModule({
+  onVerDocumentos,
+}: {
+  onVerDocumentos?: (personaId: number, personaNombre: string) => void;
+} = {}) {
   const [search, setSearch] = useState("");
   const { personasStatus, personas, vinculacionesStatus, vinculacionesByPersona } = useRealPersonasData(search);
 
@@ -1529,6 +1555,7 @@ export function OperariosModule() {
       vinculacionesByPersona={vinculacionesByPersona}
       vinculacionesStatus={vinculacionesStatus}
       searchInputValue={{ value: search, onChange: setSearch }}
+      onVerDocumentos={onVerDocumentos}
     />
   );
 }
