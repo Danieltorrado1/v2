@@ -47,4 +47,8 @@ export const vinculacionesApi = {
   // GET /vinculaciones — colección completa (alcance ya filtrado por tenant en el backend).
   list: (params: ListVinculacionesParams = {}): Promise<PaginatedVinculaciones> =>
     apiGet<PaginatedVinculaciones>(`${BASE_PATH}${toQuery(params)}`),
+
+  // GET /vinculaciones/:id — usado para resolver el persona_id de una vinculación
+  // puntual (p.ej. el manipulador de una asignación de cobertura).
+  getById: (id: number | string): Promise<Vinculacion> => apiGet<Vinculacion>(`${BASE_PATH}/${id}`),
 };

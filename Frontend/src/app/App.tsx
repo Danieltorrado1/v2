@@ -7,6 +7,8 @@ import { OperariosModule } from "./components/OperariosModule";
 import { NominaModule } from "./components/NominaModule";
 import { NovedadesModule } from "./components/NovedadesModule";
 import { SSTModule } from "./components/SSTModule";
+import { EvaluacionesModule } from "./components/EvaluacionesModule";
+import { CoberturaModule } from "./components/CoberturaModule";
 import { DocumentosModule, type PersonaFilterChip } from "./components/DocumentosModule";
 import { RepositorioModule } from "./components/RepositorioModule";
 import { ColaboradoresModule } from "./components/ColaboradoresModule";
@@ -56,9 +58,9 @@ export default function App() {
       case "empresa":       return <EmpresaModule />;
       case "equipo-minimo": return <PlaceholderModule title="Equipo Mínimo"          description="Gestión del personal mínimo requerido por contrato o institución educativa" />;
       case "calculadora":   return <PlaceholderModule title="Calculadora"             description="Herramienta de cálculo para liquidaciones y costos de nómina" />;
-      case "cobertura":     return <PlaceholderModule title="Cobertura PAE"           description="Seguimiento de cobertura del programa de alimentación por municipio" />;
+      case "cobertura":     return <CoberturaModule />;
       case "dotacion":      return <PlaceholderModule title="Gestión Dotación"        description="Control de entrega de dotación y elementos de trabajo" />;
-      case "evaluacion":    return <PlaceholderModule title="Evaluación TH"           description="Módulo de evaluación de desempeño por municipios asignados" />;
+      case "evaluacion":    return <EvaluacionesModule />;
       default:              return <DashboardHome />;
     }
   }
