@@ -50,6 +50,16 @@ import {
   type CesantiasExpediente,
   type CesantiasExpedienteIndicadores
 } from '../nomina/cesantias.service';
+import {
+  loadInteresesCesantiasExpediente,
+  type InteresesCesantiasExpediente,
+  type InteresesCesantiasExpedienteIndicadores
+} from '../nomina/intereses-cesantias.service';
+import {
+  loadLiquidacionesFinalesExpediente,
+  type LiquidacionesFinalesExpediente,
+  type LiquidacionesFinalesExpedienteIndicadores
+} from '../nomina/liquidaciones-finales.service';
 
 interface DocumentoPersonaRow extends QueryResultRow {
   archivo_path: string | null;
@@ -450,6 +460,12 @@ interface ExpedienteIndicadores {
   cesantias_consignadas: number;
   cesantias_total: number;
   ultima_cesantia: string | null;
+  intereses_cesantias_pagados: number;
+  intereses_cesantias_total: number;
+  ultimo_interes_cesantias: string | null;
+  liquidaciones_finales_pagadas: number;
+  liquidaciones_finales_total: number;
+  ultima_liquidacion_final: string | null;
   prima_pagada: number;
   prima_total: number;
   ultima_prima: string | null;
@@ -511,6 +527,8 @@ interface ExpedienteSnapshot {
   nominaMovimientos: Array<Record<string, unknown>>;
   nominaNovedades: Array<Record<string, unknown>>;
   cesantias: CesantiasExpediente;
+  interesesCesantias: InteresesCesantiasExpediente;
+  liquidacionesFinales: LiquidacionesFinalesExpediente;
   prima: PrimaExpediente;
   vacaciones: VacacionesExpediente;
   persona: Persona;
@@ -576,7 +594,9 @@ export interface ExpedienteLaboralConsolidado {
     cesantias: CesantiasExpediente;
     desprendibles: Array<Record<string, unknown>>;
     empleados: Array<Record<string, unknown>>;
+    intereses_cesantias: InteresesCesantiasExpediente;
     liquidaciones: Array<Record<string, unknown>>;
+    liquidaciones_finales: LiquidacionesFinalesExpediente;
     movimientos: Array<Record<string, unknown>>;
     novedades: Array<Record<string, unknown>>;
     prima: PrimaExpediente;
@@ -1306,6 +1326,8 @@ const loadAuditoria = async (input: {
   documentoRepositoryEntityIds: string[];
   documentoVinculacionIds: number[];
   nominaCesantiasIds: number[];
+  nominaInteresesCesantiasIds: number[];
+  nominaLiquidacionesFinalesIds: number[];
   nominaDesprendibleIds: number[];
   nominaEmpleadoIds: number[];
   nominaLiquidacionIds: number[];
@@ -1389,6 +1411,16 @@ const loadAuditoria = async (input: {
   if (input.nominaCesantiasIds.length > 0) {
     params.push(input.nominaCesantiasIds.map(String));
     clauses.push(`(ae.entidad = 'nomina_cesantias' AND ae.entidad_id = ANY($${params.length}::text[]))`);
+  }
+
+  if (input.nominaInteresesCesantiasIds.length > 0) {
+    params.push(input.nominaInteresesCesantiasIds.map(String));
+    clauses.push(`(ae.entidad = 'nomina_intereses_cesantias' AND ae.entidad_id = ANY($${params.length}::text[]))`);
+  }
+
+  if (input.nominaLiquidacionesFinalesIds.length > 0) {
+    params.push(input.nominaLiquidacionesFinalesIds.map(String));
+    clauses.push(`(ae.entidad = 'nomina_liquidaciones_finales' AND ae.entidad_id = ANY($${params.length}::text[]))`);
   }
 
   if (input.sstDotacionEntregaIds.length > 0) {
@@ -1786,6 +1818,8 @@ const buildIndicadores = (input: {
   nominaMovimientos: Array<Record<string, unknown>>;
   nominaNovedades: Array<Record<string, unknown>>;
   cesantias: CesantiasExpedienteIndicadores;
+  interesesCesantias: InteresesCesantiasExpedienteIndicadores;
+  liquidacionesFinales: LiquidacionesFinalesExpedienteIndicadores;
   prima: PrimaExpedienteIndicadores;
   vacaciones: VacacionesExpedienteIndicadores;
   sstAccidentes: Array<Record<string, unknown>>;
@@ -1979,6 +2013,8 @@ const buildIndicadores = (input: {
   const evaluacionesCumplimiento = Number((evaluacionesPromedio * 20).toFixed(2));
   const planesMejoraIndicadores = input.planesMejora.indicadores;
   const cesantiasIndicadores = input.cesantias;
+  const interesesCesantiasIndicadores = input.interesesCesantias;
+  const liquidacionesFinalesIndicadores = input.liquidacionesFinales;
   const primaIndicadores = input.prima;
   const vacacionesIndicadores = input.vacaciones;
   const ultimaEvaluacion = input.evaluaciones[0]
@@ -2015,6 +2051,12 @@ const buildIndicadores = (input: {
     cesantias_consignadas: cesantiasIndicadores.cesantias_consignadas,
     cesantias_total: cesantiasIndicadores.cesantias_total,
     ultima_cesantia: cesantiasIndicadores.ultima_cesantia,
+    intereses_cesantias_pagados: interesesCesantiasIndicadores.intereses_cesantias_pagados,
+    intereses_cesantias_total: interesesCesantiasIndicadores.intereses_cesantias_total,
+    ultimo_interes_cesantias: interesesCesantiasIndicadores.ultimo_interes_cesantias,
+    liquidaciones_finales_pagadas: liquidacionesFinalesIndicadores.liquidaciones_finales_pagadas,
+    liquidaciones_finales_total: liquidacionesFinalesIndicadores.liquidaciones_finales_total,
+    ultima_liquidacion_final: liquidacionesFinalesIndicadores.ultima_liquidacion_final,
     prima_pagada: primaIndicadores.prima_pagada,
     prima_total: primaIndicadores.prima_total,
     ultima_prima: primaIndicadores.ultima_prima,
@@ -2397,6 +2439,86 @@ const buildTimelineItems = (snapshot: ExpedienteSnapshot): ExpedienteTimelineIte
           cesantia_id: cesantia.id,
           valor_cesantias: cesantia.valor_cesantias,
           vinculacion_id: cesantia.vinculacion_id
+        }
+      });
+    }
+  }
+
+  for (const interesCesantia of snapshot.interesesCesantias.items) {
+    if (interesCesantia.estado === 'LIQUIDADO' || interesCesantia.estado === 'PAGADO') {
+      pushItem({
+        fecha: normalizeDateOnly(interesCesantia.created_at),
+        tipo: 'INTERESES_CESANTIAS_LIQUIDADOS',
+        titulo: `Intereses de cesantias liquidados: ${interesCesantia.periodo}`,
+        descripcion: `Valor intereses ${interesCesantia.valor_intereses}`,
+        referencia: {
+          entidad: 'nomina_intereses_cesantias',
+          id: String(interesCesantia.id)
+        },
+        metadata: {
+          intereses_cesantia_id: interesCesantia.id,
+          estado: interesCesantia.estado,
+          valor_intereses: interesCesantia.valor_intereses,
+          vinculacion_id: interesCesantia.vinculacion_id
+        }
+      });
+    }
+
+    if (interesCesantia.estado === 'PAGADO') {
+      pushItem({
+        fecha: normalizeDateOnly(interesCesantia.fecha_pago ?? interesCesantia.created_at),
+        tipo: 'INTERESES_CESANTIAS_PAGADOS',
+        titulo: `Intereses de cesantias pagados: ${interesCesantia.periodo}`,
+        descripcion: `Pago de intereses de cesantias por ${interesCesantia.valor_intereses}`,
+        referencia: {
+          entidad: 'nomina_intereses_cesantias',
+          id: String(interesCesantia.id)
+        },
+        metadata: {
+          intereses_cesantia_id: interesCesantia.id,
+          fecha_pago: interesCesantia.fecha_pago,
+          valor_intereses: interesCesantia.valor_intereses,
+          vinculacion_id: interesCesantia.vinculacion_id
+        }
+      });
+    }
+  }
+
+  for (const liquidacionFinal of snapshot.liquidacionesFinales.items) {
+    if (liquidacionFinal.estado === 'LIQUIDADA' || liquidacionFinal.estado === 'PAGADA') {
+      pushItem({
+        fecha: normalizeDateOnly(liquidacionFinal.created_at),
+        tipo: 'LIQUIDACION_FINAL_LIQUIDADA',
+        titulo: 'Liquidacion final liquidada',
+        descripcion: `Total devengado ${liquidacionFinal.total_devengado}`,
+        referencia: {
+          entidad: 'nomina_liquidaciones_finales',
+          id: String(liquidacionFinal.id)
+        },
+        metadata: {
+          liquidacion_final_id: liquidacionFinal.id,
+          estado: liquidacionFinal.estado,
+          total_devengado: liquidacionFinal.total_devengado,
+          vinculacion_id: liquidacionFinal.vinculacion_id
+        }
+      });
+    }
+
+    if (liquidacionFinal.estado === 'PAGADA') {
+      pushItem({
+        fecha: normalizeDateOnly(liquidacionFinal.fecha_pago ?? liquidacionFinal.created_at),
+        tipo: 'LIQUIDACION_FINAL_PAGADA',
+        titulo: 'Liquidacion final pagada',
+        descripcion: `Neto pagado ${liquidacionFinal.neto_pagar}`,
+        referencia: {
+          entidad: 'nomina_liquidaciones_finales',
+          id: String(liquidacionFinal.id)
+        },
+        metadata: {
+          liquidacion_final_id: liquidacionFinal.id,
+          fecha_pago: liquidacionFinal.fecha_pago,
+          neto_pagar: liquidacionFinal.neto_pagar,
+          vinculacion_id: liquidacionFinal.vinculacion_id
         }
       });
     }
@@ -2997,6 +3119,8 @@ const loadExpedienteSnapshot = async (
     nominaDesprendibles,
     nominaLiquidaciones,
     cesantias,
+    interesesCesantias,
+    liquidacionesFinales,
     prima,
     vacaciones,
     evaluaciones,
@@ -3025,6 +3149,8 @@ const loadExpedienteSnapshot = async (
     loadNominaDesprendibles(personaId, base.vinculacionIds, tenant),
     loadNominaLiquidaciones(personaId, base.vinculacionIds, tenant),
     loadCesantiasExpediente(personaId, tenant),
+    loadInteresesCesantiasExpediente(personaId, tenant),
+    loadLiquidacionesFinalesExpediente(personaId, tenant),
     loadPrimaExpediente(personaId, tenant),
     loadVacacionesExpediente(personaId, tenant),
     loadEvaluacionesExpediente(personaId, tenant),
@@ -3071,6 +3197,8 @@ const loadExpedienteSnapshot = async (
     documentoVinculacionIds: documentosVinculacion.map((item) => item.id),
     documentoRepositoryEntityIds,
     nominaCesantiasIds: cesantias.items.map((item) => item.id).filter(Number.isFinite),
+    nominaInteresesCesantiasIds: interesesCesantias.items.map((item) => item.id).filter(Number.isFinite),
+    nominaLiquidacionesFinalesIds: liquidacionesFinales.items.map((item) => item.id).filter(Number.isFinite),
     nominaEmpleadoIds: nominaEmpleados.map((item) => Number(item.id)).filter(Number.isFinite),
     nominaNovedadIds: nominaNovedades.map((item) => Number(item.id)).filter(Number.isFinite),
     nominaMovimientoIds: nominaMovimientos.map((item) => Number(item.id)).filter(Number.isFinite),
@@ -3117,6 +3245,8 @@ const loadExpedienteSnapshot = async (
     nominaDesprendibles,
     nominaLiquidaciones,
     cesantias: cesantias.indicadores,
+    interesesCesantias: interesesCesantias.indicadores,
+    liquidacionesFinales: liquidacionesFinales.indicadores,
     prima: prima.indicadores,
     vacaciones: vacaciones.indicadores,
     sstAccidentes,
@@ -3143,6 +3273,8 @@ const loadExpedienteSnapshot = async (
     nominaDesprendibles,
     nominaLiquidaciones,
     cesantias,
+    interesesCesantias,
+    liquidacionesFinales,
     prima,
     vacaciones,
     sstInspecciones,
@@ -3203,6 +3335,8 @@ export const getExpedienteLaboralConsolidado = async (
       movimientos: snapshot.nominaMovimientos,
       desprendibles: snapshot.nominaDesprendibles,
       cesantias: snapshot.cesantias,
+      intereses_cesantias: snapshot.interesesCesantias,
+      liquidaciones_finales: snapshot.liquidacionesFinales,
       prima: snapshot.prima,
       liquidaciones: snapshot.nominaLiquidaciones,
       vacaciones: snapshot.vacaciones

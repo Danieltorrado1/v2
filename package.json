@@ -18,6 +18,8 @@
     "seed:nomina-vacaciones-permisos": "node --experimental-strip-types src/scripts/seed-nomina-vacaciones-permisos.ts",
     "seed:nomina-prima-permisos": "node --experimental-strip-types src/scripts/seed-nomina-prima-permisos.ts",
     "seed:nomina-cesantias-permisos": "node --experimental-strip-types src/scripts/seed-nomina-cesantias-permisos.ts",
+    "seed:nomina-intereses-cesantias-permisos": "node --experimental-strip-types src/scripts/seed-nomina-intereses-cesantias-permisos.ts",
+    "seed:nomina-liquidaciones-finales-permisos": "node --experimental-strip-types src/scripts/seed-nomina-liquidaciones-finales-permisos.ts",
     "seed:sst-permisos": "node --experimental-strip-types src/scripts/seed-sst-permisos.ts",
     "seed:evaluaciones-permisos": "node --experimental-strip-types src/scripts/seed-evaluaciones-permisos.ts",
     "seed:contrato-laboral-template": "node --experimental-strip-types src/scripts/seed-contrato-laboral-template.ts",

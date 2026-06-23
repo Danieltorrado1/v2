@@ -39,6 +39,25 @@ import {
   updatePrimaHandler
 } from './prima.controller';
 import {
+  createInteresesCesantiaHandler,
+  deactivateInteresesCesantiaHandler,
+  getInteresesCesantiasAlertasHandler,
+  getInteresesCesantiasDashboardHandler,
+  getInteresesCesantiasHandler,
+  payInteresesCesantiaHandler,
+  updateInteresesCesantiaHandler
+} from './intereses-cesantias.controller';
+import {
+  createLiquidacionFinalHandler,
+  deactivateLiquidacionFinalHandler,
+  getLiquidacionesFinalesAlertasHandler,
+  getLiquidacionesFinalesDashboardHandler,
+  getLiquidacionesFinalesHandler,
+  liquidarLiquidacionFinalHandler,
+  payLiquidacionFinalHandler,
+  updateLiquidacionFinalHandler
+} from './liquidaciones-finales.controller';
+import {
   cancelNominaPeriodoHandler,
   closeNominaPeriodoHandler,
   createNominaRecargoHandler,
@@ -358,6 +377,83 @@ nominaRoutes.get(
   '/cesantias/alertas',
   requirePermissions('nomina.cesantias.alertas'),
   getCesantiasAlertasHandler
+);
+
+nominaRoutes.get(
+  '/intereses-cesantias',
+  requirePermissions('nomina.intereses_cesantias.read'),
+  getInteresesCesantiasHandler
+);
+nominaRoutes.post(
+  '/intereses-cesantias',
+  requirePermissions('nomina.intereses_cesantias.write'),
+  createInteresesCesantiaHandler
+);
+nominaRoutes.patch(
+  '/intereses-cesantias/:id',
+  requirePermissions('nomina.intereses_cesantias.write'),
+  updateInteresesCesantiaHandler
+);
+nominaRoutes.patch(
+  '/intereses-cesantias/:id/pagar',
+  requirePermissions('nomina.intereses_cesantias.write'),
+  payInteresesCesantiaHandler
+);
+nominaRoutes.patch(
+  '/intereses-cesantias/:id/deactivate',
+  requirePermissions('nomina.intereses_cesantias.write'),
+  deactivateInteresesCesantiaHandler
+);
+nominaRoutes.get(
+  '/intereses-cesantias/dashboard',
+  requirePermissions('nomina.intereses_cesantias.dashboard'),
+  getInteresesCesantiasDashboardHandler
+);
+nominaRoutes.get(
+  '/intereses-cesantias/alertas',
+  requirePermissions('nomina.intereses_cesantias.alertas'),
+  getInteresesCesantiasAlertasHandler
+);
+
+nominaRoutes.get(
+  '/liquidaciones-finales',
+  requirePermissions('nomina.liquidaciones_finales.read'),
+  getLiquidacionesFinalesHandler
+);
+nominaRoutes.post(
+  '/liquidaciones-finales',
+  requirePermissions('nomina.liquidaciones_finales.write'),
+  createLiquidacionFinalHandler
+);
+nominaRoutes.patch(
+  '/liquidaciones-finales/:id',
+  requirePermissions('nomina.liquidaciones_finales.write'),
+  updateLiquidacionFinalHandler
+);
+nominaRoutes.patch(
+  '/liquidaciones-finales/:id/liquidar',
+  requirePermissions('nomina.liquidaciones_finales.write'),
+  liquidarLiquidacionFinalHandler
+);
+nominaRoutes.patch(
+  '/liquidaciones-finales/:id/pagar',
+  requirePermissions('nomina.liquidaciones_finales.write'),
+  payLiquidacionFinalHandler
+);
+nominaRoutes.patch(
+  '/liquidaciones-finales/:id/deactivate',
+  requirePermissions('nomina.liquidaciones_finales.write'),
+  deactivateLiquidacionFinalHandler
+);
+nominaRoutes.get(
+  '/liquidaciones-finales/dashboard',
+  requirePermissions('nomina.liquidaciones_finales.dashboard'),
+  getLiquidacionesFinalesDashboardHandler
+);
+nominaRoutes.get(
+  '/liquidaciones-finales/alertas',
+  requirePermissions('nomina.liquidaciones_finales.alertas'),
+  getLiquidacionesFinalesAlertasHandler
 );
 
 export { nominaRoutes };

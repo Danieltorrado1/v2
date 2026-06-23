@@ -790,11 +790,8 @@ export const consignCesantia = async (
   auditMeta?: AuditRequestMeta
 ): Promise<CesantiaItem> => {
   const current = await loadCesantiaOrThrow(id, tenant);
-  if (current.estado === 'CONSIGNADA') {
-    return mapCesantia(current);
-  }
 
-  if (current.estado !== 'LIQUIDADA') {
+  if (current.estado !== 'LIQUIDADA' && current.estado !== 'CONSIGNADA') {
     throw new AppError('Only liquidated cesantias can be consigned', 409, 'NOMINA_CESANTIAS_ESTADO_INVALIDO');
   }
 
@@ -805,7 +802,7 @@ export const consignCesantia = async (
         SET
           estado = 'CONSIGNADA',
           fondo_cesantias = COALESCE($2, fondo_cesantias),
-          fecha_consignacion = COALESCE($3::date, CURRENT_DATE)
+          fecha_consignacion = COALESCE($3::date, fecha_consignacion, CURRENT_DATE)
         WHERE id = $1::bigint
       `,
       [id, input.fondo_cesantias ?? null, input.fecha_consignacion ?? null]
