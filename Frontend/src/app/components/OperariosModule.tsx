@@ -9,6 +9,8 @@ import { DEFAULT_EMPRESA_CONFIGS } from "./empresaConfig";
 import { personasApi, type Persona } from "../../services/personasApi";
 import { vinculacionesApi, type Vinculacion } from "../../services/vinculacionesApi";
 import { expedientesApi, type ExpedienteLaboralPayload } from "../../services/expedientesApi";
+import { documentosApi } from "../../services/documentosApi";
+import { DocumentUploadForm, type TipoDocumentoOption } from "./DocumentosModule";
 
 const TODAY         = new Date("2026-06-12");
 const CURRENT_MONTH = TODAY.getMonth();
@@ -804,7 +806,20 @@ function useExpedienteCompleto(personaId: number | null) {
       });
   }, [personaId, cache]);
 
-  return personaId === null ? undefined : cache[personaId];
+  // Tras subir o desactivar un documento el expediente cacheado queda obsoleto:
+  // borrar la entrada fuerza al efecto de arriba a volver a pedirlo.
+  function refresh(idToRefresh: number) {
+    setCache(prev => {
+      const next = { ...prev };
+      delete next[idToRefresh];
+      return next;
+    });
+  }
+
+  return {
+    entry: personaId === null ? undefined : cache[personaId],
+    refresh,
+  };
 }
 
 // ── Helpers defensivos ───────────────────────────────────────────────────────
@@ -1040,17 +1055,142 @@ function TabVinculaciones({
   );
 }
 
+// Filas combinadas de documentos_persona + documentos_vinculacion del expediente
+// consolidado (ya incluye `id`, a diferencia de GET /documentos/persona/:id que
+// solo trae un resumen sin id — por eso aquí se lee del expediente, no de ese
+// endpoint). Es el mismo origen de datos que ya alimenta esta pestaña.
+interface ExpedienteDocumentoRow {
+  id: number;
+  scope: "persona" | "vinculacion";
+  tipoDocumentoId: string | null;
+  tipoDocumentoNombre: string | null;
+  nombreArchivo: string | null;
+  fechaCarga: string | null;
+  fechaVencimiento: string | null;
+  version: number | null;
+  activo: boolean | null;
+  vinculacionId: number | null;
+}
+
+// El expediente devuelve tipo_documento_id como número (no string): getString
+// lo descartaría siempre, así que aquí se acepta number|string explícitamente.
+function tipoDocumentoIdToString(doc: unknown): string | null {
+  const direct = getNumber(doc, ["tipo_documento_id"]);
+  if (direct !== null) return String(direct);
+  const nested = getNumber(doc, ["tipo_documento", "id"]);
+  return nested !== null ? String(nested) : null;
+}
+
+function extractDocumentRows(expediente: unknown): ExpedienteDocumentoRow[] {
+  const personaDocs = getArray<Record<string, unknown>>(expediente, ["documentos_persona"]).map(doc => ({
+    id: getNumber(doc, ["id"]) ?? 0,
+    scope: "persona" as const,
+    tipoDocumentoId: tipoDocumentoIdToString(doc),
+    tipoDocumentoNombre: getString(doc, ["tipo_documento", "nombre_documento"]) ?? getString(doc, ["tipo_documento_nombre"]),
+    nombreArchivo: getString(doc, ["nombre_original"]),
+    fechaCarga: getString(doc, ["fecha_carga"]),
+    fechaVencimiento: getString(doc, ["fecha_vencimiento"]),
+    version: getNumber(doc, ["version"]),
+    activo: null, // /expedientes solo incluye documentos_persona activos: no hay variación que mostrar
+    vinculacionId: getNumber(doc, ["vinculacion_id"]),
+  }));
+
+  const vinculacionDocs = getArray<Record<string, unknown>>(expediente, ["documentos_vinculacion"]).map(doc => ({
+    id: getNumber(doc, ["id"]) ?? 0,
+    scope: "vinculacion" as const,
+    tipoDocumentoId: tipoDocumentoIdToString(doc),
+    tipoDocumentoNombre: getString(doc, ["tipo_documento", "nombre_documento"]) ?? getString(doc, ["tipo_documento_nombre"]),
+    nombreArchivo: getString(doc, ["nombre_original"]),
+    fechaCarga: getString(doc, ["fecha_carga"]),
+    fechaVencimiento: getString(doc, ["fecha_vencimiento"]),
+    version: null, // documentos de vinculación no llevan versión en el backend
+    activo: (doc as Record<string, unknown>).activo === false ? false : true,
+    vinculacionId: getNumber(doc, ["vinculacion_id"]),
+  }));
+
+  return [...personaDocs, ...vinculacionDocs].filter(row => row.id !== 0);
+}
+
+function DocumentoRowActionsExpediente({
+  row, onUploadNewVersion,
+}: { row: ExpedienteDocumentoRow; onUploadNewVersion: (row: ExpedienteDocumentoRow) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function openDocument(forceDownload: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      const info = await documentosApi.getDownloadUrl(row.id, row.scope);
+      if (forceDownload) {
+        const link = document.createElement("a");
+        link.href = info.download_url;
+        link.download = info.nombre_original;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.click();
+      } else {
+        window.open(info.download_url, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      console.warn("[operarios] GET /documentos/:id/download-url falló:", err);
+      setError("No disponible");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2.5 flex-shrink-0">
+      <button onClick={() => openDocument(false)} disabled={busy} title="Ver documento" className="text-muted-foreground hover:text-accent disabled:opacity-40 transition-colors">
+        {busy ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+      </button>
+      <button onClick={() => openDocument(true)} disabled={busy} title="Descargar documento" className="text-muted-foreground hover:text-accent disabled:opacity-40 transition-colors">
+        <Download size={13} />
+      </button>
+      <button onClick={() => onUploadNewVersion(row)} title="Subir nueva versión" className="text-muted-foreground hover:text-accent transition-colors">
+        <Upload size={13} />
+      </button>
+      {error && <span className="text-[10px] text-red-600">{error}</span>}
+    </div>
+  );
+}
+
 function TabDocumentos({
-  expediente, status, persona, onVerDocumentos,
+  expediente, status, persona, vinculaciones, vinculacionesStatus, onVerDocumentos, onDocumentChanged,
 }: {
   expediente?: ExpedienteLaboralPayload;
   status: FetchStatus;
   persona: Persona;
+  vinculaciones: Vinculacion[];
+  vinculacionesStatus: FetchStatus;
   onVerDocumentos?: (personaId: number, personaNombre: string) => void;
+  onDocumentChanged: () => void;
 }) {
+  const [uploadContext, setUploadContext] = useState<{
+    tipoDocumentoId?: string;
+    scope: "persona" | "vinculacion";
+    vinculacionId?: number;
+  } | null>(null);
+
   const num = (field: string) => fmtNum(firstNumber(expediente, [["indicadores", field]]));
   const nivel = status === "ready" ? firstString(expediente, [["indicadores", "riesgo_documental", "nivel"]]) : null;
   const alertasTotal = status === "ready" ? firstNumber(expediente, [["indicadores", "alertas_total"]]) : null;
+
+  const documentRows = status === "ready" ? extractDocumentRows(expediente) : [];
+
+  const tiposDisponibles: TipoDocumentoOption[] = Array.from(
+    new Map(
+      documentRows
+        .filter(row => row.tipoDocumentoId !== null)
+        .map(row => [row.tipoDocumentoId as string, row.tipoDocumentoNombre ?? `Tipo #${row.tipoDocumentoId}`])
+    ).entries()
+  ).map(([id, nombre]) => ({ id, nombre }));
+
+  function handleUploaded() {
+    setUploadContext(null);
+    onDocumentChanged();
+  }
 
   return (
     <div className="space-y-5">
@@ -1076,6 +1216,69 @@ function TabDocumentos({
           ]} />
         )}
       </Section>
+
+      <Section
+        title="Archivos cargados"
+        badge={
+          !uploadContext && (
+            <button
+              onClick={() => setUploadContext({ scope: "persona" })}
+              className="flex items-center gap-1 text-[11px] text-accent hover:underline"
+              style={{ fontWeight: 500 }}
+            >
+              <Upload size={11} /> Subir documento
+            </button>
+          )
+        }
+      >
+        {uploadContext && (
+          <div className="mb-3">
+            <DocumentUploadForm
+              personaId={persona.id}
+              personaNombre={nombreCompletoPersona(persona)}
+              vinculaciones={vinculaciones}
+              vinculacionesStatus={vinculacionesStatus}
+              tiposDisponibles={tiposDisponibles}
+              defaultScope={uploadContext.scope}
+              defaultVinculacionId={uploadContext.vinculacionId}
+              defaultTipoDocumentoId={uploadContext.tipoDocumentoId}
+              onUploaded={handleUploaded}
+              onCancel={() => setUploadContext(null)}
+            />
+          </div>
+        )}
+        {status === "ready" && (
+          documentRows.length === 0 ? (
+            <p className="text-[11.5px] text-muted-foreground italic">Esta persona no tiene documentos cargados todavía.</p>
+          ) : (
+            <div className="divide-y divide-border/60">
+              {documentRows.map(row => (
+                <div key={`${row.scope}-${row.id}`} className="flex items-center justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-[12px] text-foreground truncate" style={{ fontWeight: 500 }}>{row.nombreArchivo ?? row.tipoDocumentoNombre ?? "Documento"}</p>
+                    <p className="text-[10.5px] text-muted-foreground">
+                      {row.tipoDocumentoNombre ?? "Sin tipo"}
+                      {row.version !== null ? ` · v${row.version}` : ""}
+                      {row.scope === "vinculacion" ? " · Vinculación" : " · Persona"}
+                      {fmtDateLoose(row.fechaCarga) ? ` · ${fmtDateLoose(row.fechaCarga)}` : ""}
+                      {row.activo === false ? " · INACTIVO" : ""}
+                    </p>
+                  </div>
+                  <DocumentoRowActionsExpediente
+                    row={row}
+                    onUploadNewVersion={r => setUploadContext({
+                      scope: r.scope,
+                      tipoDocumentoId: r.tipoDocumentoId ?? undefined,
+                      vinculacionId: r.vinculacionId ?? undefined,
+                    })}
+                  />
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </Section>
+
       <Section title="Documentos faltantes (checklist)">
         {status === "ready" && (
           <StatGrid items={[
@@ -1492,35 +1695,38 @@ function RealOperariosView({
 
             {/* Contenido de la pestaña activa */}
             {detailTab === "resumen" && (
-              <TabResumen persona={selected} expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+              <TabResumen persona={selected} expediente={expediente.entry?.data} status={expediente.entry?.status ?? "loading"} />
             )}
             {detailTab === "vinculaciones" && (
               <TabVinculaciones
-                expediente={expediente?.data}
-                status={expediente?.status ?? "loading"}
+                expediente={expediente.entry?.data}
+                status={expediente.entry?.status ?? "loading"}
                 fallbackVinculaciones={selectedVinculaciones}
                 fallbackStatus={vinculacionesStatus}
               />
             )}
             {detailTab === "documentos" && (
               <TabDocumentos
-                expediente={expediente?.data}
-                status={expediente?.status ?? "loading"}
+                expediente={expediente.entry?.data}
+                status={expediente.entry?.status ?? "loading"}
                 persona={selected}
+                vinculaciones={selectedVinculaciones}
+                vinculacionesStatus={vinculacionesStatus}
                 onVerDocumentos={onVerDocumentos}
+                onDocumentChanged={() => expediente.refresh(selected.id)}
               />
             )}
             {detailTab === "sst" && (
-              <TabSST expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+              <TabSST expediente={expediente.entry?.data} status={expediente.entry?.status ?? "loading"} />
             )}
             {detailTab === "nomina" && (
-              <TabNomina expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+              <TabNomina expediente={expediente.entry?.data} status={expediente.entry?.status ?? "loading"} />
             )}
             {detailTab === "evaluaciones" && (
-              <TabEvaluaciones expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+              <TabEvaluaciones expediente={expediente.entry?.data} status={expediente.entry?.status ?? "loading"} />
             )}
             {detailTab === "timeline" && (
-              <TabTimeline expediente={expediente?.data} status={expediente?.status ?? "loading"} />
+              <TabTimeline expediente={expediente.entry?.data} status={expediente.entry?.status ?? "loading"} />
             )}
           </div>
         </div>
