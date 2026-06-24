@@ -37,7 +37,9 @@ export default function MainLayout() {
       </header>
 
       <main className="content">
-        <Outlet />
+        <div className="page-scroll">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

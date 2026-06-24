@@ -1,24 +1,43 @@
 .layout {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+
   background: var(--bg-primary);
   color: var(--text-primary);
+
+  overflow: hidden;
 }
+
+/* =========================
+   TOPBAR
+========================= */
 
 .topbar {
   height: 76px;
-  padding: 0 28px;
+  flex-shrink: 0;
+
   display: flex;
   align-items: center;
   gap: 28px;
 
+  padding: 0 28px;
+
   background: var(--topbar-bg);
   border-bottom: 1px solid var(--border-color);
+
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
   backdrop-filter: blur(12px);
 }
 
 .logo-area {
   min-width: 150px;
+
   color: var(--accent-color);
+
   font-size: 20px;
   font-weight: 800;
   letter-spacing: 0.8px;
@@ -26,6 +45,7 @@
 
 .menu {
   flex: 1;
+
   display: flex;
   justify-content: center;
   gap: 8px;
@@ -37,27 +57,42 @@
 
   border: 1px solid transparent;
   border-radius: 10px;
+
   background: transparent;
 
   color: var(--text-secondary);
+
   font-size: 14px;
   font-weight: 600;
 
   cursor: pointer;
+
   transition: all 0.2s ease;
 }
 
 .menu button:hover {
   color: var(--accent-color);
-  background: color-mix(in srgb, var(--accent-color) 10%, transparent);
-  border-color: color-mix(in srgb, var(--accent-color) 24%, transparent);
+
+  background: color-mix(
+    in srgb,
+    var(--accent-color) 10%,
+    transparent
+  );
+
+  border-color: color-mix(
+    in srgb,
+    var(--accent-color) 24%,
+    transparent
+  );
 }
 
 .right-side {
   min-width: 150px;
+
   display: flex;
   align-items: center;
   justify-content: flex-end;
+
   gap: 14px;
 }
 
@@ -66,8 +101,10 @@
   height: 40px;
 
   border-radius: 10px;
+
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
+
   color: var(--text-primary);
 
   display: flex;
@@ -75,7 +112,9 @@
   justify-content: center;
 
   cursor: pointer;
+
   box-shadow: var(--shadow-soft);
+
   transition: all 0.2s ease;
 }
 
@@ -86,20 +125,46 @@
 
 .user-area {
   color: var(--text-secondary);
+
   font-size: 14px;
   font-weight: 600;
 }
 
+/* =========================
+   CONTENIDO
+========================= */
+
 .content {
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 36px 32px;
+  flex: 1;
+  min-height: 0;
+
+  overflow: hidden;
 }
+
+.page-scroll {
+  height: 100%;
+
+  padding: 28px 32px;
+
+  overflow: hidden;
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
 
 @media (max-width: 1100px) {
   .menu {
     justify-content: flex-start;
     overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .menu::-webkit-scrollbar {
+    display: none;
   }
 
   .menu button {
