@@ -16,7 +16,14 @@ import { ConfiguracionModule } from "./components/ConfiguracionModule";
 import { EmpresaModule } from "./components/EmpresaModule";
 import { PlaceholderModule } from "./components/PlaceholderModule";
 import { fetchCurrentUser, getStoredUser, getToken, logout, type AuthUser } from "../services/authApi";
-import { tenantApi, type TenantEmpresa, type TenantContrato } from "../services/tenantApi";
+import {
+  tenantApi,
+  resolveInitialTenantSelection,
+  setStoredEmpresaId,
+  setStoredContratoId,
+  type TenantEmpresa,
+  type TenantContrato,
+} from "../services/tenantApi";
 
 // Usado únicamente si GET /tenant/me falla (sin red, sin permisos, etc.).
 const FALLBACK_EMPRESA_ID = 1;
@@ -56,21 +63,28 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  // Tenant real: empresas/contratos del usuario autenticado, con su empresa/contrato
-  // por defecto. Si falla, se usa el fallback histórico (empresa 1 / contrato 3).
+  // Tenant real: empresas/contratos del usuario autenticado. Si hay una empresa/
+  // contrato guardados en localStorage y siguen siendo válidos para este usuario,
+  // se respetan; si no, se usa la empresa/contrato por defecto que sugiere el
+  // backend. Si la empresa resuelta no tiene contratos, contratoId queda en null
+  // (el selector del TopNav ya muestra "Sin contratos" en ese caso).
+  // Si /tenant/me falla, se usa el fallback histórico (empresa 1 / contrato 3).
   useEffect(() => {
     if (!isAuthenticated) return;
     let active = true;
     tenantApi.getMe()
       .then(result => {
         if (!active) return;
+        const { empresaId, contratoId } = resolveInitialTenantSelection(result);
         setTenant({
           status: "real",
           empresas: result.empresas,
           contratos: result.contratos,
-          empresaId: result.empresa_default_id,
-          contratoId: result.contrato_default_id,
+          empresaId,
+          contratoId,
         });
+        setStoredEmpresaId(empresaId);
+        setStoredContratoId(contratoId);
       })
       .catch(error => {
         if (!active) return;
@@ -91,6 +105,14 @@ export default function App() {
     setIsAuthenticated(true);
   }
 
+  // Decisión documentada (Fase Final 1 — Parte B): el logout limpia token y
+  // usuario, pero NO borra empiria_empresa_id/empiria_contrato_id de localStorage.
+  // La selección de empresa/contrato se trata como una preferencia del navegador,
+  // no como dato de sesión: en el próximo login (mismo usuario o uno distinto) se
+  // vuelve a validar contra /tenant/me (ver resolveInitialTenantSelection), así
+  // que un valor que ya no aplique para el siguiente usuario simplemente se
+  // descarta y cae al default — conservarlo no tiene riesgo y evita reiniciar la
+  // selección en cada logout/login del mismo usuario.
   function handleLogout() {
     logout();
     setIsAuthenticated(false);
@@ -100,6 +122,8 @@ export default function App() {
 
   function handleTenantChange(empresaId: number | null, contratoId: number | null) {
     setTenant(prev => ({ ...prev, empresaId, contratoId }));
+    setStoredEmpresaId(empresaId);
+    setStoredContratoId(contratoId);
   }
 
   // Navegación normal por el nav: nunca arrastra un filtro de persona obsoleto.

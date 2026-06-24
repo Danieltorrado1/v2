@@ -1,6 +1,7 @@
 import { QueryResultRow } from 'pg';
 
 import { dbQuery } from '../../config/db';
+import { getCoberturaResumen } from '../cobertura/cobertura.service';
 import { DashboardQuery } from './dashboard.schemas';
 
 interface CountMetricRow extends QueryResultRow {
@@ -59,30 +60,6 @@ interface VencidosPorTipoRow extends QueryResultRow {
   documentos_vencidos: number;
   tipo_documento_id: string;
   tipo_documento_nombre: string | null;
-}
-
-interface CoberturaByMunicipioRow extends QueryResultRow {
-  asignada_total: number;
-  cobertura_porcentaje: number;
-  municipio_id: string | null;
-  municipio_nombre: string | null;
-  requerida_total: number;
-}
-
-interface CoberturaByModalidadRow extends QueryResultRow {
-  asignada_total: number;
-  cobertura_porcentaje: number;
-  modalidad_base: string;
-  requerida_total: number;
-}
-
-interface CoberturaDashboardRow extends QueryResultRow {
-  cobertura_asignada_total: number;
-  cobertura_requerida_total: number;
-  cumplimiento_cobertura_porcentaje: number;
-  faltantes_total: number;
-  sobrecobertura_total: number;
-  total_sedes_modalidad: number;
 }
 
 interface NominaDashboardRow extends QueryResultRow {
@@ -429,7 +406,7 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
   const summaryResult = await dbQuery<PersonasDashboardRow>(
     `
       WITH personas_filtradas AS (
-        SELECT DISTINCT p.id, p.activo
+        SELECT DISTINCT p.id
         FROM personas p
         LEFT JOIN vinculaciones v ON v.persona_id = p.id
         WHERE 1 = 1
@@ -440,11 +417,22 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
         FROM vinculaciones v
         WHERE 1 = 1
         ${filters.sql}
+      ),
+      personas_activas_cte AS (
+        -- personas no tiene columna activo: una persona se considera activa si
+        -- tiene al menos una vinculacion ACTIVA dentro del alcance filtrado.
+        SELECT DISTINCT persona_id
+        FROM vinculaciones_filtradas
+        WHERE estado_vinculacion = 'ACTIVA'
       )
       SELECT
         (SELECT COUNT(*)::int FROM personas_filtradas) AS total_personas,
-        (SELECT COUNT(*)::int FROM personas_filtradas WHERE activo = TRUE) AS personas_activas,
-        (SELECT COUNT(*)::int FROM personas_filtradas WHERE activo = FALSE) AS personas_inactivas,
+        (SELECT COUNT(*)::int FROM personas_activas_cte) AS personas_activas,
+        (
+          SELECT COUNT(*)::int
+          FROM personas_filtradas
+          WHERE id NOT IN (SELECT persona_id FROM personas_activas_cte)
+        ) AS personas_inactivas,
         (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'ACTIVA') AS vinculaciones_activas,
         (
           SELECT COUNT(*)::int
@@ -467,13 +455,13 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
     `
       SELECT
         v.contrato_id::text AS contrato_id,
-        c.nombre AS contrato_nombre,
+        c.numero_contrato AS contrato_nombre,
         COUNT(DISTINCT v.persona_id)::int AS total
       FROM vinculaciones v
       INNER JOIN contratos c ON c.id = v.contrato_id
       WHERE 1 = 1
       ${filters.sql}
-      GROUP BY v.contrato_id, c.nombre
+      GROUP BY v.contrato_id, c.numero_contrato
       ORDER BY total DESC, contrato_nombre ASC NULLS LAST
     `,
     filters.params
@@ -483,13 +471,13 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
     `
       SELECT
         v.contrato_cargo_id::text AS cargo_id,
-        cc.nombre AS cargo_nombre,
+        cc.nombre_cargo AS cargo_nombre,
         COUNT(DISTINCT v.persona_id)::int AS total
       FROM vinculaciones v
       INNER JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
       WHERE 1 = 1
       ${filters.sql}
-      GROUP BY v.contrato_cargo_id, cc.nombre
+      GROUP BY v.contrato_cargo_id, cc.nombre_cargo
       ORDER BY total DESC, cargo_nombre ASC NULLS LAST
     `,
     filters.params
@@ -499,14 +487,14 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
     `
       SELECT
         p.municipio_residencia_id::text AS municipio_id,
-        m.nombre AS municipio_nombre,
+        m.nombre_municipio AS municipio_nombre,
         COUNT(DISTINCT p.id)::int AS total
       FROM personas p
       LEFT JOIN vinculaciones v ON v.persona_id = p.id
       LEFT JOIN municipios m ON m.id = p.municipio_residencia_id
       WHERE 1 = 1
       ${filters.sql}
-      GROUP BY p.municipio_residencia_id, m.nombre
+      GROUP BY p.municipio_residencia_id, m.nombre_municipio
       ORDER BY total DESC, municipio_nombre ASC NULLS LAST
     `,
     filters.params
@@ -640,140 +628,81 @@ export const getDashboardDocumentos = async (
   };
 };
 
+// focalizacion_final no tiene columnas modalidad_base/manipuladores_requeridos, y
+// cobertura_asignaciones no tiene fraccion_cobertura: esos valores se calculan en
+// cobertura.service.ts (calculateRequiredCoverage), no son columnas de la base de
+// datos. En vez de duplicar esa lógica con nombres de columna inventados, este
+// dashboard reutiliza getCoberturaResumen (ya validado) y agrega sus resultados.
+// El módulo de cobertura tampoco filtra por empresa_id (focalizacion_final solo
+// tiene contrato_id), así que ese filtro no aplica aquí.
 export const getDashboardCobertura = async (
   query: DashboardQuery
 ): Promise<DashboardCobertura> => {
-  const filters = buildEntityFilters(query, {
-    contrato: 'ff.contrato_id::text'
+  const { items } = await getCoberturaResumen({
+    contrato_id: query.contrato_id ?? undefined,
+    page: 1,
+    limit: 10000
   });
 
-  const resumenResult = await dbQuery<CoberturaDashboardRow>(
-    `
-      WITH cobertura_base AS (
-        SELECT
-          ff.id::text AS id,
-          ff.municipio_id::text AS municipio_id,
-          ff.modalidad_base,
-          ff.manipuladores_requeridos::numeric AS requeridos,
-          COALESCE((
-            SELECT SUM(ca.fraccion_cobertura)
-            FROM cobertura_asignaciones ca
-            WHERE ca.focalizacion_final_id = ff.id
-              AND ca.activo = TRUE
-          ), 0)::numeric AS asignados
-        FROM focalizacion_final ff
-        WHERE ff.activo = TRUE
-        ${filters.sql}
-      )
-      SELECT
-        COUNT(*)::int AS total_sedes_modalidad,
-        COALESCE(SUM(requeridos), 0)::numeric AS cobertura_requerida_total,
-        COALESCE(SUM(asignados), 0)::numeric AS cobertura_asignada_total,
-        COALESCE(SUM(GREATEST(requeridos - asignados, 0)), 0)::numeric AS faltantes_total,
-        COALESCE(SUM(GREATEST(asignados - requeridos, 0)), 0)::numeric AS sobrecobertura_total,
-        CASE
-          WHEN COALESCE(SUM(requeridos), 0) = 0 THEN 0
-          ELSE ROUND((COALESCE(SUM(asignados), 0) / SUM(requeridos)) * 100, 2)
-        END AS cumplimiento_cobertura_porcentaje
-      FROM cobertura_base
-    `,
-    filters.params
-  );
+  const toPercentage = (asignada: number, requerida: number): number =>
+    requerida === 0 ? 0 : Math.round((asignada / requerida) * 100 * 100) / 100;
 
-  const municipioResult = await dbQuery<CoberturaByMunicipioRow>(
-    `
-      WITH cobertura_base AS (
-        SELECT
-          ff.municipio_id::text AS municipio_id,
-          m.nombre AS municipio_nombre,
-          ff.manipuladores_requeridos::numeric AS requeridos,
-          COALESCE((
-            SELECT SUM(ca.fraccion_cobertura)
-            FROM cobertura_asignaciones ca
-            WHERE ca.focalizacion_final_id = ff.id
-              AND ca.activo = TRUE
-          ), 0)::numeric AS asignados
-        FROM focalizacion_final ff
-        LEFT JOIN municipios m ON m.id = ff.municipio_id
-        WHERE ff.activo = TRUE
-        ${filters.sql}
-      )
-      SELECT
-        municipio_id,
-        municipio_nombre,
-        COALESCE(SUM(requeridos), 0)::numeric AS requerida_total,
-        COALESCE(SUM(asignados), 0)::numeric AS asignada_total,
-        CASE
-          WHEN COALESCE(SUM(requeridos), 0) = 0 THEN 0
-          ELSE ROUND((COALESCE(SUM(asignados), 0) / SUM(requeridos)) * 100, 2)
-        END AS cobertura_porcentaje
-      FROM cobertura_base
-      GROUP BY municipio_id, municipio_nombre
-      ORDER BY municipio_nombre ASC NULLS LAST
-    `,
-    filters.params
-  );
+  let coberturaRequeridaTotal = 0;
+  let coberturaAsignadaTotal = 0;
+  let faltantesTotal = 0;
+  let sobrecoberturaTotal = 0;
 
-  const modalidadResult = await dbQuery<CoberturaByModalidadRow>(
-    `
-      WITH cobertura_base AS (
-        SELECT
-          ff.modalidad_base,
-          ff.manipuladores_requeridos::numeric AS requeridos,
-          COALESCE((
-            SELECT SUM(ca.fraccion_cobertura)
-            FROM cobertura_asignaciones ca
-            WHERE ca.focalizacion_final_id = ff.id
-              AND ca.activo = TRUE
-          ), 0)::numeric AS asignados
-        FROM focalizacion_final ff
-        WHERE ff.activo = TRUE
-        ${filters.sql}
-      )
-      SELECT
-        modalidad_base,
-        COALESCE(SUM(requeridos), 0)::numeric AS requerida_total,
-        COALESCE(SUM(asignados), 0)::numeric AS asignada_total,
-        CASE
-          WHEN COALESCE(SUM(requeridos), 0) = 0 THEN 0
-          ELSE ROUND((COALESCE(SUM(asignados), 0) / SUM(requeridos)) * 100, 2)
-        END AS cobertura_porcentaje
-      FROM cobertura_base
-      GROUP BY modalidad_base
-      ORDER BY modalidad_base ASC
-    `,
-    filters.params
-  );
+  const porMunicipio = new Map<string, { municipio_id: string | null; municipio_nombre: string | null; requerida_total: number; asignada_total: number }>();
+  const porModalidad = new Map<string, { modalidad_base: string; requerida_total: number; asignada_total: number }>();
 
-  const row = resumenResult.rows[0];
+  for (const item of items) {
+    coberturaRequeridaTotal += item.manipuladores_requeridos;
+    coberturaAsignadaTotal += item.asignados;
+    faltantesTotal += Math.max(0, item.manipuladores_requeridos - item.asignados);
+    sobrecoberturaTotal += Math.max(0, item.asignados - item.manipuladores_requeridos);
 
-  return {
-    total_sedes_modalidad: row?.total_sedes_modalidad ?? 0,
-    cobertura_requerida_total: Number(row?.cobertura_requerida_total ?? 0),
-    cobertura_asignada_total: Number(row?.cobertura_asignada_total ?? 0),
-    faltantes_total: Number(row?.faltantes_total ?? 0),
-    sobrecobertura_total: Number(row?.sobrecobertura_total ?? 0),
-    cumplimiento_cobertura_porcentaje: Number(row?.cumplimiento_cobertura_porcentaje ?? 0),
-    cobertura_por_municipio: municipioResult.rows.map((item) => ({
+    const municipioKey = item.municipio_id ?? item.municipio_nombre ?? 'SIN_MUNICIPIO';
+    const municipioEntry = porMunicipio.get(municipioKey) ?? {
       municipio_id: item.municipio_id,
       municipio_nombre: item.municipio_nombre,
-      requerida_total: Number(item.requerida_total),
-      asignada_total: Number(item.asignada_total),
-      cobertura_porcentaje: Number(item.cobertura_porcentaje)
-    })),
-    cobertura_por_modalidad_base: modalidadResult.rows.map((item) => ({
+      requerida_total: 0,
+      asignada_total: 0
+    };
+    municipioEntry.requerida_total += item.manipuladores_requeridos;
+    municipioEntry.asignada_total += item.asignados;
+    porMunicipio.set(municipioKey, municipioEntry);
+
+    const modalidadEntry = porModalidad.get(item.modalidad_base) ?? {
       modalidad_base: item.modalidad_base,
-      requerida_total: Number(item.requerida_total),
-      asignada_total: Number(item.asignada_total),
-      cobertura_porcentaje: Number(item.cobertura_porcentaje)
-    }))
+      requerida_total: 0,
+      asignada_total: 0
+    };
+    modalidadEntry.requerida_total += item.manipuladores_requeridos;
+    modalidadEntry.asignada_total += item.asignados;
+    porModalidad.set(item.modalidad_base, modalidadEntry);
+  }
+
+  return {
+    total_sedes_modalidad: items.length,
+    cobertura_requerida_total: coberturaRequeridaTotal,
+    cobertura_asignada_total: coberturaAsignadaTotal,
+    faltantes_total: faltantesTotal,
+    sobrecobertura_total: sobrecoberturaTotal,
+    cumplimiento_cobertura_porcentaje: toPercentage(coberturaAsignadaTotal, coberturaRequeridaTotal),
+    cobertura_por_municipio: Array.from(porMunicipio.values())
+      .map((entry) => ({ ...entry, cobertura_porcentaje: toPercentage(entry.asignada_total, entry.requerida_total) }))
+      .sort((a, b) => (a.municipio_nombre ?? '').localeCompare(b.municipio_nombre ?? '')),
+    cobertura_por_modalidad_base: Array.from(porModalidad.values())
+      .map((entry) => ({ ...entry, cobertura_porcentaje: toPercentage(entry.asignada_total, entry.requerida_total) }))
+      .sort((a, b) => a.modalidad_base.localeCompare(b.modalidad_base))
   };
 };
 
 export const getDashboardNomina = async (query: DashboardQuery): Promise<DashboardNomina> => {
   const range = resolveDashboardDateRange(query);
+  // nomina_periodos no tiene columna empresa_id propia: se resuelve via contratos.
   const filters = buildEntityFilters(query, {
-    empresa: 'np.empresa_id::text',
+    empresa: 'c.empresa_id::text',
     contrato: 'np.contrato_id::text'
   });
 
@@ -782,6 +711,7 @@ export const getDashboardNomina = async (query: DashboardQuery): Promise<Dashboa
       WITH periodos_filtrados AS (
         SELECT np.*
         FROM nomina_periodos np
+        INNER JOIN contratos c ON c.id = np.contrato_id
         WHERE np.fecha_inicio <= $${filters.params.length + 2}
           AND np.fecha_fin >= $${filters.params.length + 1}
         ${filters.sql}
@@ -799,10 +729,10 @@ export const getDashboardNomina = async (query: DashboardQuery): Promise<Dashboa
       SELECT
         (SELECT COUNT(*)::int FROM periodos_filtrados WHERE estado = 'ABIERTO') AS periodos_abiertos,
         (SELECT COUNT(*)::int FROM periodos_filtrados WHERE estado = 'CERRADO') AS periodos_cerrados,
-        COALESCE((SELECT SUM(neto_pagar) FROM liquidaciones_filtradas), 0)::numeric AS total_liquidado,
-        COALESCE((SELECT SUM(total_devengado) FROM liquidaciones_filtradas), 0)::numeric AS total_devengado,
-        COALESCE((SELECT SUM(total_deducciones) FROM liquidaciones_filtradas), 0)::numeric AS total_deducciones,
-        COALESCE((SELECT SUM(neto_pagar) FROM liquidaciones_filtradas WHERE estado = 'FINAL'), 0)::numeric AS neto_pagado,
+        COALESCE((SELECT SUM(total_liquidacion) FROM liquidaciones_filtradas), 0)::numeric AS total_liquidado,
+        COALESCE((SELECT SUM(total_liquidacion + COALESCE(deducciones, 0)) FROM liquidaciones_filtradas), 0)::numeric AS total_devengado,
+        COALESCE((SELECT SUM(deducciones) FROM liquidaciones_filtradas), 0)::numeric AS total_deducciones,
+        COALESCE((SELECT SUM(total_liquidacion) FROM liquidaciones_filtradas WHERE estado = 'FINAL'), 0)::numeric AS neto_pagado,
         (
           SELECT COUNT(*)::int
           FROM novedades_filtradas
@@ -816,12 +746,21 @@ export const getDashboardNomina = async (query: DashboardQuery): Promise<Dashboa
     `
       SELECT
         np.id::text AS id,
-        np.nombre,
+        np.nombre_periodo AS nombre,
         np.fecha_inicio,
         np.fecha_fin,
         np.estado,
-        np.estado_liquidacion
+        -- nomina_periodos no tiene estado_liquidacion: se deriva de sus liquidaciones
+        -- (FINAL solo si ninguna liquidacion del periodo sigue en estado distinto a FINAL).
+        CASE
+          WHEN EXISTS (
+            SELECT 1 FROM nomina_liquidaciones nl2
+            WHERE nl2.periodo_id = np.id AND nl2.estado <> 'FINAL'
+          ) THEN 'PRELIMINAR'
+          ELSE 'FINAL'
+        END AS estado_liquidacion
       FROM nomina_periodos np
+      INNER JOIN contratos c ON c.id = np.contrato_id
       WHERE 1 = 1
       ${filters.sql}
       ORDER BY np.fecha_fin DESC, np.created_at DESC
@@ -833,17 +772,19 @@ export const getDashboardNomina = async (query: DashboardQuery): Promise<Dashboa
   const novedadesTipoResult = await dbQuery<NovedadesPorTipoRow>(
     `
       SELECT
-        nn.tipo,
+        COALESCE(ntn.nombre, 'SIN_TIPO') AS tipo,
         COUNT(*)::int AS total,
-        COALESCE(SUM(nn.valor), 0)::numeric AS valor_total
+        COALESCE(SUM(nn.valor_manual), 0)::numeric AS valor_total
       FROM nomina_novedades nn
       INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
+      INNER JOIN contratos c ON c.id = np.contrato_id
+      LEFT JOIN nomina_tipos_novedad ntn ON ntn.id = nn.tipo_novedad_id
       WHERE np.fecha_inicio <= $${filters.params.length + 2}
         AND np.fecha_fin >= $${filters.params.length + 1}
         AND nn.activo = TRUE
         ${filters.sql}
-      GROUP BY nn.tipo
-      ORDER BY nn.tipo ASC
+      GROUP BY ntn.nombre
+      ORDER BY ntn.nombre ASC
     `,
     [...filters.params, range.fecha_desde, range.fecha_hasta]
   );
@@ -879,16 +820,19 @@ export const getDashboardNomina = async (query: DashboardQuery): Promise<Dashboa
 
 export const getDashboardSst = async (query: DashboardQuery): Promise<DashboardSst> => {
   const range = resolveDashboardDateRange(query);
+  // sst_eventos no tiene empresa_id/contrato_id propios: se resuelven via su vinculacion.
+  // sst_planes_accion tampoco tiene evento_id: se vincula al evento via origen_id.
   const filters = buildEntityFilters(query, {
-    empresa: 'se.empresa_id::text',
-    contrato: 'se.contrato_id::text'
+    empresa: 'v.empresa_id::text',
+    contrato: 'v.contrato_id::text'
   });
 
   const result = await dbQuery<SstDashboardRow>(
     `
       WITH eventos_filtrados AS (
-        SELECT *
+        SELECT se.*
         FROM sst_eventos se
+        INNER JOIN vinculaciones v ON v.id = se.vinculacion_id
         WHERE se.fecha_evento >= $${filters.params.length + 1}
           AND se.fecha_evento <= $${filters.params.length + 2}
         ${filters.sql}
@@ -896,7 +840,8 @@ export const getDashboardSst = async (query: DashboardQuery): Promise<DashboardS
       planes_filtrados AS (
         SELECT spa.*
         FROM sst_planes_accion spa
-        INNER JOIN sst_eventos se ON se.id = spa.evento_id
+        INNER JOIN sst_eventos se ON se.id = spa.origen_id AND spa.origen = 'EVENTO'
+        INNER JOIN vinculaciones v ON v.id = se.vinculacion_id
         WHERE spa.activo = TRUE
           AND se.fecha_evento >= $${filters.params.length + 1}
           AND se.fecha_evento <= $${filters.params.length + 2}
@@ -959,6 +904,13 @@ export const getDashboardAlertas = async (
   query: DashboardQuery
 ): Promise<DashboardAlertas> => {
   const range = resolveDashboardDateRange(query);
+  // alertas_sistema solo tiene contrato_id (no empresa_id): empresa_id no aplica aquí.
+  const contratoParams: unknown[] = [];
+  let contratoCondition = '';
+  if (query.contrato_id) {
+    contratoParams.push(query.contrato_id);
+    contratoCondition = ` AND a.contrato_id::text = $${contratoParams.length + 2}`;
+  }
 
   const summaryResult = await dbQuery<AlertasDashboardRow>(
     `
@@ -986,12 +938,14 @@ export const getDashboardAlertas = async (
         (
           SELECT COUNT(*)::int
           FROM notificaciones n
-          WHERE n.activo = TRUE
+          WHERE n.archivado_en IS NULL
             AND n.leida = FALSE
         ) AS notificaciones_no_leidas
       FROM alertas_sistema a
+      WHERE 1 = 1
+      ${contratoCondition}
     `,
-    [range.fecha_desde, range.fecha_hasta]
+    [range.fecha_desde, range.fecha_hasta, ...contratoParams]
   );
 
   const tipoResult = await dbQuery<AlertasPorTipoRow>(
@@ -1004,10 +958,11 @@ export const getDashboardAlertas = async (
         AND a.estado IN ('ACTIVA', 'LEIDA')
         AND a.fecha_alerta >= $1
         AND a.fecha_alerta <= $2
+        ${contratoCondition}
       GROUP BY a.tipo_alerta
       ORDER BY total DESC, a.tipo_alerta ASC
     `,
-    [range.fecha_desde, range.fecha_hasta]
+    [range.fecha_desde, range.fecha_hasta, ...contratoParams]
   );
 
   const row = summaryResult.rows[0];

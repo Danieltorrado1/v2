@@ -384,7 +384,7 @@ const getCoberturaBaseRows = async (
       SELECT
         ff.id::text AS focalizacion_final_id,
         ff.contrato_id::text AS contrato_id,
-        c.nombre AS contrato_nombre,
+        c.numero_contrato AS contrato_nombre,
         ff.municipio_id::text AS municipio_id,
         ff.municipio_texto,
         ff.institucion_id::text AS institucion_id,
@@ -523,7 +523,7 @@ export const getCoberturaContratoDetalle = async (
 
   const contratoResult = await dbQuery<ContratoInfoRow>(
     `
-      SELECT nombre AS contrato_nombre
+      SELECT numero_contrato AS contrato_nombre
       FROM contratos
       WHERE id::text = $1
       LIMIT 1
@@ -563,7 +563,7 @@ export const getCoberturaSedeModalidadDetalle = async (
       SELECT
         ff.id::text AS focalizacion_final_id,
         ff.contrato_id::text AS contrato_id,
-        c.nombre AS contrato_nombre,
+        c.numero_contrato AS contrato_nombre,
         ff.municipio_id::text AS municipio_id,
         ff.municipio_texto,
         ff.institucion_id::text AS institucion_id,

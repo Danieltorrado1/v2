@@ -8,6 +8,7 @@ import {
 import type { ModuleId } from "./moduleTypes";
 import type { AuthUser } from "../../services/authApi";
 import type { TenantEmpresa, TenantContrato } from "../../services/tenantApi";
+import { hasAnyPermission } from "../../lib/permissions";
 
 interface NavGroup {
   label: string;
@@ -67,6 +68,46 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ];
+
+// Permisos visuales básicos (Fase Final 1 — Parte C): solo módulos con un mapeo
+// real de permisos backend se ocultan si el usuario no califica. "equipo-minimo",
+// "calculadora", "dotacion", "novedades", "empresa" y "configuracion" no tienen un
+// permiso propio documentado en el backend (son placeholders o pantallas locales
+// sin API), así que se dejan siempre visibles a propósito — no se les inventó un
+// permiso. Si el usuario no trae `permissions` en absoluto, hasAnyPermission ya
+// hace fallback a "true" (ver lib/permissions.ts), así nunca se bloquea por falta
+// de datos de permisos.
+const MODULE_PERMISSIONS: Partial<Record<ModuleId, string[]>> = {
+  dashboard: ["dashboard.read", "dashboard.saas.read", "dashboard.*"],
+  operarios: ["personas.read", "vinculaciones.read"],
+  cobertura: ["cobertura.read"],
+  nomina: ["nomina.read", "nomina.periodos.read", "nomina.vacaciones.read", "nomina.prima.read", "nomina.cesantias.read"],
+  sst: ["sst.dashboard_general.read", "sst.indicadores.read", "sst.capacitaciones.read"],
+  documentos: ["documentos.read", "repositorio.read", "alertas.documentales.read"],
+  repositorio: ["documentos.read", "repositorio.read", "alertas.documentales.read"],
+  evaluacion: ["evaluaciones.read", "evaluaciones.dashboard"],
+  colaboradores: ["users.read", "usuarios.read", "tenant.access.read"],
+};
+
+function isModuleVisible(user: AuthUser | null, moduleId: ModuleId): boolean {
+  const permissions = MODULE_PERMISSIONS[moduleId];
+  if (!permissions) return true;
+  return hasAnyPermission(user, permissions);
+}
+
+function getVisibleNavGroups(user: AuthUser | null): NavGroup[] {
+  return NAV_GROUPS
+    .map((group) => {
+      if (group.id) {
+        return isModuleVisible(user, group.id) ? group : null;
+      }
+
+      const items = group.items?.filter((item) => isModuleVisible(user, item.id));
+      if (!items || items.length === 0) return null;
+      return { ...group, items };
+    })
+    .filter((group): group is NavGroup => group !== null);
+}
 
 export interface TenantSelection {
   status: "loading" | "real" | "fallback";
@@ -159,6 +200,7 @@ export function TopNav({ activeModule, onModuleChange, onLogout, user, tenant, o
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
+  const visibleNavGroups = getVisibleNavGroups(user);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -208,7 +250,7 @@ export function TopNav({ activeModule, onModuleChange, onLogout, user, tenant, o
         {/* Nav — absolutely centred across the full header width */}
         <nav className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="flex items-center gap-1 pointer-events-auto">
-          {NAV_GROUPS.map(group => {
+          {visibleNavGroups.map(group => {
             const active = isGroupActive(group, activeModule);
             const hasDropdown = !!group.items;
             const isOpen = openGroup === group.label;
