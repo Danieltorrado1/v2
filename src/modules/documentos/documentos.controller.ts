@@ -4,6 +4,7 @@ import { AppError } from '../../utils/AppError';
 import { successResponse } from '../../utils/apiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
 import {
+  documentoDownloadQuerySchema,
   documentoIdParamSchema,
   personaIdNumericParamSchema,
   personaIdParamSchema,
@@ -113,7 +114,8 @@ export const getVinculacionChecklistHandler = asyncHandler(async (req: Request, 
 
 export const getDocumentoDownloadUrlHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = documentoIdParamSchema.parse(req.params);
-  const downloadInfo = await getDocumentoDownloadUrl(id, req.tenant);
+  const { scope } = documentoDownloadQuerySchema.parse(req.query);
+  const downloadInfo = await getDocumentoDownloadUrl(id, req.tenant, scope);
 
   return successResponse(res, {
     message: 'Signed download URL generated successfully',

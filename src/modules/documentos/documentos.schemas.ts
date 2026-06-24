@@ -64,6 +64,14 @@ export const documentoIdParamSchema = z.object({
   id: trimmedStringSchema
 });
 
+// documentos_persona.id y documentos_vinculacion.id son secuencias independientes
+// y pueden coincidir numéricamente; este query opcional permite desambiguar
+// cuando el cliente ya conoce el scope (si se omite, se conserva el comportamiento
+// previo: se busca en ambas tablas y se devuelve la primera coincidencia).
+export const documentoDownloadQuerySchema = z.object({
+  scope: z.enum(['persona', 'vinculacion']).optional()
+});
+
 export const testDocumentoPersonaSchema = z
   .object({
     persona_id: numericIdSchema,

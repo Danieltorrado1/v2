@@ -520,8 +520,8 @@ export const uploadPersonaDocumento = async (
           es_vigente
         )
         VALUES (
-          $1::uuid,
-          $2::uuid,
+          $1::bigint,
+          $2::bigint,
           NULL,
           $3,
           $4,
@@ -534,7 +534,7 @@ export const uploadPersonaDocumento = async (
           NOW(),
           TRUE,
           $11,
-          $12::uuid,
+          $12::bigint,
           TRUE
         )
         RETURNING
@@ -542,7 +542,7 @@ export const uploadPersonaDocumento = async (
           persona_id::text AS persona_id,
           vinculacion_id::text AS vinculacion_id,
           tipo_documento_id::text AS tipo_documento_id,
-          (SELECT nombre_documento FROM tipos_documentos WHERE id = $2::uuid) AS tipo_documento_nombre,
+          (SELECT nombre_documento FROM tipos_documentos WHERE id = $2::bigint) AS tipo_documento_nombre,
           archivo_path,
           storage_bucket,
           storage_path,
@@ -822,8 +822,8 @@ export const uploadVinculacionDocumento = async (
           activo
         )
         VALUES (
-          $1::uuid,
-          $2::uuid,
+          $1::bigint,
+          $2::bigint,
           $3,
           $4,
           $5,
@@ -838,11 +838,11 @@ export const uploadVinculacionDocumento = async (
         RETURNING
           id::text AS id,
           vinculacion_id::text AS vinculacion_id,
-          (SELECT persona_id::text FROM vinculaciones WHERE id = $1::uuid) AS persona_id,
-          (SELECT contrato_id::text FROM vinculaciones WHERE id = $1::uuid) AS contrato_id,
-          (SELECT contrato_cargo_id::text FROM vinculaciones WHERE id = $1::uuid) AS contrato_cargo_id,
+          (SELECT persona_id::text FROM vinculaciones WHERE id = $1::bigint) AS persona_id,
+          (SELECT contrato_id::text FROM vinculaciones WHERE id = $1::bigint) AS contrato_id,
+          (SELECT contrato_cargo_id::text FROM vinculaciones WHERE id = $1::bigint) AS contrato_cargo_id,
           tipo_documento_id::text AS tipo_documento_id,
-          (SELECT nombre_documento FROM tipos_documentos WHERE id = $2::uuid) AS tipo_documento_nombre,
+          (SELECT nombre_documento FROM tipos_documentos WHERE id = $2::bigint) AS tipo_documento_nombre,
           archivo_path,
           storage_bucket,
           storage_path,
@@ -937,47 +937,56 @@ export const listVinculacionDocumentos = async (
   return result.rows.map(mapDocumentoVinculacion);
 };
 
+const DOCUMENTO_PERSONA_DOWNLOAD_LOOKUP = `
+  SELECT
+    dp.id::text AS id,
+    'PERSONA'::text AS document_scope,
+    dp.persona_id::text AS persona_id,
+    dp.vinculacion_id::text AS vinculacion_id,
+    NULL::text AS contrato_id,
+    dp.storage_bucket,
+    COALESCE(dp.storage_path, dp.archivo_path) AS storage_path,
+    dp.nombre_original,
+    dp.mime_type,
+    dp.activo
+  FROM documentos_persona dp
+  WHERE dp.id::text = $1
+`;
+
+const DOCUMENTO_VINCULACION_DOWNLOAD_LOOKUP = `
+  SELECT
+    dv.id::text AS id,
+    'VINCULACION'::text AS document_scope,
+    v.persona_id::text AS persona_id,
+    dv.vinculacion_id::text AS vinculacion_id,
+    v.contrato_id::text AS contrato_id,
+    dv.storage_bucket,
+    COALESCE(dv.storage_path, dv.archivo_path) AS storage_path,
+    dv.nombre_original,
+    dv.mime_type,
+    dv.activo
+  FROM documentos_vinculacion dv
+  INNER JOIN vinculaciones v ON v.id = dv.vinculacion_id
+  WHERE dv.id::text = $1
+`;
+
 export const getDocumentoDownloadUrl = async (
   documentoId: string,
-  tenant?: TenantAccessContext
+  tenant?: TenantAccessContext,
+  scope?: 'persona' | 'vinculacion'
 ): Promise<DocumentoDownloadInfo> => {
-  const result = await dbQuery<DownloadLookupRow>(
-    `
-      SELECT
-        dp.id::text AS id,
-        'PERSONA'::text AS document_scope,
-        dp.persona_id::text AS persona_id,
-        dp.vinculacion_id::text AS vinculacion_id,
-        NULL::text AS contrato_id,
-        dp.storage_bucket,
-        COALESCE(dp.storage_path, dp.archivo_path) AS storage_path,
-        dp.nombre_original,
-        dp.mime_type,
-        dp.activo
-      FROM documentos_persona dp
-      WHERE dp.id::text = $1
+  // documentos_persona.id y documentos_vinculacion.id son secuencias independientes:
+  // sin `scope`, la misma id numérica puede existir en ambas tablas y esta consulta
+  // combinada solo puede devolver una (la primera que encuentre). Cuando el llamador
+  // ya sabe el scope (caso normal desde el frontend), se evita la ambigüedad.
+  const query =
+    scope === 'persona'
+      ? DOCUMENTO_PERSONA_DOWNLOAD_LOOKUP
+      : scope === 'vinculacion'
+        ? DOCUMENTO_VINCULACION_DOWNLOAD_LOOKUP
+        : `${DOCUMENTO_PERSONA_DOWNLOAD_LOOKUP} UNION ALL ${DOCUMENTO_VINCULACION_DOWNLOAD_LOOKUP} LIMIT 1`;
 
-      UNION ALL
-
-      SELECT
-        dv.id::text AS id,
-        'VINCULACION'::text AS document_scope,
-        v.persona_id::text AS persona_id,
-        dv.vinculacion_id::text AS vinculacion_id,
-        dv.contrato_id::text AS contrato_id,
-        dv.storage_bucket,
-        COALESCE(dv.storage_path, dv.archivo_path) AS storage_path,
-        dv.nombre_original,
-        dv.mime_type,
-        dv.activo
-      FROM documentos_vinculacion dv
-      INNER JOIN vinculaciones v ON v.id = dv.vinculacion_id
-      WHERE dv.id::text = $1
-
-      LIMIT 1
-    `,
-    [documentoId]
-  );
+  const result = await dbQuery<DownloadLookupRow>(query, [documentoId]);
 
   const document = result.rows[0];
 
@@ -1045,7 +1054,7 @@ export const updatePersonaDocumento = async (
       `
         UPDATE documentos_persona
         SET
-          tipo_documento_id = $2::uuid,
+          tipo_documento_id = $2::bigint,
           fecha_expedicion = $3,
           fecha_vencimiento = $4,
           activo = $5
@@ -1055,7 +1064,7 @@ export const updatePersonaDocumento = async (
           persona_id::text AS persona_id,
           vinculacion_id::text AS vinculacion_id,
           tipo_documento_id::text AS tipo_documento_id,
-          (SELECT nombre_documento FROM tipos_documentos WHERE id = $2::uuid) AS tipo_documento_nombre,
+          (SELECT nombre_documento FROM tipos_documentos WHERE id = $2::bigint) AS tipo_documento_nombre,
           archivo_path,
           storage_bucket,
           storage_path,
@@ -1148,7 +1157,7 @@ export const updateVinculacionDocumento = async (
       `
         UPDATE documentos_vinculacion
         SET
-          tipo_documento_id = $2::uuid,
+          tipo_documento_id = $2::bigint,
           fecha_expedicion = $3,
           fecha_vencimiento = $4,
           activo = $5
@@ -1160,7 +1169,7 @@ export const updateVinculacionDocumento = async (
           (SELECT contrato_id::text FROM vinculaciones WHERE id = documentos_vinculacion.vinculacion_id) AS contrato_id,
           (SELECT contrato_cargo_id::text FROM vinculaciones WHERE id = documentos_vinculacion.vinculacion_id) AS contrato_cargo_id,
           tipo_documento_id::text AS tipo_documento_id,
-          (SELECT nombre_documento FROM tipos_documentos WHERE id = $2::uuid) AS tipo_documento_nombre,
+          (SELECT nombre_documento FROM tipos_documentos WHERE id = $2::bigint) AS tipo_documento_nombre,
           storage_bucket,
           storage_path,
           archivo_path,
