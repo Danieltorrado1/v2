@@ -11,14 +11,11 @@ interface AlertaLookupRow extends QueryResultRow {
   activo: boolean;
   estado: string;
   id: string;
-  registro_id: string;
+  referencia_id: string | null;
   tipo_alerta: string;
-  usuario_id: string | null;
 }
 
 interface NotificacionLookupRow extends QueryResultRow {
-  activo: boolean;
-  alerta_id: string | null;
   id: string;
   leida: boolean;
   usuario_id: string;
@@ -71,8 +68,7 @@ export const ensureAlertaExists = async (
       SELECT
         id::text AS id,
         tipo_alerta,
-        registro_id::text AS registro_id,
-        usuario_id::text AS usuario_id,
+        referencia_id::text AS referencia_id,
         estado,
         activo
       FROM alertas_sistema
@@ -100,10 +96,8 @@ export const ensureNotificacionExists = async (
     `
       SELECT
         id::text AS id,
-        alerta_id::text AS alerta_id,
         usuario_id::text AS usuario_id,
-        leida,
-        activo
+        leida
       FROM notificaciones
       WHERE id::text = $1
       LIMIT 1

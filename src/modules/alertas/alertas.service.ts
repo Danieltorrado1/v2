@@ -24,40 +24,48 @@ interface CountRow extends QueryResultRow {
 
 interface AlertaRow extends QueryResultRow {
   activo: boolean;
+  contrato_id: string | null;
   created_at: Date;
   descripcion: string;
-  entidad: string;
   estado: EstadoAlerta;
   fecha_alerta: Date | string;
-  fecha_resolucion: Date | string | null;
   fecha_vencimiento: Date | string | null;
   id: string;
-  metadata: Record<string, unknown> | null;
+  modulo: string;
+  persona_id: string | null;
   prioridad: PrioridadAlerta;
-  registro_id: string;
+  referencia_id: string | null;
+  referencia_tabla: string | null;
   tipo_alerta: TipoAlerta;
   titulo: string;
-  updated_at: Date;
-  usuario_email: string | null;
-  usuario_id: string | null;
-  usuario_nombre: string | null;
+  vinculacion_id: string | null;
 }
 
 interface NotificacionRow extends QueryResultRow {
-  activo: boolean;
-  alerta_id: string | null;
+  contrato_id: string | null;
   created_at: Date;
-  fecha_lectura: Date | string | null;
+  entidad_origen: string | null;
+  entidad_origen_id: string | null;
+  estado: string | null;
+  fecha_evento: Date | string | null;
+  fecha_vencimiento: Date | string | null;
   id: string;
   leida: boolean;
   mensaje: string;
   metadata: Record<string, unknown> | null;
+  persona_id: string | null;
+  prioridad: string | null;
+  referencia_id: string | null;
+  referencia_tabla: string | null;
+  resuelto_en: Date | string | null;
+  archivado_en: Date | string | null;
   tipo: string;
   titulo: string;
-  updated_at: Date;
+  url_accion: string | null;
   usuario_email: string | null;
   usuario_id: string;
   usuario_nombre: string | null;
+  vinculacion_id: string | null;
 }
 
 interface UserTargetRow extends QueryResultRow {
@@ -66,44 +74,53 @@ interface UserTargetRow extends QueryResultRow {
 
 export interface AlertaItem {
   activo: boolean;
+  contrato_id: string | null;
   created_at: string;
   descripcion: string;
-  entidad: string;
   estado: EstadoAlerta;
   fecha_alerta: string;
-  fecha_resolucion: string | null;
   fecha_vencimiento: string | null;
   id: string;
-  metadata: Record<string, unknown> | null;
+  modulo: string;
+  persona_id: string | null;
   prioridad: PrioridadAlerta;
-  registro_id: string;
+  referencia: {
+    id: string | null;
+    tabla: string | null;
+  };
   tipo_alerta: TipoAlerta;
   titulo: string;
-  updated_at: string;
-  usuario: {
-    email: string | null;
-    id: string | null;
-    nombre: string | null;
-  };
+  vinculacion_id: string | null;
 }
 
 export interface NotificacionItem {
-  activo: boolean;
-  alerta_id: string | null;
+  archivado: boolean;
+  archivado_en: string | null;
+  contrato_id: string | null;
   created_at: string;
-  fecha_lectura: string | null;
+  estado: string | null;
+  fecha_evento: string | null;
+  fecha_vencimiento: string | null;
   id: string;
   leida: boolean;
   mensaje: string;
   metadata: Record<string, unknown> | null;
+  origen: {
+    id: string | null;
+    tabla: string | null;
+  };
+  persona_id: string | null;
+  prioridad: string | null;
+  resuelto_en: string | null;
   tipo: string;
   titulo: string;
-  updated_at: string;
+  url_accion: string | null;
   usuario: {
     email: string | null;
     id: string;
     nombre: string | null;
   };
+  vinculacion_id: string | null;
 }
 
 export interface PaginatedAlertas {
@@ -151,38 +168,47 @@ const mapAlerta = (row: AlertaRow): AlertaItem => {
     tipo_alerta: row.tipo_alerta,
     prioridad: row.prioridad,
     estado: row.estado,
-    entidad: row.entidad,
-    registro_id: row.registro_id,
+    modulo: row.modulo,
+    referencia: {
+      tabla: row.referencia_tabla,
+      id: row.referencia_id
+    },
+    persona_id: row.persona_id,
+    vinculacion_id: row.vinculacion_id,
+    contrato_id: row.contrato_id,
     titulo: row.titulo,
     descripcion: row.descripcion,
     fecha_alerta: toDateString(row.fecha_alerta) ?? '',
     fecha_vencimiento: toDateString(row.fecha_vencimiento),
-    fecha_resolucion: toDateString(row.fecha_resolucion),
-    metadata: row.metadata,
     activo: row.activo,
-    created_at: row.created_at.toISOString(),
-    updated_at: row.updated_at.toISOString(),
-    usuario: {
-      id: row.usuario_id,
-      email: row.usuario_email,
-      nombre: row.usuario_nombre
-    }
+    created_at: row.created_at.toISOString()
   };
 };
 
 const mapNotificacion = (row: NotificacionRow): NotificacionItem => {
   return {
     id: row.id,
-    alerta_id: row.alerta_id,
     tipo: row.tipo,
     titulo: row.titulo,
     mensaje: row.mensaje,
     leida: row.leida,
-    fecha_lectura: toDateString(row.fecha_lectura),
+    prioridad: row.prioridad,
+    estado: row.estado,
+    origen: {
+      tabla: row.entidad_origen ?? row.referencia_tabla,
+      id: row.entidad_origen_id ?? row.referencia_id
+    },
+    persona_id: row.persona_id,
+    vinculacion_id: row.vinculacion_id,
+    contrato_id: row.contrato_id,
+    fecha_evento: toDateString(row.fecha_evento),
+    fecha_vencimiento: toDateString(row.fecha_vencimiento),
+    url_accion: row.url_accion,
+    resuelto_en: row.resuelto_en ? toDateString(row.resuelto_en) : null,
+    archivado: row.archivado_en !== null,
+    archivado_en: row.archivado_en ? toDateString(row.archivado_en) : null,
     metadata: row.metadata,
-    activo: row.activo,
     created_at: row.created_at.toISOString(),
-    updated_at: row.updated_at.toISOString(),
     usuario: {
       id: row.usuario_id,
       email: row.usuario_email,
@@ -198,22 +224,19 @@ const getAlertaSelect = (): string => {
       a.tipo_alerta,
       a.prioridad,
       a.estado,
-      a.entidad,
-      a.registro_id::text AS registro_id,
-      a.usuario_id::text AS usuario_id,
-      u.email AS usuario_email,
-      u.nombre AS usuario_nombre,
+      a.modulo,
+      a.referencia_tabla,
+      a.referencia_id::text AS referencia_id,
+      a.persona_id::text AS persona_id,
+      a.vinculacion_id::text AS vinculacion_id,
+      a.contrato_id::text AS contrato_id,
       a.titulo,
       a.descripcion,
       a.fecha_alerta,
       a.fecha_vencimiento,
-      a.fecha_resolucion,
-      a.metadata,
       a.activo,
-      a.created_at,
-      a.updated_at
+      a.created_at
     FROM alertas_sistema a
-    LEFT JOIN usuarios u ON u.id = a.usuario_id
   `;
 };
 
@@ -221,19 +244,29 @@ const getNotificacionSelect = (): string => {
   return `
     SELECT
       n.id::text AS id,
-      n.alerta_id::text AS alerta_id,
       n.usuario_id::text AS usuario_id,
-      u.email AS usuario_email,
-      u.nombre AS usuario_nombre,
+      u.correo AS usuario_email,
+      u.nombre_completo AS usuario_nombre,
       n.tipo,
+      n.prioridad,
+      n.estado,
+      n.referencia_tabla,
+      n.referencia_id::text AS referencia_id,
+      n.entidad_origen,
+      n.entidad_origen_id::text AS entidad_origen_id,
+      n.persona_id::text AS persona_id,
+      n.vinculacion_id::text AS vinculacion_id,
+      n.contrato_id::text AS contrato_id,
       n.titulo,
       n.mensaje,
       n.leida,
-      n.fecha_lectura,
+      n.fecha_evento,
+      n.fecha_vencimiento,
+      n.url_accion,
+      n.resuelto_en,
+      n.archivado_en,
       n.metadata,
-      n.activo,
-      n.created_at,
-      n.updated_at
+      n.created_at
     FROM notificaciones n
     INNER JOIN usuarios u ON u.id = n.usuario_id
   `;
@@ -248,8 +281,8 @@ const ensureNoDuplicateActiveAlert = async (
       SELECT id::text AS id
       FROM alertas_sistema
       WHERE tipo_alerta = $1
-        AND entidad = $2
-        AND registro_id::text = $3
+        AND referencia_tabla = $2
+        AND referencia_id::text = $3
         AND activo = TRUE
         AND estado IN ('ACTIVA', 'LEIDA')
       LIMIT 1
@@ -272,9 +305,10 @@ const ensureNotificationForUser = async (
     `
       SELECT id::text AS id
       FROM notificaciones
-      WHERE alerta_id::text = $1
+      WHERE referencia_tabla = 'alertas_sistema'
+        AND referencia_id::text = $1
         AND usuario_id::text = $2
-        AND activo = TRUE
+        AND archivado_en IS NULL
       LIMIT 1
     `,
     [input.alertId, input.usuarioId]
@@ -288,20 +322,22 @@ const ensureNotificationForUser = async (
     `
       INSERT INTO notificaciones (
         usuario_id,
-        alerta_id,
+        referencia_tabla,
+        referencia_id,
         tipo,
+        prioridad,
         titulo,
         mensaje,
         leida,
-        metadata,
-        activo
+        metadata
       )
-      VALUES ($1::uuid, $2::uuid, $3, $4, $5, FALSE, $6::jsonb, TRUE)
+      VALUES ($1::bigint, 'alertas_sistema', $2::bigint, $3, $4, $5, $6, FALSE, $7::jsonb)
     `,
     [
       input.usuarioId,
       input.alertId,
       input.candidate.tipo_alerta,
+      input.candidate.prioridad,
       input.candidate.titulo,
       input.candidate.descripcion,
       JSON.stringify(input.candidate.metadata ?? {})
@@ -334,56 +370,60 @@ const getNotificationTargets = async (
   return result.rows.map((row) => row.id);
 };
 
+const deriveModuloFromTipoAlerta = (tipoAlerta: TipoAlerta): string => {
+  if (tipoAlerta.startsWith('DOCUMENTO_')) return 'DOCUMENTOS';
+  if (tipoAlerta.startsWith('CONTRATO_') || tipoAlerta.startsWith('VINCULACION_')) return 'VINCULACIONES';
+  if (tipoAlerta.startsWith('COBERTURA') || tipoAlerta === 'SOBRECOBERTURA') return 'COBERTURA';
+  if (tipoAlerta.startsWith('NOMINA_')) return 'NOMINA';
+  if (tipoAlerta.startsWith('PLAN_SST_')) return 'SST';
+  return 'SISTEMA';
+};
+
 const createAlertFromCandidate = async (
   client: PoolClient,
   candidate: GeneratedAlertCandidate,
   actorUserId: string
 ): Promise<string> => {
+  void actorUserId; // alertas_sistema no tiene columna de autor; se conserva el parametro por compatibilidad de firma.
   const result = await client.query<{ id: string }>(
     `
       INSERT INTO alertas_sistema (
         tipo_alerta,
         prioridad,
         estado,
-        entidad,
-        registro_id,
-        usuario_id,
+        modulo,
+        referencia_tabla,
+        referencia_id,
         titulo,
         descripcion,
         fecha_alerta,
         fecha_vencimiento,
-        metadata,
-        activo,
-        created_by
+        activo
       )
       VALUES (
         $1,
         $2,
         'ACTIVA',
         $3,
-        $4::uuid,
-        $5::uuid,
+        $4,
+        $5::bigint,
         $6,
         $7,
         CURRENT_DATE,
         $8,
-        $9::jsonb,
-        TRUE,
-        $10::uuid
+        TRUE
       )
       RETURNING id::text AS id
     `,
     [
       candidate.tipo_alerta,
       candidate.prioridad,
+      deriveModuloFromTipoAlerta(candidate.tipo_alerta),
       candidate.entidad,
       candidate.registro_id,
-      candidate.usuario_id ?? null,
       candidate.titulo,
       candidate.descripcion,
-      candidate.fecha_vencimiento,
-      JSON.stringify(candidate.metadata ?? {}),
-      actorUserId
+      candidate.fecha_vencimiento
     ]
   );
 
@@ -443,19 +483,24 @@ const buildAlertasFilters = (
     conditions.push(`a.estado = $${params.length}`);
   }
 
-  if (filters.entidad) {
-    params.push(filters.entidad);
-    conditions.push(`a.entidad = $${params.length}`);
+  if (filters.modulo) {
+    params.push(filters.modulo);
+    conditions.push(`a.modulo = $${params.length}`);
   }
 
-  if (filters.registro_id) {
-    params.push(filters.registro_id);
-    conditions.push(`a.registro_id::text = $${params.length}`);
+  if (filters.persona_id) {
+    params.push(filters.persona_id);
+    conditions.push(`a.persona_id::text = $${params.length}`);
   }
 
-  if (filters.usuario_id) {
-    params.push(filters.usuario_id);
-    conditions.push(`a.usuario_id::text = $${params.length}`);
+  if (filters.vinculacion_id) {
+    params.push(filters.vinculacion_id);
+    conditions.push(`a.vinculacion_id::text = $${params.length}`);
+  }
+
+  if (filters.contrato_id) {
+    params.push(filters.contrato_id);
+    conditions.push(`a.contrato_id::text = $${params.length}`);
   }
 
   if (filters.fecha_desde) {
@@ -482,7 +527,9 @@ const buildAlertasFilters = (
 const buildNotificacionesFilters = (
   filters: ListNotificacionesQuery
 ): { params: unknown[]; whereClause: string } => {
-  const conditions: string[] = [];
+  // archivado_en es el equivalente a "activo" en notificaciones: por defecto solo
+  // se listan las no archivadas (igual que el resto del sistema oculta lo inactivo).
+  const conditions: string[] = ['n.archivado_en IS NULL'];
   const params: unknown[] = [];
 
   if (filters.usuario_id) {
@@ -674,35 +721,27 @@ const updateAlertState = async (
     const result = await client.query<AlertaRow>(
       `
         UPDATE alertas_sistema
-        SET
-          estado = $2,
-          fecha_resolucion = CASE
-            WHEN $3 = TRUE THEN CURRENT_DATE
-            ELSE fecha_resolucion
-          END,
-          updated_at = NOW()
+        SET estado = $2
         WHERE id::text = $1
         RETURNING
           id::text AS id,
           tipo_alerta,
           prioridad,
           estado,
-          entidad,
-          registro_id::text AS registro_id,
-          usuario_id::text AS usuario_id,
-          (SELECT email FROM usuarios WHERE id = alertas_sistema.usuario_id) AS usuario_email,
-          (SELECT nombre FROM usuarios WHERE id = alertas_sistema.usuario_id) AS usuario_nombre,
+          modulo,
+          referencia_tabla,
+          referencia_id::text AS referencia_id,
+          persona_id::text AS persona_id,
+          vinculacion_id::text AS vinculacion_id,
+          contrato_id::text AS contrato_id,
           titulo,
           descripcion,
           fecha_alerta,
           fecha_vencimiento,
-          fecha_resolucion,
-          metadata,
           activo,
-          created_at,
-          updated_at
+          created_at
       `,
-      [alertId, updater.estado, updater.markResolved ?? false]
+      [alertId, updater.estado]
     );
 
     const updated = result.rows[0];
@@ -776,28 +815,25 @@ export const deactivateAlerta = async (
         UPDATE alertas_sistema
         SET
           activo = FALSE,
-          estado = 'DESCARTADA',
-          updated_at = NOW()
+          estado = 'DESCARTADA'
         WHERE id::text = $1
         RETURNING
           id::text AS id,
           tipo_alerta,
           prioridad,
           estado,
-          entidad,
-          registro_id::text AS registro_id,
-          usuario_id::text AS usuario_id,
-          (SELECT email FROM usuarios WHERE id = alertas_sistema.usuario_id) AS usuario_email,
-          (SELECT nombre FROM usuarios WHERE id = alertas_sistema.usuario_id) AS usuario_nombre,
+          modulo,
+          referencia_tabla,
+          referencia_id::text AS referencia_id,
+          persona_id::text AS persona_id,
+          vinculacion_id::text AS vinculacion_id,
+          contrato_id::text AS contrato_id,
           titulo,
           descripcion,
           fecha_alerta,
           fecha_vencimiento,
-          fecha_resolucion,
-          metadata,
           activo,
-          created_at,
-          updated_at
+          created_at
       `,
       [alertId]
     );
@@ -890,26 +926,33 @@ export const markNotificacionAsLeida = async (
     const result = await client.query<NotificacionRow>(
       `
         UPDATE notificaciones
-        SET
-          leida = TRUE,
-          fecha_lectura = COALESCE(fecha_lectura, CURRENT_DATE),
-          updated_at = NOW()
+        SET leida = TRUE
         WHERE id::text = $1
         RETURNING
           id::text AS id,
-          alerta_id::text AS alerta_id,
           usuario_id::text AS usuario_id,
-          (SELECT email FROM usuarios WHERE id = notificaciones.usuario_id) AS usuario_email,
-          (SELECT nombre FROM usuarios WHERE id = notificaciones.usuario_id) AS usuario_nombre,
+          (SELECT correo FROM usuarios WHERE id = notificaciones.usuario_id) AS usuario_email,
+          (SELECT nombre_completo FROM usuarios WHERE id = notificaciones.usuario_id) AS usuario_nombre,
           tipo,
+          prioridad,
+          estado,
+          referencia_tabla,
+          referencia_id::text AS referencia_id,
+          entidad_origen,
+          entidad_origen_id::text AS entidad_origen_id,
+          persona_id::text AS persona_id,
+          vinculacion_id::text AS vinculacion_id,
+          contrato_id::text AS contrato_id,
           titulo,
           mensaje,
           leida,
-          fecha_lectura,
+          fecha_evento,
+          fecha_vencimiento,
+          url_accion,
+          resuelto_en,
+          archivado_en,
           metadata,
-          activo,
-          created_at,
-          updated_at
+          created_at
       `,
       [notificacionId]
     );
@@ -940,12 +983,9 @@ export const markAllNotificacionesAsLeidas = async (
   const result = await dbQuery(
     `
       UPDATE notificaciones
-      SET
-        leida = TRUE,
-        fecha_lectura = COALESCE(fecha_lectura, CURRENT_DATE),
-        updated_at = NOW()
+      SET leida = TRUE
       WHERE usuario_id::text = $1
-        AND activo = TRUE
+        AND archivado_en IS NULL
         AND leida = FALSE
     `,
     [usuarioId]

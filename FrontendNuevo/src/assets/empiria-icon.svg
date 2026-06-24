@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFE88A"/>
+      <stop offset="45%" stop-color="#E3AD35"/>
+      <stop offset="100%" stop-color="#9C6518"/>
+    </linearGradient>
+  </defs>
+
+  <path
+    d="M256 64
+       C158 64 78 144 78 242
+       C78 303 109 357 156 389
+       L156 337
+       C129 313 112 279 112 242
+       C112 162 176 98 256 98
+       C336 98 400 162 400 242
+       C400 279 383 313 356 337
+       L356 389
+       C403 357 434 303 434 242
+       C434 144 354 64 256 64Z"
+    fill="url(#gold)"
+  />
+
+  <circle cx="256" cy="158" r="28" fill="url(#gold)" />
+
+  <path
+    d="M198 212 L238 252 L238 430 L198 407 Z"
+    fill="url(#gold)"
+  />
+
+  <path
+    d="M314 212 L274 252 L274 430 L314 407 Z"
+    fill="url(#gold)"
+  />
+</svg>

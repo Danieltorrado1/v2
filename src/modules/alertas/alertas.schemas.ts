@@ -51,9 +51,10 @@ export const listAlertasQuerySchema = paginationSchema.extend({
   tipo_alerta: tipoAlertaSchema.optional(),
   prioridad: prioridadAlertaSchema.optional(),
   estado: estadoAlertaSchema.optional(),
-  entidad: nullableTrimmedStringSchema.optional(),
-  registro_id: nullableTrimmedStringSchema.optional(),
-  usuario_id: nullableTrimmedStringSchema.optional(),
+  modulo: nullableTrimmedStringSchema.optional(),
+  persona_id: nullableTrimmedStringSchema.optional(),
+  vinculacion_id: nullableTrimmedStringSchema.optional(),
+  contrato_id: nullableTrimmedStringSchema.optional(),
   fecha_desde: nullableDateSchema.optional(),
   fecha_hasta: nullableDateSchema.optional(),
   activo: z.coerce.boolean().optional()

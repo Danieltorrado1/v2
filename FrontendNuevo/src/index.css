@@ -1,0 +1,60 @@
+:root {
+  --bg-primary: #f6f8fb;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f4f8;
+
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+
+  --border-color: #e5e7eb;
+
+  --accent-color: #e7b545;
+  --accent-hover: #d9a531;
+
+  --topbar-bg: rgba(255, 255, 255, 0.95);
+
+  --shadow-soft: 0 10px 25px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] {
+  --bg-primary: #070b10;
+  --bg-secondary: #11161d;
+  --bg-tertiary: #171d25;
+
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.65);
+
+  --border-color: rgba(255, 255, 255, 0.08);
+
+  --accent-color: #e7b545;
+  --accent-hover: #f1c45c;
+
+  --topbar-bg: rgba(8, 12, 17, 0.95);
+
+  --shadow-soft: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100vh;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: Inter, system-ui, Arial, sans-serif;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}

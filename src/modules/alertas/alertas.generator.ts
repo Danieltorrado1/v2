@@ -99,7 +99,7 @@ export const generateSystemAlertCandidates = async (
         FROM documentos_persona dp
         WHERE dp.activo = TRUE
           AND dp.fecha_vencimiento IS NOT NULL
-          AND dp.fecha_vencimiento <= $2
+          AND dp.fecha_vencimiento <= $1
 
         UNION ALL
 
@@ -110,9 +110,9 @@ export const generateSystemAlertCandidates = async (
         FROM documentos_vinculacion dv
         WHERE dv.activo = TRUE
           AND dv.fecha_vencimiento IS NOT NULL
-          AND dv.fecha_vencimiento <= $2
+          AND dv.fecha_vencimiento <= $1
       `,
-      [todayString, next30DaysString]
+      [next30DaysString]
     );
 
     for (const row of documentsResult.rows) {
