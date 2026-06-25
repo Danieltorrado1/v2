@@ -20,6 +20,7 @@ import { sstIndicadoresRoutes } from '../modules/sstIndicadores/sstIndicadores.r
 import { sstRoutes } from '../modules/sst/sst.routes';
 import { systemRoutes } from '../modules/system/system.routes';
 import { usersRouter } from '../modules/users/users.routes';
+import { configuracionRoutes } from '../modules/configuracion/configuracion.routes';
 import { vinculacionesRoutes } from '../modules/vinculaciones/vinculaciones.routes';
 
 const apiRouter = Router();
@@ -45,6 +46,7 @@ apiRouter.use('/sst/indicadores', sstIndicadoresRoutes);
 apiRouter.use('/sst', sstRoutes);
 apiRouter.use('/system', systemRoutes);
 apiRouter.use('/users', usersRouter);
+apiRouter.use('/configuracion', configuracionRoutes);
 apiRouter.use('/vinculaciones', vinculacionesRoutes);
 
 export { apiRouter };

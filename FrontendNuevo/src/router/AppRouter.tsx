@@ -7,6 +7,10 @@ import NominaPage from "../pages/nomina/NominaPage";
 import CalculadoraSalarioPage from "../pages/herramientas/CalculadoraSalarioPage";
 import CalculadoraCoberturaPage from "../pages/herramientas/CalculadoraCoberturaPage";
 import CoberturaHerramientasPage from "../pages/herramientas/CoberturaHerramientasPage";
+import LiquidacionPage from "../pages/nomina/LiquidacionPage";
+import TurnosPage from "../pages/nomina/TurnosPage";
+import PersonalOpsPage from "../pages/nomina/PersonalOpsPage";
+import CorreccionNominaPage from "../pages/nomina/CorreccionNominaPage";
 import SstPage from "../pages/sst/SstPage";
 import IncidentesPage from "../pages/sst/IncidentesPage";
 import RiesgosPage from "../pages/sst/RiesgosPage";
@@ -14,6 +18,10 @@ import CapacitacionesPage from "../pages/sst/CapacitacionesPage";
 import ExamenesMedicosPage from "../pages/sst/ExamenesMedicosPage";
 import EppPage from "../pages/sst/EppPage";
 import IndicadoresPage from "../pages/sst/IndicadoresPage";
+import PortalPage from "../pages/portal/PortalPage";
+import AdminPage from "../pages/admin/AdminPage";
+import VerDocumentosPage from "../pages/repositorio/VerDocumentosPage";
+import SubirDocumentosPage from "../pages/repositorio/SubirDocumentosPage";
 
 export default function AppRouter() {
   const token = localStorage.getItem("empiria_access_token");
@@ -31,6 +39,10 @@ export default function AppRouter() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="personal" element={<PersonalPage />} />
           <Route path="nomina" element={<NominaPage />} />
+          <Route path="nomina/liquidacion" element={<LiquidacionPage />} />
+          <Route path="nomina/turnos" element={<TurnosPage />} />
+          <Route path="nomina/personal-ops" element={<PersonalOpsPage />} />
+          <Route path="nomina/correccion" element={<CorreccionNominaPage />} />
           <Route path="herramientas/calculadora-salario" element={<CalculadoraSalarioPage />} />
           <Route path="herramientas/calculadora-cobertura" element={<CalculadoraCoberturaPage />} />
           <Route path="herramientas/cobertura" element={<CoberturaHerramientasPage />} />
@@ -41,6 +53,10 @@ export default function AppRouter() {
           <Route path="sst/examenes-medicos" element={<ExamenesMedicosPage />} />
           <Route path="sst/epp" element={<EppPage />} />
           <Route path="sst/indicadores" element={<IndicadoresPage />} />
+          <Route path="portal" element={<PortalPage />} />
+          <Route path="repositorio" element={<VerDocumentosPage />} />
+          <Route path="repositorio/subir" element={<SubirDocumentosPage />} />
+          <Route path="admin" element={<AdminPage />} />
         </Route>
 
         <Route

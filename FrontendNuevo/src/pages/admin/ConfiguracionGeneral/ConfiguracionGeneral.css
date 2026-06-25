@@ -1,0 +1,348 @@
+/* =====================================================
+   CONFIGURACIÓN GENERAL — Prefix: cg-
+   Extends adm-* classes from AdminPage.css
+   ===================================================== */
+
+/* ── Tab header ─────────────────────────────────────── */
+.cg-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+.cg-tab-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cg-tab-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 3px 0 0;
+}
+
+/* ── Filters bar ────────────────────────────────────── */
+.cg-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.cg-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0 12px;
+  height: 36px;
+  transition: border-color 0.15s ease;
+}
+.cg-search:focus-within { border-color: var(--color-primary); }
+.cg-search input { flex: 1; border: none; background: transparent; color: var(--text-primary); font-size: 13px; outline: none; font-family: inherit; }
+.cg-search svg { color: var(--text-muted); flex-shrink: 0; }
+
+/* ── Table wrapper card ─────────────────────────────── */
+.cg-table-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.cg-table-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 28px 20px;
+  font-size: 13px;
+}
+
+/* ── Inline action buttons ──────────────────────────── */
+.cg-actions {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+/* ── Chips (multi-value display) ────────────────────── */
+.cg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cg-chip {
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-info) 12%, var(--bg-secondary));
+  color: var(--color-info);
+  border: 1px solid color-mix(in srgb, var(--color-info) 22%, transparent);
+  white-space: nowrap;
+}
+.cg-chip.more {
+  background: color-mix(in srgb, var(--color-neutral) 12%, var(--bg-secondary));
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+/* ── Bool badge (Sí / No) ───────────────────────────── */
+.cg-bool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.cg-bool.si {
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  color: var(--color-success);
+}
+.cg-bool.no {
+  background: color-mix(in srgb, var(--color-neutral) 16%, transparent);
+  color: var(--text-muted);
+}
+
+/* ── Estado badge extras ────────────────────────────── */
+.adm-badge.warning {
+  background: color-mix(in srgb, var(--color-warning) 14%, transparent);
+  color: color-mix(in srgb, var(--color-warning) 90%, #3a2000);
+}
+.adm-badge.neutral {
+  background: color-mix(in srgb, var(--color-neutral) 14%, transparent);
+  color: var(--text-secondary);
+}
+
+/* ── Split panel (Roles tab) ────────────────────────── */
+.cg-split {
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.cg-role-list {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  overflow: hidden;
+  position: sticky;
+  top: 0;
+}
+.cg-role-list-header {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--bg-panel);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cg-role-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.12s ease;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 600;
+  border-left: 3px solid transparent;
+  gap: 8px;
+}
+.cg-role-item:last-child { border-bottom: none; }
+.cg-role-item:hover { background: color-mix(in srgb, var(--color-primary) 5%, transparent); }
+.cg-role-item.active {
+  background: color-mix(in srgb, var(--color-primary) 9%, transparent);
+  border-left-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.cg-role-item-label { flex: 1; font-size: 13px; line-height: 1.2; }
+.cg-role-item-sub { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+
+.cg-permisos-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cg-permisos-panel-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cg-permisos-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-muted);
+  font-size: 13px;
+  flex-direction: column;
+  gap: 8px;
+}
+.cg-permisos-empty svg { opacity: 0.25; }
+
+/* ── Permissions matrix table ───────────────────────── */
+.cg-matrix-wrap {
+  overflow-x: auto;
+}
+.cg-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.cg-matrix th {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-secondary);
+  padding: 9px 10px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+.cg-matrix th:first-child { text-align: left; min-width: 130px; padding-left: 14px; }
+.cg-matrix td {
+  text-align: center;
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+.cg-matrix td:first-child {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding-left: 14px;
+  font-size: 13px;
+}
+.cg-matrix tr:last-child td { border-bottom: none; }
+.cg-matrix tr:hover td { background: color-mix(in srgb, var(--color-primary) 4%, transparent); }
+.cg-matrix input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+.cg-matrix-select-row {
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  accent-color: var(--color-info);
+}
+
+/* ── Catalog sub-tabs ───────────────────────────────── */
+.cg-cat-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.cg-cat-tab {
+  height: 30px;
+  padding: 0 13px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  white-space: nowrap;
+}
+.cg-cat-tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.cg-cat-tab.active {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-secondary));
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ── Toggle switch ──────────────────────────────────── */
+.cg-toggle-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 4px 0;
+}
+.cg-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  gap: 12px;
+}
+.cg-toggle-label { font-size: 13px; color: var(--text-primary); font-weight: 500; }
+.cg-toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.cg-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+.cg-toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border-color);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+.cg-toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.18s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.cg-toggle input:checked + .cg-toggle-slider { background: var(--color-primary); }
+.cg-toggle input:checked + .cg-toggle-slider::before { transform: translateX(18px); }
+
+/* ── Salary version highlight ────────────────────────── */
+.cg-row-active td { background: color-mix(in srgb, var(--color-success) 5%, transparent) !important; }
+
+/* ── Responsive ────────────────────────────────────── */
+@media (max-width: 960px) {
+  .cg-split { grid-template-columns: 1fr; }
+  .cg-role-list { position: static; }
+}
+@media (max-width: 640px) {
+  .cg-filters { flex-direction: column; align-items: stretch; }
+  .cg-search { max-width: none; }
+}

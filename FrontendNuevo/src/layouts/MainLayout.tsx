@@ -1,8 +1,21 @@
-import { Outlet } from "react-router-dom";
-import { Moon, Sun } from "lucide-react";
+import { useRef, useState } from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import { Bell, Moon, Sun } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { NavDropdown } from "./NavDropdown";
+import {
+  NotificationsPanel,
+  INITIAL_UNREAD_COUNT,
+} from "../components/notifications/NotificationsPanel";
 import "./MainLayout.css";
+
+const nominaLinks = [
+  { to: "/nomina", label: "Nómina" },
+  { to: "/nomina/liquidacion", label: "Liquidación" },
+  { to: "/nomina/turnos", label: "Turnos" },
+  { to: "/nomina/personal-ops", label: "Personal OPS" },
+  { to: "/nomina/correccion", label: "Corrección Nómina" },
+];
 
 const herramientasLinks = [
   { to: "/herramientas/calculadora-salario", label: "Calculadora de salario" },
@@ -20,8 +33,20 @@ const sstLinks = [
   { to: "/sst/indicadores", label: "Indicadores SST" },
 ];
 
+const repositorioLinks = [
+  { to: "/repositorio", label: "Ver documentos" },
+  { to: "/repositorio/subir", label: "Subir documentos" },
+];
+
 export default function MainLayout() {
   const { theme, toggleTheme } = useTheme();
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(INITIAL_UNREAD_COUNT);
+  const bellRef = useRef<HTMLButtonElement>(null);
+
+  function toggleNotif() {
+    setNotifOpen((v) => !v);
+  }
 
   return (
     <div className="layout">
@@ -31,15 +56,42 @@ export default function MainLayout() {
         <nav className="menu">
           <button type="button">Dashboard</button>
           <button type="button">Personal</button>
-          <button type="button">Nómina</button>
+          <NavDropdown label="Nómina" links={nominaLinks} />
           <NavDropdown label="Herramientas" links={herramientasLinks} />
           <NavDropdown label="SST" links={sstLinks} />
-          <button type="button">Portal</button>
-          <button type="button">Repositorio</button>
-          <button type="button">Administración</button>
+          <NavLink
+            to="/portal"
+            className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
+          >
+            Portal
+          </NavLink>
+          <NavDropdown label="Repositorio" links={repositorioLinks} />
+          <NavLink
+            to="/admin"
+            className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
+          >
+            Administración
+          </NavLink>
         </nav>
 
         <div className="right-side">
+          {/* Bell */}
+          <button
+            ref={bellRef}
+            type="button"
+            className={`notif-bell-button ${notifOpen ? "active" : ""}`}
+            onClick={toggleNotif}
+            aria-label="Abrir notificaciones"
+            aria-expanded={notifOpen}
+            aria-haspopup="dialog"
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span className="notif-bell-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+            )}
+          </button>
+
+          {/* Theme toggle */}
           <button
             className="theme-button"
             type="button"
@@ -56,6 +108,15 @@ export default function MainLayout() {
           <div className="user-area">Admin</div>
         </div>
       </header>
+
+      {/* Notification panel — fixed, so rendered outside content flow */}
+      {notifOpen && (
+        <NotificationsPanel
+          onClose={() => setNotifOpen(false)}
+          onAllRead={() => setUnreadCount(0)}
+          bellRef={bellRef}
+        />
+      )}
 
       <main className="content">
         <div className="page-scroll">
