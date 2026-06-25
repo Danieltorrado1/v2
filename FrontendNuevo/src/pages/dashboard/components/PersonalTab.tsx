@@ -1,9 +1,11 @@
 import {
   CalendarDays,
   Cake,
+  Mars,
   UserCheck,
   UserRound,
   Users,
+  Venus,
 } from "lucide-react";
 
 const ageRanges = [
@@ -89,18 +91,18 @@ export default function PersonalTab() {
           <small>TC: 220 · MT: 28</small>
         </div>
 
-        <div className="dashboard-kpi neutral">
+        <div className="dashboard-kpi female">
           <div className="kpi-icon">
-            <UserRound />
+            <Venus />
           </div>
           <span>Mujeres</span>
           <strong>135 (54%)</strong>
           <small>Colaboradoras</small>
         </div>
 
-        <div className="dashboard-kpi neutral">
+        <div className="dashboard-kpi male">
           <div className="kpi-icon">
-            <UserRound />
+            <Mars />
           </div>
           <span>Hombres</span>
           <strong>113 (46%)</strong>
@@ -109,7 +111,7 @@ export default function PersonalTab() {
 
         <div className="dashboard-kpi neutral">
           <div className="kpi-icon">
-            <UserCheck />
+            <UserRound />
           </div>
           <span>Edad promedio</span>
           <strong>34 años</strong>
@@ -149,7 +151,6 @@ export default function PersonalTab() {
         <div className="dashboard-panel gender-panel">
           <div className="panel-title">
             <h3>Distribución por género</h3>
-            <span className="panel-chip">248 total</span>
           </div>
 
           <div className="donut-wrapper">
@@ -160,12 +161,12 @@ export default function PersonalTab() {
               </div>
             </div>
 
-            <div className="legend vertical">
+            <div className="legend gender-legend">
               <span>
-                <i className="dot brand" /> Mujeres 135 (54%)
+                <i className="dot female-dot" /> Mujeres 135 (54%)
               </span>
               <span>
-                <i className="dot neutral" /> Hombres 113 (46%)
+                <i className="dot male-dot" /> Hombres 113 (46%)
               </span>
             </div>
           </div>

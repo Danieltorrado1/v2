@@ -2,6 +2,18 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import LoginPage from "../pages/auth/LoginPage";
 import MainLayout from "../layouts/MainLayout";
 import DashboardPage from "../pages/dashboard/DashboardPage";
+import PersonalPage from "../pages/personal/PersonalPage";
+import NominaPage from "../pages/nomina/NominaPage";
+import CalculadoraSalarioPage from "../pages/herramientas/CalculadoraSalarioPage";
+import CalculadoraCoberturaPage from "../pages/herramientas/CalculadoraCoberturaPage";
+import CoberturaHerramientasPage from "../pages/herramientas/CoberturaHerramientasPage";
+import SstPage from "../pages/sst/SstPage";
+import IncidentesPage from "../pages/sst/IncidentesPage";
+import RiesgosPage from "../pages/sst/RiesgosPage";
+import CapacitacionesPage from "../pages/sst/CapacitacionesPage";
+import ExamenesMedicosPage from "../pages/sst/ExamenesMedicosPage";
+import EppPage from "../pages/sst/EppPage";
+import IndicadoresPage from "../pages/sst/IndicadoresPage";
 
 export default function AppRouter() {
   const token = localStorage.getItem("empiria_access_token");
@@ -17,9 +29,24 @@ export default function AppRouter() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="personal" element={<PersonalPage />} />
+          <Route path="nomina" element={<NominaPage />} />
+          <Route path="herramientas/calculadora-salario" element={<CalculadoraSalarioPage />} />
+          <Route path="herramientas/calculadora-cobertura" element={<CalculadoraCoberturaPage />} />
+          <Route path="herramientas/cobertura" element={<CoberturaHerramientasPage />} />
+          <Route path="sst" element={<SstPage />} />
+          <Route path="sst/incidentes" element={<IncidentesPage />} />
+          <Route path="sst/riesgos" element={<RiesgosPage />} />
+          <Route path="sst/capacitaciones" element={<CapacitacionesPage />} />
+          <Route path="sst/examenes-medicos" element={<ExamenesMedicosPage />} />
+          <Route path="sst/epp" element={<EppPage />} />
+          <Route path="sst/indicadores" element={<IndicadoresPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route
+          path="*"
+          element={<Navigate to={token ? "/dashboard" : "/login"} replace />}
+        />
       </Routes>
     </BrowserRouter>
   );

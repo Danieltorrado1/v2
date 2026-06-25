@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Eye, Lock, Mail } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { login } from "../../services/authService";
-import "./LoginPage.css";
 import empiriaIcon from "../../assets/empiria-icon.svg";
+import NeuralBackground from "../../effects/NeuralBackground";
+import "./LoginPage.css";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -15,11 +16,21 @@ export default function LoginPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail || !password) {
+      setError("Debes ingresar correo y contraseña.");
+      return;
+    }
+
     setError("");
     setLoading(true);
 
     try {
-      const result = await login({ email, password });
+      const result = await login({
+        email: normalizedEmail,
+        password,
+      });
 
       localStorage.setItem("empiria_access_token", result.accessToken);
       localStorage.setItem("empiria_user", JSON.stringify(result.user));
@@ -34,83 +45,101 @@ export default function LoginPage() {
 
   return (
     <main className="login-page">
-      <section className="login-brand">
-        <div className="brand-orbit" />
+      <section className="login-brand" aria-label="Marca Empiria">
+        <NeuralBackground />
 
         <div className="brand-center">
-          <img 
-            src={empiriaIcon} 
-            alt="Empiria" 
-            className="brand-logo" 
-          />
+          <img src={empiriaIcon} alt="Empiria" className="brand-logo" />
 
           <h1>EMPIRIA</h1>
 
-          <div className="brand-line" />
-
-          <p>
-            TECNOLOGÍA PARA LA GESTIÓN
-            <br />
-            DEL TALENTO HUMANO
-          </p>
+          <p>Tecnología para la gestión del talento humano</p>
         </div>
 
         <div className="brand-footer">
-          © 2026 Empiria. Todos los derechos reservados.
+          <span>© 2026 Empiria.</span>
+          <span>Todos los derechos reservados.</span>
         </div>
       </section>
 
       <section className="login-form-section">
         <form className="login-card" onSubmit={handleSubmit}>
           <h2>Bienvenido de vuelta</h2>
+
           <p className="login-subtitle">Inicia sesión para continuar</p>
 
-          <label htmlFor="email">Correo electrónico</label>
-          <div className="input-box">
-            <Mail size={20} />
-            <input
-              id="email"
-              type="email"
-              placeholder="ejemplo@empresa.com"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              required
-            />
+          <div className="field">
+            <label htmlFor="email">Correo electrónico</label>
+
+            <div className="input-box">
+              <Mail size={20} aria-hidden="true" />
+
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="ejemplo@empresa.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+                disabled={loading}
+                required
+              />
+            </div>
           </div>
 
-          <label htmlFor="password">Contraseña</label>
-          <div className="input-box">
-            <Lock size={20} />
-            <input
-              id="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-            />
+          <div className="field">
+            <label htmlFor="password">Contraseña</label>
 
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => setShowPassword((value) => !value)}
-              aria-label="Mostrar u ocultar contraseña"
-            >
-              <Eye size={20} />
-            </button>
+            <div className="input-box">
+              <Lock size={20} aria-hidden="true" />
+
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                disabled={loading}
+                required
+              />
+
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                disabled={loading}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
+
+            <div className="forgot-row">
+              <button type="button" disabled={loading}>
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
           </div>
 
-          <div className="forgot-row">
-            <button type="button">¿Olvidaste tu contraseña?</button>
-          </div>
+          {error && (
+            <p className="login-error" role="alert">
+              {error}
+            </p>
+          )}
 
           <button className="submit-button" type="submit" disabled={loading}>
-            {loading ? "Iniciando..." : "Iniciar sesión →"}
+            {loading ? (
+              "Iniciando sesión..."
+            ) : (
+              <>
+                Iniciar sesión
+                <ArrowRight size={20} />
+              </>
+            )}
           </button>
-
-          {error && <p className="login-error">{error}</p>}
 
           <p className="contact-text">
             ¿No tienes una cuenta? <span>Contáctanos</span>
