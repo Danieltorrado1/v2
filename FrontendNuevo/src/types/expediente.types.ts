@@ -198,7 +198,6 @@ export interface DocumentoDownloadInfoApi {
 // ── Consolidado ───────────────────────────────────────────────────────────────
 
 export interface ExpedienteLaboralConsolidadoApi {
-  alertas: ExpedienteAlertaItemApi[];
   auditoria: ExpedienteAuditoriaItemApi[];
   checklist_por_vinculacion: ChecklistPorVinculacionApi[];
   documentos_persona: ExpedienteDocumentoPersonaApi[];

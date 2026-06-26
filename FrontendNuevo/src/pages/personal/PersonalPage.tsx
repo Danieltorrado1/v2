@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AlertTriangle,
   Bell,
   BriefcaseBusiness,
   CalendarDays,
@@ -30,11 +31,13 @@ import {
   normalizePersonaListItem,
   buildNombreCompleto,
 } from "../../services/personasApi";
+import { getExpedienteConsolidado } from "../../services/expedienteApi";
 import type {
   PaginatedPersonasApi,
   VinculacionExpedienteApi,
   PersonaListItem,
 } from "../../types/personas.types";
+import type { ExpedienteLaboralConsolidadoApi } from "../../types/expediente.types";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -105,6 +108,13 @@ export default function PersonalPage() {
     reset: resetExpediente,
   } = useApiState<VinculacionExpedienteApi>();
 
+  const {
+    data: consolidado,
+    loading: consolidadoLoading,
+    run: runConsolidado,
+    reset: resetConsolidado,
+  } = useApiState<ExpedienteLaboralConsolidadoApi>();
+
   const [selectedPersonaId, setSelectedPersonaId] = useState<number | null>(null);
   const [inputSearch, setInputSearch] = useState("");
   const [searchText, setSearchText] = useState("");
@@ -149,20 +159,23 @@ export default function PersonalPage() {
     (personaId: number) => {
       setSelectedPersonaId(personaId);
       resetExpediente();
+      resetConsolidado();
       void runExpediente(async () => {
         const vincs = await getVinculacionesByPersonaId(personaId);
         const active = vincs.find((v) => v.estado_vinculacion === "ACTIVA") ?? vincs[0];
         if (!active) throw new Error("Este colaborador no tiene vinculaciones registradas.");
         return getVinculacionExpediente(active.id);
       });
+      void runConsolidado(() => getExpedienteConsolidado(personaId));
     },
-    [runExpediente, resetExpediente]
+    [runExpediente, resetExpediente, runConsolidado, resetConsolidado]
   );
 
   const handleClose = useCallback(() => {
     setSelectedPersonaId(null);
     resetExpediente();
-  }, [resetExpediente]);
+    resetConsolidado();
+  }, [resetExpediente, resetConsolidado]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -466,6 +479,8 @@ export default function PersonalPage() {
           <main className="employee-profile">
             <QuickEmployeeView
               expediente={expediente}
+              consolidado={consolidado}
+              consolidadoLoading={consolidadoLoading}
               loading={expedienteLoading}
               error={expedienteError}
               onClose={handleClose}
@@ -477,19 +492,37 @@ export default function PersonalPage() {
   );
 }
 
+const RIESGO_COLOR: Record<string, string> = {
+  BAJO: "var(--color-success, #22c55e)",
+  MEDIO: "var(--color-warning, #f59e0b)",
+  ALTO: "var(--color-danger, #ef4444)",
+  CRITICO: "var(--color-danger, #ef4444)",
+};
+
 function QuickEmployeeView({
   expediente,
+  consolidado,
+  consolidadoLoading,
   loading,
   error,
   onClose,
 }: {
   expediente: VinculacionExpedienteApi | null;
+  consolidado: ExpedienteLaboralConsolidadoApi | null;
+  consolidadoLoading: boolean;
   loading: boolean;
   error: string | null;
   onClose: () => void;
 }) {
   const nombreCompleto = expediente ? buildNombreCompleto(expediente.persona) : "";
   const estado = expediente?.vinculacion.estado_vinculacion ?? "";
+
+  const checklistPct = consolidado?.indicadores.checklist_cumplimiento_promedio ?? null;
+  const riesgoNivel = consolidado?.indicadores.riesgo_documental?.nivel ?? null;
+  const alertasActivas = consolidado?.indicadores.alertas_activas ?? null;
+  const checklistFaltantes = consolidado?.indicadores.checklist_faltantes ?? null;
+  const docsVencidos = consolidado?.indicadores.documentos_vencidos ?? null;
+  const recentAudit = consolidado?.auditoria.slice(0, 2) ?? [];
 
   return (
     <div className="quick-employee-view">
@@ -667,6 +700,15 @@ function QuickEmployeeView({
                     author="Sistema"
                   />
                 )}
+                {recentAudit.map((evt) => (
+                  <TimelineItem
+                    key={evt.id}
+                    date={formatFechaCorta(evt.fecha_evento)}
+                    title={evt.accion}
+                    detail={evt.descripcion}
+                    author={evt.usuario.nombre ?? evt.usuario.email ?? "Sistema"}
+                  />
+                ))}
               </div>
 
               <button type="button" className="link-button">
@@ -684,35 +726,67 @@ function QuickEmployeeView({
                 <div
                   className="progress-ring"
                   style={{
-                    background: "conic-gradient(var(--border-color) 0 100%)",
+                    background:
+                      checklistPct !== null
+                        ? `conic-gradient(var(--color-brand) ${checklistPct}%, var(--border-color) ${checklistPct}% 100%)`
+                        : "conic-gradient(var(--border-color) 0 100%)",
                   }}
                 >
                   <div>
-                    <strong>—</strong>
+                    <strong>
+                      {checklistPct !== null
+                        ? `${Math.round(checklistPct)}%`
+                        : consolidadoLoading
+                          ? "..."
+                          : "—"}
+                    </strong>
                   </div>
                 </div>
                 <p>Documentación</p>
-                <span>Sin datos de checklist</span>
+                <span
+                  style={
+                    riesgoNivel
+                      ? { color: RIESGO_COLOR[riesgoNivel], fontWeight: 600 }
+                      : undefined
+                  }
+                >
+                  {riesgoNivel
+                    ? `Riesgo ${riesgoNivel}`
+                    : consolidadoLoading
+                      ? "Cargando..."
+                      : "Sin datos de checklist"}
+                </span>
               </div>
 
               <div className="status-summary">
                 <button type="button">
-                  <span className="status-icon warning">!</span>
-                  <strong>—</strong>
+                  <span className="status-icon warning">
+                    <AlertTriangle size={12} />
+                  </span>
+                  <strong>{alertasActivas ?? (consolidadoLoading ? "..." : "—")}</strong>
                   Alertas activas
                   <ChevronRight size={15} />
                 </button>
 
                 <button type="button">
                   <span className="status-icon info">i</span>
-                  <strong>—</strong>
-                  Novedades
+                  <strong>{checklistFaltantes ?? (consolidadoLoading ? "..." : "—")}</strong>
+                  Docs faltantes
                   <ChevronRight size={15} />
                 </button>
 
-                <button type="button">
+                <button
+                  type="button"
+                  style={docsVencidos !== null && docsVencidos > 0 ? { color: "var(--color-danger)" } : undefined}
+                >
                   <span className="status-icon success">✓</span>
-                  Sin novedades críticas
+                  {docsVencidos !== null
+                    ? docsVencidos === 0
+                      ? "Sin documentos vencidos"
+                      : `${docsVencidos} doc${docsVencidos > 1 ? "s" : ""} vencido${docsVencidos > 1 ? "s" : ""}`
+                    : consolidadoLoading
+                      ? "..."
+                      : "Sin datos"}
                   <ChevronRight size={15} />
                 </button>
               </div>
