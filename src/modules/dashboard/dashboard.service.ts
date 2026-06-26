@@ -56,6 +56,31 @@ interface PersonasDashboardRow extends QueryResultRow {
   vinculaciones_activas: number;
 }
 
+interface GeneroRow extends QueryResultRow {
+  nombre_sexo: string;
+  total: number;
+}
+
+interface EdadRow extends QueryResultRow {
+  promedio: string | null;
+  rango_18_25: number;
+  rango_26_35: number;
+  rango_36_45: number;
+  rango_46_55: number;
+  rango_56_mas: number;
+}
+
+interface CumpleanosRow extends QueryResultRow {
+  cargo: string | null;
+  contrato: string | null;
+  dias_restantes: number;
+  empresa: string | null;
+  fecha_cumpleanos: string;
+  fecha_nacimiento: string;
+  nombre_completo: string;
+  persona_id: string;
+}
+
 interface VencidosPorTipoRow extends QueryResultRow {
   documentos_vencidos: number;
   tipo_documento_id: string;
@@ -152,6 +177,32 @@ export interface DashboardPersonas {
   retiros_periodo: number;
   total_personas: number;
   vinculaciones_activas: number;
+  genero: {
+    femenino: number;
+    masculino: number;
+    otro: number;
+    sin_dato: number;
+    total: number;
+    porcentaje_femenino: number;
+    porcentaje_masculino: number;
+  };
+  edad: {
+    promedio: number | null;
+    rangos: Array<{
+      rango: string;
+      cantidad: number;
+    }>;
+  };
+  cumpleanos: Array<{
+    persona_id: string;
+    nombre_completo: string;
+    cargo: string | null;
+    empresa: string | null;
+    contrato: string | null;
+    fecha_nacimiento: string;
+    fecha_cumpleanos: string;
+    dias_restantes: number;
+  }>;
 }
 
 export interface DashboardDocumentos {
@@ -299,6 +350,7 @@ const buildEntityFilters = (
 export const getDashboardResumen = async (query: DashboardQuery): Promise<DashboardResumen> => {
   const today = toIsoDate(new Date());
   const next30Days = toIsoDate(addDays(new Date(), 30));
+  const range = resolveDashboardDateRange(query);
   const filters = buildEntityFilters(query, {
     empresa: 'v.empresa_id::text',
     contrato: 'v.contrato_id::text'
@@ -313,6 +365,10 @@ export const getDashboardResumen = async (query: DashboardQuery): Promise<Dashbo
 
   const contratosWhereSql =
     contratoConditions.length > 0 ? `WHERE ${contratoConditions.join(' AND ')}` : '';
+
+  // B3: alertas params offset = fp + cp + 3/4 (after today=$fp+cp+1, next30Days=$fp+cp+2)
+  const alertasFechaDesdeIdx = filters.params.length + contratoParams.length + 3;
+  const alertasFechaHastaIdx = filters.params.length + contratoParams.length + 4;
 
   const result = await dbQuery<ResumenRow>(
     `
@@ -330,10 +386,13 @@ export const getDashboardResumen = async (query: DashboardQuery): Promise<Dashbo
         ${filters.sql}
       ),
       documentos_union AS (
+        -- B2: documentos_persona filtrados por el mismo alcance de empresa/contrato
+        -- usando la CTE personas_filtradas ya calculada (evita duplicados por multi-vinculación)
         SELECT dp.fecha_vencimiento
         FROM documentos_persona dp
         WHERE dp.activo = TRUE
           AND dp.fecha_vencimiento IS NOT NULL
+          AND dp.persona_id IN (SELECT id FROM personas_filtradas)
 
         UNION ALL
 
@@ -371,13 +430,16 @@ export const getDashboardResumen = async (query: DashboardQuery): Promise<Dashbo
             AND fecha_vencimiento <= $${filters.params.length + contratoParams.length + 2}
         ) AS documentos_por_vencer,
         (
+          -- B3: usar el mismo rango temporal que getDashboardAlertas para consistencia
           SELECT COUNT(*)::int
           FROM alertas_sistema a
           WHERE a.activo = TRUE
             AND a.estado IN ('ACTIVA', 'LEIDA')
+            AND a.fecha_alerta >= $${alertasFechaDesdeIdx}
+            AND a.fecha_alerta <= $${alertasFechaHastaIdx}
         ) AS alertas_activas
     `,
-    [...filters.params, ...contratoParams, today, next30Days]
+    [...filters.params, ...contratoParams, today, next30Days, range.fecha_desde, range.fecha_hasta]
   );
 
   const row = result.rows[0];
@@ -396,6 +458,9 @@ export const getDashboardResumen = async (query: DashboardQuery): Promise<Dashbo
   };
 };
 
+const FEMENINO_LABELS = new Set(['FEMENINO', 'F', 'MUJER']);
+const MASCULINO_LABELS = new Set(['MASCULINO', 'M', 'HOMBRE']);
+
 export const getDashboardPersonas = async (query: DashboardQuery): Promise<DashboardPersonas> => {
   const range = resolveDashboardDateRange(query);
   const filters = buildEntityFilters(query, {
@@ -403,104 +468,236 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
     contrato: 'v.contrato_id::text'
   });
 
-  const summaryResult = await dbQuery<PersonasDashboardRow>(
-    `
-      WITH personas_filtradas AS (
-        SELECT DISTINCT p.id
-        FROM personas p
-        LEFT JOIN vinculaciones v ON v.persona_id = p.id
-        WHERE 1 = 1
-        ${filters.sql}
+  const [summaryResult, contratoRows, cargoRows, municipioRows, generoRows, edadResult, cumpleanosRows] =
+    await Promise.all([
+      dbQuery<PersonasDashboardRow>(
+        `
+          WITH personas_filtradas AS (
+            SELECT DISTINCT p.id
+            FROM personas p
+            LEFT JOIN vinculaciones v ON v.persona_id = p.id
+            WHERE 1 = 1
+            ${filters.sql}
+          ),
+          vinculaciones_filtradas AS (
+            SELECT *
+            FROM vinculaciones v
+            WHERE 1 = 1
+            ${filters.sql}
+          ),
+          personas_activas_cte AS (
+            SELECT DISTINCT persona_id
+            FROM vinculaciones_filtradas
+            WHERE estado_vinculacion = 'ACTIVA'
+          )
+          SELECT
+            (SELECT COUNT(*)::int FROM personas_filtradas) AS total_personas,
+            (SELECT COUNT(*)::int FROM personas_activas_cte) AS personas_activas,
+            (
+              SELECT COUNT(*)::int
+              FROM personas_filtradas
+              WHERE id NOT IN (SELECT persona_id FROM personas_activas_cte)
+            ) AS personas_inactivas,
+            (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'ACTIVA') AS vinculaciones_activas,
+            (
+              SELECT COUNT(*)::int
+              FROM vinculaciones_filtradas
+              WHERE fecha_inicio >= $${filters.params.length + 1}
+                AND fecha_inicio <= $${filters.params.length + 2}
+            ) AS ingresos_periodo,
+            (
+              SELECT COUNT(*)::int
+              FROM vinculaciones_filtradas
+              WHERE fecha_fin IS NOT NULL
+                AND fecha_fin >= $${filters.params.length + 1}
+                AND fecha_fin <= $${filters.params.length + 2}
+            ) AS retiros_periodo
+        `,
+        [...filters.params, range.fecha_desde, range.fecha_hasta]
       ),
-      vinculaciones_filtradas AS (
-        SELECT *
-        FROM vinculaciones v
-        WHERE 1 = 1
-        ${filters.sql}
+
+      dbQuery<PersonasPorContratoRow>(
+        `
+          SELECT
+            v.contrato_id::text AS contrato_id,
+            c.numero_contrato AS contrato_nombre,
+            COUNT(DISTINCT v.persona_id)::int AS total
+          FROM vinculaciones v
+          INNER JOIN contratos c ON c.id = v.contrato_id
+          WHERE 1 = 1
+          ${filters.sql}
+          GROUP BY v.contrato_id, c.numero_contrato
+          ORDER BY total DESC, contrato_nombre ASC NULLS LAST
+        `,
+        filters.params
       ),
-      personas_activas_cte AS (
-        -- personas no tiene columna activo: una persona se considera activa si
-        -- tiene al menos una vinculacion ACTIVA dentro del alcance filtrado.
-        SELECT DISTINCT persona_id
-        FROM vinculaciones_filtradas
-        WHERE estado_vinculacion = 'ACTIVA'
+
+      dbQuery<PersonasPorCargoRow>(
+        `
+          SELECT
+            v.contrato_cargo_id::text AS cargo_id,
+            cc.nombre_cargo AS cargo_nombre,
+            COUNT(DISTINCT v.persona_id)::int AS total
+          FROM vinculaciones v
+          INNER JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
+          WHERE 1 = 1
+          ${filters.sql}
+          GROUP BY v.contrato_cargo_id, cc.nombre_cargo
+          ORDER BY total DESC, cargo_nombre ASC NULLS LAST
+        `,
+        filters.params
+      ),
+
+      dbQuery<PersonasPorMunicipioRow>(
+        `
+          SELECT
+            p.municipio_residencia_id::text AS municipio_id,
+            m.nombre_municipio AS municipio_nombre,
+            COUNT(DISTINCT p.id)::int AS total
+          FROM personas p
+          LEFT JOIN vinculaciones v ON v.persona_id = p.id
+          LEFT JOIN municipios m ON m.id = p.municipio_residencia_id
+          WHERE 1 = 1
+          ${filters.sql}
+          GROUP BY p.municipio_residencia_id, m.nombre_municipio
+          ORDER BY total DESC, municipio_nombre ASC NULLS LAST
+        `,
+        filters.params
+      ),
+
+      // Distribución por género — activas con vinculacion ACTIVA
+      dbQuery<GeneroRow>(
+        `
+          WITH personas_activas AS (
+            SELECT DISTINCT p.id, p.sexo_id
+            FROM personas p
+            INNER JOIN vinculaciones v ON v.persona_id = p.id
+            WHERE v.estado_vinculacion = 'ACTIVA'
+            ${filters.sql}
+          )
+          SELECT
+            COALESCE(UPPER(s.nombre_sexo), 'SIN_DATO') AS nombre_sexo,
+            COUNT(*)::int AS total
+          FROM personas_activas pa
+          LEFT JOIN sexo s ON s.id = pa.sexo_id
+          GROUP BY COALESCE(UPPER(s.nombre_sexo), 'SIN_DATO')
+        `,
+        filters.params
+      ),
+
+      // Edad promedio y rangos — solo personas con fecha_nacimiento válida
+      dbQuery<EdadRow>(
+        `
+          WITH personas_activas AS (
+            SELECT DISTINCT p.id, p.fecha_nacimiento
+            FROM personas p
+            INNER JOIN vinculaciones v ON v.persona_id = p.id
+            WHERE v.estado_vinculacion = 'ACTIVA'
+              AND p.fecha_nacimiento IS NOT NULL
+            ${filters.sql}
+          )
+          SELECT
+            ROUND(AVG(
+              EXTRACT(YEAR FROM AGE(CURRENT_DATE, fecha_nacimiento))::numeric
+            ), 1) AS promedio,
+            COUNT(*) FILTER (
+              WHERE EXTRACT(YEAR FROM AGE(CURRENT_DATE, fecha_nacimiento)) BETWEEN 18 AND 25
+            )::int AS rango_18_25,
+            COUNT(*) FILTER (
+              WHERE EXTRACT(YEAR FROM AGE(CURRENT_DATE, fecha_nacimiento)) BETWEEN 26 AND 35
+            )::int AS rango_26_35,
+            COUNT(*) FILTER (
+              WHERE EXTRACT(YEAR FROM AGE(CURRENT_DATE, fecha_nacimiento)) BETWEEN 36 AND 45
+            )::int AS rango_36_45,
+            COUNT(*) FILTER (
+              WHERE EXTRACT(YEAR FROM AGE(CURRENT_DATE, fecha_nacimiento)) BETWEEN 46 AND 55
+            )::int AS rango_46_55,
+            COUNT(*) FILTER (
+              WHERE EXTRACT(YEAR FROM AGE(CURRENT_DATE, fecha_nacimiento)) >= 56
+            )::int AS rango_56_mas
+          FROM personas_activas
+        `,
+        filters.params
+      ),
+
+      // Cumpleaños próximos — próximos 30 días, máximo 10, maneja cambio de año
+      dbQuery<CumpleanosRow>(
+        `
+          WITH personas_activas AS (
+            SELECT DISTINCT ON (p.id)
+              p.id::text AS persona_id,
+              TRIM(CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido)) AS nombre_completo,
+              p.fecha_nacimiento,
+              cc.nombre_cargo AS cargo,
+              e.nombre_empresa AS empresa,
+              c.numero_contrato AS contrato
+            FROM personas p
+            INNER JOIN vinculaciones v ON v.persona_id = p.id
+            LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
+            LEFT JOIN contratos c ON c.id = v.contrato_id
+            LEFT JOIN empresas e ON e.id = v.empresa_id
+            WHERE v.estado_vinculacion = 'ACTIVA'
+              AND p.fecha_nacimiento IS NOT NULL
+            ${filters.sql}
+            ORDER BY p.id, v.fecha_inicio DESC
+          ),
+          next_birthday AS (
+            SELECT
+              pa.*,
+              CASE
+                WHEN (pa.fecha_nacimiento + make_interval(years =>
+                  EXTRACT(YEAR FROM CURRENT_DATE)::int - EXTRACT(YEAR FROM pa.fecha_nacimiento)::int
+                ))::date >= CURRENT_DATE
+                THEN (pa.fecha_nacimiento + make_interval(years =>
+                  EXTRACT(YEAR FROM CURRENT_DATE)::int - EXTRACT(YEAR FROM pa.fecha_nacimiento)::int
+                ))::date
+                ELSE (pa.fecha_nacimiento + make_interval(years =>
+                  EXTRACT(YEAR FROM CURRENT_DATE)::int - EXTRACT(YEAR FROM pa.fecha_nacimiento)::int + 1
+                ))::date
+              END AS fecha_cumpleanos
+            FROM personas_activas pa
+          )
+          SELECT
+            nb.persona_id,
+            nb.nombre_completo,
+            nb.cargo,
+            nb.empresa,
+            nb.contrato,
+            nb.fecha_nacimiento::text AS fecha_nacimiento,
+            nb.fecha_cumpleanos::text AS fecha_cumpleanos,
+            (nb.fecha_cumpleanos - CURRENT_DATE)::int AS dias_restantes
+          FROM next_birthday nb
+          WHERE (nb.fecha_cumpleanos - CURRENT_DATE)::int <= 30
+          ORDER BY (nb.fecha_cumpleanos - CURRENT_DATE)::int ASC
+          LIMIT 10
+        `,
+        filters.params
       )
-      SELECT
-        (SELECT COUNT(*)::int FROM personas_filtradas) AS total_personas,
-        (SELECT COUNT(*)::int FROM personas_activas_cte) AS personas_activas,
-        (
-          SELECT COUNT(*)::int
-          FROM personas_filtradas
-          WHERE id NOT IN (SELECT persona_id FROM personas_activas_cte)
-        ) AS personas_inactivas,
-        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'ACTIVA') AS vinculaciones_activas,
-        (
-          SELECT COUNT(*)::int
-          FROM vinculaciones_filtradas
-          WHERE fecha_inicio >= $${filters.params.length + 1}
-            AND fecha_inicio <= $${filters.params.length + 2}
-        ) AS ingresos_periodo,
-        (
-          SELECT COUNT(*)::int
-          FROM vinculaciones_filtradas
-          WHERE fecha_fin IS NOT NULL
-            AND fecha_fin >= $${filters.params.length + 1}
-            AND fecha_fin <= $${filters.params.length + 2}
-        ) AS retiros_periodo
-    `,
-    [...filters.params, range.fecha_desde, range.fecha_hasta]
-  );
-
-  const contratoRows = await dbQuery<PersonasPorContratoRow>(
-    `
-      SELECT
-        v.contrato_id::text AS contrato_id,
-        c.numero_contrato AS contrato_nombre,
-        COUNT(DISTINCT v.persona_id)::int AS total
-      FROM vinculaciones v
-      INNER JOIN contratos c ON c.id = v.contrato_id
-      WHERE 1 = 1
-      ${filters.sql}
-      GROUP BY v.contrato_id, c.numero_contrato
-      ORDER BY total DESC, contrato_nombre ASC NULLS LAST
-    `,
-    filters.params
-  );
-
-  const cargoRows = await dbQuery<PersonasPorCargoRow>(
-    `
-      SELECT
-        v.contrato_cargo_id::text AS cargo_id,
-        cc.nombre_cargo AS cargo_nombre,
-        COUNT(DISTINCT v.persona_id)::int AS total
-      FROM vinculaciones v
-      INNER JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
-      WHERE 1 = 1
-      ${filters.sql}
-      GROUP BY v.contrato_cargo_id, cc.nombre_cargo
-      ORDER BY total DESC, cargo_nombre ASC NULLS LAST
-    `,
-    filters.params
-  );
-
-  const municipioRows = await dbQuery<PersonasPorMunicipioRow>(
-    `
-      SELECT
-        p.municipio_residencia_id::text AS municipio_id,
-        m.nombre_municipio AS municipio_nombre,
-        COUNT(DISTINCT p.id)::int AS total
-      FROM personas p
-      LEFT JOIN vinculaciones v ON v.persona_id = p.id
-      LEFT JOIN municipios m ON m.id = p.municipio_residencia_id
-      WHERE 1 = 1
-      ${filters.sql}
-      GROUP BY p.municipio_residencia_id, m.nombre_municipio
-      ORDER BY total DESC, municipio_nombre ASC NULLS LAST
-    `,
-    filters.params
-  );
+    ]);
 
   const row = summaryResult.rows[0];
+
+  // Clasificar géneros
+  let femenino = 0;
+  let masculino = 0;
+  let otro = 0;
+  let sinDato = 0;
+
+  for (const gRow of generoRows.rows) {
+    const label = (gRow.nombre_sexo ?? '').toUpperCase();
+    if (label === 'SIN_DATO' || label === '') {
+      sinDato += gRow.total;
+    } else if (FEMENINO_LABELS.has(label)) {
+      femenino += gRow.total;
+    } else if (MASCULINO_LABELS.has(label)) {
+      masculino += gRow.total;
+    } else {
+      otro += gRow.total;
+    }
+  }
+
+  const totalGenero = femenino + masculino + otro + sinDato;
+  const edadRow = edadResult.rows[0];
 
   return {
     total_personas: row?.total_personas ?? 0,
@@ -511,7 +708,36 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
     retiros_periodo: row?.retiros_periodo ?? 0,
     personas_por_contrato: contratoRows.rows,
     personas_por_cargo: cargoRows.rows,
-    personas_por_municipio: municipioRows.rows
+    personas_por_municipio: municipioRows.rows,
+    genero: {
+      femenino,
+      masculino,
+      otro,
+      sin_dato: sinDato,
+      total: totalGenero,
+      porcentaje_femenino: totalGenero > 0 ? roundTwo((femenino / totalGenero) * 100) : 0,
+      porcentaje_masculino: totalGenero > 0 ? roundTwo((masculino / totalGenero) * 100) : 0
+    },
+    edad: {
+      promedio: edadRow?.promedio != null ? roundTwo(Number(edadRow.promedio)) : null,
+      rangos: [
+        { rango: '18-25', cantidad: edadRow?.rango_18_25 ?? 0 },
+        { rango: '26-35', cantidad: edadRow?.rango_26_35 ?? 0 },
+        { rango: '36-45', cantidad: edadRow?.rango_36_45 ?? 0 },
+        { rango: '46-55', cantidad: edadRow?.rango_46_55 ?? 0 },
+        { rango: '56+',   cantidad: edadRow?.rango_56_mas ?? 0 }
+      ]
+    },
+    cumpleanos: cumpleanosRows.rows.map((r) => ({
+      persona_id: r.persona_id,
+      nombre_completo: r.nombre_completo,
+      cargo: r.cargo,
+      empresa: r.empresa,
+      contrato: r.contrato,
+      fecha_nacimiento: r.fecha_nacimiento,
+      fecha_cumpleanos: r.fecha_cumpleanos,
+      dias_restantes: r.dias_restantes
+    }))
   };
 };
 
@@ -734,9 +960,12 @@ export const getDashboardNomina = async (query: DashboardQuery): Promise<Dashboa
         COALESCE((SELECT SUM(deducciones) FROM liquidaciones_filtradas), 0)::numeric AS total_deducciones,
         COALESCE((SELECT SUM(total_liquidacion) FROM liquidaciones_filtradas WHERE estado = 'FINAL'), 0)::numeric AS neto_pagado,
         (
+          -- B4: nomina_novedades no tiene columna estado; se usa revisado = FALSE
+          -- como proxy de "pendiente de revisión" (sin columna estado no hay otra opción)
           SELECT COUNT(*)::int
           FROM novedades_filtradas
           WHERE activo = TRUE
+            AND revisado = FALSE
         ) AS novedades_pendientes
     `,
     [...filters.params, range.fecha_desde, range.fecha_hasta]
@@ -838,9 +1067,10 @@ export const getDashboardSst = async (query: DashboardQuery): Promise<DashboardS
         ${filters.sql}
       ),
       planes_filtrados AS (
+        -- B6: sst_planes_accion usa evento_id (no origen_id/origen); incluye todos los planes activos
         SELECT spa.*
         FROM sst_planes_accion spa
-        INNER JOIN sst_eventos se ON se.id = spa.origen_id AND spa.origen = 'EVENTO'
+        INNER JOIN sst_eventos se ON se.id = spa.evento_id
         INNER JOIN vinculaciones v ON v.id = se.vinculacion_id
         WHERE spa.activo = TRUE
           AND se.fecha_evento >= $${filters.params.length + 1}

@@ -4,6 +4,7 @@ import type { Rol, PermisoModulo, NombrePermiso } from '../cg.types';
 import { MODULOS_SISTEMA, PERMISOS_LIST } from '../cg.types';
 import { MOCK_ROLES } from '../cg.mock';
 import { FormModal } from '../components/FormModal';
+import { MockBanner } from '../components/MockBanner';
 
 const PERMISO_LABEL: Record<NombrePermiso, string> = {
   ver: 'Ver', crear: 'Crear', editar: 'Editar', eliminar: 'Eliminar',
@@ -73,6 +74,7 @@ export function RolesTab() {
 
   return (
     <div>
+      <MockBanner entity="Roles y Permisos" />
       <div className="adm-kpi-row">
         <div className="adm-kpi primary"><div className="adm-kpi-icon"><ShieldCheck size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{roles.length}</span><span className="adm-kpi-lbl">Total roles</span></div></div>
         <div className="adm-kpi success"><div className="adm-kpi-icon"><ShieldCheck size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{roles.filter(r => r.estado === 'activo').length}</span><span className="adm-kpi-lbl">Activos</span></div></div>

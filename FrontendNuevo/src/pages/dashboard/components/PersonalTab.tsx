@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Mars, UserRound, Users, Venus } from "lucide-react";
+import { UserRound, Users, User, UserMinus } from "lucide-react";
 import { useApiState } from "../../../hooks/useApiState";
 import {
   getDashboardPersonas,
@@ -18,6 +18,7 @@ import type {
   DashboardAlertasApi,
   DashboardNominaApi,
   DashboardSSTApi,
+  DashboardFilters,
 } from "../../../types/dashboard.types";
 import AgendaBirthdayCard from "./AgendaBirthdayCard";
 import ModalityFlipCard from "./ModalityFlipCard";
@@ -25,27 +26,17 @@ import AlertasCard from "./AlertasCard";
 import NominaResumenCard from "./NominaResumenCard";
 import SSTResumenCard from "./SSTResumenCard";
 
-// ── Mock sections without backend endpoints yet ───────────────────────────────
-// Gender breakdown, age ranges and average age have no endpoint in /dashboard/*.
-// They will be connected when the backend exposes that data.
+interface PersonalTabProps {
+  filters: DashboardFilters;
+}
 
-const AGE_RANGES_MOCK = [
-  { label: "18-25", value: 42 },
-  { label: "26-35", value: 98 },
-  { label: "36-45", value: 68 },
-  { label: "46-55", value: 30 },
-  { label: "56+", value: 12 },
-];
-
-const GENDER_MOCK = {
-  total: 248,
-  female: 135,
-  male: 113,
-  pctFemale: 54,
-  pctMale: 46,
+const buildGenderGradient = (femenino: number, total: number): string => {
+  if (total === 0) return "conic-gradient(var(--border-color) 0deg 360deg)";
+  const pct = (femenino / total) * 100;
+  return `conic-gradient(var(--color-primary) 0 ${pct.toFixed(1)}%, var(--color-neutral) ${pct.toFixed(1)}% 100%)`;
 };
 
-export default function PersonalTab() {
+export default function PersonalTab({ filters }: PersonalTabProps) {
   const {
     data: personasData,
     loading: personasLoading,
@@ -60,8 +51,10 @@ export default function PersonalTab() {
     run: runCobertura,
   } = useApiState<DashboardCoberturaApi>();
 
-  // Resumen: only data + run needed; loading/error are supplementary in AlertasCard
-  const { data: resumenData, run: runResumen } = useApiState<DashboardResumenApi>();
+  const {
+    data: resumenData,
+    run: runResumen,
+  } = useApiState<DashboardResumenApi>();
 
   const {
     data: alertasData,
@@ -84,19 +77,33 @@ export default function PersonalTab() {
     run: runSST,
   } = useApiState<DashboardSSTApi>();
 
+  const { empresa_id, contrato_id, fecha_desde, fecha_hasta } = filters;
+
   useEffect(() => {
-    void runPersonas(() => getDashboardPersonas());
-    void runCobertura(() => getDashboardCobertura());
-    void runResumen(() => getDashboardResumen());
-    void runAlertas(() => getDashboardAlertas());
-    void runNomina(() => getDashboardNomina());
-    void runSST(() => getDashboardSST());
-  }, [runPersonas, runCobertura, runResumen, runAlertas, runNomina, runSST]);
+    const f = { empresa_id, contrato_id, fecha_desde, fecha_hasta };
+    void runPersonas(() => getDashboardPersonas(f));
+    void runCobertura(() => getDashboardCobertura(f));
+    void runResumen(() => getDashboardResumen(f));
+    void runAlertas(() => getDashboardAlertas(f));
+    void runNomina(() => getDashboardNomina(f));
+    void runSST(() => getDashboardSST(f));
+  }, [runPersonas, runCobertura, runResumen, runAlertas, runNomina, runSST,
+      empresa_id, contrato_id, fecha_desde, fecha_hasta]);
 
   const cargos = personasData ? normalizeCargos(personasData) : [];
   const maxCargo = cargos.length > 0 ? Math.max(...cargos.map((c) => c.value)) : 1;
-
   const backSegments = coberturaData ? normalizeModalidadCobertura(coberturaData) : [];
+
+  const genero = personasData?.genero;
+  const edad = personasData?.edad;
+  const cumpleanos = personasData?.cumpleanos ?? [];
+
+  const edadRangos = edad?.rangos ?? [];
+  const maxRango = edadRangos.length > 0 ? Math.max(...edadRangos.map((r) => r.cantidad), 1) : 1;
+
+  const genderGradient = genero
+    ? buildGenderGradient(genero.femenino, genero.total)
+    : "conic-gradient(var(--border-color) 0deg 360deg)";
 
   return (
     <div className="personal-dashboard">
@@ -113,143 +120,186 @@ export default function PersonalTab() {
           <small>
             {personasData
               ? `${personasData.vinculaciones_activas} vínculos activos`
-              : personasLoading
-                ? "Cargando..."
-                : (personasError ?? "TC: 220 · MT: 28")}
+              : personasLoading ? "Cargando..." : (personasError ?? "Sin datos")}
           </small>
         </div>
 
-        {/* Gender KPIs remain mock until a gender-breakdown endpoint is available */}
         <div className="dashboard-kpi female">
-          <div className="kpi-icon"><Venus /></div>
+          <div className="kpi-icon"><Users /></div>
           <span>Mujeres</span>
-          <strong>{GENDER_MOCK.female} ({GENDER_MOCK.pctFemale}%)</strong>
-          <small>Colaboradoras</small>
+          <strong>
+            {personasLoading ? "—" : (genero != null ? genero.femenino : "—")}
+          </strong>
+          <small>
+            {personasLoading
+              ? "Cargando..."
+              : genero != null
+                ? `${genero.porcentaje_femenino}% del total`
+                : (personasError ?? "Sin datos")}
+          </small>
         </div>
 
         <div className="dashboard-kpi male">
-          <div className="kpi-icon"><Mars /></div>
+          <div className="kpi-icon"><User /></div>
           <span>Hombres</span>
-          <strong>{GENDER_MOCK.male} ({GENDER_MOCK.pctMale}%)</strong>
-          <small>Colaboradores</small>
+          <strong>
+            {personasLoading ? "—" : (genero != null ? genero.masculino : "—")}
+          </strong>
+          <small>
+            {personasLoading
+              ? "Cargando..."
+              : genero != null
+                ? `${genero.porcentaje_masculino}% del total`
+                : (personasError ?? "Sin datos")}
+          </small>
         </div>
 
         <div className="dashboard-kpi neutral">
           <div className="kpi-icon"><UserRound /></div>
           <span>Edad promedio</span>
-          <strong>34 años</strong>
-          <small>Promedio general</small>
+          <strong>
+            {personasLoading
+              ? "—"
+              : edad?.promedio != null
+                ? `${edad.promedio}`
+                : "—"}
+          </strong>
+          <small>
+            {personasLoading
+              ? "Cargando..."
+              : edad?.promedio != null
+                ? "años (activos)"
+                : personasError ?? "Sin fecha de nacimiento"}
+          </small>
         </div>
 
         <div className="dashboard-kpi danger">
-          <div className="kpi-icon"><Users /></div>
+          <div className="kpi-icon"><UserMinus /></div>
           <span>Retirados</span>
           <strong>
             {personasLoading ? "—" : (personasData?.retiros_periodo ?? "—")}
           </strong>
-          <small>Mes actual</small>
+          <small>
+            {personasLoading ? "Cargando..." : personasData ? "Últimos 30 días" : (personasError ?? "Sin datos")}
+          </small>
         </div>
 
       </div>
 
-      {/* ── Row 2: Analysis — Age · Gender · Agenda/Birthday ── */}
+      {/* ── Row 2: Edad · Género · Agenda ── */}
       <div className="dashboard-row analysis-row">
 
-        {/* Age distribution — mock until endpoint available */}
+        {/* Distribución por Edad */}
         <div className="dashboard-panel age-panel">
           <div className="panel-title">
-            <h3>Distribución por rangos de edad</h3>
-            <span className="panel-chip">Junio 2026</span>
+            <h3>Distribución por Edad</h3>
+            {edad?.promedio != null && (
+              <span className="panel-chip">Prom. {edad.promedio} años</span>
+            )}
           </div>
-          <div className="bar-chart">
-            {AGE_RANGES_MOCK.map((item) => (
-              <div className="bar-item" key={item.label}>
-                <strong>{item.value}</strong>
-                <div className="bar-track">
-                  <div className="bar" style={{ height: `${item.value}%` }} />
+
+          {personasLoading ? (
+            <div className="bar-chart" style={{ alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "var(--color-text-muted, #888)", fontSize: "0.8rem" }}>Cargando...</span>
+            </div>
+          ) : personasError ? (
+            <div className="bar-chart" style={{ alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "var(--color-danger)", fontSize: "0.75rem", textAlign: "center" }}>
+                {personasError}
+              </span>
+            </div>
+          ) : edadRangos.every((r) => r.cantidad === 0) ? (
+            <div className="bar-chart" style={{ alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 6 }}>
+              <span style={{ color: "var(--text-secondary)", fontSize: "0.78rem", fontWeight: 700 }}>
+                Sin información disponible
+              </span>
+              <span style={{ color: "var(--text-secondary)", fontSize: "0.7rem", opacity: 0.7 }}>
+                No hay fechas de nacimiento registradas
+              </span>
+            </div>
+          ) : (
+            <div className="bar-chart">
+              {edadRangos.map((item) => (
+                <div className="bar-item" key={item.rango}>
+                  <strong>{item.cantidad}</strong>
+                  <div className="bar-track">
+                    <div className="bar" style={{ height: `${(item.cantidad / maxRango) * 100}%` }} />
+                  </div>
+                  <span>{item.rango}</span>
                 </div>
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Gender donut — mock until endpoint available */}
+        {/* Distribución por Género */}
         <div className="dashboard-panel gender-panel">
           <div className="panel-title">
-            <h3>Distribución por género</h3>
+            <h3>Distribución por Género</h3>
+            {genero && genero.total > 0 && (
+              <span className="panel-chip">{genero.total} personas</span>
+            )}
           </div>
-          <div className="donut-wrapper">
-            <div className="donut-chart">
-              <div>
-                <strong>{GENDER_MOCK.total}</strong>
-                <span>Total</span>
+
+          {personasLoading ? (
+            <div className="donut-wrapper">
+              <div className="donut-chart" style={{ background: "conic-gradient(var(--border-color) 0deg 360deg)" }}>
+                <div><strong>—</strong><span>cargando</span></div>
               </div>
             </div>
-            <div className="legend gender-legend">
-              <span>
-                <i className="dot female-dot" /> Mujeres {GENDER_MOCK.female} ({GENDER_MOCK.pctFemale}%)
-              </span>
-              <span>
-                <i className="dot male-dot" /> Hombres {GENDER_MOCK.male} ({GENDER_MOCK.pctMale}%)
-              </span>
+          ) : (
+            <div className="donut-wrapper">
+              <div className="donut-chart" style={{ background: genderGradient }}>
+                <div>
+                  <strong>{genero != null ? genero.total : "—"}</strong>
+                  <span>personas</span>
+                </div>
+              </div>
+              <div className="gender-legend">
+                <span>
+                  <i className="dot female-dot" />
+                  Mujeres {genero != null ? `(${genero.femenino})` : ""}
+                </span>
+                <span>
+                  <i className="dot male-dot" />
+                  Hombres {genero != null ? `(${genero.masculino})` : ""}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Agenda / Birthday — mock until endpoints available */}
-        <AgendaBirthdayCard />
+        {/* Agenda / Cumpleaños */}
+        <AgendaBirthdayCard cumpleanos={cumpleanos} loading={personasLoading} />
 
       </div>
 
       {/* ── Row 3: Cargos · Modalidad flip ── */}
       <div className="dashboard-row bottom-row">
 
-        {/* Role distribution — real from /dashboard/personas */}
         <div className="dashboard-panel">
           <div className="panel-title">
             <h3>Distribución por Cargos</h3>
             <span className="panel-chip">
               {personasData
                 ? `${personasData.total_personas} colaboradores`
-                : personasLoading
-                  ? "Cargando..."
-                  : "—"}
+                : personasLoading ? "Cargando..." : "—"}
             </span>
           </div>
 
           {personasLoading ? (
-            <div
-              className="hbar-list card-scroll"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
-              <span style={{ color: "var(--color-text-muted, #888)", fontSize: "0.8rem" }}>
-                Cargando datos...
-              </span>
+            <div className="hbar-list card-scroll" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "var(--color-text-muted, #888)", fontSize: "0.8rem" }}>Cargando datos...</span>
             </div>
           ) : personasError ? (
-            <div
-              className="hbar-list card-scroll"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
-              <span
-                style={{
-                  color: "var(--color-danger, #ef4444)",
-                  fontSize: "0.75rem",
-                  textAlign: "center",
-                }}
-              >
+            <div className="hbar-list card-scroll" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "var(--color-danger, #ef4444)", fontSize: "0.75rem", textAlign: "center" }}>
                 {personasError}
               </span>
             </div>
           ) : cargos.length === 0 ? (
-            <div
-              className="hbar-list card-scroll"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
-              <span style={{ color: "var(--color-text-muted, #888)", fontSize: "0.8rem" }}>
-                Sin cargos disponibles
-              </span>
+            <div className="hbar-list card-scroll" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ color: "var(--color-text-muted, #888)", fontSize: "0.8rem" }}>Sin cargos disponibles</span>
             </div>
           ) : (
             <div className="hbar-list card-scroll">
@@ -257,10 +307,7 @@ export default function PersonalTab() {
                 <div className="hbar-item" key={item.id}>
                   <span className="hbar-label">{item.label}</span>
                   <div className="hbar-track">
-                    <div
-                      className="hbar-fill"
-                      style={{ width: `${(item.value / maxCargo) * 100}%` }}
-                    />
+                    <div className="hbar-fill" style={{ width: `${(item.value / maxCargo) * 100}%` }} />
                   </div>
                   <span className="hbar-count">{item.value}</span>
                 </div>
@@ -269,7 +316,6 @@ export default function PersonalTab() {
           )}
         </div>
 
-        {/* Modality flip card — back face real from /dashboard/cobertura */}
         <ModalityFlipCard
           backSegments={backSegments}
           backLoading={coberturaLoading}
@@ -278,7 +324,7 @@ export default function PersonalTab() {
 
       </div>
 
-      {/* ── Row 4: Alertas · Nómina · SST — real from backend ── */}
+      {/* ── Row 4: Alertas · Nómina · SST ── */}
       <div className="dashboard-row summary-row">
 
         <AlertasCard

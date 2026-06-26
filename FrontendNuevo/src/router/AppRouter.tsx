@@ -23,6 +23,7 @@ import PortalPage from "../pages/portal/PortalPage";
 import AdminPage from "../pages/admin/AdminPage";
 import VerDocumentosPage from "../pages/repositorio/VerDocumentosPage";
 import SubirDocumentosPage from "../pages/repositorio/SubirDocumentosPage";
+import VinculacionesPage from "../pages/vinculaciones/VinculacionesPage";
 
 export default function AppRouter() {
   return (
@@ -51,6 +52,7 @@ export default function AppRouter() {
             <Route path="sst/epp" element={<EppPage />} />
             <Route path="sst/indicadores" element={<IndicadoresPage />} />
             <Route path="portal" element={<PortalPage />} />
+            <Route path="vinculaciones" element={<VinculacionesPage />} />
             <Route path="repositorio" element={<VerDocumentosPage />} />
             <Route path="repositorio/subir" element={<SubirDocumentosPage />} />
             <Route path="admin" element={<AdminPage />} />

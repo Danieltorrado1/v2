@@ -3,6 +3,7 @@ import { AlertTriangle, ClipboardList, Edit2, Plus, Power, Search } from 'lucide
 import type { EstadoGeneral, RequisitoDocumental } from '../cg.types';
 import { MOCK_REQUISITOS } from '../cg.mock';
 import { FormModal } from '../components/FormModal';
+import { MockBanner } from '../components/MockBanner';
 
 type Form = Omit<RequisitoDocumental, 'id'>;
 const blank = (): Form => ({ nombre_documento: '', aplica_empresa: true, aplica_contrato: false, aplica_cargo: false, aplica_tipo_vinculacion: false, obligatorio: true, vigencia_dias: undefined, renovacion_automatica: false, alerta_dias_antes: undefined, estado: 'activo' });
@@ -59,6 +60,7 @@ export function RequisitosTab() {
 
   return (
     <div>
+      <MockBanner entity="Requisitos Documentales" />
       <div className="adm-kpi-row">
         <div className="adm-kpi primary"><div className="adm-kpi-icon"><ClipboardList size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{items.length}</span><span className="adm-kpi-lbl">Requisitos</span></div></div>
         <div className="adm-kpi danger"><div className="adm-kpi-icon"><ClipboardList size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{obligatorios}</span><span className="adm-kpi-lbl">Obligatorios</span></div></div>

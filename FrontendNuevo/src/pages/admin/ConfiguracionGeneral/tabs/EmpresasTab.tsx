@@ -3,6 +3,7 @@ import { Building2, Edit2, Plus, Power, Search } from 'lucide-react';
 import type { Empresa, EstadoGeneral } from '../cg.types';
 import { MOCK_EMPRESAS } from '../cg.mock';
 import { FormModal } from '../components/FormModal';
+import { MockBanner } from '../components/MockBanner';
 
 type Form = Omit<Empresa, 'id' | 'creado_en'>;
 const blank = (): Form => ({ nombre: '', nit: '', representante_legal: '', direccion: '', telefono: '', correo: '', estado: 'activo', observaciones: '' });
@@ -43,6 +44,7 @@ export function EmpresasTab() {
 
   return (
     <div>
+      <MockBanner entity="Empresas" />
       <div className="adm-kpi-row">
         <div className="adm-kpi primary"><div className="adm-kpi-icon"><Building2 size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{items.length}</span><span className="adm-kpi-lbl">Total empresas</span></div></div>
         <div className="adm-kpi success"><div className="adm-kpi-icon"><Building2 size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{activas}</span><span className="adm-kpi-lbl">Activas</span></div></div>

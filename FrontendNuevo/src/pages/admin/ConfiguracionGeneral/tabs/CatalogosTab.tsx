@@ -4,6 +4,7 @@ import type { CatalogoItem, EstadoGeneral, TipoCatalogo } from '../cg.types';
 import { CATALOGOS_CONFIG } from '../cg.types';
 import { MOCK_CATALOGOS } from '../cg.mock';
 import { FormModal } from '../components/FormModal';
+import { MockBanner } from '../components/MockBanner';
 
 type CatalogStore = Record<TipoCatalogo, CatalogoItem[]>;
 
@@ -58,6 +59,7 @@ export function CatalogosTab() {
 
   return (
     <div>
+      <MockBanner entity="Catálogos" />
       <div className="adm-kpi-row">
         <div className="adm-kpi primary"><div className="adm-kpi-icon"><BookOpen size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{CATALOGOS_CONFIG.length}</span><span className="adm-kpi-lbl">Catálogos</span></div></div>
         <div className="adm-kpi success"><div className="adm-kpi-icon"><BookOpen size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{total}</span><span className="adm-kpi-lbl">Registros totales</span></div></div>

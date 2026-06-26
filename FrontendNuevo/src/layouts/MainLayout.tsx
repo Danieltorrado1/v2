@@ -56,8 +56,24 @@ export default function MainLayout() {
         <div className="logo-area">EMPIRIA</div>
 
         <nav className="menu">
-          <button type="button">Dashboard</button>
-          <button type="button">Personal</button>
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
+          >
+            Dashboard
+          </NavLink>
+          <NavLink
+            to="/personal"
+            className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
+          >
+            Personal
+          </NavLink>
+          <NavLink
+            to="/vinculaciones"
+            className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
+          >
+            Vinculaciones
+          </NavLink>
           <NavDropdown label="Nómina" links={nominaLinks} />
           <NavDropdown label="Herramientas" links={herramientasLinks} />
           <NavDropdown label="SST" links={sstLinks} />

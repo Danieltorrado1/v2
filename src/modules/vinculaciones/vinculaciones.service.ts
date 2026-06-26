@@ -84,6 +84,7 @@ interface PersonaExpedienteRow extends QueryResultRow {
   correo: string | null;
   direccion: string | null;
   estado_civil_id: number | string | null;
+  nombre_estado_civil: string | null;
   estatura: number | string | null;
   fecha_expedicion_documento: Date | string | null;
   fecha_nacimiento: Date | string | null;
@@ -99,10 +100,25 @@ interface PersonaExpedienteRow extends QueryResultRow {
   segundo_apellido: string | null;
   segundo_nombre: string | null;
   sexo_id: number | string | null;
+  nombre_sexo: string | null;
   telefono: string | null;
   tipo_documento_id: number | string | null;
   tipo_sangre_id: number | string | null;
+  tipo_sangre_codigo: string | null;
   zona_id: number | string | null;
+  nombre_zona: string | null;
+}
+
+interface AfiliacionExpedienteRow extends QueryResultRow {
+  id: number | string | null;
+  eps_id: number | string | null;
+  eps_nombre: string | null;
+  pension_id: number | string | null;
+  pension_nombre: string | null;
+  arl_id: number | string | null;
+  arl_nombre: string | null;
+  caja_compensacion_id: number | string | null;
+  caja_nombre: string | null;
 }
 
 interface SimpleEntityRow extends QueryResultRow {
@@ -231,6 +247,7 @@ export interface VinculacionExpediente {
     correo: string | null;
     direccion: string | null;
     estado_civil_id: number | null;
+    estado_civil: string | null;
     estatura: number | null;
     fecha_expedicion_documento: string | null;
     fecha_nacimiento: string | null;
@@ -246,11 +263,24 @@ export interface VinculacionExpediente {
     segundo_apellido: string | null;
     segundo_nombre: string | null;
     sexo_id: number | null;
+    sexo: string | null;
     telefono: string | null;
     tipo_documento_id: number | null;
     tipo_sangre_id: number | null;
+    tipo_sangre: string | null;
     zona_id: number | null;
+    zona: string | null;
   };
+  afiliaciones: {
+    eps_id: number | null;
+    eps: string | null;
+    pension_id: number | null;
+    pension: string | null;
+    arl_id: number | null;
+    arl: string | null;
+    caja_compensacion_id: number | null;
+    caja_compensacion: string | null;
+  } | null;
   vinculacion: Vinculacion;
 }
 
@@ -334,14 +364,18 @@ const mapPersonaExpediente = (row: PersonaExpedienteRow): VinculacionExpediente[
     municipio_residencia_id:
       row.municipio_residencia_id === null ? null : toNumber(row.municipio_residencia_id),
     sexo_id: row.sexo_id === null ? null : toNumber(row.sexo_id),
+    sexo: row.nombre_sexo ?? null,
     estado_civil_id: row.estado_civil_id === null ? null : toNumber(row.estado_civil_id),
+    estado_civil: row.nombre_estado_civil ?? null,
     tipo_sangre_id: row.tipo_sangre_id === null ? null : toNumber(row.tipo_sangre_id),
+    tipo_sangre: row.tipo_sangre_codigo ?? null,
     estatura: row.estatura === null ? null : toNumber(row.estatura),
     telefono: row.telefono,
     correo: row.correo,
     direccion: row.direccion,
     barrio: row.barrio,
     zona_id: row.zona_id === null ? null : toNumber(row.zona_id),
+    zona: row.nombre_zona ?? null,
     pais_nacimiento: row.pais_nacimiento,
     nacimiento_extranjero: row.nacimiento_extranjero,
     ciudad_nacimiento_extranjero: row.ciudad_nacimiento_extranjero
@@ -765,37 +799,46 @@ export const getVinculacionExpediente = async (
     tipoVinculacionResult,
     documentosPersonaResult,
     documentosVinculacionResult,
-    checklist
+    checklist,
+    afiliacionResult
   ] = await Promise.all([
     dbQuery<PersonaExpedienteRow>(
       `
         SELECT
-          id,
-          tipo_documento_id,
-          numero_documento,
-          primer_nombre,
-          segundo_nombre,
-          primer_apellido,
-          segundo_apellido,
-          fecha_nacimiento,
-          fecha_expedicion_documento,
-          municipio_nacimiento_id,
-          municipio_expedicion_id,
-          municipio_residencia_id,
-          sexo_id,
-          estado_civil_id,
-          tipo_sangre_id,
-          estatura,
-          telefono,
-          correo,
-          direccion,
-          barrio,
-          zona_id,
-          pais_nacimiento,
-          nacimiento_extranjero,
-          ciudad_nacimiento_extranjero
-        FROM personas
-        WHERE id = $1::bigint
+          p.id,
+          p.tipo_documento_id,
+          p.numero_documento,
+          p.primer_nombre,
+          p.segundo_nombre,
+          p.primer_apellido,
+          p.segundo_apellido,
+          p.fecha_nacimiento,
+          p.fecha_expedicion_documento,
+          p.municipio_nacimiento_id,
+          p.municipio_expedicion_id,
+          p.municipio_residencia_id,
+          p.sexo_id,
+          s.nombre_sexo,
+          p.estado_civil_id,
+          ec.nombre_estado_civil,
+          p.tipo_sangre_id,
+          ts.codigo AS tipo_sangre_codigo,
+          p.estatura,
+          p.telefono,
+          p.correo,
+          p.direccion,
+          p.barrio,
+          p.zona_id,
+          z.nombre_zona,
+          p.pais_nacimiento,
+          p.nacimiento_extranjero,
+          p.ciudad_nacimiento_extranjero
+        FROM personas p
+        LEFT JOIN sexo s ON s.id = p.sexo_id
+        LEFT JOIN estados_civiles ec ON ec.id = p.estado_civil_id
+        LEFT JOIN tipos_sangre ts ON ts.id = p.tipo_sangre_id
+        LEFT JOIN zonas z ON z.id = p.zona_id
+        WHERE p.id = $1::bigint
         LIMIT 1
       `,
       [vinculacion.persona_id]
@@ -906,7 +949,31 @@ export const getVinculacionExpediente = async (
       `,
       [vinculacion.id]
     ),
-    getVinculacionChecklist(String(vinculacion.id), tenant)
+    getVinculacionChecklist(String(vinculacion.id), tenant),
+    dbQuery<AfiliacionExpedienteRow>(
+      `
+        SELECT
+          va.id,
+          va.eps_id,
+          e.nombre AS eps_nombre,
+          va.pension_id,
+          fp.nombre AS pension_nombre,
+          va.arl_id,
+          a.nombre AS arl_nombre,
+          va.caja_compensacion_id,
+          cc.nombre AS caja_nombre
+        FROM vinculacion_afiliaciones va
+        LEFT JOIN eps e ON e.id = va.eps_id
+        LEFT JOIN fondos_pension fp ON fp.id = va.pension_id
+        LEFT JOIN arl a ON a.id = va.arl_id
+        LEFT JOIN cajas_compensacion cc ON cc.id = va.caja_compensacion_id
+        WHERE va.vinculacion_id = $1::bigint
+          AND va.activo = TRUE
+        ORDER BY va.fecha_afiliacion DESC NULLS LAST, va.id DESC
+        LIMIT 1
+      `,
+      [vinculacion.id]
+    )
   ]);
 
   const personaRow = personaResult.rows[0];
@@ -914,6 +981,7 @@ export const getVinculacionExpediente = async (
   const contratoRow = contratoResult.rows[0];
   const cargoRow = cargoResult.rows[0];
   const tipoVinculacionRow = tipoVinculacionResult.rows[0];
+  const afiliacionRow = afiliacionResult.rows[0] ?? null;
 
   if (!personaRow) {
     throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
@@ -961,7 +1029,22 @@ export const getVinculacionExpediente = async (
     },
     documentos_persona: documentosPersonaResult.rows.map(mapDocumentoPersonaExpediente),
     documentos_vinculacion: documentosVinculacionResult.rows.map(mapDocumentoVinculacionExpediente),
-    checklist
+    checklist,
+    afiliaciones: afiliacionRow
+      ? {
+          eps_id: afiliacionRow.eps_id === null ? null : toNumber(afiliacionRow.eps_id),
+          eps: afiliacionRow.eps_nombre,
+          pension_id: afiliacionRow.pension_id === null ? null : toNumber(afiliacionRow.pension_id),
+          pension: afiliacionRow.pension_nombre,
+          arl_id: afiliacionRow.arl_id === null ? null : toNumber(afiliacionRow.arl_id),
+          arl: afiliacionRow.arl_nombre,
+          caja_compensacion_id:
+            afiliacionRow.caja_compensacion_id === null
+              ? null
+              : toNumber(afiliacionRow.caja_compensacion_id),
+          caja_compensacion: afiliacionRow.caja_nombre
+        }
+      : null
   };
 };
 

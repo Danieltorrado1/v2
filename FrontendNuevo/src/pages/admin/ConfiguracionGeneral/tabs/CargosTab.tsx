@@ -4,6 +4,7 @@ import type { Cargo, EstadoGeneral } from '../cg.types';
 import { TIPOS_CARGO } from '../cg.types';
 import { MOCK_CARGOS, MOCK_CONTRATOS, MOCK_EMPRESAS } from '../cg.mock';
 import { FormModal } from '../components/FormModal';
+import { MockBanner } from '../components/MockBanner';
 
 type Form = Omit<Cargo, 'id'>;
 const blank = (): Form => ({ empresa_id: MOCK_EMPRESAS[0]?.id ?? 1, contrato_id: MOCK_CONTRATOS[0]?.id ?? 1, nombre: '', tipo_cargo: TIPOS_CARGO[0], cantidad_requerida: 1, aplica_cobertura: true, aplica_nomina: true, aplica_portal: false, salario_base: 0, estado: 'activo' });
@@ -68,6 +69,7 @@ export function CargosTab() {
 
   return (
     <div>
+      <MockBanner entity="Cargos" />
       <div className="adm-kpi-row">
         <div className="adm-kpi primary"><div className="adm-kpi-icon"><Briefcase size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{items.length}</span><span className="adm-kpi-lbl">Cargos configurados</span></div></div>
         <div className="adm-kpi success"><div className="adm-kpi-icon"><Briefcase size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{activos}</span><span className="adm-kpi-lbl">Activos</span></div></div>

@@ -1,4 +1,4 @@
-import { AlertTriangle, FileWarning, FileX, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Bell, FileWarning, FileX, ShieldAlert } from "lucide-react";
 import type { DashboardAlertasApi, DashboardResumenApi } from "../../../types/dashboard.types";
 import { normalizeAlertasTipo } from "../../../services/dashboardApi";
 
@@ -41,6 +41,12 @@ export default function AlertasCard({
               <ShieldAlert size={10} />
               Altas {alertasData.alertas_altas}
             </span>
+            {alertasData.notificaciones_no_leidas > 0 && (
+              <span className="sev-badge sev-info">
+                <Bell size={10} />
+                Notif. {alertasData.notificaciones_no_leidas}
+              </span>
+            )}
             {resumenData && resumenData.documentos_vencidos > 0 && (
               <span className="sev-badge sev-critica">
                 <FileX size={10} />

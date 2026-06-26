@@ -75,14 +75,18 @@ export interface VinculacionExpedientePersona {
   municipio_expedicion_id: number | null;
   municipio_residencia_id: number | null;
   sexo_id: number | null;
+  sexo: string | null;
   estado_civil_id: number | null;
+  estado_civil: string | null;
   tipo_sangre_id: number | null;
+  tipo_sangre: string | null;
   estatura: number | null;
   telefono: string | null;
   correo: string | null;
   direccion: string | null;
   barrio: string | null;
   zona_id: number | null;
+  zona: string | null;
   pais_nacimiento: string | null;
   nacimiento_extranjero: boolean | null;
   ciudad_nacimiento_extranjero: string | null;
@@ -103,6 +107,17 @@ export interface DocumentoExpedienteVinculacionApi {
   fecha_vencimiento: string | null;
 }
 
+export interface VinculacionAfiliacionesApi {
+  eps_id: number | null;
+  eps: string | null;
+  pension_id: number | null;
+  pension: string | null;
+  arl_id: number | null;
+  arl: string | null;
+  caja_compensacion_id: number | null;
+  caja_compensacion: string | null;
+}
+
 export interface VinculacionExpedienteApi {
   vinculacion: VinculacionApi;
   persona: VinculacionExpedientePersona;
@@ -119,7 +134,8 @@ export interface VinculacionExpedienteApi {
   tipo_vinculacion: { id: number; codigo: string | null; nombre_vinculacion: string | null };
   documentos_persona: DocumentoExpedientePersonaApi[];
   documentos_vinculacion: DocumentoExpedienteVinculacionApi[];
-  checklist: unknown; // FASE 6: expediente documental
+  checklist: unknown;
+  afiliaciones: VinculacionAfiliacionesApi | null;
 }
 
 // ── Frontend normalized types ─────────────────────────────────────────────────

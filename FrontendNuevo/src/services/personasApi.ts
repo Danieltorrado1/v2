@@ -9,6 +9,22 @@ import type {
   PersonaFilters,
 } from '../types/personas.types';
 
+export interface CreatePersonaPayload {
+  tipo_documento_id: number;
+  numero_documento: string;
+  primer_nombre: string;
+  segundo_nombre?: string | null;
+  primer_apellido: string;
+  segundo_apellido?: string | null;
+  fecha_nacimiento?: string | null;
+  telefono?: string | null;
+  correo?: string | null;
+  direccion?: string | null;
+  barrio?: string | null;
+}
+
+export type UpdatePersonaPayload = Partial<CreatePersonaPayload>;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function buildNombreCompleto(
@@ -57,5 +73,15 @@ export async function getVinculacionExpediente(vinculacionId: number): Promise<V
   const res = await apiClient.get<ApiResponse<VinculacionExpedienteApi>>(
     `/vinculaciones/${vinculacionId}/expediente`
   );
+  return res.data;
+}
+
+export async function createPersona(payload: CreatePersonaPayload): Promise<PersonaApi> {
+  const res = await apiClient.post<ApiResponse<PersonaApi>>('/personas', payload);
+  return res.data;
+}
+
+export async function updatePersona(id: number, payload: UpdatePersonaPayload): Promise<PersonaApi> {
+  const res = await apiClient.patch<ApiResponse<PersonaApi>>(`/personas/${id}`, payload);
   return res.data;
 }

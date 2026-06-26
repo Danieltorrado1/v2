@@ -4,6 +4,7 @@ import type { EstadoGeneral, MunicipioAsignado } from '../cg.types';
 import { MOCK_MUNICIPIOS_ASIGNADOS, MOCK_USUARIOS, MOCK_EMPRESAS, MOCK_CONTRATOS } from '../cg.mock';
 import { MOCK_CATALOGOS } from '../cg.mock';
 import { FormModal } from '../components/FormModal';
+import { MockBanner } from '../components/MockBanner';
 
 type Form = Omit<MunicipioAsignado, 'id' | 'fecha_asignacion'>;
 const blank = (): Form => ({ usuario_id: MOCK_USUARIOS[0]?.id ?? 1, municipio: '', empresa_id: MOCK_EMPRESAS[0]?.id ?? 1, contrato_id: undefined, estado: 'activo' });
@@ -59,6 +60,7 @@ export function MunicipiosTab() {
 
   return (
     <div>
+      <MockBanner entity="Municipios Asignados" />
       <div className="adm-kpi-row">
         <div className="adm-kpi primary"><div className="adm-kpi-icon"><MapPin size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{activos}</span><span className="adm-kpi-lbl">Asignaciones activas</span></div></div>
         <div className="adm-kpi success"><div className="adm-kpi-icon"><MapPin size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{usuariosCubiertos}</span><span className="adm-kpi-lbl">Usuarios TH asignados</span></div></div>

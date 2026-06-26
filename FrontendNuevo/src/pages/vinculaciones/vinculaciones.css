@@ -1,0 +1,325 @@
+.vinc-page {
+  padding: 24px;
+  max-width: 1400px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+.vinc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.vinc-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+.vinc-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 3px 0 0;
+}
+.vinc-badge-count {
+  background: rgba(99,102,241,.1);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* ── KPI cards ───────────────────────────────────────────────────────────────── */
+.vinc-kpis {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.vinc-kpi-card {
+  flex: 1;
+  min-width: 130px;
+  border-radius: 12px;
+  padding: 16px 20px;
+  border: 1px solid var(--border-color);
+}
+.vinc-kpi-value {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.vinc-kpi-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+/* ── Filters ─────────────────────────────────────────────────────────────────── */
+.vinc-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.vinc-filter-select,
+.vinc-filter-input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.vinc-filter-select:focus,
+.vinc-filter-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* ── Table ───────────────────────────────────────────────────────────────────── */
+.vinc-table-wrap {
+  background: var(--bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow-x: auto;
+  margin-bottom: 12px;
+}
+.vinc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.vinc-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+.vinc-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.vinc-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.vinc-table tbody tr {
+  cursor: pointer;
+  transition: background .1s;
+}
+.vinc-table tbody tr:hover {
+  background: rgba(99,102,241,.04);
+}
+.vinc-table tbody tr.selected {
+  background: rgba(99,102,241,.08);
+}
+
+/* ── Badges ──────────────────────────────────────────────────────────────────── */
+.vinc-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+.vinc-badge.activa     { background: rgba(34,197,94,.12);  color: #16a34a; }
+.vinc-badge.retirada   { background: rgba(239,68,68,.1);   color: var(--color-danger); }
+.vinc-badge.suspendida { background: rgba(245,158,11,.12); color: #d97706; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────────── */
+.vinc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all .12s;
+  background: transparent;
+  color: var(--text-primary);
+}
+.vinc-btn.ghost   { border-color: var(--border-color); color: var(--text-secondary); }
+.vinc-btn.ghost:hover { background: rgba(0,0,0,.04); }
+.vinc-btn.primary { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.vinc-btn.primary:hover { opacity: .88; }
+.vinc-btn.danger  { background: rgba(239,68,68,.1); border-color: rgba(239,68,68,.3); color: var(--color-danger); }
+.vinc-btn.danger:hover  { background: rgba(239,68,68,.18); }
+.vinc-btn.warning { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.3); color: #d97706; }
+.vinc-btn.warning:hover { background: rgba(245,158,11,.18); }
+.vinc-btn.success { background: rgba(34,197,94,.1);  border-color: rgba(34,197,94,.3);  color: #16a34a; }
+.vinc-btn.success:hover  { background: rgba(34,197,94,.18); }
+.vinc-btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
+
+.vinc-btn-row {
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .1s;
+}
+.vinc-btn-row:hover { background: rgba(99,102,241,.08); }
+
+/* ── States ──────────────────────────────────────────────────────────────────── */
+.vinc-state-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 24px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.vinc-state-center.vinc-error { color: var(--color-danger); }
+
+/* ── Pagination ──────────────────────────────────────────────────────────────── */
+.vinc-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  margin-bottom: 24px;
+}
+.vinc-pag-info {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.vinc-pag-controls { display: flex; gap: 6px; }
+
+/* ── Spin animation ──────────────────────────────────────────────────────────── */
+@keyframes vinc-spin { to { transform: rotate(360deg); } }
+.vinc-spin { animation: vinc-spin .8s linear infinite; }
+
+/* ── Detail panel ────────────────────────────────────────────────────────────── */
+.vinc-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.35);
+  z-index: 200;
+  display: flex;
+  justify-content: flex-end;
+}
+.vinc-panel {
+  width: 440px;
+  max-width: 100vw;
+  height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-color);
+  box-shadow: -8px 0 32px rgba(0,0,0,.15);
+}
+.vinc-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+.vinc-panel-persona {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+.vinc-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0 24px;
+}
+.vinc-panel-section {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+.vinc-panel-section:last-child { border-bottom: none; }
+.vinc-panel-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.vinc-panel-field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.vinc-panel-field-row:last-child { margin-bottom: 0; }
+.vinc-panel-field-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.vinc-panel-field-val {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ── Action form ─────────────────────────────────────────────────────────────── */
+.vinc-action-form {
+  margin: 14px 20px;
+  padding: 14px 16px;
+  background: rgba(99,102,241,.05);
+  border: 1px solid rgba(99,102,241,.15);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vinc-action-form-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.vinc-action-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.vinc-action-input {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.vinc-action-input:focus { outline: none; border-color: var(--color-primary); }
+.vinc-action-error {
+  font-size: 12px;
+  color: var(--color-danger);
+  background: rgba(239,68,68,.08);
+  border-radius: 6px;
+  padding: 6px 10px;
+}

@@ -428,10 +428,12 @@
   white-space: nowrap;
 }
 
-.rep-badge.vigente    { background: rgba(34,197,94,.12);  color: #16a34a; }
-.rep-badge.vencido    { background: rgba(239,68,68,.12);  color: #dc2626; }
-.rep-badge.por_vencer { background: rgba(245,158,11,.12); color: #d97706; }
-.rep-badge.pendiente  { background: rgba(100,116,139,.1); color: var(--text-secondary); }
+.rep-badge.vigente         { background: rgba(34,197,94,.12);  color: #16a34a; }
+.rep-badge.vencido         { background: rgba(239,68,68,.12);  color: #dc2626; }
+.rep-badge.por_vencer      { background: rgba(245,158,11,.12); color: #d97706; }
+.rep-badge.pendiente       { background: rgba(100,116,139,.1); color: var(--text-secondary); }
+.rep-badge.reemplazado     { background: rgba(100,116,139,.1); color: var(--text-secondary); }
+.rep-badge.sin_vencimiento { background: rgba(34,197,94,.12);  color: #16a34a; }
 
 .rep-origin-badge {
   display: inline-block;
@@ -446,6 +448,8 @@
 .rep-origin-badge.personal    { background: rgba(99,102,241,.1);  color: #6366f1; }
 .rep-origin-badge.expediente  { background: rgba(168,85,247,.1);  color: #9333ea; }
 .rep-origin-badge.vinculacion { background: rgba(20,184,166,.1);  color: #0d9488; }
+.rep-origin-badge.persona     { background: rgba(99,102,241,.1);  color: #6366f1; }
+.rep-origin-badge.generado    { background: rgba(168,85,247,.1);  color: #9333ea; }
 .rep-origin-badge.sst         { background: rgba(34,197,94,.1);   color: #16a34a; }
 .rep-origin-badge.nomina      { background: rgba(245,158,11,.1);  color: #d97706; }
 .rep-origin-badge.portal      { background: rgba(14,165,233,.1);  color: #0284c7; }

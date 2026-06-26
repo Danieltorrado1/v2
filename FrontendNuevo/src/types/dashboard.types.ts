@@ -1,5 +1,36 @@
 // ── Raw API shapes (mirror backend responses) ─────────────────────────────────
 
+export interface DashboardGenero {
+  femenino: number;
+  masculino: number;
+  otro: number;
+  sin_dato: number;
+  total: number;
+  porcentaje_femenino: number;
+  porcentaje_masculino: number;
+}
+
+export interface DashboardEdadRango {
+  rango: string;
+  cantidad: number;
+}
+
+export interface DashboardEdad {
+  promedio: number | null;
+  rangos: DashboardEdadRango[];
+}
+
+export interface DashboardCumpleanosItem {
+  persona_id: string;
+  nombre_completo: string;
+  cargo: string | null;
+  empresa: string | null;
+  contrato: string | null;
+  fecha_nacimiento: string;
+  fecha_cumpleanos: string;
+  dias_restantes: number;
+}
+
 export interface DashboardPersonasApi {
   ingresos_periodo: number;
   personas_activas: number;
@@ -22,6 +53,9 @@ export interface DashboardPersonasApi {
   retiros_periodo: number;
   total_personas: number;
   vinculaciones_activas: number;
+  genero: DashboardGenero;
+  edad: DashboardEdad;
+  cumpleanos: DashboardCumpleanosItem[];
 }
 
 export interface DashboardCoberturaApi {
@@ -106,6 +140,15 @@ export interface DashboardSSTApi {
   total_eventos: number;
 }
 
+// ── Filter params sent to all dashboard endpoints ──────────────────────────────
+
+export interface DashboardFilters {
+  empresa_id?: string;
+  contrato_id?: string;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+}
+
 // ── Normalized frontend types ──────────────────────────────────────────────────
 
 export interface CargoItem {
@@ -127,18 +170,29 @@ export interface DashboardAlertaTipoItem {
 
 export interface DashboardNominaNormalizada {
   periodosAbiertos: number;
+  periodosCerrados: number;
   novedadesPendientes: number;
   totalDevengado: number;
+  totalDeducciones: number;
+  totalLiquidado: number;
   netoPagado: number;
   ultimoPeriodoNombre: string | null;
   ultimoPeriodoEstado: string | null;
+  ultimoPeriodoEstadoLiquidacion: string | null;
+  ultimoPeriodoFechaInicio: string | null;
+  ultimoPeriodoFechaFin: string | null;
+  novedadesPorTipo: Array<{ tipo: string; total: number; valor_total: number }>;
 }
 
 export interface DashboardSSTNormalizado {
   totalEventos: number;
   accidentesTrabajo: number;
+  incidentes: number;
+  enfermedadesLaborales: number;
   capacitaciones: number;
-  porcentajeCierrePlanes: number;
-  planesVencidos: number;
+  entregasEpp: number;
   planesAbiertos: number;
+  planesCerrados: number;
+  planesVencidos: number;
+  porcentajeCierrePlanes: number;
 }

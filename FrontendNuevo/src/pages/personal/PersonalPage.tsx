@@ -4,6 +4,7 @@ import {
   Bell,
   BriefcaseBusiness,
   CalendarDays,
+  CheckCircle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -22,7 +23,9 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import "./PersonalPage.css";
+import ExpedienteDocumentosPanel from "./ExpedienteDocumentosPanel";
 import { useApiState } from "../../hooks/useApiState";
 import {
   getPersonas,
@@ -30,14 +33,23 @@ import {
   getVinculacionExpediente,
   normalizePersonaListItem,
   buildNombreCompleto,
+  createPersona,
+  updatePersona,
 } from "../../services/personasApi";
+import {
+  retirarVinculacion,
+  suspenderVinculacion,
+  reactivarVinculacion,
+} from "../../services/vinculacionesApi";
 import { getExpedienteConsolidado } from "../../services/expedienteApi";
 import type {
   PaginatedPersonasApi,
   VinculacionExpedienteApi,
+  VinculacionExpedientePersona,
   PersonaListItem,
 } from "../../types/personas.types";
 import type { ExpedienteLaboralConsolidadoApi } from "../../types/expediente.types";
+import type { CreatePersonaPayload } from "../../services/personasApi";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -50,6 +62,13 @@ function getAvatarColor(id: number): AvatarColor {
 
 function getInitials(item: PersonaListItem): string {
   const parts = item.nombreCompleto.trim().split(/\s+/);
+  const first = parts[0]?.[0] ?? "";
+  const second = parts[1]?.[0] ?? "";
+  return (first + second).toUpperCase() || "?";
+}
+
+function getInitialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/);
   const first = parts[0]?.[0] ?? "";
   const second = parts[1]?.[0] ?? "";
   return (first + second).toUpperCase() || "?";
@@ -80,8 +99,56 @@ function calcularEdad(fechaNacimiento: string | null | undefined): string {
   return `${edad} años`;
 }
 
-const toolbarFilters = [
-  "Todos",
+function todayIso(): string {
+  return new Date().toISOString().split("T")[0] ?? "";
+}
+
+const MODAL_OVERLAY: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.45)",
+  zIndex: 400,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const MODAL_BOX: React.CSSProperties = {
+  background: "var(--bg)",
+  border: "1px solid var(--border-color)",
+  borderRadius: 16,
+  padding: "28px 32px",
+  maxWidth: 520,
+  width: "92%",
+  boxShadow: "0 8px 40px rgba(0,0,0,0.2)",
+  maxHeight: "90vh",
+  overflowY: "auto",
+};
+
+const FIELD_LABEL: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 600,
+  color: "var(--text-secondary)",
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+};
+
+const FIELD_INPUT: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  padding: "7px 10px",
+  border: "1px solid var(--border-color)",
+  borderRadius: 7,
+  background: "var(--bg-secondary)",
+  color: "var(--text-primary)",
+  fontSize: 13,
+  boxSizing: "border-box",
+};
+
+// ── Toolbar filter labels ─────────────────────────────────────────────────────
+
+const PENDING_FILTERS = [
   "Cargo",
   "Documentación",
   "Municipio",
@@ -91,6 +158,33 @@ const toolbarFilters = [
   "Modalidad",
   "Ordenar por...",
 ];
+
+// ── CSV Export ────────────────────────────────────────────────────────────────
+
+function exportarCSV(rows: PaginatedPersonasApi["items"]): void {
+  const header = "Nombre completo,Documento,Correo,Teléfono";
+  const lines = rows.map((p) => {
+    const nombre = [p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido]
+      .filter(Boolean)
+      .join(" ");
+    const doc = p.numero_documento;
+    const correo = p.correo ?? "";
+    const tel = p.telefono ?? "";
+    return [nombre, doc, correo, tel]
+      .map((v) => `"${v.replace(/"/g, '""')}"`)
+      .join(",");
+  });
+  const csv = [header, ...lines].join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `colaboradores-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── PersonalPage ──────────────────────────────────────────────────────────────
 
 export default function PersonalPage() {
   const {
@@ -121,6 +215,15 @@ export default function PersonalPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [toast, setToast] = useState<string | null>(null);
+  const [showNuevoModal, setShowNuevoModal] = useState(false);
+  const [showImportarModal, setShowImportarModal] = useState(false);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  }
+
   const total = personasPage?.pagination.total ?? 0;
   const totalPages = Math.max(personasPage?.pagination.total_pages ?? 1, 1);
   const personaRows = (personasPage?.items ?? []).map((p) => ({
@@ -128,15 +231,18 @@ export default function PersonalPage() {
     item: normalizePersonaListItem(p),
   }));
 
+  const fetchPersonas = useCallback(
+    (search: string, page: number) => {
+      void runPersonas(() =>
+        getPersonas({ search: search || undefined, page, limit: ITEMS_PER_PAGE })
+      );
+    },
+    [runPersonas]
+  );
+
   useEffect(() => {
-    void runPersonas(() =>
-      getPersonas({
-        search: searchText || undefined,
-        page: currentPage,
-        limit: ITEMS_PER_PAGE,
-      })
-    );
-  }, [runPersonas, searchText, currentPage]);
+    fetchPersonas(searchText, currentPage);
+  }, [fetchPersonas, searchText, currentPage]);
 
   const handleSearchInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -181,17 +287,45 @@ export default function PersonalPage() {
     setCurrentPage(page);
   }, []);
 
+  const handlePersonaUpdated = useCallback(
+    (personaId: number) => {
+      fetchPersonas(searchText, currentPage);
+      handleSelectPersona(personaId);
+    },
+    [fetchPersonas, searchText, currentPage, handleSelectPersona]
+  );
+
+  const handleVinculacionChanged = useCallback(() => {
+    fetchPersonas(searchText, currentPage);
+    handleClose();
+  }, [fetchPersonas, searchText, currentPage, handleClose]);
+
+  const handleNuevoSuccess = useCallback(() => {
+    setShowNuevoModal(false);
+    showToast("Colaborador registrado correctamente.");
+    fetchPersonas(searchText, 1);
+    setCurrentPage(1);
+  }, [fetchPersonas, searchText]);
+
   return (
     <div className="personal-module">
       <div className="personal-toolbar">
         <div className="toolbar-row">
           <div className="toolbar-actions">
-            <button type="button" className="toolbar-button primary">
+            <button
+              type="button"
+              className="toolbar-button primary"
+              onClick={() => setShowNuevoModal(true)}
+            >
               <Plus size={18} />
               Nuevo empleado
             </button>
 
-            <button type="button" className="toolbar-button">
+            <button
+              type="button"
+              className="toolbar-button"
+              onClick={() => setShowImportarModal(true)}
+            >
               <Upload size={18} />
               Importar Excel
             </button>
@@ -199,21 +333,20 @@ export default function PersonalPage() {
             <button
               type="button"
               className="toolbar-button"
-              onClick={() => {
-                void runPersonas(() =>
-                  getPersonas({
-                    search: searchText || undefined,
-                    page: currentPage,
-                    limit: ITEMS_PER_PAGE,
-                  })
-                );
-              }}
+              onClick={() => fetchPersonas(searchText, currentPage)}
             >
               <RefreshCw size={18} />
               Actualizar
             </button>
 
-            <button type="button" className="toolbar-button">
+            <button
+              type="button"
+              className="toolbar-button"
+              disabled={!personasPage || personasPage.items.length === 0}
+              onClick={() => {
+                if (personasPage) exportarCSV(personasPage.items);
+              }}
+            >
               <Download size={18} />
               Exportar
             </button>
@@ -231,10 +364,15 @@ export default function PersonalPage() {
 
         <div className="toolbar-row">
           <div className="toolbar-filters">
-            {toolbarFilters.map((label) => (
-              <div className="toolbar-select-wrap" key={label}>
-                <select className="toolbar-select" defaultValue={label}>
-                  <option value={label}>{label}</option>
+            {PENDING_FILTERS.map((label) => (
+              <div
+                className="toolbar-select-wrap"
+                key={label}
+                title="Filtro pendiente de endpoint"
+                style={{ opacity: 0.5, cursor: "not-allowed" }}
+              >
+                <select className="toolbar-select" disabled>
+                  <option>{label}</option>
                 </select>
                 <ChevronDown size={14} />
               </div>
@@ -484,13 +622,54 @@ export default function PersonalPage() {
               loading={expedienteLoading}
               error={expedienteError}
               onClose={handleClose}
+              onShowToast={showToast}
+              onPersonaUpdated={handlePersonaUpdated}
+              onVinculacionChanged={handleVinculacionChanged}
             />
           </main>
         )}
       </section>
+
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            background: "var(--bg)",
+            border: "1px solid var(--border-color)",
+            borderRadius: 12,
+            padding: "12px 18px",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.14)",
+            fontSize: 13,
+            zIndex: 500,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            maxWidth: 360,
+            color: "var(--text-primary)",
+          }}
+        >
+          <CheckCircle size={15} style={{ color: "var(--color-primary)", flexShrink: 0 }} />
+          {toast}
+        </div>
+      )}
+
+      {showNuevoModal && (
+        <NuevoEmpleadoModal
+          onClose={() => setShowNuevoModal(false)}
+          onSuccess={handleNuevoSuccess}
+        />
+      )}
+
+      {showImportarModal && (
+        <ImportarModal onClose={() => setShowImportarModal(false)} />
+      )}
     </div>
   );
 }
+
+// ── RIESGO color map ──────────────────────────────────────────────────────────
 
 const RIESGO_COLOR: Record<string, string> = {
   BAJO: "var(--color-success, #22c55e)",
@@ -499,6 +678,8 @@ const RIESGO_COLOR: Record<string, string> = {
   CRITICO: "var(--color-danger, #ef4444)",
 };
 
+// ── QuickEmployeeView ─────────────────────────────────────────────────────────
+
 function QuickEmployeeView({
   expediente,
   consolidado,
@@ -506,6 +687,9 @@ function QuickEmployeeView({
   loading,
   error,
   onClose,
+  onShowToast,
+  onPersonaUpdated,
+  onVinculacionChanged,
 }: {
   expediente: VinculacionExpedienteApi | null;
   consolidado: ExpedienteLaboralConsolidadoApi | null;
@@ -513,7 +697,17 @@ function QuickEmployeeView({
   loading: boolean;
   error: string | null;
   onClose: () => void;
+  onShowToast: (msg: string) => void;
+  onPersonaUpdated: (personaId: number) => void;
+  onVinculacionChanged: () => void;
 }) {
+  const navigate = useNavigate();
+  const [showMasAcciones, setShowMasAcciones] = useState(false);
+  const [showEditarModal, setShowEditarModal] = useState(false);
+  const [showRetirarModal, setShowRetirarModal] = useState(false);
+  const [showSuspenderModal, setShowSuspenderModal] = useState(false);
+  const [showReactivarModal, setShowReactivarModal] = useState(false);
+
   const nombreCompleto = expediente ? buildNombreCompleto(expediente.persona) : "";
   const estado = expediente?.vinculacion.estado_vinculacion ?? "";
 
@@ -530,18 +724,109 @@ function QuickEmployeeView({
         <span className="profile-view-label">Vista rápida del colaborador</span>
 
         <div className="profile-actions-buttons">
-          <button type="button">
+          <button
+            type="button"
+            onClick={() => setShowEditarModal(true)}
+            disabled={!expediente}
+          >
             <Edit3 size={17} />
             Editar
           </button>
 
-          <button type="button">
-            <MoreHorizontal size={18} />
-            Más acciones
-            <ChevronDown size={15} />
-          </button>
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setShowMasAcciones((v) => !v)}
+              disabled={!expediente}
+            >
+              <MoreHorizontal size={18} />
+              Más acciones
+              <ChevronDown size={15} />
+            </button>
 
-          <button type="button">
+            {showMasAcciones && expediente && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 4px)",
+                  right: 0,
+                  background: "var(--bg)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: 10,
+                  boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
+                  zIndex: 60,
+                  minWidth: 210,
+                  padding: "4px 0",
+                }}
+              >
+                <button
+                  type="button"
+                  style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "not-allowed", fontSize: 13, color: "var(--text-secondary)", opacity: 0.55 }}
+                  title="Requiere catálogo de cargos — pendiente de endpoint"
+                  disabled
+                >
+                  Cambio de cargo
+                </button>
+                <button
+                  type="button"
+                  style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "not-allowed", fontSize: 13, color: "var(--text-secondary)", opacity: 0.55 }}
+                  title="Requiere catálogo de municipios — pendiente de endpoint"
+                  disabled
+                >
+                  Traslado de municipio
+                </button>
+
+                <div style={{ height: 1, background: "var(--border-color)", margin: "4px 0" }} />
+
+                {estado === "ACTIVA" && (
+                  <button
+                    type="button"
+                    style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--color-warning, #f59e0b)" }}
+                    onClick={() => { setShowSuspenderModal(true); setShowMasAcciones(false); }}
+                  >
+                    Suspender vinculación
+                  </button>
+                )}
+
+                {estado === "SUSPENDIDA" && (
+                  <button
+                    type="button"
+                    style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--color-primary)" }}
+                    onClick={() => { setShowReactivarModal(true); setShowMasAcciones(false); }}
+                  >
+                    Reactivar vinculación
+                  </button>
+                )}
+
+                {(estado === "ACTIVA" || estado === "SUSPENDIDA") && (
+                  <button
+                    type="button"
+                    style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--color-danger)" }}
+                    onClick={() => { setShowRetirarModal(true); setShowMasAcciones(false); }}
+                  >
+                    Retirar colaborador
+                  </button>
+                )}
+
+                {estado === "RETIRADA" && (
+                  <button
+                    type="button"
+                    style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "not-allowed", fontSize: 13, color: "var(--text-secondary)", opacity: 0.55 }}
+                    disabled
+                    title="La vinculación ya está retirada"
+                  >
+                    Colaborador ya retirado
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            title="Generar PDF del expediente — próximamente disponible"
+            onClick={() => onShowToast("Generación de PDF del expediente: próximamente disponible")}
+          >
             <FileText size={17} />
           </button>
 
@@ -595,10 +880,21 @@ function QuickEmployeeView({
         <>
           <section className="profile-hero">
             <div className="photo-wrap">
-              <img
-                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&h=240&fit=crop&crop=face"
-                alt={nombreCompleto}
-              />
+              <div
+                className={`avatar ${getAvatarColor(expediente.persona.id)}`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.9rem",
+                  fontWeight: 800,
+                  borderRadius: "50%",
+                }}
+              >
+                {getInitialsFromName(nombreCompleto)}
+              </div>
               <span />
             </div>
 
@@ -644,10 +940,12 @@ function QuickEmployeeView({
                 ["Documento", expediente.persona.numero_documento],
                 ["Fecha de nacimiento", formatFechaCorta(expediente.persona.fecha_nacimiento)],
                 ["Edad", calcularEdad(expediente.persona.fecha_nacimiento)],
-                ["Sexo", "—"],
-                ["Estado civil", "—"],
-                ["Grupo sanguíneo", "—"],
-                ["Nacionalidad", expediente.persona.pais_nacimiento ?? "Colombia"],
+                ["Sexo", expediente.persona.sexo ?? "—"],
+                ["Estado civil", expediente.persona.estado_civil ?? "—"],
+                ["Grupo sanguíneo", expediente.persona.tipo_sangre ?? "—"],
+                ["Dirección", expediente.persona.direccion ?? "—"],
+                ["Barrio", expediente.persona.barrio ?? "—"],
+                ["Zona", expediente.persona.zona ?? "—"],
               ]}
             />
 
@@ -669,14 +967,19 @@ function QuickEmployeeView({
               icon={<ShieldCheck size={18} />}
               title="Afiliaciones"
               rows={[
-                ["EPS", "—"],
-                ["AFP", "—"],
-                ["ARL", "—"],
-                ["Caja de compensación", "—"],
+                ["EPS", expediente.afiliaciones?.eps ?? "—"],
+                ["AFP", expediente.afiliaciones?.pension ?? "—"],
+                ["ARL", expediente.afiliaciones?.arl ?? "—"],
+                ["Caja de compensación", expediente.afiliaciones?.caja_compensacion ?? "—"],
                 ["Cesantías", "—"],
               ]}
             />
           </section>
+
+          <ExpedienteDocumentosPanel
+            personaId={expediente.persona.id}
+            vinculacionId={expediente.vinculacion.id}
+          />
 
           <section className="profile-grid bottom">
             <div className="profile-card history-card">
@@ -711,7 +1014,11 @@ function QuickEmployeeView({
                 ))}
               </div>
 
-              <button type="button" className="link-button">
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => onShowToast("Historial completo: módulo de auditoría próximamente disponible")}
+              >
                 Ver todo el historial <ChevronRight size={16} />
               </button>
             </div>
@@ -759,7 +1066,10 @@ function QuickEmployeeView({
               </div>
 
               <div className="status-summary">
-                <button type="button">
+                <button
+                  type="button"
+                  onClick={() => onShowToast("Alertas activas: revise la pestaña Documentos del expediente")}
+                >
                   <span className="status-icon warning">
                     <AlertTriangle size={12} />
                   </span>
@@ -768,7 +1078,10 @@ function QuickEmployeeView({
                   <ChevronRight size={15} />
                 </button>
 
-                <button type="button">
+                <button
+                  type="button"
+                  onClick={() => onShowToast("Documentos faltantes: revise el checklist del expediente")}
+                >
                   <span className="status-icon info">i</span>
                   <strong>{checklistFaltantes ?? (consolidadoLoading ? "..." : "—")}</strong>
                   Docs faltantes
@@ -778,6 +1091,7 @@ function QuickEmployeeView({
                 <button
                   type="button"
                   style={docsVencidos !== null && docsVencidos > 0 ? { color: "var(--color-danger)" } : undefined}
+                  onClick={() => onShowToast("Documentos vencidos: revise la pestaña Documentos del expediente")}
                 >
                   <span className="status-icon success">✓</span>
                   {docsVencidos !== null
@@ -791,16 +1105,69 @@ function QuickEmployeeView({
                 </button>
               </div>
 
-              <button type="button" className="repository-button">
+              <button
+                type="button"
+                className="repository-button"
+                onClick={() => navigate(`/repositorio?persona_id=${expediente.persona.id}`)}
+              >
                 Ir al Repositorio documental <ChevronRight size={17} />
               </button>
             </div>
           </section>
         </>
       )}
+
+      {showEditarModal && expediente && (
+        <EditarEmpleadoModal
+          persona={expediente.persona}
+          onClose={() => setShowEditarModal(false)}
+          onSuccess={() => {
+            setShowEditarModal(false);
+            onPersonaUpdated(expediente.persona.id);
+          }}
+        />
+      )}
+
+      {showRetirarModal && expediente && (
+        <RetirarModal
+          vinculacionId={expediente.vinculacion.id}
+          nombreCompleto={nombreCompleto}
+          onClose={() => setShowRetirarModal(false)}
+          onSuccess={() => {
+            setShowRetirarModal(false);
+            onVinculacionChanged();
+          }}
+        />
+      )}
+
+      {showSuspenderModal && expediente && (
+        <SuspenderModal
+          vinculacionId={expediente.vinculacion.id}
+          nombreCompleto={nombreCompleto}
+          onClose={() => setShowSuspenderModal(false)}
+          onSuccess={() => {
+            setShowSuspenderModal(false);
+            onVinculacionChanged();
+          }}
+        />
+      )}
+
+      {showReactivarModal && expediente && (
+        <ReactivarModal
+          vinculacionId={expediente.vinculacion.id}
+          nombreCompleto={nombreCompleto}
+          onClose={() => setShowReactivarModal(false)}
+          onSuccess={() => {
+            setShowReactivarModal(false);
+            onVinculacionChanged();
+          }}
+        />
+      )}
     </div>
   );
 }
+
+// ── InfoCard ──────────────────────────────────────────────────────────────────
 
 function InfoCard({
   icon,
@@ -830,6 +1197,8 @@ function InfoCard({
   );
 }
 
+// ── TimelineItem ──────────────────────────────────────────────────────────────
+
 function TimelineItem({
   date,
   title,
@@ -848,6 +1217,672 @@ function TimelineItem({
       <strong>{title}</strong>
       <p>{detail}</p>
       <small>{author}</small>
+    </div>
+  );
+}
+
+// ── FormError ─────────────────────────────────────────────────────────────────
+
+function FormError({ msg }: { msg: string }) {
+  return (
+    <div
+      style={{
+        background: "rgba(239,68,68,0.08)",
+        border: "1px solid rgba(239,68,68,0.3)",
+        borderRadius: 8,
+        padding: "8px 12px",
+        fontSize: 12.5,
+        color: "var(--color-danger, #ef4444)",
+        marginTop: 12,
+      }}
+    >
+      {msg}
+    </div>
+  );
+}
+
+// ── ModalHeader ───────────────────────────────────────────────────────────────
+
+function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+      <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--text-primary)" }}>
+        {title}
+      </h3>
+      <button
+        type="button"
+        onClick={onClose}
+        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: 4, display: "flex" }}
+      >
+        <X size={20} />
+      </button>
+    </div>
+  );
+}
+
+// ── ModalFooter ───────────────────────────────────────────────────────────────
+
+function ModalFooter({
+  onCancel,
+  submitLabel,
+  submitting,
+  danger,
+}: {
+  onCancel: () => void;
+  submitLabel: string;
+  submitting: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={submitting}
+        style={{ padding: "8px 18px", border: "1px solid var(--border-color)", borderRadius: 8, background: "transparent", color: "var(--text-secondary)", cursor: "pointer", fontSize: 13 }}
+      >
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        disabled={submitting}
+        style={{
+          padding: "8px 20px",
+          border: "none",
+          borderRadius: 8,
+          background: danger ? "var(--color-danger, #ef4444)" : "var(--color-primary)",
+          color: "#fff",
+          cursor: submitting ? "wait" : "pointer",
+          fontSize: 13,
+          fontWeight: 600,
+          opacity: submitting ? 0.7 : 1,
+        }}
+      >
+        {submitting ? "Procesando..." : submitLabel}
+      </button>
+    </div>
+  );
+}
+
+// ── NuevoEmpleadoModal ────────────────────────────────────────────────────────
+
+function NuevoEmpleadoModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [form, setForm] = useState<CreatePersonaPayload>({
+    tipo_documento_id: 0,
+    numero_documento: "",
+    primer_nombre: "",
+    segundo_nombre: "",
+    primer_apellido: "",
+    segundo_apellido: "",
+    correo: "",
+    telefono: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  function set(field: keyof CreatePersonaPayload, value: string | number) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.primer_nombre.trim() || !form.primer_apellido.trim() || !form.numero_documento.trim()) {
+      setApiError("Nombre, apellido y número de documento son obligatorios.");
+      return;
+    }
+    if (!form.tipo_documento_id || form.tipo_documento_id <= 0) {
+      setApiError("Ingrese un ID de tipo de documento válido (número mayor a 0).");
+      return;
+    }
+    setSubmitting(true);
+    setApiError(null);
+    try {
+      const payload: CreatePersonaPayload = {
+        tipo_documento_id: form.tipo_documento_id,
+        numero_documento: form.numero_documento.trim(),
+        primer_nombre: form.primer_nombre.trim(),
+        segundo_nombre: form.segundo_nombre?.trim() || null,
+        primer_apellido: form.primer_apellido.trim(),
+        segundo_apellido: form.segundo_apellido?.trim() || null,
+        correo: form.correo?.trim() || null,
+        telefono: form.telefono?.trim() || null,
+      };
+      await createPersona(payload);
+      onSuccess();
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Error al registrar el colaborador.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div style={MODAL_OVERLAY} onClick={onClose}>
+      <div style={MODAL_BOX} onClick={(e) => e.stopPropagation()}>
+        <ModalHeader title="Nuevo colaborador" onClose={onClose} />
+
+        <div
+          style={{
+            background: "rgba(99,102,241,0.06)",
+            border: "1px solid rgba(99,102,241,0.2)",
+            borderRadius: 8,
+            padding: "10px 14px",
+            marginBottom: 18,
+            fontSize: 12,
+            color: "var(--text-secondary)",
+            lineHeight: 1.55,
+          }}
+        >
+          El ID del tipo de documento es un valor numérico del sistema (ej: 1 para Cédula de ciudadanía).
+          El catálogo de tipos estará disponible próximamente.
+        </div>
+
+        <form onSubmit={(e) => { void handleSubmit(e); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={FIELD_LABEL}>
+              ID Tipo de documento *
+              <input
+                type="number"
+                min={1}
+                required
+                style={FIELD_INPUT}
+                value={form.tipo_documento_id || ""}
+                onChange={(e) => set("tipo_documento_id", parseInt(e.target.value) || 0)}
+                placeholder="Ej: 1"
+              />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Número de documento *
+              <input
+                type="text"
+                required
+                style={FIELD_INPUT}
+                value={form.numero_documento}
+                onChange={(e) => set("numero_documento", e.target.value)}
+                placeholder="1234567890"
+              />
+            </label>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <label style={FIELD_LABEL}>
+                Primer nombre *
+                <input
+                  type="text"
+                  required
+                  style={FIELD_INPUT}
+                  value={form.primer_nombre}
+                  onChange={(e) => set("primer_nombre", e.target.value)}
+                  placeholder="Juan"
+                />
+              </label>
+              <label style={FIELD_LABEL}>
+                Segundo nombre
+                <input
+                  type="text"
+                  style={FIELD_INPUT}
+                  value={form.segundo_nombre ?? ""}
+                  onChange={(e) => set("segundo_nombre", e.target.value)}
+                  placeholder="Carlos"
+                />
+              </label>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <label style={FIELD_LABEL}>
+                Primer apellido *
+                <input
+                  type="text"
+                  required
+                  style={FIELD_INPUT}
+                  value={form.primer_apellido}
+                  onChange={(e) => set("primer_apellido", e.target.value)}
+                  placeholder="García"
+                />
+              </label>
+              <label style={FIELD_LABEL}>
+                Segundo apellido
+                <input
+                  type="text"
+                  style={FIELD_INPUT}
+                  value={form.segundo_apellido ?? ""}
+                  onChange={(e) => set("segundo_apellido", e.target.value)}
+                  placeholder="López"
+                />
+              </label>
+            </div>
+
+            <label style={FIELD_LABEL}>
+              Correo electrónico
+              <input
+                type="email"
+                style={FIELD_INPUT}
+                value={form.correo ?? ""}
+                onChange={(e) => set("correo", e.target.value)}
+                placeholder="colaborador@empresa.com"
+              />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Teléfono
+              <input
+                type="text"
+                style={FIELD_INPUT}
+                value={form.telefono ?? ""}
+                onChange={(e) => set("telefono", e.target.value)}
+                placeholder="310 000 0000"
+              />
+            </label>
+          </div>
+
+          {apiError && <FormError msg={apiError} />}
+          <ModalFooter onCancel={onClose} submitLabel="Registrar colaborador" submitting={submitting} />
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── EditarEmpleadoModal ───────────────────────────────────────────────────────
+
+function EditarEmpleadoModal({
+  persona,
+  onClose,
+  onSuccess,
+}: {
+  persona: VinculacionExpedientePersona;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [form, setForm] = useState({
+    primer_nombre: persona.primer_nombre,
+    segundo_nombre: persona.segundo_nombre ?? "",
+    primer_apellido: persona.primer_apellido,
+    segundo_apellido: persona.segundo_apellido ?? "",
+    correo: persona.correo ?? "",
+    telefono: persona.telefono ?? "",
+    direccion: persona.direccion ?? "",
+    barrio: persona.barrio ?? "",
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  function set(field: keyof typeof form, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.primer_nombre.trim() || !form.primer_apellido.trim()) {
+      setApiError("Nombre y apellido son obligatorios.");
+      return;
+    }
+    setSubmitting(true);
+    setApiError(null);
+    try {
+      await updatePersona(persona.id, {
+        primer_nombre: form.primer_nombre.trim(),
+        segundo_nombre: form.segundo_nombre.trim() || null,
+        primer_apellido: form.primer_apellido.trim(),
+        segundo_apellido: form.segundo_apellido.trim() || null,
+        correo: form.correo.trim() || null,
+        telefono: form.telefono.trim() || null,
+        direccion: form.direccion.trim() || null,
+        barrio: form.barrio.trim() || null,
+      });
+      onSuccess();
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Error al actualizar el colaborador.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div style={MODAL_OVERLAY} onClick={onClose}>
+      <div style={MODAL_BOX} onClick={(e) => e.stopPropagation()}>
+        <ModalHeader title="Editar colaborador" onClose={onClose} />
+
+        <form onSubmit={(e) => { void handleSubmit(e); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <label style={FIELD_LABEL}>
+                Primer nombre *
+                <input type="text" required style={FIELD_INPUT} value={form.primer_nombre}
+                  onChange={(e) => set("primer_nombre", e.target.value)} />
+              </label>
+              <label style={FIELD_LABEL}>
+                Segundo nombre
+                <input type="text" style={FIELD_INPUT} value={form.segundo_nombre}
+                  onChange={(e) => set("segundo_nombre", e.target.value)} />
+              </label>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <label style={FIELD_LABEL}>
+                Primer apellido *
+                <input type="text" required style={FIELD_INPUT} value={form.primer_apellido}
+                  onChange={(e) => set("primer_apellido", e.target.value)} />
+              </label>
+              <label style={FIELD_LABEL}>
+                Segundo apellido
+                <input type="text" style={FIELD_INPUT} value={form.segundo_apellido}
+                  onChange={(e) => set("segundo_apellido", e.target.value)} />
+              </label>
+            </div>
+
+            <label style={FIELD_LABEL}>
+              Correo electrónico
+              <input type="email" style={FIELD_INPUT} value={form.correo}
+                onChange={(e) => set("correo", e.target.value)} />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Teléfono
+              <input type="text" style={FIELD_INPUT} value={form.telefono}
+                onChange={(e) => set("telefono", e.target.value)} />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Dirección
+              <input type="text" style={FIELD_INPUT} value={form.direccion}
+                onChange={(e) => set("direccion", e.target.value)} />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Barrio
+              <input type="text" style={FIELD_INPUT} value={form.barrio}
+                onChange={(e) => set("barrio", e.target.value)} />
+            </label>
+          </div>
+
+          {apiError && <FormError msg={apiError} />}
+          <ModalFooter onCancel={onClose} submitLabel="Guardar cambios" submitting={submitting} />
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── RetirarModal ──────────────────────────────────────────────────────────────
+
+function RetirarModal({
+  vinculacionId,
+  nombreCompleto,
+  onClose,
+  onSuccess,
+}: {
+  vinculacionId: number;
+  nombreCompleto: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [fecha, setFecha] = useState(todayIso());
+  const [motivo, setMotivo] = useState("");
+  const [observaciones, setObservaciones] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fecha) { setApiError("La fecha de retiro es obligatoria."); return; }
+    setSubmitting(true);
+    setApiError(null);
+    try {
+      await retirarVinculacion(vinculacionId, {
+        fecha_retiro: fecha,
+        motivo_retiro: motivo.trim() || null,
+        observaciones: observaciones.trim() || null,
+      });
+      onSuccess();
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Error al procesar el retiro.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div style={MODAL_OVERLAY} onClick={onClose}>
+      <div style={{ ...MODAL_BOX, maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+        <ModalHeader title="Retirar colaborador" onClose={onClose} />
+
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-secondary)" }}>
+          Está a punto de retirar a <strong style={{ color: "var(--text-primary)" }}>{nombreCompleto}</strong>.
+          Esta acción cambiará el estado de la vinculación a RETIRADA.
+        </p>
+
+        <form onSubmit={(e) => { void handleSubmit(e); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={FIELD_LABEL}>
+              Fecha de retiro *
+              <input type="date" required style={FIELD_INPUT} value={fecha}
+                onChange={(e) => setFecha(e.target.value)} />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Motivo de retiro
+              <input type="text" style={FIELD_INPUT} value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ej: Renuncia voluntaria, vencimiento de contrato..." />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Observaciones
+              <textarea
+                style={{ ...FIELD_INPUT, resize: "vertical", minHeight: 72 }}
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+                placeholder="Observaciones adicionales..."
+              />
+            </label>
+          </div>
+
+          {apiError && <FormError msg={apiError} />}
+          <ModalFooter onCancel={onClose} submitLabel="Confirmar retiro" submitting={submitting} danger />
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── SuspenderModal ────────────────────────────────────────────────────────────
+
+function SuspenderModal({
+  vinculacionId,
+  nombreCompleto,
+  onClose,
+  onSuccess,
+}: {
+  vinculacionId: number;
+  nombreCompleto: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [fecha, setFecha] = useState(todayIso());
+  const [motivo, setMotivo] = useState("");
+  const [observaciones, setObservaciones] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fecha) { setApiError("La fecha de suspensión es obligatoria."); return; }
+    setSubmitting(true);
+    setApiError(null);
+    try {
+      await suspenderVinculacion(vinculacionId, {
+        fecha_suspension: fecha,
+        motivo_suspension: motivo.trim() || null,
+        observaciones: observaciones.trim() || null,
+      });
+      onSuccess();
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Error al procesar la suspensión.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div style={MODAL_OVERLAY} onClick={onClose}>
+      <div style={{ ...MODAL_BOX, maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+        <ModalHeader title="Suspender vinculación" onClose={onClose} />
+
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-secondary)" }}>
+          Se suspenderá la vinculación activa de{" "}
+          <strong style={{ color: "var(--text-primary)" }}>{nombreCompleto}</strong>.
+        </p>
+
+        <form onSubmit={(e) => { void handleSubmit(e); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={FIELD_LABEL}>
+              Fecha de suspensión *
+              <input type="date" required style={FIELD_INPUT} value={fecha}
+                onChange={(e) => setFecha(e.target.value)} />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Motivo
+              <input type="text" style={FIELD_INPUT} value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ej: Licencia de maternidad, incapacidad..." />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Observaciones
+              <textarea
+                style={{ ...FIELD_INPUT, resize: "vertical", minHeight: 64 }}
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+              />
+            </label>
+          </div>
+
+          {apiError && <FormError msg={apiError} />}
+          <ModalFooter onCancel={onClose} submitLabel="Suspender" submitting={submitting} />
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── ReactivarModal ────────────────────────────────────────────────────────────
+
+function ReactivarModal({
+  vinculacionId,
+  nombreCompleto,
+  onClose,
+  onSuccess,
+}: {
+  vinculacionId: number;
+  nombreCompleto: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [fecha, setFecha] = useState(todayIso());
+  const [observaciones, setObservaciones] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setApiError(null);
+    try {
+      await reactivarVinculacion(vinculacionId, {
+        fecha_reactivacion: fecha || undefined,
+        observaciones: observaciones.trim() || null,
+      });
+      onSuccess();
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Error al reactivar la vinculación.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div style={MODAL_OVERLAY} onClick={onClose}>
+      <div style={{ ...MODAL_BOX, maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+        <ModalHeader title="Reactivar vinculación" onClose={onClose} />
+
+        <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-secondary)" }}>
+          Se reactivará la vinculación de{" "}
+          <strong style={{ color: "var(--text-primary)" }}>{nombreCompleto}</strong>.
+        </p>
+
+        <form onSubmit={(e) => { void handleSubmit(e); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={FIELD_LABEL}>
+              Fecha de reactivación
+              <input type="date" style={FIELD_INPUT} value={fecha}
+                onChange={(e) => setFecha(e.target.value)} />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Observaciones
+              <textarea
+                style={{ ...FIELD_INPUT, resize: "vertical", minHeight: 64 }}
+                value={observaciones}
+                onChange={(e) => setObservaciones(e.target.value)}
+              />
+            </label>
+          </div>
+
+          {apiError && <FormError msg={apiError} />}
+          <ModalFooter onCancel={onClose} submitLabel="Reactivar" submitting={submitting} />
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── ImportarModal ─────────────────────────────────────────────────────────────
+
+function ImportarModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={MODAL_OVERLAY} onClick={onClose}>
+      <div style={{ ...MODAL_BOX, maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+        <ModalHeader title="Importar desde Excel" onClose={onClose} />
+
+        <div
+          style={{
+            background: "rgba(99,102,241,0.06)",
+            border: "1px dashed rgba(99,102,241,0.4)",
+            borderRadius: 10,
+            padding: "28px 20px",
+            textAlign: "center",
+            marginBottom: 16,
+          }}
+        >
+          <Upload size={32} style={{ color: "var(--color-primary)", marginBottom: 10, opacity: 0.7 }} />
+          <p style={{ margin: "0 0 6px", fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>
+            Importación masiva pendiente de endpoint
+          </p>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>
+            El endpoint de importación desde Excel no está disponible aún en el backend.
+            Registre colaboradores individualmente desde el botón{" "}
+            <strong>Nuevo empleado</strong>.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ padding: "8px 20px", border: "1px solid var(--border-color)", borderRadius: 8, background: "transparent", color: "var(--text-secondary)", cursor: "pointer", fontSize: 13 }}
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

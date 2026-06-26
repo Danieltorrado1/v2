@@ -3,6 +3,7 @@ import { AlertTriangle, Banknote, Plus, Power, Search } from 'lucide-react';
 import type { EstadoGeneral, SalarioPersonal } from '../cg.types';
 import { MOCK_SALARIOS, MOCK_EMPRESAS, MOCK_CONTRATOS, MOCK_CARGOS } from '../cg.mock';
 import { FormModal } from '../components/FormModal';
+import { MockBanner } from '../components/MockBanner';
 
 type Form = Omit<SalarioPersonal, 'id' | 'version'>;
 const blank = (): Form => ({ empresa_id: MOCK_EMPRESAS[0]?.id ?? 1, contrato_id: MOCK_CONTRATOS[0]?.id ?? 1, cargo_id: undefined, tipo_vinculacion: 'CTF', salario_base: 0, auxilio_transporte: 0, auxilios_adicionales: 0, valor_dia: 0, valor_turno: 0, recargos: 0, deducciones: 0, vigencia_desde: new Date().toISOString().slice(0, 10), vigencia_hasta: undefined, estado: 'activo' });
@@ -64,6 +65,7 @@ export function SalariosTab() {
 
   return (
     <div>
+      <MockBanner entity="Salarios" />
       <div className="adm-kpi-row">
         <div className="adm-kpi primary"><div className="adm-kpi-icon"><Banknote size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{items.length}</span><span className="adm-kpi-lbl">Registros totales</span></div></div>
         <div className="adm-kpi success"><div className="adm-kpi-icon"><Banknote size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{activos}</span><span className="adm-kpi-lbl">Activos</span></div></div>

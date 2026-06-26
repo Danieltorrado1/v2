@@ -2,13 +2,6 @@ import { useState } from "react";
 import { RotateCcw } from "lucide-react";
 import type { ModalidadSegment } from "../../../types/dashboard.types";
 
-// Front face still uses mock data — no TC/MT/OPS breakdown endpoint exists yet
-const frontSegments = [
-  { label: "Tiempo Completo (TC)", count: 180, colorClass: "dot-primary" },
-  { label: "Medio Tiempo (MT)", count: 48, colorClass: "dot-warning" },
-  { label: "OPS", count: 20, colorClass: "dot-neutral" },
-];
-
 const COLOR_VARS: Record<string, string> = {
   "dot-primary": "var(--color-primary)",
   "dot-info": "var(--color-info)",
@@ -55,7 +48,7 @@ export default function ModalityFlipCard({
     <div className={`flip-wrapper ${flipped ? "is-flipped" : ""}`}>
       <div className="flip-inner">
 
-        {/* ── Front face: all personnel by contract type (mock until endpoint exists) ── */}
+        {/* ── Front face: donut neutro, sin endpoint disponible ── */}
         <div className="flip-face flip-face-front">
           <div className="panel-title">
             <h3>Distribución por Modalidad</h3>
@@ -73,25 +66,19 @@ export default function ModalityFlipCard({
           <div className="mod-donut-wrapper">
             <div
               className="mod-donut"
-              style={{
-                background:
-                  "conic-gradient(var(--color-primary) 0deg 261deg, var(--color-warning) 261deg 331deg, var(--color-neutral) 331deg 360deg)",
-              }}
+              style={{ background: "conic-gradient(var(--border-color) 0deg 360deg)" }}
             >
               <div>
-                <strong>248</strong>
-                <span>Personas</span>
+                <strong>—</strong>
+                <span>modalidades</span>
               </div>
             </div>
-
             <div className="mod-legend">
-              {frontSegments.map((seg) => (
-                <div key={seg.label} className="mod-legend-item">
-                  <i className={`dot ${seg.colorClass}`} />
-                  <span className="mod-legend-label">{seg.label}</span>
-                  <span className="mod-legend-count">{seg.count}</span>
-                </div>
-              ))}
+              <div className="mod-legend-item" style={{ justifyContent: "center" }}>
+                <span className="mod-legend-label" style={{ textAlign: "center", opacity: 0.6 }}>
+                  Pendiente de conexión
+                </span>
+              </div>
             </div>
           </div>
         </div>

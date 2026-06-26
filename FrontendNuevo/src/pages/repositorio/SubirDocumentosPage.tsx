@@ -1,7 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle, FileText, Trash2, Upload, X } from 'lucide-react';
-import { MOCK_CONTRATOS_REPO, MOCK_EMPRESAS_REPO, MOCK_MUNICIPIOS_REPO, MOCK_PERSONAS } from './repositorio.mock';
+import { MOCK_CONTRATOS_REPO, MOCK_EMPRESAS_REPO, MOCK_MUNICIPIOS_REPO } from './repositorio.mock';
 import { TIPOS_DOCUMENTALES } from './repositorio.types';
+import { getPersonas, buildNombreCompleto } from '../../services/personasApi';
+import type { PersonaApi } from '../../types/personas.types';
 import './repositorio.css';
 
 interface QueueFile {
@@ -20,17 +22,38 @@ function fmt(bytes: number) {
 }
 
 export default function SubirDocumentosPage() {
-  const inputRef            = useRef<HTMLInputElement>(null);
-  const [drag, setDrag]     = useState(false);
-  const [queue, setQueue]   = useState<QueueFile[]>([]);
-  const [persona, setPersona]   = useState('');
-  const [tipo, setTipo]         = useState('');
-  const [empresa, setEmpresa]   = useState('');
+  const inputRef              = useRef<HTMLInputElement>(null);
+  const [drag, setDrag]       = useState(false);
+  const [queue, setQueue]     = useState<QueueFile[]>([]);
+  const [persona, setPersona] = useState('');
+  const [tipo, setTipo]       = useState('');
+  const [empresa, setEmpresa] = useState('');
   const [contrato, setContrato] = useState('');
   const [municipio, setMunicipio] = useState('');
-  const [vencimiento, setVenc]  = useState('');
-  const [success, setSuccess]   = useState(false);
-  const [err, setErr]           = useState('');
+  const [vencimiento, setVenc] = useState('');
+  const [success, setSuccess] = useState(false);
+  const [err, setErr]         = useState('');
+
+  // Real personas from API
+  const [personas, setPersonas]           = useState<PersonaApi[]>([]);
+  const [personasLoading, setPersonasLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setPersonasLoading(true);
+      try {
+        const res = await getPersonas({ limit: 100 });
+        if (!cancelled) setPersonas(res.items);
+      } catch {
+        // Non-critical: upload still works if persona list fails
+      } finally {
+        if (!cancelled) setPersonasLoading(false);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, []);
 
   function addFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -74,12 +97,9 @@ export default function SubirDocumentosPage() {
     }, 1200);
   }
 
-  const contratosEmpresa = empresa ? MOCK_CONTRATOS_REPO.filter(c => {
-    const p = MOCK_PERSONAS.find(pe => pe.empresa === empresa);
-    return p ? c === p.contrato : true;
-  }) : MOCK_CONTRATOS_REPO;
-
-  void contratosEmpresa;
+  void empresa;
+  void contrato;
+  void municipio;
 
   return (
     <div className="rep-upload-page">
@@ -110,9 +130,12 @@ export default function SubirDocumentosPage() {
         <div className="rep-upload-grid">
           <div className="rep-upload-field">
             <label className="rep-upload-label">Persona</label>
-            <select className="rep-upload-select" value={persona} onChange={e => setPersona(e.target.value)}>
-              <option value="">— Seleccionar —</option>
-              {MOCK_PERSONAS.map(p => <option key={p.id} value={p.id}>{p.nombre_completo}</option>)}
+            <select className="rep-upload-select" value={persona} onChange={e => setPersona(e.target.value)}
+              disabled={personasLoading}>
+              <option value="">{personasLoading ? 'Cargando personas…' : '— Seleccionar —'}</option>
+              {personas.map(p => (
+                <option key={p.id} value={p.id}>{buildNombreCompleto(p)}</option>
+              ))}
             </select>
           </div>
           <div className="rep-upload-field">
@@ -161,7 +184,8 @@ export default function SubirDocumentosPage() {
         <Upload size={40} />
         <h4 className="rep-upload-title">Arrastra archivos aquí o haz clic para seleccionar</h4>
         <p className="rep-upload-sub">PDF, JPG, PNG · Máx. 20 MB por archivo · Múltiples archivos permitidos</p>
-        <input ref={inputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" style={{ display: 'none' }} onChange={e => addFiles(e.target.files)} />
+        <input ref={inputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp"
+          style={{ display: 'none' }} onChange={e => addFiles(e.target.files)} />
       </div>
 
       {/* Queue */}
@@ -177,11 +201,10 @@ export default function SubirDocumentosPage() {
                 <span className="rep-queue-item-name">{q.file.name}</span>
                 <span className="rep-queue-item-size">{fmt(q.file.size)}</span>
 
-                {/* Per-file overrides */}
                 <select style={{ height: 28, padding: '0 6px', border: '1px solid var(--border-color)', borderRadius: 6, fontSize: 11, background: 'var(--bg)', color: 'var(--text-primary)' }}
                   value={q.persona_id || ''} onChange={e => updateQueueItem(q.id, 'persona_id', Number(e.target.value))}>
                   <option value="">Persona</option>
-                  {MOCK_PERSONAS.map(p => <option key={p.id} value={p.id}>{p.nombre_completo}</option>)}
+                  {personas.map(p => <option key={p.id} value={p.id}>{buildNombreCompleto(p)}</option>)}
                 </select>
 
                 <select style={{ height: 28, padding: '0 6px', border: '1px solid var(--border-color)', borderRadius: 6, fontSize: 11, background: 'var(--bg)', color: 'var(--text-primary)' }}
@@ -190,9 +213,9 @@ export default function SubirDocumentosPage() {
                   {TIPOS_DOCUMENTALES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
 
-                {q.status === 'done' && <CheckCircle size={14} style={{ color: 'var(--color-success)', flexShrink: 0 }} />}
+                {q.status === 'done'      && <CheckCircle size={14} style={{ color: 'var(--color-success)', flexShrink: 0 }} />}
                 {q.status === 'uploading' && <span style={{ fontSize: 11, color: 'var(--color-primary)' }}>Cargando…</span>}
-                {q.status === 'pending' && (
+                {q.status === 'pending'   && (
                   <button className="rep-btn ghost sm" onClick={() => removeFromQueue(q.id)}>
                     <Trash2 size={12} />
                   </button>

@@ -24,7 +24,7 @@ export default function SSTResumenCard({ data, loading, error }: SSTResumenCardP
       ) : error ? (
         <div className="dash-card-state dash-card-error">{error}</div>
       ) : sst ? (
-        <div className="sst-content">
+        <div className="sst-content card-scroll" style={{ overflowY: "auto" }}>
           <div className="stat-mini-grid cols-3">
             <div className="stat-mini-box">
               <span className="stat-mini-label">Accidentes</span>
@@ -36,8 +36,30 @@ export default function SSTResumenCard({ data, loading, error }: SSTResumenCardP
               </span>
             </div>
             <div className="stat-mini-box">
+              <span className="stat-mini-label">Incidentes</span>
+              <span
+                className="stat-mini-value"
+                style={sst.incidentes > 0 ? { color: "var(--color-warning)" } : undefined}
+              >
+                {sst.incidentes}
+              </span>
+            </div>
+            <div className="stat-mini-box">
+              <span className="stat-mini-label">Enf. laborales</span>
+              <span
+                className="stat-mini-value"
+                style={sst.enfermedadesLaborales > 0 ? { color: "var(--color-warning)" } : undefined}
+              >
+                {sst.enfermedadesLaborales}
+              </span>
+            </div>
+            <div className="stat-mini-box">
               <span className="stat-mini-label">Capacitaciones</span>
               <span className="stat-mini-value">{sst.capacitaciones}</span>
+            </div>
+            <div className="stat-mini-box">
+              <span className="stat-mini-label">Entregas EPP</span>
+              <span className="stat-mini-value">{sst.entregasEpp}</span>
             </div>
             <div className="stat-mini-box">
               <span className="stat-mini-label">Planes vencidos</span>
@@ -51,7 +73,9 @@ export default function SSTResumenCard({ data, loading, error }: SSTResumenCardP
           </div>
           <div className="progress-bar-wrap">
             <div className="progress-bar-header">
-              <span>Cierre de planes</span>
+              <span>
+                Cierre de planes ({sst.planesCerrados} cerrados / {sst.planesAbiertos} abiertos)
+              </span>
               <span>{sst.porcentajeCierrePlanes}%</span>
             </div>
             <div className="hbar-track">

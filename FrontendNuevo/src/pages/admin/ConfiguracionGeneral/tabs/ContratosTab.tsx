@@ -3,6 +3,7 @@ import { AlertTriangle, Calendar, Edit2, FileText, Plus, Power, Search } from 'l
 import type { Contrato, EstadoContrato } from '../cg.types';
 import { MOCK_CONTRATOS, MOCK_EMPRESAS } from '../cg.mock';
 import { FormModal } from '../components/FormModal';
+import { MockBanner } from '../components/MockBanner';
 
 type Form = Omit<Contrato, 'id'> & { municipiosRaw: string };
 const blank = (): Form => ({ empresa_id: MOCK_EMPRESAS[0]?.id ?? 1, numero_contrato: '', cliente: '', objeto_contractual: '', fecha_inicio: '', fecha_fin: '', estado: 'activo', municipios: [], municipiosRaw: '', observaciones: '' });
@@ -69,6 +70,7 @@ export function ContratosTab() {
 
   return (
     <div>
+      <MockBanner entity="Contratos" />
       <div className="adm-kpi-row">
         <div className="adm-kpi primary"><div className="adm-kpi-icon"><FileText size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{items.length}</span><span className="adm-kpi-lbl">Total contratos</span></div></div>
         <div className="adm-kpi success"><div className="adm-kpi-icon"><FileText size={16} /></div><div className="adm-kpi-body"><span className="adm-kpi-val">{activos}</span><span className="adm-kpi-lbl">Activos</span></div></div>
