@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Bell, Moon, Sun } from "lucide-react";
+import { Bell, LogOut, Moon, Sun } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 import { NavDropdown } from "./NavDropdown";
 import {
   NotificationsPanel,
@@ -40,6 +41,7 @@ const repositorioLinks = [
 
 export default function MainLayout() {
   const { theme, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(INITIAL_UNREAD_COUNT);
   const bellRef = useRef<HTMLButtonElement>(null);
@@ -105,7 +107,18 @@ export default function MainLayout() {
             {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
           </button>
 
-          <div className="user-area">Admin</div>
+          <div className="user-area">
+            <span>{user?.name ?? "Usuario"}</span>
+            <button
+              type="button"
+              className="theme-button"
+              onClick={logout}
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
       </header>
 

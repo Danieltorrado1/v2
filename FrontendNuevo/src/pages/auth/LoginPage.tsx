@@ -1,17 +1,27 @@
 import { useState } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { login } from "../../services/authService";
+import { useAuth } from "../../context/AuthContext";
 import empiriaIcon from "../../assets/empiria-icon.svg";
 import NeuralBackground from "../../effects/NeuralBackground";
 import "./LoginPage.css";
 
+const ADMIN_ROLES = ['admin', 'th', 'supervisor'];
+
 export default function LoginPage() {
+  const { login, isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // If the user already has a valid session, skip the login page
+  if (!isLoading && isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,17 +37,15 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await login({
-        email: normalizedEmail,
-        password,
-      });
-
-      localStorage.setItem("empiria_access_token", result.accessToken);
-      localStorage.setItem("empiria_user", JSON.stringify(result.user));
-
-      window.location.href = "/dashboard";
-    } catch {
-      setError("Correo o contraseña incorrectos.");
+      const user = await login({ email: normalizedEmail, password });
+      const isColaborador = !user.roles.some((r) =>
+        ADMIN_ROLES.includes(r.toLowerCase()),
+      );
+      navigate(isColaborador ? "/portal" : "/dashboard", { replace: true });
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Correo o contraseña incorrectos.",
+      );
     } finally {
       setLoading(false);
     }

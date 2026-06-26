@@ -1,34 +1,37 @@
-import { api } from "./api";
+import { apiClient } from './apiClient';
+import { getAuthToken, clearAuthSession } from './tokenStorage';
+import type { AuthUser, AuthSession } from '../types/auth.types';
+import type { ApiResponse } from '../types/api.types';
 
-export type LoginInput = {
-  email: string;
-  password: string;
-};
+// ── Backward-compatible type exports ──────────────────────────────────────────
 
-export type AuthUser = {
-  id: string;
-  email: string;
-  name: string;
-  active: boolean;
-  roles: string[];
-  permissions: string[];
-  createdAt: string;
-  updatedAt: string;
-};
+export type { AuthUser };
+export type LoginInput = { email: string; password: string };
+export type LoginResult = AuthSession;
 
-export type LoginResult = {
-  accessToken: string;
-  tokenType: "Bearer";
-  expiresIn: string;
-  user: AuthUser;
-};
+// ── Auth functions ─────────────────────────────────────────────────────────────
 
-export async function login(data: LoginInput): Promise<LoginResult> {
-  const response = await api.post("/auth/login", data);
-  return response.data.data;
+export async function login(credentials: LoginInput): Promise<AuthSession> {
+  const response = await apiClient.post<ApiResponse<AuthSession>>(
+    '/auth/login',
+    credentials,
+  );
+  return response.data;
 }
 
-export async function getMe(): Promise<AuthUser> {
-  const response = await api.get("/auth/me");
-  return response.data.data;
+export function logout(): void {
+  clearAuthSession();
 }
+
+export async function getCurrentUser(): Promise<AuthUser | null> {
+  if (!getAuthToken()) return null;
+  try {
+    const response = await apiClient.get<ApiResponse<AuthUser>>('/auth/me');
+    return response.data;
+  } catch {
+    return null;
+  }
+}
+
+// Backward-compat alias
+export const getMe = getCurrentUser;

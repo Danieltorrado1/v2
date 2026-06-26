@@ -104,6 +104,7 @@ async function request<T>(
 
   if (response.status === 401) {
     clearAuthSession();
+    window.dispatchEvent(new CustomEvent('empiria:unauthorized'));
     throw new ApiClientError(resolveErrorMessage(401), 401);
   }
 
