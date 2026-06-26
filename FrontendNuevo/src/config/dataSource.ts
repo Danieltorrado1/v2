@@ -1,6 +1,6 @@
 export const dataSource = {
   useMockDashboard: false,
-  useMockPersonal: true,
+  useMockPersonal: false,
   useMockDocumentos: true,
   useMockRepositorio: true,
   useMockNomina: true,

@@ -4,12 +4,26 @@ import { useApiState } from "../../../hooks/useApiState";
 import {
   getDashboardPersonas,
   getDashboardCobertura,
+  getDashboardResumen,
+  getDashboardAlertas,
+  getDashboardNomina,
+  getDashboardSST,
   normalizeCargos,
   normalizeModalidadCobertura,
 } from "../../../services/dashboardApi";
-import type { DashboardPersonasApi, DashboardCoberturaApi } from "../../../types/dashboard.types";
+import type {
+  DashboardPersonasApi,
+  DashboardCoberturaApi,
+  DashboardResumenApi,
+  DashboardAlertasApi,
+  DashboardNominaApi,
+  DashboardSSTApi,
+} from "../../../types/dashboard.types";
 import AgendaBirthdayCard from "./AgendaBirthdayCard";
 import ModalityFlipCard from "./ModalityFlipCard";
+import AlertasCard from "./AlertasCard";
+import NominaResumenCard from "./NominaResumenCard";
+import SSTResumenCard from "./SSTResumenCard";
 
 // ── Mock sections without backend endpoints yet ───────────────────────────────
 // Gender breakdown, age ranges and average age have no endpoint in /dashboard/*.
@@ -46,10 +60,38 @@ export default function PersonalTab() {
     run: runCobertura,
   } = useApiState<DashboardCoberturaApi>();
 
+  // Resumen: only data + run needed; loading/error are supplementary in AlertasCard
+  const { data: resumenData, run: runResumen } = useApiState<DashboardResumenApi>();
+
+  const {
+    data: alertasData,
+    loading: alertasLoading,
+    error: alertasError,
+    run: runAlertas,
+  } = useApiState<DashboardAlertasApi>();
+
+  const {
+    data: nominaData,
+    loading: nominaLoading,
+    error: nominaError,
+    run: runNomina,
+  } = useApiState<DashboardNominaApi>();
+
+  const {
+    data: sstData,
+    loading: sstLoading,
+    error: sstError,
+    run: runSST,
+  } = useApiState<DashboardSSTApi>();
+
   useEffect(() => {
     void runPersonas(() => getDashboardPersonas());
     void runCobertura(() => getDashboardCobertura());
-  }, [runPersonas, runCobertura]);
+    void runResumen(() => getDashboardResumen());
+    void runAlertas(() => getDashboardAlertas());
+    void runNomina(() => getDashboardNomina());
+    void runSST(() => getDashboardSST());
+  }, [runPersonas, runCobertura, runResumen, runAlertas, runNomina, runSST]);
 
   const cargos = personasData ? normalizeCargos(personasData) : [];
   const maxCargo = cargos.length > 0 ? Math.max(...cargos.map((c) => c.value)) : 1;
@@ -232,6 +274,30 @@ export default function PersonalTab() {
           backSegments={backSegments}
           backLoading={coberturaLoading}
           backError={coberturaError}
+        />
+
+      </div>
+
+      {/* ── Row 4: Alertas · Nómina · SST — real from backend ── */}
+      <div className="dashboard-row summary-row">
+
+        <AlertasCard
+          alertasData={alertasData}
+          resumenData={resumenData}
+          alertasLoading={alertasLoading}
+          alertasError={alertasError}
+        />
+
+        <NominaResumenCard
+          data={nominaData}
+          loading={nominaLoading}
+          error={nominaError}
+        />
+
+        <SSTResumenCard
+          data={sstData}
+          loading={sstLoading}
+          error={sstError}
         />
 
       </div>

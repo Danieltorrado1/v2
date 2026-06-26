@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bell,
   BriefcaseBusiness,
@@ -22,135 +22,59 @@ import {
   X,
 } from "lucide-react";
 import "./PersonalPage.css";
+import { useApiState } from "../../hooks/useApiState";
+import {
+  getPersonas,
+  getVinculacionesByPersonaId,
+  getVinculacionExpediente,
+  normalizePersonaListItem,
+  buildNombreCompleto,
+} from "../../services/personasApi";
+import type {
+  PaginatedPersonasApi,
+  VinculacionExpedienteApi,
+  PersonaListItem,
+} from "../../types/personas.types";
 
-type Employee = {
-  initials: string;
-  name: string;
-  cc: string;
-  cargo: string;
-  municipio: string;
-  institucion: string;
-  estado: string;
-  alertas: string;
-  color: string;
-  ingreso: string;
-  retiro?: string;
-  documentacion: number;
-};
+const ITEMS_PER_PAGE = 25;
 
-const employees: Employee[] = [
-  {
-    initials: "MT",
-    name: "María Fernanda Torres Ospina",
-    cc: "CC 1.121.873.256",
-    cargo: "Manipulador",
-    municipio: "Acacías",
-    institucion: "IE Simón Bolívar",
-    estado: "ACTIVO",
-    alertas: "1 alerta",
-    color: "green",
-    ingreso: "12 Ene 2024",
-    documentacion: 95,
-  },
-  {
-    initials: "CR",
-    name: "Carmen Alicia Ruiz Moreno",
-    cc: "CC 1.008.342.114",
-    cargo: "Manipulador",
-    municipio: "Granada",
-    institucion: "IE Jorge Eliecer Gaitán",
-    estado: "ACTIVO",
-    alertas: "2 alertas",
-    color: "blue",
-    ingreso: "03 Feb 2026",
-    documentacion: 83,
-  },
-  {
-    initials: "RJ",
-    name: "Rosa Elvira Jiménez Castro",
-    cc: "CC 1.120.558.447",
-    cargo: "Manipulador",
-    municipio: "Vistahermosa",
-    institucion: "IE Hernando Turbay",
-    estado: "ACTIVO",
-    alertas: "2 alertas",
-    color: "purple",
-    ingreso: "20 Ago 2023",
-    documentacion: 100,
-  },
-  {
-    initials: "AG",
-    name: "Amparo del Carmen González Leal",
-    cc: "CC 1.005.771.338",
-    cargo: "Manipulador",
-    municipio: "La Macarena",
-    institucion: "IE La Macarena Centro",
-    estado: "RETIRADO",
-    alertas: "Sin alertas",
-    color: "orange",
-    ingreso: "15 Mar 2021",
-    retiro: "30 Abr 2026",
-    documentacion: 100,
-  },
-  {
-    initials: "LP",
-    name: "Luz Marina Pérez Vargas",
-    cc: "CC 1.122.456.789",
-    cargo: "Manipulador",
-    municipio: "Puerto Rico",
-    institucion: "IE Santa Inés",
-    estado: "ACTIVO",
-    alertas: "1 alerta",
-    color: "red",
-    ingreso: "05 May 2025",
-    documentacion: 64,
-  },
-  {
-    initials: "NR",
-    name: "Nohora Stella Ramírez Bernal",
-    cc: "CC 1.119.002.003",
-    cargo: "Manipulador",
-    municipio: "El Castillo",
-    institucion: "IE El Castillo",
-    estado: "ACTIVO",
-    alertas: "Sin alertas",
-    color: "cyan",
-    ingreso: "18 Oct 2022",
-    documentacion: 100,
-  },
-  {
-    initials: "BH",
-    name: "Betty Josefina Herrera Pinto",
-    cc: "CC 1.118.444.556",
-    cargo: "Manipulador",
-    municipio: "Castilla La Nueva",
-    institucion: "IE Nuestra Señora del Carmen",
-    estado: "RETIRADO",
-    alertas: "1 alerta",
-    color: "green",
-    ingreso: "01 Jun 2020",
-    retiro: "10 Jun 2026",
-    documentacion: 90,
-  },
-  {
-    initials: "ES",
-    name: "Esperanza Mireya Suárez Gil",
-    cc: "CC 1.123.667.889",
-    cargo: "Manipulador",
-    municipio: "Fuente de Oro",
-    institucion: "IE Marco Fidel Suárez",
-    estado: "ACTIVO",
-    alertas: "1 alerta",
-    color: "blue",
-    ingreso: "22 Sep 2024",
-    documentacion: 78,
-  },
-];
+const AVATAR_COLORS = ["green", "blue", "purple", "orange", "red", "cyan"] as const;
+type AvatarColor = (typeof AVATAR_COLORS)[number];
 
-function documentationLevel(pct: number) {
-  if (pct >= 90) return "high";
-  if (pct >= 70) return "medium";
-  return "low";
+function getAvatarColor(id: number): AvatarColor {
+  return AVATAR_COLORS[id % AVATAR_COLORS.length] ?? "blue";
+}
+
+function getInitials(item: PersonaListItem): string {
+  const parts = item.nombreCompleto.trim().split(/\s+/);
+  const first = parts[0]?.[0] ?? "";
+  const second = parts[1]?.[0] ?? "";
+  return (first + second).toUpperCase() || "?";
+}
+
+const MESES = [
+  "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+] as const;
+
+function formatFechaCorta(fecha: string | null | undefined): string {
+  if (!fecha) return "—";
+  const [y, m, d] = fecha.split("-");
+  const year = Number(y);
+  const month = Number(m);
+  const day = Number(d);
+  if (!year || !month || !day) return fecha;
+  return `${String(day).padStart(2, "0")} ${MESES[month - 1] ?? "?"} ${year}`;
+}
+
+function calcularEdad(fechaNacimiento: string | null | undefined): string {
+  if (!fechaNacimiento) return "—";
+  const hoy = new Date();
+  const nac = new Date(fechaNacimiento + "T12:00:00");
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  const diffMes = hoy.getMonth() - nac.getMonth();
+  if (diffMes < 0 || (diffMes === 0 && hoy.getDate() < nac.getDate())) edad--;
+  return `${edad} años`;
 }
 
 const toolbarFilters = [
@@ -166,7 +90,83 @@ const toolbarFilters = [
 ];
 
 export default function PersonalPage() {
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const {
+    data: personasPage,
+    loading: listLoading,
+    error: listError,
+    run: runPersonas,
+  } = useApiState<PaginatedPersonasApi>();
+
+  const {
+    data: expediente,
+    loading: expedienteLoading,
+    error: expedienteError,
+    run: runExpediente,
+    reset: resetExpediente,
+  } = useApiState<VinculacionExpedienteApi>();
+
+  const [selectedPersonaId, setSelectedPersonaId] = useState<number | null>(null);
+  const [inputSearch, setInputSearch] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const total = personasPage?.pagination.total ?? 0;
+  const totalPages = Math.max(personasPage?.pagination.total_pages ?? 1, 1);
+  const personaRows = (personasPage?.items ?? []).map((p) => ({
+    persona: p,
+    item: normalizePersonaListItem(p),
+  }));
+
+  useEffect(() => {
+    void runPersonas(() =>
+      getPersonas({
+        search: searchText || undefined,
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+      })
+    );
+  }, [runPersonas, searchText, currentPage]);
+
+  const handleSearchInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearchText(value);
+      setCurrentPage(1);
+    }, 350);
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setInputSearch("");
+    setSearchText("");
+    setCurrentPage(1);
+  }, []);
+
+  const handleSelectPersona = useCallback(
+    (personaId: number) => {
+      setSelectedPersonaId(personaId);
+      resetExpediente();
+      void runExpediente(async () => {
+        const vincs = await getVinculacionesByPersonaId(personaId);
+        const active = vincs.find((v) => v.estado_vinculacion === "ACTIVA") ?? vincs[0];
+        if (!active) throw new Error("Este colaborador no tiene vinculaciones registradas.");
+        return getVinculacionExpediente(active.id);
+      });
+    },
+    [runExpediente, resetExpediente]
+  );
+
+  const handleClose = useCallback(() => {
+    setSelectedPersonaId(null);
+    resetExpediente();
+  }, [resetExpediente]);
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
 
   return (
     <div className="personal-module">
@@ -183,9 +183,21 @@ export default function PersonalPage() {
               Importar Excel
             </button>
 
-            <button type="button" className="toolbar-button">
+            <button
+              type="button"
+              className="toolbar-button"
+              onClick={() => {
+                void runPersonas(() =>
+                  getPersonas({
+                    search: searchText || undefined,
+                    page: currentPage,
+                    limit: ITEMS_PER_PAGE,
+                  })
+                );
+              }}
+            >
               <RefreshCw size={18} />
-              Actualizar por Excel
+              Actualizar
             </button>
 
             <button type="button" className="toolbar-button">
@@ -196,7 +208,11 @@ export default function PersonalPage() {
 
           <div className="toolbar-search">
             <Search size={18} />
-            <input placeholder="Buscar por nombre, documento o cargo" />
+            <input
+              placeholder="Buscar por nombre o documento"
+              value={inputSearch}
+              onChange={handleSearchInput}
+            />
           </div>
         </div>
 
@@ -211,154 +227,248 @@ export default function PersonalPage() {
               </div>
             ))}
 
-            <button type="button" className="toolbar-clear">
+            <button type="button" className="toolbar-clear" onClick={handleClearSearch}>
               Limpiar
             </button>
           </div>
         </div>
       </div>
 
-      <section className={`personal-page ${selectedEmployee ? "split-view" : "list-view"}`}>
+      <section className={`personal-page ${selectedPersonaId !== null ? "split-view" : "list-view"}`}>
         <aside className="people-panel">
           <div className="people-header">
             <div>
               <span>Personal</span>
               <h1>Colaboradores</h1>
-              <p>704 registros</p>
+              <p>
+                {listLoading && !personasPage
+                  ? "Cargando..."
+                  : `${total.toLocaleString("es-CO")} registros`}
+              </p>
             </div>
           </div>
 
-          {selectedEmployee ? (
-            <div className="people-list">
-              {employees.map((employee) => (
-                <button
-                  key={employee.cc}
-                  type="button"
-                  onClick={() => setSelectedEmployee(employee)}
-                  className={`employee-row ${selectedEmployee.cc === employee.cc ? "selected" : ""}`}
-                >
-                  <div className={`avatar ${employee.color}`}>{employee.initials}</div>
-
-                  <div className="employee-info">
-                    <div className="employee-name-line">
-                      <strong>{employee.name}</strong>
-                      <span className={employee.estado === "ACTIVO" ? "status active" : "status retired"}>
-                        {employee.estado}
-                      </span>
-                    </div>
-
-                    <p>
-                      {employee.cc} · {employee.cargo}
-                    </p>
-
-                    <small>
-                      {employee.municipio} · {employee.institucion}
-                    </small>
-                  </div>
-
-                  <div className={employee.alertas === "Sin alertas" ? "alert ok" : "alert warning"}>
-                    {employee.alertas}
-                  </div>
-                </button>
-              ))}
+          {listError ? (
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                padding: "32px 24px",
+                textAlign: "center",
+              }}
+            >
+              <p
+                style={{
+                  fontWeight: 700,
+                  fontSize: "0.85rem",
+                  color: listError.includes("permisos")
+                    ? "var(--color-warning)"
+                    : "var(--color-danger)",
+                }}
+              >
+                {listError.includes("permisos")
+                  ? "No tienes permisos para consultar personal."
+                  : "Error al cargar colaboradores"}
+              </p>
+              {!listError.includes("permisos") && (
+                <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                  {listError}
+                </p>
+              )}
             </div>
           ) : (
-            <div className="people-table">
-              <div className="table-head">
-                <span>Empleado</span>
-                <span>Municipio / Institución</span>
-                <span>Ingreso / Retiro</span>
-                <span>Documentación</span>
-                <span>Alertas</span>
-                <span>Acción</span>
-              </div>
-
-              <div className="table-body">
-                {employees.map((employee) => (
-                  <div
-                    key={employee.cc}
-                    className="table-row"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setSelectedEmployee(employee)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") setSelectedEmployee(employee);
-                    }}
-                  >
-                    <div className="cell-employee">
-                      <div className={`avatar ${employee.color}`}>{employee.initials}</div>
+            <>
+              {selectedPersonaId !== null ? (
+                <div className="people-list">
+                  {personaRows.map(({ persona, item }) => (
+                    <button
+                      key={persona.id}
+                      type="button"
+                      onClick={() => handleSelectPersona(persona.id)}
+                      className={`employee-row ${selectedPersonaId === persona.id ? "selected" : ""}`}
+                    >
+                      <div className={`avatar ${getAvatarColor(persona.id)}`}>
+                        {getInitials(item)}
+                      </div>
 
                       <div className="employee-info">
                         <div className="employee-name-line">
-                          <strong>{employee.name}</strong>
-                          <span className={employee.estado === "ACTIVO" ? "status active" : "status retired"}>
-                            {employee.estado}
-                          </span>
+                          <strong>{item.nombreCompleto}</strong>
                         </div>
-
-                        <p>
-                          {employee.cc} · {employee.cargo}
-                        </p>
+                        <p>CC {item.numeroDocumento}</p>
+                        <small>{item.correo ?? item.telefono ?? "—"}</small>
                       </div>
-                    </div>
 
-                    <div className="cell-meta">
-                      <strong>{employee.municipio}</strong>
-                      <span>{employee.institucion}</span>
-                    </div>
-
-                    <div className="cell-date">
-                      <span>{employee.estado === "ACTIVO" ? "Ingreso" : "Retiro"}</span>
-                      <strong>{employee.estado === "ACTIVO" ? employee.ingreso : employee.retiro}</strong>
-                    </div>
-
-                    <div className={`cell-doc ${documentationLevel(employee.documentacion)}`}>
-                      {employee.documentacion}%
-                    </div>
-
-                    <div className={employee.alertas === "Sin alertas" ? "alert ok" : "alert warning"}>
-                      {employee.alertas}
-                    </div>
-
-                    <div className="cell-action">
-                      Ver <ChevronRight size={14} />
-                    </div>
+                      <div className="alert ok">Ver</div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="people-table">
+                  <div className="table-head">
+                    <span>Empleado</span>
+                    <span>Municipio / Institución</span>
+                    <span>Ingreso / Retiro</span>
+                    <span>Documentación</span>
+                    <span>Alertas</span>
+                    <span>Acción</span>
                   </div>
-                ))}
-              </div>
-            </div>
+
+                  {listLoading && personaRows.length === 0 ? (
+                    <div
+                      style={{
+                        padding: "40px 24px",
+                        textAlign: "center",
+                        color: "var(--text-secondary)",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      Cargando colaboradores...
+                    </div>
+                  ) : personaRows.length === 0 ? (
+                    <div
+                      style={{
+                        padding: "40px 24px",
+                        textAlign: "center",
+                        color: "var(--text-secondary)",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      {searchText
+                        ? `Sin resultados para "${searchText}"`
+                        : "Sin colaboradores registrados"}
+                    </div>
+                  ) : (
+                    <div className="table-body">
+                      {personaRows.map(({ persona, item }) => (
+                        <div
+                          key={persona.id}
+                          className="table-row"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => handleSelectPersona(persona.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSelectPersona(persona.id);
+                          }}
+                        >
+                          <div className="cell-employee">
+                            <div className={`avatar ${getAvatarColor(persona.id)}`}>
+                              {getInitials(item)}
+                            </div>
+
+                            <div className="employee-info">
+                              <div className="employee-name-line">
+                                <strong>{item.nombreCompleto}</strong>
+                              </div>
+                              <p>CC {item.numeroDocumento}</p>
+                            </div>
+                          </div>
+
+                          <div className="cell-meta">
+                            <strong>—</strong>
+                            <span>—</span>
+                          </div>
+
+                          <div className="cell-date">
+                            <span>—</span>
+                            <strong>—</strong>
+                          </div>
+
+                          <div className="cell-doc">—</div>
+
+                          <div className="alert ok">—</div>
+
+                          <div className="cell-action">
+                            Ver <ChevronRight size={14} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
 
           <div className="people-pagination">
-            <span>Mostrando 1 a {employees.length} de 704</span>
+            <span>
+              Mostrando{" "}
+              {total === 0
+                ? "0"
+                : `${(currentPage - 1) * ITEMS_PER_PAGE + 1} a ${Math.min(
+                    currentPage * ITEMS_PER_PAGE,
+                    total
+                  )}`}{" "}
+              de {total.toLocaleString("es-CO")}
+            </span>
 
             <div>
-              <select>
-                <option>25 por página</option>
+              <select defaultValue="25">
+                <option value="25">25 por página</option>
               </select>
 
-              <button>
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              >
                 <ChevronLeft size={16} />
               </button>
 
-              <button className="active-page">1</button>
-              <button>2</button>
-              <button>3</button>
-              <button>29</button>
+              <button
+                type="button"
+                className={currentPage === 1 ? "active-page" : ""}
+                onClick={() => handlePageChange(1)}
+              >
+                1
+              </button>
 
-              <button>
+              {currentPage > 2 && (
+                <span style={{ padding: "0 2px", color: "var(--text-secondary)" }}>…</span>
+              )}
+
+              {currentPage !== 1 && currentPage !== totalPages && (
+                <button type="button" className="active-page">
+                  {currentPage}
+                </button>
+              )}
+
+              {totalPages > 2 && currentPage < totalPages - 1 && (
+                <span style={{ padding: "0 2px", color: "var(--text-secondary)" }}>…</span>
+              )}
+
+              {totalPages > 1 && (
+                <button
+                  type="button"
+                  className={currentPage === totalPages ? "active-page" : ""}
+                  onClick={() => handlePageChange(totalPages)}
+                >
+                  {totalPages}
+                </button>
+              )}
+
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              >
                 <ChevronRight size={16} />
               </button>
             </div>
           </div>
         </aside>
 
-        {selectedEmployee && (
+        {selectedPersonaId !== null && (
           <main className="employee-profile">
             <QuickEmployeeView
-              key={selectedEmployee.cc}
-              employee={selectedEmployee}
-              onClose={() => setSelectedEmployee(null)}
+              expediente={expediente}
+              loading={expedienteLoading}
+              error={expedienteError}
+              onClose={handleClose}
             />
           </main>
         )}
@@ -368,30 +478,37 @@ export default function PersonalPage() {
 }
 
 function QuickEmployeeView({
-  employee,
+  expediente,
+  loading,
+  error,
   onClose,
 }: {
-  employee: Employee;
+  expediente: VinculacionExpedienteApi | null;
+  loading: boolean;
+  error: string | null;
   onClose: () => void;
 }) {
+  const nombreCompleto = expediente ? buildNombreCompleto(expediente.persona) : "";
+  const estado = expediente?.vinculacion.estado_vinculacion ?? "";
+
   return (
     <div className="quick-employee-view">
       <div className="profile-actions">
         <span className="profile-view-label">Vista rápida del colaborador</span>
 
         <div className="profile-actions-buttons">
-          <button>
+          <button type="button">
             <Edit3 size={17} />
             Editar
           </button>
 
-          <button>
+          <button type="button">
             <MoreHorizontal size={18} />
             Más acciones
             <ChevronDown size={15} />
           </button>
 
-          <button>
+          <button type="button">
             <FileText size={17} />
           </button>
 
@@ -406,187 +523,207 @@ function QuickEmployeeView({
         </div>
       </div>
 
-      <section className="profile-hero">
-        <div className="photo-wrap">
-          <img
-            src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&h=240&fit=crop&crop=face"
-            alt={employee.name}
-          />
-          <span />
+      {loading && !expediente && (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--text-secondary)",
+            fontSize: "0.85rem",
+          }}
+        >
+          Cargando datos del colaborador...
         </div>
+      )}
 
-        <div className="hero-main">
-          <h2>{employee.name}</h2>
-          <p>{employee.cargo}</p>
-
-          <div className="hero-subtitle">
-            <span>{employee.institucion}</span>
-            <i />
-            <span>PAE Meta</span>
-            <b className={employee.estado === "ACTIVO" ? "" : "retired"}>
-              {employee.estado}
-            </b>
-          </div>
-
-          <div className="hero-chips">
-            <div>
-              <MapPin size={17} />
-              {employee.municipio}
-            </div>
-            <div>
-              <FileText size={17} />
-              Contrato fijo
-            </div>
-            <div>
-              <UserRound size={17} />
-              {employee.cargo}
-            </div>
-            <div>
-              <CalendarDays size={17} />
-              {employee.estado === "ACTIVO"
-                ? `Ingreso: ${employee.ingreso}`
-                : `Retiro: ${employee.retiro}`}
-            </div>
-          </div>
+      {error && !expediente && (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "8px",
+            padding: "32px 24px",
+            textAlign: "center",
+          }}
+        >
+          <p style={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--color-danger)" }}>
+            Error al cargar el expediente
+          </p>
+          <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>{error}</p>
         </div>
-      </section>
+      )}
 
-      <section className="profile-grid three">
-        <InfoCard
-          icon={<IdCard size={18} />}
-          title="Información personal"
-          rows={[
-            ["Documento", employee.cc],
-            ["Fecha de nacimiento", "19 Feb 1988"],
-            ["Edad", "36 años"],
-            ["Sexo", "Femenino"],
-            ["Estado civil", "Soltera"],
-            ["Grupo sanguíneo", "O+"],
-            ["Nacionalidad", "Colombiana"],
-          ]}
-        />
+      {expediente && (
+        <>
+          <section className="profile-hero">
+            <div className="photo-wrap">
+              <img
+                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&h=240&fit=crop&crop=face"
+                alt={nombreCompleto}
+              />
+              <span />
+            </div>
 
-        <InfoCard
-          icon={<BriefcaseBusiness size={18} />}
-          title="Información laboral"
-          rows={[
-            ["Empresa", "PAE Meta"],
-            ["Contrato", "Fijo"],
-            ["Cargo", employee.cargo],
-            ["Institución", employee.institucion],
-            ["Sede", "Principal"],
-            ["Modalidad", "Almuerzo y refrigerio"],
-            ["Municipio", employee.municipio],
-          ]}
-        />
+            <div className="hero-main">
+              <h2>{nombreCompleto}</h2>
+              <p>{expediente.cargo.nombre_cargo ?? "—"}</p>
 
-        <InfoCard
-          icon={<ShieldCheck size={18} />}
-          title="Afiliaciones"
-          rows={[
-            ["EPS", "Nueva EPS"],
-            ["AFP", "Porvenir"],
-            ["ARL", "Positiva"],
-            ["Caja de compensación", "Compensar"],
-            ["Cesantías", "Porvenir"],
-          ]}
-        />
-      </section>
+              <div className="hero-subtitle">
+                <span>{expediente.empresa.nombre_empresa ?? "—"}</span>
+                <i />
+                <span>{expediente.tipo_vinculacion.nombre_vinculacion ?? "—"}</span>
+                <b className={estado === "ACTIVA" ? "" : "retired"}>{estado}</b>
+              </div>
 
-      <section className="profile-grid bottom">
-        <div className="profile-card history-card">
-          <div className="card-title">
-            <History size={18} />
-            <h3>Historial reciente</h3>
-          </div>
-
-          <div className="timeline">
-            <TimelineItem
-              date="03 Feb 2026"
-              title="Ingreso"
-              detail="Ingreso como Manipulador de alimentos"
-              author="Laura V."
-            />
-            <TimelineItem
-              date="15 Ene 2026"
-              title="Cambio de EPS"
-              detail="De Sanitas EPS a Nueva EPS"
-              author="Laura V."
-            />
-            <TimelineItem
-              date="10 Mar 2025"
-              title="Cambio de cargo"
-              detail="De Auxiliar de cocina a Manipulador de alimentos"
-              author="Laura V."
-            />
-            <TimelineItem
-              date="20 Nov 2024"
-              title="Cambio de sede"
-              detail="De Sede Norte a Principal"
-              author="Laura V."
-            />
-          </div>
-
-          <button className="link-button">
-            Ver todo el historial <ChevronRight size={16} />
-          </button>
-        </div>
-
-        <div className="profile-card status-card">
-          <div className="card-title">
-            <Bell size={18} />
-            <h3>Estado general</h3>
-          </div>
-
-          <div className="status-content">
-            <div
-              className="progress-ring"
-              style={{
-                background: `conic-gradient(var(--color-success) 0 ${employee.documentacion}%, var(--border-color) ${employee.documentacion}% 100%)`,
-              }}
-            >
-              <div>
-                <strong>{employee.documentacion}%</strong>
+              <div className="hero-chips">
+                <div>
+                  <MapPin size={17} />
+                  {expediente.persona.pais_nacimiento ?? "—"}
+                </div>
+                <div>
+                  <FileText size={17} />
+                  {expediente.contrato.numero_contrato ?? "Sin contrato"}
+                </div>
+                <div>
+                  <UserRound size={17} />
+                  {expediente.cargo.nombre_cargo ?? "—"}
+                </div>
+                <div>
+                  <CalendarDays size={17} />
+                  {estado === "ACTIVA"
+                    ? `Ingreso: ${formatFechaCorta(expediente.vinculacion.fecha_inicio)}`
+                    : `Retiro: ${formatFechaCorta(expediente.vinculacion.fecha_fin)}`}
+                </div>
               </div>
             </div>
+          </section>
 
-            <p>Documentación</p>
-            <span>
-              {employee.documentacion >= 90
-                ? "Completa"
-                : employee.documentacion >= 70
-                  ? "En proceso"
-                  : "Incompleta"}
-            </span>
-          </div>
+          <section className="profile-grid three">
+            <InfoCard
+              icon={<IdCard size={18} />}
+              title="Información personal"
+              rows={[
+                ["Documento", expediente.persona.numero_documento],
+                ["Fecha de nacimiento", formatFechaCorta(expediente.persona.fecha_nacimiento)],
+                ["Edad", calcularEdad(expediente.persona.fecha_nacimiento)],
+                ["Sexo", "—"],
+                ["Estado civil", "—"],
+                ["Grupo sanguíneo", "—"],
+                ["Nacionalidad", expediente.persona.pais_nacimiento ?? "Colombia"],
+              ]}
+            />
 
-          <div className="status-summary">
-            <button>
-              <span className="status-icon warning">!</span>
-              <strong>2</strong>
-              Alertas activas
-              <ChevronRight size={15} />
-            </button>
+            <InfoCard
+              icon={<BriefcaseBusiness size={18} />}
+              title="Información laboral"
+              rows={[
+                ["Empresa", expediente.empresa.nombre_empresa ?? "—"],
+                ["Contrato", expediente.contrato.numero_contrato ?? "—"],
+                ["Cargo", expediente.cargo.nombre_cargo ?? "—"],
+                ["Tipo vinculación", expediente.tipo_vinculacion.nombre_vinculacion ?? "—"],
+                ["Sede", "—"],
+                ["Modalidad", "—"],
+                ["Municipio", "—"],
+              ]}
+            />
 
-            <button>
-              <span className="status-icon info">i</span>
-              <strong>1</strong>
-              Novedad en curso
-              <ChevronRight size={15} />
-            </button>
+            <InfoCard
+              icon={<ShieldCheck size={18} />}
+              title="Afiliaciones"
+              rows={[
+                ["EPS", "—"],
+                ["AFP", "—"],
+                ["ARL", "—"],
+                ["Caja de compensación", "—"],
+                ["Cesantías", "—"],
+              ]}
+            />
+          </section>
 
-            <button>
-              <span className="status-icon success">✓</span>
-              Sin novedades críticas
-              <ChevronRight size={15} />
-            </button>
-          </div>
+          <section className="profile-grid bottom">
+            <div className="profile-card history-card">
+              <div className="card-title">
+                <History size={18} />
+                <h3>Historial reciente</h3>
+              </div>
 
-          <button className="repository-button">
-            Ir al Repositorio documental <ChevronRight size={17} />
-          </button>
-        </div>
-      </section>
+              <div className="timeline">
+                <TimelineItem
+                  date={formatFechaCorta(expediente.vinculacion.fecha_inicio)}
+                  title="Ingreso"
+                  detail={`${expediente.cargo.nombre_cargo ?? "Cargo"} · ${expediente.empresa.nombre_empresa ?? "Empresa"}`}
+                  author="Sistema"
+                />
+                {expediente.vinculacion.fecha_fin && (
+                  <TimelineItem
+                    date={formatFechaCorta(expediente.vinculacion.fecha_fin)}
+                    title="Retiro"
+                    detail={expediente.vinculacion.motivo_retiro ?? "Sin motivo registrado"}
+                    author="Sistema"
+                  />
+                )}
+              </div>
+
+              <button type="button" className="link-button">
+                Ver todo el historial <ChevronRight size={16} />
+              </button>
+            </div>
+
+            <div className="profile-card status-card">
+              <div className="card-title">
+                <Bell size={18} />
+                <h3>Estado general</h3>
+              </div>
+
+              <div className="status-content">
+                <div
+                  className="progress-ring"
+                  style={{
+                    background: "conic-gradient(var(--border-color) 0 100%)",
+                  }}
+                >
+                  <div>
+                    <strong>—</strong>
+                  </div>
+                </div>
+                <p>Documentación</p>
+                <span>Sin datos de checklist</span>
+              </div>
+
+              <div className="status-summary">
+                <button type="button">
+                  <span className="status-icon warning">!</span>
+                  <strong>—</strong>
+                  Alertas activas
+                  <ChevronRight size={15} />
+                </button>
+
+                <button type="button">
+                  <span className="status-icon info">i</span>
+                  <strong>—</strong>
+                  Novedades
+                  <ChevronRight size={15} />
+                </button>
+
+                <button type="button">
+                  <span className="status-icon success">✓</span>
+                  Sin novedades críticas
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+
+              <button type="button" className="repository-button">
+                Ir al Repositorio documental <ChevronRight size={17} />
+              </button>
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }
