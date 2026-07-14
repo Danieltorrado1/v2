@@ -27,6 +27,13 @@ export interface PersonaApi {
   ciudad_nacimiento_extranjero: string | null;
 }
 
+export interface PersonaNombreInput {
+  primer_nombre: string;
+  segundo_nombre: string | null;
+  primer_apellido: string;
+  segundo_apellido: string | null;
+}
+
 export interface PersonasPaginationMeta {
   page: number;
   limit: number;
@@ -148,8 +155,57 @@ export interface PersonaListItem {
   telefono: string | null;
 }
 
+export interface PersonaLookupOption {
+  id: number;
+  nombreCompleto: string;
+  numeroDocumento: string;
+}
+
 export interface PersonaFilters {
   search?: string;
   page?: number;
   limit?: number;
+}
+
+export interface VinculacionOPSChecklistResumen {
+  cargados: number;
+  cumplimiento_porcentaje: number;
+  faltantes: number;
+  total_requisitos: number;
+  vencidos: number;
+}
+
+export interface VinculacionOPS {
+  vinculacion_id: number;
+  persona_id: number;
+  empresa_id: number;
+  contrato_id: number;
+  contrato_empresa_id: number | null;
+  contrato_cargo_id: number;
+  nombre_completo: string;
+  numero_documento: string;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  estado_vinculacion: VinculacionEstado;
+  metodo_pago: string | null;
+  tipo_vinculacion_id: number;
+  tipo_vinculacion_codigo: string | null;
+  tipo_vinculacion_nombre: string | null;
+  contrato_numero: string | null;
+  entidad_contratante: string | null;
+  objeto_contractual: string | null;
+  cargo_nombre: string | null;
+  empresa_nombre: string | null;
+  municipio_residencia_id: number | null;
+  documentos_persona_total: number;
+  documentos_vinculacion_total: number;
+  checklist: VinculacionOPSChecklistResumen | null;
+}
+
+export interface PersonalOPSFilters {
+  search?: string;
+  estado_vinculacion?: VinculacionEstado | '';
+  contrato_id?: number | null;
+  tipo_vinculacion_id?: number | null;
+  metodo_pago?: string | null;
 }

@@ -140,6 +140,9 @@
   appearance: none; cursor: pointer;
 }
 
+.np-select:disabled { cursor: not-allowed; color: var(--text-secondary); }
+.np-select-wrap.is-disabled { opacity: 0.7; }
+
 /* ---- search input ---- */
 
 .np-search {
@@ -161,6 +164,7 @@
   background: transparent; color: var(--text-primary); font-size: 14px;
 }
 .np-search input::placeholder { color: var(--text-secondary); }
+.np-search input:disabled { color: var(--text-secondary); cursor: not-allowed; }
 
 /* ---- action buttons ---- */
 
@@ -182,6 +186,16 @@
 }
 
 .np-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.np-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+.np-btn:disabled:hover {
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
 
 .np-btn.primary {
   background: var(--color-primary);
@@ -191,6 +205,11 @@
 .np-btn.primary:hover {
   background: var(--color-primary-hover);
   border-color: var(--color-primary-hover);
+  color: #fff;
+}
+.np-btn.primary:disabled {
+  background: color-mix(in srgb, var(--color-primary) 60%, #ffffff);
+  border-color: color-mix(in srgb, var(--color-primary) 60%, #ffffff);
   color: #fff;
 }
 
@@ -227,6 +246,14 @@
   flex-shrink: 0;
 }
 .np-clear-btn:hover { border-color: var(--color-danger); color: var(--color-danger); }
+.np-clear-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+.np-clear-btn:disabled:hover {
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
 
 /* ---- table card ---- */
 
@@ -268,6 +295,18 @@
 }
 .np-table-row:last-child { border-bottom: none; }
 .np-table-row:hover { background: var(--bg-panel); }
+.np-table-row.is-selected { background: color-mix(in srgb, var(--color-primary) 7%, var(--bg-panel)); }
+
+.np-table-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.np-table-text-secondary { color: var(--text-secondary); }
+.np-table-text-strong { font-weight: 700; }
+.np-table-text-danger { color: var(--color-danger); font-weight: 700; }
+.np-table-text-net { font-size: 14px; font-weight: 800; }
 
 /* ---- badge ---- */
 
@@ -304,6 +343,40 @@
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 .np-row-actions button:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
+.np-row-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.np-icon-button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.np-icon-button:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.np-icon-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.np-icon-button:disabled:hover {
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
 
 /* ---- avatar ---- */
 
@@ -359,6 +432,13 @@
   color: var(--text-secondary);
 }
 
+.np-detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .np-detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -402,6 +482,73 @@
 
 .np-detail-total span { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .np-detail-total strong { font-size: 20px; font-weight: 800; color: var(--color-primary); }
+
+.np-text-danger { color: var(--color-danger); }
+
+.np-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.np-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.np-form-field span {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.np-form-control {
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 12px;
+}
+
+.np-form-control:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.np-form-textarea {
+  min-height: 110px;
+  resize: vertical;
+  padding: 12px;
+}
+
+.np-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.np-checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.np-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 
 /* ---- info panel (OPS rules, resumen) ---- */
 
@@ -501,4 +648,55 @@
   color: var(--text-secondary);
   font-size: 14px;
   border-top: 1px solid var(--border-color);
+}
+
+.np-state-card {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px;
+}
+
+.np-state-card strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.np-state-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.np-state-card.error strong { color: var(--color-danger); }
+
+.np-inline-state {
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.np-inline-state.success {
+  border-color: color-mix(in srgb, var(--color-success) 30%, var(--border-color));
+  background: color-mix(in srgb, var(--color-success) 10%, var(--bg-secondary));
+  color: var(--color-success);
+}
+
+.np-inline-state.error {
+  border-color: color-mix(in srgb, var(--color-danger) 30%, var(--border-color));
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--bg-secondary));
+  color: var(--color-danger);
+}
+
+.np-inline-state.neutral {
+  color: var(--text-secondary);
 }

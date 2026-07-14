@@ -1,13 +1,22 @@
 import { apiClient } from './apiClient';
+import { ApiClientError } from './apiClient';
+import {
+  getVinculacionExpediente as getVinculacionExpedienteById,
+  getVinculaciones,
+} from './vinculacionesApi';
 import type { ApiResponse } from '../types/api.types';
 import type {
+  PersonalOPSFilters,
   PersonaApi,
+  PersonaNombreInput,
   PaginatedPersonasApi,
+  VinculacionOPS,
   VinculacionApi,
   VinculacionExpedienteApi,
   PersonaListItem,
   PersonaFilters,
 } from '../types/personas.types';
+import type { VinculacionFilters } from '../types/vinculaciones.types';
 
 export interface CreatePersonaPayload {
   tipo_documento_id: number;
@@ -25,10 +34,17 @@ export interface CreatePersonaPayload {
 
 export type UpdatePersonaPayload = Partial<CreatePersonaPayload>;
 
+const MAX_BATCH_LIMIT = 100;
+const OPS_METODOS_PAGO = new Set([
+  'OPS_CUENTA_COBRO',
+  'OPS_VALOR_FIJO',
+  'OPS_POR_PRODUCTO',
+]);
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function buildNombreCompleto(
-  p: Pick<PersonaApi, 'primer_nombre' | 'segundo_nombre' | 'primer_apellido' | 'segundo_apellido'>
+  p: PersonaNombreInput
 ): string {
   return [p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido]
     .filter(Boolean)
@@ -43,6 +59,143 @@ export function normalizePersonaListItem(p: PersonaApi): PersonaListItem {
     correo: p.correo,
     telefono: p.telefono,
   };
+}
+
+function buildNombreCompletoExpediente(persona: VinculacionExpedienteApi['persona']): string {
+  return buildNombreCompleto({
+    primer_nombre: persona.primer_nombre,
+    segundo_nombre: persona.segundo_nombre,
+    primer_apellido: persona.primer_apellido,
+    segundo_apellido: persona.segundo_apellido,
+  });
+}
+
+function isOpsMetodoPago(metodoPago: string | null): boolean {
+  return metodoPago !== null && OPS_METODOS_PAGO.has(metodoPago);
+}
+
+function readChecklistResumen(value: unknown): VinculacionOPS['checklist'] {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const cargados = Number(candidate.cargados);
+  const cumplimiento = Number(candidate.cumplimiento_porcentaje);
+  const faltantes = Number(candidate.faltantes);
+  const total = Number(candidate.total_requisitos);
+  const vencidos = Number(candidate.vencidos);
+
+  if (
+    !Number.isFinite(cargados) ||
+    !Number.isFinite(cumplimiento) ||
+    !Number.isFinite(faltantes) ||
+    !Number.isFinite(total) ||
+    !Number.isFinite(vencidos)
+  ) {
+    return null;
+  }
+
+  return {
+    cargados,
+    cumplimiento_porcentaje: cumplimiento,
+    faltantes,
+    total_requisitos: total,
+    vencidos,
+  };
+}
+
+function mapExpedienteToPersonalOps(expediente: VinculacionExpedienteApi): VinculacionOPS {
+  return {
+    vinculacion_id: expediente.vinculacion.id,
+    persona_id: expediente.persona.id,
+    empresa_id: expediente.vinculacion.empresa_id,
+    contrato_id: expediente.vinculacion.contrato_id,
+    contrato_empresa_id: expediente.vinculacion.contrato_empresa_id,
+    contrato_cargo_id: expediente.vinculacion.contrato_cargo_id,
+    nombre_completo: buildNombreCompletoExpediente(expediente.persona),
+    numero_documento: expediente.persona.numero_documento,
+    fecha_inicio: expediente.vinculacion.fecha_inicio,
+    fecha_fin: expediente.vinculacion.fecha_fin,
+    estado_vinculacion: expediente.vinculacion.estado_vinculacion,
+    metodo_pago: expediente.vinculacion.metodo_pago,
+    tipo_vinculacion_id: expediente.tipo_vinculacion.id,
+    tipo_vinculacion_codigo: expediente.tipo_vinculacion.codigo,
+    tipo_vinculacion_nombre: expediente.tipo_vinculacion.nombre_vinculacion,
+    contrato_numero: expediente.contrato.numero_contrato,
+    entidad_contratante: expediente.contrato.entidad_contratante,
+    objeto_contractual: expediente.contrato.objeto_contractual,
+    cargo_nombre: expediente.cargo.nombre_cargo,
+    empresa_nombre: expediente.empresa.nombre_empresa,
+    municipio_residencia_id: expediente.persona.municipio_residencia_id,
+    documentos_persona_total: expediente.documentos_persona.length,
+    documentos_vinculacion_total: expediente.documentos_vinculacion.length,
+    checklist: readChecklistResumen(expediente.checklist),
+  };
+}
+
+function applyLocalOpsFilters(items: VinculacionOPS[], filters: PersonalOPSFilters): VinculacionOPS[] {
+  const normalizedSearch = filters.search?.trim().toLocaleLowerCase('es-CO') ?? '';
+
+  return items.filter((item) => {
+    if (filters.metodo_pago && item.metodo_pago !== filters.metodo_pago) {
+      return false;
+    }
+
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    const haystack = [
+      item.nombre_completo,
+      item.numero_documento,
+      item.contrato_numero ?? '',
+      item.entidad_contratante ?? '',
+      item.objeto_contractual ?? '',
+      item.cargo_nombre ?? '',
+      item.tipo_vinculacion_nombre ?? '',
+      item.tipo_vinculacion_codigo ?? '',
+      item.metodo_pago ?? '',
+    ]
+      .join(' ')
+      .toLocaleLowerCase('es-CO');
+
+    return haystack.includes(normalizedSearch);
+  });
+}
+
+async function getAllVinculacionesPaginated(
+  filters: Omit<VinculacionFilters, 'page' | 'limit'> = {}
+): Promise<VinculacionApi[]> {
+  const firstPage = await getVinculaciones({
+    ...filters,
+    page: 1,
+    limit: MAX_BATCH_LIMIT,
+  });
+
+  const totalPages = firstPage.pagination.total_pages;
+
+  if (totalPages <= 1) {
+    return firstPage.items;
+  }
+
+  const pageRequests: Array<Promise<Awaited<ReturnType<typeof getVinculaciones>>>> = [];
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    pageRequests.push(
+      getVinculaciones({
+        ...filters,
+        page,
+        limit: MAX_BATCH_LIMIT,
+      })
+    );
+  }
+
+  const remainingPages = await Promise.all(pageRequests);
+  return [
+    ...firstPage.items,
+    ...remainingPages.flatMap((pageData) => pageData.items),
+  ];
 }
 
 // ── API calls ─────────────────────────────────────────────────────────────────
@@ -62,6 +215,13 @@ export async function getPersonaById(id: number): Promise<PersonaApi> {
   return res.data;
 }
 
+export async function getPersonaByDocumento(numeroDocumento: string): Promise<PersonaApi> {
+  const res = await apiClient.get<ApiResponse<PersonaApi>>(
+    `/personas/documento/${encodeURIComponent(numeroDocumento)}`
+  );
+  return res.data;
+}
+
 export async function getVinculacionesByPersonaId(personaId: number): Promise<VinculacionApi[]> {
   const res = await apiClient.get<ApiResponse<VinculacionApi[]>>(
     `/vinculaciones/persona/${personaId}`
@@ -70,10 +230,41 @@ export async function getVinculacionesByPersonaId(personaId: number): Promise<Vi
 }
 
 export async function getVinculacionExpediente(vinculacionId: number): Promise<VinculacionExpedienteApi> {
-  const res = await apiClient.get<ApiResponse<VinculacionExpedienteApi>>(
-    `/vinculaciones/${vinculacionId}/expediente`
+  return getVinculacionExpedienteById(vinculacionId);
+}
+
+export async function getPersonalOPS(
+  filters: PersonalOPSFilters = {}
+): Promise<VinculacionOPS[]> {
+  const vinculaciones = await getAllVinculacionesPaginated({
+    contrato_id: filters.contrato_id ?? undefined,
+    estado_vinculacion: filters.estado_vinculacion || undefined,
+    tipo_vinculacion_id: filters.tipo_vinculacion_id ?? undefined,
+  });
+
+  const vinculacionesOps = vinculaciones.filter((vinculacion) => isOpsMetodoPago(vinculacion.metodo_pago));
+  const expedientes = await Promise.all(
+    vinculacionesOps.map((vinculacion) => getVinculacionExpedienteById(vinculacion.id))
   );
-  return res.data;
+
+  return applyLocalOpsFilters(
+    expedientes
+      .map(mapExpedienteToPersonalOps)
+      .filter((item) => isOpsMetodoPago(item.metodo_pago)),
+    filters
+  );
+}
+
+export async function getPersonaActiveExpediente(personaId: number): Promise<VinculacionExpedienteApi> {
+  const vinculaciones = await getVinculacionesByPersonaId(personaId);
+  const active = vinculaciones.find((vinculacion) => vinculacion.estado_vinculacion === 'ACTIVA')
+    ?? vinculaciones[0];
+
+  if (!active) {
+    throw new Error('Este colaborador no tiene vinculaciones registradas.');
+  }
+
+  return getVinculacionExpedienteById(active.id);
 }
 
 export async function createPersona(payload: CreatePersonaPayload): Promise<PersonaApi> {
@@ -84,4 +275,8 @@ export async function createPersona(payload: CreatePersonaPayload): Promise<Pers
 export async function updatePersona(id: number, payload: UpdatePersonaPayload): Promise<PersonaApi> {
   const res = await apiClient.patch<ApiResponse<PersonaApi>>(`/personas/${id}`, payload);
   return res.data;
+}
+
+export function isPersonaDuplicateDocumentError(error: unknown): boolean {
+  return error instanceof ApiClientError && error.code === 'PERSONA_DUPLICATE_DOCUMENT';
 }

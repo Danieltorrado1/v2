@@ -2,9 +2,23 @@ import { Pool, QueryResult, QueryResultRow } from 'pg';
 
 import { env } from './env';
 
+const shouldUseSsl = (() => {
+  if (env.NODE_ENV === 'production') {
+    return true;
+  }
+
+  try {
+    const host = new URL(env.DATABASE_URL).hostname.toLowerCase();
+    return host.includes('supabase.co') || host.includes('supabase.com') || host.includes('pooler.');
+  } catch {
+    const databaseUrl = env.DATABASE_URL.toLowerCase();
+    return databaseUrl.includes('supabase.co') || databaseUrl.includes('supabase.com') || databaseUrl.includes('pooler.');
+  }
+})();
+
 export const dbPool = new Pool({
   connectionString: env.DATABASE_URL,
-  ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: shouldUseSsl ? { rejectUnauthorized: false } : false,
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000

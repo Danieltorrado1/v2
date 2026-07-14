@@ -1,11 +1,14 @@
-import axios from "axios";
+import axios from 'axios';
+
+import { env } from '../config/env';
+import { getAuthToken } from './tokenStorage';
 
 export const api = axios.create({
-  baseURL: "http://localhost:4000/api",
+  baseURL: env.apiUrl,
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("empiria_access_token");
+  const token = getAuthToken();
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

@@ -93,6 +93,8 @@ function validateRangos(rangos: RangoInput[]): ValidacionFormula {
   for (let i = 0; i < sorted.length - 1; i++) {
     const curr = sorted[i];
     const next = sorted[i + 1];
+    if (!curr || !next) continue;
+
     if (curr.hasta != null && next.desde <= curr.hasta) {
       return {
         valid: false,
@@ -101,6 +103,14 @@ function validateRangos(rangos: RangoInput[]): ValidacionFormula {
     }
   }
   return { valid: true };
+}
+
+function getRequiredRow<T>(row: T | undefined, entityName: string): T {
+  if (!row) {
+    throw new AppError(`No se pudo persistir ${entityName}`, 500);
+  }
+
+  return row;
 }
 
 async function logAuditEvent(params: {
@@ -219,7 +229,7 @@ export async function createSalarioConfig(
     ],
   );
 
-  const created = result.rows[0];
+  const created = getRequiredRow(result.rows[0], 'la configuración de salario');
   await logAuditEvent({
     usuarioId,
     entidad: 'calculadora_salario_config',
@@ -264,7 +274,7 @@ export async function toggleSalarioConfigEstado(
     [nuevoEstado, usuarioId, observacion ?? null, id],
   );
 
-  const updated = result.rows[0];
+  const updated = getRequiredRow(result.rows[0], 'la configuración de salario');
   await logAuditEvent({
     usuarioId,
     entidad: 'calculadora_salario_config',
@@ -325,8 +335,9 @@ export async function getPersonalConfigs(): Promise<PersonalConfig[]> {
 
   const rangosByConfig: Record<number, PersonalRango[]> = {};
   for (const r of rangosResult.rows) {
-    if (!rangosByConfig[r.config_id]) rangosByConfig[r.config_id] = [];
-    rangosByConfig[r.config_id].push(r);
+    const rangos = rangosByConfig[r.config_id] ?? [];
+    rangos.push(r);
+    rangosByConfig[r.config_id] = rangos;
   }
 
   return configs.map(c => ({ ...c, rangos: rangosByConfig[c.id] ?? [] }));
@@ -414,19 +425,21 @@ export async function createPersonalConfig(
     ],
   );
 
-  const created = result.rows[0];
+  const created = getRequiredRow(result.rows[0], 'la configuración de personal');
 
   // Insert ranges
   const insertedRangos: PersonalRango[] = [];
   if (input.rangos?.length) {
     for (let i = 0; i < input.rangos.length; i++) {
       const r = input.rangos[i];
+      if (!r) continue;
+
       const rResult = await dbQuery<PersonalRango>(
         `INSERT INTO calculadora_personal_rangos (config_id, desde, hasta, personal_requerido, orden)
          VALUES ($1, $2, $3, $4, $5) RETURNING *`,
         [created.id, r.desde, r.hasta ?? null, r.personal_requerido, i],
       );
-      insertedRangos.push(rResult.rows[0]);
+      insertedRangos.push(getRequiredRow(rResult.rows[0], 'el rango de personal'));
     }
   }
 
@@ -453,6 +466,7 @@ export async function togglePersonalConfigEstado(
     'SELECT * FROM calculadora_personal_config WHERE id = $1',
     [id],
   );
+  const currentConfig = getRequiredRow(current.rows[0], 'la configuración de personal');
   if (!current.rows[0]) throw new AppError('Configuración no encontrada', 404);
 
   if (nuevoEstado === 'activo') {
@@ -460,7 +474,7 @@ export async function togglePersonalConfigEstado(
       `UPDATE calculadora_personal_config
          SET estado = 'inactivo', modificado_en = NOW(), usuario_modificacion = $1
        WHERE estado = 'activo' AND modalidad IS NOT DISTINCT FROM $2 AND id != $3`,
-      [usuarioId, current.rows[0].modalidad ?? null, id],
+      [usuarioId, currentConfig.modalidad ?? null, id],
     );
   }
 
@@ -472,14 +486,14 @@ export async function togglePersonalConfigEstado(
     [nuevoEstado, usuarioId, observacion ?? null, id],
   );
 
-  const updated = result.rows[0];
+  const updated = getRequiredRow(result.rows[0], 'la configuración de personal');
   await logAuditEvent({
     usuarioId,
     entidad: 'calculadora_personal_config',
     entidadId: String(id),
     accion: nuevoEstado === 'activo' ? 'activacion' : 'inactivacion',
     descripcion: `Configuración personal ID ${id} → ${nuevoEstado}`,
-    datosAnteriores: current.rows[0],
+    datosAnteriores: currentConfig,
     datosNuevos: updated,
   });
 
@@ -500,12 +514,14 @@ export async function updatePersonalRangos(
   const inserted: PersonalRango[] = [];
   for (let i = 0; i < rangos.length; i++) {
     const r = rangos[i];
+    if (!r) continue;
+
     const rResult = await dbQuery<PersonalRango>(
       `INSERT INTO calculadora_personal_rangos (config_id, desde, hasta, personal_requerido, orden)
        VALUES ($1,$2,$3,$4,$5) RETURNING *`,
       [configId, r.desde, r.hasta ?? null, r.personal_requerido, i],
     );
-    inserted.push(rResult.rows[0]);
+    inserted.push(getRequiredRow(rResult.rows[0], 'el rango de personal'));
   }
 
   await logAuditEvent({

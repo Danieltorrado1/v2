@@ -1,6 +1,6 @@
 import { env } from '../config/env';
 import { getAuthToken, clearAuthSession } from './tokenStorage';
-import type { ApiRequestOptions } from '../types/api.types';
+import type { ApiErrorResponse, ApiRequestOptions } from '../types/api.types';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -111,17 +111,22 @@ async function request<T>(
   if (!response.ok) {
     const defaultMessage = resolveErrorMessage(response.status);
     let serverMessage: string | undefined;
+    let serverCode: string | undefined;
     let details: unknown;
 
     try {
-      const json = (await response.json()) as { message?: string; details?: unknown };
-      serverMessage = json.message;
-      details = json.details;
+      const json = (await response.json()) as ApiErrorResponse;
+      serverMessage = json.error?.message ?? json.message;
+      serverCode = json.error?.code ?? json.code;
+      details = json.error?.details ?? json.details;
     } catch {
       // body is not JSON — use default message
     }
 
-    throw new ApiClientError(serverMessage ?? defaultMessage, response.status, { details });
+    throw new ApiClientError(serverMessage ?? defaultMessage, response.status, {
+      code: serverCode,
+      details,
+    });
   }
 
   if (

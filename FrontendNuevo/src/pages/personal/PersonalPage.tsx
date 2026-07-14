@@ -29,11 +29,13 @@ import ExpedienteDocumentosPanel from "./ExpedienteDocumentosPanel";
 import { useApiState } from "../../hooks/useApiState";
 import {
   getPersonas,
+  getPersonaById,
+  getPersonaActiveExpediente,
   getVinculacionesByPersonaId,
-  getVinculacionExpediente,
   normalizePersonaListItem,
   buildNombreCompleto,
   createPersona,
+  isPersonaDuplicateDocumentError,
   updatePersona,
 } from "../../services/personasApi";
 import {
@@ -43,7 +45,9 @@ import {
 } from "../../services/vinculacionesApi";
 import { getExpedienteConsolidado } from "../../services/expedienteApi";
 import type {
+  PersonaApi,
   PaginatedPersonasApi,
+  VinculacionApi,
   VinculacionExpedienteApi,
   VinculacionExpedientePersona,
   PersonaListItem,
@@ -203,6 +207,22 @@ export default function PersonalPage() {
   } = useApiState<VinculacionExpedienteApi>();
 
   const {
+    data: personaDetalle,
+    loading: personaLoading,
+    error: personaError,
+    run: runPersonaDetalle,
+    reset: resetPersonaDetalle,
+  } = useApiState<PersonaApi>();
+
+  const {
+    data: vinculaciones,
+    loading: vinculacionesLoading,
+    error: vinculacionesError,
+    run: runVinculaciones,
+    reset: resetVinculaciones,
+  } = useApiState<VinculacionApi[]>();
+
+  const {
     data: consolidado,
     loading: consolidadoLoading,
     run: runConsolidado,
@@ -264,24 +284,34 @@ export default function PersonalPage() {
   const handleSelectPersona = useCallback(
     (personaId: number) => {
       setSelectedPersonaId(personaId);
+      resetPersonaDetalle();
+      resetVinculaciones();
       resetExpediente();
       resetConsolidado();
-      void runExpediente(async () => {
-        const vincs = await getVinculacionesByPersonaId(personaId);
-        const active = vincs.find((v) => v.estado_vinculacion === "ACTIVA") ?? vincs[0];
-        if (!active) throw new Error("Este colaborador no tiene vinculaciones registradas.");
-        return getVinculacionExpediente(active.id);
-      });
+      void runPersonaDetalle(() => getPersonaById(personaId));
+      void runVinculaciones(() => getVinculacionesByPersonaId(personaId));
+      void runExpediente(() => getPersonaActiveExpediente(personaId));
       void runConsolidado(() => getExpedienteConsolidado(personaId));
     },
-    [runExpediente, resetExpediente, runConsolidado, resetConsolidado]
+    [
+      runPersonaDetalle,
+      resetPersonaDetalle,
+      runVinculaciones,
+      resetVinculaciones,
+      runExpediente,
+      resetExpediente,
+      runConsolidado,
+      resetConsolidado,
+    ]
   );
 
   const handleClose = useCallback(() => {
     setSelectedPersonaId(null);
+    resetPersonaDetalle();
+    resetVinculaciones();
     resetExpediente();
     resetConsolidado();
-  }, [resetExpediente, resetConsolidado]);
+  }, [resetPersonaDetalle, resetVinculaciones, resetExpediente, resetConsolidado]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -300,12 +330,14 @@ export default function PersonalPage() {
     handleClose();
   }, [fetchPersonas, searchText, currentPage, handleClose]);
 
-  const handleNuevoSuccess = useCallback(() => {
+  const handleNuevoSuccess = useCallback((persona: PersonaApi) => {
     setShowNuevoModal(false);
     showToast("Colaborador registrado correctamente.");
-    fetchPersonas(searchText, 1);
+    setInputSearch(persona.numero_documento);
+    setSearchText(persona.numero_documento);
     setCurrentPage(1);
-  }, [fetchPersonas, searchText]);
+    handleSelectPersona(persona.id);
+  }, [handleSelectPersona]);
 
   return (
     <div className="personal-module">
@@ -616,11 +648,17 @@ export default function PersonalPage() {
         {selectedPersonaId !== null && (
           <main className="employee-profile">
             <QuickEmployeeView
+              persona={personaDetalle}
+              personaLoading={personaLoading}
+              personaError={personaError}
+              vinculaciones={vinculaciones}
+              vinculacionesLoading={vinculacionesLoading}
+              vinculacionesError={vinculacionesError}
               expediente={expediente}
               consolidado={consolidado}
               consolidadoLoading={consolidadoLoading}
-              loading={expedienteLoading}
-              error={expedienteError}
+              expedienteLoading={expedienteLoading}
+              expedienteError={expedienteError}
               onClose={handleClose}
               onShowToast={showToast}
               onPersonaUpdated={handlePersonaUpdated}
@@ -678,24 +716,54 @@ const RIESGO_COLOR: Record<string, string> = {
   CRITICO: "var(--color-danger, #ef4444)",
 };
 
+const VINCULACION_STATUS_LABEL: Record<VinculacionApi["estado_vinculacion"], string> = {
+  ACTIVA: "Activa",
+  RETIRADA: "Retirada",
+  SUSPENDIDA: "Suspendida",
+};
+
+function getVinculacionEstadoLabel(estado: VinculacionApi["estado_vinculacion"]): string {
+  return VINCULACION_STATUS_LABEL[estado] ?? estado;
+}
+
+function formatVinculacionResumen(vinculacion: VinculacionApi): string {
+  return [
+    `Contrato ${vinculacion.contrato_id}`,
+    `Cargo ${vinculacion.contrato_cargo_id}`,
+    `Tipo ${vinculacion.tipo_vinculacion_id}`,
+  ].join(" · ");
+}
+
 // ── QuickEmployeeView ─────────────────────────────────────────────────────────
 
 function QuickEmployeeView({
+  persona,
+  personaLoading,
+  personaError,
+  vinculaciones,
+  vinculacionesLoading,
+  vinculacionesError,
   expediente,
   consolidado,
   consolidadoLoading,
-  loading,
-  error,
+  expedienteLoading,
+  expedienteError,
   onClose,
   onShowToast,
   onPersonaUpdated,
   onVinculacionChanged,
 }: {
+  persona: PersonaApi | null;
+  personaLoading: boolean;
+  personaError: string | null;
+  vinculaciones: VinculacionApi[] | null;
+  vinculacionesLoading: boolean;
+  vinculacionesError: string | null;
   expediente: VinculacionExpedienteApi | null;
   consolidado: ExpedienteLaboralConsolidadoApi | null;
   consolidadoLoading: boolean;
-  loading: boolean;
-  error: string | null;
+  expedienteLoading: boolean;
+  expedienteError: string | null;
   onClose: () => void;
   onShowToast: (msg: string) => void;
   onPersonaUpdated: (personaId: number) => void;
@@ -708,8 +776,16 @@ function QuickEmployeeView({
   const [showSuspenderModal, setShowSuspenderModal] = useState(false);
   const [showReactivarModal, setShowReactivarModal] = useState(false);
 
-  const nombreCompleto = expediente ? buildNombreCompleto(expediente.persona) : "";
-  const estado = expediente?.vinculacion.estado_vinculacion ?? "";
+  const personaActual = persona ?? consolidado?.persona ?? expediente?.persona ?? null;
+  const vinculacionesActuales = vinculaciones ?? consolidado?.vinculaciones ?? [];
+  const vinculacionPrincipal =
+    expediente?.vinculacion
+    ?? vinculacionesActuales.find((item) => item.estado_vinculacion === "ACTIVA")
+    ?? vinculacionesActuales[0]
+    ?? null;
+
+  const nombreCompleto = personaActual ? buildNombreCompleto(personaActual) : "";
+  const estado = vinculacionPrincipal?.estado_vinculacion;
 
   const checklistPct = consolidado?.indicadores.checklist_cumplimiento_promedio ?? null;
   const riesgoNivel = consolidado?.indicadores.riesgo_documental?.nivel ?? null;
@@ -717,6 +793,8 @@ function QuickEmployeeView({
   const checklistFaltantes = consolidado?.indicadores.checklist_faltantes ?? null;
   const docsVencidos = consolidado?.indicadores.documentos_vencidos ?? null;
   const recentAudit = consolidado?.auditoria.slice(0, 2) ?? [];
+  const isInitialLoading = (personaLoading || expedienteLoading) && !personaActual;
+  const showPersonaError = personaError && !personaActual;
 
   return (
     <div className="quick-employee-view">
@@ -727,7 +805,7 @@ function QuickEmployeeView({
           <button
             type="button"
             onClick={() => setShowEditarModal(true)}
-            disabled={!expediente}
+            disabled={!personaActual}
           >
             <Edit3 size={17} />
             Editar
@@ -737,14 +815,14 @@ function QuickEmployeeView({
             <button
               type="button"
               onClick={() => setShowMasAcciones((v) => !v)}
-              disabled={!expediente}
+              disabled={!vinculacionPrincipal}
             >
               <MoreHorizontal size={18} />
               Más acciones
               <ChevronDown size={15} />
             </button>
 
-            {showMasAcciones && expediente && (
+            {showMasAcciones && vinculacionPrincipal && (
               <div
                 style={{
                   position: "absolute",
@@ -841,7 +919,7 @@ function QuickEmployeeView({
         </div>
       </div>
 
-      {loading && !expediente && (
+      {isInitialLoading && (
         <div
           style={{
             flex: 1,
@@ -856,7 +934,7 @@ function QuickEmployeeView({
         </div>
       )}
 
-      {error && !expediente && (
+      {showPersonaError && (
         <div
           style={{
             flex: 1,
@@ -870,9 +948,9 @@ function QuickEmployeeView({
           }}
         >
           <p style={{ fontWeight: 700, fontSize: "0.85rem", color: "var(--color-danger)" }}>
-            Error al cargar el expediente
+            Error al cargar el colaborador
           </p>
-          <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>{error}</p>
+          <p style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>{personaError}</p>
         </div>
       )}
 
@@ -974,6 +1052,42 @@ function QuickEmployeeView({
                 ["Cesantías", "—"],
               ]}
             />
+          </section>
+
+          <section className="profile-card vinculaciones-card">
+            <div className="card-title">
+              <BriefcaseBusiness size={18} />
+              <h3>Vinculaciones</h3>
+            </div>
+
+            {vinculacionesLoading && vinculacionesActuales.length === 0 ? (
+              <div className="empty-card-state">Cargando vinculaciones...</div>
+            ) : vinculacionesError && vinculacionesActuales.length === 0 ? (
+              <div className="empty-card-state">{vinculacionesError}</div>
+            ) : vinculacionesActuales.length === 0 ? (
+              <div className="empty-card-state">Esta persona no tiene vinculaciones registradas.</div>
+            ) : (
+              <div className="vinculaciones-list">
+                {vinculacionesActuales.map((vinculacion) => (
+                  <div
+                    key={vinculacion.id}
+                    className={`vinculacion-row ${expediente.vinculacion.id === vinculacion.id ? "active" : ""}`}
+                  >
+                    <div className="vinculacion-main">
+                      <strong>Vinculacion #{vinculacion.id}</strong>
+                      <span>{formatVinculacionResumen(vinculacion)}</span>
+                    </div>
+
+                    <div className="vinculacion-meta">
+                      <span>{formatFechaCorta(vinculacion.fecha_inicio)} - {formatFechaCorta(vinculacion.fecha_fin)}</span>
+                      <b className={vinculacion.estado_vinculacion === "ACTIVA" ? "" : "retired"}>
+                        {getVinculacionEstadoLabel(vinculacion.estado_vinculacion)}
+                      </b>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <ExpedienteDocumentosPanel
@@ -1117,20 +1231,140 @@ function QuickEmployeeView({
         </>
       )}
 
-      {showEditarModal && expediente && (
+      {personaActual && !expediente && (
+        <>
+          <section className="profile-hero">
+            <div className="photo-wrap">
+              <div
+                className={`avatar ${getAvatarColor(personaActual.id)}`}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.9rem",
+                  fontWeight: 800,
+                  borderRadius: "50%",
+                }}
+              >
+                {getInitialsFromName(nombreCompleto)}
+              </div>
+              <span style={{ background: vinculacionesActuales.length > 0 ? "var(--color-warning)" : "var(--border-color)" }} />
+            </div>
+
+            <div className="hero-main">
+              <h2>{nombreCompleto}</h2>
+              <p>{vinculacionesActuales.length > 0 ? "Sin expediente activo" : "Sin vinculaciones registradas"}</p>
+
+              <div className="hero-subtitle">
+                <span>{vinculacionesActuales.length > 0 ? `${vinculacionesActuales.length} vinculacion(es)` : "Persona sin vinculacion"}</span>
+                <i />
+                <span>{personaActual.correo ?? personaActual.telefono ?? "Sin contacto principal"}</span>
+                <b className="retired">
+                  {vinculacionesActuales.length > 0 ? "Expediente no disponible" : "Sin vinculacion"}
+                </b>
+              </div>
+
+              <div className="hero-chips">
+                <div>
+                  <MapPin size={17} />
+                  {personaActual.pais_nacimiento ?? "—"}
+                </div>
+                <div>
+                  <IdCard size={17} />
+                  {personaActual.numero_documento}
+                </div>
+                <div>
+                  <UserRound size={17} />
+                  {personaActual.primer_apellido}
+                </div>
+                <div>
+                  <CalendarDays size={17} />
+                  {formatFechaCorta(personaActual.fecha_nacimiento)}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="profile-inline-message warning">
+            {expedienteError ?? "No se pudo resolver un expediente activo para esta persona."}
+          </div>
+
+          <section className="profile-grid three">
+            <InfoCard
+              icon={<IdCard size={18} />}
+              title="Informacion personal"
+              rows={[
+                ["Documento", personaActual.numero_documento],
+                ["Fecha de nacimiento", formatFechaCorta(personaActual.fecha_nacimiento)],
+                ["Edad", calcularEdad(personaActual.fecha_nacimiento)],
+                ["Correo", personaActual.correo ?? "—"],
+                ["Telefono", personaActual.telefono ?? "—"],
+                ["Direccion", personaActual.direccion ?? "—"],
+                ["Barrio", personaActual.barrio ?? "—"],
+              ]}
+            />
+
+            <div className="profile-card vinculaciones-card">
+              <div className="card-title">
+                <BriefcaseBusiness size={18} />
+                <h3>Vinculaciones</h3>
+              </div>
+
+              {vinculacionesLoading && vinculacionesActuales.length === 0 ? (
+                <div className="empty-card-state">Cargando vinculaciones...</div>
+              ) : vinculacionesError && vinculacionesActuales.length === 0 ? (
+                <div className="empty-card-state">{vinculacionesError}</div>
+              ) : vinculacionesActuales.length === 0 ? (
+                <div className="empty-card-state">Esta persona no tiene vinculaciones registradas.</div>
+              ) : (
+                <div className="vinculaciones-list">
+                  {vinculacionesActuales.map((vinculacion) => (
+                    <div key={vinculacion.id} className="vinculacion-row">
+                      <div className="vinculacion-main">
+                        <strong>Vinculacion #{vinculacion.id}</strong>
+                        <span>{formatVinculacionResumen(vinculacion)}</span>
+                      </div>
+                      <div className="vinculacion-meta">
+                        <span>{formatFechaCorta(vinculacion.fecha_inicio)} - {formatFechaCorta(vinculacion.fecha_fin)}</span>
+                        <b className={vinculacion.estado_vinculacion === "ACTIVA" ? "" : "retired"}>
+                          {getVinculacionEstadoLabel(vinculacion.estado_vinculacion)}
+                        </b>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="profile-card">
+              <div className="card-title">
+                <ShieldCheck size={18} />
+                <h3>Expediente activo</h3>
+              </div>
+              <div className="empty-card-state">
+                No hay expediente activo disponible para habilitar documentos y checklist.
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
+      {showEditarModal && personaActual && (
         <EditarEmpleadoModal
-          persona={expediente.persona}
+          persona={personaActual}
           onClose={() => setShowEditarModal(false)}
           onSuccess={() => {
             setShowEditarModal(false);
-            onPersonaUpdated(expediente.persona.id);
+            onPersonaUpdated(personaActual.id);
           }}
         />
       )}
 
-      {showRetirarModal && expediente && (
+      {showRetirarModal && vinculacionPrincipal && (
         <RetirarModal
-          vinculacionId={expediente.vinculacion.id}
+          vinculacionId={vinculacionPrincipal.id}
           nombreCompleto={nombreCompleto}
           onClose={() => setShowRetirarModal(false)}
           onSuccess={() => {
@@ -1140,9 +1374,9 @@ function QuickEmployeeView({
         />
       )}
 
-      {showSuspenderModal && expediente && (
+      {showSuspenderModal && vinculacionPrincipal && (
         <SuspenderModal
-          vinculacionId={expediente.vinculacion.id}
+          vinculacionId={vinculacionPrincipal.id}
           nombreCompleto={nombreCompleto}
           onClose={() => setShowSuspenderModal(false)}
           onSuccess={() => {
@@ -1152,9 +1386,9 @@ function QuickEmployeeView({
         />
       )}
 
-      {showReactivarModal && expediente && (
+      {showReactivarModal && vinculacionPrincipal && (
         <ReactivarModal
-          vinculacionId={expediente.vinculacion.id}
+          vinculacionId={vinculacionPrincipal.id}
           nombreCompleto={nombreCompleto}
           onClose={() => setShowReactivarModal(false)}
           onSuccess={() => {
@@ -1311,7 +1545,7 @@ function NuevoEmpleadoModal({
   onSuccess,
 }: {
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (persona: PersonaApi) => void;
 }) {
   const [form, setForm] = useState<CreatePersonaPayload>({
     tipo_documento_id: 0,
@@ -1353,10 +1587,14 @@ function NuevoEmpleadoModal({
         correo: form.correo?.trim() || null,
         telefono: form.telefono?.trim() || null,
       };
-      await createPersona(payload);
-      onSuccess();
+      const createdPersona = await createPersona(payload);
+      onSuccess(createdPersona);
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : "Error al registrar el colaborador.");
+      if (isPersonaDuplicateDocumentError(err)) {
+        setApiError("Ya existe una persona con ese numero de documento.");
+      } else {
+        setApiError(err instanceof Error ? err.message : "Error al registrar el colaborador.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -1496,7 +1734,7 @@ function EditarEmpleadoModal({
   onClose,
   onSuccess,
 }: {
-  persona: VinculacionExpedientePersona;
+  persona: PersonaApi | VinculacionExpedientePersona;
   onClose: () => void;
   onSuccess: () => void;
 }) {

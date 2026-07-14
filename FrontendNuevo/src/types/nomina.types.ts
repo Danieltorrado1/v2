@@ -1,0 +1,596 @@
+﻿export type NominaPeriodoTipo = 'PRIMERA_QUINCENA' | 'SEGUNDA_QUINCENA' | 'MENSUAL';
+
+export type NominaPeriodoEstado = 'ABIERTO' | 'REVISADO' | 'CERRADO' | 'PAGADO' | 'ANULADO';
+
+export type NominaExportTipo =
+  | 'resumen'
+  | 'dashboard'
+  | 'plano_bancario'
+  | 'empleados'
+  | 'novedades'
+  | 'movimientos'
+  | 'desprendibles'
+  | 'liquidaciones'
+  | 'todo';
+
+export interface NominaPaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+}
+
+export interface NominaPeriodosQuery {
+  contrato_id?: string;
+  empresa_id?: string;
+  estado?: NominaPeriodoEstado;
+  page?: number;
+  limit?: number;
+}
+
+export interface NominaPeriodoContratoApi {
+  id: string;
+  empresa_id: string | null;
+  entidad_contratante: string | null;
+  fecha_finalizacion: string | null;
+  fecha_inicio: string | null;
+  numero_contrato: string | null;
+}
+
+export interface NominaPeriodoApi {
+  id: string;
+  contrato_id: string | null;
+  nombre_periodo: string;
+  tipo_periodo: NominaPeriodoTipo | string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  requiere_asistencia: boolean;
+  estado: NominaPeriodoEstado | string;
+  activo: boolean;
+  created_at: string;
+  contrato: NominaPeriodoContratoApi | null;
+}
+
+export interface PaginatedNominaPeriodosApi {
+  items: NominaPeriodoApi[];
+  pagination: NominaPaginationMeta;
+}
+
+export interface NominaPeriodoDashboardApi {
+  asistencia: {
+    ausentes: number;
+    incapacidades: number;
+    pendientes: number;
+    permisos: number;
+    presentes: number;
+    suspensiones: number;
+  };
+  empleados_pendientes: number;
+  empleados_revisados: number;
+  empleados_total: number;
+  estado_periodo: string;
+  total_deducciones: number;
+  total_desprendibles: number;
+  total_devengado: number;
+  total_movimientos: number;
+  total_neto: number;
+  total_novedades: number;
+  total_otros: number;
+  total_pension: number;
+  total_salud: number;
+  total_transporte: number;
+}
+
+export interface NominaPeriodoActionApi {
+  force?: boolean;
+}
+
+export interface NominaPeriodoActionResultApi {
+  forced?: boolean;
+}
+
+export type NominaMovimientoTipo =
+  | 'HORA_EXTRA_DIURNA'
+  | 'HORA_EXTRA_NOCTURNA'
+  | 'RECARGO_NOCTURNO'
+  | 'DOMINICAL'
+  | 'FESTIVO'
+  | 'TURNO_EXTERNO'
+  | 'BONIFICACION'
+  | 'AUXILIO'
+  | 'ADICION_MANUAL'
+  | 'DESCUENTO_MANUAL'
+  | 'EMBARGO'
+  | 'LIBRANZA'
+  | 'AJUSTE';
+
+export interface NominaMovimientosQuery {
+  periodo_id?: string;
+  nomina_empleado_id?: string;
+  vinculacion_id?: string;
+  tipo_movimiento?: NominaMovimientoTipo;
+  activo?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface NominaMovimientoApi {
+  activo: boolean;
+  afecta_seguridad_social: boolean;
+  cantidad: number | null;
+  created_at: string;
+  descripcion: string | null;
+  es_deduccion: boolean;
+  es_devengado: boolean;
+  fecha: string | null;
+  id: string;
+  nomina_empleado_id: string;
+  periodo: {
+    estado: string;
+    id: string;
+    nombre_periodo: string;
+  };
+  periodo_id: string;
+  persona: {
+    id: string;
+    nombre_completo: string;
+    numero_documento: string | null;
+  };
+  tipo_movimiento: NominaMovimientoTipo | string;
+  valor_total: number;
+  valor_unitario: number | null;
+  vinculacion: {
+    id: string;
+  };
+  vinculacion_id: string;
+}
+
+export interface PaginatedNominaMovimientosApi {
+  items: NominaMovimientoApi[];
+  pagination: NominaPaginationMeta;
+}
+
+export interface CreateNominaMovimientoApi {
+  periodo_id: string;
+  nomina_empleado_id: string;
+  vinculacion_id: string;
+  fecha?: string | null;
+  tipo_movimiento: NominaMovimientoTipo;
+  descripcion?: string | null;
+  cantidad?: number | null;
+  valor_unitario?: number | null;
+  valor_total: number;
+  es_devengado?: boolean;
+  es_deduccion?: boolean;
+  afecta_seguridad_social?: boolean;
+  activo?: boolean;
+}
+
+export interface UpdateNominaMovimientoApi {
+  fecha?: string | null;
+  tipo_movimiento?: NominaMovimientoTipo;
+  descripcion?: string | null;
+  cantidad?: number | null;
+  valor_unitario?: number | null;
+  valor_total?: number;
+  es_devengado?: boolean;
+  es_deduccion?: boolean;
+  afecta_seguridad_social?: boolean;
+  activo?: boolean;
+}
+
+export const NOMINA_TURNO_MOVIMIENTO_TIPO = 'TURNO_EXTERNO' as const;
+
+export type NominaTurnoMovimientoTipo = typeof NOMINA_TURNO_MOVIMIENTO_TIPO;
+
+export interface NominaTurno extends Omit<NominaMovimientoApi, 'tipo_movimiento'> {
+  tipo_movimiento: NominaTurnoMovimientoTipo;
+}
+
+export type NominaTurnoFilters = Omit<NominaMovimientosQuery, 'tipo_movimiento'>;
+
+export interface PaginatedNominaTurnosApi {
+  items: NominaTurno[];
+  pagination: NominaPaginationMeta;
+}
+
+export type CreateNominaTurnoPayload = Omit<CreateNominaMovimientoApi, 'tipo_movimiento'>;
+
+export type UpdateNominaTurnoPayload = Omit<UpdateNominaMovimientoApi, 'tipo_movimiento'>;
+
+export interface CreateNominaPeriodoApi {
+  nombre_periodo: string;
+  tipo_periodo: NominaPeriodoTipo;
+  fecha_inicio: string;
+  fecha_fin: string;
+  contrato_id: string;
+  requiere_asistencia?: boolean;
+  activo?: boolean;
+}
+
+export interface NominaPeriodoEmpleadosQuery {
+  contrato_id?: string;
+  empresa_id?: string;
+  vinculacion_id?: string;
+  persona_id?: string;
+  estado?: string;
+  revisado?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface NominaPersonaResumenApi {
+  id: string;
+  nombre_completo: string;
+  numero_documento: string | null;
+  primer_nombre: string | null;
+  segundo_nombre: string | null;
+  primer_apellido: string | null;
+  segundo_apellido: string | null;
+}
+
+export interface NominaVinculacionResumenApi {
+  id: string;
+  empresa_id: string;
+  contrato_id: string;
+  estado_vinculacion: string | null;
+  fecha_fin: string | null;
+  fecha_inicio: string | null;
+  metodo_pago: string | null;
+}
+
+export interface NominaCargoApi {
+  id: string | null;
+  nombre_cargo: string | null;
+}
+
+export interface NominaCategoriaSalarialApi {
+  id: string;
+  auxilio_transporte: number;
+  codigo_categoria: string | null;
+  modalidad: string | null;
+  nombre_categoria: string | null;
+  otros_recargos: number;
+  salario_base: number;
+}
+
+export interface NominaEmpleadoApi {
+  id: string;
+  periodo_id: string;
+  vinculacion_id: string;
+  metodo_liquidacion: string | null;
+  salario_base: number;
+  auxilio_transporte: number;
+  otros_devengos: number;
+  fecha_inicio_pago: string | null;
+  fecha_fin_pago: string | null;
+  dias_periodo: number;
+  dias_pagados: number;
+  horas_trabajadas: number;
+  horas_extra_total: number;
+  devengado_basico: number;
+  devengado_transporte: number;
+  devengado_otros: number;
+  total_adiciones: number;
+  total_deducciones: number;
+  salud: number;
+  pension: number;
+  neto_pagar: number;
+  revisado: boolean;
+  estado: string | null;
+  activo: boolean;
+  created_at: string;
+  motivo_caso_especial: string | null;
+  persona: NominaPersonaResumenApi;
+  vinculacion: NominaVinculacionResumenApi;
+  cargo: NominaCargoApi | null;
+  categoria_salarial: NominaCategoriaSalarialApi | null;
+}
+
+export interface PaginatedNominaEmpleadosApi {
+  items: NominaEmpleadoApi[];
+  pagination: NominaPaginationMeta;
+}
+
+export interface NominaNovedadesQuery {
+  periodo_id?: string;
+  nomina_empleado_id?: string;
+  vinculacion_id?: string;
+  tipo_novedad_id?: string;
+  revisado?: boolean;
+  activo?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface NominaNovedadTipoApi {
+  id: string;
+  nombre: string | null;
+  categoria: string | null;
+  afecta_salario: boolean;
+  afecta_transporte: boolean;
+  es_adicion: boolean;
+  es_deduccion: boolean;
+  requiere_fechas: boolean;
+  requiere_dias: boolean;
+  requiere_horas: boolean;
+  requiere_valor: boolean;
+  activo: boolean;
+}
+
+export interface NominaNovedadPersonaApi {
+  nombre_completo: string;
+  numero_documento: string | null;
+  primer_nombre: string | null;
+  segundo_nombre: string | null;
+  primer_apellido: string | null;
+  segundo_apellido: string | null;
+}
+
+export interface NominaNovedadApi {
+  id: string;
+  periodo_id: string;
+  nomina_empleado_id: string;
+  vinculacion_id: string;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  dias: number | null;
+  horas: number | null;
+  valor_manual: number | null;
+  categoria_anterior_id: string | null;
+  categoria_nueva_id: string | null;
+  observacion: string | null;
+  revisado: boolean;
+  activo: boolean;
+  created_at: string;
+  requiere_cobertura: boolean;
+  cubierta: boolean;
+  tipo_novedad: NominaNovedadTipoApi;
+  persona: NominaNovedadPersonaApi;
+}
+
+export interface PaginatedNominaNovedadesApi {
+  items: NominaNovedadApi[];
+  pagination: NominaPaginationMeta;
+}
+
+export interface CreateNominaNovedadApi {
+  periodo_id: string;
+  nomina_empleado_id: string;
+  vinculacion_id: string;
+  tipo_novedad_id: string;
+  fecha_inicio?: string | null;
+  fecha_fin?: string | null;
+  dias?: number | null;
+  horas?: number | null;
+  valor_manual?: number | null;
+  categoria_anterior_id?: string | null;
+  categoria_nueva_id?: string | null;
+  observacion?: string | null;
+  revisado?: boolean;
+  requiere_cobertura?: boolean;
+  cubierta?: boolean;
+  activo?: boolean;
+}
+
+export interface UpdateNominaNovedadApi {
+  tipo_novedad_id?: string;
+  fecha_inicio?: string | null;
+  fecha_fin?: string | null;
+  dias?: number | null;
+  horas?: number | null;
+  valor_manual?: number | null;
+  categoria_anterior_id?: string | null;
+  categoria_nueva_id?: string | null;
+  observacion?: string | null;
+  revisado?: boolean;
+  requiere_cobertura?: boolean;
+  cubierta?: boolean;
+  activo?: boolean;
+}
+
+export type NominaLiquidacionEstado = 'GENERADA' | 'PRELIMINAR' | 'FINAL';
+
+export type NominaLiquidacionEstadoFilter = 'PRELIMINAR' | 'FINAL';
+
+export interface NominaLiquidacionFilters {
+  contrato_id?: string;
+  empresa_id?: string;
+  vinculacion_id?: string;
+  persona_id?: string;
+  estado?: NominaLiquidacionEstadoFilter;
+  page?: number;
+  limit?: number;
+}
+
+export interface NominaLiquidacionPersonaApi {
+  id: string;
+  nombre_completo: string;
+  numero_documento: string | null;
+  primer_nombre: string | null;
+  segundo_nombre: string | null;
+  primer_apellido: string | null;
+  segundo_apellido: string | null;
+}
+
+export interface NominaLiquidacionVinculacionApi {
+  id: string;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  estado_vinculacion: string | null;
+  motivo_retiro: string | null;
+}
+
+export interface NominaLiquidacionContratoApi {
+  empresa_id: string | null;
+  entidad_contratante: string | null;
+  id: string;
+  numero_contrato: string | null;
+}
+
+export interface NominaLiquidacionPeriodoApi {
+  estado: string;
+  fecha_fin: string;
+  fecha_inicio: string;
+  id: string;
+  nombre_periodo: string;
+}
+
+export interface NominaLiquidacion {
+  activo: boolean;
+  archivo_path: string | null;
+  auxilio_transporte: number;
+  auxilio_transporte_snapshot: number;
+  cargo_nombre_snapshot: string | null;
+  cesantias: number;
+  contrato: NominaLiquidacionContratoApi;
+  contrato_id: string;
+  contrato_nombre_snapshot: string | null;
+  created_at: string;
+  deduccion_pension: number;
+  deduccion_salud: number;
+  deducciones: number;
+  devengado_salario: number;
+  devengado_transporte: number;
+  dias_base_liquidacion: number;
+  dias_con_transporte: number;
+  dias_liquidados: number;
+  dias_trabajados: number;
+  dias_vacaciones_pendientes: number;
+  documento_persona_id: string | null;
+  empresa_id: string | null;
+  estado: NominaLiquidacionEstado | string;
+  fecha_fin_vinculacion: string | null;
+  fecha_fin_vinculacion_snapshot?: string | null;
+  fecha_inicio_vinculacion: string | null;
+  fecha_inicio_vinculacion_snapshot?: string;
+  fecha_retiro: string | null;
+  id: string;
+  intereses_cesantias: number;
+  motivo_retiro: string | null;
+  neto_pagar: number;
+  novedades_snapshot: Record<string, unknown> | null;
+  observacion: string | null;
+  otros_devengos: number;
+  periodo: NominaLiquidacionPeriodoApi;
+  periodo_id: string;
+  persona: NominaLiquidacionPersonaApi;
+  persona_id: string;
+  persona_nombre_snapshot: string;
+  prima_servicios: number;
+  promedio_auxilio_transporte: number;
+  promedio_salario: number;
+  salario_base: number;
+  salario_base_snapshot: number;
+  total_adiciones: number;
+  total_deducciones: number;
+  total_devengado: number;
+  total_liquidacion: number;
+  updated_at?: string;
+  vacaciones: number;
+  valor_dia_salario: number;
+  valor_dia_transporte: number;
+  vinculacion: NominaLiquidacionVinculacionApi;
+  vinculacion_id: string;
+}
+
+export interface PaginatedNominaLiquidacionesApi {
+  items: NominaLiquidacion[];
+  pagination: NominaPaginationMeta;
+}
+
+export interface NominaExportRequest {
+  include_versiones?: boolean;
+  tipo?: NominaExportTipo;
+}
+
+export interface NominaExportMetadata {
+  content_type: string | null;
+  file_name: string;
+}
+
+export interface NominaDesprendiblesQuery {
+  include_versiones?: boolean;
+}
+
+export type NominaDesprendibleFilters = NominaDesprendiblesQuery;
+
+export interface NominaDesprendibleDocumentoApi {
+  documento_persona_id: string | null;
+  mime_type: string | null;
+  nombre_original: string | null;
+  signed_url?: string | null;
+  storage_bucket: string | null;
+  storage_path: string | null;
+  tamano_bytes: number | null;
+}
+
+export interface NominaDesprendibleEmpresaApi {
+  nit: string | null;
+  nombre_empresa: string | null;
+}
+
+export interface NominaDesprendiblePeriodoApi {
+  estado: string;
+  fecha_fin: string;
+  fecha_inicio: string;
+  id: string;
+  nombre_periodo: string;
+}
+
+export interface NominaDesprendibleApi {
+  activo: boolean;
+  archivo_path: string | null;
+  created_at: string;
+  desprendible_reemplaza_id: string | null;
+  dias_liquidados: number;
+  devengado_salario: number;
+  devengado_transporte: number;
+  documento: NominaDesprendibleDocumentoApi;
+  empresa: NominaDesprendibleEmpresaApi;
+  es_vigente: boolean;
+  estado: string;
+  fecha_generacion: string | null;
+  id: string;
+  liquidacion_id?: string | null;
+  neto_pagar: number;
+  nomina_empleado_id: string;
+  observacion: string | null;
+  payload_snapshot: Record<string, unknown>;
+  pension: number;
+  periodo: NominaDesprendiblePeriodoApi;
+  periodo_id: string;
+  persona: {
+    id: string;
+    nombre_completo: string;
+    numero_documento: string | null;
+  };
+  persona_id: string;
+  revisado: boolean;
+  salario_base: number;
+  salario_base_snapshot: number;
+  salud: number;
+  tipo_desprendible: string | null;
+  total_adiciones: number;
+  total_deducciones: number;
+  total_devengado: number;
+  version: number;
+  vinculacion: {
+    id: string;
+  };
+  vinculacion_id: string;
+}
+
+export interface GenerateNominaDesprendiblesResponse {
+  desprendibles_generados: number;
+  periodo: NominaPeriodoApi;
+}
+
+export interface GenerateNominaLiquidacionesResponse {
+  liquidaciones_generadas: number;
+  periodo: NominaPeriodoApi;
+  empleados_procesados: number;
+  omitidas_activas?: number;
+  omitidas_fuera_periodo?: number;
+}
+

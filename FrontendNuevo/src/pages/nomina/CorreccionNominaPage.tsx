@@ -1,298 +1,1119 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ComponentType } from "react";
 import {
   AlertTriangle,
-  CheckCircle2,
   ChevronDown,
   ClipboardList,
   Download,
-  Edit3,
   Eye,
-  MinusCircle,
-  PlusCircle,
+  FileText,
   RefreshCw,
   Search,
-  TrendingDown,
-  TrendingUp,
-  X,
+  ShieldAlert,
+  Wallet,
 } from "lucide-react";
+import {
+  exportNominaMovimientosCsv,
+  getAllNominaMovimientos,
+  getAllNominaNovedades,
+  getNominaDesprendibles,
+  getNominaPeriodos,
+  openNominaDesprendible,
+  recalculateNominaPeriodo,
+} from "../../services/nominaApi";
+import type {
+  NominaDesprendibleApi,
+  NominaMovimientoApi,
+  NominaNovedadApi,
+  NominaPeriodoApi,
+  PaginatedNominaPeriodosApi,
+} from "../../types/nomina.types";
+import { pickDefaultNominaPeriod } from "./nominaPeriods";
 import "./NominaPages.css";
-
-function formatCOP(v: number) {
-  return `$${v.toLocaleString("es-CO")}`;
-}
 
 type Tone = "primary" | "success" | "warning" | "danger" | "info" | "neutral" | "purple";
 
-type Kpi = { tone: Tone; icon: ComponentType<{ size?: number }>; label: string; value: string; caption: string };
-
-const kpis: Kpi[] = [
-  { tone: "warning", icon: AlertTriangle, label: "Correcciones abiertas",     value: "3",           caption: "Requieren atención" },
-  { tone: "success", icon: CheckCircle2,  label: "Correcciones aprobadas",    value: "2",           caption: "Período actual" },
-  { tone: "success", icon: TrendingUp,    label: "Ajustes positivos",         value: formatCOP(1_240_000), caption: "Adiciones" },
-  { tone: "danger",  icon: TrendingDown,  label: "Ajustes negativos",         value: formatCOP(780_000),   caption: "Deducciones / reversiones" },
-  { tone: "neutral", icon: ClipboardList, label: "Pend. soporte",             value: "2",           caption: "Documentos faltantes" },
-  { tone: "info",    icon: RefreshCw,     label: "Reprocesos",                value: "1",           caption: "Períodos en reproceso" },
-];
-
-type TipoCorrec =
-  | "Adición"
-  | "Deducción"
-  | "Reversión"
-  | "Reproceso"
-  | "Corrección de días"
-  | "Corrección de novedad"
-  | "Corrección de salario";
-
-type EstadoCorrec = "Pendiente" | "En revisión" | "Aprobada" | "Aplicada" | "Rechazada";
-
-const toneCorrec: Record<EstadoCorrec, Tone> = {
-  Pendiente:     "warning",
-  "En revisión": "info",
-  Aprobada:      "success",
-  Aplicada:      "primary",
-  Rechazada:     "danger",
+type AsyncState<T> = {
+  loading: boolean;
+  data: T | null;
+  error: string | null;
 };
 
-const toneTipo: Record<TipoCorrec, Tone> = {
-  Adición:                "success",
-  Deducción:              "danger",
-  Reversión:              "warning",
-  Reproceso:              "purple",
-  "Corrección de días":   "info",
-  "Corrección de novedad":"neutral",
-  "Corrección de salario":"primary",
+type FeedbackState = {
+  message: string;
+  tone: "success" | "error";
+} | null;
+
+type FilterOption = {
+  label: string;
+  value: string;
 };
 
-type CorrecRow = {
+type Kpi = {
+  caption: string;
+  icon: ComponentType<{ size?: number }>;
+  label: string;
+  tone: Tone;
+  value: string;
+};
+
+type CorrectionData = {
+  desprendibles: NominaDesprendibleApi[];
+  movimientos: NominaMovimientoApi[];
+  novedades: NominaNovedadApi[];
+};
+
+type CorrectionRecordSource = "movimiento" | "novedad";
+
+type CorrectionRecord = {
+  created_at: string;
+  documento: string | null;
+  estadoLabel: string;
+  estadoTone: Tone;
+  fechaPrincipal: string | null;
   id: string;
-  initials: string;
-  color: string;
-  fechaSolicitud: string;
-  empleado: string;
-  documento: string;
-  periodoAfectado: string;
-  tipo: TipoCorrec;
-  motivo: string;
-  valor: number;
-  positivo: boolean;
-  solicitadoPor: string;
-  estado: EstadoCorrec;
-  soporte: boolean;
+  key: string;
+  motivo: string | null;
+  nomina_empleado_id: string;
+  periodoLabel: string;
+  personaNombre: string;
+  source: CorrectionRecordSource;
+  sourceLabel: string;
+  statusKey: string;
+  soporteDisponible: boolean;
+  summaryLabel: string;
+  valor: number | null;
+  vinculacion_id: string;
+  movimiento?: NominaMovimientoApi;
+  novedad?: NominaNovedadApi;
 };
 
-const rows: CorrecRow[] = [
-  {
-    id: "1", initials: "MT", color: "green",
-    fechaSolicitud: "10/06/2026", empleado: "María Fernanda Torres Ospina",
-    documento: "CC 1.121.873.256", periodoAfectado: "Mayo 2026",
-    tipo: "Adición", motivo: "Omisión de horas extras nocturnas",
-    valor: 320_000, positivo: true, solicitadoPor: "Coord. Nómina", estado: "Aprobada", soporte: true,
-  },
-  {
-    id: "2", initials: "CR", color: "blue",
-    fechaSolicitud: "11/06/2026", empleado: "Carmen Alicia Ruiz Moreno",
-    documento: "CC 1.008.342.114", periodoAfectado: "Mayo 2026",
-    tipo: "Corrección de días", motivo: "Error en liquidación de incapacidad",
-    valor: 98_000, positivo: false, solicitadoPor: "Coord. Nómina", estado: "En revisión", soporte: true,
-  },
-  {
-    id: "3", initials: "RJ", color: "purple",
-    fechaSolicitud: "12/06/2026", empleado: "Rosa Elvira Jiménez Castro",
-    documento: "CC 1.120.558.447", periodoAfectado: "Abril 2026",
-    tipo: "Reversión", motivo: "Pago duplicado de prima de servicios",
-    valor: 680_000, positivo: false, solicitadoPor: "Auditoría interna", estado: "Aplicada", soporte: true,
-  },
-  {
-    id: "4", initials: "AG", color: "orange",
-    fechaSolicitud: "14/06/2026", empleado: "Amparo González Leal",
-    documento: "CC 1.005.771.338", periodoAfectado: "Mayo 2026",
-    tipo: "Corrección de salario", motivo: "Actualización salarial retroactiva",
-    valor: 920_000, positivo: true, solicitadoPor: "Dir. Talento Humano", estado: "Pendiente", soporte: false,
-  },
-  {
-    id: "5", initials: "LP", color: "red",
-    fechaSolicitud: "15/06/2026", empleado: "Luz Marina Pérez Vargas",
-    documento: "CC 1.122.456.789", periodoAfectado: "Marzo 2026",
-    tipo: "Reproceso", motivo: "Liquidación incorrecta por cambio de municipio",
-    valor: 0, positivo: true, solicitadoPor: "Coord. Nómina", estado: "En revisión", soporte: false,
-  },
-  {
-    id: "6", initials: "NR", color: "cyan",
-    fechaSolicitud: "17/06/2026", empleado: "Nohora Stella Ramírez Bernal",
-    documento: "CC 1.119.002.003", periodoAfectado: "Mayo 2026",
-    tipo: "Corrección de novedad", motivo: "Novedad de licencia registrada en período errado",
-    valor: 0, positivo: false, solicitadoPor: "Coord. Nómina", estado: "Rechazada", soporte: true,
-  },
-];
+const EMPTY_ASYNC_STATE = {
+  loading: false,
+  data: null,
+  error: null,
+};
 
-const historial = [
-  { fecha: "08/05/2026", empleado: "Betty Herrera Pinto",    periodo: "Abril 2026",  valor: 214_000, estado: "Aplicada" as EstadoCorrec },
-  { fecha: "15/04/2026", empleado: "Esperanza Suárez Gil",   periodo: "Marzo 2026",  valor: 560_000, estado: "Aplicada" as EstadoCorrec },
-  { fecha: "02/04/2026", empleado: "María Torres Ospina",    periodo: "Feb 2026",    valor: 98_000,  estado: "Rechazada" as EstadoCorrec },
-  { fecha: "20/03/2026", empleado: "Carmen Ruiz Moreno",     periodo: "Feb 2026",    valor: 320_000, estado: "Aplicada" as EstadoCorrec },
-];
+const PERIODS_LIMIT = 100;
+const MANUAL_CORRECTION_MOVEMENT_TYPES = new Set([
+  "AJUSTE",
+  "ADICION_MANUAL",
+  "DESCUENTO_MANUAL",
+]);
+const AVATAR_COLORS = ["green", "blue", "purple", "orange", "red", "cyan", "teal", "pink"] as const;
 
-function NpSelect({ label, icon: Icon }: { label: string; icon?: ComponentType<{ size?: number }> }) {
+function formatCOP(value: number) {
+  return `$${value.toLocaleString("es-CO")}`;
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return "No disponible";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "No disponible";
+  }
+
+  return new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "medium",
+  }).format(date);
+}
+
+function formatBoolean(value: boolean) {
+  return value ? "Sí" : "No";
+}
+
+function formatOptionalNumber(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return "No disponible";
+  }
+
+  return value.toLocaleString("es-CO");
+}
+
+function titleCase(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function toMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Error desconocido";
+}
+
+function toTimestamp(value: string | null | undefined) {
+  if (!value) {
+    return 0;
+  }
+
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function hasEconomicImpact(novedad: NominaNovedadApi) {
+  return Boolean(
+    novedad.valor_manual !== null ||
+      novedad.tipo_novedad.afecta_salario ||
+      novedad.tipo_novedad.afecta_transporte ||
+      novedad.tipo_novedad.requiere_valor ||
+      novedad.categoria_anterior_id ||
+      novedad.categoria_nueva_id,
+  );
+}
+
+function isManualCorrectionMovement(movimiento: NominaMovimientoApi) {
+  return MANUAL_CORRECTION_MOVEMENT_TYPES.has(movimiento.tipo_movimiento);
+}
+
+function getMovementStatusTone(movimiento: NominaMovimientoApi): Tone {
+  return movimiento.activo ? "primary" : "neutral";
+}
+
+function getMovementStatusLabel(movimiento: NominaMovimientoApi) {
+  return movimiento.activo ? "Activo" : "Inactivo";
+}
+
+function getNoveltyStatusTone(novedad: NominaNovedadApi): Tone {
+  if (!novedad.activo) {
+    return "neutral";
+  }
+
+  if (!novedad.revisado) {
+    return "warning";
+  }
+
+  if (novedad.requiere_cobertura && !novedad.cubierta) {
+    return "info";
+  }
+
+  if (novedad.requiere_cobertura && novedad.cubierta) {
+    return "primary";
+  }
+
+  return "success";
+}
+
+function getNoveltyStatusLabel(novedad: NominaNovedadApi) {
+  if (!novedad.activo) {
+    return "Inactiva";
+  }
+
+  if (!novedad.revisado) {
+    return "Pendiente revisión";
+  }
+
+  if (novedad.requiere_cobertura && !novedad.cubierta) {
+    return "Requiere cobertura";
+  }
+
+  if (novedad.requiere_cobertura && novedad.cubierta) {
+    return "Cubierta";
+  }
+
+  return "Revisada";
+}
+
+function getAvatarColor(value: string) {
+  let hash = 0;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) % AVATAR_COLORS.length;
+  }
+
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+function getInitials(value: string) {
+  const parts = value
+    .split(" ")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (parts.length === 0) {
+    return "NA";
+  }
+
+  return parts.map((item) => item[0]?.toUpperCase() ?? "").join("");
+}
+
+function NpSelect({
+  disabled = false,
+  icon: Icon,
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  disabled?: boolean;
+  icon?: ComponentType<{ size?: number }>;
+  label: string;
+  onChange: (value: string) => void;
+  options: FilterOption[];
+  value: string;
+}) {
   return (
-    <div className="np-select-wrap">
-      {Icon && <Icon size={15} />}
-      <select className="np-select" defaultValue="">
-        <option value="" disabled>{label}</option>
+    <div className={`np-select-wrap${disabled ? " is-disabled" : ""}`}>
+      {Icon ? <Icon size={15} /> : null}
+      <select
+        className="np-select"
+        disabled={disabled}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value="">{label}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
       </select>
       <ChevronDown size={13} />
     </div>
   );
 }
 
+function StateCard({
+  actionLabel,
+  message,
+  onAction,
+  title,
+  tone = "neutral",
+}: {
+  actionLabel?: string;
+  message: string;
+  onAction?: () => void;
+  title: string;
+  tone?: "neutral" | "error";
+}) {
+  return (
+    <div className={`np-state-card ${tone}`}>
+      <div>
+        <strong>{title}</strong>
+        <p>{message}</p>
+      </div>
+      {actionLabel && onAction ? (
+        <button type="button" className="np-btn" onClick={onAction}>
+          {actionLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export default function CorreccionNominaPage() {
+  const [periodsState, setPeriodsState] =
+    useState<AsyncState<PaginatedNominaPeriodosApi>>(EMPTY_ASYNC_STATE);
+  const [dataState, setDataState] = useState<AsyncState<CorrectionData>>(EMPTY_ASYNC_STATE);
+  const [selectedPeriodId, setSelectedPeriodId] = useState("");
+  const [selectedRecordKey, setSelectedRecordKey] = useState("");
+  const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [feedback, setFeedback] = useState<FeedbackState>(null);
+  const [submittingAction, setSubmittingAction] = useState<"export" | "recalculate" | "slip" | null>(null);
+
+  const loadPeriodData = useCallback(async (periodId: string) => {
+    setDataState((current) => ({
+      ...current,
+      loading: true,
+      error: null,
+    }));
+
+    try {
+      const [movimientos, novedades, desprendibles] = await Promise.all([
+        getAllNominaMovimientos({ periodo_id: periodId }),
+        getAllNominaNovedades({ periodo_id: periodId }),
+        getNominaDesprendibles(periodId),
+      ]);
+
+      setDataState({
+        loading: false,
+        error: null,
+        data: {
+          movimientos: movimientos.items,
+          novedades: novedades.items,
+          desprendibles,
+        },
+      });
+    } catch (error) {
+      setDataState({
+        loading: false,
+        error: toMessage(error),
+        data: null,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPeriods() {
+      setPeriodsState({
+        loading: true,
+        data: null,
+        error: null,
+      });
+
+      try {
+        const data = await getNominaPeriodos({
+          page: 1,
+          limit: PERIODS_LIMIT,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        setPeriodsState({
+          loading: false,
+          data,
+          error: null,
+        });
+
+        const defaultPeriod = pickDefaultNominaPeriod(data.items);
+        setSelectedPeriodId((current) => current || defaultPeriod?.id || "");
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setPeriodsState({
+          loading: false,
+          data: null,
+          error: toMessage(error),
+        });
+      }
+    }
+
+    void loadPeriods();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPeriodId) {
+      setDataState(EMPTY_ASYNC_STATE);
+      return;
+    }
+
+    void loadPeriodData(selectedPeriodId);
+  }, [loadPeriodData, selectedPeriodId]);
+
+  useEffect(() => {
+    setSelectedRecordKey("");
+  }, [selectedPeriodId]);
+
+  const periodOptions = useMemo<FilterOption[]>(() => {
+    return (periodsState.data?.items ?? []).map((periodo) => ({
+      label: periodo.nombre_periodo,
+      value: periodo.id,
+    }));
+  }, [periodsState.data]);
+
+  const selectedPeriod = useMemo<NominaPeriodoApi | null>(() => {
+    return periodsState.data?.items.find((periodo) => periodo.id === selectedPeriodId) ?? null;
+  }, [periodsState.data, selectedPeriodId]);
+
+  const desprendiblesVigentes = useMemo(() => {
+    return (dataState.data?.desprendibles ?? []).filter((item) => item.es_vigente);
+  }, [dataState.data]);
+
+  const desprendibleByVinculacion = useMemo(() => {
+    return new Map(desprendiblesVigentes.map((item) => [item.vinculacion_id, item]));
+  }, [desprendiblesVigentes]);
+
+  const allRecords = useMemo<CorrectionRecord[]>(() => {
+    const periodoLabel = selectedPeriod?.nombre_periodo ?? "No disponible";
+    const movimientos = (dataState.data?.movimientos ?? [])
+      .filter(isManualCorrectionMovement)
+      .map((movimiento) => ({
+        created_at: movimiento.created_at,
+        documento: movimiento.persona.numero_documento,
+        estadoLabel: getMovementStatusLabel(movimiento),
+        estadoTone: getMovementStatusTone(movimiento),
+        fechaPrincipal: movimiento.fecha ?? movimiento.created_at,
+        id: movimiento.id,
+        key: `movimiento-${movimiento.id}`,
+        motivo: movimiento.descripcion,
+        movimiento,
+        nomina_empleado_id: movimiento.nomina_empleado_id,
+        periodoLabel: movimiento.periodo.nombre_periodo ?? periodoLabel,
+        personaNombre: movimiento.persona.nombre_completo,
+        source: "movimiento" as const,
+        sourceLabel: "Movimiento manual",
+        statusKey: movimiento.activo ? "ACTIVO" : "INACTIVO",
+        soporteDisponible: desprendibleByVinculacion.has(movimiento.vinculacion_id),
+        summaryLabel: titleCase(movimiento.tipo_movimiento),
+        valor: movimiento.valor_total,
+        vinculacion_id: movimiento.vinculacion_id,
+      }));
+
+    const novedades = (dataState.data?.novedades ?? [])
+      .filter(hasEconomicImpact)
+      .map((novedad) => ({
+        created_at: novedad.created_at,
+        documento: novedad.persona.numero_documento,
+        estadoLabel: getNoveltyStatusLabel(novedad),
+        estadoTone: getNoveltyStatusTone(novedad),
+        fechaPrincipal: novedad.fecha_inicio ?? novedad.created_at,
+        id: novedad.id,
+        key: `novedad-${novedad.id}`,
+        motivo: novedad.observacion,
+        nomina_empleado_id: novedad.nomina_empleado_id,
+        novedad,
+        periodoLabel,
+        personaNombre: novedad.persona.nombre_completo,
+        source: "novedad" as const,
+        sourceLabel: "Novedad con impacto",
+        statusKey: !novedad.activo
+          ? "INACTIVO"
+          : !novedad.revisado
+            ? "PENDIENTE_REVISION"
+            : novedad.requiere_cobertura && !novedad.cubierta
+              ? "REQUIERE_COBERTURA"
+              : novedad.requiere_cobertura && novedad.cubierta
+                ? "CUBIERTA"
+                : "REVISADA",
+        soporteDisponible: desprendibleByVinculacion.has(novedad.vinculacion_id),
+        summaryLabel: novedad.tipo_novedad.nombre ?? "Novedad",
+        valor: novedad.valor_manual,
+        vinculacion_id: novedad.vinculacion_id,
+      }));
+
+    return [...movimientos, ...novedades].sort((left, right) => {
+      return toTimestamp(right.fechaPrincipal) - toTimestamp(left.fechaPrincipal);
+    });
+  }, [dataState.data, desprendibleByVinculacion, selectedPeriod]);
+
+  const filteredRecords = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return allRecords.filter((record) => {
+      if (sourceFilter && record.source !== sourceFilter) {
+        return false;
+      }
+
+      if (statusFilter && record.statusKey !== statusFilter) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      const haystack = [
+        record.personaNombre,
+        record.documento ?? "",
+        record.summaryLabel,
+        record.motivo ?? "",
+        record.sourceLabel,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(normalizedSearch);
+    });
+  }, [allRecords, search, sourceFilter, statusFilter]);
+
+  useEffect(() => {
+    if (filteredRecords.length === 0) {
+      setSelectedRecordKey("");
+      return;
+    }
+
+    if (!filteredRecords.some((record) => record.key === selectedRecordKey)) {
+      setSelectedRecordKey(filteredRecords[0].key);
+    }
+  }, [filteredRecords, selectedRecordKey]);
+
+  const selectedRecord = useMemo(() => {
+    return filteredRecords.find((record) => record.key === selectedRecordKey) ?? null;
+  }, [filteredRecords, selectedRecordKey]);
+
+  const selectedDesprendible = useMemo(() => {
+    if (!selectedRecord) {
+      return null;
+    }
+
+    return desprendibleByVinculacion.get(selectedRecord.vinculacion_id) ?? null;
+  }, [desprendibleByVinculacion, selectedRecord]);
+
+  const kpis = useMemo<Kpi[]>(() => {
+    const movimientos = allRecords.filter((record) => record.source === "movimiento").length;
+    const novedades = allRecords.filter((record) => record.source === "novedad").length;
+    const pendientesRevision = allRecords.filter(
+      (record) => record.source === "novedad" && record.statusKey === "PENDIENTE_REVISION",
+    ).length;
+    const valores = allRecords
+      .map((record) => record.valor)
+      .filter((value): value is number => typeof value === "number");
+    const totalManual = valores.length > 0 ? valores.reduce((sum, value) => sum + value, 0) : null;
+
+    return [
+      {
+        caption: "Movimientos manuales y novedades con impacto",
+        icon: ClipboardList,
+        label: "Registros detectados",
+        tone: "primary",
+        value: allRecords.length.toLocaleString("es-CO"),
+      },
+      {
+        caption: "Novedades no revisadas del período",
+        icon: AlertTriangle,
+        label: "Pendientes revisión",
+        tone: "warning",
+        value: pendientesRevision.toLocaleString("es-CO"),
+      },
+      {
+        caption: "Tipos AJUSTE, ADICION_MANUAL y DESCUENTO_MANUAL",
+        icon: RefreshCw,
+        label: "Movimientos manuales",
+        tone: "info",
+        value: movimientos.toLocaleString("es-CO"),
+      },
+      {
+        caption: "Novedades con valor o impacto salarial",
+        icon: FileText,
+        label: "Novedades con impacto",
+        tone: "success",
+        value: novedades.toLocaleString("es-CO"),
+      },
+      {
+        caption: "Solo valores presentes en movimientos o valor_manual",
+        icon: Wallet,
+        label: "Valor detectado",
+        tone: "danger",
+        value: totalManual === null ? "No disponible" : formatCOP(totalManual),
+      },
+      {
+        caption: "Recurso real `nomina_desprendibles`",
+        icon: Download,
+        label: "Desprendibles vigentes",
+        tone: "neutral",
+        value: desprendiblesVigentes.length.toLocaleString("es-CO"),
+      },
+    ];
+  }, [allRecords, desprendiblesVigentes]);
+
+  const sourceOptions: FilterOption[] = [
+    { label: "Todos", value: "" },
+    { label: "Movimiento manual", value: "movimiento" },
+    { label: "Novedad con impacto", value: "novedad" },
+  ];
+
+  const statusOptions: FilterOption[] = [
+    { label: "Todos", value: "" },
+    { label: "Activo", value: "ACTIVO" },
+    { label: "Inactivo", value: "INACTIVO" },
+    { label: "Pendiente revisión", value: "PENDIENTE_REVISION" },
+    { label: "Revisada", value: "REVISADA" },
+    { label: "Requiere cobertura", value: "REQUIERE_COBERTURA" },
+    { label: "Cubierta", value: "CUBIERTA" },
+  ];
+
+  const clearFilters = () => {
+    setSearch("");
+    setSourceFilter("");
+    setStatusFilter("");
+  };
+
+  const handleRecalculate = async () => {
+    if (!selectedPeriodId) {
+      return;
+    }
+
+    setSubmittingAction("recalculate");
+    setFeedback(null);
+
+    try {
+      await recalculateNominaPeriodo(selectedPeriodId);
+      await loadPeriodData(selectedPeriodId);
+      setFeedback({
+        tone: "success",
+        message: "El período fue reprocesado con el endpoint real de nómina.",
+      });
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message: toMessage(error),
+      });
+    } finally {
+      setSubmittingAction(null);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!selectedPeriodId) {
+      return;
+    }
+
+    setSubmittingAction("export");
+    setFeedback(null);
+
+    try {
+      const metadata = await exportNominaMovimientosCsv(selectedPeriodId);
+      setFeedback({
+        tone: "success",
+        message: `Se exportaron los movimientos reales del período seleccionado: ${metadata.file_name}.`,
+      });
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message: toMessage(error),
+      });
+    } finally {
+      setSubmittingAction(null);
+    }
+  };
+
+  const handleOpenSlip = async (record: CorrectionRecord) => {
+    if (!selectedPeriodId) {
+      return;
+    }
+
+    setSubmittingAction("slip");
+    setFeedback(null);
+
+    try {
+      const metadata = await openNominaDesprendible(selectedPeriodId, record.vinculacion_id);
+      setFeedback({
+        tone: "success",
+        message: `Se abrió el desprendible vigente asociado a la vinculación seleccionada: ${metadata.file_name}.`,
+      });
+    } catch (error) {
+      setFeedback({
+        tone: "error",
+        message: toMessage(error),
+      });
+    } finally {
+      setSubmittingAction(null);
+    }
+  };
+
+  const backendBrechas = [
+    "No existe tabla ni endpoint `nomina_correcciones` en `src/modules/nomina` ni en `sql`.",
+    "No existe flujo backend de crear, revisar, aprobar, rechazar, aplicar o desactivar correcciones.",
+    "No existe recurso específico de pagos pendientes asociado a correcciones de nómina.",
+    "No existe desprendible corregido dedicado; el backend solo expone `nomina_desprendibles` versionados.",
+  ];
+
   return (
     <div className="np-page">
-      {/* Header */}
       <header className="np-header">
         <div className="np-header-text">
           <h1>Corrección de nómina</h1>
-          <p>Registra ajustes, correcciones y reprocesos de períodos liquidados.</p>
+          <p>
+            Vista conectada a movimientos manuales, novedades con impacto y desprendibles vigentes.
+            El backend no expone un recurso dedicado de correcciones.
+          </p>
         </div>
         <div className="np-header-actions">
-          <button type="button" className="np-btn primary">
-            <PlusCircle size={16} /> Nueva corrección
+          <button
+            type="button"
+            className="np-btn primary"
+            disabled
+            title="No existe endpoint real para crear correcciones de nómina."
+          >
+            Nueva corrección
           </button>
-          <button type="button" className="np-btn">
+          <button
+            type="button"
+            className="np-btn"
+            disabled={!selectedPeriodId || submittingAction !== null}
+            onClick={() => void handleRecalculate()}
+          >
             <RefreshCw size={16} /> Reprocesar período
           </button>
-          <button type="button" className="np-btn">
-            <Download size={16} /> Exportar
+          <button
+            type="button"
+            className="np-btn"
+            disabled={!selectedPeriodId || submittingAction !== null || allRecords.length === 0}
+            onClick={() => void handleExport()}
+            title={
+              allRecords.length === 0
+                ? "No hay registros relacionados para exportar movimientos del período."
+                : "Exportar movimientos reales del backend"
+            }
+          >
+            <Download size={16} /> Exportar movimientos
           </button>
         </div>
       </header>
 
-      {/* KPIs */}
       <div className="np-kpis">
-        {kpis.map((k) => {
-          const Icon = k.icon;
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
+
           return (
-            <div key={k.label} className={`np-kpi ${k.tone}`}>
-              <div className="np-kpi-icon"><Icon size={20} /></div>
+            <div key={kpi.label} className={`np-kpi ${kpi.tone}`}>
+              <div className="np-kpi-icon">
+                <Icon size={20} />
+              </div>
               <div className="np-kpi-body">
-                <span>{k.label}</span>
-                <strong>{k.value}</strong>
-                <small>{k.caption}</small>
+                <span>{kpi.label}</span>
+                <strong>{kpi.value}</strong>
+                <small>{kpi.caption}</small>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Toolbar */}
+      {feedback ? (
+        <div className={`np-inline-state ${feedback.tone === "success" ? "success" : "error"}`}>
+          {feedback.message}
+        </div>
+      ) : null}
+
       <div className="np-toolbar">
         <div className="np-toolbar-left">
           <div className="np-search">
             <Search size={16} />
-            <input placeholder="Buscar colaborador" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar persona, documento o concepto"
+            />
           </div>
-          <NpSelect label="Período" />
-          <NpSelect label="Tipo corrección" />
-          <NpSelect label="Estado" />
+          <NpSelect
+            label="Período"
+            value={selectedPeriodId}
+            onChange={setSelectedPeriodId}
+            options={periodOptions}
+            disabled={periodsState.loading || periodOptions.length === 0}
+          />
+          <NpSelect
+            label="Fuente"
+            value={sourceFilter}
+            onChange={setSourceFilter}
+            options={sourceOptions}
+            disabled={dataState.loading || allRecords.length === 0}
+          />
+          <NpSelect
+            label="Estado"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={statusOptions}
+            disabled={dataState.loading || allRecords.length === 0}
+          />
         </div>
         <div className="np-toolbar-right">
-          <button type="button" className="np-clear-btn">Limpiar</button>
+          <button type="button" className="np-clear-btn" onClick={clearFilters}>
+            Limpiar
+          </button>
         </div>
       </div>
 
-      {/* Table */}
       <div className="np-table-card">
-        <div className="np-table-scroll">
-          <div
-            className="np-table-head"
-            style={{ gridTemplateColumns: "100px minmax(170px,2fr) 110px 130px 140px 160px 110px 130px 110px 70px 130px" }}
-          >
-            <span>F. solicitud</span>
-            <span>Empleado</span>
-            <span>Documento</span>
-            <span>Período</span>
-            <span>Tipo</span>
-            <span>Motivo</span>
-            <span>Valor ajuste</span>
-            <span>Solicitado por</span>
-            <span>Estado</span>
-            <span>Sop.</span>
-            <span>Acciones</span>
-          </div>
-
-          {rows.map((row) => (
+        {periodsState.loading && !periodsState.data ? (
+          <StateCard title="Cargando períodos" message="Consultando períodos reales de nómina." />
+        ) : periodsState.error ? (
+          <StateCard
+            title="Error cargando períodos"
+            message={periodsState.error}
+            tone="error"
+            actionLabel="Reintentar"
+            onAction={() => window.location.reload()}
+          />
+        ) : !selectedPeriodId ? (
+          <StateCard
+            title="Sin período disponible"
+            message="No hay un período activo o reciente para consultar ajustes relacionados."
+          />
+        ) : dataState.loading ? (
+          <StateCard
+            title="Cargando datos del período"
+            message="Consultando movimientos, novedades y desprendibles reales."
+          />
+        ) : dataState.error ? (
+          <StateCard
+            title="Error cargando corrección nómina"
+            message={dataState.error}
+            tone="error"
+            actionLabel="Reintentar"
+            onAction={() => void loadPeriodData(selectedPeriodId)}
+          />
+        ) : filteredRecords.length === 0 ? (
+          <StateCard
+            title="Sin registros relacionados"
+            message="El período no tiene movimientos manuales ni novedades con impacto económico según los contratos reales del backend."
+          />
+        ) : (
+          <div className="np-table-scroll">
             <div
-              key={row.id}
-              className="np-table-row"
-              style={{ gridTemplateColumns: "100px minmax(170px,2fr) 110px 130px 140px 160px 110px 130px 110px 70px 130px" }}
+              className="np-table-head"
+              style={{
+                gridTemplateColumns:
+                  "120px minmax(220px,2fr) 120px 140px 170px 170px 130px 130px 90px 70px",
+              }}
             >
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{row.fechaSolicitud}</span>
+              <span>Fecha</span>
+              <span>Persona</span>
+              <span>Documento</span>
+              <span>Período</span>
+              <span>Fuente</span>
+              <span>Concepto</span>
+              <span>Valor</span>
+              <span>Estado</span>
+              <span>Despr.</span>
+              <span>Acción</span>
+            </div>
 
-              <div className="np-cell-employee">
-                <div className={`np-avatar ${row.color}`}>{row.initials}</div>
-                <div>
-                  <strong>{row.empleado}</strong>
+            {filteredRecords.map((record) => {
+              const avatarColor = getAvatarColor(record.personaNombre);
+
+              return (
+                <div
+                  key={record.key}
+                  className={`np-table-row${record.key === selectedRecordKey ? " is-selected" : ""}`}
+                  style={{
+                    gridTemplateColumns:
+                      "120px minmax(220px,2fr) 120px 140px 170px 170px 130px 130px 90px 70px",
+                  }}
+                >
+                  <span className="np-table-text np-table-text-strong">
+                    {formatDate(record.fechaPrincipal)}
+                  </span>
+
+                  <div className="np-cell-employee">
+                    <div className={`np-avatar ${avatarColor}`}>{getInitials(record.personaNombre)}</div>
+                    <div>
+                      <strong>{record.personaNombre}</strong>
+                      <p>{record.motivo || "No disponible"}</p>
+                    </div>
+                  </div>
+
+                  <span className="np-table-text np-table-text-secondary">
+                    {record.documento || "No disponible"}
+                  </span>
+                  <span className="np-table-text">{record.periodoLabel}</span>
+                  <span className="np-table-text">{record.sourceLabel}</span>
+                  <span className="np-table-text">{record.summaryLabel}</span>
+                  <span className="np-table-text np-table-text-strong">
+                    {record.valor === null ? "No disponible" : formatCOP(record.valor)}
+                  </span>
+                  <span className={`np-badge ${record.estadoTone}`}>{record.estadoLabel}</span>
+                  <span className="np-table-text">{record.soporteDisponible ? "Sí" : "No"}</span>
+
+                  <div className="np-row-actions">
+                    <button
+                      type="button"
+                      title="Ver detalle"
+                      onClick={() => setSelectedRecordKey(record.key)}
+                    >
+                      <Eye size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="np-detail-panel">
+        {!selectedRecord ? (
+          <>
+            <div className="np-detail-header">
+              <div>
+                <h3>Detalle</h3>
+                <p>Selecciona un registro para consultar la información real disponible.</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="np-detail-header">
+              <div>
+                <h3>{selectedRecord.personaNombre}</h3>
+                <p>
+                  {selectedRecord.sourceLabel} · {selectedRecord.summaryLabel}
+                </p>
+              </div>
+              <div className="np-row-actions">
+                <button
+                  type="button"
+                  title="Ver desprendible vigente"
+                  disabled={!selectedRecord.soporteDisponible || submittingAction !== null}
+                  onClick={() => void handleOpenSlip(selectedRecord)}
+                >
+                  <Download size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div className="np-detail-grid">
+              <div className="np-detail-field">
+                <span>Documento</span>
+                <strong>{selectedRecord.documento || "No disponible"}</strong>
+              </div>
+              <div className="np-detail-field">
+                <span>Período</span>
+                <strong>{selectedRecord.periodoLabel}</strong>
+              </div>
+              <div className="np-detail-field">
+                <span>Fuente</span>
+                <strong>{selectedRecord.sourceLabel}</strong>
+              </div>
+              <div className="np-detail-field">
+                <span>Estado</span>
+                <strong>{selectedRecord.estadoLabel}</strong>
+              </div>
+              <div className="np-detail-field">
+                <span>Fecha principal</span>
+                <strong>{formatDate(selectedRecord.fechaPrincipal)}</strong>
+              </div>
+              <div className="np-detail-field">
+                <span>Valor</span>
+                <strong>
+                  {selectedRecord.valor === null ? "No disponible" : formatCOP(selectedRecord.valor)}
+                </strong>
+              </div>
+              <div className="np-detail-field">
+                <span>Motivo / observación</span>
+                <strong>{selectedRecord.motivo || "No disponible"}</strong>
+              </div>
+              <div className="np-detail-field">
+                <span>Desprendible vigente</span>
+                <strong>{selectedRecord.soporteDisponible ? "Disponible" : "No disponible"}</strong>
+              </div>
+            </div>
+
+            <div className="np-detail-divider" />
+
+            {selectedRecord.movimiento ? (
+              <div className="np-detail-grid">
+                <div className="np-detail-field">
+                  <span>Tipo movimiento</span>
+                  <strong>{titleCase(selectedRecord.movimiento.tipo_movimiento)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Es devengado</span>
+                  <strong>{formatBoolean(selectedRecord.movimiento.es_devengado)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Es deducción</span>
+                  <strong>{formatBoolean(selectedRecord.movimiento.es_deduccion)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Afecta seguridad social</span>
+                  <strong>{formatBoolean(selectedRecord.movimiento.afecta_seguridad_social)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Cantidad</span>
+                  <strong>{formatOptionalNumber(selectedRecord.movimiento.cantidad)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Valor unitario</span>
+                  <strong>
+                    {selectedRecord.movimiento.valor_unitario === null
+                      ? "No disponible"
+                      : formatCOP(selectedRecord.movimiento.valor_unitario)}
+                  </strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Creado</span>
+                  <strong>{formatDate(selectedRecord.movimiento.created_at)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Desprendible real</span>
+                  <strong>
+                    {selectedDesprendible
+                      ? `Versión ${selectedDesprendible.version} · ${selectedDesprendible.estado}`
+                      : "No disponible"}
+                  </strong>
                 </div>
               </div>
-
-              <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>{row.documento}</span>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{row.periodoAfectado}</span>
-
-              <span className={`np-badge ${toneTipo[row.tipo]}`}>{row.tipo}</span>
-
-              <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {row.motivo}
-              </span>
-
-              <span style={{ fontSize: 13, fontWeight: 800, color: row.valor === 0 ? "var(--text-secondary)" : row.positivo ? "var(--color-success)" : "var(--color-danger)", display: "flex", alignItems: "center", gap: 4 }}>
-                {row.valor > 0 && (row.positivo ? <PlusCircle size={13} /> : <MinusCircle size={13} />)}
-                {row.valor === 0 ? "—" : formatCOP(row.valor)}
-              </span>
-
-              <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>{row.solicitadoPor}</span>
-
-              <span className={`np-badge ${toneCorrec[row.estado]}`}>{row.estado}</span>
-
-              <span style={{ fontSize: 18 }}>{row.soporte ? "✅" : "❌"}</span>
-
-              <div className="np-row-actions">
-                <button type="button" title="Ver detalle"><Eye size={14} /></button>
-                <button type="button" title="Editar"><Edit3 size={14} /></button>
-                <button type="button" title="Aprobar"><CheckCircle2 size={14} /></button>
-                <button type="button" title="Rechazar" style={{ color: "var(--color-danger)" }}><X size={14} /></button>
+            ) : selectedRecord.novedad ? (
+              <div className="np-detail-grid">
+                <div className="np-detail-field">
+                  <span>Tipo novedad</span>
+                  <strong>{selectedRecord.novedad.tipo_novedad.nombre || "No disponible"}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Categoría</span>
+                  <strong>{selectedRecord.novedad.tipo_novedad.categoria || "No disponible"}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Afecta salario</span>
+                  <strong>{formatBoolean(selectedRecord.novedad.tipo_novedad.afecta_salario)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Afecta transporte</span>
+                  <strong>{formatBoolean(selectedRecord.novedad.tipo_novedad.afecta_transporte)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Revisado</span>
+                  <strong>{formatBoolean(selectedRecord.novedad.revisado)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Requiere cobertura</span>
+                  <strong>{formatBoolean(selectedRecord.novedad.requiere_cobertura)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Cubierta</span>
+                  <strong>{formatBoolean(selectedRecord.novedad.cubierta)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Fecha inicio</span>
+                  <strong>{formatDate(selectedRecord.novedad.fecha_inicio)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Fecha fin</span>
+                  <strong>{formatDate(selectedRecord.novedad.fecha_fin)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Días</span>
+                  <strong>{formatOptionalNumber(selectedRecord.novedad.dias)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Horas</span>
+                  <strong>{formatOptionalNumber(selectedRecord.novedad.horas)}</strong>
+                </div>
+                <div className="np-detail-field">
+                  <span>Valor manual</span>
+                  <strong>
+                    {selectedRecord.novedad.valor_manual === null
+                      ? "No disponible"
+                      : formatCOP(selectedRecord.novedad.valor_manual)}
+                  </strong>
+                </div>
               </div>
+            ) : null}
+
+            <div className="np-detail-total">
+              <span>Recurso de corrección dedicado</span>
+              <strong>No disponible</strong>
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
-      {/* Historial reciente */}
       <div className="np-info-panel">
-        <h4>Historial de correcciones aplicadas</h4>
-        <div className="np-table-scroll">
-          <div
-            className="np-table-head"
-            style={{ gridTemplateColumns: "120px 1fr 140px 130px 120px", background: "transparent", borderBottom: "1px solid var(--border-color)" }}
-          >
-            <span>Fecha</span>
-            <span>Empleado</span>
-            <span>Período</span>
-            <span>Valor</span>
-            <span>Estado</span>
-          </div>
-          {historial.map((h, i) => (
-            <div
-              key={i}
-              className="np-table-row"
-              style={{ gridTemplateColumns: "120px 1fr 140px 130px 120px" }}
-            >
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{h.fecha}</span>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{h.empleado}</span>
-              <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{h.periodo}</span>
-              <span style={{ fontSize: 13, fontWeight: 700 }}>{formatCOP(h.valor)}</span>
-              <span className={`np-badge ${toneCorrec[h.estado]}`}>{h.estado}</span>
-            </div>
+        <h4>Brechas reales del backend</h4>
+        <ul className="np-info-list">
+          {backendBrechas.map((item) => (
+            <li key={item}>
+              <ShieldAlert size={16} />
+              <span>{item}</span>
+            </li>
           ))}
-        </div>
+          <li>
+            <FileText size={16} />
+            <span>
+              Endpoints conectados en esta pantalla: `GET /nomina/periodos`, `GET /nomina/movimientos`,
+              `GET /nomina/novedades`, `GET /nomina/desprendibles/:periodo_id`,
+              `GET /nomina/desprendibles/:periodo_id/:vinculacion_id`,
+              `POST /nomina/periodos/:id/recalcular` y `GET /nomina/export/:periodo_id?tipo=movimientos`.
+            </span>
+          </li>
+        </ul>
       </div>
     </div>
   );
