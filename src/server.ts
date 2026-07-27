@@ -6,8 +6,10 @@ import { env } from './config/env';
 import { logger } from './config/logger';
 import { startScheduler } from './config/scheduler';
 
-const server: Server = app.listen(env.PORT, () => {
-  logger.info(`${env.APP_NAME} listening on http://localhost:${env.PORT}`);
+const server: Server = app.listen(env.PORT, '0.0.0.0', () => {
+  logger.info(
+    `${env.APP_NAME} listening on http://0.0.0.0:${env.PORT}`,
+  );
   startScheduler();
 });
 
