@@ -2,6 +2,7 @@ import { PoolClient, QueryResult, QueryResultRow } from 'pg';
 
 import { dbQuery } from '../../config/db';
 import { AppError } from '../../utils/AppError';
+import type { SstPlanAccionOrigin } from './sst.schemas';
 
 interface ExistsRow extends QueryResultRow {
   exists: boolean;
@@ -19,7 +20,7 @@ interface SstEventoLookupRow extends QueryResultRow {
   activo: boolean;
   contrato_id: string | null;
   empresa_id: string | null;
-  estado: string;
+  estado: string | null;
   fecha_evento: Date | string;
   id: string;
   persona_id: string | null;
@@ -29,13 +30,20 @@ interface SstEventoLookupRow extends QueryResultRow {
 
 interface SstPlanAccionLookupRow extends QueryResultRow {
   activo: boolean;
-  estado: string;
-  evento_id: string;
+  descripcion: string;
+  estado: string | null;
   fecha_cierre: Date | string | null;
-  fecha_compromiso: Date | string;
+  fecha_compromiso: Date | string | null;
   id: string;
-  responsable: string;
-  responsable_id: string | null;
+  origen: string;
+  origen_id: string | null;
+  responsable: string | null;
+}
+
+interface SstPlanAccionOriginLookupRow extends QueryResultRow {
+  contrato_id: string | null;
+  empresa_id: string | null;
+  id: string;
 }
 
 type QueryExecutor = {
@@ -65,6 +73,13 @@ export interface ValidatedSstEventoRelations {
   empresa_id: string | null;
   persona_id: string | null;
   vinculacion_id: string | null;
+}
+
+export interface ValidatedSstPlanAccionOrigin {
+  contrato_id: string | null;
+  empresa_id: string | null;
+  origen: SstPlanAccionOrigin;
+  origen_id: string;
 }
 
 const ensureEntityExists = async (
@@ -145,17 +160,18 @@ export const ensureSstEventoExists = async (
   const result = await executor.query<SstEventoLookupRow>(
     `
       SELECT
-        id::text AS id,
-        persona_id::text AS persona_id,
-        vinculacion_id::text AS vinculacion_id,
-        contrato_id::text AS contrato_id,
-        empresa_id::text AS empresa_id,
-        tipo_evento,
-        estado,
-        fecha_evento,
-        activo
-      FROM sst_eventos
-      WHERE id::text = $1
+        se.id::text AS id,
+        se.vinculacion_id::text AS vinculacion_id,
+        se.tipo_evento,
+        se.estado,
+        se.fecha_evento,
+        COALESCE(se.activo, TRUE) AS activo,
+        v.persona_id::text AS persona_id,
+        v.contrato_id::text AS contrato_id,
+        v.empresa_id::text AS empresa_id
+      FROM sst_eventos se
+      LEFT JOIN vinculaciones v ON v.id = se.vinculacion_id
+      WHERE se.id::text = $1
       LIMIT 1
     `,
     [eventoId]
@@ -178,16 +194,17 @@ export const ensureSstPlanAccionExists = async (
   const result = await executor.query<SstPlanAccionLookupRow>(
     `
       SELECT
-        id::text AS id,
-        evento_id::text AS evento_id,
-        responsable,
-        responsable_id::text AS responsable_id,
-        fecha_compromiso,
-        fecha_cierre,
-        estado,
-        activo
-      FROM sst_planes_accion
-      WHERE id::text = $1
+        spa.id::text AS id,
+        spa.origen,
+        spa.origen_id::text AS origen_id,
+        spa.descripcion,
+        spa.responsable,
+        spa.fecha_compromiso,
+        spa.fecha_cierre,
+        spa.estado,
+        COALESCE(spa.activo, TRUE) AS activo
+      FROM sst_planes_accion spa
+      WHERE spa.id::text = $1
       LIMIT 1
     `,
     [planId]
@@ -206,54 +223,122 @@ export const validateSstEventoRelations = async (
   values: ValidatedSstEventoRelations,
   client?: PoolClient
 ): Promise<ValidatedSstEventoRelations> => {
-  let nextValues = { ...values };
-
-  if (nextValues.vinculacion_id) {
-    const vinculacion = await ensureVinculacionExists(nextValues.vinculacion_id, client);
-
-    if (nextValues.persona_id && vinculacion.persona_id && nextValues.persona_id !== vinculacion.persona_id) {
-      throw new AppError(
-        'persona_id does not match vinculacion_id',
-        409,
-        'SST_EVENTO_PERSONA_VINCULACION_MISMATCH'
-      );
-    }
-
-    if (nextValues.contrato_id && vinculacion.contrato_id && nextValues.contrato_id !== vinculacion.contrato_id) {
-      throw new AppError(
-        'contrato_id does not match vinculacion_id',
-        409,
-        'SST_EVENTO_CONTRATO_VINCULACION_MISMATCH'
-      );
-    }
-
-    if (nextValues.empresa_id && vinculacion.empresa_id && nextValues.empresa_id !== vinculacion.empresa_id) {
-      throw new AppError(
-        'empresa_id does not match vinculacion_id',
-        409,
-        'SST_EVENTO_EMPRESA_VINCULACION_MISMATCH'
-      );
-    }
-
-    nextValues = {
-      persona_id: nextValues.persona_id ?? vinculacion.persona_id ?? null,
-      contrato_id: nextValues.contrato_id ?? vinculacion.contrato_id ?? null,
-      empresa_id: nextValues.empresa_id ?? vinculacion.empresa_id ?? null,
-      vinculacion_id: nextValues.vinculacion_id
-    };
+  if (!values.vinculacion_id) {
+    throw new AppError('vinculacion_id is required', 400, 'SST_EVENTO_VINCULACION_REQUIRED');
   }
 
-  if (nextValues.persona_id) {
-    await ensurePersonaExists(nextValues.persona_id, client);
+  const vinculacion = await ensureVinculacionExists(values.vinculacion_id, client);
+
+  if (values.persona_id && vinculacion.persona_id && values.persona_id !== vinculacion.persona_id) {
+    throw new AppError(
+      'persona_id does not match vinculacion_id',
+      409,
+      'SST_EVENTO_PERSONA_VINCULACION_MISMATCH'
+    );
   }
 
-  if (nextValues.contrato_id) {
-    await ensureContratoExists(nextValues.contrato_id, client);
+  if (values.contrato_id && vinculacion.contrato_id && values.contrato_id !== vinculacion.contrato_id) {
+    throw new AppError(
+      'contrato_id does not match vinculacion_id',
+      409,
+      'SST_EVENTO_CONTRATO_VINCULACION_MISMATCH'
+    );
   }
 
-  if (nextValues.empresa_id) {
-    await ensureEmpresaExists(nextValues.empresa_id, client);
+  if (values.empresa_id && vinculacion.empresa_id && values.empresa_id !== vinculacion.empresa_id) {
+    throw new AppError(
+      'empresa_id does not match vinculacion_id',
+      409,
+      'SST_EVENTO_EMPRESA_VINCULACION_MISMATCH'
+    );
   }
 
-  return nextValues;
+  return {
+    persona_id: vinculacion.persona_id ?? values.persona_id ?? null,
+    contrato_id: vinculacion.contrato_id ?? values.contrato_id ?? null,
+    empresa_id: vinculacion.empresa_id ?? values.empresa_id ?? null,
+    vinculacion_id: values.vinculacion_id
+  };
 };
+
+export const validateSstPlanAccionOrigin = async (
+  origen: SstPlanAccionOrigin,
+  origenId: string,
+  client?: PoolClient
+): Promise<ValidatedSstPlanAccionOrigin> => {
+  const executor = getExecutor(client);
+
+  let queryText = '';
+
+  switch (origen) {
+    case 'EVENTO':
+      queryText = `
+        SELECT
+          se.id::text AS id,
+          v.contrato_id::text AS contrato_id,
+          v.empresa_id::text AS empresa_id
+        FROM sst_eventos se
+        LEFT JOIN vinculaciones v ON v.id = se.vinculacion_id
+        WHERE se.id::text = $1
+        LIMIT 1
+      `;
+      break;
+    case 'INSPECCION':
+      queryText = `
+        SELECT
+          si.id::text AS id,
+          si.contrato_id::text AS contrato_id,
+          si.empresa_id::text AS empresa_id
+        FROM sst_inspecciones si
+        WHERE si.id::text = $1
+        LIMIT 1
+      `;
+      break;
+    case 'HALLAZGO':
+      queryText = `
+        SELECT
+          sih.id::text AS id,
+          si.contrato_id::text AS contrato_id,
+          si.empresa_id::text AS empresa_id
+        FROM sst_inspecciones_hallazgos sih
+        INNER JOIN sst_inspecciones si ON si.id = sih.inspeccion_id
+        WHERE sih.id::text = $1
+        LIMIT 1
+      `;
+      break;
+    case 'ACCIDENTE':
+      queryText = `
+        SELECT
+          sai.id::text AS id,
+          sai.contrato_id::text AS contrato_id,
+          sai.empresa_id::text AS empresa_id
+        FROM sst_accidentes_incidentes sai
+        WHERE sai.id::text = $1
+        LIMIT 1
+      `;
+      break;
+  }
+
+  const result = await executor.query<SstPlanAccionOriginLookupRow>(queryText, [origenId]);
+  const relation = result.rows[0];
+
+  if (!relation) {
+    throw new AppError(
+      `SST action plan origin ${origen} not found`,
+      400,
+      'SST_PLAN_ACCION_ORIGEN_NOT_FOUND',
+      {
+        origen,
+        origen_id: origenId
+      }
+    );
+  }
+
+  return {
+    origen,
+    origen_id: relation.id,
+    contrato_id: relation.contrato_id,
+    empresa_id: relation.empresa_id
+  };
+};
+

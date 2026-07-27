@@ -16,7 +16,11 @@ const sstIndicadoresRoutes = Router();
 sstIndicadoresRoutes.use(authMiddleware);
 sstIndicadoresRoutes.use(tenantMiddleware);
 
-sstIndicadoresRoutes.get('/', requirePermissions('sst.indicadores.read'), getIndicadoresPeriodosHandler);
+sstIndicadoresRoutes.get(
+  '/periodos',
+  requirePermissions('sst.indicadores.read'),
+  getIndicadoresPeriodosHandler
+);
 sstIndicadoresRoutes.post(
   '/periodos',
   requirePermissions('sst.indicadores.write'),
@@ -39,3 +43,4 @@ sstIndicadoresRoutes.get(
 );
 
 export { sstIndicadoresRoutes };
+

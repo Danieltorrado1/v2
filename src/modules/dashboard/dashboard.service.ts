@@ -1049,12 +1049,22 @@ export const getDashboardNomina = async (query: DashboardQuery): Promise<Dashboa
 
 export const getDashboardSst = async (query: DashboardQuery): Promise<DashboardSst> => {
   const range = resolveDashboardDateRange(query);
-  // sst_eventos no tiene empresa_id/contrato_id propios: se resuelven via su vinculacion.
-  // sst_planes_accion tampoco tiene evento_id: se vincula al evento via origen_id.
-  const filters = buildEntityFilters(query, {
-    empresa: 'v.empresa_id::text',
-    contrato: 'v.contrato_id::text'
-  });
+  const params: unknown[] = [range.fecha_desde, range.fecha_hasta];
+  const empresaPlaceholder = query.empresa_id ? `$${params.push(query.empresa_id)}` : null;
+  const contratoPlaceholder = query.contrato_id ? `$${params.push(query.contrato_id)}` : null;
+
+  const eventosConditions = ['se.fecha_evento >= $1', 'se.fecha_evento <= $2'];
+  const planesConditions = ['spa.activo = TRUE', 'scope.fecha_referencia >= $1', 'scope.fecha_referencia <= $2'];
+
+  if (empresaPlaceholder) {
+    eventosConditions.push(`v.empresa_id::text = ${empresaPlaceholder}`);
+    planesConditions.push(`scope.scope_empresa_id = ${empresaPlaceholder}`);
+  }
+
+  if (contratoPlaceholder) {
+    eventosConditions.push(`v.contrato_id::text = ${contratoPlaceholder}`);
+    planesConditions.push(`scope.scope_contrato_id = ${contratoPlaceholder}`);
+  }
 
   const result = await dbQuery<SstDashboardRow>(
     `
@@ -1062,20 +1072,34 @@ export const getDashboardSst = async (query: DashboardQuery): Promise<DashboardS
         SELECT se.*
         FROM sst_eventos se
         INNER JOIN vinculaciones v ON v.id = se.vinculacion_id
-        WHERE se.fecha_evento >= $${filters.params.length + 1}
-          AND se.fecha_evento <= $${filters.params.length + 2}
-        ${filters.sql}
+        WHERE ${eventosConditions.join(' AND ')}
+      ),
+      planes_base AS (
+        SELECT
+          spa.*,
+          COALESCE(v.empresa_id::text, si.empresa_id::text, si_h.empresa_id::text, sai.empresa_id::text) AS scope_empresa_id,
+          COALESCE(v.contrato_id::text, si.contrato_id::text, si_h.contrato_id::text, sai.contrato_id::text) AS scope_contrato_id,
+          COALESCE(
+            se.fecha_evento,
+            si.fecha_realizada,
+            si.fecha_programada,
+            si_h.fecha_realizada,
+            si_h.fecha_programada,
+            sai.fecha_evento
+          ) AS fecha_referencia
+        FROM sst_planes_accion spa
+        LEFT JOIN sst_eventos se ON UPPER(TRIM(spa.origen)) IN ('EVENTO', 'SST_EVENTO', 'SST_EVENTOS') AND se.id = spa.origen_id
+        LEFT JOIN vinculaciones v ON v.id = se.vinculacion_id
+        LEFT JOIN sst_inspecciones si ON UPPER(TRIM(spa.origen)) IN ('INSPECCION', 'SST_INSPECCION', 'SST_INSPECCIONES') AND si.id = spa.origen_id
+        LEFT JOIN sst_inspecciones_hallazgos sih ON UPPER(TRIM(spa.origen)) IN ('HALLAZGO', 'HALLAZGO_INSPECCION', 'SST_INSPECCION_HALLAZGO', 'SST_INSPECCIONES_HALLAZGOS') AND sih.id = spa.origen_id
+        LEFT JOIN sst_inspecciones si_h ON si_h.id = sih.inspeccion_id
+        LEFT JOIN sst_accidentes_incidentes sai ON UPPER(TRIM(spa.origen)) IN ('ACCIDENTE', 'SST_ACCIDENTE', 'SST_ACCIDENTES_INCIDENTES') AND sai.id = spa.origen_id
       ),
       planes_filtrados AS (
-        -- B6: sst_planes_accion usa evento_id (no origen_id/origen); incluye todos los planes activos
         SELECT spa.*
-        FROM sst_planes_accion spa
-        INNER JOIN sst_eventos se ON se.id = spa.evento_id
-        INNER JOIN vinculaciones v ON v.id = se.vinculacion_id
-        WHERE spa.activo = TRUE
-          AND se.fecha_evento >= $${filters.params.length + 1}
-          AND se.fecha_evento <= $${filters.params.length + 2}
-        ${filters.sql}
+        FROM planes_base scope
+        INNER JOIN sst_planes_accion spa ON spa.id = scope.id
+        WHERE ${planesConditions.join(' AND ')}
       )
       SELECT
         (SELECT COUNT(*)::int FROM eventos_filtrados) AS total_eventos,
@@ -1111,7 +1135,7 @@ export const getDashboardSst = async (query: DashboardQuery): Promise<DashboardS
           ) * 100, 2)
         END AS porcentaje_cierre_planes
     `,
-    [...filters.params, range.fecha_desde, range.fecha_hasta]
+    params
   );
 
   const row = result.rows[0];
@@ -1129,7 +1153,6 @@ export const getDashboardSst = async (query: DashboardQuery): Promise<DashboardS
     porcentaje_cierre_planes: Number(row?.porcentaje_cierre_planes ?? 0)
   };
 };
-
 export const getDashboardAlertas = async (
   query: DashboardQuery
 ): Promise<DashboardAlertas> => {
@@ -1205,3 +1228,4 @@ export const getDashboardAlertas = async (
     notificaciones_no_leidas: row?.notificaciones_no_leidas ?? 0
   };
 };
+

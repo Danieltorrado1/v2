@@ -20,6 +20,173 @@ export interface NominaPaginationMeta {
   total_pages: number;
 }
 
+export type NominaEntityId = string | number;
+
+export const NOMINA_CORRECCION_ESTADOS = [
+  'BORRADOR',
+  'SOLICITADA',
+  'EN_REVISION',
+  'APROBADA',
+  'RECHAZADA',
+  'APLICADA',
+  'ANULADA',
+] as const;
+
+export type NominaCorreccionEstado = (typeof NOMINA_CORRECCION_ESTADOS)[number];
+
+export const NOMINA_CORRECCION_FILTER_ESTADOS = [
+  'BORRADOR',
+  'SOLICITADA',
+  'EN_REVISION',
+  'APROBADA',
+  'RECHAZADA',
+  'ANULADA',
+] as const;
+
+export const NOMINA_CORRECCION_TIPOS = [
+  'DEVENGADO',
+  'DEDUCCION',
+  'NOVEDAD',
+  'MOVIMIENTO',
+  'LIQUIDACION',
+  'DESPRENDIBLE',
+  'OTRO',
+] as const;
+
+export type NominaCorreccionTipo = (typeof NOMINA_CORRECCION_TIPOS)[number];
+
+export const NOMINA_CORRECCION_FILTER_TIPOS = [
+  'DEVENGADO',
+  'DEDUCCION',
+  'NOVEDAD',
+  'MOVIMIENTO',
+  'LIQUIDACION',
+  'DESPRENDIBLE',
+  'OTRO',
+] as const;
+
+export interface NominaCorreccionPeriodoApi {
+  id: NominaEntityId;
+  nombre_periodo: string;
+  estado: string;
+  contrato_id?: NominaEntityId | null;
+  empresa_id?: NominaEntityId | null;
+}
+
+export interface NominaCorreccionEmpleadoApi {
+  nomina_empleado_id: NominaEntityId;
+  vinculacion_id: NominaEntityId;
+  persona_id?: NominaEntityId | null;
+  nombre_completo?: string | null;
+  numero_documento?: string | null;
+}
+
+export interface NominaCorreccionValoresApi {
+  valor_anterior: number;
+  valor_nuevo: number;
+  diferencia: number;
+}
+
+export interface NominaCorreccionFechasApi {
+  fecha_solicitud?: string | null;
+  fecha_revision?: string | null;
+  fecha_aprobacion?: string | null;
+  fecha_aplicacion?: string | null;
+}
+
+export interface NominaCorreccionActoresApi {
+  solicitado_por?: NominaEntityId | null;
+  revisado_por?: NominaEntityId | null;
+  aprobado_por?: NominaEntityId | null;
+  aplicado_por?: NominaEntityId | null;
+}
+
+export interface NominaCorreccionReferenciasApi {
+  movimiento_id?: NominaEntityId | null;
+  novedad_id?: NominaEntityId | null;
+  liquidacion_id?: NominaEntityId | null;
+  desprendible_origen_id?: NominaEntityId | null;
+  desprendible_resultado_id?: NominaEntityId | null;
+}
+
+export interface NominaCorreccionAplicacionApi {
+  soportada: boolean;
+  motivo?: string | null;
+}
+
+export interface NominaCorreccion {
+  id: NominaEntityId;
+  periodo: NominaCorreccionPeriodoApi;
+  empleado: NominaCorreccionEmpleadoApi;
+  tipo_correccion: NominaCorreccionTipo | string;
+  concepto: string;
+  motivo: string;
+  valores: NominaCorreccionValoresApi;
+  estado: NominaCorreccionEstado | string;
+  observacion_revision?: string | null;
+  actores?: NominaCorreccionActoresApi;
+  fechas?: NominaCorreccionFechasApi;
+  referencias?: NominaCorreccionReferenciasApi;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+  aplicacion?: NominaCorreccionAplicacionApi;
+}
+
+export type NominaCorreccionListItem = NominaCorreccion;
+
+export type NominaCorreccionDetalle = NominaCorreccion;
+
+export interface NominaCorreccionFilters {
+  periodo_id?: NominaEntityId;
+  nomina_empleado_id?: NominaEntityId;
+  vinculacion_id?: NominaEntityId;
+  estado?: NominaCorreccionEstado | string;
+  tipo_correccion?: NominaCorreccionTipo | string;
+  activo?: boolean;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateNominaCorreccionPayload {
+  periodo_id: NominaEntityId;
+  nomina_empleado_id: NominaEntityId;
+  vinculacion_id: NominaEntityId;
+  tipo_correccion: NominaCorreccionTipo;
+  concepto: string;
+  motivo: string;
+  valor_anterior: number;
+  valor_nuevo: number;
+  observacion_revision?: string | null;
+  movimiento_id?: NominaEntityId | null;
+  novedad_id?: NominaEntityId | null;
+  liquidacion_id?: NominaEntityId | null;
+  desprendible_origen_id?: NominaEntityId | null;
+}
+
+export interface UpdateNominaCorreccionPayload {
+  tipo_correccion?: NominaCorreccionTipo;
+  concepto?: string;
+  motivo?: string;
+  valor_anterior?: number;
+  valor_nuevo?: number;
+  observacion_revision?: string | null;
+  movimiento_id?: NominaEntityId | null;
+  novedad_id?: NominaEntityId | null;
+  liquidacion_id?: NominaEntityId | null;
+  desprendible_origen_id?: NominaEntityId | null;
+}
+
+export interface NominaCorreccionTransitionPayload {
+  observacion_revision?: string | null;
+}
+
+export interface NominaCorreccionesResponse {
+  items: NominaCorreccionListItem[];
+  pagination: NominaPaginationMeta;
+}
+
 export interface NominaPeriodosQuery {
   contrato_id?: string;
   empresa_id?: string;
@@ -254,6 +421,13 @@ export interface NominaCategoriaSalarialApi {
   salario_base: number;
 }
 
+export interface NominaEmpleadoEstadoDocumentalApi {
+  porcentaje_cumplimiento: number | null;
+  total_cargados: number;
+  total_faltantes: number;
+  total_requeridos: number;
+}
+
 export interface NominaEmpleadoApi {
   id: string;
   periodo_id: string;
@@ -281,6 +455,18 @@ export interface NominaEmpleadoApi {
   activo: boolean;
   created_at: string;
   motivo_caso_especial: string | null;
+  municipio?: string | null;
+  contrato_id?: string | number | null;
+  numero_contrato?: string | null;
+  sede?: {
+    id: string | null;
+    municipio: string | null;
+    nombre_sede: string | null;
+  } | null;
+  modalidad?: string | null;
+  total_novedades?: number;
+  clasificacion?: string | null;
+  estado_documental?: NominaEmpleadoEstadoDocumentalApi | null;
   persona: NominaPersonaResumenApi;
   vinculacion: NominaVinculacionResumenApi;
   cargo: NominaCargoApi | null;
@@ -303,7 +489,7 @@ export interface NominaNovedadesQuery {
   limit?: number;
 }
 
-export interface NominaNovedadTipoApi {
+export interface NominaTipoNovedad {
   id: string;
   nombre: string | null;
   categoria: string | null;
@@ -316,7 +502,23 @@ export interface NominaNovedadTipoApi {
   requiere_horas: boolean;
   requiere_valor: boolean;
   activo: boolean;
+  created_at: string;
 }
+
+export interface NominaTipoNovedadFilters {
+  activo?: boolean;
+  busqueda?: string;
+  categoria?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface NominaTipoNovedadResponse {
+  items: NominaTipoNovedad[];
+  pagination: NominaPaginationMeta;
+}
+
+export type NominaNovedadTipoApi = Omit<NominaTipoNovedad, "created_at">;
 
 export interface NominaNovedadPersonaApi {
   nombre_completo: string;
@@ -593,4 +795,7 @@ export interface GenerateNominaLiquidacionesResponse {
   omitidas_activas?: number;
   omitidas_fuera_periodo?: number;
 }
+
+
+
 

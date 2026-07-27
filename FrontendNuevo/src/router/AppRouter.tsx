@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+﻿import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import LoginPage from "../pages/auth/LoginPage";
 import MainLayout from "../layouts/MainLayout";
@@ -13,12 +13,6 @@ import TurnosPage from "../pages/nomina/TurnosPage";
 import PersonalOpsPage from "../pages/nomina/PersonalOpsPage";
 import CorreccionNominaPage from "../pages/nomina/CorreccionNominaPage";
 import SstPage from "../pages/sst/SstPage";
-import IncidentesPage from "../pages/sst/IncidentesPage";
-import RiesgosPage from "../pages/sst/RiesgosPage";
-import CapacitacionesPage from "../pages/sst/CapacitacionesPage";
-import ExamenesMedicosPage from "../pages/sst/ExamenesMedicosPage";
-import EppPage from "../pages/sst/EppPage";
-import IndicadoresPage from "../pages/sst/IndicadoresPage";
 import PortalPage from "../pages/portal/PortalPage";
 import AdminPage from "../pages/admin/AdminPage";
 import VerDocumentosPage from "../pages/repositorio/VerDocumentosPage";
@@ -45,12 +39,12 @@ export default function AppRouter() {
             <Route path="herramientas/calculadora-cobertura" element={<CalculadoraCoberturaPage />} />
             <Route path="herramientas/cobertura" element={<CoberturaHerramientasPage />} />
             <Route path="sst" element={<SstPage />} />
-            <Route path="sst/incidentes" element={<IncidentesPage />} />
-            <Route path="sst/riesgos" element={<RiesgosPage />} />
-            <Route path="sst/capacitaciones" element={<CapacitacionesPage />} />
-            <Route path="sst/examenes-medicos" element={<ExamenesMedicosPage />} />
-            <Route path="sst/epp" element={<EppPage />} />
-            <Route path="sst/indicadores" element={<IndicadoresPage />} />
+            <Route path="sst/incidentes" element={<Navigate to="/sst?tab=eventos" replace />} />
+            <Route path="sst/riesgos" element={<Navigate to="/sst?tab=inspecciones" replace />} />
+            <Route path="sst/capacitaciones" element={<Navigate to="/sst?tab=planes" replace />} />
+            <Route path="sst/examenes-medicos" element={<Navigate to="/sst?tab=accidentes" replace />} />
+            <Route path="sst/epp" element={<Navigate to="/sst?tab=hallazgos" replace />} />
+            <Route path="sst/indicadores" element={<Navigate to="/sst?tab=indicadores" replace />} />
             <Route path="portal" element={<PortalPage />} />
             <Route path="vinculaciones" element={<VinculacionesPage />} />
             <Route path="repositorio" element={<VerDocumentosPage />} />

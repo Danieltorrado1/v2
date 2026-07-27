@@ -4,7 +4,6 @@ import { dbPool, dbQuery } from '../../config/db';
 import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { AppError } from '../../utils/AppError';
 import { AuditRequestMeta, registerAuditEntry } from '../auditoria/auditoria.helper';
-import { buildSstIndicadoresSnapshot, SstIndicadoresSnapshot } from './sst.indicadores';
 import {
   CreateSstAccidenteInput,
   CreateSstAccionAccidenteInput,
@@ -64,7 +63,8 @@ import {
   ensureSstEventoExists,
   ensureSstPlanAccionExists,
   ensureVinculacionExists,
-  validateSstEventoRelations
+  validateSstEventoRelations,
+  validateSstPlanAccionOrigin
 } from './sst.validator';
 
 interface CountRow extends QueryResultRow {
@@ -73,36 +73,38 @@ interface CountRow extends QueryResultRow {
 
 interface SstEventoRow extends QueryResultRow {
   activo: boolean;
-  contrato_id: string | null;
   created_at: Date;
   descripcion: string | null;
-  empresa_id: string | null;
   estado: SstEstado;
-  fecha_cierre: Date | string | null;
   fecha_evento: Date | string;
+  gravedad: string | null;
+  hora_evento: string | null;
   id: string;
-  metadata: Record<string, unknown> | null;
-  persona_id: string | null;
+  lugar: string | null;
+  requiere_investigacion: boolean;
   tipo_evento: SstTipoEvento;
-  titulo: string;
-  ubicacion: string | null;
-  updated_at: Date;
+  vinculacion_contrato_id: string | null;
+  vinculacion_empresa_id: string | null;
+  vinculacion_estado: string | null;
   vinculacion_id: string | null;
+  vinculacion_persona_id: string | null;
 }
 
 interface SstPlanAccionRow extends QueryResultRow {
   activo: boolean;
+  alcance_contrato_id: string | null;
+  alcance_empresa_id: string | null;
   created_at: Date;
   descripcion: string;
   estado: SstEstado;
-  evento_id: string;
   fecha_cierre: Date | string | null;
-  fecha_compromiso: Date | string;
+  fecha_compromiso: Date | string | null;
   id: string;
-  observaciones: string | null;
-  responsable: string;
-  responsable_id: string | null;
-  updated_at: Date;
+  origen: string;
+  origen_id: string | null;
+  origen_inspeccion_id: string | null;
+  origen_vinculacion_id: string | null;
+  responsable: string | null;
 }
 
 interface SstIndicadorRow extends QueryResultRow {
@@ -148,21 +150,23 @@ interface AggregateTrabajadoresRow extends QueryResultRow {
 
 export interface SstEvento {
   activo: boolean;
-  contrato_id: string | null;
   created_at: string;
   descripcion: string | null;
-  empresa_id: string | null;
   estado: SstEstado;
-  fecha_cierre: string | null;
   fecha_evento: string;
+  gravedad: string | null;
+  hora_evento: string | null;
   id: string;
-  metadata: Record<string, unknown> | null;
-  persona_id: string | null;
+  lugar: string | null;
+  requiere_investigacion: boolean;
   tipo_evento: SstTipoEvento;
-  titulo: string;
-  ubicacion: string | null;
-  updated_at: string;
-  vinculacion_id: string | null;
+  vinculacion: {
+    contrato_id: string | null;
+    empresa_id: string | null;
+    estado_vinculacion: string | null;
+    id: string;
+    persona_id: string | null;
+  } | null;
 }
 
 export interface SstPlanAccion {
@@ -170,23 +174,39 @@ export interface SstPlanAccion {
   created_at: string;
   descripcion: string;
   estado: SstEstado;
-  evento_id: string;
   fecha_cierre: string | null;
-  fecha_compromiso: string;
+  fecha_compromiso: string | null;
   id: string;
-  observaciones: string | null;
-  responsable: string;
-  responsable_id: string | null;
-  updated_at: string;
+  origen: CreateSstPlanAccionInput['origen'];
+  origen_id: string | null;
+  origen_relacionado: {
+    contrato_id: string | null;
+    empresa_id: string | null;
+    inspeccion_id: string | null;
+    vinculacion_id: string | null;
+  };
+  responsable: string | null;
 }
 
-export interface SstIndicador extends SstIndicadoresSnapshot {
+export interface SstIndicador {
   contrato_id: string | null;
   created_at: string;
   empresa_id: string | null;
   fecha_desde: string;
   fecha_hasta: string;
   id: string;
+  planes_abiertos: number;
+  planes_cerrados: number;
+  planes_vencidos: number;
+  porcentaje_cierre_planes: number;
+  tasa_accidentalidad: number;
+  total_accidentes_trabajo: number;
+  total_capacitaciones: number;
+  total_enfermedades_laborales: number;
+  total_entregas_epp: number;
+  total_eventos: number;
+  total_incidentes: number;
+  trabajadores_base: number;
   updated_at: string;
 }
 
@@ -214,7 +234,7 @@ interface AuditPayload {
   action:
     | 'EVENTO_CREATE'
     | 'EVENTO_UPDATE'
-    | 'EVENTO_CLOSE'
+    | 'EVENTO_DEACTIVATE'
     | 'PLAN_CREATE'
     | 'PLAN_UPDATE'
     | 'PLAN_CLOSE'
@@ -247,41 +267,74 @@ const toDateString = (value: Date | string | null): string | null => {
 const mapSstEvento = (row: SstEventoRow): SstEvento => {
   return {
     id: row.id,
-    persona_id: row.persona_id,
-    vinculacion_id: row.vinculacion_id,
-    contrato_id: row.contrato_id,
-    empresa_id: row.empresa_id,
     tipo_evento: row.tipo_evento,
-    estado: row.estado,
     fecha_evento: toDateString(row.fecha_evento) ?? '',
-    fecha_cierre: toDateString(row.fecha_cierre),
-    titulo: row.titulo,
+    hora_evento: row.hora_evento,
+    lugar: row.lugar,
     descripcion: row.descripcion,
-    ubicacion: row.ubicacion,
-    metadata: row.metadata,
+    gravedad: row.gravedad,
+    requiere_investigacion: row.requiere_investigacion,
+    estado: row.estado,
     activo: row.activo,
     created_at: row.created_at.toISOString(),
-    updated_at: row.updated_at.toISOString()
+    vinculacion: row.vinculacion_id
+      ? {
+          id: row.vinculacion_id,
+          persona_id: row.vinculacion_persona_id,
+          contrato_id: row.vinculacion_contrato_id,
+          empresa_id: row.vinculacion_empresa_id,
+          estado_vinculacion: row.vinculacion_estado
+        }
+      : null
   };
 };
 
 const mapSstPlanAccion = (row: SstPlanAccionRow): SstPlanAccion => {
   return {
     id: row.id,
-    evento_id: row.evento_id,
+    origen: normalizePlanOrigin(row.origen),
+    origen_id: row.origen_id,
     responsable: row.responsable,
-    responsable_id: row.responsable_id,
     descripcion: row.descripcion,
-    fecha_compromiso: toDateString(row.fecha_compromiso) ?? '',
+    fecha_compromiso: toDateString(row.fecha_compromiso),
     fecha_cierre: toDateString(row.fecha_cierre),
     estado: row.estado,
-    observaciones: row.observaciones,
     activo: row.activo,
     created_at: row.created_at.toISOString(),
-    updated_at: row.updated_at.toISOString()
+    origen_relacionado: {
+      empresa_id: row.alcance_empresa_id,
+      contrato_id: row.alcance_contrato_id,
+      vinculacion_id: row.origen_vinculacion_id,
+      inspeccion_id: row.origen_inspeccion_id
+    }
   };
 };
 
+const normalizePlanOrigin = (value: string): CreateSstPlanAccionInput['origen'] => {
+  switch (value.trim().toUpperCase()) {
+    case 'EVENTO':
+    case 'SST_EVENTO':
+    case 'SST_EVENTOS':
+      return 'EVENTO';
+    case 'INSPECCION':
+    case 'SST_INSPECCION':
+    case 'SST_INSPECCIONES':
+      return 'INSPECCION';
+    case 'HALLAZGO':
+    case 'HALLAZGO_INSPECCION':
+    case 'SST_INSPECCION_HALLAZGO':
+    case 'SST_INSPECCIONES_HALLAZGOS':
+      return 'HALLAZGO';
+    case 'ACCIDENTE':
+    case 'SST_ACCIDENTE':
+    case 'SST_ACCIDENTES_INCIDENTES':
+      return 'ACCIDENTE';
+    default:
+      throw new AppError('Unsupported SST action plan origin', 400, 'SST_PLAN_ACCION_ORIGEN_UNSUPPORTED', {
+        origen: value
+      });
+  }
+};
 const mapSstIndicador = (row: SstIndicadorRow): SstIndicador => {
   return {
     id: row.id,
@@ -310,22 +363,23 @@ const getSstEventoSelect = (): string => {
   return `
     SELECT
       se.id::text AS id,
-      se.persona_id::text AS persona_id,
       se.vinculacion_id::text AS vinculacion_id,
-      se.contrato_id::text AS contrato_id,
-      se.empresa_id::text AS empresa_id,
+      v.persona_id::text AS vinculacion_persona_id,
+      v.contrato_id::text AS vinculacion_contrato_id,
+      v.empresa_id::text AS vinculacion_empresa_id,
+      v.estado_vinculacion AS vinculacion_estado,
       se.tipo_evento,
-      se.estado,
+      COALESCE(se.estado, 'ABIERTO') AS estado,
       se.fecha_evento,
-      se.fecha_cierre,
-      se.titulo,
+      TO_CHAR(se.hora_evento, 'HH24:MI:SS') AS hora_evento,
+      se.lugar,
       se.descripcion,
-      se.ubicacion,
-      se.metadata,
-      se.activo,
-      se.created_at,
-      se.updated_at
+      se.gravedad,
+      COALESCE(se.requiere_investigacion, FALSE) AS requiere_investigacion,
+      COALESCE(se.activo, TRUE) AS activo,
+      se.created_at
     FROM sst_eventos se
+    LEFT JOIN vinculaciones v ON v.id = se.vinculacion_id
   `;
 };
 
@@ -333,21 +387,28 @@ const getSstPlanAccionSelect = (): string => {
   return `
     SELECT
       spa.id::text AS id,
-      spa.evento_id::text AS evento_id,
+      spa.origen,
+      spa.origen_id::text AS origen_id,
       spa.responsable,
-      spa.responsable_id::text AS responsable_id,
       spa.descripcion,
       spa.fecha_compromiso,
       spa.fecha_cierre,
-      spa.estado,
-      spa.observaciones,
-      spa.activo,
+      COALESCE(spa.estado, 'PENDIENTE') AS estado,
+      COALESCE(spa.activo, TRUE) AS activo,
       spa.created_at,
-      spa.updated_at
+      COALESCE(v.contrato_id::text, si.contrato_id::text, si_h.contrato_id::text, sai.contrato_id::text) AS alcance_contrato_id,
+      COALESCE(v.empresa_id::text, si.empresa_id::text, si_h.empresa_id::text, sai.empresa_id::text) AS alcance_empresa_id,
+      se.vinculacion_id::text AS origen_vinculacion_id,
+      COALESCE(si.id::text, si_h.id::text) AS origen_inspeccion_id
     FROM sst_planes_accion spa
+    LEFT JOIN sst_eventos se ON UPPER(TRIM(spa.origen)) IN ('EVENTO', 'SST_EVENTO', 'SST_EVENTOS') AND se.id = spa.origen_id
+    LEFT JOIN vinculaciones v ON v.id = se.vinculacion_id
+    LEFT JOIN sst_inspecciones si ON UPPER(TRIM(spa.origen)) IN ('INSPECCION', 'SST_INSPECCION', 'SST_INSPECCIONES') AND si.id = spa.origen_id
+    LEFT JOIN sst_inspecciones_hallazgos sih ON UPPER(TRIM(spa.origen)) IN ('HALLAZGO', 'HALLAZGO_INSPECCION', 'SST_INSPECCION_HALLAZGO', 'SST_INSPECCIONES_HALLAZGOS') AND sih.id = spa.origen_id
+    LEFT JOIN sst_inspecciones si_h ON si_h.id = sih.inspeccion_id
+    LEFT JOIN sst_accidentes_incidentes sai ON UPPER(TRIM(spa.origen)) IN ('ACCIDENTE', 'SST_ACCIDENTE', 'SST_ACCIDENTES_INCIDENTES') AND sai.id = spa.origen_id
   `;
 };
-
 const recordAudit = async (client: PoolClient, payload: AuditPayload): Promise<void> => {
   await registerAuditEntry({
     client,
@@ -371,12 +432,12 @@ const buildEventosFilters = (
 
   if (filters.empresa_id) {
     params.push(filters.empresa_id);
-    conditions.push(`se.empresa_id::text = $${params.length}`);
+    conditions.push(`v.empresa_id::text = $${params.length}`);
   }
 
   if (filters.contrato_id) {
     params.push(filters.contrato_id);
-    conditions.push(`se.contrato_id::text = $${params.length}`);
+    conditions.push(`v.contrato_id::text = $${params.length}`);
   }
 
   if (filters.vinculacion_id) {
@@ -389,9 +450,14 @@ const buildEventosFilters = (
     conditions.push(`se.tipo_evento = $${params.length}`);
   }
 
+  if (filters.gravedad) {
+    params.push(filters.gravedad);
+    conditions.push(`se.gravedad = $${params.length}`);
+  }
+
   if (filters.estado) {
     params.push(filters.estado);
-    conditions.push(`se.estado = $${params.length}`);
+    conditions.push(`COALESCE(se.estado, 'ABIERTO') = $${params.length}`);
   }
 
   if (filters.fecha_desde) {
@@ -402,6 +468,18 @@ const buildEventosFilters = (
   if (filters.fecha_hasta) {
     params.push(filters.fecha_hasta);
     conditions.push(`se.fecha_evento <= $${params.length}`);
+  }
+
+  if (filters.activo !== undefined) {
+    params.push(filters.activo);
+    conditions.push(`COALESCE(se.activo, TRUE) = $${params.length}`);
+  }
+
+  if (filters.search) {
+    params.push(`%${filters.search}%`);
+    conditions.push(
+      `(COALESCE(se.descripcion, '') ILIKE $${params.length} OR COALESCE(se.lugar, '') ILIKE $${params.length} OR se.tipo_evento ILIKE $${params.length})`
+    );
   }
 
   return {
@@ -416,19 +494,50 @@ const buildPlanesFilters = (
   const conditions: string[] = [];
   const params: unknown[] = [];
 
-  if (filters.evento_id) {
-    params.push(filters.evento_id);
-    conditions.push(`spa.evento_id::text = $${params.length}`);
+  if (filters.empresa_id) {
+    params.push(filters.empresa_id);
+    conditions.push(
+      `COALESCE(v.empresa_id::text, si.empresa_id::text, si_h.empresa_id::text, sai.empresa_id::text) = $${params.length}`
+    );
   }
 
-  if (filters.responsable_id) {
-    params.push(filters.responsable_id);
-    conditions.push(`spa.responsable_id::text = $${params.length}`);
+  if (filters.contrato_id) {
+    params.push(filters.contrato_id);
+    conditions.push(
+      `COALESCE(v.contrato_id::text, si.contrato_id::text, si_h.contrato_id::text, sai.contrato_id::text) = $${params.length}`
+    );
+  }
+
+  if (filters.origen) {
+    switch (filters.origen) {
+      case 'EVENTO':
+        conditions.push(`UPPER(TRIM(spa.origen)) IN ('EVENTO', 'SST_EVENTO', 'SST_EVENTOS')`);
+        break;
+      case 'INSPECCION':
+        conditions.push(`UPPER(TRIM(spa.origen)) IN ('INSPECCION', 'SST_INSPECCION', 'SST_INSPECCIONES')`);
+        break;
+      case 'HALLAZGO':
+        conditions.push(`UPPER(TRIM(spa.origen)) IN ('HALLAZGO', 'HALLAZGO_INSPECCION', 'SST_INSPECCION_HALLAZGO', 'SST_INSPECCIONES_HALLAZGOS')`);
+        break;
+      case 'ACCIDENTE':
+        conditions.push(`UPPER(TRIM(spa.origen)) IN ('ACCIDENTE', 'SST_ACCIDENTE', 'SST_ACCIDENTES_INCIDENTES')`);
+        break;
+    }
+  }
+
+  if (filters.origen_id) {
+    params.push(filters.origen_id);
+    conditions.push(`spa.origen_id::text = $${params.length}`);
+  }
+
+  if (filters.responsable) {
+    params.push(`%${filters.responsable}%`);
+    conditions.push(`COALESCE(spa.responsable, '') ILIKE $${params.length}`);
   }
 
   if (filters.estado) {
     params.push(filters.estado);
-    conditions.push(`spa.estado = $${params.length}`);
+    conditions.push(`COALESCE(spa.estado, 'PENDIENTE') = $${params.length}`);
   }
 
   if (filters.fecha_compromiso_desde) {
@@ -439,6 +548,18 @@ const buildPlanesFilters = (
   if (filters.fecha_compromiso_hasta) {
     params.push(filters.fecha_compromiso_hasta);
     conditions.push(`spa.fecha_compromiso <= $${params.length}`);
+  }
+
+  if (filters.activo !== undefined) {
+    params.push(filters.activo);
+    conditions.push(`COALESCE(spa.activo, TRUE) = $${params.length}`);
+  }
+
+  if (filters.search) {
+    params.push(`%${filters.search}%`);
+    conditions.push(
+      `(spa.descripcion ILIKE $${params.length} OR COALESCE(spa.responsable, '') ILIKE $${params.length})`
+    );
   }
 
   return {
@@ -493,6 +614,7 @@ export const listSstEventos = async (
     `
       SELECT COUNT(*)::int AS total
       FROM sst_eventos se
+      LEFT JOIN vinculaciones v ON v.id = se.vinculacion_id
       ${whereClause}
     `,
     params
@@ -523,15 +645,28 @@ export const listSstEventos = async (
   };
 };
 
-export const getSstEventoById = async (eventoId: string): Promise<SstEvento | null> => {
-  const result = await dbQuery<SstEventoRow>(
-    `
-      ${getSstEventoSelect()}
-      WHERE se.id::text = $1
-      LIMIT 1
-    `,
-    [eventoId]
-  );
+export const getSstEventoById = async (
+  eventoId: string,
+  _tenant?: TenantAccessContext,
+  client?: PoolClient
+): Promise<SstEvento | null> => {
+  const result = client
+    ? await client.query<SstEventoRow>(
+        `
+          ${getSstEventoSelect()}
+          WHERE se.id::text = $1
+          LIMIT 1
+        `,
+        [eventoId]
+      )
+    : await dbQuery<SstEventoRow>(
+        `
+          ${getSstEventoSelect()}
+          WHERE se.id::text = $1
+          LIMIT 1
+        `,
+        [eventoId]
+      );
 
   const row = result.rows[0];
   return row ? mapSstEvento(row) : null;
@@ -546,93 +681,58 @@ export const createSstEvento = async (
 
   try {
     await client.query('BEGIN');
-    const relations = await validateSstEventoRelations(
+    await validateSstEventoRelations(
       {
-        persona_id: input.persona_id,
+        persona_id: null,
         vinculacion_id: input.vinculacion_id,
-        contrato_id: input.contrato_id,
-        empresa_id: input.empresa_id
+        contrato_id: null,
+        empresa_id: null
       },
       client
     );
 
-    const result = await client.query<SstEventoRow>(
+    const insertResult = await client.query<{ id: string }>(
       `
         INSERT INTO sst_eventos (
-          persona_id,
           vinculacion_id,
-          contrato_id,
-          empresa_id,
           tipo_evento,
-          estado,
           fecha_evento,
-          fecha_cierre,
-          titulo,
+          hora_evento,
+          lugar,
           descripcion,
-          ubicacion,
-          metadata,
-          activo,
-          created_by
-        )
-        VALUES (
-          $1::uuid,
-          $2::uuid,
-          $3::uuid,
-          $4::uuid,
-          $5,
-          $6,
-          $7,
-          $8,
-          $9,
-          $10,
-          $11,
-          $12::jsonb,
-          $13,
-          $14::uuid
-        )
-        RETURNING
-          id::text AS id,
-          persona_id::text AS persona_id,
-          vinculacion_id::text AS vinculacion_id,
-          contrato_id::text AS contrato_id,
-          empresa_id::text AS empresa_id,
-          tipo_evento,
+          gravedad,
+          requiere_investigacion,
           estado,
-          fecha_evento,
-          fecha_cierre,
-          titulo,
-          descripcion,
-          ubicacion,
-          metadata,
-          activo,
-          created_at,
-          updated_at
+          activo
+        )
+        VALUES ($1::bigint, $2, $3, $4::time, $5, $6, $7, $8, $9, $10)
+        RETURNING id::text AS id
       `,
       [
-        relations.persona_id,
-        relations.vinculacion_id,
-        relations.contrato_id,
-        relations.empresa_id,
+        input.vinculacion_id,
         input.tipo_evento,
-        input.estado,
         input.fecha_evento,
-        input.fecha_cierre,
-        input.titulo,
+        input.hora_evento,
+        input.lugar,
         input.descripcion,
-        input.ubicacion,
-        JSON.stringify(input.metadata),
-        input.activo,
-        actorUserId
+        input.gravedad,
+        input.requiere_investigacion,
+        input.estado,
+        input.activo
       ]
     );
 
-    const created = result.rows[0];
+    const createdId = insertResult.rows[0]?.id;
 
-    if (!created) {
+    if (!createdId) {
       throw new AppError('Failed to create SST event', 500, 'SST_EVENTO_CREATE_FAILED');
     }
 
-    const evento = mapSstEvento(created);
+    const evento = await getSstEventoById(createdId, undefined, client);
+
+    if (!evento) {
+      throw new AppError('Failed to load created SST event', 500, 'SST_EVENTO_CREATE_FAILED');
+    }
 
     await recordAudit(client, {
       action: 'EVENTO_CREATE',
@@ -640,7 +740,7 @@ export const createSstEvento = async (
       after: evento,
       auditMeta,
       description: 'Creacion de evento SST',
-      entityId: evento.id,
+      entityId: String(evento.id),
       entityType: 'sst_eventos'
     });
 
@@ -665,7 +765,7 @@ export const updateSstEvento = async (
   try {
     await client.query('BEGIN');
     const currentLookup = await ensureSstEventoExists(eventoId, client);
-    const current = await getSstEventoById(eventoId);
+    const current = await getSstEventoById(eventoId, undefined, client);
 
     if (!current) {
       throw new AppError('SST event not found', 404, 'SST_EVENTO_NOT_FOUND');
@@ -673,78 +773,52 @@ export const updateSstEvento = async (
 
     const relations = await validateSstEventoRelations(
       {
-        persona_id: hasOwn(input, 'persona_id') ? input.persona_id ?? null : current.persona_id,
+        persona_id: current.vinculacion?.persona_id ?? null,
         vinculacion_id: hasOwn(input, 'vinculacion_id')
           ? input.vinculacion_id ?? null
-          : current.vinculacion_id,
-        contrato_id: hasOwn(input, 'contrato_id') ? input.contrato_id ?? null : current.contrato_id,
-        empresa_id: hasOwn(input, 'empresa_id') ? input.empresa_id ?? null : current.empresa_id
+          : current.vinculacion?.id ?? null,
+        contrato_id: current.vinculacion?.contrato_id ?? null,
+        empresa_id: current.vinculacion?.empresa_id ?? null
       },
       client
     );
 
-    const result = await client.query<SstEventoRow>(
+    await client.query(
       `
         UPDATE sst_eventos
         SET
-          persona_id = $2::uuid,
-          vinculacion_id = $3::uuid,
-          contrato_id = $4::uuid,
-          empresa_id = $5::uuid,
-          tipo_evento = $6,
-          estado = $7,
-          fecha_evento = $8,
-          fecha_cierre = $9,
-          titulo = $10,
-          descripcion = $11,
-          ubicacion = $12,
-          metadata = $13::jsonb,
-          activo = $14,
-          updated_at = NOW()
+          vinculacion_id = $2::bigint,
+          tipo_evento = $3,
+          estado = $4,
+          fecha_evento = $5,
+          hora_evento = $6::time,
+          lugar = $7,
+          descripcion = $8,
+          gravedad = $9,
+          requiere_investigacion = $10,
+          activo = $11
         WHERE id::text = $1
-        RETURNING
-          id::text AS id,
-          persona_id::text AS persona_id,
-          vinculacion_id::text AS vinculacion_id,
-          contrato_id::text AS contrato_id,
-          empresa_id::text AS empresa_id,
-          tipo_evento,
-          estado,
-          fecha_evento,
-          fecha_cierre,
-          titulo,
-          descripcion,
-          ubicacion,
-          metadata,
-          activo,
-          created_at,
-          updated_at
       `,
       [
         eventoId,
-        relations.persona_id,
         relations.vinculacion_id,
-        relations.contrato_id,
-        relations.empresa_id,
         input.tipo_evento ?? current.tipo_evento,
-        input.estado ?? currentLookup.estado,
+        input.estado ?? currentLookup.estado ?? current.estado,
         input.fecha_evento ?? current.fecha_evento,
-        input.fecha_cierre !== undefined ? input.fecha_cierre : current.fecha_cierre,
-        input.titulo ?? current.titulo,
+        input.hora_evento !== undefined ? input.hora_evento : current.hora_evento,
+        input.lugar !== undefined ? input.lugar : current.lugar,
         input.descripcion !== undefined ? input.descripcion : current.descripcion,
-        input.ubicacion !== undefined ? input.ubicacion : current.ubicacion,
-        JSON.stringify(input.metadata !== undefined ? input.metadata : current.metadata),
+        input.gravedad !== undefined ? input.gravedad : current.gravedad,
+        input.requiere_investigacion ?? current.requiere_investigacion,
         input.activo ?? current.activo
       ]
     );
 
-    const updated = result.rows[0];
+    const evento = await getSstEventoById(eventoId, undefined, client);
 
-    if (!updated) {
+    if (!evento) {
       throw new AppError('Failed to update SST event', 500, 'SST_EVENTO_UPDATE_FAILED');
     }
-
-    const evento = mapSstEvento(updated);
 
     await recordAudit(client, {
       action: 'EVENTO_UPDATE',
@@ -777,44 +851,26 @@ export const deactivateSstEvento = async (
   try {
     await client.query('BEGIN');
     await ensureSstEventoExists(eventoId, client);
-    const current = await getSstEventoById(eventoId);
+    const current = await getSstEventoById(eventoId, undefined, client);
 
     if (!current) {
       throw new AppError('SST event not found', 404, 'SST_EVENTO_NOT_FOUND');
     }
 
-    const result = await client.query<SstEventoRow>(
+    await client.query(
       `
         UPDATE sst_eventos
         SET
           activo = FALSE,
-          estado = 'ANULADO',
-          updated_at = NOW()
+          estado = 'ANULADO'
         WHERE id::text = $1
-        RETURNING
-          id::text AS id,
-          persona_id::text AS persona_id,
-          vinculacion_id::text AS vinculacion_id,
-          contrato_id::text AS contrato_id,
-          empresa_id::text AS empresa_id,
-          tipo_evento,
-          estado,
-          fecha_evento,
-          fecha_cierre,
-          titulo,
-          descripcion,
-          ubicacion,
-          metadata,
-          activo,
-          created_at,
-          updated_at
       `,
       [eventoId]
     );
 
-    const updated = result.rows[0];
+    const evento = await getSstEventoById(eventoId, undefined, client);
 
-    if (!updated) {
+    if (!evento) {
       throw new AppError(
         'Failed to deactivate SST event',
         500,
@@ -822,10 +878,8 @@ export const deactivateSstEvento = async (
       );
     }
 
-    const evento = mapSstEvento(updated);
-
     await recordAudit(client, {
-      action: 'EVENTO_CLOSE',
+      action: 'EVENTO_DEACTIVATE',
       actorUserId,
       auditMeta,
       before: current,
@@ -853,6 +907,12 @@ export const listSstPlanesAccion = async (
     `
       SELECT COUNT(*)::int AS total
       FROM sst_planes_accion spa
+      LEFT JOIN sst_eventos se ON UPPER(TRIM(spa.origen)) IN ('EVENTO', 'SST_EVENTO', 'SST_EVENTOS') AND se.id = spa.origen_id
+      LEFT JOIN vinculaciones v ON v.id = se.vinculacion_id
+      LEFT JOIN sst_inspecciones si ON UPPER(TRIM(spa.origen)) IN ('INSPECCION', 'SST_INSPECCION', 'SST_INSPECCIONES') AND si.id = spa.origen_id
+      LEFT JOIN sst_inspecciones_hallazgos sih ON UPPER(TRIM(spa.origen)) IN ('HALLAZGO', 'HALLAZGO_INSPECCION', 'SST_INSPECCION_HALLAZGO', 'SST_INSPECCIONES_HALLAZGOS') AND sih.id = spa.origen_id
+      LEFT JOIN sst_inspecciones si_h ON si_h.id = sih.inspeccion_id
+      LEFT JOIN sst_accidentes_incidentes sai ON UPPER(TRIM(spa.origen)) IN ('ACCIDENTE', 'SST_ACCIDENTE', 'SST_ACCIDENTES_INCIDENTES') AND sai.id = spa.origen_id
       ${whereClause}
     `,
     params
@@ -883,15 +943,28 @@ export const listSstPlanesAccion = async (
   };
 };
 
-export const getSstPlanAccionById = async (planId: string): Promise<SstPlanAccion | null> => {
-  const result = await dbQuery<SstPlanAccionRow>(
-    `
-      ${getSstPlanAccionSelect()}
-      WHERE spa.id::text = $1
-      LIMIT 1
-    `,
-    [planId]
-  );
+export const getSstPlanAccionById = async (
+  planId: string,
+  _tenant?: TenantAccessContext,
+  client?: PoolClient
+): Promise<SstPlanAccion | null> => {
+  const result = client
+    ? await client.query<SstPlanAccionRow>(
+        `
+          ${getSstPlanAccionSelect()}
+          WHERE spa.id::text = $1
+          LIMIT 1
+        `,
+        [planId]
+      )
+    : await dbQuery<SstPlanAccionRow>(
+        `
+          ${getSstPlanAccionSelect()}
+          WHERE spa.id::text = $1
+          LIMIT 1
+        `,
+        [planId]
+      );
 
   const row = result.rows[0];
   return row ? mapSstPlanAccion(row) : null;
@@ -906,65 +979,38 @@ export const createSstPlanAccion = async (
 
   try {
     await client.query('BEGIN');
-    await ensureSstEventoExists(input.evento_id, client);
+    await validateSstPlanAccionOrigin(input.origen, input.origen_id, client);
 
-    const result = await client.query<SstPlanAccionRow>(
+    const result = await client.query<{ id: string }>(
       `
         INSERT INTO sst_planes_accion (
-          evento_id,
+          origen,
+          origen_id,
           responsable,
-          responsable_id,
           descripcion,
           fecha_compromiso,
           fecha_cierre,
           estado,
-          observaciones,
-          activo,
-          created_by
+          activo
         )
-        VALUES (
-          $1::uuid,
-          $2,
-          $3::uuid,
-          $4,
-          $5,
-          $6,
-          $7,
-          $8,
-          $9,
-          $10::uuid
-        )
-        RETURNING
-          id::text AS id,
-          evento_id::text AS evento_id,
-          responsable,
-          responsable_id::text AS responsable_id,
-          descripcion,
-          fecha_compromiso,
-          fecha_cierre,
-          estado,
-          observaciones,
-          activo,
-          created_at,
-          updated_at
+        VALUES ($1, $2::bigint, $3, $4, $5, $6, $7, $8)
+        RETURNING id::text AS id
       `,
       [
-        input.evento_id,
+        input.origen,
+        input.origen_id,
         input.responsable,
-        input.responsable_id,
         input.descripcion,
         input.fecha_compromiso,
         input.fecha_cierre,
         input.estado,
-        input.observaciones,
-        input.activo,
-        actorUserId
+        input.activo
       ]
     );
 
-    const created = result.rows[0];
+    const createdId = result.rows[0]?.id;
 
-    if (!created) {
+    if (!createdId) {
       throw new AppError(
         'Failed to create SST action plan',
         500,
@@ -972,7 +1018,15 @@ export const createSstPlanAccion = async (
       );
     }
 
-    const plan = mapSstPlanAccion(created);
+    const plan = await getSstPlanAccionById(createdId, undefined, client);
+
+    if (!plan) {
+      throw new AppError(
+        'Failed to load created SST action plan',
+        500,
+        'SST_PLAN_ACCION_CREATE_FAILED'
+      );
+    }
 
     await recordAudit(client, {
       action: 'PLAN_CREATE',
@@ -1005,64 +1059,75 @@ export const updateSstPlanAccion = async (
   try {
     await client.query('BEGIN');
     const currentLookup = await ensureSstPlanAccionExists(planId, client);
-    const current = await getSstPlanAccionById(planId);
+    const current = await getSstPlanAccionById(planId, undefined, client);
 
     if (!current) {
       throw new AppError('SST action plan not found', 404, 'SST_PLAN_ACCION_NOT_FOUND');
     }
 
-    const result = await client.query<SstPlanAccionRow>(
+    const nextOrigen = input.origen ?? normalizePlanOrigin(currentLookup.origen);
+    const nextOrigenId = input.origen_id ?? currentLookup.origen_id;
+
+    if (input.origen !== undefined || input.origen_id !== undefined) {
+      if (!nextOrigenId) {
+        throw new AppError(
+          'origen_id is required when origen is updated',
+          400,
+          'SST_PLAN_ACCION_ORIGEN_REQUIRED'
+        );
+      }
+
+      await validateSstPlanAccionOrigin(nextOrigen, nextOrigenId, client);
+    }
+
+    const nextFechaCompromiso =
+      input.fecha_compromiso !== undefined ? input.fecha_compromiso : current.fecha_compromiso;
+    const nextFechaCierre = input.fecha_cierre !== undefined ? input.fecha_cierre : current.fecha_cierre;
+
+    if (nextFechaCompromiso && nextFechaCierre && nextFechaCompromiso > nextFechaCierre) {
+      throw new AppError(
+        'fecha_cierre must be greater than or equal to fecha_compromiso',
+        400,
+        'SST_PLAN_ACCION_INVALID_DATE_RANGE'
+      );
+    }
+
+    await client.query(
       `
         UPDATE sst_planes_accion
         SET
-          responsable = $2,
-          responsable_id = $3::uuid,
-          descripcion = $4,
-          fecha_compromiso = $5,
-          fecha_cierre = $6,
-          estado = $7,
-          observaciones = $8,
-          activo = $9,
-          updated_at = NOW()
+          origen = $2,
+          origen_id = $3::bigint,
+          responsable = $4,
+          descripcion = $5,
+          fecha_compromiso = $6,
+          fecha_cierre = $7,
+          estado = $8,
+          activo = $9
         WHERE id::text = $1
-        RETURNING
-          id::text AS id,
-          evento_id::text AS evento_id,
-          responsable,
-          responsable_id::text AS responsable_id,
-          descripcion,
-          fecha_compromiso,
-          fecha_cierre,
-          estado,
-          observaciones,
-          activo,
-          created_at,
-          updated_at
       `,
       [
         planId,
+        nextOrigen,
+        nextOrigenId,
         input.responsable ?? current.responsable,
-        input.responsable_id !== undefined ? input.responsable_id : current.responsable_id,
         input.descripcion ?? current.descripcion,
-        input.fecha_compromiso ?? current.fecha_compromiso,
-        input.fecha_cierre !== undefined ? input.fecha_cierre : current.fecha_cierre,
-        input.estado ?? currentLookup.estado,
-        input.observaciones !== undefined ? input.observaciones : current.observaciones,
+        nextFechaCompromiso,
+        nextFechaCierre,
+        input.estado ?? currentLookup.estado ?? current.estado,
         input.activo ?? current.activo
       ]
     );
 
-    const updated = result.rows[0];
+    const plan = await getSstPlanAccionById(planId, undefined, client);
 
-    if (!updated) {
+    if (!plan) {
       throw new AppError(
         'Failed to update SST action plan',
         500,
         'SST_PLAN_ACCION_UPDATE_FAILED'
       );
     }
-
-    const plan = mapSstPlanAccion(updated);
 
     await recordAudit(client, {
       action: 'PLAN_UPDATE',
@@ -1087,7 +1152,7 @@ export const updateSstPlanAccion = async (
 
 export const closeSstPlanAccion = async (
   planId: string,
-  input: { fecha_cierre: string; observaciones?: string | null },
+  input: { fecha_cierre: string },
   actorUserId: string,
   auditMeta?: AuditRequestMeta
 ): Promise<SstPlanAccion> => {
@@ -1096,49 +1161,49 @@ export const closeSstPlanAccion = async (
   try {
     await client.query('BEGIN');
     await ensureSstPlanAccionExists(planId, client);
-    const current = await getSstPlanAccionById(planId);
+    const current = await getSstPlanAccionById(planId, undefined, client);
 
     if (!current) {
       throw new AppError('SST action plan not found', 404, 'SST_PLAN_ACCION_NOT_FOUND');
     }
 
-    const result = await client.query<SstPlanAccionRow>(
+    if (current.estado === 'CERRADO' || current.estado === 'ANULADO') {
+      throw new AppError(
+        'SST action plan cannot be closed from its current state',
+        409,
+        'SST_PLAN_ACCION_CLOSE_INVALID_STATE',
+        { estado: current.estado }
+      );
+    }
+
+    if (current.fecha_compromiso && input.fecha_cierre < current.fecha_compromiso) {
+      throw new AppError(
+        'fecha_cierre must be greater than or equal to fecha_compromiso',
+        400,
+        'SST_PLAN_ACCION_INVALID_DATE_RANGE'
+      );
+    }
+
+    await client.query(
       `
         UPDATE sst_planes_accion
         SET
           estado = 'CERRADO',
-          fecha_cierre = $2,
-          observaciones = COALESCE($3, observaciones),
-          updated_at = NOW()
+          fecha_cierre = $2
         WHERE id::text = $1
-        RETURNING
-          id::text AS id,
-          evento_id::text AS evento_id,
-          responsable,
-          responsable_id::text AS responsable_id,
-          descripcion,
-          fecha_compromiso,
-          fecha_cierre,
-          estado,
-          observaciones,
-          activo,
-          created_at,
-          updated_at
       `,
-      [planId, input.fecha_cierre, input.observaciones ?? null]
+      [planId, input.fecha_cierre]
     );
 
-    const updated = result.rows[0];
+    const plan = await getSstPlanAccionById(planId, undefined, client);
 
-    if (!updated) {
+    if (!plan) {
       throw new AppError(
         'Failed to close SST action plan',
         500,
         'SST_PLAN_ACCION_CLOSE_FAILED'
       );
     }
-
-    const plan = mapSstPlanAccion(updated);
 
     await recordAudit(client, {
       action: 'PLAN_CLOSE',
@@ -1163,289 +1228,291 @@ export const closeSstPlanAccion = async (
 
 export const listSstIndicadores = async (
   filters: ListSstIndicadoresQuery
-): Promise<SstIndicador[]> => {
-  const conditions: string[] = [];
-  const params: unknown[] = [];
+): Promise<{
+  catalogo: Array<{
+    activo: boolean;
+    created_at: string;
+    formula: string | null;
+    id: string;
+    nombre_indicador: string;
+    periodicidad: string | null;
+    unidad: string | null;
+  }>;
+  periodos: Array<{
+    activo: boolean;
+    contrato_id: string | null;
+    created_at: string;
+    empresa_id: string;
+    fecha_fin: string;
+    fecha_inicio: string;
+    id: string;
+    nombre_periodo: string;
+  }>;
+  mediciones: Array<{
+    activo: boolean;
+    contrato_id: string | null;
+    created_at: string;
+    formula: string | null;
+    id: string;
+    indicador_id: string;
+    nombre_indicador: string;
+    observaciones: string | null;
+    periodicidad: string | null;
+    periodo: string;
+    resultado: number | null;
+    unidad: string | null;
+    valor_denominador: number | null;
+    valor_numerador: number | null;
+  }>;
+}> => {
+  interface CatalogoRow extends QueryResultRow {
+    activo: boolean | null;
+    created_at: Date;
+    formula: string | null;
+    id: string;
+    nombre_indicador: string;
+    periodicidad: string | null;
+    unidad: string | null;
+  }
 
+  interface PeriodoRow extends QueryResultRow {
+    activo: boolean;
+    contrato_id: string | null;
+    created_at: Date;
+    empresa_id: string;
+    fecha_fin: Date | string;
+    fecha_inicio: Date | string;
+    id: string;
+    nombre_periodo: string;
+  }
+
+  interface MedicionRow extends QueryResultRow {
+    activo: boolean | null;
+    contrato_id: string | null;
+    created_at: Date;
+    formula: string | null;
+    id: string;
+    indicador_id: string;
+    nombre_indicador: string;
+    observaciones: string | null;
+    periodicidad: string | null;
+    periodo: string;
+    resultado: string | number | null;
+    unidad: string | null;
+    valor_denominador: string | number | null;
+    valor_numerador: string | number | null;
+  }
+
+  const offset = (filters.page - 1) * filters.limit;
+
+  const catalogoConditions: string[] = [];
+  const catalogoParams: unknown[] = [];
+  if (filters.indicador_id) {
+    catalogoParams.push(filters.indicador_id);
+    catalogoConditions.push(`si.id::text = $${catalogoParams.length}`);
+  }
+  if (filters.periodicidad) {
+    catalogoParams.push(filters.periodicidad);
+    catalogoConditions.push(`si.periodicidad = $${catalogoParams.length}`);
+  }
+  if (filters.unidad) {
+    catalogoParams.push(filters.unidad);
+    catalogoConditions.push(`si.unidad = $${catalogoParams.length}`);
+  }
+  if (filters.activo !== undefined) {
+    catalogoParams.push(filters.activo);
+    catalogoConditions.push(`COALESCE(si.activo, TRUE) = $${catalogoParams.length}`);
+  }
+  if (filters.search) {
+    catalogoParams.push(`%${filters.search}%`);
+    catalogoConditions.push(`(si.nombre_indicador ILIKE $${catalogoParams.length} OR COALESCE(si.formula, '') ILIKE $${catalogoParams.length})`);
+  }
+
+  const periodosConditions: string[] = [];
+  const periodosParams: unknown[] = [];
   if (filters.empresa_id) {
-    params.push(filters.empresa_id);
-    conditions.push(`si.empresa_id::text = $${params.length}`);
+    periodosParams.push(filters.empresa_id);
+    periodosConditions.push(`sip.empresa_id::text = $${periodosParams.length}`);
   }
-
   if (filters.contrato_id) {
-    params.push(filters.contrato_id);
-    conditions.push(`si.contrato_id::text = $${params.length}`);
+    periodosParams.push(filters.contrato_id);
+    periodosConditions.push(`sip.contrato_id::text = $${periodosParams.length}`);
   }
-
   if (filters.fecha_desde) {
-    params.push(filters.fecha_desde);
-    conditions.push(`si.fecha_desde >= $${params.length}`);
+    periodosParams.push(filters.fecha_desde);
+    periodosConditions.push(`sip.fecha_inicio >= $${periodosParams.length}`);
   }
-
   if (filters.fecha_hasta) {
-    params.push(filters.fecha_hasta);
-    conditions.push(`si.fecha_hasta <= $${params.length}`);
+    periodosParams.push(filters.fecha_hasta);
+    periodosConditions.push(`sip.fecha_fin <= $${periodosParams.length}`);
+  }
+  if (filters.activo !== undefined) {
+    periodosParams.push(filters.activo);
+    periodosConditions.push(`sip.activo = $${periodosParams.length}`);
+  }
+  if (filters.search) {
+    periodosParams.push(`%${filters.search}%`);
+    periodosConditions.push(`sip.nombre_periodo ILIKE $${periodosParams.length}`);
   }
 
-  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  const result = await dbQuery<SstIndicadorRow>(
-    `
-      SELECT
-        si.id::text AS id,
-        si.empresa_id::text AS empresa_id,
-        si.contrato_id::text AS contrato_id,
-        si.fecha_desde,
-        si.fecha_hasta,
-        si.total_eventos,
-        si.total_accidentes_trabajo,
-        si.total_incidentes,
-        si.total_enfermedades_laborales,
-        si.total_capacitaciones,
-        si.total_entregas_epp,
-        si.planes_abiertos,
-        si.planes_cerrados,
-        si.planes_vencidos,
-        si.trabajadores_base,
-        si.tasa_accidentalidad,
-        si.porcentaje_cierre_planes,
-        si.created_at,
-        si.updated_at
-      FROM sst_indicadores si
-      ${whereClause}
-      ORDER BY si.fecha_hasta DESC, si.created_at DESC
-    `,
-    params
-  );
-
-  return result.rows.map(mapSstIndicador);
-};
-
-const calculateIndicadoresSnapshot = async (
-  client: PoolClient,
-  input: CalculateSstIndicadoresInput
-): Promise<SstIndicadoresSnapshot> => {
-  const eventFilters = buildIndicadoresFilterSql(input, 'se');
-  const planFilters = buildIndicadoresFilterSql(input, 'se');
-  const vinculacionConditions: string[] = [];
-  const vinculacionParams: unknown[] = [];
-
-  if (input.empresa_id) {
-    vinculacionParams.push(input.empresa_id);
-    vinculacionConditions.push(`v.empresa_id::text = $${vinculacionParams.length}`);
+  const medicionesConditions: string[] = [];
+  const medicionesParams: unknown[] = [];
+  if (filters.indicador_id) {
+    medicionesParams.push(filters.indicador_id);
+    medicionesConditions.push(`sim.indicador_id::text = $${medicionesParams.length}`);
+  }
+  if (filters.empresa_id) {
+    medicionesParams.push(filters.empresa_id);
+    medicionesConditions.push(`c.empresa_id::text = $${medicionesParams.length}`);
+  }
+  if (filters.contrato_id) {
+    medicionesParams.push(filters.contrato_id);
+    medicionesConditions.push(`sim.contrato_id::text = $${medicionesParams.length}`);
+  }
+  if (filters.periodicidad) {
+    medicionesParams.push(filters.periodicidad);
+    medicionesConditions.push(`si.periodicidad = $${medicionesParams.length}`);
+  }
+  if (filters.unidad) {
+    medicionesParams.push(filters.unidad);
+    medicionesConditions.push(`si.unidad = $${medicionesParams.length}`);
+  }
+  if (filters.periodo) {
+    medicionesParams.push(filters.periodo);
+    medicionesConditions.push(`sim.periodo = $${medicionesParams.length}`);
+  }
+  if (filters.activo !== undefined) {
+    medicionesParams.push(filters.activo);
+    medicionesConditions.push(`COALESCE(sim.activo, TRUE) = $${medicionesParams.length}`);
+  }
+  if (filters.search) {
+    medicionesParams.push(`%${filters.search}%`);
+    medicionesConditions.push(`(si.nombre_indicador ILIKE $${medicionesParams.length} OR COALESCE(sim.observaciones, '') ILIKE $${medicionesParams.length})`);
   }
 
-  if (input.contrato_id) {
-    vinculacionParams.push(input.contrato_id);
-    vinculacionConditions.push(`v.contrato_id::text = $${vinculacionParams.length}`);
-  }
+  const catalogoWhere = catalogoConditions.length > 0 ? `WHERE ${catalogoConditions.join(' AND ')}` : '';
+  const periodosWhere = periodosConditions.length > 0 ? `WHERE ${periodosConditions.join(' AND ')}` : '';
+  const medicionesWhere = medicionesConditions.length > 0 ? `WHERE ${medicionesConditions.join(' AND ')}` : '';
 
-  vinculacionParams.push(input.fecha_hasta);
-  vinculacionConditions.push(`v.fecha_inicio <= $${vinculacionParams.length}`);
+  const [catalogoResult, periodosResult, medicionesResult] = await Promise.all([
+    dbQuery<CatalogoRow>(
+      `
+        SELECT
+          si.id::text AS id,
+          si.nombre_indicador,
+          si.formula,
+          si.periodicidad,
+          si.unidad,
+          COALESCE(si.activo, TRUE) AS activo,
+          si.created_at
+        FROM sst_indicadores si
+        ${catalogoWhere}
+        ORDER BY si.nombre_indicador ASC, si.id ASC
+        LIMIT $${catalogoParams.length + 1}
+        OFFSET $${catalogoParams.length + 2}
+      `,
+      [...catalogoParams, filters.limit, offset]
+    ),
+    dbQuery<PeriodoRow>(
+      `
+        SELECT
+          sip.id::text AS id,
+          sip.empresa_id::text AS empresa_id,
+          sip.contrato_id::text AS contrato_id,
+          sip.nombre_periodo,
+          sip.fecha_inicio,
+          sip.fecha_fin,
+          sip.activo,
+          sip.created_at
+        FROM sst_indicadores_periodos sip
+        ${periodosWhere}
+        ORDER BY sip.fecha_inicio DESC, sip.id DESC
+        LIMIT $${periodosParams.length + 1}
+        OFFSET $${periodosParams.length + 2}
+      `,
+      [...periodosParams, filters.limit, offset]
+    ),
+    dbQuery<MedicionRow>(
+      `
+        SELECT
+          sim.id::text AS id,
+          sim.indicador_id::text AS indicador_id,
+          sim.contrato_id::text AS contrato_id,
+          sim.periodo,
+          sim.valor_numerador,
+          sim.valor_denominador,
+          sim.resultado,
+          sim.observaciones,
+          COALESCE(sim.activo, TRUE) AS activo,
+          sim.created_at,
+          si.nombre_indicador,
+          si.formula,
+          si.periodicidad,
+          si.unidad
+        FROM sst_indicador_mediciones sim
+        INNER JOIN sst_indicadores si ON si.id = sim.indicador_id
+        LEFT JOIN contratos c ON c.id = sim.contrato_id
+        ${medicionesWhere}
+        ORDER BY sim.created_at DESC, sim.id DESC
+        LIMIT $${medicionesParams.length + 1}
+        OFFSET $${medicionesParams.length + 2}
+      `,
+      [...medicionesParams, filters.limit, offset]
+    )
+  ]);
 
-  vinculacionParams.push(input.fecha_desde);
-  vinculacionConditions.push(`(v.fecha_fin IS NULL OR v.fecha_fin >= $${vinculacionParams.length})`);
-
-  const eventCountsResult = await client.query<AggregateEventCountsRow>(
-    `
-      SELECT
-        COUNT(*)::int AS total_eventos,
-        COUNT(*) FILTER (WHERE se.tipo_evento = 'ACCIDENTE_TRABAJO')::int AS total_accidentes_trabajo,
-        COUNT(*) FILTER (WHERE se.tipo_evento = 'INCIDENTE')::int AS total_incidentes,
-        COUNT(*) FILTER (WHERE se.tipo_evento = 'ENFERMEDAD_LABORAL')::int AS total_enfermedades_laborales,
-        COUNT(*) FILTER (WHERE se.tipo_evento = 'CAPACITACION')::int AS total_capacitaciones,
-        COUNT(*) FILTER (WHERE se.tipo_evento = 'ENTREGA_EPP')::int AS total_entregas_epp
-      FROM sst_eventos se
-      ${eventFilters.whereClause ? `${eventFilters.whereClause} AND se.activo = TRUE` : 'WHERE se.activo = TRUE'}
-    `,
-    eventFilters.params
-  );
-
-  const currentDate = new Date().toISOString().slice(0, 10);
-  const planCountsResult = await client.query<AggregatePlanCountsRow>(
-    `
-      SELECT
-        COUNT(*) FILTER (
-          WHERE spa.activo = TRUE
-            AND spa.estado <> 'CERRADO'
-            AND spa.estado <> 'ANULADO'
-            AND spa.fecha_compromiso >= $${planFilters.params.length + 1}
-        )::int AS planes_abiertos,
-        COUNT(*) FILTER (
-          WHERE spa.activo = TRUE
-            AND spa.estado = 'CERRADO'
-        )::int AS planes_cerrados,
-        COUNT(*) FILTER (
-          WHERE spa.activo = TRUE
-            AND spa.estado <> 'CERRADO'
-            AND spa.estado <> 'ANULADO'
-            AND spa.fecha_compromiso < $${planFilters.params.length + 1}
-        )::int AS planes_vencidos
-      FROM sst_planes_accion spa
-      INNER JOIN sst_eventos se ON se.id = spa.evento_id
-      ${planFilters.whereClause ? `${planFilters.whereClause} AND se.activo = TRUE` : 'WHERE se.activo = TRUE'}
-    `,
-    [...planFilters.params, currentDate]
-  );
-
-  const trabajadoresResult = await client.query<AggregateTrabajadoresRow>(
-    `
-      SELECT COUNT(DISTINCT v.id)::int AS trabajadores_base
-      FROM vinculaciones v
-      WHERE v.estado = 'ACTIVA'
-        AND ${vinculacionConditions.join(' AND ')}
-    `,
-    vinculacionParams
-  );
-
-  const eventCounts = eventCountsResult.rows[0] ?? {
-    total_eventos: 0,
-    total_accidentes_trabajo: 0,
-    total_incidentes: 0,
-    total_enfermedades_laborales: 0,
-    total_capacitaciones: 0,
-    total_entregas_epp: 0
+  return {
+    catalogo: catalogoResult.rows.map((row) => ({
+      id: row.id,
+      nombre_indicador: row.nombre_indicador,
+      formula: row.formula,
+      periodicidad: row.periodicidad,
+      unidad: row.unidad,
+      activo: row.activo ?? true,
+      created_at: row.created_at.toISOString()
+    })),
+    periodos: periodosResult.rows.map((row) => ({
+      id: row.id,
+      empresa_id: row.empresa_id,
+      contrato_id: row.contrato_id,
+      nombre_periodo: row.nombre_periodo,
+      fecha_inicio: toDateString(row.fecha_inicio) ?? '',
+      fecha_fin: toDateString(row.fecha_fin) ?? '',
+      activo: row.activo,
+      created_at: row.created_at.toISOString()
+    })),
+    mediciones: medicionesResult.rows.map((row) => ({
+      id: row.id,
+      indicador_id: row.indicador_id,
+      nombre_indicador: row.nombre_indicador,
+      formula: row.formula,
+      periodicidad: row.periodicidad,
+      unidad: row.unidad,
+      contrato_id: row.contrato_id,
+      periodo: row.periodo,
+      valor_numerador: row.valor_numerador === null ? null : Number(row.valor_numerador),
+      valor_denominador: row.valor_denominador === null ? null : Number(row.valor_denominador),
+      resultado: row.resultado === null ? null : Number(row.resultado),
+      observaciones: row.observaciones,
+      activo: row.activo ?? true,
+      created_at: row.created_at.toISOString()
+    }))
   };
-
-  const planCounts = planCountsResult.rows[0] ?? {
-    planes_abiertos: 0,
-    planes_cerrados: 0,
-    planes_vencidos: 0
-  };
-
-  const trabajadoresBase = trabajadoresResult.rows[0]?.trabajadores_base ?? 0;
-
-  return buildSstIndicadoresSnapshot(
-    {
-      ...eventCounts,
-      trabajadores_base: trabajadoresBase
-    },
-    planCounts
-  );
 };
 
 export const calculateSstIndicadores = async (
   input: CalculateSstIndicadoresInput,
-  actorUserId: string,
-  auditMeta?: AuditRequestMeta
-): Promise<SstIndicador> => {
-  const client = await dbPool.connect();
-
-  try {
-    await client.query('BEGIN');
-    const snapshot = await calculateIndicadoresSnapshot(client, input);
-
-    const result = await client.query<SstIndicadorRow>(
-      `
-        INSERT INTO sst_indicadores (
-          empresa_id,
-          contrato_id,
-          fecha_desde,
-          fecha_hasta,
-          total_eventos,
-          total_accidentes_trabajo,
-          total_incidentes,
-          total_enfermedades_laborales,
-          total_capacitaciones,
-          total_entregas_epp,
-          planes_abiertos,
-          planes_cerrados,
-          planes_vencidos,
-          trabajadores_base,
-          tasa_accidentalidad,
-          porcentaje_cierre_planes,
-          created_by
-        )
-        VALUES (
-          $1::uuid,
-          $2::uuid,
-          $3,
-          $4,
-          $5,
-          $6,
-          $7,
-          $8,
-          $9,
-          $10,
-          $11,
-          $12,
-          $13,
-          $14,
-          $15,
-          $16,
-          $17::uuid
-        )
-        RETURNING
-          id::text AS id,
-          empresa_id::text AS empresa_id,
-          contrato_id::text AS contrato_id,
-          fecha_desde,
-          fecha_hasta,
-          total_eventos,
-          total_accidentes_trabajo,
-          total_incidentes,
-          total_enfermedades_laborales,
-          total_capacitaciones,
-          total_entregas_epp,
-          planes_abiertos,
-          planes_cerrados,
-          planes_vencidos,
-          trabajadores_base,
-          tasa_accidentalidad,
-          porcentaje_cierre_planes,
-          created_at,
-          updated_at
-      `,
-      [
-        input.empresa_id,
-        input.contrato_id,
-        input.fecha_desde,
-        input.fecha_hasta,
-        snapshot.total_eventos,
-        snapshot.total_accidentes_trabajo,
-        snapshot.total_incidentes,
-        snapshot.total_enfermedades_laborales,
-        snapshot.total_capacitaciones,
-        snapshot.total_entregas_epp,
-        snapshot.planes_abiertos,
-        snapshot.planes_cerrados,
-        snapshot.planes_vencidos,
-        snapshot.trabajadores_base,
-        snapshot.tasa_accidentalidad,
-        snapshot.porcentaje_cierre_planes,
-        actorUserId
-      ]
-    );
-
-    const created = result.rows[0];
-
-    if (!created) {
-      throw new AppError(
-        'Failed to create SST indicator snapshot',
-        500,
-        'SST_INDICADORES_CREATE_FAILED'
-      );
+  _actorUserId: string,
+  _auditMeta?: AuditRequestMeta
+): Promise<never> => {
+  throw new AppError(
+    'Automatic SST indicator calculation is temporarily unavailable. Use catalog, periods, and persisted measurements instead.',
+    409,
+    'SST_INDICADORES_CALCULATION_UNAVAILABLE',
+    {
+      requested_filters: input
     }
-
-    const indicador = mapSstIndicador(created);
-
-    await recordAudit(client, {
-      action: 'RECALCULAR',
-      actorUserId,
-      after: indicador,
-      auditMeta,
-      description: 'Calculo de indicadores SST',
-      entityId: indicador.id,
-      entityType: 'sst_indicadores'
-    });
-
-    await client.query('COMMIT');
-    return indicador;
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  );
 };
 
 interface SstCapacitacionRow extends QueryResultRow {
@@ -7872,3 +7939,28 @@ export const getSstAccidentesAlertas = async (
     }
   };
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

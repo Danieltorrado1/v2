@@ -41,20 +41,68 @@ export const sstTipoEventoSchema = z.enum([
   'ACCIDENTE_TRABAJO',
   'INCIDENTE',
   'ENFERMEDAD_LABORAL',
-  'INSPECCION',
   'CAPACITACION',
   'ENTREGA_EPP',
-  'ACTO_INSEGURO',
-  'CONDICION_INSEGURA'
+  'OTRO'
 ]);
 
-export const sstEstadoSchema = z.enum([
-  'ABIERTO',
-  'EN_INVESTIGACION',
-  'EN_SEGUIMIENTO',
-  'CERRADO',
-  'ANULADO'
-]);
+export const sstEstadoSchema = z.enum(['ABIERTO', 'EN_PROCESO', 'PENDIENTE', 'CERRADO', 'ANULADO']);
+export const sstEventoEstadoSchema = z.enum(['ABIERTO', 'EN_PROCESO', 'CERRADO', 'ANULADO']);
+export const sstPlanAccionEstadoSchema = z.enum(['PENDIENTE', 'EN_PROCESO', 'CERRADO', 'ANULADO']);
+export const sstEventoGravedadSchema = z.enum(['LEVE', 'MODERADA', 'GRAVE', 'CRITICA']);
+
+const sstPlanAccionOrigenAliasSchema = z.preprocess((value) => {
+  if (typeof value === 'string') {
+    return value.trim().toUpperCase();
+  }
+
+  return value;
+}, z.enum([
+  'EVENTO',
+  'SST_EVENTO',
+  'SST_EVENTOS',
+  'INSPECCION',
+  'SST_INSPECCION',
+  'SST_INSPECCIONES',
+  'HALLAZGO',
+  'HALLAZGO_INSPECCION',
+  'SST_INSPECCION_HALLAZGO',
+  'SST_INSPECCIONES_HALLAZGOS',
+  'ACCIDENTE',
+  'SST_ACCIDENTE',
+  'SST_ACCIDENTES_INCIDENTES'
+]));
+
+export const sstPlanAccionOrigenSchema = sstPlanAccionOrigenAliasSchema.transform((value) => {
+  switch (value) {
+    case 'EVENTO':
+    case 'SST_EVENTO':
+    case 'SST_EVENTOS':
+      return 'EVENTO' as const;
+    case 'INSPECCION':
+    case 'SST_INSPECCION':
+    case 'SST_INSPECCIONES':
+      return 'INSPECCION' as const;
+    case 'HALLAZGO':
+    case 'HALLAZGO_INSPECCION':
+    case 'SST_INSPECCION_HALLAZGO':
+    case 'SST_INSPECCIONES_HALLAZGOS':
+      return 'HALLAZGO' as const;
+    case 'ACCIDENTE':
+    case 'SST_ACCIDENTE':
+    case 'SST_ACCIDENTES_INCIDENTES':
+      return 'ACCIDENTE' as const;
+  }
+});
+
+const nullableTimeSchema = z.preprocess((value) => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length === 0 ? null : trimmed;
+  }
+
+  return value;
+}, z.string().trim().regex(/^\d{2}:\d{2}(:\d{2})?$/).nullable());
 
 export const sstIdParamSchema = z.object({
   id: trimmedStringSchema
@@ -226,14 +274,17 @@ export const sstPlanAnualActividadEstadoAlertaSchema = z.enum([
 ]);
 
 export const listSstEventosQuerySchema = paginationSchema.extend({
-  empresa_id: nullableTrimmedStringSchema.optional(),
-  contrato_id: nullableTrimmedStringSchema.optional(),
-  vinculacion_id: nullableTrimmedStringSchema.optional(),
+  empresa_id: nullableNumericIdSchema.optional(),
+  contrato_id: nullableNumericIdSchema.optional(),
+  vinculacion_id: nullableNumericIdSchema.optional(),
   tipo_evento: sstTipoEventoSchema.optional(),
-  estado: sstEstadoSchema.optional(),
+  gravedad: sstEventoGravedadSchema.optional(),
+  estado: sstEventoEstadoSchema.optional(),
   fecha_desde: nullableDateSchema.optional(),
-  fecha_hasta: nullableDateSchema.optional()
-}).refine(
+  fecha_hasta: nullableDateSchema.optional(),
+  activo: optionalBooleanSchema,
+  search: nullableTrimmedStringSchema.optional()
+}).strict().refine(
   (data) => {
     if (!data.fecha_desde || !data.fecha_hasta) {
       return true;
@@ -248,47 +299,46 @@ export const listSstEventosQuerySchema = paginationSchema.extend({
 );
 
 export const createSstEventoSchema = z.object({
-  persona_id: nullableTrimmedStringSchema.optional().default(null),
-  vinculacion_id: nullableTrimmedStringSchema.optional().default(null),
-  contrato_id: nullableTrimmedStringSchema.optional().default(null),
-  empresa_id: nullableTrimmedStringSchema.optional().default(null),
+  vinculacion_id: numericIdSchema,
   tipo_evento: sstTipoEventoSchema,
-  estado: sstEstadoSchema.optional().default('ABIERTO'),
+  hora_evento: nullableTimeSchema.optional().default(null),
+  lugar: nullableTrimmedStringSchema.optional().default(null),
+  gravedad: sstEventoGravedadSchema.nullable().optional().default(null),
+  requiere_investigacion: z.boolean().optional().default(true),
+  estado: sstEventoEstadoSchema.optional().default('ABIERTO'),
   fecha_evento: z.string().date(),
-  fecha_cierre: nullableDateSchema.optional().default(null),
-  titulo: trimmedStringSchema,
   descripcion: nullableTrimmedStringSchema.optional().default(null),
-  ubicacion: nullableTrimmedStringSchema.optional().default(null),
-  metadata: nullableRecordSchema.optional().default(null),
   activo: z.boolean().optional().default(true)
-});
+}).strict();
 
 export const updateSstEventoSchema = z.object({
-  persona_id: nullableTrimmedStringSchema.optional(),
-  vinculacion_id: nullableTrimmedStringSchema.optional(),
-  contrato_id: nullableTrimmedStringSchema.optional(),
-  empresa_id: nullableTrimmedStringSchema.optional(),
+  vinculacion_id: numericIdSchema.optional(),
   tipo_evento: sstTipoEventoSchema.optional(),
-  estado: sstEstadoSchema.optional(),
+  hora_evento: nullableTimeSchema.optional(),
+  lugar: nullableTrimmedStringSchema.optional(),
+  gravedad: sstEventoGravedadSchema.nullable().optional(),
+  requiere_investigacion: z.boolean().optional(),
+  estado: sstEventoEstadoSchema.optional(),
   fecha_evento: z.string().date().optional(),
-  fecha_cierre: nullableDateSchema.optional(),
-  titulo: trimmedStringSchema.optional(),
   descripcion: nullableTrimmedStringSchema.optional(),
-  ubicacion: nullableTrimmedStringSchema.optional(),
-  metadata: nullableRecordSchema.optional(),
   activo: z.boolean().optional()
-}).refine(
+}).strict().refine(
   (data) => Object.keys(data).length > 0,
   'At least one field must be provided for update'
 );
 
 export const listSstPlanesQuerySchema = paginationSchema.extend({
-  evento_id: nullableTrimmedStringSchema.optional(),
-  responsable_id: nullableTrimmedStringSchema.optional(),
-  estado: sstEstadoSchema.optional(),
+  empresa_id: nullableNumericIdSchema.optional(),
+  contrato_id: nullableNumericIdSchema.optional(),
+  origen: sstPlanAccionOrigenSchema.optional(),
+  origen_id: nullableNumericIdSchema.optional(),
+  responsable: nullableTrimmedStringSchema.optional(),
+  estado: sstPlanAccionEstadoSchema.optional(),
   fecha_compromiso_desde: nullableDateSchema.optional(),
-  fecha_compromiso_hasta: nullableDateSchema.optional()
-}).refine(
+  fecha_compromiso_hasta: nullableDateSchema.optional(),
+  activo: optionalBooleanSchema,
+  search: nullableTrimmedStringSchema.optional()
+}).strict().refine(
   (data) => {
     if (!data.fecha_compromiso_desde || !data.fecha_compromiso_hasta) {
       return true;
@@ -303,29 +353,40 @@ export const listSstPlanesQuerySchema = paginationSchema.extend({
 );
 
 export const createSstPlanAccionSchema = z.object({
-  evento_id: trimmedStringSchema,
-  responsable: trimmedStringSchema,
-  responsable_id: nullableTrimmedStringSchema.optional().default(null),
+  origen: sstPlanAccionOrigenSchema,
+  origen_id: numericIdSchema,
+  responsable: nullableTrimmedStringSchema.optional().default(null),
   descripcion: trimmedStringSchema,
-  fecha_compromiso: z.string().date(),
+  fecha_compromiso: nullableDateSchema.optional().default(null),
   fecha_cierre: nullableDateSchema.optional().default(null),
-  estado: sstEstadoSchema.optional().default('ABIERTO'),
-  observaciones: nullableTrimmedStringSchema.optional().default(null),
+  estado: sstPlanAccionEstadoSchema.optional().default('PENDIENTE'),
   activo: z.boolean().optional().default(true)
-});
+}).strict().refine(
+  (data) => !data.fecha_compromiso || !data.fecha_cierre || data.fecha_compromiso <= data.fecha_cierre,
+  {
+    message: 'fecha_cierre must be greater than or equal to fecha_compromiso',
+    path: ['fecha_cierre']
+  }
+);
 
 export const updateSstPlanAccionSchema = z.object({
-  responsable: trimmedStringSchema.optional(),
-  responsable_id: nullableTrimmedStringSchema.optional(),
+  origen: sstPlanAccionOrigenSchema.optional(),
+  origen_id: numericIdSchema.optional(),
+  responsable: nullableTrimmedStringSchema.optional(),
   descripcion: trimmedStringSchema.optional(),
-  fecha_compromiso: z.string().date().optional(),
+  fecha_compromiso: nullableDateSchema.optional(),
   fecha_cierre: nullableDateSchema.optional(),
-  estado: sstEstadoSchema.optional(),
-  observaciones: nullableTrimmedStringSchema.optional(),
+  estado: sstPlanAccionEstadoSchema.optional(),
   activo: z.boolean().optional()
-}).refine(
+}).strict().refine(
   (data) => Object.keys(data).length > 0,
   'At least one field must be provided for update'
+).refine(
+  (data) => !data.fecha_compromiso || !data.fecha_cierre || data.fecha_compromiso <= data.fecha_cierre,
+  {
+    message: 'fecha_cierre must be greater than or equal to fecha_compromiso',
+    path: ['fecha_cierre']
+  }
 ).refine(
   (data) => data.estado !== 'CERRADO' || Boolean(data.fecha_cierre),
   {
@@ -335,16 +396,21 @@ export const updateSstPlanAccionSchema = z.object({
 );
 
 export const closeSstPlanAccionSchema = z.object({
-  fecha_cierre: z.string().date(),
-  observaciones: nullableTrimmedStringSchema.optional().default(null)
-});
+  fecha_cierre: z.string().date()
+}).strict();
 
-export const listSstIndicadoresQuerySchema = z.object({
-  empresa_id: nullableTrimmedStringSchema.optional(),
-  contrato_id: nullableTrimmedStringSchema.optional(),
+export const listSstIndicadoresQuerySchema = paginationSchema.extend({
+  indicador_id: nullableNumericIdSchema.optional(),
+  empresa_id: nullableNumericIdSchema.optional(),
+  contrato_id: nullableNumericIdSchema.optional(),
+  periodicidad: nullableTrimmedStringSchema.optional(),
+  unidad: nullableTrimmedStringSchema.optional(),
+  periodo: nullableTrimmedStringSchema.optional(),
   fecha_desde: nullableDateSchema.optional(),
-  fecha_hasta: nullableDateSchema.optional()
-}).refine(
+  fecha_hasta: nullableDateSchema.optional(),
+  activo: optionalBooleanSchema,
+  search: nullableTrimmedStringSchema.optional()
+}).strict().refine(
   (data) => {
     if (!data.fecha_desde || !data.fecha_hasta) {
       return true;
@@ -359,18 +425,24 @@ export const listSstIndicadoresQuerySchema = z.object({
 );
 
 export const calculateSstIndicadoresSchema = z.object({
-  empresa_id: nullableTrimmedStringSchema.optional().default(null),
-  contrato_id: nullableTrimmedStringSchema.optional().default(null),
-  fecha_desde: z.string().date(),
-  fecha_hasta: z.string().date()
-}).refine(
-  (data) => data.fecha_desde <= data.fecha_hasta,
+  periodo_id: nullableNumericIdSchema.optional(),
+  empresa_id: nullableNumericIdSchema.optional(),
+  contrato_id: nullableNumericIdSchema.optional(),
+  fecha_desde: nullableDateSchema.optional(),
+  fecha_hasta: nullableDateSchema.optional()
+}).strict().refine(
+  (data) => {
+    if (!data.fecha_desde || !data.fecha_hasta) {
+      return true;
+    }
+
+    return data.fecha_desde <= data.fecha_hasta;
+  },
   {
     message: 'fecha_hasta must be greater than or equal to fecha_desde',
     path: ['fecha_hasta']
   }
 );
-
 export const listSstCapacitacionesQuerySchema = paginationSchema.extend({
   empresa_id: nullableNumericIdSchema.optional(),
   contrato_id: nullableNumericIdSchema.optional(),
@@ -1088,6 +1160,7 @@ export const listSstPlanAnualAlertasQuerySchema = paginationSchema.extend({
 
 export type SstTipoEvento = z.infer<typeof sstTipoEventoSchema>;
 export type SstEstado = z.infer<typeof sstEstadoSchema>;
+export type SstPlanAccionOrigin = z.infer<typeof sstPlanAccionOrigenSchema>;
 export type ListSstEventosQuery = z.infer<typeof listSstEventosQuerySchema>;
 export type CreateSstEventoInput = z.infer<typeof createSstEventoSchema>;
 export type UpdateSstEventoInput = z.infer<typeof updateSstEventoSchema>;
@@ -1175,3 +1248,8 @@ export type CreateSstPlanAnualActividadInput = z.infer<typeof createSstPlanAnual
 export type UpdateSstPlanAnualActividadInput = z.infer<typeof updateSstPlanAnualActividadSchema>;
 export type ListSstPlanAnualDashboardQuery = z.infer<typeof listSstPlanAnualDashboardQuerySchema>;
 export type ListSstPlanAnualAlertasQuery = z.infer<typeof listSstPlanAnualAlertasQuerySchema>;
+
+
+
+
+

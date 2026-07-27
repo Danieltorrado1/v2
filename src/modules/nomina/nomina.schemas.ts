@@ -125,6 +125,12 @@ export const nominaNovedadIdParamSchema = z.object({
   id: trimmedStringSchema
 });
 
+export const nominaTipoNovedadIdParamSchema = z
+  .object({
+    id: identifierSchema
+  })
+  .strict();
+
 export const nominaEmpleadoIdParamSchema = z.object({
   id: trimmedStringSchema
 });
@@ -250,6 +256,14 @@ export const listNominaNovedadesQuerySchema = paginationSchema.extend({
   revisado: z.coerce.boolean().optional(),
   activo: z.coerce.boolean().optional()
 });
+
+export const listNominaTiposNovedadQuerySchema = paginationSchema
+  .extend({
+    activo: z.coerce.boolean().optional(),
+    busqueda: nullableTrimmedStringSchema.optional(),
+    categoria: nullableTrimmedStringSchema.optional()
+  })
+  .strict();
 
 export const exportNominaPeriodoQuerySchema = z.object({
   tipo: nominaExportTipoSchema.optional().default('todo'),
@@ -424,6 +438,7 @@ export type ListNominaEmpleadosQuery = z.infer<typeof listNominaEmpleadosQuerySc
 export type UpdateNominaEmpleadoInput = z.infer<typeof updateNominaEmpleadoSchema>;
 export type ListNominaLiquidacionesQuery = z.infer<typeof listNominaLiquidacionesQuerySchema>;
 export type ListNominaNovedadesQuery = z.infer<typeof listNominaNovedadesQuerySchema>;
+export type ListNominaTiposNovedadQuery = z.infer<typeof listNominaTiposNovedadQuerySchema>;
 export type ExportNominaPeriodoQuery = z.infer<typeof exportNominaPeriodoQuerySchema>;
 export type ListNominaMovimientosQuery = z.infer<typeof listNominaMovimientosQuerySchema>;
 export type ListNominaAsistenciaQuery = z.infer<typeof listNominaAsistenciaQuerySchema>;

@@ -2,18 +2,12 @@ import cron from 'node-cron';
 
 import { dbQuery } from '../config/db';
 import { AuditRequestMeta } from '../modules/auditoria/auditoria.helper';
-import { calculateSstIndicadores } from '../modules/sst/sst.service';
 import { resolveJobExecutionContext } from './job.utils';
 
 const SST_CRON_EXPRESSION = '0 8 * * *';
 
 interface SstPlanSummaryRow {
   planes_vencidos: string;
-}
-
-interface SstScopeRow {
-  contrato_id: string | null;
-  empresa_id: string | null;
 }
 
 const getCurrentMonthRange = (): { fecha_desde: string; fecha_hasta: string } => {
@@ -32,12 +26,12 @@ export const runSstJobNow = async (
 ): Promise<{
   executed_at: string;
   indicadores_generados: number;
-  indicadores_resultado: Awaited<ReturnType<typeof calculateSstIndicadores>>[];
+  indicadores_resultado: Array<{ status: 'disabled'; reason: string }>;
   planes_vencidos: number;
 }> => {
   try {
-    const context = await resolveJobExecutionContext('sst', actorUserId, auditMeta);
-    const range = getCurrentMonthRange();
+    await resolveJobExecutionContext('sst', actorUserId, auditMeta);
+    getCurrentMonthRange();
 
     const planSummaryResult = await dbQuery<SstPlanSummaryRow>(
       `
@@ -51,44 +45,18 @@ export const runSstJobNow = async (
       `
     );
 
-    const scopeResult = await dbQuery<SstScopeRow>(
-      `
-        SELECT DISTINCT
-          se.empresa_id::text AS empresa_id,
-          se.contrato_id::text AS contrato_id
-        FROM sst_eventos se
-        WHERE se.fecha_evento >= $1
-          AND se.fecha_evento <= $2
-          AND COALESCE(se.activo, TRUE) = TRUE
-      `,
-      [range.fecha_desde, range.fecha_hasta]
-    );
-
-    const scopes =
-      scopeResult.rows.length > 0
-        ? scopeResult.rows
-        : [{ empresa_id: null, contrato_id: null }];
-    const indicadoresResultado: Awaited<ReturnType<typeof calculateSstIndicadores>>[] = [];
-
-    for (const scope of scopes) {
-      const indicador = await calculateSstIndicadores(
-        {
-          empresa_id: scope.empresa_id,
-          contrato_id: scope.contrato_id,
-          fecha_desde: range.fecha_desde,
-          fecha_hasta: range.fecha_hasta
-        },
-        context.actorUserId,
-        context.auditMeta
-      );
-
-      indicadoresResultado.push(indicador);
-    }
+    const indicadoresResultado = [
+      {
+        status: 'disabled' as const,
+        reason:
+          'SST automatic indicator calculation was disabled on July 16, 2026 while the module was aligned to sst_indicadores, sst_indicadores_periodos, and sst_indicador_mediciones.'
+      }
+    ];
 
     const response = {
       executed_at: new Date().toISOString(),
       planes_vencidos: Number(planSummaryResult.rows[0]?.planes_vencidos ?? 0),
-      indicadores_generados: indicadoresResultado.length,
+      indicadores_generados: 0,
       indicadores_resultado: indicadoresResultado
     };
 

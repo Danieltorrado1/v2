@@ -1177,12 +1177,7 @@ export const createSstPlanAccionHandler = asyncHandler(async (req: Request, res:
 export const updateSstPlanAccionHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = sstIdParamSchema.parse(req.params);
   const input = updateSstPlanAccionSchema.parse(req.body);
-  const plan = await updateSstPlanAccion(
-    id,
-    input,
-    getActorUserId(req),
-    getAuditRequestMeta(req)
-  );
+  const plan = await updateSstPlanAccion(id, input, getActorUserId(req), getAuditRequestMeta(req));
 
   return successResponse(res, {
     message: 'SST action plan updated successfully',
@@ -1214,11 +1209,7 @@ export const getSstIndicadoresHandler = asyncHandler(async (req: Request, res: R
 export const calculateSstIndicadoresHandler = asyncHandler(
   async (req: Request, res: Response) => {
     const input = calculateSstIndicadoresSchema.parse(req.body);
-    const indicador = await calculateSstIndicadores(
-      input,
-      getActorUserId(req),
-      getAuditRequestMeta(req)
-    );
+    const indicador = await calculateSstIndicadores(input, getActorUserId(req), getAuditRequestMeta(req));
 
     return successResponse(res, {
       message: 'SST indicators calculated successfully',
@@ -1227,3 +1218,8 @@ export const calculateSstIndicadoresHandler = asyncHandler(
     });
   }
 );
+
+
+
+
+

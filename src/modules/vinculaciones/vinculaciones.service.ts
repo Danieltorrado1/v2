@@ -708,9 +708,15 @@ export const listVinculaciones = async (
       conditions.push(`v.estado_vinculacion IN ('ACTIVA', 'ACTIVO')`);
     } else {
       params.push(filters.estado_vinculacion);
-      conditions.push(`v.estado_vinculacion = $${paramIndex}`);
+      conditions.push(`v.estado_vinculacion = $${paramIndex}::text`);
       paramIndex += 1;
     }
+  }
+
+  if (filters.metodo_pago) {
+    params.push(filters.metodo_pago);
+    conditions.push(`v.metodo_pago = $${paramIndex}::text`);
+    paramIndex += 1;
   }
 
   if (filters.fecha_inicio_desde) {
@@ -732,6 +738,7 @@ export const listVinculaciones = async (
     `
       SELECT COUNT(*)::int AS total
       FROM vinculaciones v
+      INNER JOIN contratos c ON c.id = v.contrato_id
       ${whereClause}
     `,
     params
@@ -1573,3 +1580,6 @@ export const reactivarVinculacion = async (
     client.release();
   }
 };
+
+
+

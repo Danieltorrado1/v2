@@ -1,13 +1,20 @@
 import { z } from 'zod';
 
 export const vinculacionEstadoSchema = z.enum(['ACTIVA', 'RETIRADA', 'SUSPENDIDA']);
-export const metodoPagoSchema = z.enum([
+export const METODOS_PAGO = [
   'ASISTENCIA',
   'CATEGORIA',
   'OPS_CUENTA_COBRO',
   'OPS_VALOR_FIJO',
   'OPS_POR_PRODUCTO'
-]);
+] as const;
+export const metodoPagoSchema = z.enum(METODOS_PAGO);
+export const OPS_METODOS_PAGO = [
+  'OPS_CUENTA_COBRO',
+  'OPS_VALOR_FIJO',
+  'OPS_POR_PRODUCTO'
+] as const;
+export const opsMetodoPagoSchema = z.enum(OPS_METODOS_PAGO);
 
 const trimmedStringSchema = z.string().trim().min(1);
 
@@ -87,10 +94,23 @@ export const listVinculacionesQuerySchema = z.object({
   tipo_vinculacion_id: nullableNumericIdSchema.optional(),
   contrato_cargo_id: nullableNumericIdSchema.optional(),
   estado_vinculacion: vinculacionEstadoSchema.optional(),
+  metodo_pago: metodoPagoSchema.optional(),
   fecha_inicio_desde: nullableDateSchema.optional(),
   fecha_inicio_hasta: nullableDateSchema.optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10)
+});
+
+export const listOpsVinculacionesQuerySchema = z.object({
+  empresa_id: nullableNumericIdSchema.optional(),
+  contrato_id: nullableNumericIdSchema.optional(),
+  tipo_vinculacion_id: nullableNumericIdSchema.optional(),
+  contrato_cargo_id: nullableNumericIdSchema.optional(),
+  estado_vinculacion: vinculacionEstadoSchema.optional(),
+  metodo_pago: opsMetodoPagoSchema.optional(),
+  search: nullableTrimmedString.optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25)
 });
 
 export const createVinculacionSchema = z.object({
@@ -145,6 +165,7 @@ export type VinculacionEstado = z.infer<typeof vinculacionEstadoSchema>;
 export type VinculacionIdParams = z.infer<typeof vinculacionIdParamSchema>;
 export type VinculacionPersonaParams = z.infer<typeof vinculacionPersonaParamSchema>;
 export type ListVinculacionesQuery = z.infer<typeof listVinculacionesQuerySchema>;
+export type ListOpsVinculacionesQuery = z.infer<typeof listOpsVinculacionesQuerySchema>;
 export type CreateVinculacionInput = z.infer<typeof createVinculacionSchema>;
 export type UpdateVinculacionInput = z.infer<typeof updateVinculacionSchema>;
 export type RetirarVinculacionInput = z.infer<typeof retirarVinculacionSchema>;

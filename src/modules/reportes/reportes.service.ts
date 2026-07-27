@@ -863,12 +863,15 @@ export const getSstEventosReport = async (
     id: item.id,
     tipo_evento: item.tipo_evento,
     estado: item.estado,
-    empresa_id: item.empresa_id,
-    contrato_id: item.contrato_id,
-    vinculacion_id: item.vinculacion_id,
+    empresa_id: item.vinculacion?.empresa_id ?? null,
+    contrato_id: item.vinculacion?.contrato_id ?? null,
+    persona_id: item.vinculacion?.persona_id ?? null,
+    vinculacion_id: item.vinculacion?.id ?? null,
     fecha_evento: item.fecha_evento,
-    fecha_cierre: item.fecha_cierre,
-    titulo: item.titulo,
+    hora_evento: item.hora_evento,
+    lugar: item.lugar,
+    gravedad: item.gravedad,
+    requiere_investigacion: item.requiere_investigacion,
     descripcion: item.descripcion,
     activo: item.activo
   }));
@@ -883,10 +886,13 @@ export const getSstEventosReport = async (
       { key: 'estado', header: 'Estado' },
       { key: 'empresa_id', header: 'Empresa ID' },
       { key: 'contrato_id', header: 'Contrato ID' },
+      { key: 'persona_id', header: 'Persona ID' },
       { key: 'vinculacion_id', header: 'Vinculacion ID' },
       { key: 'fecha_evento', header: 'Fecha Evento' },
-      { key: 'fecha_cierre', header: 'Fecha Cierre' },
-      { key: 'titulo', header: 'Titulo' },
+      { key: 'hora_evento', header: 'Hora Evento' },
+      { key: 'lugar', header: 'Lugar' },
+      { key: 'gravedad', header: 'Gravedad' },
+      { key: 'requiere_investigacion', header: 'Requiere Investigacion' },
       { key: 'descripcion', header: 'Descripcion' },
       { key: 'activo', header: 'Activo' }
     ],
@@ -906,13 +912,16 @@ export const getSstPlanesAccionReport = async (
 
   const rows = data.items.map((item) => ({
     id: item.id,
-    evento_id: item.evento_id,
+    origen: item.origen,
+    origen_id: item.origen_id,
     responsable: item.responsable,
-    responsable_id: item.responsable_id,
     estado: item.estado,
     fecha_compromiso: item.fecha_compromiso,
     fecha_cierre: item.fecha_cierre,
-    observaciones: item.observaciones,
+    empresa_id: item.origen_relacionado.empresa_id,
+    contrato_id: item.origen_relacionado.contrato_id,
+    vinculacion_id: item.origen_relacionado.vinculacion_id,
+    inspeccion_id: item.origen_relacionado.inspeccion_id,
     activo: item.activo
   }));
 
@@ -922,13 +931,16 @@ export const getSstPlanesAccionReport = async (
     sheetName: 'Planes SST',
     columns: [
       { key: 'id', header: 'ID' },
-      { key: 'evento_id', header: 'Evento ID' },
+      { key: 'origen', header: 'Origen' },
+      { key: 'origen_id', header: 'Origen ID' },
       { key: 'responsable', header: 'Responsable' },
-      { key: 'responsable_id', header: 'Responsable ID' },
       { key: 'estado', header: 'Estado' },
       { key: 'fecha_compromiso', header: 'Fecha Compromiso' },
       { key: 'fecha_cierre', header: 'Fecha Cierre' },
-      { key: 'observaciones', header: 'Observaciones' },
+      { key: 'empresa_id', header: 'Empresa ID' },
+      { key: 'contrato_id', header: 'Contrato ID' },
+      { key: 'vinculacion_id', header: 'Vinculacion ID' },
+      { key: 'inspeccion_id', header: 'Inspeccion ID' },
       { key: 'activo', header: 'Activo' }
     ],
     rows,
@@ -977,3 +989,5 @@ export const getAuditoriaReport = async (
     data
   };
 };
+
+

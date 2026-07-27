@@ -20,6 +20,7 @@
     "seed:nomina-cesantias-permisos": "node --experimental-strip-types src/scripts/seed-nomina-cesantias-permisos.ts",
     "seed:nomina-intereses-cesantias-permisos": "node --experimental-strip-types src/scripts/seed-nomina-intereses-cesantias-permisos.ts",
     "seed:nomina-liquidaciones-finales-permisos": "node --experimental-strip-types src/scripts/seed-nomina-liquidaciones-finales-permisos.ts",
+    "seed:nomina-cuentas-cobro-ops-permisos": "node --experimental-strip-types src/scripts/seed-nomina-cuentas-cobro-ops-permisos.ts",
     "seed:sst-permisos": "node --experimental-strip-types src/scripts/seed-sst-permisos.ts",
     "seed:evaluaciones-permisos": "node --experimental-strip-types src/scripts/seed-evaluaciones-permisos.ts",
     "seed:contrato-laboral-template": "node --experimental-strip-types src/scripts/seed-contrato-laboral-template.ts",
@@ -27,7 +28,14 @@
     "seed:tenant-access-permisos": "node --experimental-strip-types src/scripts/seed-tenant-access-permisos.ts",
     "seed:tenant-test-user": "node --experimental-strip-types src/scripts/seed-tenant-test-user.ts",
     "storage:test": "node --experimental-strip-types src/scripts/test-storage-service-role.ts",
-    "reset:admin-password": "node --experimental-strip-types src/scripts/reset-admin-password.ts"
+    "reset:admin-password": "node --experimental-strip-types src/scripts/reset-admin-password.ts",
+    "db:migrate:cuentas-cobro-ops": "node --experimental-strip-types src/scripts/migrate-cuentas-cobro-ops.ts",
+    "seed:nomina-correcciones-permisos": "node --experimental-strip-types src/scripts/seed-nomina-correcciones-permisos.ts",
+    "db:migrate:nomina-correcciones": "node --experimental-strip-types src/scripts/migrate-nomina-correcciones.ts",
+    "test:nomina-correcciones": "npm run build && node dist/scripts/test-nomina-correcciones.js",
+    "db:migrate:administracion-catalogos": "node --experimental-strip-types src/scripts/migrate-administracion-catalogos.ts",
+    "seed:administracion-permisos": "node --experimental-strip-types src/scripts/seed-administracion-permisos.ts",
+    "test:administracion-catalogos": "tsx src/scripts/test-administracion-catalogos.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",

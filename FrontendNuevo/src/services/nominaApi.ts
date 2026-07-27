@@ -3,10 +3,15 @@ import type { ApiQueryParams, ApiResponse } from '../types/api.types';
 import { NOMINA_TURNO_MOVIMIENTO_TIPO } from '../types/nomina.types';
 import type {
   CreateNominaMovimientoApi,
+  CreateNominaCorreccionPayload,
   CreateNominaNovedadApi,
   CreateNominaPeriodoApi,
   CreateNominaTurnoPayload,
   GenerateNominaLiquidacionesResponse,
+  NominaCorreccion,
+  NominaCorreccionDetalle,
+  NominaCorreccionFilters,
+  NominaCorreccionesResponse,
   NominaDesprendibleApi,
   NominaDesprendiblesQuery,
   NominaLiquidacionFilters,
@@ -14,6 +19,9 @@ import type {
   NominaMovimientosQuery,
   NominaNovedadApi,
   NominaNovedadesQuery,
+  NominaTipoNovedad,
+  NominaTipoNovedadFilters,
+  NominaTipoNovedadResponse,
   NominaPeriodoActionApi,
   NominaPeriodoActionResultApi,
   NominaPeriodoApi,
@@ -28,6 +36,7 @@ import type {
   PaginatedNominaNovedadesApi,
   PaginatedNominaPeriodosApi,
   PaginatedNominaTurnosApi,
+  UpdateNominaCorreccionPayload,
   UpdateNominaMovimientoApi,
   UpdateNominaNovedadApi,
   UpdateNominaTurnoPayload,
@@ -228,14 +237,35 @@ function mapPaginatedNominaTurnos(
   };
 }
 
+function normalizeNominaPeriodosResponse(
+  data: PaginatedNominaPeriodosApi | NominaPeriodoApi[],
+): PaginatedNominaPeriodosApi {
+  if (Array.isArray(data)) {
+    return {
+      items: data,
+      pagination: {
+        page: 1,
+        limit: data.length,
+        total: data.length,
+        total_pages: 1,
+      },
+    };
+  }
+
+  return data;
+}
+
 export async function getNominaPeriodos(
   filters: NominaPeriodosQuery = {},
 ): Promise<PaginatedNominaPeriodosApi> {
-  const response = await apiClient.get<ApiResponse<PaginatedNominaPeriodosApi>>('/nomina/periodos', {
-    params: toParams(filters),
-  });
+  const response = await apiClient.get<ApiResponse<PaginatedNominaPeriodosApi | NominaPeriodoApi[]>>(
+    '/nomina/periodos',
+    {
+      params: toParams(filters),
+    },
+  );
 
-  return response.data;
+  return normalizeNominaPeriodosResponse(response.data);
 }
 
 export async function getNominaPeriodo(id: string): Promise<NominaPeriodoApi> {
@@ -319,6 +349,134 @@ export async function getAllNominaPeriodoEmpleados(
   };
 }
 
+export async function listarCorreccionesNomina(
+  filters: NominaCorreccionFilters = {},
+): Promise<NominaCorreccionesResponse> {
+  const response = await apiClient.get<ApiResponse<NominaCorreccionesResponse>>(
+    '/nomina/correcciones',
+    {
+      params: toParams({
+        activo: filters.activo ?? true,
+        estado: filters.estado,
+        limit: filters.limit,
+        nomina_empleado_id: filters.nomina_empleado_id,
+        page: filters.page,
+        periodo_id: filters.periodo_id,
+        search: filters.search,
+        tipo_correccion: filters.tipo_correccion,
+        vinculacion_id: filters.vinculacion_id,
+      }),
+    },
+  );
+
+  return response.data;
+}
+
+export async function obtenerCorreccionNomina(
+  id: string | number,
+): Promise<NominaCorreccionDetalle> {
+  const response = await apiClient.get<ApiResponse<NominaCorreccionDetalle>>(
+    `/nomina/correcciones/${id}`,
+  );
+
+  return response.data;
+}
+
+export async function crearCorreccionNomina(
+  payload: CreateNominaCorreccionPayload,
+): Promise<NominaCorreccion> {
+  const response = await apiClient.post<ApiResponse<NominaCorreccion>>(
+    '/nomina/correcciones',
+    payload,
+  );
+
+  return response.data;
+}
+
+export async function actualizarCorreccionNomina(
+  id: string | number,
+  payload: UpdateNominaCorreccionPayload,
+): Promise<NominaCorreccion> {
+  const response = await apiClient.patch<ApiResponse<NominaCorreccion>>(
+    `/nomina/correcciones/${id}`,
+    payload,
+  );
+
+  return response.data;
+}
+
+export async function solicitarCorreccionNomina(
+  id: string | number,
+): Promise<NominaCorreccion> {
+  const response = await apiClient.patch<ApiResponse<NominaCorreccion>>(
+    `/nomina/correcciones/${id}/solicitar`,
+    {},
+  );
+
+  return response.data;
+}
+
+export async function revisarCorreccionNomina(
+  id: string | number,
+): Promise<NominaCorreccion> {
+  const response = await apiClient.patch<ApiResponse<NominaCorreccion>>(
+    `/nomina/correcciones/${id}/revisar`,
+    {},
+  );
+
+  return response.data;
+}
+
+export async function aprobarCorreccionNomina(
+  id: string | number,
+): Promise<NominaCorreccion> {
+  const response = await apiClient.patch<ApiResponse<NominaCorreccion>>(
+    `/nomina/correcciones/${id}/aprobar`,
+    {},
+  );
+
+  return response.data;
+}
+
+export async function rechazarCorreccionNomina(
+  id: string | number,
+  observacion: string,
+): Promise<NominaCorreccion> {
+  const response = await apiClient.patch<ApiResponse<NominaCorreccion>>(
+    `/nomina/correcciones/${id}/rechazar`,
+    {
+      observacion_revision: observacion,
+    },
+  );
+
+  return response.data;
+}
+
+export async function anularCorreccionNomina(
+  id: string | number,
+  observacion: string,
+): Promise<NominaCorreccion> {
+  const response = await apiClient.patch<ApiResponse<NominaCorreccion>>(
+    `/nomina/correcciones/${id}/anular`,
+    {
+      observacion_revision: observacion,
+    },
+  );
+
+  return response.data;
+}
+
+export async function desactivarCorreccionNomina(
+  id: string | number,
+): Promise<NominaCorreccion> {
+  const response = await apiClient.patch<ApiResponse<NominaCorreccion>>(
+    `/nomina/correcciones/${id}/deactivate`,
+    {},
+  );
+
+  return response.data;
+}
+
 export async function getNominaNovedades(
   filters: NominaNovedadesQuery = {},
 ): Promise<PaginatedNominaNovedadesApi> {
@@ -371,6 +529,35 @@ export async function getAllNominaNovedades(
       total_pages: totalPages,
     },
   };
+}
+
+export async function listarTiposNovedad(
+  filters: NominaTipoNovedadFilters = {},
+): Promise<NominaTipoNovedadResponse> {
+  const response = await apiClient.get<ApiResponse<NominaTipoNovedadResponse>>(
+    '/nomina/tipos-novedad',
+    {
+      params: toParams({
+        activo: filters.activo ?? true,
+        busqueda: filters.busqueda,
+        categoria: filters.categoria,
+        page: filters.page ?? 1,
+        limit: filters.limit ?? 100,
+      }),
+    },
+  );
+
+  return response.data;
+}
+
+export async function obtenerTipoNovedad(
+  id: string,
+): Promise<NominaTipoNovedad> {
+  const response = await apiClient.get<ApiResponse<NominaTipoNovedad>>(
+    `/nomina/tipos-novedad/${id}`,
+  );
+
+  return response.data;
 }
 
 export async function getNominaLiquidaciones(

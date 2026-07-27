@@ -1,52 +1,27 @@
 import { useState } from 'react';
 import {
-  Banknote,
   BookOpen,
   Briefcase,
   Building2,
-  Calculator,
-  ClipboardList,
   FileText,
-  MapPin,
   Settings,
-  ShieldCheck,
   Users,
 } from 'lucide-react';
-import { EmpresasTab }     from './tabs/EmpresasTab';
-import { ContratosTab }    from './tabs/ContratosTab';
-import { RolesTab }        from './tabs/RolesTab';
-import { UsuariosTab }     from './tabs/UsuariosTab';
-import { CatalogosTab }    from './tabs/CatalogosTab';
-import { CargosTab }       from './tabs/CargosTab';
-import { RequisitosTab }   from './tabs/RequisitosTab';
-import { SalariosTab }     from './tabs/SalariosTab';
-import { CalculadorasSection } from './tabs/CalculadorasSection';
-import { MunicipiosTab }   from './tabs/MunicipiosTab';
+import { EmpresasTab } from './tabs/EmpresasTab';
+import { ContratosTab } from './tabs/ContratosTab';
+import { UsuariosTab } from './tabs/UsuariosTab';
+import { CatalogosTab } from './tabs/CatalogosTab';
+import { CargosTab } from './tabs/CargosTab';
 import './ConfiguracionGeneral.css';
 
-type TabId =
-  | 'empresas'
-  | 'contratos'
-  | 'roles'
-  | 'usuarios'
-  | 'catalogos'
-  | 'cargos'
-  | 'requisitos'
-  | 'salarios'
-  | 'calculadoras'
-  | 'municipios';
+type TabId = 'empresas' | 'contratos' | 'cargos' | 'catalogos' | 'usuarios';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'empresas',      label: 'Empresas',      icon: <Building2 size={14} /> },
-  { id: 'contratos',     label: 'Contratos',     icon: <FileText size={14} /> },
-  { id: 'roles',         label: 'Roles',         icon: <ShieldCheck size={14} /> },
-  { id: 'usuarios',      label: 'Usuarios',      icon: <Users size={14} /> },
-  { id: 'catalogos',     label: 'Catálogos',     icon: <BookOpen size={14} /> },
-  { id: 'cargos',        label: 'Cargos',        icon: <Briefcase size={14} /> },
-  { id: 'requisitos',    label: 'Documentos',    icon: <ClipboardList size={14} /> },
-  { id: 'salarios',      label: 'Salarios',      icon: <Banknote size={14} /> },
-  { id: 'calculadoras',  label: 'Calculadoras',  icon: <Calculator size={14} /> },
-  { id: 'municipios',    label: 'Municipios',    icon: <MapPin size={14} /> },
+  { id: 'empresas', label: 'Empresas', icon: <Building2 size={14} /> },
+  { id: 'contratos', label: 'Contratos', icon: <FileText size={14} /> },
+  { id: 'cargos', label: 'Cargos', icon: <Briefcase size={14} /> },
+  { id: 'catalogos', label: 'Catalogos', icon: <BookOpen size={14} /> },
+  { id: 'usuarios', label: 'Usuarios y accesos', icon: <Users size={14} /> },
 ];
 
 export default function ConfiguracionGeneral() {
@@ -56,35 +31,39 @@ export default function ConfiguracionGeneral() {
     <div className="adm-page">
       <div className="adm-header">
         <div>
-          <h1 className="adm-header-title"><Settings size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }} />Configuración General</h1>
-          <p className="adm-header-sub">Centro maestro de parametrización de Empiria</p>
+          <h1 className="adm-header-title">
+            <Settings
+              size={20}
+              style={{ display: 'inline', verticalAlign: 'middle', marginRight: 8 }}
+            />
+            Administracion
+          </h1>
+          <p className="adm-header-sub">
+            Empresas, contratos, cargos, catalogos y accesos conectados al backend real
+          </p>
         </div>
       </div>
 
-      <nav className="adm-nav">
-        {TABS.map(t => (
+      <nav className="adm-nav" aria-label="Secciones de administracion">
+        {TABS.map((tab) => (
           <button
-            key={t.id}
-            className={`adm-nav-tab ${activeTab === t.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(t.id)}
+            key={tab.id}
+            className={`adm-nav-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+            type="button"
           >
-            {t.icon}
-            {t.label}
+            {tab.icon}
+            {tab.label}
           </button>
         ))}
       </nav>
 
       <div className="adm-content">
-        {activeTab === 'empresas'     && <EmpresasTab />}
-        {activeTab === 'contratos'    && <ContratosTab />}
-        {activeTab === 'roles'        && <RolesTab />}
-        {activeTab === 'usuarios'     && <UsuariosTab />}
-        {activeTab === 'catalogos'    && <CatalogosTab />}
-        {activeTab === 'cargos'       && <CargosTab />}
-        {activeTab === 'requisitos'   && <RequisitosTab />}
-        {activeTab === 'salarios'     && <SalariosTab />}
-        {activeTab === 'calculadoras' && <CalculadorasSection />}
-        {activeTab === 'municipios'   && <MunicipiosTab />}
+        {activeTab === 'empresas' && <EmpresasTab />}
+        {activeTab === 'contratos' && <ContratosTab />}
+        {activeTab === 'cargos' && <CargosTab />}
+        {activeTab === 'catalogos' && <CatalogosTab />}
+        {activeTab === 'usuarios' && <UsuariosTab />}
       </div>
     </div>
   );

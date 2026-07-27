@@ -20,6 +20,7 @@ import {
   CreateNominaNovedadInput,
   CreateNominaPeriodoInput,
   EstadoLiquidacion,
+  ListNominaTiposNovedadQuery,
   ListNominaAsistenciaQuery,
   NominaExportTipo,
   NominaRecargoTipo,
@@ -81,6 +82,8 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   auxilio_transporte: number | string | null;
   cargo_id: string | null;
   cargo_nombre: string | null;
+  cargo_operativo_id: string | null;
+  cargo_operativo_nombre: string | null;
   categoria_auxilio_transporte: number | string | null;
   categoria_codigo: string | null;
   categoria_id: string | null;
@@ -104,6 +107,7 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   id: string;
   metodo_liquidacion: string | null;
   motivo_caso_especial: string | null;
+  municipio_nombre: string | null;
   neto_pagar: number | string | null;
   otros_devengos: number | string | null;
   pension: number | string | null;
@@ -119,6 +123,17 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   segundo_nombre: string | null;
   total_adiciones: number | string | null;
   total_deducciones: number | string | null;
+  total_documental_cargados: number | string | null;
+  total_documental_faltantes: number | string | null;
+  total_documental_requeridos: number | string | null;
+  total_novedades: number;
+  tipo_jornada_id: string | null;
+  tipo_jornada_nombre: string | null;
+  tipo_vinculacion_codigo: string | null;
+  tipo_vinculacion_id: string | null;
+  tipo_vinculacion_nombre: string | null;
+  porcentaje_cumplimiento_documental: number | string | null;
+  contrato_numero: string | null;
   vinculacion_contrato_id: string;
   vinculacion_empresa_id: string;
   vinculacion_estado: string | null;
@@ -476,6 +491,7 @@ export interface NominaEmpleado {
   id: string;
   metodo_liquidacion: string | null;
   motivo_caso_especial: string | null;
+  municipio: string | null;
   neto_pagar: number;
   otros_devengos: number;
   pension: number;
@@ -492,8 +508,24 @@ export interface NominaEmpleado {
   revisado: boolean;
   salario_base: number;
   salud: number;
+  sede: {
+    id: string | null;
+    municipio: string | null;
+    nombre_sede: string | null;
+  } | null;
+  modalidad: string | null;
+  clasificacion: string | null;
+  contrato_id: string;
+  numero_contrato: string | null;
+  total_novedades: number;
   total_adiciones: number;
   total_deducciones: number;
+  estado_documental: {
+    porcentaje_cumplimiento: number | null;
+    total_cargados: number;
+    total_faltantes: number;
+    total_requeridos: number;
+  } | null;
   vinculacion: {
     contrato_id: string;
     empresa_id: string;
@@ -511,7 +543,6 @@ export interface NominaEmpleado {
   } | null;
   cargo_nombre_snapshot?: string | null;
   contrato_cargo_id?: string;
-  contrato_id?: string;
   contrato_nombre_snapshot?: string | null;
   empresa_id?: string;
   estado_vinculacion_snapshot?: string;
@@ -521,6 +552,22 @@ export interface NominaEmpleado {
   persona_nombre_snapshot?: string;
   salario_base_snapshot?: number;
   updated_at?: string;
+}
+
+export interface NominaTipoNovedadCatalogItem {
+  activo: boolean;
+  afecta_salario: boolean;
+  afecta_transporte: boolean;
+  categoria: string | null;
+  created_at: string;
+  es_adicion: boolean;
+  es_deduccion: boolean;
+  id: string;
+  nombre: string | null;
+  requiere_dias: boolean;
+  requiere_fechas: boolean;
+  requiere_horas: boolean;
+  requiere_valor: boolean;
 }
 
 export interface NominaNovedad {
@@ -961,6 +1008,47 @@ const normalizeNominaNovedadNombre = (value: string | null | undefined): string 
     .toUpperCase();
 };
 
+const normalizeUpperToken = (value: string | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().toUpperCase();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const resolveNominaEmpleadoClasificacion = (row: NominaEmpleadoRealRow): string | null => {
+  const metodoLiquidacion = normalizeUpperToken(row.metodo_liquidacion);
+
+  if (metodoLiquidacion) {
+    return metodoLiquidacion;
+  }
+
+  const metodoPago = normalizeUpperToken(row.vinculacion_metodo_pago);
+
+  if (metodoPago?.startsWith('OPS')) {
+    return 'OPS';
+  }
+
+  const tipoVinculacionCodigo = normalizeUpperToken(row.tipo_vinculacion_codigo);
+
+  if (tipoVinculacionCodigo === 'OPS') {
+    return 'OPS';
+  }
+
+  const jornada = normalizeUpperToken(row.tipo_jornada_nombre);
+
+  if (jornada === 'TIEMPO_COMPLETO') {
+    return 'TC';
+  }
+
+  if (jornada === 'MEDIO_TIEMPO') {
+    return 'MT';
+  }
+
+  return tipoVinculacionCodigo;
+};
+
 const NOMINA_NOVEDADES_REDUCEN_SALARIO = new Set([
   'PERMISO NO REMUNERADO',
   'SUSPENSION'
@@ -1176,6 +1264,9 @@ const getNominaEmpleadosRealSelect = (): string => {
       v.empresa_id::text AS vinculacion_empresa_id,
       v.contrato_id::text AS vinculacion_contrato_id,
       v.contrato_cargo_id::text AS cargo_id,
+      v.cargo_operativo_id::text AS cargo_operativo_id,
+      v.tipo_vinculacion_id::text AS tipo_vinculacion_id,
+      v.tipo_jornada_id::text AS tipo_jornada_id,
       v.fecha_inicio AS fecha_inicio_vinculacion,
       v.fecha_fin AS fecha_fin_vinculacion,
       v.estado_vinculacion AS vinculacion_estado,
@@ -1185,18 +1276,61 @@ const getNominaEmpleadosRealSelect = (): string => {
       p.segundo_nombre,
       p.primer_apellido,
       p.segundo_apellido,
+      mu.nombre_municipio AS municipio_nombre,
+      c.numero_contrato AS contrato_numero,
       cc.nombre_cargo AS cargo_nombre,
+      co.nombre_cargo AS cargo_operativo_nombre,
+      tv.codigo AS tipo_vinculacion_codigo,
+      tv.nombre_vinculacion AS tipo_vinculacion_nombre,
+      tj.nombre AS tipo_jornada_nombre,
       ncs.codigo_categoria AS categoria_codigo,
       ncs.nombre_categoria AS categoria_nombre,
       ncs.modalidad AS categoria_modalidad,
       ncs.salario_base AS categoria_salario_base,
       ncs.auxilio_transporte AS categoria_auxilio_transporte,
-      ncs.otros_recargos AS categoria_otros_recargos
+      ncs.otros_recargos AS categoria_otros_recargos,
+      COALESCE(novedades_summary.total_novedades, 0)::int AS total_novedades,
+      red.total_requeridos AS total_documental_requeridos,
+      red.total_faltantes AS total_documental_faltantes,
+      red.total_cargados AS total_documental_cargados,
+      red.porcentaje_cumplimiento AS porcentaje_cumplimiento_documental
     FROM nomina_empleados ne
     INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
     INNER JOIN personas p ON p.id = v.persona_id
+    LEFT JOIN municipios mu ON mu.id = p.municipio_residencia_id
+    LEFT JOIN contratos c ON c.id = v.contrato_id
     LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
+    LEFT JOIN cargos_operativos co ON co.id = v.cargo_operativo_id
+    LEFT JOIN tipos_vinculacion tv ON tv.id = v.tipo_vinculacion_id
+    LEFT JOIN tipos_jornada tj ON tj.id = v.tipo_jornada_id
     LEFT JOIN nomina_categorias_salariales ncs ON ncs.id = ne.categoria_salarial_id
+    LEFT JOIN vw_resumen_expediente_documental red ON red.vinculacion_id = v.id
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*)::int AS total_novedades
+      FROM nomina_novedades nn
+      WHERE nn.nomina_empleado_id = ne.id
+        AND nn.periodo_id = ne.periodo_id
+    ) novedades_summary ON TRUE
+  `;
+};
+
+const getNominaTiposNovedadSelect = (): string => {
+  return `
+    SELECT
+      id::text AS id,
+      nombre,
+      categoria,
+      COALESCE(afecta_salario, FALSE) AS afecta_salario,
+      COALESCE(afecta_transporte, FALSE) AS afecta_transporte,
+      COALESCE(es_adicion, FALSE) AS es_adicion,
+      COALESCE(es_deduccion, FALSE) AS es_deduccion,
+      COALESCE(requiere_fechas, FALSE) AS requiere_fechas,
+      COALESCE(requiere_dias, FALSE) AS requiere_dias,
+      COALESCE(requiere_horas, FALSE) AS requiere_horas,
+      COALESCE(requiere_valor, FALSE) AS requiere_valor,
+      COALESCE(activo, TRUE) AS activo,
+      created_at
+    FROM nomina_tipos_novedad
   `;
 };
 
@@ -1464,11 +1598,18 @@ const mapRealPeriodo = (row: NominaPeriodoRealRow): NominaPeriodo => {
 };
 
 const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
+  const totalDocumentalRequeridos = toOptionalNumberValue(row.total_documental_requeridos);
+  const totalDocumentalFaltantes = toOptionalNumberValue(row.total_documental_faltantes);
+  const totalDocumentalCargados = toOptionalNumberValue(row.total_documental_cargados);
+  const porcentajeCumplimientoDocumental = toOptionalNumberValue(row.porcentaje_cumplimiento_documental);
+
   return {
     id: row.id,
     periodo_id: row.periodo_id,
     vinculacion_id: row.vinculacion_id,
     metodo_liquidacion: row.metodo_liquidacion,
+    contrato_id: row.vinculacion_contrato_id,
+    numero_contrato: row.contrato_numero,
     salario_base: toNumberValue(row.salario_base),
     auxilio_transporte: toNumberValue(row.auxilio_transporte),
     otros_devengos: toNumberValue(row.otros_devengos),
@@ -1491,6 +1632,23 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
     activo: toBooleanValue(row.activo),
     created_at: toIsoString(row.created_at) ?? '',
     motivo_caso_especial: row.motivo_caso_especial,
+    municipio: row.municipio_nombre,
+    modalidad: null,
+    clasificacion: resolveNominaEmpleadoClasificacion(row),
+    total_novedades: row.total_novedades,
+    estado_documental:
+      totalDocumentalRequeridos === null &&
+      totalDocumentalFaltantes === null &&
+      totalDocumentalCargados === null &&
+      porcentajeCumplimientoDocumental === null
+        ? null
+        : {
+            total_requeridos: totalDocumentalRequeridos ?? 0,
+            total_faltantes: totalDocumentalFaltantes ?? 0,
+            total_cargados: totalDocumentalCargados ?? 0,
+            porcentaje_cumplimiento: porcentajeCumplimientoDocumental
+          },
+    sede: null,
     persona: {
       id: row.persona_id,
       numero_documento: row.persona_numero_documento,
@@ -1515,10 +1673,10 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
       metodo_pago: row.vinculacion_metodo_pago
     },
     cargo:
-      row.cargo_id || row.cargo_nombre
+      row.cargo_id || row.cargo_nombre || row.cargo_operativo_id || row.cargo_operativo_nombre
         ? {
-            id: row.cargo_id,
-            nombre_cargo: row.cargo_nombre
+            id: row.cargo_id ?? row.cargo_operativo_id,
+            nombre_cargo: row.cargo_nombre ?? row.cargo_operativo_nombre
           }
         : null,
     categoria_salarial: row.categoria_id
@@ -1581,6 +1739,26 @@ const mapRealNovedad = (row: NominaNovedadRealRow): NominaNovedad => {
         row.segundo_apellido
       )
     }
+  };
+};
+
+const mapNominaTipoNovedad = (
+  row: NominaTipoNovedadRow
+): NominaTipoNovedadCatalogItem => {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    categoria: row.categoria,
+    afecta_salario: toBooleanValue(row.afecta_salario),
+    afecta_transporte: toBooleanValue(row.afecta_transporte),
+    es_adicion: toBooleanValue(row.es_adicion),
+    es_deduccion: toBooleanValue(row.es_deduccion),
+    requiere_fechas: toBooleanValue(row.requiere_fechas),
+    requiere_dias: toBooleanValue(row.requiere_dias),
+    requiere_horas: toBooleanValue(row.requiere_horas),
+    requiere_valor: toBooleanValue(row.requiere_valor),
+    activo: toBooleanValue(row.activo),
+    created_at: toIsoString(row.created_at) ?? ''
   };
 };
 
@@ -2498,21 +2676,7 @@ const loadNominaTipoNovedadByIdOrThrow = async (
   const executor = client ?? dbPool;
   const result = await executor.query<NominaTipoNovedadRow>(
     `
-      SELECT
-        id::text AS id,
-        nombre,
-        categoria,
-        COALESCE(afecta_salario, FALSE) AS afecta_salario,
-        COALESCE(afecta_transporte, FALSE) AS afecta_transporte,
-        COALESCE(es_adicion, FALSE) AS es_adicion,
-        COALESCE(es_deduccion, FALSE) AS es_deduccion,
-        COALESCE(requiere_fechas, FALSE) AS requiere_fechas,
-        COALESCE(requiere_dias, FALSE) AS requiere_dias,
-        COALESCE(requiere_horas, FALSE) AS requiere_horas,
-        COALESCE(requiere_valor, FALSE) AS requiere_valor,
-        COALESCE(activo, TRUE) AS activo,
-        created_at
-      FROM nomina_tipos_novedad
+      ${getNominaTiposNovedadSelect()}
       WHERE id = $1::bigint
       LIMIT 1
     `,
@@ -2526,6 +2690,20 @@ const loadNominaTipoNovedadByIdOrThrow = async (
   }
 
   return tipo;
+};
+
+const hasInactiveNominaTiposNovedad = async (): Promise<boolean> => {
+  const result = await dbQuery<{ exists: boolean }>(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM nomina_tipos_novedad
+        WHERE COALESCE(activo, TRUE) = FALSE
+      ) AS exists
+    `
+  );
+
+  return result.rows[0]?.exists === true;
 };
 
 const validateNovedadInputAgainstTipo = (
@@ -5303,6 +5481,72 @@ export const listNominaNovedades = async (
       total_pages: total === 0 ? 0 : Math.ceil(total / query.limit)
     }
   };
+};
+
+export const listNominaTiposNovedad = async (
+  query: ListNominaTiposNovedadQuery
+): Promise<PaginatedResponse<NominaTipoNovedadCatalogItem>> => {
+  const params: unknown[] = [];
+  const conditions: string[] = [];
+
+  if (query.categoria) {
+    params.push(query.categoria);
+    conditions.push(`LOWER(categoria) = LOWER($${params.length})`);
+  }
+
+  if (query.busqueda) {
+    params.push(`%${query.busqueda}%`);
+    conditions.push(`(nombre ILIKE $${params.length} OR categoria ILIKE $${params.length})`);
+  }
+
+  if (query.activo !== undefined) {
+    params.push(query.activo);
+    conditions.push(`COALESCE(activo, TRUE) = $${params.length}`);
+  } else if (await hasInactiveNominaTiposNovedad()) {
+    params.push(true);
+    conditions.push(`COALESCE(activo, TRUE) = $${params.length}`);
+  }
+
+  const whereSql = buildSqlWhere(conditions);
+  const countResult = await dbQuery<CountRow>(
+    `
+      SELECT COUNT(*)::int AS total
+      FROM nomina_tipos_novedad
+      ${whereSql}
+    `,
+    params
+  );
+
+  const total = countResult.rows[0]?.total ?? 0;
+  const offset = (query.page - 1) * query.limit;
+  const listParams = [...params, query.limit, offset];
+  const result = await dbQuery<NominaTipoNovedadRow>(
+    `
+      ${getNominaTiposNovedadSelect()}
+      ${whereSql}
+      ORDER BY categoria ASC NULLS LAST, nombre ASC NULLS LAST, id ASC
+      LIMIT $${listParams.length - 1}
+      OFFSET $${listParams.length}
+    `,
+    listParams
+  );
+
+  return {
+    items: result.rows.map(mapNominaTipoNovedad),
+    pagination: {
+      page: query.page,
+      limit: query.limit,
+      total,
+      total_pages: total === 0 ? 0 : Math.ceil(total / query.limit)
+    }
+  };
+};
+
+export const getNominaTipoNovedadById = async (
+  tipoNovedadId: string
+): Promise<NominaTipoNovedadCatalogItem> => {
+  const tipo = await loadNominaTipoNovedadByIdOrThrow(tipoNovedadId);
+  return mapNominaTipoNovedad(tipo);
 };
 
 export const createNominaNovedad = async (

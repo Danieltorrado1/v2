@@ -13,3 +13,24 @@ coverage/
 
 uploads/
 temp/
+
+# Archivos temporales
+.backend_pid
+.frontend_pid
+
+# Carpeta temporal
+tmp-sst-qa/
+
+# Dependencias
+node_modules/
+
+# Variables de entorno
+.env
+.env.*
+
+# Logs
+*.log
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db

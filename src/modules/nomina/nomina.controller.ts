@@ -15,11 +15,13 @@ import {
   listNominaLiquidacionesQuerySchema,
   listNominaMovimientosQuerySchema,
   listNominaNovedadesQuerySchema,
+  listNominaTiposNovedadQuerySchema,
   listNominaPeriodosQuerySchema,
   nominaAsistenciaIdParamSchema,
   nominaEmpleadoIdParamSchema,
   nominaMovimientoIdParamSchema,
   nominaNovedadIdParamSchema,
+  nominaTipoNovedadIdParamSchema,
   nominaPeriodoActionSchema,
   periodoIdParamSchema,
   periodoLiquidacionParamSchema,
@@ -54,11 +56,13 @@ import {
   getNominaLiquidacionByPeriodoAndVinculacion,
   getNominaMovimientos,
   getNominaPeriodoById,
+  getNominaTipoNovedadById,
   importNominaEmpleados,
   listNominaDesprendibles,
   listNominaEmpleados,
   listNominaLiquidaciones,
   listNominaNovedades,
+  listNominaTiposNovedad,
   listNominaPeriodos,
   payNominaPeriodo,
   recalculateNominaPeriodo,
@@ -471,6 +475,26 @@ export const getNominaNovedadesHandler = asyncHandler(async (req: Request, res: 
 
   return successResponse(res, {
     message: 'Payroll novelties retrieved successfully',
+    data: result
+  });
+});
+
+export const getNominaTiposNovedadHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = listNominaTiposNovedadQuerySchema.parse(req.query);
+  const result = await listNominaTiposNovedad(query);
+
+  return successResponse(res, {
+    message: 'Payroll novelty types retrieved successfully',
+    data: result
+  });
+});
+
+export const getNominaTipoNovedadHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = nominaTipoNovedadIdParamSchema.parse(req.params);
+  const result = await getNominaTipoNovedadById(id);
+
+  return successResponse(res, {
+    message: 'Payroll novelty type retrieved successfully',
     data: result
   });
 });

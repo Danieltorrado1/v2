@@ -3,9 +3,9 @@ import { Request, Response } from 'express';
 import { AppError } from '../../utils/AppError';
 import { successResponse } from '../../utils/apiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
-import { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import {
   createVinculacionSchema,
+  listOpsVinculacionesQuerySchema,
   listVinculacionesQuerySchema,
   reactivarVinculacionSchema,
   retirarVinculacionSchema,
@@ -25,6 +25,10 @@ import {
   suspenderVinculacion,
   updateVinculacion
 } from './vinculaciones.service';
+import {
+  getVinculacionesOpsCatalogos,
+  listOpsVinculacionesEnriched
+} from './vinculaciones.ops.service';
 
 const getActorUserId = (req: Request): number => {
   const userId = req.user?.userId;
@@ -48,6 +52,25 @@ export const getVinculaciones = asyncHandler(async (req: Request, res: Response)
 
   return successResponse(res, {
     message: 'Vinculaciones retrieved successfully',
+    data: result
+  });
+});
+
+export const getOpsVinculacionesHandler = asyncHandler(async (req: Request, res: Response) => {
+  const filters = listOpsVinculacionesQuerySchema.parse(req.query);
+  const result = await listOpsVinculacionesEnriched(filters, req.tenant);
+
+  return successResponse(res, {
+    message: 'OPS vinculaciones retrieved successfully',
+    data: result
+  });
+});
+
+export const getOpsCatalogosHandler = asyncHandler(async (req: Request, res: Response) => {
+  const result = await getVinculacionesOpsCatalogos(req.tenant);
+
+  return successResponse(res, {
+    message: 'OPS catalogos retrieved successfully',
     data: result
   });
 });

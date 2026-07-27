@@ -5,6 +5,8 @@ import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
 import { requirePermissions } from '../../middlewares/roleMiddleware';
 import {
   createVinculacionHandler,
+  getOpsCatalogosHandler,
+  getOpsVinculacionesHandler,
   getVinculacionExpedienteHandler,
   getVinculacion,
   getVinculaciones,
@@ -20,6 +22,8 @@ const vinculacionesRoutes = Router();
 vinculacionesRoutes.use(authMiddleware);
 vinculacionesRoutes.use(tenantMiddleware);
 
+vinculacionesRoutes.get('/ops/catalogos', requirePermissions('vinculaciones.read'), getOpsCatalogosHandler);
+vinculacionesRoutes.get('/ops', requirePermissions('vinculaciones.read'), getOpsVinculacionesHandler);
 vinculacionesRoutes.get('/', requirePermissions('vinculaciones.read'), getVinculaciones);
 vinculacionesRoutes.get(
   '/persona/:persona_id',

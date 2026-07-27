@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { Bell, LogOut, Moon, Sun } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
@@ -11,11 +11,11 @@ import {
 import "./MainLayout.css";
 
 const nominaLinks = [
-  { to: "/nomina", label: "Nómina" },
-  { to: "/nomina/liquidacion", label: "Liquidación" },
+  { to: "/nomina", label: "NÃ³mina" },
+  { to: "/nomina/liquidacion", label: "LiquidaciÃ³n" },
   { to: "/nomina/turnos", label: "Turnos" },
   { to: "/nomina/personal-ops", label: "Personal OPS" },
-  { to: "/nomina/correccion", label: "Corrección Nómina" },
+  { to: "/nomina/correccion", label: "CorrecciÃ³n NÃ³mina" },
 ];
 
 const herramientasLinks = [
@@ -25,13 +25,13 @@ const herramientasLinks = [
 ];
 
 const sstLinks = [
-  { to: "/sst", label: "Panel SST" },
-  { to: "/sst/incidentes", label: "Incidentes y Accidentes" },
-  { to: "/sst/riesgos", label: "Identificación de Riesgos" },
-  { to: "/sst/capacitaciones", label: "Capacitaciones SST" },
-  { to: "/sst/examenes-medicos", label: "Exámenes Médicos" },
-  { to: "/sst/epp", label: "Elementos de Protección Personal (EPP)" },
-  { to: "/sst/indicadores", label: "Indicadores SST" },
+  { to: "/sst?tab=resumen", label: "Resumen SST" },
+  { to: "/sst?tab=eventos", label: "Eventos" },
+  { to: "/sst?tab=planes", label: "Planes de acciÃ³n" },
+  { to: "/sst?tab=inspecciones", label: "Inspecciones" },
+  { to: "/sst?tab=hallazgos", label: "Hallazgos y acciones" },
+  { to: "/sst?tab=accidentes", label: "Accidentes" },
+  { to: "/sst?tab=indicadores", label: "Indicadores" },
 ];
 
 const repositorioLinks = [
@@ -74,7 +74,7 @@ export default function MainLayout() {
           >
             Vinculaciones
           </NavLink>
-          <NavDropdown label="Nómina" links={nominaLinks} />
+          <NavDropdown label="NÃ³mina" links={nominaLinks} />
           <NavDropdown label="Herramientas" links={herramientasLinks} />
           <NavDropdown label="SST" links={sstLinks} />
           <NavLink
@@ -88,7 +88,7 @@ export default function MainLayout() {
             to="/admin"
             className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
           >
-            Administración
+            AdministraciÃ³n
           </NavLink>
         </nav>
 
@@ -129,8 +129,8 @@ export default function MainLayout() {
               type="button"
               className="theme-button"
               onClick={logout}
-              title="Cerrar sesión"
-              aria-label="Cerrar sesión"
+              title="Cerrar sesiÃ³n"
+              aria-label="Cerrar sesiÃ³n"
             >
               <LogOut size={18} />
             </button>
@@ -138,7 +138,7 @@ export default function MainLayout() {
         </div>
       </header>
 
-      {/* Notification panel — fixed, so rendered outside content flow */}
+      {/* Notification panel â€” fixed, so rendered outside content flow */}
       {notifOpen && (
         <NotificationsPanel
           onClose={() => setNotifOpen(false)}
@@ -157,3 +157,4 @@ export default function MainLayout() {
     </div>
   );
 }
+

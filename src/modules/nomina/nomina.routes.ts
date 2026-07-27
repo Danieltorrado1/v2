@@ -58,6 +58,26 @@ import {
   updateLiquidacionFinalHandler
 } from './liquidaciones-finales.controller';
 import {
+  changeCuentaCobroOpsEstadoHandler,
+  createCuentaCobroOpsHandler,
+  deactivateCuentaCobroOpsHandler,
+  getCuentaCobroOpsByIdHandler,
+  getCuentasCobroOpsHandler,
+  updateCuentaCobroOpsHandler
+} from './cuentas-cobro-ops.controller';
+import {
+  anularNominaCorreccionHandler,
+  aprobarNominaCorreccionHandler,
+  createNominaCorreccionHandler,
+  deactivateNominaCorreccionHandler,
+  getNominaCorreccionHandler,
+  getNominaCorreccionesHandler,
+  rechazarNominaCorreccionHandler,
+  revisarNominaCorreccionHandler,
+  solicitarNominaCorreccionHandler,
+  updateNominaCorreccionHandler
+} from './correcciones.controller';
+import {
   cancelNominaPeriodoHandler,
   closeNominaPeriodoHandler,
   createNominaRecargoHandler,
@@ -86,6 +106,8 @@ import {
   getNominaPeriodoEmpleadosHandler,
   getNominaPeriodoHandler,
   getNominaPeriodosHandler,
+  getNominaTipoNovedadHandler,
+  getNominaTiposNovedadHandler,
   importNominaPeriodoEmpleadosHandler,
   payNominaPeriodoHandler,
   recalculateNominaPeriodoHandler,
@@ -242,6 +264,9 @@ nominaRoutes.post(
   requirePermissions('nomina.liquidaciones.finalize'),
   finalizeNominaLiquidacionesHandler
 );
+
+nominaRoutes.get('/tipos-novedad', requirePermissions('nomina.read'), getNominaTiposNovedadHandler);
+nominaRoutes.get('/tipos-novedad/:id', requirePermissions('nomina.read'), getNominaTipoNovedadHandler);
 
 nominaRoutes.get('/novedades', requirePermissions('nomina.read'), getNominaNovedadesHandler);
 nominaRoutes.post(
@@ -454,6 +479,88 @@ nominaRoutes.get(
   '/liquidaciones-finales/alertas',
   requirePermissions('nomina.liquidaciones_finales.alertas'),
   getLiquidacionesFinalesAlertasHandler
+);
+
+nominaRoutes.get(
+  '/cuentas-cobro-ops',
+  requirePermissions('nomina.cuentas_cobro_ops.read'),
+  getCuentasCobroOpsHandler
+);
+nominaRoutes.get(
+  '/cuentas-cobro-ops/:id',
+  requirePermissions('nomina.cuentas_cobro_ops.read'),
+  getCuentaCobroOpsByIdHandler
+);
+nominaRoutes.post(
+  '/cuentas-cobro-ops',
+  requirePermissions('nomina.cuentas_cobro_ops.create'),
+  createCuentaCobroOpsHandler
+);
+nominaRoutes.patch(
+  '/cuentas-cobro-ops/:id',
+  requirePermissions('nomina.cuentas_cobro_ops.update'),
+  updateCuentaCobroOpsHandler
+);
+nominaRoutes.patch(
+  '/cuentas-cobro-ops/:id/estado',
+  requirePermissions('nomina.cuentas_cobro_ops.update'),
+  changeCuentaCobroOpsEstadoHandler
+);
+nominaRoutes.patch(
+  '/cuentas-cobro-ops/:id/deactivate',
+  requirePermissions('nomina.cuentas_cobro_ops.update'),
+  deactivateCuentaCobroOpsHandler
+);
+
+nominaRoutes.get(
+  '/correcciones',
+  requirePermissions('nomina.correcciones.read'),
+  getNominaCorreccionesHandler
+);
+nominaRoutes.get(
+  '/correcciones/:id',
+  requirePermissions('nomina.correcciones.read'),
+  getNominaCorreccionHandler
+);
+nominaRoutes.post(
+  '/correcciones',
+  requirePermissions('nomina.correcciones.create'),
+  createNominaCorreccionHandler
+);
+nominaRoutes.patch(
+  '/correcciones/:id',
+  requirePermissions('nomina.correcciones.update'),
+  updateNominaCorreccionHandler
+);
+nominaRoutes.patch(
+  '/correcciones/:id/solicitar',
+  requirePermissions('nomina.correcciones.update'),
+  solicitarNominaCorreccionHandler
+);
+nominaRoutes.patch(
+  '/correcciones/:id/revisar',
+  requirePermissions('nomina.correcciones.review'),
+  revisarNominaCorreccionHandler
+);
+nominaRoutes.patch(
+  '/correcciones/:id/aprobar',
+  requirePermissions('nomina.correcciones.approve'),
+  aprobarNominaCorreccionHandler
+);
+nominaRoutes.patch(
+  '/correcciones/:id/rechazar',
+  requirePermissions('nomina.correcciones.review'),
+  rechazarNominaCorreccionHandler
+);
+nominaRoutes.patch(
+  '/correcciones/:id/anular',
+  requirePermissions('nomina.correcciones.cancel'),
+  anularNominaCorreccionHandler
+);
+nominaRoutes.patch(
+  '/correcciones/:id/deactivate',
+  requirePermissions('nomina.correcciones.update'),
+  deactivateNominaCorreccionHandler
 );
 
 export { nominaRoutes };

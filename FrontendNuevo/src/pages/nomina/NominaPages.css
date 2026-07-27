@@ -124,6 +124,7 @@
   border-radius: 12px;
   border: 1px solid var(--border-color);
   background: var(--bg-primary);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .np-select-wrap > svg:first-child { flex-shrink: 0; color: var(--text-secondary); }
@@ -138,10 +139,43 @@
   border: 0; outline: 0; background: transparent;
   color: var(--text-primary); font-size: 13px; font-weight: 700;
   appearance: none; cursor: pointer;
+  color-scheme: light;
+  -webkit-text-fill-color: currentColor;
 }
 
 .np-select:disabled { cursor: not-allowed; color: var(--text-secondary); }
 .np-select-wrap.is-disabled { opacity: 0.7; }
+.np-select-wrap:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+[data-theme="dark"] .np-select {
+  color-scheme: dark;
+}
+
+.np-select option,
+.np-select optgroup,
+select.np-form-control option,
+select.np-form-control optgroup {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.np-select optgroup,
+select.np-form-control optgroup {
+  font-weight: 800;
+}
+
+.np-select option:checked,
+.np-select option:hover,
+.np-select option:focus,
+select.np-form-control option:checked,
+select.np-form-control option:hover,
+select.np-form-control option:focus {
+  background-color: var(--bg-panel);
+  color: var(--text-primary);
+}
 
 /* ---- search input ---- */
 
@@ -514,6 +548,32 @@
   font-size: 13px;
   font-weight: 600;
   padding: 0 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.np-form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+select.np-form-control {
+  appearance: none;
+  color-scheme: light;
+  padding-right: 36px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
+    linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 12px) calc(50% - 2px);
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+  -webkit-text-fill-color: currentColor;
+}
+
+[data-theme="dark"] select.np-form-control {
+  color-scheme: dark;
 }
 
 .np-form-control:disabled {
@@ -542,12 +602,65 @@
   color: var(--text-primary);
 }
 
+.np-checkbox-inline {
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+}
+
 .np-form-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.np-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: color-mix(in srgb, #06131f 48%, transparent);
+}
+
+.np-modal-card {
+  width: min(640px, 100%);
+  max-height: min(90vh, 760px);
+  overflow-y: auto;
+  border-radius: 18px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-soft);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.np-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.np-modal-header h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.np-modal-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 /* ---- info panel (OPS rules, resumen) ---- */
@@ -699,4 +812,26 @@
 
 .np-inline-state.neutral {
   color: var(--text-secondary);
+}
+
+.np-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.np-pagination span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.np-pagination-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }

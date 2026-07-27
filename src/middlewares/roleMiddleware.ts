@@ -61,3 +61,28 @@ export const requirePermissions =
 
     next();
   };
+
+export const requireAnyPermissions =
+  (...requiredPermissions: string[]) =>
+  (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      next(unauthorizedError());
+      return;
+    }
+
+    if (requiredPermissions.length === 0) {
+      next();
+      return;
+    }
+
+    const hasAnyPermission = requiredPermissions.some((permission) =>
+      req.user?.permissions.includes(permission)
+    );
+
+    if (!hasAnyPermission) {
+      next(forbiddenError('Insufficient permissions'));
+      return;
+    }
+
+    next();
+  };
