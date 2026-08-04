@@ -2,10 +2,12 @@ import { z } from 'zod';
 
 const normalizedEmailSchema = z.email().trim().toLowerCase();
 
-const roleIdsSchema = z.array(z.string().trim().min(1)).max(50).default([]);
+const numericIdSchema = z.coerce.number().int().positive();
+
+const roleIdsSchema = z.array(numericIdSchema).max(50).default([]);
 
 export const userIdParamSchema = z.object({
-  id: z.string().trim().min(1, 'User id is required')
+  id: numericIdSchema
 });
 
 export const createUserSchema = z.object({

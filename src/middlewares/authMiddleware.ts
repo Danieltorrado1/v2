@@ -121,6 +121,8 @@ export const authMiddleware = (
               FROM usuario_roles ur
               INNER JOIN roles r ON r.id = ur.rol_id
               WHERE ur.usuario_id = u.id
+                AND COALESCE(ur.activo, TRUE) = TRUE
+                AND COALESCE(r.activo, TRUE) = TRUE
               ORDER BY r.nombre_rol
             ),
             ARRAY[]::text[]
@@ -129,9 +131,14 @@ export const authMiddleware = (
             ARRAY(
               SELECT DISTINCT CONCAT_WS('.', p.modulo, p.accion)
               FROM usuario_roles ur
+              INNER JOIN roles r ON r.id = ur.rol_id
               INNER JOIN rol_permisos rp ON rp.rol_id = ur.rol_id
               INNER JOIN permisos p ON p.id = rp.permiso_id
               WHERE ur.usuario_id = u.id
+                AND COALESCE(ur.activo, TRUE) = TRUE
+                AND COALESCE(r.activo, TRUE) = TRUE
+                AND COALESCE(rp.activo, TRUE) = TRUE
+                AND COALESCE(p.activo, TRUE) = TRUE
               ORDER BY CONCAT_WS('.', p.modulo, p.accion)
             ),
             ARRAY[]::text[]

@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import type { QueryResultRow } from 'pg';
+import type { PoolClient, QueryResultRow } from 'pg';
 
 import { dbQuery } from '../config/db';
 import { AppError } from '../utils/AppError';
@@ -48,11 +48,12 @@ const toUniqueNumbers = (rows: TenantIdRow[]): number[] => {
 };
 
 export const loadTenantAccess = async (
-  userId: string | number
+  userId: string | number,
+  client?: PoolClient
 ): Promise<TenantAccessContext> => {
   const numericUserId = toNumber(userId);
-
-  const rolesResult = await dbQuery<RoleRow>(
+  const rolesResult = client
+    ? await client.query<RoleRow>(
     `
       SELECT r.nombre_rol
       FROM usuario_roles ur
@@ -61,8 +62,19 @@ export const loadTenantAccess = async (
         AND COALESCE(ur.activo, TRUE) = TRUE
         AND COALESCE(r.activo, TRUE) = TRUE
     `,
-    [numericUserId]
-  );
+        [numericUserId]
+      )
+    : await dbQuery<RoleRow>(
+        `
+      SELECT r.nombre_rol
+      FROM usuario_roles ur
+      INNER JOIN roles r ON r.id = ur.rol_id
+      WHERE ur.usuario_id = $1::bigint
+        AND COALESCE(ur.activo, TRUE) = TRUE
+        AND COALESCE(r.activo, TRUE) = TRUE
+    `,
+        [numericUserId]
+      );
 
   const isGlobalAdmin = rolesResult.rows.some((row) => row.nombre_rol === 'ADMINISTRADOR');
 
@@ -74,28 +86,29 @@ export const loadTenantAccess = async (
     };
   }
 
-  const [empresasResult, contratosResult] = await Promise.all([
-    dbQuery<TenantIdRow>(
-      `
+  const empresasQuery = `
         SELECT ue.empresa_id::text AS id
         FROM usuario_empresas ue
         WHERE ue.usuario_id = $1::bigint
           AND COALESCE(ue.activo, TRUE) = TRUE
         ORDER BY ue.empresa_id ASC
-      `,
-      [numericUserId]
-    ),
-    dbQuery<TenantIdRow>(
-      `
+      `;
+  const contratosQuery = `
         SELECT uc.contrato_id::text AS id
         FROM usuario_contratos uc
         WHERE uc.usuario_id = $1::bigint
           AND COALESCE(uc.activo, TRUE) = TRUE
         ORDER BY uc.contrato_id ASC
-      `,
-      [numericUserId]
-    )
-  ]);
+      `;
+  const [empresasResult, contratosResult] = client
+    ? await Promise.all([
+        client.query<TenantIdRow>(empresasQuery, [numericUserId]),
+        client.query<TenantIdRow>(contratosQuery, [numericUserId])
+      ])
+    : await Promise.all([
+        dbQuery<TenantIdRow>(empresasQuery, [numericUserId]),
+        dbQuery<TenantIdRow>(contratosQuery, [numericUserId])
+      ]);
 
   return {
     isGlobalAdmin: false,

@@ -1,9 +1,8 @@
-import { randomUUID } from 'node:crypto';
 import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
 import { AppError } from '../../utils/AppError';
-import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
+import { loadTenantAccess, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import { findUserProfileById, UserProfile } from '../users/users.service';
 
@@ -16,6 +15,7 @@ interface EmpresaAccessRow extends QueryResultRow {
 interface ContratoAccessRow extends QueryResultRow {
   activo: boolean;
   contrato_id: string;
+  empresa_id: string;
   entidad_contratante: string | null;
   numero_contrato: string | null;
 }
@@ -75,6 +75,11 @@ export interface TenantMeContext {
   empresas: TenantMeEmpresa[];
   empresa_default_id: number | null;
   isGlobalAdmin: boolean;
+}
+
+export interface TenantMutationActor {
+  tenant: TenantAccessContext;
+  userId: string;
 }
 
 const toNumber = (value: number | string): number => {
@@ -161,28 +166,6 @@ export const getTenantMeContext = async (tenant: TenantAccessContext): Promise<T
   };
 };
 
-const ensureAdminAccessLocked = async (client: PoolClient, userId: string): Promise<void> => {
-  const result = await client.query<UserRoleRow>(
-    `
-      SELECT r.nombre_rol
-      FROM usuario_roles ur
-      INNER JOIN roles r ON r.id = ur.rol_id
-      WHERE ur.usuario_id::text = $1
-        AND COALESCE(ur.activo, TRUE) = TRUE
-        AND COALESCE(r.activo, TRUE) = TRUE
-    `,
-    [userId]
-  );
-
-  if (result.rows.some((row) => row.nombre_rol === 'ADMINISTRADOR')) {
-    throw new AppError(
-      'No se pueden modificar accesos de un usuario ADMINISTRADOR',
-      409,
-      'TENANT_ADMIN_ACCESS_LOCKED'
-    );
-  }
-};
-
 const ensureEntityExists = async (
   client: PoolClient,
   tableName: 'empresas' | 'contratos',
@@ -215,10 +198,47 @@ const assertEditableUserExists = async (client: PoolClient, userId: string): Pro
     throw new AppError('User not found', 404, 'USER_NOT_FOUND');
   }
 
-  await ensureAdminAccessLocked(client, userId);
 };
 
-const mapUserAccess = async (userId: string): Promise<UserAccessResult> => {
+const assertActorEmpresaScope = (actor: TenantMutationActor, empresaId: number): void => {
+  if (!actor.tenant.isGlobalAdmin && !actor.tenant.empresaIds.includes(empresaId)) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+  }
+};
+
+const getContratoCompany = async (client: PoolClient, contratoId: number, requireActive = true): Promise<number> => {
+  const result = await client.query<{ empresa_id: string }>(
+    `
+      SELECT c.empresa_id::text AS empresa_id
+      FROM contratos c
+      INNER JOIN empresas e ON e.id = c.empresa_id
+      WHERE c.id = $1::bigint
+        AND ($2::boolean = FALSE OR (COALESCE(c.activo, TRUE) = TRUE AND COALESCE(e.activo, TRUE) = TRUE))
+      FOR UPDATE OF c
+    `,
+    [contratoId, requireActive]
+  );
+  const row = result.rows[0];
+  if (!row) throw new AppError('Contract not found or inactive', 409, 'USER_CONTRACT_COMPANY_MISMATCH');
+  return toNumber(row.empresa_id);
+};
+
+const assertActorContratoScope = (actor: TenantMutationActor, contratoId: number, empresaId: number): void => {
+  if (actor.tenant.isGlobalAdmin) return;
+  if (!actor.tenant.contratoIds.includes(contratoId) && !actor.tenant.empresaIds.includes(empresaId)) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+  }
+};
+
+const assertTargetEmpresaActive = async (client: PoolClient, userId: string, empresaId: number): Promise<void> => {
+  const result = await client.query(
+    `SELECT 1 FROM usuario_empresas WHERE usuario_id = $1::bigint AND empresa_id = $2::bigint AND COALESCE(activo, TRUE) = TRUE FOR UPDATE`,
+    [userId, empresaId]
+  );
+  if (!result.rows[0]) throw new AppError('Contract company must be assigned to the user', 409, 'USER_CONTRACT_COMPANY_MISMATCH');
+};
+
+const mapUserAccess = async (userId: string, actor?: TenantMutationActor): Promise<UserAccessResult> => {
   const usuario = await findUserProfileById(userId);
 
   if (!usuario) {
@@ -243,6 +263,7 @@ const mapUserAccess = async (userId: string): Promise<UserAccessResult> => {
       `
         SELECT
           uc.contrato_id::text AS contrato_id,
+          c.empresa_id::text AS empresa_id,
           c.numero_contrato,
           c.entidad_contratante,
           COALESCE(uc.activo, TRUE) AS activo
@@ -255,19 +276,25 @@ const mapUserAccess = async (userId: string): Promise<UserAccessResult> => {
     )
   ]);
 
+  const empresas = empresasResult.rows.map((row) => ({
+    empresa_id: toNumber(row.empresa_id), nombre_empresa: row.nombre_empresa, activo: row.activo
+  }));
+  const contratos = contratosResult.rows.map((row) => ({
+    contrato_id: toNumber(row.contrato_id), entidad_contratante: row.entidad_contratante,
+    numero_contrato: row.numero_contrato, activo: row.activo, empresa_id: toNumber(row.empresa_id)
+  }));
+  if (actor && !actor.tenant.isGlobalAdmin) {
+    const scopedEmpresas = empresas.filter((row) => actor.tenant.empresaIds.includes(row.empresa_id));
+    const scopedContratos = contratos.filter((row) => actor.tenant.contratoIds.includes(row.contrato_id) || actor.tenant.empresaIds.includes(row.empresa_id));
+    if (scopedEmpresas.length === 0 && scopedContratos.length === 0) {
+      throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+    }
+    return { usuario, empresas: scopedEmpresas, contratos: scopedContratos.map(({ empresa_id: _empresaId, ...row }) => row) };
+  }
   return {
     usuario,
-    empresas: empresasResult.rows.map((row) => ({
-      empresa_id: toNumber(row.empresa_id),
-      nombre_empresa: row.nombre_empresa,
-      activo: row.activo
-    })),
-    contratos: contratosResult.rows.map((row) => ({
-      contrato_id: toNumber(row.contrato_id),
-      entidad_contratante: row.entidad_contratante,
-      numero_contrato: row.numero_contrato,
-      activo: row.activo
-    }))
+    empresas,
+    contratos: contratos.map(({ empresa_id: _empresaId, ...row }) => row)
   };
 };
 
@@ -387,17 +414,17 @@ const deactivateUserContratoAccess = async (
   return row;
 };
 
-const auditBestEffort = async (input: {
+const auditTenantAccessChange = async (client: PoolClient, input: {
   accion: string;
   after?: unknown;
   before?: unknown;
   descripcion: string;
   registroId: string;
   tabla: string;
-  usuarioId: string | null;
+  usuarioId: string;
 }): Promise<void> => {
-  try {
     await registerAuditEntry({
+      client,
       accion: input.accion,
       after: input.after,
       before: input.before,
@@ -406,19 +433,16 @@ const auditBestEffort = async (input: {
       tabla: input.tabla,
       usuario_id: input.usuarioId
     });
-  } catch (error) {
-    console.error('Failed to register tenant access audit entry', error);
-  }
 };
 
-export const getUserAccess = async (userId: string): Promise<UserAccessResult> => {
-  return mapUserAccess(userId);
+export const getUserAccess = async (userId: string, actor: TenantMutationActor): Promise<UserAccessResult> => {
+  return mapUserAccess(userId, actor);
 };
 
 export const grantUserEmpresaAccess = async (
   userId: string,
   empresaId: number,
-  actorUserId: string
+  actor: TenantMutationActor
 ): Promise<EmpresaAccessRow> => {
   const client = await dbPool.connect();
 
@@ -426,8 +450,10 @@ export const grantUserEmpresaAccess = async (
     await client.query('BEGIN');
     await assertEditableUserExists(client, userId);
     await ensureEntityExists(client, 'empresas', empresaId, 'EMPRESA_NOT_FOUND', 'Empresa');
+    const currentActorTenant = await loadTenantAccess(actor.userId, client);
+    assertActorEmpresaScope({ ...actor, tenant: currentActorTenant }, empresaId);
 
-    const before = await dbQuery<EmpresaAccessRow>(
+    const before = await client.query<EmpresaAccessRow>(
       `
         SELECT
           ue.empresa_id::text AS empresa_id,
@@ -442,17 +468,16 @@ export const grantUserEmpresaAccess = async (
     );
 
     const row = await upsertUserEmpresaAccess(client, userId, empresaId);
-    await client.query('COMMIT');
-
-    void auditBestEffort({
-      accion: before.rows[0] ? 'UPDATE' : 'CREATE',
+    await auditTenantAccessChange(client, {
+      accion: 'USER_TENANT_ACCESS_UPDATE',
       after: row,
       before: before.rows[0] ?? null,
       descripcion: 'Asignacion de acceso a empresa',
-      registroId: randomUUID(),
+      registroId: userId,
       tabla: 'usuario_empresas',
-      usuarioId: actorUserId
+      usuarioId: actor.userId
     });
+    await client.query('COMMIT');
 
     return row;
   } catch (error) {
@@ -466,15 +491,17 @@ export const grantUserEmpresaAccess = async (
 export const revokeUserEmpresaAccess = async (
   userId: string,
   empresaId: number,
-  actorUserId: string
+  actor: TenantMutationActor
 ): Promise<EmpresaAccessRow> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
     await assertEditableUserExists(client, userId);
+    const currentActorTenant = await loadTenantAccess(actor.userId, client);
+    assertActorEmpresaScope({ ...actor, tenant: currentActorTenant }, empresaId);
 
-    const before = await dbQuery<EmpresaAccessRow>(
+    const before = await client.query<EmpresaAccessRow>(
       `
         SELECT
           ue.empresa_id::text AS empresa_id,
@@ -493,17 +520,16 @@ export const revokeUserEmpresaAccess = async (
     }
 
     const row = await deactivateUserEmpresaAccess(client, userId, empresaId);
-    await client.query('COMMIT');
-
-    void auditBestEffort({
-      accion: 'UPDATE',
+    await auditTenantAccessChange(client, {
+      accion: 'USER_TENANT_ACCESS_UPDATE',
       after: row,
       before: before.rows[0],
       descripcion: 'Revocacion de acceso a empresa',
-      registroId: randomUUID(),
+      registroId: userId,
       tabla: 'usuario_empresas',
-      usuarioId: actorUserId
+      usuarioId: actor.userId
     });
+    await client.query('COMMIT');
 
     return row;
   } catch (error) {
@@ -517,16 +543,19 @@ export const revokeUserEmpresaAccess = async (
 export const grantUserContratoAccess = async (
   userId: string,
   contratoId: number,
-  actorUserId: string
+  actor: TenantMutationActor
 ): Promise<ContratoAccessRow> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
     await assertEditableUserExists(client, userId);
-    await ensureEntityExists(client, 'contratos', contratoId, 'CONTRATO_NOT_FOUND', 'Contrato');
+    const empresaId = await getContratoCompany(client, contratoId);
+    const currentActorTenant = await loadTenantAccess(actor.userId, client);
+    assertActorContratoScope({ ...actor, tenant: currentActorTenant }, contratoId, empresaId);
+    await assertTargetEmpresaActive(client, userId, empresaId);
 
-    const before = await dbQuery<ContratoAccessRow>(
+    const before = await client.query<ContratoAccessRow>(
       `
         SELECT
           uc.contrato_id::text AS contrato_id,
@@ -542,17 +571,16 @@ export const grantUserContratoAccess = async (
     );
 
     const row = await upsertUserContratoAccess(client, userId, contratoId);
-    await client.query('COMMIT');
-
-    void auditBestEffort({
-      accion: before.rows[0] ? 'UPDATE' : 'CREATE',
+    await auditTenantAccessChange(client, {
+      accion: 'USER_TENANT_ACCESS_UPDATE',
       after: row,
       before: before.rows[0] ?? null,
       descripcion: 'Asignacion de acceso a contrato',
-      registroId: randomUUID(),
+      registroId: userId,
       tabla: 'usuario_contratos',
-      usuarioId: actorUserId
+      usuarioId: actor.userId
     });
+    await client.query('COMMIT');
 
     return row;
   } catch (error) {
@@ -566,15 +594,18 @@ export const grantUserContratoAccess = async (
 export const revokeUserContratoAccess = async (
   userId: string,
   contratoId: number,
-  actorUserId: string
+  actor: TenantMutationActor
 ): Promise<ContratoAccessRow> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
     await assertEditableUserExists(client, userId);
+    const empresaId = await getContratoCompany(client, contratoId, false);
+    const currentActorTenant = await loadTenantAccess(actor.userId, client);
+    assertActorContratoScope({ ...actor, tenant: currentActorTenant }, contratoId, empresaId);
 
-    const before = await dbQuery<ContratoAccessRow>(
+    const before = await client.query<ContratoAccessRow>(
       `
         SELECT
           uc.contrato_id::text AS contrato_id,
@@ -594,17 +625,16 @@ export const revokeUserContratoAccess = async (
     }
 
     const row = await deactivateUserContratoAccess(client, userId, contratoId);
-    await client.query('COMMIT');
-
-    void auditBestEffort({
-      accion: 'UPDATE',
+    await auditTenantAccessChange(client, {
+      accion: 'USER_TENANT_ACCESS_UPDATE',
       after: row,
       before: before.rows[0],
       descripcion: 'Revocacion de acceso a contrato',
-      registroId: randomUUID(),
+      registroId: userId,
       tabla: 'usuario_contratos',
-      usuarioId: actorUserId
+      usuarioId: actor.userId
     });
+    await client.query('COMMIT');
 
     return row;
   } catch (error) {

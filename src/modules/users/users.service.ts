@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
+import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import { CreateUserInput, UpdateUserInput } from './users.schemas';
 
 interface UserProfileRow extends QueryResultRow {
@@ -17,7 +18,24 @@ interface UserProfileRow extends QueryResultRow {
 }
 
 interface ExistingRoleRow extends QueryResultRow {
+  id: number;
+}
+
+interface UserLockRow extends QueryResultRow {
+  active: boolean;
+  authUserExists: boolean;
+  authIdentityExists: boolean;
+  authUserId: string | null;
+  email: string;
   id: string;
+  isGlobalAdmin: boolean;
+  name: string;
+}
+
+export interface UserMutationActor {
+  ip: string | null;
+  userAgent: string | null;
+  userId: string;
 }
 
 interface UserAuthRow extends QueryResultRow {
@@ -96,6 +114,8 @@ const getUserProfileSelect = (): string => {
           FROM usuario_roles ur
           INNER JOIN roles r ON r.id = ur.rol_id
           WHERE ur.usuario_id = u.id
+            AND COALESCE(ur.activo, TRUE) = TRUE
+            AND COALESCE(r.activo, TRUE) = TRUE
           ORDER BY r.nombre_rol
         ),
         ARRAY[]::text[]
@@ -104,9 +124,14 @@ const getUserProfileSelect = (): string => {
         ARRAY(
           SELECT DISTINCT CONCAT_WS('.', p.modulo, p.accion)
           FROM usuario_roles ur
+          INNER JOIN roles r ON r.id = ur.rol_id
           INNER JOIN rol_permisos rp ON rp.rol_id = ur.rol_id
           INNER JOIN permisos p ON p.id = rp.permiso_id
           WHERE ur.usuario_id = u.id
+            AND COALESCE(ur.activo, TRUE) = TRUE
+            AND COALESCE(r.activo, TRUE) = TRUE
+            AND COALESCE(rp.activo, TRUE) = TRUE
+            AND COALESCE(p.activo, TRUE) = TRUE
           ORDER BY CONCAT_WS('.', p.modulo, p.accion)
         ),
         ARRAY[]::text[]
@@ -134,7 +159,7 @@ const ensureEmailAvailable = async (
   const publicResult = await client.query<{ id: string }>(existingPublicQuery, existingPublicParams);
 
   if ((publicResult.rowCount ?? 0) > 0) {
-    throw createHttpError('Email is already in use', 409, 'EMAIL_ALREADY_IN_USE');
+    throw createHttpError('Email is already in use', 409, 'USER_EMAIL_DUPLICATE');
   }
 
   const existingAuthParams: unknown[] = [email];
@@ -150,21 +175,21 @@ const ensureEmailAvailable = async (
   const authResult = await client.query<{ id: string }>(existingAuthQuery, existingAuthParams);
 
   if ((authResult.rowCount ?? 0) > 0) {
-    throw createHttpError('Email is already in use', 409, 'EMAIL_ALREADY_IN_USE');
+    throw createHttpError('Email is already in use', 409, 'USER_EMAIL_DUPLICATE');
   }
 };
 
-const validateRoleIds = async (client: PoolClient, roleIds: string[]): Promise<void> => {
+const validateRoleIds = async (client: PoolClient, roleIds: number[]): Promise<void> => {
   if (roleIds.length === 0) {
     return;
   }
 
   const result = await client.query<ExistingRoleRow>(
-    'SELECT id::text AS id FROM roles WHERE id::text = ANY($1::text[])',
+    'SELECT id FROM roles WHERE id = ANY($1::bigint[]) AND COALESCE(activo, TRUE) = TRUE',
     [roleIds]
   );
 
-  const existingRoleIds = new Set(result.rows.map((row) => row.id));
+  const existingRoleIds = new Set(result.rows.map((row) => Number(row.id)));
   const missingRoleIds = roleIds.filter((roleId) => !existingRoleIds.has(roleId));
 
   if (missingRoleIds.length > 0) {
@@ -177,22 +202,175 @@ const validateRoleIds = async (client: PoolClient, roleIds: string[]): Promise<v
 const syncUserRoles = async (
   client: PoolClient,
   userId: string,
-  roleIds: string[]
+  roleIds: number[]
 ): Promise<void> => {
-  await client.query('DELETE FROM usuario_roles WHERE usuario_id::text = $1', [userId]);
-
-  if (roleIds.length === 0) {
-    return;
-  }
-
   await client.query(
     `
-      INSERT INTO usuario_roles (usuario_id, rol_id)
-      SELECT $1::uuid, role_id::uuid
-      FROM UNNEST($2::text[]) AS role_id
+      UPDATE usuario_roles
+      SET activo = FALSE
+      WHERE usuario_id = $1::bigint
+        AND NOT (rol_id = ANY($2::bigint[]))
     `,
     [userId, roleIds]
   );
+
+  if (roleIds.length > 0) {
+    await client.query(
+      `
+        INSERT INTO usuario_roles (usuario_id, rol_id, activo)
+        SELECT $1::bigint, role_id, TRUE
+        FROM UNNEST($2::bigint[]) AS role_id
+        ON CONFLICT (usuario_id, rol_id)
+        DO UPDATE SET activo = TRUE
+      `,
+      [userId, roleIds]
+    );
+  }
+};
+
+const isUniqueViolation = (error: unknown): boolean => {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
+};
+
+const isActiveGlobalAdmin = async (client: PoolClient, userId: string): Promise<boolean> => {
+  const result = await client.query<{ isGlobalAdmin: boolean }>(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM usuario_roles ur
+        INNER JOIN roles r ON r.id = ur.rol_id
+        WHERE ur.usuario_id = $1::bigint
+          AND r.nombre_rol = 'ADMINISTRADOR'
+          AND COALESCE(ur.activo, TRUE) = TRUE
+          AND COALESCE(r.activo, TRUE) = TRUE
+      ) AS "isGlobalAdmin"
+    `,
+    [userId]
+  );
+
+  return result.rows[0]?.isGlobalAdmin === true;
+};
+
+const getLockedUser = async (client: PoolClient, userId: string): Promise<UserLockRow | null> => {
+  const result = await client.query<UserLockRow>(
+    `
+      SELECT
+        u.id::text AS id,
+        u.correo AS email,
+        u.nombre_completo AS name,
+        COALESCE(u.activo, TRUE) AS active,
+        u.auth_user_id::text AS "authUserId",
+        (au.id IS NOT NULL) AS "authUserExists",
+        EXISTS (
+          SELECT 1 FROM auth.identities ai
+          WHERE ai.user_id = u.auth_user_id AND ai.provider = 'email'
+        ) AS "authIdentityExists",
+        EXISTS (
+          SELECT 1
+          FROM usuario_roles ur
+          INNER JOIN roles r ON r.id = ur.rol_id
+          WHERE ur.usuario_id = u.id
+            AND COALESCE(ur.activo, TRUE) = TRUE
+            AND COALESCE(r.activo, TRUE) = TRUE
+            AND r.nombre_rol = 'ADMINISTRADOR'
+            AND COALESCE(ur.activo, TRUE) = TRUE
+            AND COALESCE(r.activo, TRUE) = TRUE
+        ) AS "isGlobalAdmin"
+      FROM usuarios u
+      LEFT JOIN auth.users au ON au.id = u.auth_user_id
+      WHERE u.id = $1::bigint
+      FOR UPDATE OF u
+    `,
+    [userId]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const assertGlobalAdminActor = async (client: PoolClient, actor: UserMutationActor): Promise<void> => {
+  if (!(await isActiveGlobalAdmin(client, actor.userId))) {
+    throw createHttpError('Global administrator privileges are required', 403, 'GLOBAL_ADMIN_REQUIRED');
+  }
+};
+
+const assertLastGlobalAdminProtected = async (client: PoolClient, userId: string): Promise<void> => {
+  // Serializa cambios que podrían dejar el sistema sin un ADMINISTRADOR global.
+  await client.query('SELECT pg_advisory_xact_lock(918273645)');
+  const result = await client.query<{ total: string }>(
+    `
+      SELECT COUNT(*)::text AS total
+      FROM usuarios u
+      INNER JOIN usuario_roles ur ON ur.usuario_id = u.id
+      INNER JOIN roles r ON r.id = ur.rol_id
+      WHERE r.nombre_rol = 'ADMINISTRADOR'
+        AND COALESCE(u.activo, TRUE) = TRUE
+        AND COALESCE(ur.activo, TRUE) = TRUE
+        AND COALESCE(r.activo, TRUE) = TRUE
+    `
+  );
+
+  if (Number(result.rows[0]?.total ?? '0') <= 1) {
+    throw createHttpError('The last active global administrator is protected', 409, 'LAST_GLOBAL_ADMIN_PROTECTED', { userId });
+  }
+};
+
+const assertRoleMutationAllowed = async (
+  client: PoolClient,
+  actor: UserMutationActor,
+  targetUserId: string,
+  targetIsGlobalAdmin: boolean,
+  nextRoleIds: number[] | undefined
+): Promise<void> => {
+  if (nextRoleIds === undefined) {
+    return;
+  }
+
+  if (actor.userId === targetUserId) {
+    throw createHttpError('Users cannot change their own roles', 403, 'SELF_ROLE_CHANGE_FORBIDDEN');
+  }
+
+  await assertGlobalAdminActor(client, actor);
+
+  const adminRole = await client.query<{ id: string }>(
+    "SELECT id FROM roles WHERE nombre_rol = 'ADMINISTRADOR' AND COALESCE(activo, TRUE) = TRUE LIMIT 1"
+  );
+  const adminRoleId = adminRole.rows[0] ? Number(adminRole.rows[0].id) : undefined;
+
+  if (targetIsGlobalAdmin && adminRoleId !== undefined && !nextRoleIds.includes(adminRoleId)) {
+    await assertLastGlobalAdminProtected(client, targetUserId);
+  }
+};
+
+const auditUserChange = async (
+  client: PoolClient,
+  actor: UserMutationActor,
+  action: string,
+  targetUserId: string,
+  before: unknown,
+  after: unknown
+): Promise<void> => {
+  await registerAuditEntry({
+    client,
+    accion: action,
+    before,
+    after,
+    descripcion: action,
+    registro_id: targetUserId,
+    tabla: 'usuarios',
+    usuario_id: actor.userId,
+    ip: actor.ip,
+    user_agent: actor.userAgent
+  });
+};
+
+const assertAuthLinkConsistent = (target: UserLockRow): void => {
+  if (!target.authUserId) {
+    throw createHttpError('User authentication linkage is missing', 409, 'USER_AUTH_LINK_MISSING');
+  }
+
+  if (!target.authUserExists || !target.authIdentityExists) {
+    throw createHttpError('User authentication linkage is inconsistent', 409, 'USER_AUTH_IDENTITY_INCONSISTENT');
+  }
 };
 
 const getUserAuthQuery = (): string => {
@@ -211,6 +389,8 @@ const getUserAuthQuery = (): string => {
           FROM usuario_roles ur
           INNER JOIN roles r ON r.id = ur.rol_id
           WHERE ur.usuario_id = u.id
+            AND COALESCE(ur.activo, TRUE) = TRUE
+            AND COALESCE(r.activo, TRUE) = TRUE
           ORDER BY r.nombre_rol
         ),
         ARRAY[]::text[]
@@ -219,9 +399,14 @@ const getUserAuthQuery = (): string => {
         ARRAY(
           SELECT DISTINCT CONCAT_WS('.', p.modulo, p.accion)
           FROM usuario_roles ur
+          INNER JOIN roles r ON r.id = ur.rol_id
           INNER JOIN rol_permisos rp ON rp.rol_id = ur.rol_id
           INNER JOIN permisos p ON p.id = rp.permiso_id
           WHERE ur.usuario_id = u.id
+            AND COALESCE(ur.activo, TRUE) = TRUE
+            AND COALESCE(r.activo, TRUE) = TRUE
+            AND COALESCE(rp.activo, TRUE) = TRUE
+            AND COALESCE(p.activo, TRUE) = TRUE
           ORDER BY CONCAT_WS('.', p.modulo, p.accion)
         ),
         ARRAY[]::text[]
@@ -371,13 +556,15 @@ const createAuthUser = async (
   await createAuthIdentity(client, authUserId, email);
 };
 
-export const createUser = async (input: CreateUserInput): Promise<UserProfile> => {
+export const createUser = async (input: CreateUserInput, actor: UserMutationActor): Promise<UserProfile> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
+    await assertGlobalAdminActor(client, actor);
     await ensureEmailAvailable(client, input.email);
     await validateRoleIds(client, input.roleIds);
+    await assertRoleMutationAllowed(client, actor, '-1', false, input.roleIds);
 
     const passwordHash = await bcrypt.hash(input.password, 10);
     const authUserId = randomUUID();
@@ -405,6 +592,13 @@ export const createUser = async (input: CreateUserInput): Promise<UserProfile> =
     }
 
     await syncUserRoles(client, createdUser.id, input.roleIds);
+    await auditUserChange(client, actor, 'USER_CREATE', createdUser.id, null, {
+      id: createdUser.id,
+      email: input.email,
+      name: input.name,
+      active: input.active,
+      roleIds: input.roleIds
+    });
     await client.query('COMMIT');
 
     const user = await findUserProfileById(createdUser.id);
@@ -416,6 +610,9 @@ export const createUser = async (input: CreateUserInput): Promise<UserProfile> =
     return user;
   } catch (error) {
     await client.query('ROLLBACK');
+    if (isUniqueViolation(error)) {
+      throw createHttpError('Email is already in use', 409, 'USER_EMAIL_DUPLICATE');
+    }
     throw error;
   } finally {
     client.release();
@@ -424,12 +621,29 @@ export const createUser = async (input: CreateUserInput): Promise<UserProfile> =
 
 export const updateUser = async (
   userId: string,
-  input: UpdateUserInput
+  input: UpdateUserInput,
+  actor: UserMutationActor
 ): Promise<UserProfile> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
+
+    const lockedTarget = await getLockedUser(client, userId);
+    if (!lockedTarget) {
+      throw createHttpError('User not found', 404, 'USER_NOT_FOUND');
+    }
+
+    if (lockedTarget.isGlobalAdmin) {
+      await assertGlobalAdminActor(client, actor);
+    }
+
+    await assertRoleMutationAllowed(client, actor, userId, lockedTarget.isGlobalAdmin, input.roleIds);
+
+    const changesAuthIdentity = input.email !== undefined || input.name !== undefined || input.password !== undefined;
+    if (changesAuthIdentity) {
+      assertAuthLinkConsistent(lockedTarget);
+    }
 
     const existingUserResult = await client.query<UserAuthRow>(
       `
@@ -471,13 +685,13 @@ export const updateUser = async (
       ? await bcrypt.hash(input.password, 10)
       : existingUser.passwordHash;
 
-    if (existingUser.authUserId && input.password) {
+    if (existingUser.authUserId && changesAuthIdentity) {
       await client.query(
         `
           UPDATE auth.users
           SET
             email = $2,
-            encrypted_password = $3,
+            encrypted_password = COALESCE($3, encrypted_password),
             raw_user_meta_data = $4::jsonb,
             updated_at = NOW()
           WHERE id::text = $1
@@ -492,9 +706,27 @@ export const updateUser = async (
         ]
       );
 
-      await createAuthIdentity(client, existingUser.authUserId, nextEmail);
-    } else if (input.password) {
-      throw createHttpError('User auth linkage is missing', 500, 'USER_AUTH_LINKAGE_MISSING');
+      const identityUpdate = await client.query(
+        `
+          UPDATE auth.identities
+          SET identity_data = $2::jsonb, updated_at = NOW()
+          WHERE user_id = $1::uuid AND provider = 'email'
+        `,
+        [
+          existingUser.authUserId,
+          JSON.stringify({
+            sub: existingUser.authUserId,
+            email: nextEmail,
+            email_verified: true,
+            phone_verified: false
+          })
+        ]
+      );
+      if ((identityUpdate.rowCount ?? 0) !== 1) {
+        throw createHttpError('User authentication linkage is inconsistent', 409, 'USER_AUTH_IDENTITY_INCONSISTENT');
+      }
+    } else if (changesAuthIdentity) {
+      throw createHttpError('User authentication linkage is missing', 409, 'USER_AUTH_LINK_MISSING');
     }
 
     await client.query(
@@ -503,15 +735,26 @@ export const updateUser = async (
         SET
           correo = $2,
           nombre_completo = $3,
-          activo = $4
+          activo = CASE WHEN $5::boolean THEN $4 ELSE activo END
         WHERE id::text = $1
       `,
-      [userId, nextEmail, nextName, nextActive]
+      [userId, nextEmail, nextName, nextActive, input.active !== undefined]
     );
 
     if (input.roleIds) {
       await syncUserRoles(client, userId, input.roleIds);
     }
+
+    await auditUserChange(client, actor, input.password ? 'USER_PASSWORD_CHANGE' : input.roleIds ? 'USER_ROLES_UPDATE' : 'USER_UPDATE', userId, {
+      email: existingUser.email,
+      name: existingUser.name,
+      active: existingUser.active
+    }, {
+      email: nextEmail,
+      name: nextName,
+      active: nextActive,
+      roleIds: input.roleIds
+    });
 
     await client.query('COMMIT');
 
@@ -524,6 +767,9 @@ export const updateUser = async (
     return user;
   } catch (error) {
     await client.query('ROLLBACK');
+    if (isUniqueViolation(error)) {
+      throw createHttpError('Email is already in use', 409, 'USER_EMAIL_DUPLICATE');
+    }
     throw error;
   } finally {
     client.release();
@@ -532,34 +778,62 @@ export const updateUser = async (
 
 export const setUserActiveState = async (
   userId: string,
-  active: boolean
+  active: boolean,
+  actor: UserMutationActor
 ): Promise<UserProfile> => {
-  const result = await dbQuery<UserProfileRow>(
-    `
-      UPDATE usuarios
-      SET
-        activo = $2
-      WHERE id::text = $1
-      RETURNING
-        id::text AS id,
-        created_at AS "createdAt",
-        created_at AS "updatedAt",
-        correo AS email,
-        nombre_completo AS name,
-        COALESCE(activo, TRUE) AS active
-    `,
-    [userId, active]
-  );
+  const client = await dbPool.connect();
 
-  if ((result.rowCount ?? 0) === 0) {
-    throw createHttpError('User not found', 404, 'USER_NOT_FOUND');
+  try {
+    await client.query('BEGIN');
+    const target = await getLockedUser(client, userId);
+
+    if (!target) {
+      throw createHttpError('User not found', 404, 'USER_NOT_FOUND');
+    }
+
+    if (target.isGlobalAdmin) {
+      await assertGlobalAdminActor(client, actor);
+      if (!active) {
+        await assertLastGlobalAdminProtected(client, userId);
+      }
+    }
+
+    const result = await client.query<UserProfileRow>(
+      `
+        UPDATE usuarios
+        SET activo = $2
+        WHERE id = $1::bigint
+        RETURNING
+          id::text AS id,
+          created_at AS "createdAt",
+          created_at AS "updatedAt",
+          correo AS email,
+          nombre_completo AS name,
+          COALESCE(activo, TRUE) AS active
+      `,
+      [userId, active]
+    );
+
+    if (!result.rows[0]) {
+      throw createHttpError('User not found', 404, 'USER_NOT_FOUND');
+    }
+
+    await auditUserChange(client, actor, active ? 'USER_ACTIVATE' : 'USER_DEACTIVATE', userId, {
+      active: target.active
+    }, {
+      active
+    });
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 
   const user = await findUserProfileById(userId);
-
   if (!user) {
     throw createHttpError('User could not be loaded', 500, 'USER_LOAD_FAILED');
   }
-
   return user;
 };

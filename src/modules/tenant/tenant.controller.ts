@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 
 import { AppError } from '../../utils/AppError';
+import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { successResponse } from '../../utils/apiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
 import {
@@ -19,14 +20,18 @@ import {
   revokeUserEmpresaAccess
 } from './tenant.service';
 
-const getActorUserId = (req: Request): string => {
+const getActor = (req: Request): { tenant: TenantAccessContext; userId: string } => {
   const userId = req.user?.userId;
 
   if (!userId) {
     throw new AppError('Authentication required', 401, 'UNAUTHORIZED');
   }
 
-  return userId;
+  if (!req.tenant) {
+    throw new AppError('Tenant context is required', 500, 'TENANT_CONTEXT_MISSING');
+  }
+
+  return { userId, tenant: req.tenant };
 };
 
 export const getTenantMeHandler = asyncHandler(async (req: Request, res: Response) => {
@@ -41,7 +46,7 @@ export const getTenantMeHandler = asyncHandler(async (req: Request, res: Respons
 
 export const getUserAccessHandler = asyncHandler(async (req: Request, res: Response) => {
   const { userId } = tenantUserIdParamSchema.parse(req.params);
-  const access = await getUserAccess(String(userId));
+  const access = await getUserAccess(String(userId), getActor(req));
 
   return successResponse(res, {
     message: 'User tenant access retrieved successfully',
@@ -52,7 +57,7 @@ export const getUserAccessHandler = asyncHandler(async (req: Request, res: Respo
 export const grantUserEmpresaAccessHandler = asyncHandler(async (req: Request, res: Response) => {
   const { userId } = tenantUserIdParamSchema.parse(req.params);
   const input = tenantEmpresaAccessSchema.parse(req.body);
-  const access = await grantUserEmpresaAccess(String(userId), input.empresa_id, getActorUserId(req));
+  const access = await grantUserEmpresaAccess(String(userId), input.empresa_id, getActor(req));
 
   return successResponse(res, {
     statusCode: 201,
@@ -64,7 +69,7 @@ export const grantUserEmpresaAccessHandler = asyncHandler(async (req: Request, r
 export const revokeUserEmpresaAccessHandler = asyncHandler(async (req: Request, res: Response) => {
   const { userId } = tenantUserIdParamSchema.parse(req.params);
   const { empresaId } = tenantEmpresaAccessParamSchema.parse(req.params);
-  const access = await revokeUserEmpresaAccess(String(userId), empresaId, getActorUserId(req));
+  const access = await revokeUserEmpresaAccess(String(userId), empresaId, getActor(req));
 
   return successResponse(res, {
     message: 'Company access revoked successfully',
@@ -75,7 +80,7 @@ export const revokeUserEmpresaAccessHandler = asyncHandler(async (req: Request, 
 export const grantUserContratoAccessHandler = asyncHandler(async (req: Request, res: Response) => {
   const { userId } = tenantUserIdParamSchema.parse(req.params);
   const input = tenantContratoAccessSchema.parse(req.body);
-  const access = await grantUserContratoAccess(String(userId), input.contrato_id, getActorUserId(req));
+  const access = await grantUserContratoAccess(String(userId), input.contrato_id, getActor(req));
 
   return successResponse(res, {
     statusCode: 201,
@@ -88,7 +93,7 @@ export const revokeUserContratoAccessHandler = asyncHandler(async (req: Request,
   const { userId } = tenantUserIdParamSchema.parse(req.params);
   const { contratoId } = tenantContratoAccessParamSchema.parse(req.params);
 
-  const access = await revokeUserContratoAccess(String(userId), contratoId, getActorUserId(req));
+  const access = await revokeUserContratoAccess(String(userId), contratoId, getActor(req));
 
   return successResponse(res, {
     message: 'Contract access revoked successfully',

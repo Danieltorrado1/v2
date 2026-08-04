@@ -14,6 +14,21 @@ import {
   setUserActiveState,
   updateUser
 } from './users.service';
+import { getAuditRequestMeta } from '../auditoria/auditoria.helper';
+
+const getActor = (req: Request) => {
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    throw Object.assign(new Error('Authentication required'), {
+      code: 'UNAUTHORIZED',
+      statusCode: 401
+    });
+  }
+
+  const auditMeta = getAuditRequestMeta(req);
+  return { userId, ip: auditMeta.ip ?? null, userAgent: auditMeta.user_agent ?? null };
+};
 
 export const getUsers = asyncHandler(async (_req: Request, res: Response) => {
   const users = await listUsers();
@@ -26,7 +41,7 @@ export const getUsers = asyncHandler(async (_req: Request, res: Response) => {
 
 export const getUserById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = userIdParamSchema.parse(req.params);
-  const user = await findUserProfileById(id);
+  const user = await findUserProfileById(String(id));
 
   if (!user) {
     throw Object.assign(new Error('User not found'), {
@@ -43,7 +58,7 @@ export const getUserById = asyncHandler(async (req: Request, res: Response) => {
 
 export const createUserHandler = asyncHandler(async (req: Request, res: Response) => {
   const input = createUserSchema.parse(req.body);
-  const user = await createUser(input);
+  const user = await createUser(input, getActor(req));
 
   return successResponse(res, {
     message: 'User created successfully',
@@ -55,7 +70,7 @@ export const createUserHandler = asyncHandler(async (req: Request, res: Response
 export const updateUserHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = userIdParamSchema.parse(req.params);
   const input = updateUserSchema.parse(req.body);
-  const user = await updateUser(id, input);
+  const user = await updateUser(String(id), input, getActor(req));
 
   return successResponse(res, {
     message: 'User updated successfully',
@@ -65,7 +80,7 @@ export const updateUserHandler = asyncHandler(async (req: Request, res: Response
 
 export const activateUser = asyncHandler(async (req: Request, res: Response) => {
   const { id } = userIdParamSchema.parse(req.params);
-  const user = await setUserActiveState(id, true);
+  const user = await setUserActiveState(String(id), true, getActor(req));
 
   return successResponse(res, {
     message: 'User activated successfully',
@@ -75,7 +90,7 @@ export const activateUser = asyncHandler(async (req: Request, res: Response) => 
 
 export const deactivateUser = asyncHandler(async (req: Request, res: Response) => {
   const { id } = userIdParamSchema.parse(req.params);
-  const user = await setUserActiveState(id, false);
+  const user = await setUserActiveState(String(id), false, getActor(req));
 
   return successResponse(res, {
     message: 'User deactivated successfully',

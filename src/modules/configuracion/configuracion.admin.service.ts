@@ -315,7 +315,7 @@ const ensureEmpresaExists = async (
 const ensureContratoExists = async (
   client: PoolClient,
   contratoId: number,
-  options?: { requireActive?: boolean }
+  options?: { forUpdate?: boolean; requireActive?: boolean }
 ): Promise<ContratoAdminItem> => {
   const result = await client.query<ContratoRow>(
     `
@@ -335,6 +335,7 @@ const ensureContratoExists = async (
       INNER JOIN empresas e ON e.id = c.empresa_id
       WHERE c.id = $1::bigint
       LIMIT 1
+      ${options?.forUpdate ? 'FOR UPDATE OF c' : ''}
     `,
     [contratoId]
   );
@@ -1058,10 +1059,28 @@ export const updateContrato = async (
 
   try {
     await client.query('BEGIN');
-    const current = await ensureContratoExists(client, contratoId);
+    const current = await ensureContratoExists(client, contratoId, { forUpdate: true });
     const nextEmpresaId = input.empresa_id ?? current.empresa.id;
 
     if (input.empresa_id !== undefined && input.empresa_id !== current.empresa.id) {
+      const assignments = await client.query<{ usuario_id: string }>(
+        `
+          SELECT uc.usuario_id::text AS usuario_id
+          FROM usuario_contratos uc
+          WHERE uc.contrato_id = $1::bigint
+            AND COALESCE(uc.activo, TRUE) = TRUE
+          FOR UPDATE
+        `,
+        [contratoId]
+      );
+      if ((assignments.rowCount ?? 0) > 0) {
+        throw new AppError(
+          'No se puede mover un contrato con accesos de usuario activos',
+          409,
+          'CONTRATO_TENANT_ASSIGNMENTS_ACTIVE',
+          { contratoId, assignedUserIds: assignments.rows.map((row) => row.usuario_id) }
+        );
+      }
       await ensureEmpresaExists(client, input.empresa_id, { requireActive: true });
     }
 
