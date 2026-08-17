@@ -1,7 +1,29 @@
-// ── Raw API shapes — /api/personas ────────────────────────────────────────────
+﻿// Raw API shapes - /api/personas
+
+export interface PersonaIdentificacionApi {
+  es_vigente: boolean;
+  fecha_expedicion_documento: string | null;
+  id: number;
+  motivo_cambio: string;
+  municipio_expedicion_id: number | null;
+  municipio_expedicion_nombre: string | null;
+  numero_documento: string;
+  persona_id: number;
+  registrado_en: string;
+  registrado_por_usuario_correo: string | null;
+  registrado_por_usuario_id: number | null;
+  registrado_por_usuario_nombre: string | null;
+  reemplaza_identificacion_id: number | null;
+  tipo_documento_id: number;
+  tipo_documento_nombre: string | null;
+  vigente_desde: string;
+  vigente_hasta: string | null;
+}
 
 export interface PersonaApi {
   id: number;
+  identificador_interno?: string;
+  identificacion_vigente?: PersonaIdentificacionApi | null;
   tipo_documento_id: number;
   numero_documento: string;
   primer_nombre: string;
@@ -46,7 +68,7 @@ export interface PaginatedPersonasApi {
   pagination: PersonasPaginationMeta;
 }
 
-// ── Raw API shapes — /api/vinculaciones ───────────────────────────────────────
+// Raw API shapes - /api/vinculaciones
 
 export type VinculacionEstado = 'ACTIVA' | 'RETIRADA' | 'SUSPENDIDA';
 
@@ -66,7 +88,7 @@ export interface VinculacionApi {
   metodo_pago: string | null;
 }
 
-// ── /api/vinculaciones/:id/expediente ─────────────────────────────────────────
+// /api/vinculaciones/:id/expediente
 
 export interface VinculacionExpedientePersona {
   id: number;
@@ -97,9 +119,9 @@ export interface VinculacionExpedientePersona {
   pais_nacimiento: string | null;
   nacimiento_extranjero: boolean | null;
   ciudad_nacimiento_extranjero: string | null;
+  identificacion_vigente?: PersonaIdentificacionApi | null;
 }
 
-// Minimal document shapes — FASE 6 añadirá el expediente documental completo
 export interface DocumentoExpedientePersonaApi {
   id: number;
   tipo_documento_id: number;
@@ -145,7 +167,7 @@ export interface VinculacionExpedienteApi {
   afiliaciones: VinculacionAfiliacionesApi | null;
 }
 
-// ── Frontend normalized types ─────────────────────────────────────────────────
+// Frontend normalized types
 
 export interface PersonaListItem {
   id: number;
@@ -209,3 +231,4 @@ export interface PersonalOPSFilters {
   tipo_vinculacion_id?: number | null;
   metodo_pago?: string | null;
 }
+

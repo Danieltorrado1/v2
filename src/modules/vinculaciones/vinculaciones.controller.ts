@@ -5,6 +5,7 @@ import { successResponse } from '../../utils/apiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
 import {
   createVinculacionSchema,
+  listContractPersonalQuerySchema,
   listOpsVinculacionesQuerySchema,
   listVinculacionesQuerySchema,
   reactivarVinculacionSchema,
@@ -19,6 +20,7 @@ import {
   getVinculacionExpediente,
   getVinculacionById,
   getVinculacionesByPersonaId,
+  listContractPersonal,
   listVinculaciones,
   reactivarVinculacion,
   retirarVinculacion,
@@ -52,6 +54,16 @@ export const getVinculaciones = asyncHandler(async (req: Request, res: Response)
 
   return successResponse(res, {
     message: 'Vinculaciones retrieved successfully',
+    data: result
+  });
+});
+
+export const getContractPersonalHandler = asyncHandler(async (req: Request, res: Response) => {
+  const filters = listContractPersonalQuerySchema.parse(req.query);
+  const result = await listContractPersonal(filters, req.tenant);
+
+  return successResponse(res, {
+    message: 'Contract personal retrieved successfully',
     data: result
   });
 });

@@ -3,7 +3,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import LoginPage from "../pages/auth/LoginPage";
 import MainLayout from "../layouts/MainLayout";
 import DashboardPage from "../pages/dashboard/DashboardPage";
-import PersonalPage from "../pages/personal/PersonalPage";
+import ContractPersonalPage from "../pages/personal/ContractPersonalPage";
 import NominaPage from "../pages/nomina/NominaPage";
 import CalculadoraSalarioPage from "../pages/herramientas/CalculadoraSalarioPage";
 import CalculadoraCoberturaPage from "../pages/herramientas/CalculadoraCoberturaPage";
@@ -29,7 +29,7 @@ export default function AppRouter() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="personal" element={<PersonalPage />} />
+            <Route path="personal" element={<ContractPersonalPage />} />
             <Route path="nomina" element={<NominaPage />} />
             <Route path="nomina/liquidacion" element={<LiquidacionPage />} />
             <Route path="nomina/turnos" element={<TurnosPage />} />

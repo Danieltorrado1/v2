@@ -8,6 +8,7 @@ import type { ApiResponse } from '../types/api.types';
 import type {
   PersonalOPSFilters,
   PersonaApi,
+  PersonaIdentificacionApi,
   PersonaNombreInput,
   PaginatedPersonasApi,
   VinculacionOPS,
@@ -26,10 +27,21 @@ export interface CreatePersonaPayload {
   primer_apellido: string;
   segundo_apellido?: string | null;
   fecha_nacimiento?: string | null;
+  fecha_expedicion_documento?: string | null;
+  municipio_expedicion_id?: number | null;
   telefono?: string | null;
   correo?: string | null;
   direccion?: string | null;
   barrio?: string | null;
+  motivo_cambio_identificacion?: string | null;
+}
+
+export interface CreatePersonaIdentificacionPayload {
+  tipo_documento_id: number;
+  numero_documento: string;
+  fecha_expedicion_documento?: string | null;
+  municipio_expedicion_id?: number | null;
+  motivo_cambio: string;
 }
 
 export type UpdatePersonaPayload = Partial<CreatePersonaPayload>;
@@ -40,8 +52,6 @@ const OPS_METODOS_PAGO = new Set([
   'OPS_VALOR_FIJO',
   'OPS_POR_PRODUCTO',
 ]);
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function buildNombreCompleto(
   p: PersonaNombreInput
@@ -198,8 +208,6 @@ async function getAllVinculacionesPaginated(
   ];
 }
 
-// ── API calls ─────────────────────────────────────────────────────────────────
-
 export async function getPersonas(filters: PersonaFilters = {}): Promise<PaginatedPersonasApi> {
   const params: Record<string, string | number | boolean | undefined> = {};
   if (filters.search) params['search'] = filters.search;
@@ -218,6 +226,13 @@ export async function getPersonaById(id: number): Promise<PersonaApi> {
 export async function getPersonaByDocumento(numeroDocumento: string): Promise<PersonaApi> {
   const res = await apiClient.get<ApiResponse<PersonaApi>>(
     `/personas/documento/${encodeURIComponent(numeroDocumento)}`
+  );
+  return res.data;
+}
+
+export async function getPersonaIdentificaciones(personaId: number): Promise<PersonaIdentificacionApi[]> {
+  const res = await apiClient.get<ApiResponse<PersonaIdentificacionApi[]>>(
+    `/personas/${personaId}/identificaciones`
   );
   return res.data;
 }
@@ -274,6 +289,17 @@ export async function createPersona(payload: CreatePersonaPayload): Promise<Pers
 
 export async function updatePersona(id: number, payload: UpdatePersonaPayload): Promise<PersonaApi> {
   const res = await apiClient.patch<ApiResponse<PersonaApi>>(`/personas/${id}`, payload);
+  return res.data;
+}
+
+export async function createPersonaIdentificacion(
+  personaId: number,
+  payload: CreatePersonaIdentificacionPayload
+): Promise<PersonaIdentificacionApi> {
+  const res = await apiClient.post<ApiResponse<PersonaIdentificacionApi>>(
+    `/personas/${personaId}/identificaciones`,
+    payload
+  );
   return res.data;
 }
 

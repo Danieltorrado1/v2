@@ -14,6 +14,7 @@
     "seed:plantillas-permisos": "node --experimental-strip-types src/scripts/seed-plantillas-permisos.ts",
     "seed:auditoria-permisos": "node --experimental-strip-types src/scripts/seed-auditoria-permisos.ts",
     "seed:alertas-documentales-permisos": "node --experimental-strip-types src/scripts/seed-alertas-documentales-permisos.ts",
+    "seed:contracts-permisos": "node --experimental-strip-types src/scripts/seed-contracts-permisos.ts",
     "seed:nomina-periodos-permisos": "node --experimental-strip-types src/scripts/seed-nomina-periodos-permisos.ts",
     "seed:nomina-vacaciones-permisos": "node --experimental-strip-types src/scripts/seed-nomina-vacaciones-permisos.ts",
     "seed:nomina-prima-permisos": "node --experimental-strip-types src/scripts/seed-nomina-prima-permisos.ts",
@@ -24,6 +25,7 @@
     "seed:sst-permisos": "node --experimental-strip-types src/scripts/seed-sst-permisos.ts",
     "seed:evaluaciones-permisos": "node --experimental-strip-types src/scripts/seed-evaluaciones-permisos.ts",
     "seed:contrato-laboral-template": "node --experimental-strip-types src/scripts/seed-contrato-laboral-template.ts",
+    "seed:personal-operativo-permisos": "node --experimental-strip-types src/scripts/seed-personal-operativo-permisos.ts",
     "seed:admin-tenant-access": "node --experimental-strip-types src/scripts/seed-admin-tenant-access.ts",
     "seed:tenant-access-permisos": "node --experimental-strip-types src/scripts/seed-tenant-access-permisos.ts",
     "seed:tenant-test-user": "node --experimental-strip-types src/scripts/seed-tenant-test-user.ts",
@@ -71,3 +73,4 @@
     "typescript": "^5.9.2"
   }
 }
+

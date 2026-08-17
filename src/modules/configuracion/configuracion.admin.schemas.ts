@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { CONTRATO_ESTADOS } from '../contratos/contratos.domain';
+
 const trimmedStringSchema = z.string().trim().min(1);
 
 const optionalTrimmedStringSchema = z.preprocess((value) => {
@@ -53,6 +55,7 @@ const optionalNumericIdQuerySchema = z.preprocess((value) => {
 }, z.coerce.number().int().positive().optional());
 
 const positiveIntegerSchema = z.coerce.number().int().positive();
+const contratoEstadoSchema = z.enum(CONTRATO_ESTADOS);
 
 const paginatedQueryShape = {
   page: z.coerce.number().int().min(1).default(1),
@@ -93,6 +96,7 @@ export const configuracionContratosListQuerySchema = z
   .object({
     activo: optionalBooleanQuerySchema,
     empresa_id: optionalNumericIdQuerySchema,
+    estado_contractual: contratoEstadoSchema.optional(),
     search: optionalTrimmedStringSchema,
     ...paginatedQueryShape
   })
@@ -152,8 +156,13 @@ export const createContratoSchema = z
     numero_licitacion: nullableTrimmedStringSchema.optional().default(null),
     entidad_contratante: trimmedStringSchema.max(220),
     fecha_inicio: z.string().date(),
-    fecha_finalizacion: z.string().date(),
+    fecha_finalizacion: z.string().date().nullable().optional(),
+    fecha_final_estimada: z.string().date().nullable().optional(),
+    fecha_final_real: z.string().date().nullable().optional(),
+    estado_contractual: contratoEstadoSchema.optional(),
+    contrato_padre_id: positiveIntegerSchema.nullable().optional(),
     objeto_contractual: nullableTrimmedStringSchema.optional().default(null),
+    observaciones: nullableTrimmedStringSchema.optional(),
     aplica_cobertura: z.boolean().optional().default(false)
   })
   .strict();
@@ -165,8 +174,13 @@ export const updateContratoSchema = z
     numero_licitacion: nullableTrimmedStringSchema.optional(),
     entidad_contratante: trimmedStringSchema.max(220).optional(),
     fecha_inicio: z.string().date().optional(),
-    fecha_finalizacion: z.string().date().optional(),
+    fecha_finalizacion: z.string().date().nullable().optional(),
+    fecha_final_estimada: z.string().date().nullable().optional(),
+    fecha_final_real: z.string().date().nullable().optional(),
+    estado_contractual: contratoEstadoSchema.optional(),
+    contrato_padre_id: positiveIntegerSchema.nullable().optional(),
     objeto_contractual: nullableTrimmedStringSchema.optional(),
+    observaciones: nullableTrimmedStringSchema.optional(),
     aplica_cobertura: z.boolean().optional()
   })
   .strict()
@@ -204,3 +218,5 @@ export type CreateContratoInput = z.infer<typeof createContratoSchema>;
 export type UpdateContratoInput = z.infer<typeof updateContratoSchema>;
 export type CreateContratoCargoInput = z.infer<typeof createContratoCargoSchema>;
 export type UpdateContratoCargoInput = z.infer<typeof updateContratoCargoSchema>;
+
+

@@ -3,6 +3,7 @@ import type { PoolClient, QueryResultRow } from 'pg';
 import { dbPool, dbQuery } from '../../config/db';
 import { AppError } from '../../utils/AppError';
 import { registerAuditEntry } from '../auditoria/auditoria.helper';
+import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { METODOS_PAGO } from '../vinculaciones/vinculaciones.schemas';
 import type {
   ConfiguracionCargosListQuery,
@@ -40,15 +41,20 @@ interface EmpresaRow extends QueryResultRow {
 interface ContratoRow extends QueryResultRow {
   activo: boolean;
   aplica_cobertura: boolean;
+  contrato_padre_id: string | null;
   empresa_id: string;
   empresa_nombre: string | null;
   entidad_contratante: string;
-  fecha_finalizacion: Date | string;
+  estado_contractual: string;
+  fecha_final_estimada: Date | string | null;
+  fecha_final_real: Date | string | null;
+  fecha_finalizacion: Date | string | null;
   fecha_inicio: Date | string;
   id: string;
   numero_contrato: string;
   numero_licitacion: string | null;
   objeto_contractual: string | null;
+  observaciones: string | null;
 }
 
 interface CargoRow extends QueryResultRow {
@@ -125,17 +131,22 @@ export interface EmpresaAdminItem {
 export interface ContratoAdminItem {
   activo: boolean;
   aplica_cobertura: boolean;
+  contrato_padre_id: number | null;
   empresa: {
     id: number;
     nombre_empresa: string | null;
   };
   entidad_contratante: string;
-  fecha_finalizacion: string;
+  estado_contractual: string;
+  fecha_final_estimada: string | null;
+  fecha_final_real: string | null;
+  fecha_finalizacion: string | null;
   fecha_inicio: string;
   id: number;
   numero_contrato: string;
   numero_licitacion: string | null;
   objeto_contractual: string | null;
+  observaciones: string | null;
 }
 
 export interface CargoAdminItem {
@@ -172,14 +183,17 @@ const toNullableNumber = (value: string | number | null | undefined): number | n
   return toNumber(value);
 };
 
-const toDateString = (value: Date | string): string => {
+const toDateString = (value: Date | string | null): string | null => {
+  if (!value) {
+    return null;
+  }
+
   if (value instanceof Date) {
     return value.toISOString().slice(0, 10);
   }
 
   return value.slice(0, 10);
 };
-
 const normalizeComparableText = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase();
 
 const buildPagination = (page: number, limit: number, total: number) => ({
@@ -189,7 +203,118 @@ const buildPagination = (page: number, limit: number, total: number) => ({
   total_pages: total === 0 ? 0 : Math.ceil(total / limit)
 });
 
-const validateDateRange = (fechaInicio: string, fechaFinalizacion: string): void => {
+const assertTenantContratoAccess = async (
+  client: PoolClient,
+  tenant: TenantAccessContext | undefined,
+  contratoId: number
+): Promise<void> => {
+  if (!tenant || tenant.isGlobalAdmin || tenant.contratoIds.includes(contratoId)) {
+    return;
+  }
+
+  if (tenant.contratoIds.length > 0) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+  }
+
+  if (tenant.empresaIds.length === 0) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+  }
+
+  const result = await client.query<{ empresa_id: string | null }>(
+    `
+      SELECT empresa_id::text AS empresa_id
+      FROM contratos
+      WHERE id = $1::bigint
+      LIMIT 1
+    `,
+    [contratoId]
+  );
+
+  const empresaId = toNullableNumber(result.rows[0]?.empresa_id ?? null);
+
+  if (empresaId === null || !tenant.empresaIds.includes(empresaId)) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+  }
+};
+
+const appendContractTenantClauses = (input: {
+  clauses: string[];
+  contratoColumn: string;
+  empresaColumn: string;
+  params: unknown[];
+  tenant?: TenantAccessContext;
+}): void => {
+  const { tenant } = input;
+
+  if (!tenant || tenant.isGlobalAdmin) {
+    return;
+  }
+
+  const scoped: string[] = [];
+
+  if (tenant.contratoIds.length > 0) {
+    input.params.push(tenant.contratoIds);
+    input.clauses.push(`${input.contratoColumn} = ANY($${input.params.length}::bigint[])`);
+    return;
+  }
+
+  if (tenant.empresaIds.length > 0) {
+    input.params.push(tenant.empresaIds);
+    scoped.push(`${input.empresaColumn} = ANY($${input.params.length}::bigint[])`);
+  }
+
+  if (scoped.length === 0) {
+    input.clauses.push('1 = 0');
+    return;
+  }
+
+  input.clauses.push(`(${scoped.join(' OR ')})`);
+};
+
+const appendEmpresaTenantClauses = (input: {
+  clauses: string[];
+  empresaColumn: string;
+  params: unknown[];
+  tenant?: TenantAccessContext;
+}): void => {
+  const { tenant } = input;
+
+  if (!tenant || tenant.isGlobalAdmin) {
+    return;
+  }
+
+  const scoped: string[] = [];
+
+  if (tenant.empresaIds.length > 0) {
+    input.params.push(tenant.empresaIds);
+    scoped.push(`${input.empresaColumn} = ANY($${input.params.length}::bigint[])`);
+  }
+
+  if (tenant.contratoIds.length > 0) {
+    input.params.push(tenant.contratoIds);
+    scoped.push(
+      `EXISTS (
+        SELECT 1
+        FROM contratos c_scope
+        WHERE c_scope.empresa_id = ${input.empresaColumn}
+          AND c_scope.id = ANY($${input.params.length}::bigint[])
+      )`
+    );
+  }
+
+  if (scoped.length === 0) {
+    input.clauses.push('1 = 0');
+    return;
+  }
+
+  input.clauses.push(`(${scoped.join(' OR ')})`);
+};
+
+const validateDateRange = (fechaInicio: string, fechaFinalizacion: string | null): void => {
+  if (!fechaFinalizacion) {
+    return;
+  }
+
   if (new Date(`${fechaInicio}T00:00:00.000Z`) > new Date(`${fechaFinalizacion}T00:00:00.000Z`)) {
     throw new AppError(
       'fecha_inicio must be earlier than or equal to fecha_finalizacion',
@@ -223,9 +348,14 @@ const mapContrato = (row: ContratoRow): ContratoAdminItem => ({
   numero_contrato: row.numero_contrato,
   numero_licitacion: row.numero_licitacion,
   entidad_contratante: row.entidad_contratante,
-  fecha_inicio: toDateString(row.fecha_inicio),
-  fecha_finalizacion: toDateString(row.fecha_finalizacion),
+  fecha_inicio: toDateString(row.fecha_inicio) as string,
+  fecha_finalizacion: toDateString(row.fecha_final_estimada ?? row.fecha_finalizacion),
+  fecha_final_estimada: toDateString(row.fecha_final_estimada ?? row.fecha_finalizacion),
+  fecha_final_real: toDateString(row.fecha_final_real),
+  estado_contractual: row.estado_contractual,
+  contrato_padre_id: toNullableNumber(row.contrato_padre_id),
   objeto_contractual: row.objeto_contractual,
+  observaciones: row.observaciones,
   aplica_cobertura: row.aplica_cobertura,
   activo: row.activo
 });
@@ -328,7 +458,12 @@ const ensureContratoExists = async (
         c.entidad_contratante,
         c.fecha_inicio,
         c.fecha_finalizacion,
+        c.fecha_final_estimada,
+        c.fecha_final_real,
+        c.estado_contractual,
+        c.contrato_padre_id::text AS contrato_padre_id,
         c.objeto_contractual,
+        c.observaciones,
         c.aplica_cobertura,
         COALESCE(c.activo, TRUE) AS activo
       FROM contratos c
@@ -637,7 +772,40 @@ const listCatalogoSimple = async (
   };
 };
 
-export const listEmpresas = async (query: ConfiguracionEmpresasListQuery): Promise<PaginatedResult<EmpresaAdminItem>> => {
+const assertTenantEmpresaAccess = async (
+  client: PoolClient,
+  tenant: TenantAccessContext | undefined,
+  empresaId: number
+): Promise<void> => {
+  if (!tenant || tenant.isGlobalAdmin || tenant.empresaIds.includes(empresaId)) {
+    return;
+  }
+
+  if (tenant.contratoIds.length === 0) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+  }
+
+  const result = await client.query<{ exists: boolean }>(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM contratos
+        WHERE empresa_id = $1::bigint
+          AND id = ANY($2::bigint[])
+      ) AS exists
+    `,
+    [empresaId, tenant.contratoIds]
+  );
+
+  if (!result.rows[0]?.exists) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+  }
+};
+
+export const listEmpresas = async (
+  query: ConfiguracionEmpresasListQuery,
+  tenant?: TenantAccessContext
+): Promise<PaginatedResult<EmpresaAdminItem>> => {
   const clauses: string[] = [];
   const params: unknown[] = [];
 
@@ -655,6 +823,13 @@ export const listEmpresas = async (query: ConfiguracionEmpresasListQuery): Promi
       OR COALESCE(e.departamento, '') ILIKE $${params.length}
     )`);
   }
+
+  appendEmpresaTenantClauses({
+    clauses,
+    params,
+    tenant,
+    empresaColumn: 'e.id'
+  });
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
   const countResult = await dbQuery<CountRow>(`SELECT COUNT(*)::int AS total FROM empresas e ${whereClause}`, params);
@@ -687,36 +862,47 @@ export const listEmpresas = async (query: ConfiguracionEmpresasListQuery): Promi
   return { items: result.rows.map(mapEmpresa), pagination: buildPagination(query.page, query.limit, total) };
 };
 
-export const getEmpresaById = async (empresaId: number): Promise<EmpresaAdminItem> => {
-  const result = await dbQuery<EmpresaRow>(
-    `
-      SELECT
-        e.id::text AS id,
-        e.tipo_empresa,
-        e.nombre_empresa,
-        e.nit,
-        e.representante_legal,
-        e.documento_representante,
-        e.telefono,
-        e.correo,
-        e.direccion,
-        e.ciudad,
-        e.departamento,
-        COALESCE(e.activo, TRUE) AS activo
-      FROM empresas e
-      WHERE e.id = $1::bigint
-      LIMIT 1
-    `,
-    [empresaId]
-  );
+export const getEmpresaById = async (
+  empresaId: number,
+  tenant?: TenantAccessContext
+): Promise<EmpresaAdminItem> => {
+  const client = await dbPool.connect();
 
-  const row = result.rows[0];
+  try {
+    await assertTenantEmpresaAccess(client, tenant, empresaId);
 
-  if (!row) {
-    throw new AppError('Empresa not found', 404, 'EMPRESA_NOT_FOUND', { empresaId });
+    const result = await client.query<EmpresaRow>(
+      `
+        SELECT
+          e.id::text AS id,
+          e.tipo_empresa,
+          e.nombre_empresa,
+          e.nit,
+          e.representante_legal,
+          e.documento_representante,
+          e.telefono,
+          e.correo,
+          e.direccion,
+          e.ciudad,
+          e.departamento,
+          COALESCE(e.activo, TRUE) AS activo
+        FROM empresas e
+        WHERE e.id = $1::bigint
+        LIMIT 1
+      `,
+      [empresaId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new AppError('Empresa not found', 404, 'EMPRESA_NOT_FOUND', { empresaId });
+    }
+
+    return mapEmpresa(row);
+  } finally {
+    client.release();
   }
-
-  return mapEmpresa(row);
 };
 
 export const createEmpresa = async (input: CreateEmpresaInput, actor: ActorMeta): Promise<EmpresaAdminItem> => {
@@ -789,12 +975,14 @@ export const createEmpresa = async (input: CreateEmpresaInput, actor: ActorMeta)
 export const updateEmpresa = async (
   empresaId: number,
   input: UpdateEmpresaInput,
-  actor: ActorMeta
+  actor: ActorMeta,
+  tenant?: TenantAccessContext
 ): Promise<EmpresaAdminItem> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
+    await assertTenantEmpresaAccess(client, tenant, empresaId);
     const current = await ensureEmpresaExists(client, empresaId);
 
     if (input.nit && input.nit !== current.nit) await ensureEmpresaNitAvailable(client, input.nit, empresaId);
@@ -866,12 +1054,14 @@ export const setEmpresaActiveState = async (
   empresaId: number,
   active: boolean,
   actor: ActorMeta,
-  observacion?: string | null
+  observacion?: string | null,
+  tenant?: TenantAccessContext
 ): Promise<EmpresaAdminItem> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
+    await assertTenantEmpresaAccess(client, tenant, empresaId);
     const current = await ensureEmpresaExists(client, empresaId);
     if (!active) await ensureEmpresaCanDeactivate(client, empresaId);
 
@@ -912,7 +1102,7 @@ export const setEmpresaActiveState = async (
   }
 };
 
-export const listContratos = async (query: ConfiguracionContratosListQuery): Promise<PaginatedResult<ContratoAdminItem>> => {
+export const listContratos = async (query: ConfiguracionContratosListQuery, tenant?: TenantAccessContext): Promise<PaginatedResult<ContratoAdminItem>> => {
   const clauses: string[] = [];
   const params: unknown[] = [];
 
@@ -926,6 +1116,11 @@ export const listContratos = async (query: ConfiguracionContratosListQuery): Pro
     clauses.push(`c.empresa_id = $${params.length}::bigint`);
   }
 
+  if (query.estado_contractual !== undefined) {
+    params.push(query.estado_contractual);
+    clauses.push(`c.estado_contractual = $${params.length}`);
+  }
+
   if (query.search) {
     params.push(`%${query.search}%`);
     clauses.push(`(
@@ -936,6 +1131,14 @@ export const listContratos = async (query: ConfiguracionContratosListQuery): Pro
       OR e.nombre_empresa ILIKE $${params.length}
     )`);
   }
+
+  appendContractTenantClauses({
+    clauses,
+    params,
+    tenant,
+    contratoColumn: 'c.id',
+    empresaColumn: 'c.empresa_id'
+  });
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
   const countResult = await dbQuery<CountRow>(`SELECT COUNT(*)::int AS total FROM contratos c INNER JOIN empresas e ON e.id = c.empresa_id ${whereClause}`, params);
@@ -953,7 +1156,12 @@ export const listContratos = async (query: ConfiguracionContratosListQuery): Pro
         c.entidad_contratante,
         c.fecha_inicio,
         c.fecha_finalizacion,
+        c.fecha_final_estimada,
+        c.fecha_final_real,
+        c.estado_contractual,
+        c.contrato_padre_id::text AS contrato_padre_id,
         c.objeto_contractual,
+        c.observaciones,
         c.aplica_cobertura,
         COALESCE(c.activo, TRUE) AS activo
       FROM contratos c
@@ -968,40 +1176,54 @@ export const listContratos = async (query: ConfiguracionContratosListQuery): Pro
   return { items: result.rows.map(mapContrato), pagination: buildPagination(query.page, query.limit, total) };
 };
 
-export const getContratoById = async (contratoId: number): Promise<ContratoAdminItem> => {
-  const result = await dbQuery<ContratoRow>(
-    `
-      SELECT
-        c.id::text AS id,
-        c.empresa_id::text AS empresa_id,
-        e.nombre_empresa AS empresa_nombre,
-        c.numero_contrato,
-        c.numero_licitacion,
-        c.entidad_contratante,
-        c.fecha_inicio,
-        c.fecha_finalizacion,
-        c.objeto_contractual,
-        c.aplica_cobertura,
-        COALESCE(c.activo, TRUE) AS activo
-      FROM contratos c
-      INNER JOIN empresas e ON e.id = c.empresa_id
-      WHERE c.id = $1::bigint
-      LIMIT 1
-    `,
-    [contratoId]
-  );
+export const getContratoById = async (contratoId: number, tenant?: TenantAccessContext): Promise<ContratoAdminItem> => {
+  const client = await dbPool.connect();
 
-  const row = result.rows[0];
-  if (!row) throw new AppError('Contrato not found', 404, 'CONTRATO_NOT_FOUND', { contratoId });
-  return mapContrato(row);
+  try {
+    await assertTenantContratoAccess(client, tenant, contratoId);
+
+    const result = await client.query<ContratoRow>(
+      `
+        SELECT
+          c.id::text AS id,
+          c.empresa_id::text AS empresa_id,
+          e.nombre_empresa AS empresa_nombre,
+          c.numero_contrato,
+          c.numero_licitacion,
+          c.entidad_contratante,
+          c.fecha_inicio,
+          c.fecha_finalizacion,
+          c.fecha_final_estimada,
+          c.fecha_final_real,
+          c.estado_contractual,
+          c.contrato_padre_id::text AS contrato_padre_id,
+          c.objeto_contractual,
+          c.observaciones,
+          c.aplica_cobertura,
+          COALESCE(c.activo, TRUE) AS activo
+        FROM contratos c
+        INNER JOIN empresas e ON e.id = c.empresa_id
+        WHERE c.id = $1::bigint
+        LIMIT 1
+      `,
+      [contratoId]
+    );
+
+    const row = result.rows[0];
+    if (!row) throw new AppError('Contrato not found', 404, 'CONTRATO_NOT_FOUND', { contratoId });
+    return mapContrato(row);
+  } finally {
+    client.release();
+  }
 };
 
-export const createContrato = async (input: CreateContratoInput, actor: ActorMeta): Promise<ContratoAdminItem> => {
-  validateDateRange(input.fecha_inicio, input.fecha_finalizacion);
+export const createContrato = async (input: CreateContratoInput, actor: ActorMeta, tenant?: TenantAccessContext): Promise<ContratoAdminItem> => {
+  validateDateRange(input.fecha_inicio, input.fecha_final_estimada ?? input.fecha_finalizacion ?? null);
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
+    await assertTenantEmpresaAccess(client, tenant, input.empresa_id);
     await ensureEmpresaExists(client, input.empresa_id, { requireActive: true });
     await ensureContratoNumeroAvailable(client, input.empresa_id, input.numero_contrato);
 
@@ -1014,11 +1236,16 @@ export const createContrato = async (input: CreateContratoInput, actor: ActorMet
           entidad_contratante,
           fecha_inicio,
           fecha_finalizacion,
+          fecha_final_estimada,
+          fecha_final_real,
+          estado_contractual,
+          contrato_padre_id,
           objeto_contractual,
+          observaciones,
           aplica_cobertura,
           activo
         )
-        VALUES ($1::bigint, $2, $3, $4, $5::date, $6::date, $7, $8, TRUE)
+        VALUES ($1::bigint, $2, $3, $4, $5::date, $6::date, $7::date, $8::date, $9, $10::bigint, $11, $12, $13, TRUE)
         RETURNING
           id::text AS id,
           empresa_id::text AS empresa_id,
@@ -1028,11 +1255,16 @@ export const createContrato = async (input: CreateContratoInput, actor: ActorMet
           entidad_contratante,
           fecha_inicio,
           fecha_finalizacion,
+          fecha_final_estimada,
+          fecha_final_real,
+          estado_contractual,
+          contrato_padre_id::text AS contrato_padre_id,
           objeto_contractual,
+          observaciones,
           aplica_cobertura,
           COALESCE(activo, TRUE) AS activo
       `,
-      [input.empresa_id, input.numero_contrato, input.numero_licitacion, input.entidad_contratante, input.fecha_inicio, input.fecha_finalizacion, input.objeto_contractual, input.aplica_cobertura]
+      [input.empresa_id, input.numero_contrato, input.numero_licitacion, input.entidad_contratante, input.fecha_inicio, input.fecha_final_estimada ?? input.fecha_finalizacion ?? null, input.fecha_final_estimada ?? input.fecha_finalizacion ?? null, input.fecha_final_real ?? null, input.estado_contractual, input.contrato_padre_id ?? null, input.objeto_contractual, input.observaciones ?? null, input.aplica_cobertura]
     );
 
     const row = result.rows[0];
@@ -1053,16 +1285,19 @@ export const createContrato = async (input: CreateContratoInput, actor: ActorMet
 export const updateContrato = async (
   contratoId: number,
   input: UpdateContratoInput,
-  actor: ActorMeta
+  actor: ActorMeta,
+  tenant?: TenantAccessContext
 ): Promise<ContratoAdminItem> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
+    await assertTenantContratoAccess(client, tenant, contratoId);
     const current = await ensureContratoExists(client, contratoId, { forUpdate: true });
     const nextEmpresaId = input.empresa_id ?? current.empresa.id;
 
     if (input.empresa_id !== undefined && input.empresa_id !== current.empresa.id) {
+      await assertTenantEmpresaAccess(client, tenant, input.empresa_id);
       const assignments = await client.query<{ usuario_id: string }>(
         `
           SELECT uc.usuario_id::text AS usuario_id
@@ -1095,8 +1330,12 @@ export const updateContrato = async (
       numero_licitacion: Object.prototype.hasOwnProperty.call(input, 'numero_licitacion') ? input.numero_licitacion ?? null : current.numero_licitacion,
       entidad_contratante: input.entidad_contratante ?? current.entidad_contratante,
       fecha_inicio: input.fecha_inicio ?? current.fecha_inicio,
-      fecha_finalizacion: input.fecha_finalizacion ?? current.fecha_finalizacion,
+      fecha_finalizacion: Object.prototype.hasOwnProperty.call(input, 'fecha_final_estimada') ? input.fecha_final_estimada ?? null : Object.prototype.hasOwnProperty.call(input, 'fecha_finalizacion') ? input.fecha_finalizacion ?? null : current.fecha_finalizacion,
+      fecha_final_real: Object.prototype.hasOwnProperty.call(input, 'fecha_final_real') ? input.fecha_final_real ?? null : current.fecha_final_real,
+      estado_contractual: input.estado_contractual ?? current.estado_contractual,
+      contrato_padre_id: Object.prototype.hasOwnProperty.call(input, 'contrato_padre_id') ? input.contrato_padre_id ?? null : current.contrato_padre_id,
       objeto_contractual: Object.prototype.hasOwnProperty.call(input, 'objeto_contractual') ? input.objeto_contractual ?? null : current.objeto_contractual,
+      observaciones: Object.prototype.hasOwnProperty.call(input, 'observaciones') ? input.observaciones ?? null : current.observaciones,
       aplica_cobertura: Object.prototype.hasOwnProperty.call(input, 'aplica_cobertura') ? input.aplica_cobertura ?? current.aplica_cobertura : current.aplica_cobertura
     };
 
@@ -1112,8 +1351,13 @@ export const updateContrato = async (
           entidad_contratante = $5,
           fecha_inicio = $6::date,
           fecha_finalizacion = $7::date,
-          objeto_contractual = $8,
-          aplica_cobertura = $9
+          fecha_final_estimada = $7::date,
+          fecha_final_real = $8::date,
+          estado_contractual = $9,
+          contrato_padre_id = $10::bigint,
+          objeto_contractual = $11,
+          observaciones = $12,
+          aplica_cobertura = $13
         WHERE id = $1::bigint
         RETURNING
           id::text AS id,
@@ -1124,11 +1368,16 @@ export const updateContrato = async (
           entidad_contratante,
           fecha_inicio,
           fecha_finalizacion,
+          fecha_final_estimada,
+          fecha_final_real,
+          estado_contractual,
+          contrato_padre_id::text AS contrato_padre_id,
           objeto_contractual,
+          observaciones,
           aplica_cobertura,
           COALESCE(activo, TRUE) AS activo
       `,
-      [contratoId, nextValues.empresa_id, nextValues.numero_contrato, nextValues.numero_licitacion, nextValues.entidad_contratante, nextValues.fecha_inicio, nextValues.fecha_finalizacion, nextValues.objeto_contractual, nextValues.aplica_cobertura]
+      [contratoId, nextValues.empresa_id, nextValues.numero_contrato, nextValues.numero_licitacion, nextValues.entidad_contratante, nextValues.fecha_inicio, nextValues.fecha_finalizacion, nextValues.fecha_final_real, nextValues.estado_contractual, nextValues.contrato_padre_id, nextValues.objeto_contractual, nextValues.observaciones ?? null, nextValues.aplica_cobertura]
     );
 
     const row = result.rows[0];
@@ -1150,12 +1399,14 @@ export const setContratoActiveState = async (
   contratoId: number,
   active: boolean,
   actor: ActorMeta,
-  observacion?: string | null
+  observacion?: string | null,
+  tenant?: TenantAccessContext
 ): Promise<ContratoAdminItem> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
+    await assertTenantContratoAccess(client, tenant, contratoId);
     const current = await ensureContratoExists(client, contratoId);
     if (!active) await ensureContratoCanDeactivate(client, contratoId);
 
@@ -1173,7 +1424,12 @@ export const setContratoActiveState = async (
           entidad_contratante,
           fecha_inicio,
           fecha_finalizacion,
+          fecha_final_estimada,
+          fecha_final_real,
+          estado_contractual,
+          contrato_padre_id::text AS contrato_padre_id,
           objeto_contractual,
+          observaciones,
           aplica_cobertura,
           COALESCE(activo, TRUE) AS activo
       `,
@@ -1195,9 +1451,30 @@ export const setContratoActiveState = async (
   }
 };
 
-export const listContratoCargos = async (query: ConfiguracionCargosListQuery): Promise<PaginatedResult<CargoAdminItem>> => {
+export const listContratoCargos = async (
+  query: ConfiguracionCargosListQuery,
+  tenant?: TenantAccessContext
+): Promise<PaginatedResult<CargoAdminItem>> => {
+  if (query.contrato_id !== undefined && tenant && !tenant.isGlobalAdmin) {
+    const client = await dbPool.connect();
+
+    try {
+      await assertTenantContratoAccess(client, tenant, query.contrato_id);
+    } finally {
+      client.release();
+    }
+  }
+
   const clauses: string[] = [];
   const params: unknown[] = [];
+
+  appendContractTenantClauses({
+    clauses,
+    contratoColumn: 'cc.contrato_id',
+    empresaColumn: 'c.empresa_id',
+    params,
+    tenant
+  });
 
   if (query.activo !== undefined) {
     params.push(query.activo);
@@ -1251,38 +1528,31 @@ export const listContratoCargos = async (query: ConfiguracionCargosListQuery): P
   return { items: result.rows.map(mapCargo), pagination: buildPagination(query.page, query.limit, total) };
 };
 
-export const getContratoCargoById = async (cargoId: number): Promise<CargoAdminItem> => {
-  const result = await dbQuery<CargoRow>(
-    `
-      SELECT
-        cc.id::text AS id,
-        cc.contrato_id::text AS contrato_id,
-        c.numero_contrato AS contrato_numero,
-        c.empresa_id::text AS empresa_id,
-        e.nombre_empresa AS empresa_nombre,
-        cc.nombre_cargo,
-        cc.cantidad_requerida,
-        cc.aplica_cobertura,
-        cc.activo
-      FROM contrato_cargos cc
-      INNER JOIN contratos c ON c.id = cc.contrato_id
-      INNER JOIN empresas e ON e.id = c.empresa_id
-      WHERE cc.id = $1::bigint
-      LIMIT 1
-    `,
-    [cargoId]
-  );
+export const getContratoCargoById = async (
+  cargoId: number,
+  tenant?: TenantAccessContext
+): Promise<CargoAdminItem> => {
+  const client = await dbPool.connect();
 
-  const row = result.rows[0];
-  if (!row) throw new AppError('Cargo not found', 404, 'CONTRATO_CARGO_NOT_FOUND', { cargoId });
-  return mapCargo(row);
+  try {
+    const cargo = await ensureCargoExists(client, cargoId);
+    await assertTenantContratoAccess(client, tenant, cargo.contrato.id);
+    return cargo;
+  } finally {
+    client.release();
+  }
 };
 
-export const createContratoCargo = async (input: CreateContratoCargoInput, actor: ActorMeta): Promise<CargoAdminItem> => {
+export const createContratoCargo = async (
+  input: CreateContratoCargoInput,
+  actor: ActorMeta,
+  tenant?: TenantAccessContext
+): Promise<CargoAdminItem> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
+    await assertTenantContratoAccess(client, tenant, input.contrato_id);
     await ensureContratoExists(client, input.contrato_id, { requireActive: true });
     await ensureCargoNombreAvailable(client, input.contrato_id, input.nombre_cargo);
 
@@ -1322,16 +1592,19 @@ export const createContratoCargo = async (input: CreateContratoCargoInput, actor
 export const updateContratoCargo = async (
   cargoId: number,
   input: UpdateContratoCargoInput,
-  actor: ActorMeta
+  actor: ActorMeta,
+  tenant?: TenantAccessContext
 ): Promise<CargoAdminItem> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
     const current = await ensureCargoExists(client, cargoId);
+    await assertTenantContratoAccess(client, tenant, current.contrato.id);
     const nextContratoId = input.contrato_id ?? current.contrato.id;
 
     if (input.contrato_id !== undefined && input.contrato_id !== current.contrato.id) {
+      await assertTenantContratoAccess(client, tenant, input.contrato_id);
       await ensureContratoExists(client, input.contrato_id, { requireActive: true });
     }
 
@@ -1389,13 +1662,15 @@ export const setContratoCargoActiveState = async (
   cargoId: number,
   active: boolean,
   actor: ActorMeta,
-  observacion?: string | null
+  observacion?: string | null,
+  tenant?: TenantAccessContext
 ): Promise<CargoAdminItem> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
     const current = await ensureCargoExists(client, cargoId);
+    await assertTenantContratoAccess(client, tenant, current.contrato.id);
     if (!active) await ensureCargoCanDeactivate(client, cargoId);
 
     const result = await client.query<CargoRow>(

@@ -1,67 +1,125 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Edit2, Eye, KeyRound, Power, ShieldCheck, User, Users } from 'lucide-react';
+import {
+  AlertTriangle,
+  Building2,
+  Edit2,
+  FileText,
+  KeyRound,
+  Plus,
+  Power,
+  ShieldCheck,
+  Users
+} from 'lucide-react';
+
 import { useAuth } from '../../../../context/AuthContext';
 import { configuracionApi } from '../../../../services/configuracionApi';
 import type {
-  AccesoUsuario,
-  Permiso,
+  Contrato,
+  CreateUsuarioAdminPayload,
+  Empresa,
   Rol,
-  UpdateUsuarioPayload,
-  UsuarioAdministracion,
+  UpdateUsuarioAdminPayload,
+  UsuarioAdminRecord
 } from '../../../../types/configuracion.types';
 import { FormModal } from '../components/FormModal';
 import {
-  formatDateTime,
   getErrorMessage,
-  hasAnyPermission,
-  mapKnownError,
+  mapKnownError
 } from './adminTabUtils';
 
 type EstadoFiltro = 'all' | 'active' | 'inactive';
-type ModalState = { user: UsuarioAdministracion } | null;
+type UserModalState =
+  | { mode: 'create' }
+  | { mode: 'edit'; user: UsuarioAdminRecord }
+  | null;
+
+type PasswordModalState =
+  | { user: UsuarioAdminRecord }
+  | null;
+
 type UserForm = {
+  active: boolean;
+  contratoIds: number[];
   email: string;
+  empresaIds: number[];
   name: string;
   password: string;
   roleIds: string[];
 };
 
-function createForm(user: UsuarioAdministracion, roleIds: string[]): UserForm {
+const EMPTY_FORM: UserForm = {
+  name: '',
+  email: '',
+  password: '',
+  active: true,
+  roleIds: [],
+  empresaIds: [],
+  contratoIds: []
+};
+
+const ADMIN_ROLE_NAME = 'ADMINISTRADOR';
+
+function isAdminRoleSelected(roleIds: string[], rolesCatalog: Rol[]): boolean {
+  const selected = new Set(roleIds);
+  return rolesCatalog.some((role) => selected.has(String(role.id)) && role.nombre_rol === ADMIN_ROLE_NAME);
+}
+
+function mapUserToForm(user: UsuarioAdminRecord): UserForm {
   return {
-    email: user.email,
     name: user.name,
+    email: user.email,
     password: '',
-    roleIds,
+    active: user.active,
+    roleIds: user.roleIds.map(String),
+    empresaIds: [...user.empresaIds],
+    contratoIds: [...user.contratoIds]
   };
+}
+
+function buildContratoLookup(contratos: Contrato[]): Map<number, Contrato> {
+  return new Map(contratos.map((contrato) => [contrato.id, contrato]));
+}
+
+function renderSummaryChips(values: string[], maxVisible = 2) {
+  if (values.length === 0) {
+    return <span className="cg-secondary-cell">Sin asignar</span>;
+  }
+
+  const visible = values.slice(0, maxVisible);
+  const remaining = values.length - visible.length;
+
+  return (
+    <div className="cg-chip-wrap">
+      {visible.map((value) => (
+        <span key={value} className="cg-chip">{value}</span>
+      ))}
+      {remaining > 0 && <span className="cg-chip more">+{remaining}</span>}
+    </div>
+  );
 }
 
 export function UsuariosTab() {
   const { user } = useAuth();
-  const permissions = user?.permissions ?? [];
-  const canReadUsers = hasAnyPermission(permissions, ['configuracion.read', 'usuarios.read']);
-  const canUpdateUsers = hasAnyPermission(permissions, ['usuarios.update', 'users.update']);
-  const canReadRoles = hasAnyPermission(permissions, ['configuracion.read', 'roles.read']);
-  const canReadPermisos = hasAnyPermission(permissions, ['configuracion.read', 'permisos.read']);
-  const canReadAccess = hasAnyPermission(permissions, ['tenant.access.read', 'tenant.access.update']);
+  const isAdmin = user?.roles.includes(ADMIN_ROLE_NAME) === true;
 
-  const [users, setUsers] = useState<UsuarioAdministracion[]>([]);
+  const [users, setUsers] = useState<UsuarioAdminRecord[]>([]);
   const [roles, setRoles] = useState<Rol[]>([]);
-  const [permisos, setPermisos] = useState<Permiso[]>([]);
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [contratos, setContratos] = useState<Contrato[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [search, setSearch] = useState('');
   const [estado, setEstado] = useState<EstadoFiltro>('all');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [selectedUser, setSelectedUser] = useState<UsuarioAdministracion | null>(null);
-  const [selectedAccess, setSelectedAccess] = useState<AccesoUsuario | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [accessLoading, setAccessLoading] = useState(false);
-  const [modal, setModal] = useState<ModalState>(null);
-  const [form, setForm] = useState<UserForm>({ email: '', name: '', password: '', roleIds: [] });
+  const [userModal, setUserModal] = useState<UserModalState>(null);
+  const [passwordModal, setPasswordModal] = useState<PasswordModalState>(null);
+  const [form, setForm] = useState<UserForm>(EMPTY_FORM);
   const [formError, setFormError] = useState('');
+  const [passwordValue, setPasswordValue] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [toggleLoadingId, setToggleLoadingId] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const [stateLoadingId, setStateLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!feedback) {
@@ -73,9 +131,12 @@ export function UsuariosTab() {
   }, [feedback]);
 
   useEffect(() => {
-    if (!canReadUsers) {
+    if (!isAdmin) {
       setUsers([]);
-      setError('No tienes permisos para consultar usuarios administrativos.');
+      setRoles([]);
+      setEmpresas([]);
+      setContratos([]);
+      setError('Solo un usuario ADMINISTRADOR puede acceder a este modulo.');
       return;
     }
 
@@ -84,21 +145,26 @@ export function UsuariosTab() {
     async function loadResources() {
       setLoading(true);
       setError('');
+
       try {
-        const [usersResponse, rolesResponse, permisosResponse] = await Promise.all([
-          configuracionApi.listarUsuarios(),
-          canReadRoles ? configuracionApi.listarRoles() : Promise.resolve([]),
-          canReadPermisos ? configuracionApi.listarPermisos() : Promise.resolve([]),
+        const [usersResponse, rolesResponse, empresasResponse, contratosResponse] = await Promise.all([
+          configuracionApi.listarUsuariosAdmin(),
+          configuracionApi.listarRoles(),
+          configuracionApi.listarEmpresas({ page: 1, limit: 500 }),
+          configuracionApi.listarContratos({ page: 1, limit: 500 })
         ]);
 
-        if (!cancelled) {
-          setUsers(usersResponse);
-          setRoles(rolesResponse);
-          setPermisos(permisosResponse);
+        if (cancelled) {
+          return;
         }
+
+        setUsers(usersResponse);
+        setRoles(rolesResponse);
+        setEmpresas(empresasResponse.items);
+        setContratos(contratosResponse.items);
       } catch (loadError) {
         if (!cancelled) {
-          setError(getErrorMessage(loadError, 'No fue posible cargar usuarios y accesos.'));
+          setError(getErrorMessage(loadError, 'No fue posible cargar usuarios, roles y accesos.'));
         }
       } finally {
         if (!cancelled) {
@@ -112,87 +178,173 @@ export function UsuariosTab() {
     return () => {
       cancelled = true;
     };
-  }, [canReadPermisos, canReadRoles, canReadUsers]);
+  }, [isAdmin]);
+
+  const contratosById = useMemo(() => buildContratoLookup(contratos), [contratos]);
+  const isGlobalAdminTarget = useMemo(() => isAdminRoleSelected(form.roleIds, roles), [form.roleIds, roles]);
+  const selectedEmpresaSet = useMemo(() => new Set(form.empresaIds), [form.empresaIds]);
+
+  const availableContracts = useMemo(() => {
+    if (selectedEmpresaSet.size === 0) {
+      return [];
+    }
+
+    return contratos.filter((contrato) => selectedEmpresaSet.has(contrato.empresa.id));
+  }, [contratos, selectedEmpresaSet]);
 
   const filteredUsers = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
     return users.filter((item) => {
       const matchesSearch =
-        search.trim().length === 0 ||
-        item.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-        item.email.toLowerCase().includes(search.trim().toLowerCase()) ||
-        item.roles.some((role) => role.toLowerCase().includes(search.trim().toLowerCase()));
+        normalizedSearch.length === 0 ||
+        item.name.toLowerCase().includes(normalizedSearch) ||
+        item.email.toLowerCase().includes(normalizedSearch) ||
+        (item.primaryRole ?? '').toLowerCase().includes(normalizedSearch) ||
+        item.empresas.some((empresa) => empresa.nombre_empresa.toLowerCase().includes(normalizedSearch));
+
       const matchesEstado =
         estado === 'all' || (estado === 'active' ? item.active : !item.active);
+
       return matchesSearch && matchesEstado;
     });
   }, [estado, search, users]);
 
-  async function handleSelect(userId: string) {
-    setSelectedUserId(userId);
-    setDetailLoading(true);
-    if (canReadAccess) {
-      setAccessLoading(true);
+  const activeUsers = users.filter((item) => item.active).length;
+  const globalAdmins = users.filter((item) => item.isGlobalAdmin).length;
+
+  function resetForm() {
+    setForm(EMPTY_FORM);
+    setFormError('');
+  }
+
+  function openCreate() {
+    resetForm();
+    setUserModal({ mode: 'create' });
+  }
+
+  function openEdit(targetUser: UsuarioAdminRecord) {
+    setSelectedUserId(targetUser.id);
+    setForm(mapUserToForm(targetUser));
+    setFormError('');
+    setUserModal({ mode: 'edit', user: targetUser });
+  }
+
+  function openPasswordModal(targetUser: UsuarioAdminRecord) {
+    setSelectedUserId(targetUser.id);
+    setPasswordValue('');
+    setPasswordError('');
+    setPasswordModal({ user: targetUser });
+  }
+
+  function updateCompanies(nextEmpresaIds: number[]) {
+    setForm((current) => {
+      const allowedEmpresaIds = new Set(nextEmpresaIds);
+      const nextContratoIds = current.contratoIds.filter((contratoId) => {
+        const contrato = contratosById.get(contratoId);
+        return contrato ? allowedEmpresaIds.has(contrato.empresa.id) : false;
+      });
+
+      return {
+        ...current,
+        empresaIds: nextEmpresaIds,
+        contratoIds: nextContratoIds
+      };
+    });
+  }
+
+  function toggleRole(roleId: string, checked: boolean) {
+    setForm((current) => {
+      const roleIds = checked
+        ? Array.from(new Set([...current.roleIds, roleId]))
+        : current.roleIds.filter((currentRoleId) => currentRoleId !== roleId);
+      const nextIsGlobalAdmin = isAdminRoleSelected(roleIds, roles);
+      const nextEmpresaIds = !nextIsGlobalAdmin && current.empresaIds.length > 1
+        ? current.empresaIds.slice(0, 1)
+        : current.empresaIds;
+      const allowedEmpresaIds = new Set(nextEmpresaIds);
+      const nextContratoIds = current.contratoIds.filter((contratoId) => {
+        const contrato = contratosById.get(contratoId);
+        return contrato ? allowedEmpresaIds.has(contrato.empresa.id) : false;
+      });
+
+      return {
+        ...current,
+        roleIds,
+        empresaIds: nextEmpresaIds,
+        contratoIds: nextContratoIds
+      };
+    });
+  }
+
+  function toggleEmpresa(empresaId: number, checked: boolean) {
+    if (isGlobalAdminTarget) {
+      updateCompanies(
+        checked
+          ? Array.from(new Set([...form.empresaIds, empresaId]))
+          : form.empresaIds.filter((currentEmpresaId) => currentEmpresaId !== empresaId)
+      );
+      return;
     }
-    try {
-      const [userDetail, userAccess] = await Promise.all([
-        configuracionApi.obtenerUsuario(userId),
-        canReadAccess ? configuracionApi.obtenerAccesoUsuario(userId) : Promise.resolve(null),
-      ]);
-      setSelectedUser(userDetail);
-      setSelectedAccess(userAccess);
-    } catch {
-      setSelectedUser(null);
-      setSelectedAccess(null);
-    } finally {
-      setDetailLoading(false);
-      setAccessLoading(false);
+
+    updateCompanies(checked ? [empresaId] : []);
+  }
+
+  function toggleContrato(contratoId: number, checked: boolean) {
+    setForm((current) => ({
+      ...current,
+      contratoIds: checked
+        ? Array.from(new Set([...current.contratoIds, contratoId]))
+        : current.contratoIds.filter((currentContratoId) => currentContratoId !== contratoId)
+    }));
+  }
+
+  function validateForm(mode: 'create' | 'edit'): string | null {
+    if (!form.name.trim()) {
+      return 'El nombre es obligatorio.';
     }
+
+    if (!form.email.trim() || !form.email.includes('@')) {
+      return 'Debes ingresar un correo valido.';
+    }
+
+    if (mode === 'create' && form.password.trim().length < 8) {
+      return 'La contrasena debe tener al menos 8 caracteres.';
+    }
+
+    if (form.roleIds.length === 0) {
+      return 'Debes seleccionar al menos un rol.';
+    }
+
+    if (!isGlobalAdminTarget && form.empresaIds.length !== 1) {
+      return 'Los usuarios que no son ADMINISTRADOR deben tener exactamente una empresa.';
+    }
+
+    if (form.contratoIds.some((contratoId) => {
+      const contrato = contratosById.get(contratoId);
+      return !contrato || !selectedEmpresaSet.has(contrato.empresa.id);
+    })) {
+      return 'No puedes asignar contratos de otra empresa.';
+    }
+
+    return null;
   }
 
   async function reloadUsers(targetUserId?: string | null) {
-    setLoading(true);
-    setError('');
-    try {
-      const usersResponse = await configuracionApi.listarUsuarios();
-      setUsers(usersResponse);
-      if (targetUserId) {
-        await handleSelect(targetUserId);
-      } else {
-        setSelectedUserId(null);
-        setSelectedUser(null);
-        setSelectedAccess(null);
-      }
-    } catch (reloadError) {
-      setError(getErrorMessage(reloadError, 'No fue posible actualizar usuarios.'));
-    } finally {
-      setLoading(false);
-    }
+    const usersResponse = await configuracionApi.listarUsuariosAdmin();
+    setUsers(usersResponse);
+    setSelectedUserId(targetUserId ?? null);
   }
 
-  function openEdit(userItem: UsuarioAdministracion) {
-    const selectedRoles = roles
-      .filter((role) => userItem.roles.includes(role.nombre_rol))
-      .map((role) => String(role.id));
-    setForm(createForm(userItem, selectedRoles));
-    setFormError('');
-    setModal({ user: userItem });
-  }
-
-  async function handleSave() {
-    if (!modal) {
+  async function handleSaveUser() {
+    if (!userModal) {
       return;
     }
 
-    if (!form.name.trim()) {
-      setFormError('El nombre es obligatorio.');
-      return;
-    }
-    if (!form.email.trim() || !form.email.includes('@')) {
-      setFormError('Debes ingresar un correo valido.');
-      return;
-    }
-    if (form.password && form.password.length < 8) {
-      setFormError('La nueva contrasena debe tener al menos 8 caracteres.');
+    const validationError = validateForm(userModal.mode);
+
+    if (validationError) {
+      setFormError(validationError);
       return;
     }
 
@@ -200,56 +352,109 @@ export function UsuariosTab() {
     setFormError('');
 
     try {
-      const payload: UpdateUsuarioPayload = {
-        email: form.email.trim().toLowerCase(),
-        name: form.name.trim(),
-        roleIds: form.roleIds,
-      };
-      if (form.password.trim()) {
-        payload.password = form.password;
-      }
+      if (userModal.mode === 'create') {
+        const payload: CreateUsuarioAdminPayload = {
+          name: form.name.trim(),
+          email: form.email.trim().toLowerCase(),
+          password: form.password.trim(),
+          active: form.active,
+          roleIds: form.roleIds,
+          empresaIds: form.empresaIds,
+          contratoIds: form.contratoIds
+        };
 
-      const updated = await configuracionApi.actualizarUsuario(modal.user.id, payload);
-      setFeedback({ tone: 'success', text: 'Usuario actualizado correctamente.' });
-      setModal(null);
-      await reloadUsers(updated.id);
+        const created = await configuracionApi.crearUsuarioAdmin(payload);
+        setFeedback({ tone: 'success', text: 'Usuario creado correctamente.' });
+        setUserModal(null);
+        resetForm();
+        await reloadUsers(created.id);
+      } else {
+        const payload: UpdateUsuarioAdminPayload = {
+          name: form.name.trim(),
+          email: form.email.trim().toLowerCase(),
+          active: form.active,
+          roleIds: form.roleIds,
+          empresaIds: form.empresaIds,
+          contratoIds: form.contratoIds
+        };
+
+        const updated = await configuracionApi.actualizarUsuarioAdmin(userModal.user.id, payload);
+        setFeedback({ tone: 'success', text: 'Usuario actualizado correctamente.' });
+        setUserModal(null);
+        resetForm();
+        await reloadUsers(updated.id);
+      }
     } catch (saveError) {
       setFormError(
-        mapKnownError(saveError, 'No fue posible actualizar el usuario.', {
+        mapKnownError(saveError, 'No fue posible guardar el usuario.', {
           EMAIL_ALREADY_IN_USE: 'Ya existe un usuario con ese correo.',
+          ROLE_REQUIRED: 'Debes seleccionar al menos un rol.',
           INVALID_ROLE_IDS: 'Hay roles seleccionados que ya no son validos.',
-        }),
+          INVALID_EMPRESA_IDS: 'Hay empresas seleccionadas que ya no son validas.',
+          INVALID_CONTRATO_IDS: 'Hay contratos seleccionados que ya no son validos.',
+          EMPRESA_REQUIRED: 'Los usuarios no administradores deben tener exactamente una empresa.',
+          CONTRATOS_EMPRESA_MISMATCH: 'No puedes asignar contratos de otra empresa.'
+        })
       );
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleToggle(userItem: UsuarioAdministracion) {
-    setToggleLoadingId(userItem.id);
+  async function handleSavePassword() {
+    if (!passwordModal) {
+      return;
+    }
+
+    if (passwordValue.trim().length < 8) {
+      setPasswordError('La nueva contrasena debe tener al menos 8 caracteres.');
+      return;
+    }
+
+    setSaving(true);
+    setPasswordError('');
+
     try {
-      const updated = userItem.active
-        ? await configuracionApi.desactivarUsuario(userItem.id)
-        : await configuracionApi.activarUsuario(userItem.id);
+      await configuracionApi.actualizarPasswordUsuarioAdmin(passwordModal.user.id, {
+        password: passwordValue.trim()
+      });
+      setFeedback({ tone: 'success', text: 'Contrasena actualizada correctamente.' });
+      setPasswordModal(null);
+      setPasswordValue('');
+      await reloadUsers(passwordModal.user.id);
+    } catch (saveError) {
+      setPasswordError(getErrorMessage(saveError, 'No fue posible actualizar la contrasena.'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleToggleState(targetUser: UsuarioAdminRecord) {
+    setStateLoadingId(targetUser.id);
+
+    try {
+      const updated = await configuracionApi.actualizarEstadoUsuarioAdmin(targetUser.id, {
+        active: !targetUser.active
+      });
       setFeedback({
         tone: 'success',
-        text: `Usuario ${updated.active ? 'activado' : 'desactivado'} correctamente.`,
+        text: `Usuario ${updated.active ? 'activado' : 'desactivado'} correctamente.`
       });
       await reloadUsers(updated.id);
     } catch (toggleError) {
       setFeedback({
         tone: 'error',
-        text: getErrorMessage(toggleError, 'No fue posible cambiar el estado del usuario.'),
+        text: getErrorMessage(toggleError, 'No fue posible cambiar el estado del usuario.')
       });
     } finally {
-      setToggleLoadingId(null);
+      setStateLoadingId(null);
     }
   }
 
-  if (!canReadUsers) {
+  if (!isAdmin) {
     return (
       <div className="adm-notice warning">
-        <AlertTriangle size={14} /> No tienes permisos para consultar usuarios administrativos.
+        <AlertTriangle size={14} /> Solo un usuario ADMINISTRADOR puede acceder a este modulo.
       </div>
     );
   }
@@ -265,32 +470,34 @@ export function UsuariosTab() {
           </div>
         </div>
         <div className="adm-kpi success">
-          <div className="adm-kpi-icon"><User size={16} /></div>
+          <div className="adm-kpi-icon"><ShieldCheck size={16} /></div>
           <div className="adm-kpi-body">
-            <span className="adm-kpi-val">{users.filter((item) => item.active).length}</span>
+            <span className="adm-kpi-val">{activeUsers}</span>
             <span className="adm-kpi-lbl">Activos</span>
           </div>
         </div>
         <div className="adm-kpi info">
-          <div className="adm-kpi-icon"><ShieldCheck size={16} /></div>
+          <div className="adm-kpi-icon"><Building2 size={16} /></div>
           <div className="adm-kpi-body">
-            <span className="adm-kpi-val">{roles.length}</span>
-            <span className="adm-kpi-lbl">Roles visibles</span>
+            <span className="adm-kpi-val">{globalAdmins}</span>
+            <span className="adm-kpi-lbl">Admins globales</span>
           </div>
         </div>
       </div>
 
       <div className="cg-tab-header">
         <div>
-          <h4 className="cg-tab-title"><Users size={15} /> Usuarios y accesos</h4>
-          <p className="cg-tab-subtitle">Usuarios reales, acceso tenant y consulta de roles/permisos</p>
+          <h4 className="cg-tab-title"><Users size={15} /> Usuarios</h4>
+          <p className="cg-tab-subtitle">Administracion de usuarios, roles, empresas y contratos</p>
         </div>
+        <button className="adm-btn primary" type="button" onClick={openCreate}>
+          <Plus size={14} /> Nuevo usuario
+        </button>
       </div>
 
       {feedback && (
         <div className={`adm-notice ${feedback.tone === 'error' ? 'warning' : 'info'}`} style={{ marginBottom: 12 }}>
-          {feedback.tone === 'error' ? <AlertTriangle size={14} /> : <Users size={14} />}
-          {feedback.text}
+          <AlertTriangle size={14} /> {feedback.text}
           <button className="adm-inline-close" onClick={() => setFeedback(null)} type="button">
             Cerrar
           </button>
@@ -301,7 +508,7 @@ export function UsuariosTab() {
         <div className="cg-search">
           <Users size={14} />
           <input
-            placeholder="Buscar por nombre, correo o rol"
+            placeholder="Buscar por nombre, correo, rol o empresa"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -330,9 +537,11 @@ export function UsuariosTab() {
           <table className="adm-history">
             <thead>
               <tr>
-                <th>Usuario</th>
-                <th>Roles</th>
-                <th>Permisos</th>
+                <th>Nombre</th>
+                <th>Correo</th>
+                <th>Rol principal</th>
+                <th>Empresa</th>
+                <th>Contratos</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -340,29 +549,33 @@ export function UsuariosTab() {
             <tbody>
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="cg-table-empty">Sin resultados</td>
+                  <td colSpan={7} className="cg-table-empty">Sin resultados</td>
                 </tr>
               )}
               {filteredUsers.map((item) => (
                 <tr
                   key={item.id}
                   className={selectedUserId === item.id ? 'cg-row-selected' : ''}
-                  onClick={() => void handleSelect(item.id)}
+                  onClick={() => setSelectedUserId(item.id)}
                 >
                   <td>
                     <div className="cg-primary-cell" title={item.name}>{item.name}</div>
+                  </td>
+                  <td>
                     <div className="cg-secondary-cell" title={item.email}>{item.email}</div>
                   </td>
                   <td>
-                    <div className="cg-chip-wrap">
-                      {item.roles.length === 0 ? (
-                        <span className="cg-secondary-cell">Sin roles</span>
-                      ) : (
-                        item.roles.map((role) => <span key={role} className="cg-chip">{role}</span>)
-                      )}
-                    </div>
+                    <div className="cg-primary-cell">{item.primaryRole ?? 'Sin rol'}</div>
+                    {item.roles.length > 1 && <div className="cg-secondary-cell">+{item.roles.length - 1} rol(es)</div>}
                   </td>
-                  <td>{item.permissions.length}</td>
+                  <td>
+                    {renderSummaryChips(item.empresas.map((empresa) => empresa.nombre_empresa))}
+                  </td>
+                  <td>
+                    {renderSummaryChips(
+                      item.contratos.map((contrato) => contrato.numero_contrato ?? `Contrato ${contrato.contrato_id}`)
+                    )}
+                  </td>
                   <td>
                     <span className={`adm-badge ${item.active ? 'active' : 'inactive'}`}>
                       {item.active ? 'Activo' : 'Inactivo'}
@@ -372,42 +585,38 @@ export function UsuariosTab() {
                     <div className="cg-actions">
                       <button
                         className="adm-btn ghost sm"
+                        type="button"
+                        title="Editar"
                         onClick={(event) => {
                           event.stopPropagation();
-                          void handleSelect(item.id);
+                          openEdit(item);
                         }}
-                        title="Ver detalle"
-                        type="button"
                       >
-                        <Eye size={13} />
+                        <Edit2 size={13} />
                       </button>
-                      {canUpdateUsers && (
-                        <button
-                          className="adm-btn ghost sm"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            openEdit(item);
-                          }}
-                          title="Editar"
-                          type="button"
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                      )}
-                      {canUpdateUsers && (
-                        <button
-                          className={`adm-btn sm ${item.active ? 'danger-outline' : 'secondary'}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void handleToggle(item);
-                          }}
-                          disabled={toggleLoadingId === item.id}
-                          title={item.active ? 'Desactivar' : 'Activar'}
-                          type="button"
-                        >
-                          <Power size={12} />
-                        </button>
-                      )}
+                      <button
+                        className="adm-btn ghost sm"
+                        type="button"
+                        title="Cambiar contrasena"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openPasswordModal(item);
+                        }}
+                      >
+                        <KeyRound size={13} />
+                      </button>
+                      <button
+                        className={`adm-btn sm ${item.active ? 'danger-outline' : 'secondary'}`}
+                        type="button"
+                        title={item.active ? 'Desactivar' : 'Activar'}
+                        disabled={stateLoadingId === item.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleToggleState(item);
+                        }}
+                      >
+                        <Power size={12} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -417,107 +626,14 @@ export function UsuariosTab() {
         )}
       </div>
 
-      <div className="adm-card">
-        <h4 className="adm-card-title"><User size={15} /> Detalle de usuario</h4>
-        {detailLoading ? (
-          <div className="adm-empty"><p>Cargando detalle...</p></div>
-        ) : !selectedUser ? (
-          <div className="adm-empty"><p>Selecciona un usuario para ver su detalle y acceso.</p></div>
-        ) : (
-          <div className="cg-user-detail-layout">
-            <div className="cg-user-detail-main">
-              <div className="cg-detail-grid">
-                <div><span className="cg-detail-label">Nombre</span><strong>{selectedUser.name}</strong></div>
-                <div><span className="cg-detail-label">Correo</span><strong>{selectedUser.email}</strong></div>
-                <div><span className="cg-detail-label">Estado</span><strong>{selectedUser.active ? 'Activo' : 'Inactivo'}</strong></div>
-                <div><span className="cg-detail-label">Creado</span><strong>{formatDateTime(selectedUser.createdAt)}</strong></div>
-                <div className="cg-detail-full"><span className="cg-detail-label">Roles</span><strong>{selectedUser.roles.join(', ') || 'Sin roles'}</strong></div>
-              </div>
-
-              <div className="cg-access-cards">
-                <div className="cg-mini-card">
-                  <h5>Acceso a empresas</h5>
-                  {!canReadAccess ? (
-                    <p>No tienes permiso para consultar accesos tenant.</p>
-                  ) : accessLoading ? (
-                    <p>Cargando accesos...</p>
-                  ) : selectedAccess?.empresas.length ? (
-                    <ul className="cg-simple-list">
-                      {selectedAccess.empresas.map((empresa) => (
-                        <li key={empresa.empresa_id}>
-                          <span>{empresa.nombre_empresa}</span>
-                          <span>{empresa.activo ? 'Activo' : 'Inactivo'}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>Sin accesos asignados.</p>
-                  )}
-                </div>
-                <div className="cg-mini-card">
-                  <h5>Acceso a contratos</h5>
-                  {!canReadAccess ? (
-                    <p>No tienes permiso para consultar accesos tenant.</p>
-                  ) : accessLoading ? (
-                    <p>Cargando accesos...</p>
-                  ) : selectedAccess?.contratos.length ? (
-                    <ul className="cg-simple-list">
-                      {selectedAccess.contratos.map((contrato) => (
-                        <li key={contrato.contrato_id}>
-                          <span>{contrato.numero_contrato ?? 'Sin numero'}</span>
-                          <span>{contrato.activo ? 'Activo' : 'Inactivo'}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p>Sin accesos asignados.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="cg-user-detail-side">
-              <div className="cg-mini-card">
-                <h5>Roles disponibles</h5>
-                {!canReadRoles ? (
-                  <p>No tienes permiso para consultar roles.</p>
-                ) : roles.length === 0 ? (
-                  <p>Sin roles visibles.</p>
-                ) : (
-                  <ul className="cg-simple-list">
-                    {roles.map((role) => (
-                      <li key={role.id}>
-                        <span>{role.nombre_rol}</span>
-                        <span>{role.activo ? 'Activo' : 'Inactivo'}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="cg-mini-card">
-                <h5>Permisos disponibles</h5>
-                {!canReadPermisos ? (
-                  <p>No tienes permiso para consultar permisos.</p>
-                ) : permisos.length === 0 ? (
-                  <p>Sin permisos visibles.</p>
-                ) : (
-                  <div className="cg-permission-list">
-                    {permisos.map((permiso) => (
-                      <span key={permiso.id} className="cg-chip">{permiso.codigo}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {modal && (
+      {userModal && (
         <FormModal
-          title={`Editar: ${modal.user.name}`}
-          onClose={() => setModal(null)}
-          onSave={handleSave}
+          title={userModal.mode === 'create' ? 'Nuevo usuario' : `Editar: ${userModal.user.name}`}
+          onClose={() => {
+            setUserModal(null);
+            resetForm();
+          }}
+          onSave={handleSaveUser}
           saving={saving}
           wide
         >
@@ -539,55 +655,142 @@ export function UsuariosTab() {
                 onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
               />
             </div>
-            <div className="adm-field adm-field full-width">
-              <label className="adm-label">Nueva contrasena</label>
-              <input
-                className="adm-input"
-                type="password"
-                value={form.password}
-                onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                placeholder="Dejar vacio para no cambiarla"
-              />
+            {userModal.mode === 'create' && (
+              <div className="adm-field adm-field full-width">
+                <label className="adm-label">Contrasena *</label>
+                <input
+                  className="adm-input"
+                  type="password"
+                  value={form.password}
+                  onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="cg-user-form-block">
+            <div className="cg-role-selector-header">
+              <span><ShieldCheck size={14} /> Roles</span>
+              <span className="cg-secondary-cell">Selecciona al menos uno</span>
+            </div>
+            <div className="cg-role-selector-grid">
+              {roles.map((role) => {
+                const checked = form.roleIds.includes(String(role.id));
+
+                return (
+                  <label key={role.id} className="cg-role-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => toggleRole(String(role.id), event.target.checked)}
+                    />
+                    <span>{role.nombre_rol}</span>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
-          <div className="cg-role-selector">
+          <div className="cg-user-form-block">
             <div className="cg-role-selector-header">
-              <span><KeyRound size={14} /> Roles permitidos</span>
+              <span><Building2 size={14} /> Empresa</span>
+              <span className="cg-secondary-cell">
+                {isGlobalAdminTarget ? 'Puedes seleccionar multiples empresas' : 'Solo una empresa'}
+              </span>
             </div>
-            {!canReadRoles ? (
-              <div className="adm-notice warning">
-                <AlertTriangle size={13} /> No tienes permiso para consultar roles.
-              </div>
-            ) : (
-              <div className="cg-role-selector-grid">
-                {roles.map((role) => {
-                  const checked = form.roleIds.includes(String(role.id));
+            <div className="cg-access-selector-grid">
+              {empresas.map((empresa) => {
+                const checked = form.empresaIds.includes(empresa.id);
+
+                return (
+                  <label key={empresa.id} className="cg-role-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => toggleEmpresa(empresa.id, event.target.checked)}
+                    />
+                    <span>{empresa.nombre_empresa}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="cg-user-form-block">
+            <div className="cg-role-selector-header">
+              <span><FileText size={14} /> Contratos</span>
+              <span className="cg-secondary-cell">Dependen de la empresa seleccionada</span>
+            </div>
+            <div className="cg-access-selector-grid">
+              {availableContracts.length === 0 ? (
+                <div className="cg-selector-empty">Selecciona una empresa para ver contratos disponibles.</div>
+              ) : (
+                availableContracts.map((contrato) => {
+                  const checked = form.contratoIds.includes(contrato.id);
+
                   return (
-                    <label key={role.id} className="cg-role-checkbox">
+                    <label key={contrato.id} className="cg-role-checkbox">
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={(event) => {
-                          setForm((current) => ({
-                            ...current,
-                            roleIds: event.target.checked
-                              ? [...current.roleIds, String(role.id)]
-                              : current.roleIds.filter((item) => item !== String(role.id)),
-                          }));
-                        }}
+                        onChange={(event) => toggleContrato(contrato.id, event.target.checked)}
                       />
-                      <span>{role.nombre_rol}</span>
+                      <span>
+                        {contrato.numero_contrato} · {contrato.empresa.nombre_empresa ?? 'Sin empresa'}
+                      </span>
                     </label>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="cg-user-form-block">
+            <div className="cg-role-selector-header">
+              <span><Power size={14} /> Estado</span>
+            </div>
+            <label className="cg-role-checkbox">
+              <input
+                type="checkbox"
+                checked={form.active}
+                onChange={(event) => setForm((current) => ({ ...current, active: event.target.checked }))}
+              />
+              <span>Usuario activo</span>
+            </label>
           </div>
 
           {formError && (
             <div className="adm-notice warning" style={{ marginTop: 8 }}>
               <AlertTriangle size={13} /> {formError}
+            </div>
+          )}
+        </FormModal>
+      )}
+
+      {passwordModal && (
+        <FormModal
+          title={`Cambiar contrasena: ${passwordModal.user.name}`}
+          onClose={() => {
+            setPasswordModal(null);
+            setPasswordValue('');
+            setPasswordError('');
+          }}
+          onSave={handleSavePassword}
+          saving={saving}
+        >
+          <div className="adm-field">
+            <label className="adm-label">Nueva contrasena *</label>
+            <input
+              className="adm-input"
+              type="password"
+              value={passwordValue}
+              onChange={(event) => setPasswordValue(event.target.value)}
+            />
+          </div>
+
+          {passwordError && (
+            <div className="adm-notice warning" style={{ marginTop: 8 }}>
+              <AlertTriangle size={13} /> {passwordError}
             </div>
           )}
         </FormModal>

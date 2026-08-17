@@ -19,6 +19,7 @@ import { evaluacionesRoutes } from '../modules/evaluaciones/evaluaciones.routes'
 import { sstIndicadoresRoutes } from '../modules/sstIndicadores/sstIndicadores.routes';
 import { sstRoutes } from '../modules/sst/sst.routes';
 import { systemRoutes } from '../modules/system/system.routes';
+import { adminUsersRouter } from '../modules/users/adminUsers.routes';
 import { usersRouter } from '../modules/users/users.routes';
 import { configuracionRoutes } from '../modules/configuracion/configuracion.routes';
 import { vinculacionesRoutes } from '../modules/vinculaciones/vinculaciones.routes';
@@ -26,6 +27,7 @@ import { vinculacionesRoutes } from '../modules/vinculaciones/vinculaciones.rout
 const apiRouter = Router();
 
 apiRouter.use('/alertas', alertasRoutes);
+apiRouter.use('/admin/usuarios', adminUsersRouter);
 apiRouter.use('/auditoria', auditoriaRoutes);
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/cobertura', coberturaRoutes);

@@ -138,8 +138,8 @@ const hasTenantScope = (tenant: TenantAccessContext, contratoId: number, empresa
     return true;
   }
 
-  if (tenant.contratoIds.includes(contratoId)) {
-    return true;
+  if (tenant.contratoIds.length > 0) {
+    return tenant.contratoIds.includes(contratoId);
   }
 
   return empresaId !== null && tenant.empresaIds.includes(empresaId);
@@ -263,6 +263,10 @@ export const requireContratoAccess =
         return;
       }
 
+      if (tenant.contratoIds.length > 0) {
+        throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+      }
+
       if (tenant.empresaIds.length === 0) {
         throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
       }
@@ -311,8 +315,10 @@ export const buildTenantWhereClause = (input: {
 
   if (input.tenant.contratoIds.length > 0) {
     params.push(input.tenant.contratoIds);
-    clauses.push(`${contratoColumn} = ANY($${paramIndex}::bigint[])`);
-    paramIndex += 1;
+    return {
+      params,
+      sql: `WHERE ${contratoColumn} = ANY($${paramIndex}::bigint[])`
+    };
   }
 
   if (input.tenant.empresaIds.length > 0) {

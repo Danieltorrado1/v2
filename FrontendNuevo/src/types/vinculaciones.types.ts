@@ -32,6 +32,32 @@ export interface VinculacionFilters {
   limit?: number;
 }
 
+export interface ContractPersonalFilters {
+  contrato_id: number;
+  estado_vinculacion?: VinculacionEstado;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ContractPersonalListItem {
+  vinculacion_id: number;
+  persona_id: number;
+  numero_documento: string;
+  nombre_completo: string;
+  cargo: {
+    nombre_cargo: string | null;
+  };
+  estado_vinculacion: VinculacionEstado;
+  fecha_ingreso: string;
+  fecha_fin: string | null;
+}
+
+export interface ContractPersonalListResponse {
+  items: ContractPersonalListItem[];
+  pagination: VinculacionPagination;
+}
+
 export interface CreateVinculacionPayload {
   persona_id: number;
   empresa_id: number;

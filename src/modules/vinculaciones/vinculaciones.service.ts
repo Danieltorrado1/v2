@@ -7,6 +7,7 @@ import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { getVinculacionChecklist } from '../documentos/documentos.service';
 import {
   CreateVinculacionInput,
+  ListContractPersonalQuery,
   ListVinculacionesQuery,
   ReactivarVinculacionInput,
   RetirarVinculacionInput,
@@ -57,6 +58,45 @@ export interface Vinculacion {
 
 export interface PaginatedVinculaciones {
   items: Vinculacion[];
+  pagination: {
+    limit: number;
+    page: number;
+    total: number;
+    total_pages: number;
+  };
+}
+
+interface ContractPersonalRow extends QueryResultRow {
+  cargo_nombre: string | null;
+  contrato_id: number | string;
+  empresa_id: number | string;
+  estado_vinculacion: string | null;
+  fecha_fin: string | Date | null;
+  fecha_inicio: string | Date;
+  numero_documento: string;
+  persona_id: number | string;
+  primer_apellido: string;
+  primer_nombre: string;
+  segundo_apellido: string | null;
+  segundo_nombre: string | null;
+  vinculacion_id: number | string;
+}
+
+export interface ContractPersonalListItem {
+  cargo: {
+    nombre_cargo: string | null;
+  };
+  estado_vinculacion: VinculacionEstado;
+  fecha_fin: string | null;
+  fecha_ingreso: string;
+  nombre_completo: string;
+  numero_documento: string;
+  persona_id: number;
+  vinculacion_id: number;
+}
+
+export interface PaginatedContractPersonal {
+  items: ContractPersonalListItem[];
   pagination: {
     limit: number;
     page: number;
@@ -346,6 +386,28 @@ const mapVinculacion = (row: VinculacionRow): Vinculacion => {
   };
 };
 
+const mapContractPersonal = (row: ContractPersonalRow): ContractPersonalListItem => {
+  return {
+    vinculacion_id: toNumber(row.vinculacion_id),
+    persona_id: toNumber(row.persona_id),
+    numero_documento: row.numero_documento,
+    nombre_completo: [
+      row.primer_nombre,
+      row.segundo_nombre,
+      row.primer_apellido,
+      row.segundo_apellido
+    ]
+      .filter(Boolean)
+      .join(' '),
+    cargo: {
+      nombre_cargo: row.cargo_nombre
+    },
+    estado_vinculacion: normalizeEstado(row.estado_vinculacion),
+    fecha_ingreso: toDateString(row.fecha_inicio) ?? '',
+    fecha_fin: toDateString(row.fecha_fin)
+  };
+};
+
 const mapPersonaExpediente = (row: PersonaExpedienteRow): VinculacionExpediente['persona'] => {
   return {
     id: toNumber(row.id),
@@ -473,8 +535,12 @@ const ensureVinculacionTenantAccess = (
     return;
   }
 
-  if (tenant.contratoIds.includes(toNumber(row.contrato_id))) {
-    return;
+  if (tenant.contratoIds.length > 0) {
+    if (tenant.contratoIds.includes(toNumber(row.contrato_id))) {
+      return;
+    }
+
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
   }
 
   if (row.contrato_empresa_id !== null && tenant.empresaIds.includes(toNumber(row.contrato_empresa_id))) {
@@ -495,6 +561,10 @@ const ensureContractTenantAccess = async (
 
   if (tenant.contratoIds.includes(contratoId)) {
     return;
+  }
+
+  if (tenant.contratoIds.length > 0) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
   }
 
   if (tenant.empresaIds.length === 0) {
@@ -654,22 +724,14 @@ export const listVinculaciones = async (
   if (tenant && !tenant.isGlobalAdmin) {
     if (tenant.contratoIds.length === 0 && tenant.empresaIds.length === 0) {
       conditions.push('1 = 0');
-    } else {
-      const tenantClauses: string[] = [];
-
-      if (tenant.contratoIds.length > 0) {
-        params.push(tenant.contratoIds);
-        tenantClauses.push(`v.contrato_id = ANY($${paramIndex}::bigint[])`);
-        paramIndex += 1;
-      }
-
-      if (tenant.empresaIds.length > 0) {
-        params.push(tenant.empresaIds);
-        tenantClauses.push(`c.empresa_id = ANY($${paramIndex}::bigint[])`);
-        paramIndex += 1;
-      }
-
-      conditions.push(`(${tenantClauses.join(' OR ')})`);
+    } else if (tenant.contratoIds.length > 0) {
+      params.push(tenant.contratoIds);
+      conditions.push(`v.contrato_id = ANY($${paramIndex}::bigint[])`);
+      paramIndex += 1;
+    } else if (tenant.empresaIds.length > 0) {
+      params.push(tenant.empresaIds);
+      conditions.push(`c.empresa_id = ANY($${paramIndex}::bigint[])`);
+      paramIndex += 1;
     }
   }
 
@@ -766,6 +828,97 @@ export const listVinculaciones = async (
       total_pages: total === 0 ? 0 : Math.ceil(total / filters.limit)
     }
   };
+};
+
+export const listContractPersonal = async (
+  filters: ListContractPersonalQuery,
+  tenant?: TenantAccessContext
+): Promise<PaginatedContractPersonal> => {
+  const client = await dbPool.connect();
+
+  try {
+    await ensureContractTenantAccess(client, tenant, filters.contrato_id);
+
+    const conditions: string[] = ['v.contrato_id = $1::bigint'];
+    const params: unknown[] = [filters.contrato_id];
+    let paramIndex = 2;
+
+    if (filters.estado_vinculacion) {
+      if (filters.estado_vinculacion === 'ACTIVA') {
+        conditions.push(`v.estado_vinculacion IN ('ACTIVA', 'ACTIVO')`);
+      } else {
+        params.push(filters.estado_vinculacion);
+        conditions.push(`v.estado_vinculacion = $${paramIndex}`);
+        paramIndex += 1;
+      }
+    }
+
+    if (filters.search) {
+      params.push(`%${filters.search}%`);
+      conditions.push(`(
+        p.numero_documento ILIKE $${paramIndex}
+        OR p.primer_nombre ILIKE $${paramIndex}
+        OR COALESCE(p.segundo_nombre, '') ILIKE $${paramIndex}
+        OR p.primer_apellido ILIKE $${paramIndex}
+        OR COALESCE(p.segundo_apellido, '') ILIKE $${paramIndex}
+      )`);
+      paramIndex += 1;
+    }
+
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const countResult = await client.query<CountRow>(
+      `
+        SELECT COUNT(*)::int AS total
+        FROM vinculaciones v
+        INNER JOIN personas p ON p.id = v.persona_id
+        ${whereClause}
+      `,
+      params
+    );
+
+    const total = countResult.rows[0]?.total ?? 0;
+    const offset = (filters.page - 1) * filters.limit;
+    const listParams = [...params, filters.limit, offset];
+    const result = await client.query<ContractPersonalRow>(
+      `
+        SELECT
+          v.id AS vinculacion_id,
+          v.persona_id,
+          v.empresa_id,
+          v.contrato_id,
+          v.fecha_inicio,
+          v.fecha_fin,
+          v.estado_vinculacion,
+          p.id AS persona_id,
+          p.numero_documento,
+          p.primer_nombre,
+          p.segundo_nombre,
+          p.primer_apellido,
+          p.segundo_apellido,
+          cc.nombre_cargo AS cargo_nombre
+        FROM vinculaciones v
+        INNER JOIN personas p ON p.id = v.persona_id
+        LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
+        ${whereClause}
+        ORDER BY v.fecha_inicio DESC, p.primer_apellido ASC, p.primer_nombre ASC, v.id DESC
+        LIMIT $${listParams.length - 1}::int
+        OFFSET $${listParams.length}::int
+      `,
+      listParams
+    );
+
+    return {
+      items: result.rows.map(mapContractPersonal),
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total,
+        total_pages: total === 0 ? 0 : Math.ceil(total / filters.limit)
+      }
+    };
+  } finally {
+    client.release();
+  }
 };
 
 export const getVinculacionById = async (
@@ -1066,22 +1219,14 @@ export const getVinculacionesByPersonaId = async (
   if (tenant && !tenant.isGlobalAdmin) {
     if (tenant.contratoIds.length === 0 && tenant.empresaIds.length === 0) {
       conditions.push('1 = 0');
-    } else {
-      const tenantClauses: string[] = [];
-
-      if (tenant.contratoIds.length > 0) {
-        params.push(tenant.contratoIds);
-        tenantClauses.push(`v.contrato_id = ANY($${paramIndex}::bigint[])`);
-        paramIndex += 1;
-      }
-
-      if (tenant.empresaIds.length > 0) {
-        params.push(tenant.empresaIds);
-        tenantClauses.push(`c.empresa_id = ANY($${paramIndex}::bigint[])`);
-        paramIndex += 1;
-      }
-
-      conditions.push(`(${tenantClauses.join(' OR ')})`);
+    } else if (tenant.contratoIds.length > 0) {
+      params.push(tenant.contratoIds);
+      conditions.push(`v.contrato_id = ANY($${paramIndex}::bigint[])`);
+      paramIndex += 1;
+    } else if (tenant.empresaIds.length > 0) {
+      params.push(tenant.empresaIds);
+      conditions.push(`c.empresa_id = ANY($${paramIndex}::bigint[])`);
+      paramIndex += 1;
     }
   }
 

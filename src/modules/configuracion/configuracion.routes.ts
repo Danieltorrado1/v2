@@ -2,6 +2,8 @@ import { Router } from 'express';
 
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { requireAnyPermissions, requirePermissions } from '../../middlewares/roleMiddleware';
+import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
+import { contratosLifecycleRoutes } from '../contratos/contratos.routes';
 import {
   createCargoHandler,
   createContratoHandler,
@@ -123,18 +125,22 @@ configuracionRoutes.get('/catalogos/estados-civiles', requireAnyPermissions('con
 configuracionRoutes.get('/catalogos/sexos', requireAnyPermissions('configuracion.read', 'catalogos.read'), getSexosHandler);
 configuracionRoutes.get('/catalogos/tipos-documentos', requireAnyPermissions('configuracion.read', 'catalogos.read'), getTiposDocumentoHandler);
 
+configuracionRoutes.use('/empresas', tenantMiddleware);
 configuracionRoutes.get('/empresas', requireAnyPermissions('configuracion.read', 'empresas.read'), getEmpresasHandler);
 configuracionRoutes.get('/empresas/:id', requireAnyPermissions('configuracion.read', 'empresas.read'), getEmpresaByIdHandler);
 configuracionRoutes.post('/empresas', requirePermissions('empresas.create'), createEmpresaHandler);
 configuracionRoutes.patch('/empresas/:id', requirePermissions('empresas.update'), updateEmpresaHandler);
 configuracionRoutes.patch('/empresas/:id/estado', requirePermissions('empresas.update'), setEmpresaEstadoHandler);
 
-configuracionRoutes.get('/contratos', requireAnyPermissions('configuracion.read', 'contratos.read'), getContratosHandler);
-configuracionRoutes.get('/contratos/:id', requireAnyPermissions('configuracion.read', 'contratos.read'), getContratoByIdHandler);
-configuracionRoutes.post('/contratos', requirePermissions('contratos.create'), createContratoHandler);
-configuracionRoutes.patch('/contratos/:id', requirePermissions('contratos.update'), updateContratoHandler);
-configuracionRoutes.patch('/contratos/:id/estado', requirePermissions('contratos.update'), setContratoEstadoHandler);
+configuracionRoutes.use('/contratos', tenantMiddleware);
+configuracionRoutes.get('/contratos', requireAnyPermissions('configuracion.read', 'contratos.read', 'contracts.read'), getContratosHandler);
+configuracionRoutes.get('/contratos/:id', requireAnyPermissions('configuracion.read', 'contratos.read', 'contracts.read'), getContratoByIdHandler);
+configuracionRoutes.post('/contratos', requireAnyPermissions('contratos.create', 'contracts.create'), createContratoHandler);
+configuracionRoutes.patch('/contratos/:id', requireAnyPermissions('contratos.update', 'contracts.update'), updateContratoHandler);
+configuracionRoutes.patch('/contratos/:id/estado', requireAnyPermissions('contratos.update', 'contracts.status.update'), setContratoEstadoHandler);
+configuracionRoutes.use('/contratos', contratosLifecycleRoutes);
 
+configuracionRoutes.use('/cargos', tenantMiddleware);
 configuracionRoutes.get('/cargos', requireAnyPermissions('configuracion.read', 'cargos.read'), getCargosHandler);
 configuracionRoutes.get('/cargos/:id', requireAnyPermissions('configuracion.read', 'cargos.read'), getCargoByIdHandler);
 configuracionRoutes.post('/cargos', requirePermissions('cargos.create'), createCargoHandler);

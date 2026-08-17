@@ -591,16 +591,43 @@
   gap: 8px;
 }
 
+.cg-access-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
 .cg-role-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
 }
 
 .cg-role-checkbox input {
   accent-color: var(--color-primary);
+}
+
+.cg-user-form-block {
+  margin-top: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--bg-panel);
+}
+
+.cg-selector-empty {
+  border: 1px dashed var(--border-color);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
 }
 
 @media (max-width: 900px) {

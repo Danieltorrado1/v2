@@ -2,6 +2,8 @@ import { apiClient } from './apiClient';
 import type { ApiResponse } from '../types/api.types';
 import type { VinculacionApi, VinculacionExpedienteApi } from '../types/personas.types';
 import type {
+  ContractPersonalFilters,
+  ContractPersonalListResponse,
   VinculacionFilters,
   VinculacionListResponse,
   CreateVinculacionPayload,
@@ -29,6 +31,22 @@ function toParams(f: VinculacionFilters): Record<string, string | number | boole
 export async function getVinculaciones(filters: VinculacionFilters = {}): Promise<VinculacionListResponse> {
   const res = await apiClient.get<ApiResponse<VinculacionListResponse>>('/vinculaciones', {
     params: toParams(filters),
+  });
+  return res.data;
+}
+
+export async function getContractPersonal(
+  filters: ContractPersonalFilters
+): Promise<ContractPersonalListResponse> {
+  const params: Record<string, string | number | boolean | undefined> = {
+    contrato_id: filters.contrato_id,
+    estado_vinculacion: filters.estado_vinculacion,
+    search: filters.search,
+    page: filters.page,
+    limit: filters.limit,
+  };
+  const res = await apiClient.get<ApiResponse<ContractPersonalListResponse>>('/vinculaciones/personal', {
+    params,
   });
   return res.data;
 }

@@ -113,6 +113,14 @@ export const listOpsVinculacionesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25)
 });
 
+export const listContractPersonalQuerySchema = z.object({
+  contrato_id: numericIdSchema.transform((value) => Number(value)),
+  estado_vinculacion: vinculacionEstadoSchema.optional(),
+  search: nullableTrimmedString.optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25)
+});
+
 export const createVinculacionSchema = z.object({
   persona_id: numericIdSchema.transform((value) => Number(value)),
   empresa_id: numericIdSchema.transform((value) => Number(value)),
@@ -166,6 +174,7 @@ export type VinculacionIdParams = z.infer<typeof vinculacionIdParamSchema>;
 export type VinculacionPersonaParams = z.infer<typeof vinculacionPersonaParamSchema>;
 export type ListVinculacionesQuery = z.infer<typeof listVinculacionesQuerySchema>;
 export type ListOpsVinculacionesQuery = z.infer<typeof listOpsVinculacionesQuerySchema>;
+export type ListContractPersonalQuery = z.infer<typeof listContractPersonalQuerySchema>;
 export type CreateVinculacionInput = z.infer<typeof createVinculacionSchema>;
 export type UpdateVinculacionInput = z.infer<typeof updateVinculacionSchema>;
 export type RetirarVinculacionInput = z.infer<typeof retirarVinculacionSchema>;

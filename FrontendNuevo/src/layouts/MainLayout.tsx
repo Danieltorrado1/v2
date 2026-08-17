@@ -45,6 +45,7 @@ export default function MainLayout() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(INITIAL_UNREAD_COUNT);
   const bellRef = useRef<HTMLButtonElement>(null);
+  const canAccessAdmin = user?.roles.includes("ADMINISTRADOR") === true;
 
   function toggleNotif() {
     setNotifOpen((v) => !v);
@@ -84,12 +85,14 @@ export default function MainLayout() {
             Portal
           </NavLink>
           <NavDropdown label="Repositorio" links={repositorioLinks} />
-          <NavLink
-            to="/admin"
-            className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
-          >
-            AdministraciÃ³n
-          </NavLink>
+          {canAccessAdmin && (
+            <NavLink
+              to="/admin"
+              className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
+            >
+              AdministraciÃ³n
+            </NavLink>
+          )}
         </nav>
 
         <div className="right-side">

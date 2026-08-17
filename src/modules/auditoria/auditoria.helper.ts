@@ -29,8 +29,13 @@ const shouldWriteHistorial = (input: RegisterAuditEntryInput): boolean => {
   return input.before !== undefined || input.after !== undefined;
 };
 
-const isUuidLike = (value: string): boolean => {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+const toLegacyBigInt = (value: string | null | undefined): number | null => {
+  if (typeof value !== 'string' || !/^\d+$/.test(value.trim())) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
 };
 
 const deriveModuleFromTable = (tableName: string): string => {
@@ -71,6 +76,13 @@ const insertLegacyAuditRows = async (
   client: PoolClient,
   input: RegisterAuditEntryInput
 ): Promise<void> => {
+  const legacyRegistroId = toLegacyBigInt(input.registro_id);
+  const legacyUsuarioId = toLegacyBigInt(input.usuario_id ?? null);
+
+  if (legacyRegistroId === null) {
+    return;
+  }
+
   const beforeData = input.before ?? null;
   const afterData = input.after ?? null;
 
@@ -79,21 +91,21 @@ const insertLegacyAuditRows = async (
       INSERT INTO auditoria (
         usuario_id,
         accion,
-        tabla,
+        tabla_afectada,
         registro_id,
         descripcion,
-        before_data,
-        after_data,
+        datos_anteriores,
+        datos_nuevos,
         ip,
         user_agent
       )
-      VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6::jsonb, $7::jsonb, $8, $9)
+      VALUES ($1::bigint, $2, $3, $4::bigint, $5, $6::jsonb, $7::jsonb, $8, $9)
     `,
     [
-      input.usuario_id ?? null,
+      legacyUsuarioId,
       input.accion,
       input.tabla,
-      input.registro_id,
+      legacyRegistroId,
       input.descripcion,
       JSON.stringify(beforeData),
       JSON.stringify(afterData),
@@ -110,27 +122,23 @@ const insertLegacyAuditRows = async (
     `
       INSERT INTO historial_cambios (
         usuario_id,
-        accion,
-        tabla,
+        tabla_afectada,
         registro_id,
-        descripcion,
-        before_data,
-        after_data,
-        ip,
-        user_agent
+        campo,
+        valor_anterior,
+        valor_nuevo,
+        motivo
       )
-      VALUES ($1::uuid, $2, $3, $4::uuid, $5, $6::jsonb, $7::jsonb, $8, $9)
+      VALUES ($1::bigint, $2, $3::bigint, $4, $5, $6, $7)
     `,
     [
-      input.usuario_id ?? null,
-      input.accion,
+      legacyUsuarioId,
       input.tabla,
-      input.registro_id,
-      input.descripcion,
-      JSON.stringify(beforeData),
-      JSON.stringify(afterData),
-      input.ip ?? null,
-      input.user_agent ?? null
+      legacyRegistroId,
+      '__snapshot__',
+      beforeData === null ? null : JSON.stringify(beforeData),
+      afterData === null ? null : JSON.stringify(afterData),
+      input.descripcion
     ]
   );
 };
@@ -168,10 +176,6 @@ export const registerAuditEntry = async (
       registro_id: input.registro_id,
       tabla: input.tabla
     });
-  }
-
-  if (!isUuidLike(input.registro_id)) {
-    return;
   }
 
   if (input.client) {

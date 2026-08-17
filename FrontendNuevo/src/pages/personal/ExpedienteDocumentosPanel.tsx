@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { Eye, FileText, Loader2, Upload, XCircle } from "lucide-react";
+import type { CatalogoItem } from "../../types/configuracion.types";
 import type { DocumentoListItem, DocumentoUploadFields } from "../../types/documentos.types";
 import type { VinculacionChecklistApi } from "../../types/expediente.types";
 import {
@@ -249,9 +250,11 @@ function tabStyle(active: boolean): CSSProperties {
 export default function ExpedienteDocumentosPanel({
   personaId,
   vinculacionId,
+  tipoDocumentoOptions = [],
 }: {
   personaId: number;
   vinculacionId: number;
+  tipoDocumentoOptions?: CatalogoItem[];
 }) {
   const [activeTab, setActiveTab] = useState<TabId>("persona");
   const [docsPersona, setDocsPersona] = useState<DocumentoListItem[]>([]);
@@ -271,6 +274,9 @@ export default function ExpedienteDocumentosPanel({
   const [uploadForm, setUploadForm] = useState<UploadForm>(EMPTY_FORM);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const checklistAsked = useRef(false);
+  const selectedTipoDocumento = tipoDocumentoOptions.find(
+    (option) => String(option.id) === uploadForm.tipoDocumentoId
+  );
 
   const loadPersona = useCallback(async () => {
     setLoadingP(true);
@@ -447,16 +453,33 @@ export default function ExpedienteDocumentosPanel({
             </label>
 
             <label style={S.label}>
-              Tipo documental (ID) <span style={{ color: "#dc2626" }}>*</span>
-              <input
-                type="text"
-                value={uploadForm.tipoDocumentoId}
-                onChange={(e) =>
-                  setUploadForm((f) => ({ ...f, tipoDocumentoId: e.target.value }))
-                }
-                placeholder="UUID del tipo de documento"
-                style={S.input}
-              />
+              Tipo documental <span style={{ color: "#dc2626" }}>*</span>
+              {tipoDocumentoOptions.length > 0 ? (
+                <select
+                  value={uploadForm.tipoDocumentoId}
+                  onChange={(e) =>
+                    setUploadForm((f) => ({ ...f, tipoDocumentoId: e.target.value }))
+                  }
+                  style={S.input}
+                >
+                  <option value="">Seleccionar tipo documental</option>
+                  {tipoDocumentoOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.codigo ? `${option.codigo} · ${option.label}` : option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={uploadForm.tipoDocumentoId}
+                  onChange={(e) =>
+                    setUploadForm((f) => ({ ...f, tipoDocumentoId: e.target.value }))
+                  }
+                  placeholder="ID del tipo de documento"
+                  style={S.input}
+                />
+              )}
             </label>
 
             <label style={S.label}>
@@ -468,6 +491,7 @@ export default function ExpedienteDocumentosPanel({
                   setUploadForm((f) => ({ ...f, fechaExpedicion: e.target.value }))
                 }
                 style={S.input}
+                disabled={selectedTipoDocumento?.requiere_fecha_expedicion === false}
               />
             </label>
 
@@ -480,6 +504,7 @@ export default function ExpedienteDocumentosPanel({
                   setUploadForm((f) => ({ ...f, fechaVencimiento: e.target.value }))
                 }
                 style={S.input}
+                disabled={selectedTipoDocumento?.requiere_fecha_vencimiento === false}
               />
             </label>
           </div>

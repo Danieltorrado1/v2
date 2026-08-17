@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 const nullableTrimmedString = z.preprocess((value) => {
   if (typeof value === 'string') {
@@ -23,11 +23,6 @@ const nullableEmailSchema = z.preprocess((value) => {
 const numericIdStringOrNumberSchema = z.union([
   z.number().int(),
   z.string().trim().regex(/^\d+$/)
-]);
-
-const numericStringOrNumberSchema = z.union([
-  z.number(),
-  z.string().trim().regex(/^-?\d+(\.\d+)?$/)
 ]);
 
 const nullableNumericIdSchema = z.preprocess((value) => {
@@ -79,6 +74,13 @@ const nullableDateSchema = z.preprocess((value) => {
   return value;
 }, z.string().date().nullable());
 
+const personaIdentificationFieldsSchema = z.object({
+  tipo_documento_id: numericIdStringOrNumberSchema.transform((value) => Number(value)),
+  numero_documento: requiredTrimmedString,
+  fecha_expedicion_documento: nullableDateSchema.optional().default(null),
+  municipio_expedicion_id: nullableNumericIdSchema.optional().default(null)
+});
+
 export const personaIdParamSchema = z.object({
   id: requiredTrimmedString
 });
@@ -96,16 +98,13 @@ export const listPersonasQuerySchema = z.object({
 });
 
 export const createPersonaSchema = z.object({
-  tipo_documento_id: numericIdStringOrNumberSchema.transform((value) => Number(value)),
-  numero_documento: requiredTrimmedString,
+  ...personaIdentificationFieldsSchema.shape,
   primer_nombre: requiredTrimmedString,
   segundo_nombre: nullableTrimmedString.optional().default(null),
   primer_apellido: requiredTrimmedString,
   segundo_apellido: nullableTrimmedString.optional().default(null),
   fecha_nacimiento: nullableDateSchema.optional().default(null),
-  fecha_expedicion_documento: nullableDateSchema.optional().default(null),
   municipio_nacimiento_id: nullableNumericIdSchema.optional().default(null),
-  municipio_expedicion_id: nullableNumericIdSchema.optional().default(null),
   municipio_residencia_id: nullableNumericIdSchema.optional().default(null),
   sexo_id: nullableNumericIdSchema.optional().default(null),
   estado_civil_id: nullableNumericIdSchema.optional().default(null),
@@ -118,7 +117,8 @@ export const createPersonaSchema = z.object({
   zona_id: nullableNumericIdSchema.optional().default(null),
   pais_nacimiento: nullableTrimmedString.optional().default('COLOMBIA'),
   nacimiento_extranjero: nullableBooleanSchema.optional().default(false),
-  ciudad_nacimiento_extranjero: nullableTrimmedString.optional().default(null)
+  ciudad_nacimiento_extranjero: nullableTrimmedString.optional().default(null),
+  motivo_cambio_identificacion: nullableTrimmedString.optional().default(null)
 });
 
 export const updatePersonaSchema = z
@@ -145,15 +145,23 @@ export const updatePersonaSchema = z
     zona_id: nullableNumericIdSchema.optional(),
     pais_nacimiento: nullableTrimmedString.optional(),
     nacimiento_extranjero: nullableBooleanSchema.optional(),
-    ciudad_nacimiento_extranjero: nullableTrimmedString.optional()
+    ciudad_nacimiento_extranjero: nullableTrimmedString.optional(),
+    motivo_cambio_identificacion: nullableTrimmedString.optional()
   })
   .refine(
     (data) => Object.keys(data).length > 0,
     'At least one field must be provided for update'
   );
 
+export const createPersonaIdentificacionSchema = z.object({
+  ...personaIdentificationFieldsSchema.shape,
+  motivo_cambio: requiredTrimmedString
+});
+
+export type PersonaIdentificationInput = z.infer<typeof personaIdentificationFieldsSchema>;
 export type PersonaIdParams = z.infer<typeof personaIdParamSchema>;
 export type PersonaDocumentoParams = z.infer<typeof personaDocumentoParamSchema>;
 export type ListPersonasQuery = z.infer<typeof listPersonasQuerySchema>;
 export type CreatePersonaInput = z.infer<typeof createPersonaSchema>;
 export type UpdatePersonaInput = z.infer<typeof updatePersonaSchema>;
+export type CreatePersonaIdentificacionInput = z.infer<typeof createPersonaIdentificacionSchema>;

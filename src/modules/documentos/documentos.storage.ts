@@ -1,4 +1,4 @@
-import { env } from '../../config/env';
+﻿import { env } from '../../config/env';
 import { getSupabaseAdminClient } from '../../config/supabaseAdmin';
 import { AppError } from '../../utils/AppError';
 
@@ -13,7 +13,7 @@ const sanitizeFileName = (fileName: string): string => {
 };
 
 export const buildStoragePath = (
-  scope: 'personas' | 'vinculaciones',
+  scope: 'personas' | 'vinculaciones' | 'contratos',
   entityId: string,
   tipoDocumentoId: string,
   originalFileName: string
@@ -28,7 +28,7 @@ export const uploadDocumentToStorage = async (input: {
   fileBuffer: Buffer;
   mimeType: string;
   originalFileName: string;
-  scope: 'personas' | 'vinculaciones';
+  scope: 'personas' | 'vinculaciones' | 'contratos';
   targetId: string;
   tipoDocumentoId: string;
 }): Promise<{ bucket: string; path: string }> => {
@@ -115,3 +115,4 @@ export const createDocumentSignedUrl = async (
     expiresInSeconds
   );
 };
+

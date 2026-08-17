@@ -21,7 +21,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'contratos', label: 'Contratos', icon: <FileText size={14} /> },
   { id: 'cargos', label: 'Cargos', icon: <Briefcase size={14} /> },
   { id: 'catalogos', label: 'Catalogos', icon: <BookOpen size={14} /> },
-  { id: 'usuarios', label: 'Usuarios y accesos', icon: <Users size={14} /> },
+  { id: 'usuarios', label: 'Usuarios', icon: <Users size={14} /> },
 ];
 
 export default function ConfiguracionGeneral() {
@@ -39,7 +39,7 @@ export default function ConfiguracionGeneral() {
             Administracion
           </h1>
           <p className="adm-header-sub">
-            Empresas, contratos, cargos, catalogos y accesos conectados al backend real
+            Empresas, contratos, cargos, catalogos y usuarios conectados al backend real
           </p>
         </div>
       </div>

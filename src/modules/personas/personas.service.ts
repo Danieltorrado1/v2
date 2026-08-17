@@ -1,15 +1,23 @@
-import { PoolClient, QueryResultRow } from 'pg';
+﻿import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
 import { AppError } from '../../utils/AppError';
+import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditoria.helper';
 import {
-  CreatePersonaInput,
-  ListPersonasQuery,
-  UpdatePersonaInput
+  buildPersonaIdentificationCore,
+  hasPersonaIdentificationChanged,
+  type PersonaIdentificationCore
+} from './personas.identificaciones.helpers';
+import {
+  type CreatePersonaIdentificacionInput,
+  type CreatePersonaInput,
+  type ListPersonasQuery,
+  type UpdatePersonaInput
 } from './personas.schemas';
 
 interface PersonaRow extends QueryResultRow {
   barrio: string | null;
+  ciudad_nacimiento_extranjero: string | null;
   correo: string | null;
   direccion: string | null;
   estado_civil_id: string | number | null;
@@ -17,30 +25,87 @@ interface PersonaRow extends QueryResultRow {
   fecha_expedicion_documento: string | null;
   fecha_nacimiento: string | null;
   id: string | number;
+  identificacion_vigente_es_vigente: boolean | null;
+  identificacion_vigente_fecha_expedicion_documento: string | null;
+  identificacion_vigente_id: string | number | null;
+  identificacion_vigente_motivo_cambio: string | null;
+  identificacion_vigente_municipio_expedicion_id: string | number | null;
+  identificacion_vigente_municipio_expedicion_nombre: string | null;
+  identificacion_vigente_numero_documento: string | null;
+  identificacion_vigente_registrado_en: Date | string | null;
+  identificacion_vigente_registrado_por_usuario_correo: string | null;
+  identificacion_vigente_registrado_por_usuario_id: string | number | null;
+  identificacion_vigente_registrado_por_usuario_nombre: string | null;
+  identificacion_vigente_reemplaza_identificacion_id: string | number | null;
+  identificacion_vigente_tipo_documento_id: string | number | null;
+  identificacion_vigente_tipo_documento_nombre: string | null;
+  identificacion_vigente_vigente_desde: Date | string | null;
+  identificacion_vigente_vigente_hasta: Date | string | null;
+  identificador_interno: string;
   municipio_expedicion_id: string | number | null;
   municipio_nacimiento_id: string | number | null;
   municipio_residencia_id: string | number | null;
+  nacimiento_extranjero: boolean | null;
   numero_documento: string;
+  pais_nacimiento: string | null;
   primer_apellido: string;
   primer_nombre: string;
   segundo_apellido: string | null;
   segundo_nombre: string | null;
-  nacimiento_extranjero: boolean | null;
-  pais_nacimiento: string | null;
   sexo_id: string | number | null;
   telefono: string | null;
   tipo_documento_id: string | number;
   tipo_sangre_id: string | number | null;
   zona_id: string | number | null;
-  ciudad_nacimiento_extranjero: string | null;
+}
+
+interface PersonaIdentificacionRow extends QueryResultRow {
+  es_vigente: boolean;
+  fecha_expedicion_documento: string | null;
+  id: string | number;
+  motivo_cambio: string;
+  municipio_expedicion_id: string | number | null;
+  municipio_expedicion_nombre: string | null;
+  numero_documento: string;
+  persona_id: string | number;
+  registrado_en: Date | string;
+  registrado_por_usuario_correo: string | null;
+  registrado_por_usuario_id: string | number | null;
+  registrado_por_usuario_nombre: string | null;
+  reemplaza_identificacion_id: string | number | null;
+  tipo_documento_id: string | number;
+  tipo_documento_nombre: string | null;
+  vigente_desde: Date | string;
+  vigente_hasta: Date | string | null;
 }
 
 interface CountRow extends QueryResultRow {
   total: number;
 }
 
+export interface PersonaIdentificacion {
+  es_vigente: boolean;
+  fecha_expedicion_documento: string | null;
+  id: number;
+  motivo_cambio: string;
+  municipio_expedicion_id: number | null;
+  municipio_expedicion_nombre: string | null;
+  numero_documento: string;
+  persona_id: number;
+  registrado_en: string;
+  registrado_por_usuario_correo: string | null;
+  registrado_por_usuario_id: number | null;
+  registrado_por_usuario_nombre: string | null;
+  reemplaza_identificacion_id: number | null;
+  tipo_documento_id: number;
+  tipo_documento_nombre: string | null;
+  vigente_desde: string;
+  vigente_hasta: string | null;
+}
+
 export interface Persona {
   barrio: string | null;
+  ciudad_nacimiento_extranjero: string | null;
   correo: string | null;
   direccion: string | null;
   estado_civil_id: number | null;
@@ -48,22 +113,23 @@ export interface Persona {
   fecha_expedicion_documento: string | null;
   fecha_nacimiento: string | null;
   id: number;
+  identificacion_vigente: PersonaIdentificacion | null;
+  identificador_interno: string;
   municipio_expedicion_id: number | null;
   municipio_nacimiento_id: number | null;
   municipio_residencia_id: number | null;
+  nacimiento_extranjero: boolean;
   numero_documento: string;
+  pais_nacimiento: string | null;
   primer_apellido: string;
   primer_nombre: string;
   segundo_apellido: string | null;
   segundo_nombre: string | null;
-  nacimiento_extranjero: boolean;
-  pais_nacimiento: string | null;
   sexo_id: number | null;
   telefono: string | null;
   tipo_documento_id: number;
   tipo_sangre_id: number | null;
   zona_id: number | null;
-  ciudad_nacimiento_extranjero: string | null;
 }
 
 export interface PaginatedPersonas {
@@ -74,6 +140,11 @@ export interface PaginatedPersonas {
     total: number;
     total_pages: number;
   };
+}
+
+interface PersonaMutationContext {
+  actorUserId?: string | null;
+  auditMeta?: AuditRequestMeta;
 }
 
 const hasOwn = <T extends object>(value: T, key: PropertyKey): boolean => {
@@ -99,13 +170,82 @@ const toRequiredNumber = (value: string | number): number => {
   return parsed;
 };
 
-const formatDateValue = (value: string | null): string | null => {
-  return value ?? null;
+const formatDateValue = (value: string | Date | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return value;
+};
+
+const formatTimestampValue = (value: string | Date | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  return value;
+};
+
+const mapPersonaIdentificacion = (row: PersonaIdentificacionRow): PersonaIdentificacion => {
+  return {
+    id: toRequiredNumber(row.id),
+    persona_id: toRequiredNumber(row.persona_id),
+    tipo_documento_id: toRequiredNumber(row.tipo_documento_id),
+    tipo_documento_nombre: row.tipo_documento_nombre,
+    numero_documento: row.numero_documento,
+    fecha_expedicion_documento: formatDateValue(row.fecha_expedicion_documento),
+    municipio_expedicion_id: toNullableNumber(row.municipio_expedicion_id),
+    municipio_expedicion_nombre: row.municipio_expedicion_nombre,
+    es_vigente: row.es_vigente,
+    motivo_cambio: row.motivo_cambio,
+    registrado_por_usuario_id: toNullableNumber(row.registrado_por_usuario_id),
+    registrado_por_usuario_nombre: row.registrado_por_usuario_nombre,
+    registrado_por_usuario_correo: row.registrado_por_usuario_correo,
+    registrado_en: formatTimestampValue(row.registrado_en) ?? '',
+    vigente_desde: formatTimestampValue(row.vigente_desde) ?? '',
+    vigente_hasta: formatTimestampValue(row.vigente_hasta),
+    reemplaza_identificacion_id: toNullableNumber(row.reemplaza_identificacion_id)
+  };
 };
 
 const mapPersona = (row: PersonaRow): Persona => {
+  const identificacionVigente = row.identificacion_vigente_id === null
+    ? null
+    : {
+        id: toRequiredNumber(row.identificacion_vigente_id),
+        persona_id: toRequiredNumber(row.id),
+        tipo_documento_id: toRequiredNumber(row.identificacion_vigente_tipo_documento_id ?? row.tipo_documento_id),
+        tipo_documento_nombre: row.identificacion_vigente_tipo_documento_nombre,
+        numero_documento: row.identificacion_vigente_numero_documento ?? row.numero_documento,
+        fecha_expedicion_documento: formatDateValue(
+          row.identificacion_vigente_fecha_expedicion_documento ?? row.fecha_expedicion_documento
+        ),
+        municipio_expedicion_id: toNullableNumber(
+          row.identificacion_vigente_municipio_expedicion_id ?? row.municipio_expedicion_id
+        ),
+        municipio_expedicion_nombre: row.identificacion_vigente_municipio_expedicion_nombre,
+        es_vigente: row.identificacion_vigente_es_vigente ?? true,
+        motivo_cambio: row.identificacion_vigente_motivo_cambio ?? 'IDENTIFICACION_VIGENTE',
+        registrado_por_usuario_id: toNullableNumber(row.identificacion_vigente_registrado_por_usuario_id),
+        registrado_por_usuario_nombre: row.identificacion_vigente_registrado_por_usuario_nombre,
+        registrado_por_usuario_correo: row.identificacion_vigente_registrado_por_usuario_correo,
+        registrado_en: formatTimestampValue(row.identificacion_vigente_registrado_en) ?? '',
+        vigente_desde: formatTimestampValue(row.identificacion_vigente_vigente_desde) ?? '',
+        vigente_hasta: formatTimestampValue(row.identificacion_vigente_vigente_hasta),
+        reemplaza_identificacion_id: toNullableNumber(row.identificacion_vigente_reemplaza_identificacion_id)
+      };
+
   return {
     id: toRequiredNumber(row.id),
+    identificador_interno: row.identificador_interno,
     tipo_documento_id: toRequiredNumber(row.tipo_documento_id),
     numero_documento: row.numero_documento,
     primer_nombre: row.primer_nombre,
@@ -128,7 +268,8 @@ const mapPersona = (row: PersonaRow): Persona => {
     zona_id: toNullableNumber(row.zona_id),
     pais_nacimiento: row.pais_nacimiento,
     nacimiento_extranjero: row.nacimiento_extranjero ?? false,
-    ciudad_nacimiento_extranjero: row.ciudad_nacimiento_extranjero
+    ciudad_nacimiento_extranjero: row.ciudad_nacimiento_extranjero,
+    identificacion_vigente: identificacionVigente
   };
 };
 
@@ -136,6 +277,7 @@ const getPersonaSelect = (): string => {
   return `
     SELECT
       p.id::text AS id,
+      p.identificador_interno,
       p.tipo_documento_id,
       p.numero_documento,
       p.primer_nombre,
@@ -158,35 +300,78 @@ const getPersonaSelect = (): string => {
       p.zona_id,
       p.pais_nacimiento,
       p.nacimiento_extranjero,
-      p.ciudad_nacimiento_extranjero
+      p.ciudad_nacimiento_extranjero,
+      current_pi.id AS identificacion_vigente_id,
+      current_pi.tipo_documento_id AS identificacion_vigente_tipo_documento_id,
+      current_pi.numero_documento AS identificacion_vigente_numero_documento,
+      current_pi.fecha_expedicion_documento AS identificacion_vigente_fecha_expedicion_documento,
+      current_pi.municipio_expedicion_id AS identificacion_vigente_municipio_expedicion_id,
+      current_pi.es_vigente AS identificacion_vigente_es_vigente,
+      current_pi.motivo_cambio AS identificacion_vigente_motivo_cambio,
+      current_pi.registrado_por_usuario_id AS identificacion_vigente_registrado_por_usuario_id,
+      current_pi.registrado_en AS identificacion_vigente_registrado_en,
+      current_pi.vigente_desde AS identificacion_vigente_vigente_desde,
+      current_pi.vigente_hasta AS identificacion_vigente_vigente_hasta,
+      current_pi.reemplaza_identificacion_id AS identificacion_vigente_reemplaza_identificacion_id,
+      current_td.nombre_documento AS identificacion_vigente_tipo_documento_nombre,
+      current_mu.nombre_municipio AS identificacion_vigente_municipio_expedicion_nombre,
+      current_u.nombre_completo AS identificacion_vigente_registrado_por_usuario_nombre,
+      current_u.correo AS identificacion_vigente_registrado_por_usuario_correo
     FROM personas p
+    LEFT JOIN persona_identificaciones current_pi
+      ON current_pi.persona_id = p.id
+     AND current_pi.es_vigente = TRUE
+    LEFT JOIN tipos_documentos current_td ON current_td.id = current_pi.tipo_documento_id
+    LEFT JOIN municipios current_mu ON current_mu.id = current_pi.municipio_expedicion_id
+    LEFT JOIN usuarios current_u ON current_u.id = current_pi.registrado_por_usuario_id
   `;
 };
 
-const ensureNumeroDocumentoAvailable = async (
-  client: PoolClient,
-  numeroDocumento: string,
-  excludedPersonaId?: string
-): Promise<void> => {
-  const params: unknown[] = [numeroDocumento];
-  let query = 'SELECT id::text AS id FROM personas WHERE numero_documento = $1';
+const getPersonaIdentificationSelect = (): string => {
+  return `
+    SELECT
+      pi.id,
+      pi.persona_id,
+      pi.tipo_documento_id,
+      pi.numero_documento,
+      pi.fecha_expedicion_documento,
+      pi.municipio_expedicion_id,
+      pi.es_vigente,
+      pi.motivo_cambio,
+      pi.registrado_por_usuario_id,
+      pi.registrado_en,
+      pi.vigente_desde,
+      pi.vigente_hasta,
+      pi.reemplaza_identificacion_id,
+      td.nombre_documento AS tipo_documento_nombre,
+      mu.nombre_municipio AS municipio_expedicion_nombre,
+      u.nombre_completo AS registrado_por_usuario_nombre,
+      u.correo AS registrado_por_usuario_correo
+    FROM persona_identificaciones pi
+    LEFT JOIN tipos_documentos td ON td.id = pi.tipo_documento_id
+    LEFT JOIN municipios mu ON mu.id = pi.municipio_expedicion_id
+    LEFT JOIN usuarios u ON u.id = pi.registrado_por_usuario_id
+  `;
+};
 
-  if (excludedPersonaId) {
-    query += ' AND id::text <> $2';
-    params.push(excludedPersonaId);
-  }
+const buildPersonaIdentificationCoreFromPersonaRow = (row: PersonaRow): PersonaIdentificationCore => {
+  return buildPersonaIdentificationCore({
+    tipo_documento_id: toRequiredNumber(row.tipo_documento_id),
+    numero_documento: row.numero_documento,
+    fecha_expedicion_documento: formatDateValue(row.fecha_expedicion_documento),
+    municipio_expedicion_id: toNullableNumber(row.municipio_expedicion_id)
+  });
+};
 
-  query += ' LIMIT 1';
-
-  const result = await client.query<{ id: string }>(query, params);
-
-  if ((result.rowCount ?? 0) > 0) {
-    throw new AppError(
-      'A person with this document number already exists',
-      409,
-      'PERSONA_DUPLICATE_DOCUMENT'
-    );
-  }
+const buildPersonaIdentificationCoreFromHistoryRow = (
+  row: PersonaIdentificacionRow
+): PersonaIdentificationCore => {
+  return buildPersonaIdentificationCore({
+    tipo_documento_id: toRequiredNumber(row.tipo_documento_id),
+    numero_documento: row.numero_documento,
+    fecha_expedicion_documento: formatDateValue(row.fecha_expedicion_documento),
+    municipio_expedicion_id: toNullableNumber(row.municipio_expedicion_id)
+  });
 };
 
 const getPersonaRowById = async (
@@ -203,6 +388,321 @@ const getPersonaRowById = async (
   );
 
   return result.rows[0] ?? null;
+};
+
+const getPersonaIdentificationById = async (
+  client: PoolClient,
+  identificationId: number
+): Promise<PersonaIdentificacionRow | null> => {
+  const result = await client.query<PersonaIdentificacionRow>(
+    `
+      ${getPersonaIdentificationSelect()}
+      WHERE pi.id = $1::bigint
+      LIMIT 1
+    `,
+    [identificationId]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const getCurrentPersonaIdentificationRow = async (
+  client: PoolClient,
+  personaId: string
+): Promise<PersonaIdentificacionRow | null> => {
+  const result = await client.query<PersonaIdentificacionRow>(
+    `
+      ${getPersonaIdentificationSelect()}
+      WHERE pi.persona_id::text = $1
+        AND pi.es_vigente = TRUE
+      LIMIT 1
+    `,
+    [personaId]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const ensureNumeroDocumentoAvailable = async (
+  client: PoolClient,
+  numeroDocumento: string,
+  excludedPersonaId?: string
+): Promise<void> => {
+  const params: unknown[] = [numeroDocumento.trim()];
+  let query = `
+    SELECT pi.persona_id::text AS persona_id
+    FROM persona_identificaciones pi
+    WHERE pi.numero_documento = $1
+      AND pi.es_vigente = TRUE
+  `;
+
+  if (excludedPersonaId) {
+    params.push(excludedPersonaId);
+    query += ` AND pi.persona_id::text <> $${params.length}`;
+  }
+
+  query += ' LIMIT 1';
+
+  const result = await client.query<{ persona_id: string }>(query, params);
+
+  if ((result.rowCount ?? 0) > 0) {
+    throw new AppError(
+      'A person with this document number already exists',
+      409,
+      'PERSONA_DUPLICATE_DOCUMENT'
+    );
+  }
+};
+
+const syncPersonaCurrentIdentification = async (
+  client: PoolClient,
+  personaId: string,
+  identification: PersonaIdentificationCore
+): Promise<void> => {
+  await client.query(
+    `
+      UPDATE personas
+      SET
+        tipo_documento_id = $2::bigint,
+        numero_documento = $3,
+        fecha_expedicion_documento = $4,
+        municipio_expedicion_id = $5::bigint
+      WHERE id::text = $1
+    `,
+    [
+      personaId,
+      identification.tipo_documento_id,
+      identification.numero_documento,
+      identification.fecha_expedicion_documento,
+      identification.municipio_expedicion_id
+    ]
+  );
+};
+
+const deactivateCurrentPersonaIdentification = async (
+  client: PoolClient,
+  identificationId: number
+): Promise<void> => {
+  await client.query(
+    `
+      UPDATE persona_identificaciones
+      SET
+        es_vigente = FALSE,
+        vigente_hasta = NOW()
+      WHERE id = $1::bigint
+    `,
+    [identificationId]
+  );
+};
+
+const insertPersonaIdentificationVersion = async (
+  client: PoolClient,
+  input: {
+    actorUserId?: string | null;
+    identification: PersonaIdentificationCore;
+    motivoCambio: string;
+    personaId: string;
+    replacesIdentificationId?: number | null;
+  }
+): Promise<PersonaIdentificacionRow> => {
+  const insertResult = await client.query<{ id: string | number }>(
+    `
+      INSERT INTO persona_identificaciones (
+        persona_id,
+        tipo_documento_id,
+        numero_documento,
+        fecha_expedicion_documento,
+        municipio_expedicion_id,
+        es_vigente,
+        motivo_cambio,
+        registrado_por_usuario_id,
+        registrado_en,
+        vigente_desde,
+        vigente_hasta,
+        reemplaza_identificacion_id
+      )
+      VALUES (
+        $1::bigint,
+        $2::bigint,
+        $3,
+        $4,
+        $5::bigint,
+        TRUE,
+        $6,
+        $7::bigint,
+        NOW(),
+        NOW(),
+        NULL,
+        $8::bigint
+      )
+      RETURNING id
+    `,
+    [
+      input.personaId,
+      input.identification.tipo_documento_id,
+      input.identification.numero_documento,
+      input.identification.fecha_expedicion_documento,
+      input.identification.municipio_expedicion_id,
+      input.motivoCambio,
+      input.actorUserId ?? null,
+      input.replacesIdentificationId ?? null
+    ]
+  );
+
+  const identificationId = toRequiredNumber(insertResult.rows[0]?.id ?? 0);
+  const createdRow = await getPersonaIdentificationById(client, identificationId);
+
+  if (!createdRow) {
+    throw new AppError(
+      'Failed to create person identification version',
+      500,
+      'PERSONA_IDENTIFICATION_CREATION_FAILED'
+    );
+  }
+
+  return createdRow;
+};
+
+const buildNextIdentificationCore = (
+  current: PersonaIdentificationCore,
+  input: UpdatePersonaInput | CreatePersonaIdentificacionInput
+): PersonaIdentificationCore => {
+  return buildPersonaIdentificationCore({
+    tipo_documento_id: hasOwn(input, 'tipo_documento_id')
+      ? input.tipo_documento_id ?? current.tipo_documento_id
+      : current.tipo_documento_id,
+    numero_documento: hasOwn(input, 'numero_documento')
+      ? input.numero_documento ?? current.numero_documento
+      : current.numero_documento,
+    fecha_expedicion_documento: hasOwn(input, 'fecha_expedicion_documento')
+      ? input.fecha_expedicion_documento ?? null
+      : current.fecha_expedicion_documento,
+    municipio_expedicion_id: hasOwn(input, 'municipio_expedicion_id')
+      ? input.municipio_expedicion_id ?? null
+      : current.municipio_expedicion_id
+  });
+};
+
+const updatePersonaBaseFields = async (
+  client: PoolClient,
+  personaId: string,
+  input: UpdatePersonaInput,
+  existingPersona: PersonaRow,
+  nextIdentification: PersonaIdentificationCore
+): Promise<void> => {
+  const nextValues = {
+    tipo_documento_id: nextIdentification.tipo_documento_id,
+    numero_documento: nextIdentification.numero_documento,
+    primer_nombre: hasOwn(input, 'primer_nombre')
+      ? input.primer_nombre ?? existingPersona.primer_nombre
+      : existingPersona.primer_nombre,
+    segundo_nombre: hasOwn(input, 'segundo_nombre')
+      ? input.segundo_nombre ?? null
+      : existingPersona.segundo_nombre,
+    primer_apellido: hasOwn(input, 'primer_apellido')
+      ? input.primer_apellido ?? existingPersona.primer_apellido
+      : existingPersona.primer_apellido,
+    segundo_apellido: hasOwn(input, 'segundo_apellido')
+      ? input.segundo_apellido ?? null
+      : existingPersona.segundo_apellido,
+    fecha_nacimiento: hasOwn(input, 'fecha_nacimiento')
+      ? input.fecha_nacimiento ?? null
+      : formatDateValue(existingPersona.fecha_nacimiento),
+    fecha_expedicion_documento: nextIdentification.fecha_expedicion_documento,
+    municipio_nacimiento_id: hasOwn(input, 'municipio_nacimiento_id')
+      ? input.municipio_nacimiento_id ?? null
+      : existingPersona.municipio_nacimiento_id,
+    municipio_expedicion_id: nextIdentification.municipio_expedicion_id,
+    municipio_residencia_id: hasOwn(input, 'municipio_residencia_id')
+      ? input.municipio_residencia_id ?? null
+      : existingPersona.municipio_residencia_id,
+    sexo_id: hasOwn(input, 'sexo_id') ? input.sexo_id ?? null : existingPersona.sexo_id,
+    estado_civil_id: hasOwn(input, 'estado_civil_id')
+      ? input.estado_civil_id ?? null
+      : existingPersona.estado_civil_id,
+    tipo_sangre_id: hasOwn(input, 'tipo_sangre_id')
+      ? input.tipo_sangre_id ?? null
+      : existingPersona.tipo_sangre_id,
+    estatura: hasOwn(input, 'estatura') ? input.estatura ?? null : existingPersona.estatura,
+    telefono: hasOwn(input, 'telefono') ? input.telefono ?? null : existingPersona.telefono,
+    correo: hasOwn(input, 'correo') ? input.correo ?? null : existingPersona.correo,
+    direccion: hasOwn(input, 'direccion') ? input.direccion ?? null : existingPersona.direccion,
+    barrio: hasOwn(input, 'barrio') ? input.barrio ?? null : existingPersona.barrio,
+    zona_id: hasOwn(input, 'zona_id') ? input.zona_id ?? null : existingPersona.zona_id,
+    pais_nacimiento: hasOwn(input, 'pais_nacimiento')
+      ? input.pais_nacimiento ?? null
+      : existingPersona.pais_nacimiento,
+    nacimiento_extranjero: hasOwn(input, 'nacimiento_extranjero')
+      ? input.nacimiento_extranjero ?? false
+      : existingPersona.nacimiento_extranjero,
+    ciudad_nacimiento_extranjero: hasOwn(input, 'ciudad_nacimiento_extranjero')
+      ? input.ciudad_nacimiento_extranjero ?? null
+      : existingPersona.ciudad_nacimiento_extranjero
+  };
+
+  await client.query(
+    `
+      UPDATE personas
+      SET
+        tipo_documento_id = $2::bigint,
+        numero_documento = $3,
+        primer_nombre = $4,
+        segundo_nombre = $5,
+        primer_apellido = $6,
+        segundo_apellido = $7,
+        fecha_nacimiento = $8,
+        fecha_expedicion_documento = $9,
+        municipio_nacimiento_id = $10::bigint,
+        municipio_expedicion_id = $11::bigint,
+        municipio_residencia_id = $12::bigint,
+        sexo_id = $13::bigint,
+        estado_civil_id = $14::bigint,
+        tipo_sangre_id = $15::bigint,
+        estatura = $16,
+        telefono = $17,
+        correo = $18,
+        direccion = $19,
+        barrio = $20,
+        zona_id = $21::bigint,
+        pais_nacimiento = $22,
+        nacimiento_extranjero = $23,
+        ciudad_nacimiento_extranjero = $24
+      WHERE id::text = $1
+    `,
+    [
+      personaId,
+      nextValues.tipo_documento_id,
+      nextValues.numero_documento,
+      nextValues.primer_nombre,
+      nextValues.segundo_nombre,
+      nextValues.primer_apellido,
+      nextValues.segundo_apellido,
+      nextValues.fecha_nacimiento,
+      nextValues.fecha_expedicion_documento,
+      nextValues.municipio_nacimiento_id,
+      nextValues.municipio_expedicion_id,
+      nextValues.municipio_residencia_id,
+      nextValues.sexo_id,
+      nextValues.estado_civil_id,
+      nextValues.tipo_sangre_id,
+      nextValues.estatura,
+      nextValues.telefono,
+      nextValues.correo,
+      nextValues.direccion,
+      nextValues.barrio,
+      nextValues.zona_id,
+      nextValues.pais_nacimiento,
+      nextValues.nacimiento_extranjero,
+      nextValues.ciudad_nacimiento_extranjero
+    ]
+  );
+};
+
+const buildMutationAuditMeta = (context?: PersonaMutationContext): AuditRequestMeta => {
+  return {
+    ip: context?.auditMeta?.ip ?? null,
+    user_agent: context?.auditMeta?.user_agent ?? null
+  };
 };
 
 export const listPersonas = async (
@@ -250,7 +750,6 @@ export const listPersonas = async (
   );
 
   const total = countResult.rows[0]?.total ?? 0;
-
   const listParams = [...params, filters.limit, offset];
   const result = await dbQuery<PersonaRow>(
     `
@@ -297,21 +796,58 @@ export const getPersonaByNumeroDocumento = async (
       WHERE p.numero_documento = $1
       LIMIT 1
     `,
-    [numeroDocumento]
+    [numeroDocumento.trim()]
   );
 
   const row = result.rows[0];
   return row ? mapPersona(row) : null;
 };
 
-export const createPersona = async (input: CreatePersonaInput): Promise<Persona> => {
+export const listPersonaIdentificaciones = async (
+  personaId: string
+): Promise<PersonaIdentificacion[]> => {
+  const client = await dbPool.connect();
+
+  try {
+    const existingPersona = await getPersonaRowById(client, personaId);
+
+    if (!existingPersona) {
+      throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
+    }
+
+    const result = await client.query<PersonaIdentificacionRow>(
+      `
+        ${getPersonaIdentificationSelect()}
+        WHERE pi.persona_id::text = $1
+        ORDER BY pi.es_vigente DESC, pi.vigente_desde DESC, pi.id DESC
+      `,
+      [personaId]
+    );
+
+    return result.rows.map(mapPersonaIdentificacion);
+  } finally {
+    client.release();
+  }
+};
+
+export const createPersona = async (
+  input: CreatePersonaInput,
+  context?: PersonaMutationContext
+): Promise<Persona> => {
   const client = await dbPool.connect();
 
   try {
     await client.query('BEGIN');
-    await ensureNumeroDocumentoAvailable(client, input.numero_documento);
+    const identificationCore = buildPersonaIdentificationCore({
+      tipo_documento_id: input.tipo_documento_id,
+      numero_documento: input.numero_documento,
+      fecha_expedicion_documento: input.fecha_expedicion_documento,
+      municipio_expedicion_id: input.municipio_expedicion_id
+    });
 
-    const result = await client.query<PersonaRow>(
+    await ensureNumeroDocumentoAvailable(client, identificationCore.numero_documento);
+
+    const result = await client.query<{ id: string | number }>(
       `
         INSERT INTO personas (
           tipo_documento_id,
@@ -339,46 +875,22 @@ export const createPersona = async (input: CreatePersonaInput): Promise<Persona>
           ciudad_nacimiento_extranjero
         )
         VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-          $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
+          $1::bigint, $2, $3, $4, $5, $6, $7, $8, $9::bigint, $10::bigint,
+          $11::bigint, $12::bigint, $13::bigint, $14::bigint, $15, $16, $17, $18, $19, $20::bigint, $21, $22, $23
         )
-        RETURNING
-          id,
-          tipo_documento_id,
-          numero_documento,
-          primer_nombre,
-          segundo_nombre,
-          primer_apellido,
-          segundo_apellido,
-          fecha_nacimiento,
-          fecha_expedicion_documento,
-          municipio_nacimiento_id,
-          municipio_expedicion_id,
-          municipio_residencia_id,
-          sexo_id,
-          estado_civil_id,
-          tipo_sangre_id,
-          estatura,
-          telefono,
-          correo,
-          direccion,
-          barrio,
-          zona_id,
-          pais_nacimiento,
-          nacimiento_extranjero,
-          ciudad_nacimiento_extranjero
+        RETURNING id
       `,
       [
-        input.tipo_documento_id,
-        input.numero_documento,
+        identificationCore.tipo_documento_id,
+        identificationCore.numero_documento,
         input.primer_nombre,
         input.segundo_nombre,
         input.primer_apellido,
         input.segundo_apellido,
         input.fecha_nacimiento,
-        input.fecha_expedicion_documento,
+        identificationCore.fecha_expedicion_documento,
         input.municipio_nacimiento_id,
-        input.municipio_expedicion_id,
+        identificationCore.municipio_expedicion_id,
         input.municipio_residencia_id,
         input.sexo_id,
         input.estado_civil_id,
@@ -395,15 +907,53 @@ export const createPersona = async (input: CreatePersonaInput): Promise<Persona>
       ]
     );
 
-    await client.query('COMMIT');
+    const personaId = String(result.rows[0]?.id ?? '');
 
-    const createdPersona = result.rows[0];
-
-    if (!createdPersona) {
+    if (!personaId) {
       throw new AppError('Failed to create persona', 500, 'PERSONA_CREATION_FAILED');
     }
 
-    return mapPersona(createdPersona);
+    const createdIdentification = await insertPersonaIdentificationVersion(client, {
+      personaId,
+      identification: identificationCore,
+      motivoCambio: input.motivo_cambio_identificacion ?? 'REGISTRO_INICIAL_IDENTIFICACION',
+      actorUserId: context?.actorUserId ?? null,
+      replacesIdentificationId: null
+    });
+
+    const createdPersonaRow = await getPersonaRowById(client, personaId);
+
+    if (!createdPersonaRow) {
+      throw new AppError('Failed to create persona', 500, 'PERSONA_CREATION_FAILED');
+    }
+
+    const createdPersona = mapPersona(createdPersonaRow);
+    const auditMeta = buildMutationAuditMeta(context);
+
+    await registerAuditEntry({
+      accion: 'CREAR_PERSONA',
+      after: createdPersona,
+      client,
+      descripcion: 'Creacion de persona',
+      registro_id: String(createdPersona.id),
+      tabla: 'personas',
+      usuario_id: context?.actorUserId ?? null,
+      ...auditMeta
+    });
+
+    await registerAuditEntry({
+      accion: 'CREAR_PERSONA_IDENTIFICACION',
+      after: mapPersonaIdentificacion(createdIdentification),
+      client,
+      descripcion: 'Creacion de identificacion vigente de persona',
+      registro_id: String(createdIdentification.id),
+      tabla: 'persona_identificaciones',
+      usuario_id: context?.actorUserId ?? null,
+      ...auditMeta
+    });
+
+    await client.query('COMMIT');
+    return createdPersona;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -414,7 +964,8 @@ export const createPersona = async (input: CreatePersonaInput): Promise<Persona>
 
 export const updatePersona = async (
   personaId: string,
-  input: UpdatePersonaInput
+  input: UpdatePersonaInput,
+  context?: PersonaMutationContext
 ): Promise<Persona> => {
   const client = await dbPool.connect();
 
@@ -427,159 +978,86 @@ export const updatePersona = async (
       throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
     }
 
-    if (input.numero_documento) {
-      await ensureNumeroDocumentoAvailable(client, input.numero_documento, personaId);
+    const currentIdentificationRow = await getCurrentPersonaIdentificationRow(client, personaId);
+    const currentIdentificationCore = currentIdentificationRow
+      ? buildPersonaIdentificationCoreFromHistoryRow(currentIdentificationRow)
+      : buildPersonaIdentificationCoreFromPersonaRow(existingPersona);
+
+    const identificationFieldsWereProvided = [
+      hasOwn(input, 'tipo_documento_id'),
+      hasOwn(input, 'numero_documento'),
+      hasOwn(input, 'fecha_expedicion_documento'),
+      hasOwn(input, 'municipio_expedicion_id')
+    ].some(Boolean);
+
+    const nextIdentificationCore = buildNextIdentificationCore(currentIdentificationCore, input);
+    const shouldRotateIdentification = currentIdentificationRow === null
+      ? true
+      : identificationFieldsWereProvided && hasPersonaIdentificationChanged(currentIdentificationCore, nextIdentificationCore);
+
+    if (shouldRotateIdentification) {
+      await ensureNumeroDocumentoAvailable(client, nextIdentificationCore.numero_documento, personaId);
     }
 
-    const nextValues = {
-      tipo_documento_id: hasOwn(input, 'tipo_documento_id')
-        ? input.tipo_documento_id ?? existingPersona.tipo_documento_id
-        : existingPersona.tipo_documento_id,
-      numero_documento: hasOwn(input, 'numero_documento')
-        ? input.numero_documento ?? existingPersona.numero_documento
-        : existingPersona.numero_documento,
-      primer_nombre: hasOwn(input, 'primer_nombre')
-        ? input.primer_nombre ?? existingPersona.primer_nombre
-        : existingPersona.primer_nombre,
-      segundo_nombre: hasOwn(input, 'segundo_nombre')
-        ? input.segundo_nombre ?? null
-        : existingPersona.segundo_nombre,
-      primer_apellido: hasOwn(input, 'primer_apellido')
-        ? input.primer_apellido ?? existingPersona.primer_apellido
-        : existingPersona.primer_apellido,
-      segundo_apellido: hasOwn(input, 'segundo_apellido')
-        ? input.segundo_apellido ?? null
-        : existingPersona.segundo_apellido,
-      fecha_nacimiento: hasOwn(input, 'fecha_nacimiento')
-        ? input.fecha_nacimiento ?? null
-        : formatDateValue(existingPersona.fecha_nacimiento),
-      fecha_expedicion_documento: hasOwn(input, 'fecha_expedicion_documento')
-        ? input.fecha_expedicion_documento ?? null
-        : formatDateValue(existingPersona.fecha_expedicion_documento),
-      municipio_nacimiento_id: hasOwn(input, 'municipio_nacimiento_id')
-        ? input.municipio_nacimiento_id ?? null
-        : existingPersona.municipio_nacimiento_id,
-      municipio_expedicion_id: hasOwn(input, 'municipio_expedicion_id')
-        ? input.municipio_expedicion_id ?? null
-        : existingPersona.municipio_expedicion_id,
-      municipio_residencia_id: hasOwn(input, 'municipio_residencia_id')
-        ? input.municipio_residencia_id ?? null
-        : existingPersona.municipio_residencia_id,
-      sexo_id: hasOwn(input, 'sexo_id') ? input.sexo_id ?? null : existingPersona.sexo_id,
-      estado_civil_id: hasOwn(input, 'estado_civil_id')
-        ? input.estado_civil_id ?? null
-        : existingPersona.estado_civil_id,
-      tipo_sangre_id: hasOwn(input, 'tipo_sangre_id')
-        ? input.tipo_sangre_id ?? null
-        : existingPersona.tipo_sangre_id,
-      estatura: hasOwn(input, 'estatura') ? input.estatura ?? null : existingPersona.estatura,
-      telefono: hasOwn(input, 'telefono') ? input.telefono ?? null : existingPersona.telefono,
-      correo: hasOwn(input, 'correo') ? input.correo ?? null : existingPersona.correo,
-      direccion: hasOwn(input, 'direccion') ? input.direccion ?? null : existingPersona.direccion,
-      barrio: hasOwn(input, 'barrio') ? input.barrio ?? null : existingPersona.barrio,
-      zona_id: hasOwn(input, 'zona_id') ? input.zona_id ?? null : existingPersona.zona_id,
-      pais_nacimiento: hasOwn(input, 'pais_nacimiento')
-        ? input.pais_nacimiento ?? null
-        : existingPersona.pais_nacimiento,
-      nacimiento_extranjero: hasOwn(input, 'nacimiento_extranjero')
-        ? input.nacimiento_extranjero ?? false
-        : existingPersona.nacimiento_extranjero,
-      ciudad_nacimiento_extranjero: hasOwn(input, 'ciudad_nacimiento_extranjero')
-        ? input.ciudad_nacimiento_extranjero ?? null
-        : existingPersona.ciudad_nacimiento_extranjero
-    };
+    await updatePersonaBaseFields(client, personaId, input, existingPersona, nextIdentificationCore);
 
-    const result = await client.query<PersonaRow>(
-      `
-        UPDATE personas
-        SET
-          tipo_documento_id = $2,
-          numero_documento = $3,
-          primer_nombre = $4,
-          segundo_nombre = $5,
-          primer_apellido = $6,
-          segundo_apellido = $7,
-          fecha_nacimiento = $8,
-          fecha_expedicion_documento = $9,
-          municipio_nacimiento_id = $10,
-          municipio_expedicion_id = $11,
-          municipio_residencia_id = $12,
-          sexo_id = $13,
-          estado_civil_id = $14,
-          tipo_sangre_id = $15,
-          estatura = $16,
-          telefono = $17,
-          correo = $18,
-          direccion = $19,
-          barrio = $20,
-          zona_id = $21,
-          pais_nacimiento = $22,
-          nacimiento_extranjero = $23,
-          ciudad_nacimiento_extranjero = $24
-        WHERE id::text = $1
-        RETURNING
-          id,
-          tipo_documento_id,
-          numero_documento,
-          primer_nombre,
-          segundo_nombre,
-          primer_apellido,
-          segundo_apellido,
-          fecha_nacimiento,
-          fecha_expedicion_documento,
-          municipio_nacimiento_id,
-          municipio_expedicion_id,
-          municipio_residencia_id,
-          sexo_id,
-          estado_civil_id,
-          tipo_sangre_id,
-          estatura,
-          telefono,
-          correo,
-          direccion,
-          barrio,
-          zona_id,
-          pais_nacimiento,
-          nacimiento_extranjero,
-          ciudad_nacimiento_extranjero
-      `,
-      [
+    let createdIdentification: PersonaIdentificacion | null = null;
+
+    if (shouldRotateIdentification) {
+      if (currentIdentificationRow) {
+        await deactivateCurrentPersonaIdentification(client, toRequiredNumber(currentIdentificationRow.id));
+      }
+
+      const insertedIdentification = await insertPersonaIdentificationVersion(client, {
         personaId,
-        nextValues.tipo_documento_id,
-        nextValues.numero_documento,
-        nextValues.primer_nombre,
-        nextValues.segundo_nombre,
-        nextValues.primer_apellido,
-        nextValues.segundo_apellido,
-        nextValues.fecha_nacimiento,
-        nextValues.fecha_expedicion_documento,
-        nextValues.municipio_nacimiento_id,
-        nextValues.municipio_expedicion_id,
-        nextValues.municipio_residencia_id,
-        nextValues.sexo_id,
-        nextValues.estado_civil_id,
-        nextValues.tipo_sangre_id,
-        nextValues.estatura,
-        nextValues.telefono,
-        nextValues.correo,
-        nextValues.direccion,
-        nextValues.barrio,
-        nextValues.zona_id,
-        nextValues.pais_nacimiento,
-        nextValues.nacimiento_extranjero,
-        nextValues.ciudad_nacimiento_extranjero
-      ]
-    );
+        identification: nextIdentificationCore,
+        motivoCambio: input.motivo_cambio_identificacion
+          ?? (currentIdentificationRow ? 'ACTUALIZACION_IDENTIFICACION_VIGENTE' : 'RECONSTRUCCION_IDENTIFICACION_VIGENTE'),
+        actorUserId: context?.actorUserId ?? null,
+        replacesIdentificationId: currentIdentificationRow ? toRequiredNumber(currentIdentificationRow.id) : null
+      });
 
-    await client.query('COMMIT');
+      createdIdentification = mapPersonaIdentificacion(insertedIdentification);
+      await syncPersonaCurrentIdentification(client, personaId, nextIdentificationCore);
+    }
 
-    const updatedPersona = result.rows[0];
+    const updatedPersonaRow = await getPersonaRowById(client, personaId);
 
-    if (!updatedPersona) {
+    if (!updatedPersonaRow) {
       throw new AppError('Failed to update persona', 500, 'PERSONA_UPDATE_FAILED');
     }
 
-    return mapPersona(updatedPersona);
+    const updatedPersona = mapPersona(updatedPersonaRow);
+    const auditMeta = buildMutationAuditMeta(context);
+
+    await registerAuditEntry({
+      accion: 'ACTUALIZAR_PERSONA',
+      after: updatedPersona,
+      before: mapPersona(existingPersona),
+      client,
+      descripcion: 'Actualizacion de persona',
+      registro_id: String(updatedPersona.id),
+      tabla: 'personas',
+      usuario_id: context?.actorUserId ?? null,
+      ...auditMeta
+    });
+
+    if (createdIdentification) {
+      await registerAuditEntry({
+        accion: 'ACTUALIZAR_PERSONA_IDENTIFICACION_VIGENTE',
+        after: createdIdentification,
+        before: currentIdentificationRow ? mapPersonaIdentificacion(currentIdentificationRow) : null,
+        client,
+        descripcion: 'Cambio de identificacion vigente de persona',
+        registro_id: String(createdIdentification.id),
+        tabla: 'persona_identificaciones',
+        usuario_id: context?.actorUserId ?? null,
+        ...auditMeta
+      });
+    }
+
+    await client.query('COMMIT');
+    return updatedPersona;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -587,3 +1065,93 @@ export const updatePersona = async (
     client.release();
   }
 };
+
+export const createPersonaIdentificacion = async (
+  personaId: string,
+  input: CreatePersonaIdentificacionInput,
+  context?: PersonaMutationContext
+): Promise<PersonaIdentificacion> => {
+  const client = await dbPool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const existingPersona = await getPersonaRowById(client, personaId);
+
+    if (!existingPersona) {
+      throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
+    }
+
+    const currentIdentificationRow = await getCurrentPersonaIdentificationRow(client, personaId);
+    const currentIdentificationCore = currentIdentificationRow
+      ? buildPersonaIdentificationCoreFromHistoryRow(currentIdentificationRow)
+      : buildPersonaIdentificationCoreFromPersonaRow(existingPersona);
+    const nextIdentificationCore = buildNextIdentificationCore(currentIdentificationCore, input);
+
+    if (currentIdentificationRow && !hasPersonaIdentificationChanged(currentIdentificationCore, nextIdentificationCore)) {
+      throw new AppError(
+        'The provided identification already matches the current one',
+        409,
+        'PERSONA_IDENTIFICATION_ALREADY_CURRENT'
+      );
+    }
+
+    await ensureNumeroDocumentoAvailable(client, nextIdentificationCore.numero_documento, personaId);
+
+    if (currentIdentificationRow) {
+      await deactivateCurrentPersonaIdentification(client, toRequiredNumber(currentIdentificationRow.id));
+    }
+
+    const createdIdentificationRow = await insertPersonaIdentificationVersion(client, {
+      personaId,
+      identification: nextIdentificationCore,
+      motivoCambio: input.motivo_cambio,
+      actorUserId: context?.actorUserId ?? null,
+      replacesIdentificationId: currentIdentificationRow ? toRequiredNumber(currentIdentificationRow.id) : null
+    });
+
+    await syncPersonaCurrentIdentification(client, personaId, nextIdentificationCore);
+
+    const refreshedPersonaRow = await getPersonaRowById(client, personaId);
+
+    if (!refreshedPersonaRow) {
+      throw new AppError('Failed to refresh persona after identification update', 500, 'PERSONA_UPDATE_FAILED');
+    }
+
+    const createdIdentification = mapPersonaIdentificacion(createdIdentificationRow);
+    const auditMeta = buildMutationAuditMeta(context);
+
+    await registerAuditEntry({
+      accion: 'ACTUALIZAR_PERSONA_IDENTIFICACION_VIGENTE',
+      after: createdIdentification,
+      before: currentIdentificationRow ? mapPersonaIdentificacion(currentIdentificationRow) : null,
+      client,
+      descripcion: 'Cambio de identificacion vigente de persona',
+      registro_id: String(createdIdentification.id),
+      tabla: 'persona_identificaciones',
+      usuario_id: context?.actorUserId ?? null,
+      ...auditMeta
+    });
+
+    await registerAuditEntry({
+      accion: 'ACTUALIZAR_PERSONA',
+      after: mapPersona(refreshedPersonaRow),
+      before: mapPersona(existingPersona),
+      client,
+      descripcion: 'Sincronizacion de persona con identificacion vigente',
+      registro_id: personaId,
+      tabla: 'personas',
+      usuario_id: context?.actorUserId ?? null,
+      ...auditMeta
+    });
+
+    await client.query('COMMIT');
+    return createdIdentification;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+

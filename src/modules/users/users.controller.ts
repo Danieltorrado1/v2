@@ -3,14 +3,25 @@ import { Request, Response } from 'express';
 import { successResponse } from '../../utils/apiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
 import {
+  createAdminUserSchema,
   createUserSchema,
+  updateAdminUserPasswordSchema,
+  updateAdminUserSchema,
+  updateAdminUserStateSchema,
   updateUserSchema,
   userIdParamSchema
 } from './users.schemas';
 import {
+  createAdminUser,
   createUser,
+  deleteAdminUser,
+  findAdminUserById,
   findUserProfileById,
+  listAdminUsers,
   listUsers,
+  updateAdminUser,
+  updateAdminUserPassword,
+  updateAdminUserState,
   setUserActiveState,
   updateUser
 } from './users.service';
@@ -94,6 +105,86 @@ export const deactivateUser = asyncHandler(async (req: Request, res: Response) =
 
   return successResponse(res, {
     message: 'User deactivated successfully',
+    data: user
+  });
+});
+
+export const getAdminUsers = asyncHandler(async (_req: Request, res: Response) => {
+  const users = await listAdminUsers();
+
+  return successResponse(res, {
+    message: 'Admin users retrieved successfully',
+    data: users
+  });
+});
+
+export const getAdminUserById = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = userIdParamSchema.parse(req.params);
+  const user = await findAdminUserById(id);
+
+  if (!user) {
+    throw Object.assign(new Error('User not found'), {
+      code: 'USER_NOT_FOUND',
+      statusCode: 404
+    });
+  }
+
+  return successResponse(res, {
+    message: 'Admin user retrieved successfully',
+    data: user
+  });
+});
+
+export const createAdminUserHandler = asyncHandler(async (req: Request, res: Response) => {
+  const input = createAdminUserSchema.parse(req.body);
+  const user = await createAdminUser(input);
+
+  return successResponse(res, {
+    message: 'Admin user created successfully',
+    statusCode: 201,
+    data: user
+  });
+});
+
+export const updateAdminUserHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = userIdParamSchema.parse(req.params);
+  const input = updateAdminUserSchema.parse(req.body);
+  const user = await updateAdminUser(id, input);
+
+  return successResponse(res, {
+    message: 'Admin user updated successfully',
+    data: user
+  });
+});
+
+export const updateAdminUserPasswordHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = userIdParamSchema.parse(req.params);
+  const input = updateAdminUserPasswordSchema.parse(req.body);
+  const user = await updateAdminUserPassword(id, input.password);
+
+  return successResponse(res, {
+    message: 'Admin user password updated successfully',
+    data: user
+  });
+});
+
+export const updateAdminUserStateHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = userIdParamSchema.parse(req.params);
+  const input = updateAdminUserStateSchema.parse(req.body);
+  const user = await updateAdminUserState(id, input.active);
+
+  return successResponse(res, {
+    message: `Admin user ${input.active ? 'activated' : 'deactivated'} successfully`,
+    data: user
+  });
+});
+
+export const deleteAdminUserHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = userIdParamSchema.parse(req.params);
+  const user = await deleteAdminUser(id);
+
+  return successResponse(res, {
+    message: 'Admin user deactivated successfully',
     data: user
   });
 });

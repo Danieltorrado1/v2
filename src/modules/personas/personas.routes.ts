@@ -4,9 +4,11 @@ import { authMiddleware } from '../../middlewares/authMiddleware';
 import { requirePermissions } from '../../middlewares/roleMiddleware';
 import {
   createPersonaHandler,
+  createPersonaIdentificacionHandler,
   deactivatePersonaHandler,
   getPersona,
   getPersonaByDocumento,
+  getPersonaIdentificacionesHandler,
   getPersonas,
   updatePersonaHandler
 } from './personas.controller';
@@ -20,6 +22,16 @@ personasRoutes.get(
   '/documento/:numero_documento',
   requirePermissions('personas.read'),
   getPersonaByDocumento
+);
+personasRoutes.get(
+  '/:id/identificaciones',
+  requirePermissions('personas.read'),
+  getPersonaIdentificacionesHandler
+);
+personasRoutes.post(
+  '/:id/identificaciones',
+  requirePermissions('personas.update'),
+  createPersonaIdentificacionHandler
 );
 personasRoutes.get('/:id', requirePermissions('personas.read'), getPersona);
 personasRoutes.post('/', requirePermissions('personas.create'), createPersonaHandler);
