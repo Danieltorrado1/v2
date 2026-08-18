@@ -97,13 +97,14 @@ export interface CreateSstExamenPersonaRecordPayload {
   observacion?: string | null;
   activo?: boolean;
 }
+const SST_MAX_PAGE_SIZE = 100;
 
 const withPagination = (
   page?: number,
   limit?: number,
 ): ApiQueryParams => ({
   page,
-  limit,
+  limit: limit === undefined ? undefined : Math.min(limit, SST_MAX_PAGE_SIZE),
 });
 
 const withMaybe = <T extends object>(values: T): ApiQueryParams => {

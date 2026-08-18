@@ -95,6 +95,14 @@ interface PersonalMasterDrawerProps {
   tipoIdentificacionOptions: CatalogoItem[];
 }
 
+interface SectionLoadState {
+  error: string;
+  loading: boolean;
+}
+
+const IDLE_SECTION_STATE: SectionLoadState = { error: '', loading: false };
+const API_MAX_PAGE_SIZE = 100;
+
 const TAB_META: Array<{ id: MasterTab; label: string; icon: typeof UserCircle2 }> = [
   { id: 'datos', label: 'Datos personales', icon: UserCircle2 },
   { id: 'vinculacion', label: 'Vinculación', icon: BriefcaseBusiness },
@@ -188,7 +196,7 @@ function toOptionMap<T extends { id: number }>(items: T[]): Map<number, T> {
 
 async function getAllCatalogPages<T>(
   fetchPage: (page: number, limit: number) => Promise<{ items: T[]; pagination: { total_pages: number } }>,
-  limit = 250,
+  limit = API_MAX_PAGE_SIZE,
 ): Promise<T[]> {
   const firstPage = await fetchPage(1, limit);
   const items = [...firstPage.items];
@@ -281,8 +289,14 @@ export default function PersonalMasterDrawer({
   const [documentosPersona, setDocumentosPersona] = useState<DocumentoPersonaApi[]>([]);
   const [sstCatalog, setSstCatalog] = useState<SstExamenOcupacionalRecord[]>([]);
   const [sstExamenes, setSstExamenes] = useState<SstExamenPersonaRecord[]>([]);
-  const [loadingData, setLoadingData] = useState(false);
-  const [dataError, setDataError] = useState('');
+  const [datosState, setDatosState] = useState<SectionLoadState>(IDLE_SECTION_STATE);
+  const [vinculacionState, setVinculacionState] = useState<SectionLoadState>(IDLE_SECTION_STATE);
+  const [documentosState, setDocumentosState] = useState<SectionLoadState>(IDLE_SECTION_STATE);
+  const [saludState, setSaludState] = useState<SectionLoadState>(IDLE_SECTION_STATE);
+  const [datosRetry, setDatosRetry] = useState(0);
+  const [vinculacionRetry, setVinculacionRetry] = useState(0);
+  const [documentosRetry, setDocumentosRetry] = useState(0);
+  const [saludRetry, setSaludRetry] = useState(0);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [showIdentificationModal, setShowIdentificationModal] = useState(false);
   const [showRequisitoForm, setShowRequisitoForm] = useState(false);
@@ -306,6 +320,13 @@ export default function PersonalMasterDrawer({
   const estadosCivilesMap = useMemo(() => toOptionMap(estadosCiviles), [estadosCiviles]);
   const fichaMissingFields = useMemo(() => buildFichaChecklist(personaDetail), [personaDetail]);
   const fichaCompleta = fichaMissingFields.length === 0;
+  const fichaStatus = datosState.loading && !personaDetail
+    ? { label: 'Verificando ficha...', tone: 'loading' }
+    : datosState.error && !personaDetail
+      ? { label: 'No se pudo verificar', tone: 'error' }
+      : personaDetail
+        ? { label: fichaCompleta ? 'Ficha completa' : 'Ficha incompleta', tone: fichaCompleta ? 'ok' : 'warn' }
+        : { label: 'Verificando ficha...', tone: 'loading' };
   const currentIdentification = personaDetail?.identificacion_vigente ?? identificaciones.find((item) => item.es_vigente) ?? null;
 
   useEffect(() => {
@@ -327,78 +348,140 @@ export default function PersonalMasterDrawer({
       setDocumentosPersona([]);
       setSstCatalog([]);
       setSstExamenes([]);
+      setDatosState(IDLE_SECTION_STATE);
+      setVinculacionState(IDLE_SECTION_STATE);
+      setDocumentosState(IDLE_SECTION_STATE);
+      setSaludState(IDLE_SECTION_STATE);
       return;
     }
 
     let cancelled = false;
     const activeExpediente = expediente;
 
-    async function loadDrawerData() {
-      setLoadingData(true);
-      setDataError('');
+    async function loadDatos() {
+      setDatosState({ loading: true, error: '' });
+      const [personaResult, identificacionesResult] = await Promise.allSettled([
+        getPersonaById(activeExpediente.persona.id),
+        getPersonaIdentificaciones(activeExpediente.persona.id),
+      ]);
+      if (cancelled) return;
 
-      try {
-        const [persona, identificacionesResult, vinculacionesResult, documentosResult, examenesResult, catalogoSstResult] = await Promise.all([
-          getPersonaById(activeExpediente.persona.id),
-          getPersonaIdentificaciones(activeExpediente.persona.id),
-          getVinculacionesByPersonaId(activeExpediente.persona.id),
-          getDocumentosPersona(activeExpediente.persona.id),
-          canReadSst
-            ? listarExamenesPersonaSst({
-                persona_id: activeExpediente.persona.id,
-                page: 1,
-                limit: 200,
-                activo: true,
-              })
-            : Promise.resolve({ items: [], pagination: { page: 1, limit: 200, total: 0, total_pages: 0 } }),
-          canReadSst
-            ? listarExamenesOcupacionalesSst({
-                empresa_id: activeExpediente.empresa.id,
-                contrato_id: activeExpediente.contrato.id,
-                activo: true,
-                page: 1,
-                limit: 200,
-              })
-            : Promise.resolve({ items: [], pagination: { page: 1, limit: 200, total: 0, total_pages: 0 } }),
-        ]);
-
-        const contractIds = Array.from(new Set(vinculacionesResult.map((item) => item.contrato_id)));
-        const cargoIds = Array.from(new Set(vinculacionesResult.map((item) => item.contrato_cargo_id)));
-        const [contratosResult, cargosResult] = await Promise.all([
-          Promise.all(contractIds.map(async (id) => [id, await configuracionApi.obtenerContrato(id)] as const)),
-          Promise.all(cargoIds.map(async (id) => [id, await configuracionApi.obtenerCargo(id)] as const)),
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-
-        setPersonaDetail(persona);
-        setPersonalForm(buildPersonalForm(persona));
-        setIdentificaciones(identificacionesResult);
-        setVinculacionesHistory(vinculacionesResult);
-        setDocumentosPersona(documentosResult);
-        setSstExamenes(examenesResult.items);
-        setSstCatalog(catalogoSstResult.items);
-        setContratosHistoryMap(new Map(contratosResult));
-        setCargosHistoryMap(new Map(cargosResult));
-      } catch (loadError) {
-        if (!cancelled) {
-          setDataError(loadError instanceof Error ? loadError.message : 'No fue posible cargar la ficha maestra.');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingData(false);
-        }
+      if (personaResult.status === 'fulfilled') {
+        setPersonaDetail(personaResult.value);
+        setPersonalForm(buildPersonalForm(personaResult.value));
+      } else {
+        setPersonaDetail(null);
       }
+      if (identificacionesResult.status === 'fulfilled') {
+        setIdentificaciones(identificacionesResult.value);
+      } else {
+        setIdentificaciones([]);
+      }
+
+      const errorMessage = personaResult.status === 'rejected'
+        ? 'No fue posible cargar los datos personales.'
+        : identificacionesResult.status === 'rejected'
+          ? 'No fue posible cargar el historial de identificaciones.'
+          : '';
+      setDatosState({ loading: false, error: errorMessage });
     }
 
-    void loadDrawerData();
+    void loadDatos();
 
     return () => {
       cancelled = true;
     };
-  }, [canReadSst, expediente]);
+  }, [datosRetry, expediente]);
+
+  useEffect(() => {
+    if (!expediente) return;
+    let cancelled = false;
+    const activeExpediente = expediente;
+
+    async function loadVinculaciones() {
+      setVinculacionState({ loading: true, error: '' });
+      try {
+        const vinculacionesResult = await getVinculacionesByPersonaId(activeExpediente.persona.id);
+        const contractIds = Array.from(new Set(vinculacionesResult.map((item) => item.contrato_id)));
+        const cargoIds = Array.from(new Set(vinculacionesResult.map((item) => item.contrato_cargo_id)));
+        const [contratosResult, cargosResult] = await Promise.all([
+          Promise.allSettled(contractIds.map(async (id) => [id, await configuracionApi.obtenerContrato(id)] as const)),
+          Promise.allSettled(cargoIds.map(async (id) => [id, await configuracionApi.obtenerCargo(id)] as const)),
+        ]);
+        if (cancelled) return;
+        setVinculacionesHistory(vinculacionesResult);
+        setContratosHistoryMap(new Map(contratosResult.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])));
+        setCargosHistoryMap(new Map(cargosResult.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])));
+        const hasMetadataError = [...contratosResult, ...cargosResult].some((result) => result.status === 'rejected');
+        setVinculacionState({ loading: false, error: hasMetadataError ? 'Algunos detalles del historial contractual no pudieron cargarse.' : '' });
+      } catch {
+        if (!cancelled) {
+          setVinculacionesHistory([]);
+          setVinculacionState({ loading: false, error: 'No fue posible cargar las vinculaciones.' });
+        }
+      }
+    }
+
+    void loadVinculaciones();
+    return () => { cancelled = true; };
+  }, [expediente, vinculacionRetry]);
+
+  useEffect(() => {
+    if (!expediente) return;
+    let cancelled = false;
+    const personaId = expediente.persona.id;
+    setDocumentosState({ loading: true, error: '' });
+    void getDocumentosPersona(personaId)
+      .then((result) => {
+        if (!cancelled) {
+          setDocumentosPersona(result);
+          setDocumentosState({ loading: false, error: '' });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDocumentosPersona([]);
+          setDocumentosState({ loading: false, error: 'No fue posible cargar los documentos.' });
+        }
+      });
+    return () => { cancelled = true; };
+  }, [documentosRetry, expediente]);
+
+  useEffect(() => {
+    if (!expediente) return;
+    if (!canReadSst) {
+      setSstExamenes([]);
+      setSstCatalog([]);
+      setSaludState(IDLE_SECTION_STATE);
+      return;
+    }
+    let cancelled = false;
+    const activeExpediente = expediente;
+    setSaludState({ loading: true, error: '' });
+
+    void Promise.allSettled([
+      listarExamenesPersonaSst({ persona_id: activeExpediente.persona.id, page: 1, limit: API_MAX_PAGE_SIZE, activo: true }),
+      listarExamenesOcupacionalesSst({
+        empresa_id: activeExpediente.empresa.id,
+        contrato_id: activeExpediente.contrato.id,
+        activo: true,
+        page: 1,
+        limit: API_MAX_PAGE_SIZE,
+      }),
+    ]).then(([examenesResult, catalogoResult]) => {
+      if (cancelled) return;
+      setSstExamenes(examenesResult.status === 'fulfilled' ? examenesResult.value.items : []);
+      setSstCatalog(catalogoResult.status === 'fulfilled' ? catalogoResult.value.items : []);
+      const failed = Number(examenesResult.status === 'rejected') + Number(catalogoResult.status === 'rejected');
+      setSaludState({
+        loading: false,
+        error: failed === 0 ? '' : failed === 2
+          ? 'No fue posible cargar los requisitos de salud.'
+          : 'Parte de la información de salud no pudo cargarse.',
+      });
+    });
+    return () => { cancelled = true; };
+  }, [canReadSst, expediente, saludRetry]);
 
   useEffect(() => {
     if (!isEditingPersonal && !showIdentificationModal) {
@@ -561,7 +644,7 @@ export default function PersonalMasterDrawer({
       const refreshed = await listarExamenesPersonaSst({
         persona_id: personaDetail.id,
         page: 1,
-        limit: 200,
+        limit: API_MAX_PAGE_SIZE,
         activo: true,
       });
       setSstExamenes(refreshed.items);
@@ -580,16 +663,16 @@ export default function PersonalMasterDrawer({
   }
 
   function renderDatosTab() {
-    if (loadingData && !personaDetail) {
+    if (datosState.loading && !personaDetail) {
       return <StateBlock message="Cargando ficha maestra..." />;
     }
 
-    if (dataError) {
-      return <StateBlock tone="error" message={dataError} />;
+    if (datosState.error && !personaDetail) {
+      return <StateBlock tone="error" message={datosState.error} onAction={() => setDatosRetry((value) => value + 1)} />;
     }
 
     if (!personaDetail) {
-      return <StateBlock message="No fue posible cargar los datos personales." />;
+      return <StateBlock tone="error" message="No fue posible cargar los datos personales." onAction={() => setDatosRetry((value) => value + 1)} />;
     }
 
     return (
@@ -610,6 +693,10 @@ export default function PersonalMasterDrawer({
               Cambiar identificación
             </button>
           </div>
+
+          {datosState.error && (
+            <StateBlock tone="error" message={datosState.error} compact onAction={() => setDatosRetry((value) => value + 1)} />
+          )}
 
           <div className="pmd-grid two">
             <DataItem label="Tipo de identificación" value={currentIdentification?.tipo_documento_nombre ?? `Tipo ${currentIdentification?.tipo_documento_id ?? activeExpediente.persona.tipo_documento_id ?? '—'}`} />
@@ -771,6 +858,7 @@ export default function PersonalMasterDrawer({
                 <DataItem label="Sexo" value={personaDetail.sexo_id ? sexosMap.get(personaDetail.sexo_id)?.label ?? displayValue(activeExpediente.persona.sexo) : displayValue(activeExpediente.persona.sexo)} />
                 <DataItem label="Estado civil" value={personaDetail.estado_civil_id ? estadosCivilesMap.get(personaDetail.estado_civil_id)?.label ?? displayValue(activeExpediente.persona.estado_civil) : displayValue(activeExpediente.persona.estado_civil)} />
                 <DataItem label="Tipo de sangre" value={displayValue(activeExpediente.persona.tipo_sangre)} />
+                <DataItem label="Estatura" value={personaDetail.estatura == null ? 'Sin registrar' : `${personaDetail.estatura} cm`} />
                 <DataItem label="Teléfono" value={displayValue(personaDetail.telefono)} />
                 <DataItem label="Correo" value={displayValue(personaDetail.correo)} />
                 <DataItem label="Dirección" value={displayValue(personaDetail.direccion)} />
@@ -832,12 +920,18 @@ export default function PersonalMasterDrawer({
             </div>
           </div>
 
-          {loadingData && vinculacionesHistory.length === 0 ? (
+          {vinculacionState.loading && vinculacionesHistory.length === 0 ? (
             <StateBlock message="Cargando historial contractual..." compact />
+          ) : vinculacionState.error && vinculacionesHistory.length === 0 ? (
+            <StateBlock tone="error" message={vinculacionState.error} compact onAction={() => setVinculacionRetry((value) => value + 1)} />
           ) : vinculacionesHistory.length === 0 ? (
-            <StateBlock message="Esta persona no tiene vinculaciones registradas." compact />
+            <StateBlock tone="empty" message="Esta persona no tiene vinculaciones registradas." compact />
           ) : (
-            <div className="pmd-history-list">
+            <>
+              {vinculacionState.error && (
+                <StateBlock tone="error" message={vinculacionState.error} compact onAction={() => setVinculacionRetry((value) => value + 1)} />
+              )}
+              <div className="pmd-history-list">
               {vinculacionesHistory.map((item) => (
                 <div key={item.id} className="pmd-history-item">
                   <div className="pmd-history-head">
@@ -854,7 +948,8 @@ export default function PersonalMasterDrawer({
                   </div>
                 </div>
               ))}
-            </div>
+              </div>
+            </>
           )}
         </section>
       </div>
@@ -863,11 +958,17 @@ export default function PersonalMasterDrawer({
 
   function renderDocumentosTab() {
     return (
-      <ExpedienteDocumentosPanel
-        personaId={activeExpediente.persona.id}
-        vinculacionId={activeExpediente.vinculacion.id}
-        tipoDocumentoOptions={tipoDocumentoOptions}
-      />
+      <div className="pmd-stack">
+        {documentosState.loading && documentosPersona.length === 0 && <StateBlock message="Cargando documentos..." compact />}
+        {documentosState.error && (
+          <StateBlock tone="error" message={documentosState.error} compact onAction={() => setDocumentosRetry((value) => value + 1)} />
+        )}
+        <ExpedienteDocumentosPanel
+          personaId={activeExpediente.persona.id}
+          vinculacionId={activeExpediente.vinculacion.id}
+          tipoDocumentoOptions={tipoDocumentoOptions}
+        />
+      </div>
     );
   }
 
@@ -881,8 +982,19 @@ export default function PersonalMasterDrawer({
       );
     }
 
+    if (saludState.loading && sstExamenes.length === 0 && sstCatalog.length === 0) {
+      return <StateBlock message="Cargando requisitos de salud..." />;
+    }
+
+    if (saludState.error && sstExamenes.length === 0 && sstCatalog.length === 0) {
+      return <StateBlock tone="error" message={saludState.error} onAction={() => setSaludRetry((value) => value + 1)} />;
+    }
+
     return (
       <div className="pmd-stack">
+        {saludState.error && (
+          <StateBlock tone="error" message={saludState.error} compact onAction={() => setSaludRetry((value) => value + 1)} />
+        )}
         <section className="pmd-card">
           <div className="pmd-card-header">
             <div>
@@ -964,7 +1076,7 @@ export default function PersonalMasterDrawer({
           )}
 
           {sstExamenes.length === 0 ? (
-            <StateBlock message="No hay requisitos o exámenes registrados para esta persona." compact />
+            <StateBlock tone="empty" message="No hay requisitos o exámenes registrados para esta persona." compact />
           ) : (
             <div className="pmd-requirements-list">
               {sstExamenes.map((item) => (
@@ -1003,8 +1115,8 @@ export default function PersonalMasterDrawer({
           <div>
             <div className="pmd-header-top">
               <h2>{buildNombreCompleto(activeExpediente.persona)}</h2>
-              <span className={`pmd-status-chip ${fichaCompleta ? 'ok' : 'warn'}`}>
-                {fichaCompleta ? 'Ficha completa' : 'Ficha incompleta'}
+              <span className={`pmd-status-chip ${fichaStatus.tone}`}>
+                {fichaStatus.label}
               </span>
             </div>
             <p>
@@ -1012,7 +1124,7 @@ export default function PersonalMasterDrawer({
               {' · '}
               {activeExpediente.cargo.nombre_cargo ?? 'Sin cargo'}
             </p>
-            {!fichaCompleta && (
+            {personaDetail && !datosState.loading && !datosState.error && !fichaCompleta && (
               <small>Faltan: {fichaMissingFields.join(', ')}</small>
             )}
           </div>
@@ -1116,18 +1228,27 @@ function DataItem({
 }
 
 function StateBlock({
+  actionLabel = 'Reintentar',
   compact = false,
   message,
+  onAction,
   tone = 'default',
 }: {
+  actionLabel?: string;
   compact?: boolean;
   message: string;
-  tone?: 'default' | 'error';
+  onAction?: () => void;
+  tone?: 'default' | 'empty' | 'error';
 }) {
   return (
     <div className={`pmd-state ${tone === 'error' ? 'is-error' : ''} ${compact ? 'is-compact' : ''}`}>
-      {tone === 'error' ? <AlertTriangle size={16} /> : <Loader2 size={16} className="spin-soft" />}
+      {tone === 'error' ? <AlertTriangle size={16} /> : tone === 'empty' ? <ClipboardList size={16} /> : <Loader2 size={16} className="spin-soft" />}
       <span>{message}</span>
+      {onAction && (
+        <button type="button" className="pmd-button ghost" onClick={onAction}>
+          {actionLabel}
+        </button>
+      )}
     </div>
   );
 }

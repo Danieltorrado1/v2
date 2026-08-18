@@ -171,6 +171,16 @@
   color: var(--color-warning);
 }
 
+.pmd-status-chip.loading {
+  background: color-mix(in srgb, var(--color-info) 14%, transparent);
+  color: var(--text-secondary);
+}
+
+.pmd-status-chip.error {
+  background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+  color: var(--color-danger);
+}
+
 .pmd-inline-badge.danger {
   background: color-mix(in srgb, var(--color-danger) 16%, transparent);
   color: var(--color-danger);
