@@ -1,0 +1,415 @@
+.op-personal-page {
+  display: flex;
+  flex: 1;
+  min-height: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.op-header,
+.op-header-actions,
+.op-filter-bar,
+.op-search,
+.op-filter,
+.op-pagination,
+.op-pagination-actions,
+.op-card-header,
+.op-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.op-header,
+.op-pagination,
+.op-card-header {
+  justify-content: space-between;
+}
+
+.op-header h1,
+.op-card-header h2 {
+  margin: 0;
+}
+
+.op-header p,
+.op-context-item span,
+.op-context-note,
+.op-empty,
+.op-empty-row,
+.op-summary-item span {
+  color: var(--text-secondary);
+}
+
+.op-header p {
+  margin: 4px 0 0;
+}
+
+.op-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.op-header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.op-button,
+.op-link-button,
+.op-close-button {
+  border-radius: 12px;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.16s ease, opacity 0.16s ease, border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.op-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+
+.op-button:hover,
+.op-link-button:hover,
+.op-close-button:hover {
+  transform: translateY(-1px);
+}
+
+.op-button:disabled,
+.op-link-button:disabled,
+.op-close-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.op-button.primary {
+  background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 62%, var(--color-secondary)));
+  color: #062535;
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--color-primary) 24%, transparent);
+}
+
+.op-button.secondary,
+.op-button.ghost,
+.op-close-button {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.op-button.ghost {
+  background: color-mix(in srgb, var(--bg-card) 82%, transparent);
+}
+
+.op-filter-bar,
+.op-context-strip,
+.op-table-card,
+.op-detail-card {
+  background: color-mix(in srgb, var(--bg-card) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 92%, transparent);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
+}
+
+.op-filter-bar {
+  padding: 14px 16px;
+  flex-wrap: wrap;
+}
+
+.op-search,
+.op-filter {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-input);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.op-search {
+  flex: 1 1 260px;
+  min-width: 220px;
+  padding: 0 14px;
+}
+
+.op-search:focus-within,
+.op-filter:focus-within {
+  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--border-color));
+  box-shadow: var(--focus-ring);
+  background: color-mix(in srgb, var(--bg-input) 88%, var(--color-primary) 12%);
+}
+
+.op-search svg,
+.op-filter svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.op-search input,
+.op-filter select {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 12px 0;
+  font: inherit;
+}
+
+.op-filter {
+  min-width: 180px;
+  padding: 0 14px;
+}
+
+.op-search input:focus,
+.op-filter select:focus {
+  outline: none;
+}
+
+.op-context-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 58%),
+    linear-gradient(140deg, color-mix(in srgb, var(--color-secondary) 12%, transparent), transparent 70%),
+    var(--bg-card);
+}
+
+.op-context-item strong {
+  display: block;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+
+.op-context-note {
+  grid-column: 1 / -1;
+  font-size: 0.82rem;
+}
+
+.op-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  min-height: 0;
+  flex: 1;
+}
+
+.op-workspace.with-detail {
+  grid-template-columns: minmax(0, 1.5fr) minmax(360px, 0.95fr);
+}
+
+.op-table-card,
+.op-detail-card {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+
+.op-card-header {
+  gap: 16px;
+}
+
+.op-count {
+  display: inline-flex;
+  min-width: 42px;
+  height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-card));
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.op-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 85%, transparent);
+  background: var(--bg-panel);
+}
+
+.op-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.op-table th,
+.op-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 85%, transparent);
+  vertical-align: middle;
+}
+
+.op-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.op-table tbody tr {
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.op-table tbody tr:hover,
+.op-table tbody tr.is-selected {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.op-empty,
+.op-state {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 30px 24px;
+}
+
+.op-state.error {
+  color: var(--color-danger);
+}
+
+.op-empty-row {
+  text-align: center;
+}
+
+.op-mono {
+  font-family: var(--font-mono, "Consolas", "Courier New", monospace);
+}
+
+.op-link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-weight: 600;
+  padding: 0;
+}
+
+.op-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.op-badge.status-activa {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  color: color-mix(in srgb, #052926 78%, var(--color-accent));
+}
+
+.op-badge.status-suspendida {
+  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+  color: var(--color-warning);
+}
+
+.op-badge.status-retirada {
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  color: var(--color-danger);
+}
+
+.op-detail-card {
+  overflow: hidden;
+}
+
+.op-close-button {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.op-detail-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.op-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.op-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+}
+
+.op-summary-item strong {
+  overflow-wrap: anywhere;
+}
+
+.op-detail-actions {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 1200px) {
+  .op-workspace.with-detail {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .op-context-strip,
+  .op-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .op-header,
+  .op-card-header,
+  .op-pagination,
+  .op-detail-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .op-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .op-search,
+  .op-filter {
+    min-width: 0;
+  }
+}

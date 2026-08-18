@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowRight,
@@ -141,8 +141,13 @@ function createBlankVinculacion(cargoId = "", tipoVinculacionId = ""): Vinculaci
 
 export default function ContractPersonalPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const permissions = user?.permissions ?? [];
+  const requestedEmpresaId = Number(searchParams.get("empresa_id") ?? "");
+  const requestedContratoId = Number(searchParams.get("contrato_id") ?? "");
+  const shouldAutoOpenAdd = searchParams.get("open_add") === "1";
+  const autoOpenHandledRef = useRef(false);
 
   const canReadContext = hasAnyPermission(permissions, [
     "configuracion.read",
@@ -200,6 +205,26 @@ export default function ContractPersonalPage() {
     () => contratos.find((contrato) => contrato.id === contratoId) ?? null,
     [contratoId, contratos]
   );
+
+  useEffect(() => {
+    if (!Number.isFinite(requestedEmpresaId) || requestedEmpresaId <= 0 || empresas.length === 0) {
+      return;
+    }
+
+    if (empresas.some((empresa) => empresa.id === requestedEmpresaId) && empresaId !== requestedEmpresaId) {
+      setEmpresaId(requestedEmpresaId);
+    }
+  }, [empresaId, empresas, requestedEmpresaId]);
+
+  useEffect(() => {
+    if (!Number.isFinite(requestedContratoId) || requestedContratoId <= 0 || contratos.length === 0) {
+      return;
+    }
+
+    if (contratos.some((contrato) => contrato.id === requestedContratoId) && contratoId !== requestedContratoId) {
+      setContratoId(requestedContratoId);
+    }
+  }, [contratoId, contratos, requestedContratoId]);
 
   useEffect(() => {
     if (!canReadContext) {
@@ -492,7 +517,7 @@ export default function ContractPersonalPage() {
     }));
   }, [cargos, showModal, tiposIdentificacion, tiposVinculacion]);
 
-  function resetWorkerFlow() {
+  const resetWorkerFlow = useCallback(() => {
     setLookupLoading(false);
     setLookupError("");
     setFoundPersona(null);
@@ -502,9 +527,9 @@ export default function ContractPersonalPage() {
       createBlankVinculacion(String(cargos[0]?.id ?? ""), String(tiposVinculacion[0]?.id ?? ""))
     );
     setSavingWorker(false);
-  }
+  }, [cargos, tiposIdentificacion, tiposVinculacion]);
 
-  function openWorkerModal() {
+  const openWorkerModal = useCallback(() => {
     if (!tiposIdentificacion.length) {
       setFeedback({
         tone: "error",
@@ -515,12 +540,25 @@ export default function ContractPersonalPage() {
 
     resetWorkerFlow();
     setShowModal(true);
-  }
+  }, [resetWorkerFlow, tiposIdentificacion]);
 
-  function closeWorkerModal() {
+  useEffect(() => {
+    if (!shouldAutoOpenAdd || autoOpenHandledRef.current) {
+      return;
+    }
+
+    if (!selectedContrato || !tiposIdentificacion.length || !canCreateVinculacion) {
+      return;
+    }
+
+    autoOpenHandledRef.current = true;
+    openWorkerModal();
+  }, [canCreateVinculacion, openWorkerModal, selectedContrato, shouldAutoOpenAdd, tiposIdentificacion.length]);
+
+  const closeWorkerModal = useCallback(() => {
     setShowModal(false);
     resetWorkerFlow();
-  }
+  }, [resetWorkerFlow]);
 
   async function handleBuscarPersona() {
     if (!personaForm.numero_documento.trim()) {
@@ -833,16 +871,22 @@ export default function ContractPersonalPage() {
           </div>
 
           {!selectedContrato ? (
-            <div className="cp-empty">Selecciona una empresa y un contrato para cargar su personal.</div>
+            <div className="cp-list-body">
+              <div className="cp-empty">Selecciona una empresa y un contrato para cargar su personal.</div>
+            </div>
           ) : personalError ? (
-            <div className="cp-state error">
-              <AlertTriangle size={16} />
-              {personalError}
+            <div className="cp-list-body">
+              <div className="cp-state error">
+                <AlertTriangle size={16} />
+                {personalError}
+              </div>
             </div>
           ) : personalLoading && !personal ? (
-            <div className="cp-empty">Cargando personal del contrato...</div>
+            <div className="cp-list-body">
+              <div className="cp-empty">Cargando personal del contrato...</div>
+            </div>
           ) : (
-            <>
+            <div className="cp-list-body">
               <div className="cp-table-wrap">
                 <table className="cp-table">
                   <thead>
@@ -924,7 +968,7 @@ export default function ContractPersonalPage() {
                   </button>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </section>
 
@@ -938,16 +982,22 @@ export default function ContractPersonalPage() {
           </div>
 
           {selectedError ? (
-            <div className="cp-state error">
-              <AlertTriangle size={16} />
-              {selectedError}
+            <div className="cp-detail-body">
+              <div className="cp-state error">
+                <AlertTriangle size={16} />
+                {selectedError}
+              </div>
             </div>
           ) : selectedLoading && !selectedExpediente ? (
-            <div className="cp-empty">Abriendo expediente...</div>
+            <div className="cp-detail-body">
+              <div className="cp-empty">Abriendo expediente...</div>
+            </div>
           ) : !selectedExpediente ? (
-            <div className="cp-empty">Selecciona una vinculación para abrir su expediente.</div>
+            <div className="cp-detail-body">
+              <div className="cp-empty">Selecciona una vinculación para abrir su expediente.</div>
+            </div>
           ) : (
-            <>
+            <div className="cp-detail-body">
               <div className="cp-summary-grid">
                 <div className="cp-summary-item">
                   <span>Trabajador</span>
@@ -995,7 +1045,7 @@ export default function ContractPersonalPage() {
                 vinculacionId={selectedExpediente.vinculacion.id}
                 tipoDocumentoOptions={tiposDocumento}
               />
-            </>
+            </div>
           )}
         </section>
       </div>

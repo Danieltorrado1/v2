@@ -3,6 +3,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import LoginPage from "../pages/auth/LoginPage";
 import MainLayout from "../layouts/MainLayout";
 import DashboardPage from "../pages/dashboard/DashboardPage";
+import OperationalPersonalPage from "../pages/personal/OperationalPersonalPage";
 import ContractPersonalPage from "../pages/personal/ContractPersonalPage";
 import NominaPage from "../pages/nomina/NominaPage";
 import CalculadoraSalarioPage from "../pages/herramientas/CalculadoraSalarioPage";
@@ -17,7 +18,6 @@ import PortalPage from "../pages/portal/PortalPage";
 import AdminPage from "../pages/admin/AdminPage";
 import VerDocumentosPage from "../pages/repositorio/VerDocumentosPage";
 import SubirDocumentosPage from "../pages/repositorio/SubirDocumentosPage";
-import VinculacionesPage from "../pages/vinculaciones/VinculacionesPage";
 
 export default function AppRouter() {
   return (
@@ -29,7 +29,7 @@ export default function AppRouter() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="personal" element={<ContractPersonalPage />} />
+            <Route path="personal" element={<OperationalPersonalPage />} />
             <Route path="nomina" element={<NominaPage />} />
             <Route path="nomina/liquidacion" element={<LiquidacionPage />} />
             <Route path="nomina/turnos" element={<TurnosPage />} />
@@ -46,7 +46,8 @@ export default function AppRouter() {
             <Route path="sst/epp" element={<Navigate to="/sst?tab=hallazgos" replace />} />
             <Route path="sst/indicadores" element={<Navigate to="/sst?tab=indicadores" replace />} />
             <Route path="portal" element={<PortalPage />} />
-            <Route path="vinculaciones" element={<VinculacionesPage />} />
+            <Route path="administracion/vinculaciones" element={<ContractPersonalPage />} />
+            <Route path="vinculaciones" element={<Navigate to="/administracion/vinculaciones" replace />} />
             <Route path="repositorio" element={<VerDocumentosPage />} />
             <Route path="repositorio/subir" element={<SubirDocumentosPage />} />
             <Route path="admin" element={<AdminPage />} />

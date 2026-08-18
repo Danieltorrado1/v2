@@ -89,12 +89,6 @@ export default function MainLayout() {
           >
             Personal
           </NavLink>
-          <NavLink
-            to="/vinculaciones"
-            className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
-          >
-            Vinculaciones
-          </NavLink>
           <NavDropdown label={"N\u00f3mina"} links={nominaLinks} />
           <NavDropdown label="Herramientas" links={herramientasLinks} />
           <NavDropdown label="SST" links={sstLinks} />
