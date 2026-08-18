@@ -76,6 +76,12 @@ export const configuracionCatalogListQuerySchema = z
   })
   .strict();
 
+export const configuracionTiposDocumentoListQuerySchema = configuracionCatalogListQuerySchema
+  .extend({
+    es_identificacion_personal: optionalBooleanQuerySchema
+  })
+  .strict();
+
 export const configuracionMunicipiosListQuerySchema = z
   .object({
     departamento_id: optionalNumericIdQuerySchema,
@@ -207,6 +213,7 @@ export const updateContratoCargoSchema = z
 
 export type ConfiguracionEntityIdParams = z.infer<typeof configuracionEntityIdParamSchema>;
 export type ConfiguracionCatalogListQuery = z.infer<typeof configuracionCatalogListQuerySchema>;
+export type ConfiguracionTiposDocumentoListQuery = z.infer<typeof configuracionTiposDocumentoListQuerySchema>;
 export type ConfiguracionMunicipiosListQuery = z.infer<typeof configuracionMunicipiosListQuerySchema>;
 export type ConfiguracionEmpresasListQuery = z.infer<typeof configuracionEmpresasListQuerySchema>;
 export type ConfiguracionContratosListQuery = z.infer<typeof configuracionContratosListQuerySchema>;

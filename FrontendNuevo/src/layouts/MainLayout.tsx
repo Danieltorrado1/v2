@@ -1,5 +1,5 @@
-﻿import { useRef, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { Bell, LogOut, Moon, Sun } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -11,11 +11,11 @@ import {
 import "./MainLayout.css";
 
 const nominaLinks = [
-  { to: "/nomina", label: "NÃ³mina" },
-  { to: "/nomina/liquidacion", label: "LiquidaciÃ³n" },
+  { to: "/nomina", label: "N\u00f3mina" },
+  { to: "/nomina/liquidacion", label: "Liquidaci\u00f3n" },
   { to: "/nomina/turnos", label: "Turnos" },
   { to: "/nomina/personal-ops", label: "Personal OPS" },
-  { to: "/nomina/correccion", label: "CorrecciÃ³n NÃ³mina" },
+  { to: "/nomina/correccion", label: "Correcci\u00f3n N\u00f3mina" },
 ];
 
 const herramientasLinks = [
@@ -27,7 +27,7 @@ const herramientasLinks = [
 const sstLinks = [
   { to: "/sst?tab=resumen", label: "Resumen SST" },
   { to: "/sst?tab=eventos", label: "Eventos" },
-  { to: "/sst?tab=planes", label: "Planes de acciÃ³n" },
+  { to: "/sst?tab=planes", label: "Planes de acci\u00f3n" },
   { to: "/sst?tab=inspecciones", label: "Inspecciones" },
   { to: "/sst?tab=hallazgos", label: "Hallazgos y acciones" },
   { to: "/sst?tab=accidentes", label: "Accidentes" },
@@ -44,17 +44,37 @@ export default function MainLayout() {
   const { user, logout } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(INITIAL_UNREAD_COUNT);
+  const [logoFallback, setLogoFallback] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
   const canAccessAdmin = user?.roles.includes("ADMINISTRADOR") === true;
+  const logoSrc =
+    theme === "dark"
+      ? "/branding/empiria-logo-horizontal-dark.png"
+      : "/branding/empiria-logo-horizontal-light.png";
+
+  useEffect(() => {
+    setLogoFallback(false);
+  }, [logoSrc]);
 
   function toggleNotif() {
-    setNotifOpen((v) => !v);
+    setNotifOpen((value) => !value);
   }
 
   return (
     <div className="layout">
       <header className="topbar">
-        <div className="logo-area">EMPIRIA</div>
+        <Link to="/dashboard" className="logo-area logo-link" aria-label="Empiria">
+          {logoFallback ? (
+            <span className="logo-fallback">EMPIRIA</span>
+          ) : (
+            <img
+              src={logoSrc}
+              alt="Empiria"
+              className="logo-image"
+              onError={() => setLogoFallback(true)}
+            />
+          )}
+        </Link>
 
         <nav className="menu">
           <NavLink
@@ -75,7 +95,7 @@ export default function MainLayout() {
           >
             Vinculaciones
           </NavLink>
-          <NavDropdown label="NÃ³mina" links={nominaLinks} />
+          <NavDropdown label={"N\u00f3mina"} links={nominaLinks} />
           <NavDropdown label="Herramientas" links={herramientasLinks} />
           <NavDropdown label="SST" links={sstLinks} />
           <NavLink
@@ -90,13 +110,12 @@ export default function MainLayout() {
               to="/admin"
               className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
             >
-              AdministraciÃ³n
+              {"Administraci\u00f3n"}
             </NavLink>
           )}
         </nav>
 
         <div className="right-side">
-          {/* Bell */}
           <button
             ref={bellRef}
             type="button"
@@ -112,16 +131,11 @@ export default function MainLayout() {
             )}
           </button>
 
-          {/* Theme toggle */}
           <button
             className="theme-button"
             type="button"
             onClick={toggleTheme}
-            title={
-              theme === "light"
-                ? "Cambiar a modo oscuro"
-                : "Cambiar a modo claro"
-            }
+            title={theme === "light" ? "Cambiar a modo oscuro" : "Cambiar a modo claro"}
           >
             {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
           </button>
@@ -132,8 +146,8 @@ export default function MainLayout() {
               type="button"
               className="theme-button"
               onClick={logout}
-              title="Cerrar sesiÃ³n"
-              aria-label="Cerrar sesiÃ³n"
+              title={"Cerrar sesi\u00f3n"}
+              aria-label={"Cerrar sesi\u00f3n"}
             >
               <LogOut size={18} />
             </button>
@@ -141,7 +155,6 @@ export default function MainLayout() {
         </div>
       </header>
 
-      {/* Notification panel â€” fixed, so rendered outside content flow */}
       {notifOpen && (
         <NotificationsPanel
           onClose={() => setNotifOpen(false)}
@@ -160,4 +173,3 @@ export default function MainLayout() {
     </div>
   );
 }
-

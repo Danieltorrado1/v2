@@ -1,65 +1,110 @@
 /* =========================================================
    EMPIRIA DESIGN SYSTEM
-   Tema centralizado: superficies, texto, color funcional,
-   radios y sombras. Toda la app consume estas variables;
-   no debe quedar ningún color hardcodeado fuera de aquí
-   (LoginPage es la única excepción intencional: es una
-   pantalla siempre-oscura y usa los mismos valores en
-   literal porque no reacciona al toggle de tema).
+   Tema centralizado para superficies, texto, color funcional,
+   radios y sombras. La paleta compartida queda definida aqui
+   para reutilizarse en dark/light sin reemplazos aislados.
    ========================================================= */
 
 :root {
-  /* Superficies (modo claro) */
-  --bg-primary: #f8fafc;
+  color-scheme: light;
+
+  /* Identidad Empiria */
+  --color-primary: #1dcdfe;
+  --color-primary-hover: #11b7e6;
+  --color-primary-active: #0d94bc;
+  --color-secondary: #21d0b2;
+  --color-secondary-hover: #1bb79c;
+  --color-accent: #34f5c5;
+  --color-surface: #2f455c;
+
+  /* Alias compartidos */
+  --color-brand: var(--color-primary);
+  --accent: var(--color-primary);
+  --accent-bg: color-mix(in srgb, var(--color-primary) 12%, #ffffff);
+  --accent-border: color-mix(in srgb, var(--color-primary) 32%, transparent);
+
+  /* Superficies modo claro */
+  --bg-primary: #f3f8fb;
   --bg-secondary: #ffffff;
-  --bg-panel: #f1f5f9;
-  --bg-hover: #e2e8f0;
+  --bg-panel: #eaf1f5;
+  --bg-hover: #dde8ef;
+  --bg-card: var(--bg-secondary);
+  --bg-surface: var(--bg-panel);
+  --bg-elevated: #ffffff;
+  --bg-input: #f8fbfd;
+  --bg: var(--bg-primary);
 
-  --border-color: #e2e8f0;
+  /* Bordes */
+  --border-color: #cfdae3;
+  --border: var(--border-color);
+  --border-strong: #a9bccb;
 
-  /* Texto (modo claro) */
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --text-disabled: #94a3b8;
+  /* Texto */
+  --text-primary: #102033;
+  --text-secondary: #566a7f;
+  --text-muted: #6e8396;
+  --text-disabled: #97a8b7;
+  --text-h: var(--text-primary);
+  --color-text-muted: var(--text-muted);
 
-  --topbar-bg: rgba(255, 255, 255, 0.95);
+  /* Superficies compuestas */
+  --topbar-bg: rgba(255, 255, 255, 0.9);
+  --social-bg: color-mix(in srgb, var(--color-primary) 8%, #ffffff);
+  --overlay-backdrop: rgba(15, 23, 42, 0.58);
 
-  --shadow-soft: 0 8px 20px rgba(15, 23, 42, 0.08);
+  /* Estados */
+  --color-success: #19b57c;
+  --color-warning: #f0a327;
+  --color-danger: #df4d5f;
+  --color-info: var(--color-secondary);
+  --color-neutral: #74879a;
+  --color-purple: #77d2f0;
 
-  /* Color funcional (idéntico en ambos temas) */
-  --color-primary: #0f8b8d;
-  --color-primary-hover: #0c6f71;
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  --color-info: #3b82f6;
-  --color-neutral: #64748b;
-  --color-purple: #a78bfa;
-
-  /* Radios */
-  --radius-card: 16px;
-  --radius-input: 12px;
+  /* Radios y sombras */
+  --radius-card: 18px;
+  --radius-input: 14px;
   --radius-button: 12px;
-  --radius-badge: 10px;
+  --radius-badge: 999px;
+  --shadow-soft: 0 16px 40px rgba(16, 32, 51, 0.08);
+  --shadow-elevated: 0 28px 60px rgba(16, 32, 51, 0.16);
+  --shadow: var(--shadow-soft);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--color-primary) 28%, transparent);
 }
 
 [data-theme="dark"] {
-  /* Superficies (modo oscuro) */
-  --bg-primary: #0f1720;
-  --bg-secondary: #171f2b;
-  --bg-panel: #1d2734;
-  --bg-hover: #202a37;
+  color-scheme: dark;
 
-  --border-color: #2b3746;
+  --bg-primary: #08121d;
+  --bg-secondary: #102132;
+  --bg-panel: #16293b;
+  --bg-hover: #1b3247;
+  --bg-card: #122436;
+  --bg-surface: #1a3146;
+  --bg-elevated: color-mix(in srgb, var(--color-surface) 88%, #09131d);
+  --bg-input: #0f2132;
+  --bg: var(--bg-primary);
 
-  /* Texto (modo oscuro) */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-disabled: #64748b;
+  --border-color: #294157;
+  --border: var(--border-color);
+  --border-strong: #3e5f7c;
 
-  --topbar-bg: rgba(15, 23, 32, 0.95);
+  --text-primary: #eef6fb;
+  --text-secondary: #a5b9c9;
+  --text-muted: #86a1b6;
+  --text-disabled: #5d7488;
+  --text-h: var(--text-primary);
+  --color-text-muted: var(--text-muted);
 
-  --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.18);
+  --accent-bg: color-mix(in srgb, var(--color-primary) 16%, rgba(8, 18, 29, 0.92));
+  --accent-border: color-mix(in srgb, var(--color-primary) 34%, transparent);
+  --topbar-bg: rgba(8, 18, 29, 0.88);
+  --social-bg: color-mix(in srgb, var(--color-surface) 72%, #0d1824);
+  --overlay-backdrop: rgba(2, 8, 18, 0.78);
+
+  --shadow-soft: 0 18px 42px rgba(0, 0, 0, 0.28);
+  --shadow-elevated: 0 36px 72px rgba(0, 0, 0, 0.42);
+  --shadow: var(--shadow-soft);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--color-primary) 34%, transparent);
 }
 
 * {
@@ -74,7 +119,10 @@ body,
 }
 
 body {
-  background: var(--bg-primary);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--color-primary) 12%, transparent) 0%, transparent 28%),
+    radial-gradient(circle at top right, color-mix(in srgb, var(--color-secondary) 10%, transparent) 0%, transparent 24%),
+    var(--bg-primary);
   color: var(--text-primary);
   font-family: Inter, system-ui, Arial, sans-serif;
   transition: background 0.25s ease, color 0.25s ease;
@@ -87,12 +135,26 @@ select {
   font-family: inherit;
 }
 
+a {
+  color: var(--color-primary);
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  color: var(--text-primary);
+}
+
 /* =========================================================
-   PRIMITIVAS REUTILIZABLES
-   Botones y badges del Design System. Ningún componente
-   actual los consume todavía (Personal es la única pestaña
-   implementada), pero quedan listos para Cobertura, Nómina,
-   SST, Portal y Repositorio.
+   Primitivas reutilizables
    ========================================================= */
 
 .btn {
@@ -103,16 +165,16 @@ select {
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .btn-primary {
-  background: var(--color-primary);
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 68%, var(--color-secondary)));
+  color: #08212b;
 }
 
 .btn-primary:hover {
-  background: var(--color-primary-hover);
+  background: linear-gradient(135deg, var(--color-primary-hover), color-mix(in srgb, var(--color-primary-hover) 72%, var(--color-secondary)));
 }
 
 .btn-secondary {
@@ -136,11 +198,11 @@ select {
 
 .btn-success {
   background: var(--color-success);
-  color: #ffffff;
+  color: #06261d;
 }
 
 .btn-success:hover {
-  background: color-mix(in srgb, var(--color-success) 85%, black);
+  background: color-mix(in srgb, var(--color-success) 88%, black);
 }
 
 .badge {
@@ -155,21 +217,21 @@ select {
 }
 
 .badge-success {
-  background: color-mix(in srgb, var(--color-success) 15%, transparent);
-  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 18%, transparent);
+  color: color-mix(in srgb, var(--color-success) 85%, #04110b);
 }
 
 .badge-warning {
-  background: color-mix(in srgb, var(--color-warning) 15%, transparent);
-  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+  color: color-mix(in srgb, var(--color-warning) 88%, #432300);
 }
 
 .badge-danger {
-  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
-  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+  color: color-mix(in srgb, var(--color-danger) 88%, #32080f);
 }
 
 .badge-info {
-  background: color-mix(in srgb, var(--color-info) 15%, transparent);
-  color: var(--color-info);
+  background: color-mix(in srgb, var(--color-info) 16%, transparent);
+  color: color-mix(in srgb, var(--color-info) 88%, #042019);
 }

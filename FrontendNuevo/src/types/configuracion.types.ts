@@ -396,6 +396,7 @@ export interface CatalogoItem {
   codigo_dane?: string;
   departamento_id?: number;
   activo?: boolean;
+  es_identificacion_personal?: boolean;
   requiere_fecha_expedicion?: boolean;
   requiere_fecha_vencimiento?: boolean;
   categoria_documento?: string | null;
@@ -403,6 +404,7 @@ export interface CatalogoItem {
 
 export interface CatalogoFilters {
   activo?: boolean;
+  es_identificacion_personal?: boolean;
   search?: string;
   page?: number;
   limit?: number;

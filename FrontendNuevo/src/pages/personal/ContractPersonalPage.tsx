@@ -12,20 +12,29 @@ import {
   ShieldCheck,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
 
-import { ApiClientError } from "../../services/apiClient";
 import { useAuth } from "../../context/AuthContext";
+import { ApiClientError } from "../../services/apiClient";
 import { configuracionApi } from "../../services/configuracionApi";
 import { createPersona, getPersonaByDocumento } from "../../services/personasApi";
-import { createVinculacion, getContractPersonal, getVinculacionExpediente } from "../../services/vinculacionesApi";
+import {
+  createVinculacion,
+  getContractPersonal,
+  getVinculacionExpediente,
+} from "../../services/vinculacionesApi";
 import type {
   CatalogoItem,
   Contrato,
   Empresa,
   MetodoPagoPermitido,
 } from "../../types/configuracion.types";
-import type { PersonaApi, VinculacionExpedienteApi, VinculacionEstado } from "../../types/personas.types";
+import type {
+  PersonaApi,
+  VinculacionEstado,
+  VinculacionExpedienteApi,
+} from "../../types/personas.types";
 import type { ContractPersonalListResponse } from "../../types/vinculaciones.types";
 import ExpedienteDocumentosPanel from "./ExpedienteDocumentosPanel";
 import "./ContractPersonalPage.css";
@@ -81,7 +90,9 @@ function formatDate(value: string | null | undefined): string {
   }
 
   try {
-    return new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(new Date(`${value}T00:00:00`));
+    return new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(
+      new Date(`${value}T00:00:00`)
+    );
   } catch {
     return value;
   }
@@ -118,10 +129,7 @@ function createBlankPersona(tipoDocumentoId = "", numeroDocumento = ""): Persona
   };
 }
 
-function createBlankVinculacion(
-  cargoId = "",
-  tipoVinculacionId = ""
-): VinculacionForm {
+function createBlankVinculacion(cargoId = "", tipoVinculacionId = ""): VinculacionForm {
   return {
     contrato_cargo_id: cargoId,
     tipo_vinculacion_id: tipoVinculacionId,
@@ -135,6 +143,7 @@ export default function ContractPersonalPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const permissions = user?.permissions ?? [];
+
   const canReadContext = hasAnyPermission(permissions, [
     "configuracion.read",
     "empresas.read",
@@ -156,6 +165,7 @@ export default function ContractPersonalPage() {
   const [cargos, setCargos] = useState<CatalogoItem[]>([]);
   const [tiposVinculacion, setTiposVinculacion] = useState<CatalogoItem[]>([]);
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([]);
+  const [tiposIdentificacion, setTiposIdentificacion] = useState<CatalogoItem[]>([]);
   const [metodosPago, setMetodosPago] = useState<MetodoPagoPermitido[]>([]);
 
   const [empresaId, setEmpresaId] = useState<number | null>(null);
@@ -190,6 +200,7 @@ export default function ContractPersonalPage() {
     () => contratos.find((contrato) => contrato.id === contratoId) ?? null,
     [contratoId, contratos]
   );
+
   useEffect(() => {
     if (!canReadContext) {
       return;
@@ -206,9 +217,7 @@ export default function ContractPersonalPage() {
           search: empresaSearch.trim() || undefined,
         });
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         setEmpresas(response.items);
         setEmpresaId((current) => {
@@ -256,9 +265,7 @@ export default function ContractPersonalPage() {
           search: contratoSearch.trim() || undefined,
         });
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         setContratos(response.items);
         setContratoId((current) => {
@@ -305,10 +312,12 @@ export default function ContractPersonalPage() {
         });
 
         if (!cancelled) {
-          setCargos(response.items.map((item) => ({
-            id: item.id,
-            label: item.nombre_cargo,
-          })));
+          setCargos(
+            response.items.map((item) => ({
+              id: item.id,
+              label: item.nombre_cargo,
+            }))
+          );
         }
       } catch {
         if (!cancelled) {
@@ -333,19 +342,25 @@ export default function ContractPersonalPage() {
 
     async function loadCatalogos() {
       try {
-        const [tiposVinculacionResponse, metodosPagoResponse, tiposDocumentoResponse] = await Promise.all([
-          configuracionApi.listarTiposVinculacion({ page: 1, limit: 100 }),
-          configuracionApi.listarMetodosPago(),
-          configuracionApi.listarTiposDocumento({ page: 1, limit: 100 }),
-        ]);
+        const [tiposVinculacionResponse, metodosPagoResponse, tiposDocumentoResponse, tiposIdentificacionResponse] =
+          await Promise.all([
+            configuracionApi.listarTiposVinculacion({ page: 1, limit: 100 }),
+            configuracionApi.listarMetodosPago(),
+            configuracionApi.listarTiposDocumento({ page: 1, limit: 100, activo: true }),
+            configuracionApi.listarTiposDocumento({
+              page: 1,
+              limit: 100,
+              activo: true,
+              es_identificacion_personal: true,
+            }),
+          ]);
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         setTiposVinculacion(tiposVinculacionResponse.items);
         setMetodosPago(metodosPagoResponse);
         setTiposDocumento(tiposDocumentoResponse.items);
+        setTiposIdentificacion(tiposIdentificacionResponse.items);
       } catch (error) {
         if (!cancelled) {
           setFeedback({
@@ -388,9 +403,7 @@ export default function ContractPersonalPage() {
           limit: PAGE_SIZE,
         });
 
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         setPersonal(response);
         setSelectedVinculacionId((current) => {
@@ -475,21 +488,31 @@ export default function ContractPersonalPage() {
     }));
     setPersonaForm((current) => ({
       ...current,
-      tipo_documento_id: current.tipo_documento_id || String(tiposDocumento[0]?.id ?? ""),
+      tipo_documento_id: current.tipo_documento_id || String(tiposIdentificacion[0]?.id ?? ""),
     }));
-  }, [cargos, showModal, tiposDocumento, tiposVinculacion]);
+  }, [cargos, showModal, tiposIdentificacion, tiposVinculacion]);
 
   function resetWorkerFlow() {
     setLookupLoading(false);
     setLookupError("");
     setFoundPersona(null);
     setRequiresCreation(false);
-    setPersonaForm(createBlankPersona(String(tiposDocumento[0]?.id ?? ""), ""));
-    setVinculacionForm(createBlankVinculacion(String(cargos[0]?.id ?? ""), String(tiposVinculacion[0]?.id ?? "")));
+    setPersonaForm(createBlankPersona(String(tiposIdentificacion[0]?.id ?? ""), ""));
+    setVinculacionForm(
+      createBlankVinculacion(String(cargos[0]?.id ?? ""), String(tiposVinculacion[0]?.id ?? ""))
+    );
     setSavingWorker(false);
   }
 
   function openWorkerModal() {
+    if (!tiposIdentificacion.length) {
+      setFeedback({
+        tone: "error",
+        text: "No hay tipos de identificación personal configurados para este flujo.",
+      });
+      return;
+    }
+
     resetWorkerFlow();
     setShowModal(true);
   }
@@ -544,7 +567,11 @@ export default function ContractPersonalPage() {
       return;
     }
 
-    if (!vinculacionForm.contrato_cargo_id || !vinculacionForm.tipo_vinculacion_id || !vinculacionForm.fecha_inicio) {
+    if (
+      !vinculacionForm.contrato_cargo_id ||
+      !vinculacionForm.tipo_vinculacion_id ||
+      !vinculacionForm.fecha_inicio
+    ) {
       setLookupError("Cargo, tipo de vinculación y fecha de ingreso son obligatorios.");
       return;
     }
@@ -588,7 +615,7 @@ export default function ContractPersonalPage() {
         fecha_inicio: vinculacionForm.fecha_inicio,
         fecha_fin: null,
         estado_vinculacion: vinculacionForm.estado_vinculacion,
-        metodo_pago: vinculacionForm.metodo_pago ? vinculacionForm.metodo_pago as never : null,
+        metodo_pago: vinculacionForm.metodo_pago ? (vinculacionForm.metodo_pago as never) : null,
       });
 
       const expediente = await getVinculacionExpediente(vinculacion.id);
@@ -636,7 +663,11 @@ export default function ContractPersonalPage() {
         </div>
 
         <div className="cp-toolbar-actions">
-          <button type="button" className="cp-button secondary" onClick={() => setRefreshIndex((current) => current + 1)}>
+          <button
+            type="button"
+            className="cp-button secondary"
+            onClick={() => setRefreshIndex((current) => current + 1)}
+          >
             <RefreshCw size={15} />
             Actualizar
           </button>
@@ -644,7 +675,7 @@ export default function ContractPersonalPage() {
             type="button"
             className="cp-button primary"
             onClick={openWorkerModal}
-            disabled={!selectedContrato || !canCreateVinculacion}
+            disabled={!selectedContrato || !canCreateVinculacion || !tiposIdentificacion.length}
           >
             <UserPlus size={15} />
             Agregar personal al contrato
@@ -972,77 +1003,121 @@ export default function ContractPersonalPage() {
       {showModal && (
         <div className="cp-modal-backdrop" onClick={closeWorkerModal}>
           <div className="cp-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="cp-card-header">
+            <div className="cp-modal-header">
               <div>
                 <span className="cp-eyebrow">Agregar personal</span>
-                <h2>Buscar, crear o reutilizar persona</h2>
+                <h2>Agregar personal al contrato</h2>
+                <p className="cp-modal-helper">
+                  Buscar, crear o reutilizar persona y completar su vinculación.
+                </p>
               </div>
-              <button type="button" className="cp-link-button" onClick={closeWorkerModal}>
-                Cerrar
+              <button
+                type="button"
+                className="cp-modal-close"
+                onClick={closeWorkerModal}
+                aria-label="Cerrar modal"
+              >
+                <X size={18} />
               </button>
             </div>
 
-            <div className="cp-modal-grid">
-              <label className="cp-label">
-                Tipo de documento
-                <select
-                  className="cp-select"
-                  value={personaForm.tipo_documento_id}
-                  onChange={(event) =>
-                    setPersonaForm((current) => ({ ...current, tipo_documento_id: event.target.value }))
-                  }
-                >
-                  <option value="">Seleccionar</option>
-                  {tiposDocumento.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.codigo ? `${item.codigo} · ${item.label}` : item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            <div className="cp-modal-body">
+              <section className="cp-modal-section">
+                <div className="cp-modal-section-head">
+                  <span className="cp-modal-section-eyebrow">1</span>
+                  <div>
+                    <h3 className="cp-subtitle">Buscar persona</h3>
+                    <p className="cp-modal-helper">
+                      La búsqueda reutiliza la identificación vigente y evita duplicar personas.
+                    </p>
+                  </div>
+                </div>
 
-              <label className="cp-label">
-                Número de documento
-                <input
-                  className="cp-input"
-                  value={personaForm.numero_documento}
-                  onChange={(event) =>
-                    setPersonaForm((current) => ({ ...current, numero_documento: event.target.value }))
-                  }
-                  placeholder="Buscar primero antes de crear"
-                />
-              </label>
-            </div>
+                <div className="cp-modal-grid">
+                  <label className="cp-label">
+                    Tipo de identificación
+                    <select
+                      className="cp-select"
+                      value={personaForm.tipo_documento_id}
+                      onChange={(event) =>
+                        setPersonaForm((current) => ({ ...current, tipo_documento_id: event.target.value }))
+                      }
+                    >
+                      <option value="">Seleccionar</option>
+                      {tiposIdentificacion.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.codigo ? `${item.codigo} · ${item.label}` : item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
 
-            <div className="cp-modal-actions">
-              <button type="button" className="cp-button secondary" onClick={handleBuscarPersona} disabled={lookupLoading}>
-                <Search size={15} />
-                {lookupLoading ? "Buscando..." : "Buscar persona"}
-              </button>
-            </div>
+                  <label className="cp-label">
+                    Número de identificación
+                    <input
+                      className="cp-input cp-input-solid"
+                      value={personaForm.numero_documento}
+                      onChange={(event) =>
+                        setPersonaForm((current) => ({ ...current, numero_documento: event.target.value }))
+                      }
+                      placeholder="Buscar primero antes de crear"
+                    />
+                  </label>
+                </div>
 
-            {foundPersona && (
-              <div className="cp-state success">
-                <FolderOpen size={16} />
-                Persona existente encontrada: <strong>{buildNombreCompleto(foundPersona)}</strong> · {foundPersona.numero_documento}
-              </div>
-            )}
+                <div className="cp-modal-actions">
+                  <button
+                    type="button"
+                    className="cp-button secondary"
+                    onClick={handleBuscarPersona}
+                    disabled={lookupLoading}
+                  >
+                    <Search size={15} />
+                    {lookupLoading ? "Buscando..." : "Buscar persona"}
+                  </button>
+                </div>
 
-            {requiresCreation && (
-              <div className="cp-state">
-                <AlertTriangle size={16} />
-                No existe una persona con esa identificación vigente. Completa los datos mínimos para crearla.
-              </div>
-            )}
+                {foundPersona && (
+                  <div className="cp-state success cp-modal-persona-summary">
+                    <FolderOpen size={16} />
+                    Persona existente encontrada:
+                    <strong>{buildNombreCompleto(foundPersona)}</strong>
+                    <span className="cp-mono">{foundPersona.numero_documento}</span>
+                  </div>
+                )}
 
-            {(foundPersona || requiresCreation) && (
-              <>
+                {!foundPersona && !requiresCreation && lookupError && (
+                  <div className="cp-state error">
+                    <AlertTriangle size={16} />
+                    {lookupError}
+                  </div>
+                )}
+
                 {requiresCreation && (
+                  <div className="cp-state cp-modal-notice">
+                    <AlertTriangle size={16} />
+                    No existe una persona con esa identificación vigente. Completa los datos mínimos para crearla.
+                  </div>
+                )}
+              </section>
+
+              {requiresCreation && (
+                <section className="cp-modal-section">
+                  <div className="cp-modal-section-head">
+                    <span className="cp-modal-section-eyebrow">2</span>
+                    <div>
+                      <h3 className="cp-subtitle">Datos personales</h3>
+                      <p className="cp-modal-helper">
+                        Solo se solicitan los datos mínimos soportados por el backend actual.
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="cp-modal-grid">
                     <label className="cp-label">
                       Primer nombre
                       <input
-                        className="cp-input"
+                        className="cp-input cp-input-solid"
                         value={personaForm.primer_nombre}
                         onChange={(event) =>
                           setPersonaForm((current) => ({ ...current, primer_nombre: event.target.value }))
@@ -1052,7 +1127,7 @@ export default function ContractPersonalPage() {
                     <label className="cp-label">
                       Segundo nombre
                       <input
-                        className="cp-input"
+                        className="cp-input cp-input-solid"
                         value={personaForm.segundo_nombre}
                         onChange={(event) =>
                           setPersonaForm((current) => ({ ...current, segundo_nombre: event.target.value }))
@@ -1062,7 +1137,7 @@ export default function ContractPersonalPage() {
                     <label className="cp-label">
                       Primer apellido
                       <input
-                        className="cp-input"
+                        className="cp-input cp-input-solid"
                         value={personaForm.primer_apellido}
                         onChange={(event) =>
                           setPersonaForm((current) => ({ ...current, primer_apellido: event.target.value }))
@@ -1072,7 +1147,7 @@ export default function ContractPersonalPage() {
                     <label className="cp-label">
                       Segundo apellido
                       <input
-                        className="cp-input"
+                        className="cp-input cp-input-solid"
                         value={personaForm.segundo_apellido}
                         onChange={(event) =>
                           setPersonaForm((current) => ({ ...current, segundo_apellido: event.target.value }))
@@ -1082,7 +1157,7 @@ export default function ContractPersonalPage() {
                     <label className="cp-label">
                       Teléfono
                       <input
-                        className="cp-input"
+                        className="cp-input cp-input-solid"
                         value={personaForm.telefono}
                         onChange={(event) =>
                           setPersonaForm((current) => ({ ...current, telefono: event.target.value }))
@@ -1092,7 +1167,7 @@ export default function ContractPersonalPage() {
                     <label className="cp-label">
                       Correo
                       <input
-                        className="cp-input"
+                        className="cp-input cp-input-solid"
                         type="email"
                         value={personaForm.correo}
                         onChange={(event) =>
@@ -1101,123 +1176,133 @@ export default function ContractPersonalPage() {
                       />
                     </label>
                   </div>
-                )}
+                </section>
+              )}
 
-                <div className="cp-divider" />
-
-                <h3 className="cp-subtitle">Datos de vinculación</h3>
-
-                <div className="cp-modal-grid">
-                  <label className="cp-label">
-                    Cargo
-                    <select
-                      className="cp-select"
-                      value={vinculacionForm.contrato_cargo_id}
-                      onChange={(event) =>
-                        setVinculacionForm((current) => ({ ...current, contrato_cargo_id: event.target.value }))
-                      }
-                    >
-                      <option value="">Seleccionar cargo</option>
-                      {cargos.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="cp-label">
-                    Tipo de vinculación
-                    <select
-                      className="cp-select"
-                      value={vinculacionForm.tipo_vinculacion_id}
-                      onChange={(event) =>
-                        setVinculacionForm((current) => ({ ...current, tipo_vinculacion_id: event.target.value }))
-                      }
-                    >
-                      <option value="">Seleccionar tipo</option>
-                      {tiposVinculacion.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.codigo ? `${item.codigo} · ${item.label}` : item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="cp-label">
-                    Fecha de ingreso
-                    <input
-                      className="cp-input"
-                      type="date"
-                      value={vinculacionForm.fecha_inicio}
-                      onChange={(event) =>
-                        setVinculacionForm((current) => ({ ...current, fecha_inicio: event.target.value }))
-                      }
-                    />
-                  </label>
-
-                  <label className="cp-label">
-                    Método de pago
-                    <select
-                      className="cp-select"
-                      value={vinculacionForm.metodo_pago}
-                      onChange={(event) =>
-                        setVinculacionForm((current) => ({ ...current, metodo_pago: event.target.value }))
-                      }
-                    >
-                      <option value="">Sin método</option>
-                      {metodosPago.map((item) => (
-                        <option key={item.valor} value={item.valor}>
-                          {item.etiqueta}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="cp-label">
-                    Estado
-                    <select
-                      className="cp-select"
-                      value={vinculacionForm.estado_vinculacion}
-                      onChange={(event) =>
-                        setVinculacionForm((current) => ({
-                          ...current,
-                          estado_vinculacion: event.target.value as VinculacionEstado,
-                        }))
-                      }
-                    >
-                      <option value="ACTIVA">Activa</option>
-                      <option value="SUSPENDIDA">Suspendida</option>
-                      <option value="RETIRADA">Retirada</option>
-                    </select>
-                  </label>
-                </div>
-
-                {lookupError && (
-                  <div className="cp-state error">
-                    <AlertTriangle size={16} />
-                    {lookupError}
+              {(foundPersona || requiresCreation) && (
+                <section className="cp-modal-section">
+                  <div className="cp-modal-section-head">
+                    <span className="cp-modal-section-eyebrow">{requiresCreation ? "3" : "2"}</span>
+                    <div>
+                      <h3 className="cp-subtitle">Datos de vinculación</h3>
+                      <p className="cp-modal-helper">
+                        Estos datos pertenecen al contrato activo y no a la persona maestra.
+                      </p>
+                    </div>
                   </div>
-                )}
 
-                <div className="cp-modal-actions">
-                  <button type="button" className="cp-button secondary" onClick={closeWorkerModal}>
-                    Cancelar
-                  </button>
-                  <button type="button" className="cp-button primary" onClick={handleGuardarTrabajador} disabled={savingWorker}>
-                    <Plus size={15} />
-                    {savingWorker ? "Guardando..." : "Guardar vinculación"}
-                  </button>
-                </div>
-              </>
-            )}
+                  <div className="cp-modal-grid">
+                    <label className="cp-label">
+                      Cargo
+                      <select
+                        className="cp-select"
+                        value={vinculacionForm.contrato_cargo_id}
+                        onChange={(event) =>
+                          setVinculacionForm((current) => ({ ...current, contrato_cargo_id: event.target.value }))
+                        }
+                      >
+                        <option value="">Seleccionar cargo</option>
+                        {cargos.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-            {!foundPersona && !requiresCreation && lookupError && (
-              <div className="cp-state error">
-                <AlertTriangle size={16} />
-                {lookupError}
-              </div>
-            )}
+                    <label className="cp-label">
+                      Tipo de vinculación
+                      <select
+                        className="cp-select"
+                        value={vinculacionForm.tipo_vinculacion_id}
+                        onChange={(event) =>
+                          setVinculacionForm((current) => ({ ...current, tipo_vinculacion_id: event.target.value }))
+                        }
+                      >
+                        <option value="">Seleccionar tipo</option>
+                        {tiposVinculacion.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.codigo ? `${item.codigo} · ${item.label}` : item.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="cp-label">
+                      Fecha de ingreso
+                      <input
+                        className="cp-input cp-input-solid"
+                        type="date"
+                        value={vinculacionForm.fecha_inicio}
+                        onChange={(event) =>
+                          setVinculacionForm((current) => ({ ...current, fecha_inicio: event.target.value }))
+                        }
+                      />
+                    </label>
+
+                    <label className="cp-label">
+                      Método de pago
+                      <select
+                        className="cp-select"
+                        value={vinculacionForm.metodo_pago}
+                        onChange={(event) =>
+                          setVinculacionForm((current) => ({ ...current, metodo_pago: event.target.value }))
+                        }
+                      >
+                        <option value="">Sin método</option>
+                        {metodosPago.map((item) => (
+                          <option key={item.valor} value={item.valor}>
+                            {item.etiqueta}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="cp-label">
+                      Estado
+                      <select
+                        className="cp-select"
+                        value={vinculacionForm.estado_vinculacion}
+                        onChange={(event) =>
+                          setVinculacionForm((current) => ({
+                            ...current,
+                            estado_vinculacion: event.target.value as VinculacionEstado,
+                          }))
+                        }
+                      >
+                        <option value="ACTIVA">Activa</option>
+                        <option value="SUSPENDIDA">Suspendida</option>
+                        <option value="RETIRADA">Retirada</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  {lookupError && (
+                    <div className="cp-state error">
+                      <AlertTriangle size={16} />
+                      {lookupError}
+                    </div>
+                  )}
+                </section>
+              )}
+            </div>
+
+            <div className="cp-modal-footer">
+              <button type="button" className="cp-button secondary" onClick={closeWorkerModal}>
+                Cancelar
+              </button>
+              {(foundPersona || requiresCreation) && (
+                <button
+                  type="button"
+                  className="cp-button primary"
+                  onClick={handleGuardarTrabajador}
+                  disabled={savingWorker}
+                >
+                  <Plus size={15} />
+                  {savingWorker ? "Guardando..." : "Guardar vinculación"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

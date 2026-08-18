@@ -115,6 +115,7 @@ const main = async (): Promise<void> => {
       entidad_contratante: 'ENTIDAD TEST',
       fecha_inicio: '2026-07-01',
       fecha_finalizacion: '2026-07-31',
+      estado_contractual: 'BORRADOR',
       objeto_contractual: 'Contrato de prueba',
       aplica_cobertura: false
     },

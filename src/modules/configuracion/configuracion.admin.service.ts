@@ -11,6 +11,7 @@ import type {
   ConfiguracionContratosListQuery,
   ConfiguracionEmpresasListQuery,
   ConfiguracionMunicipiosListQuery,
+  ConfiguracionTiposDocumentoListQuery,
   CreateContratoCargoInput,
   CreateContratoInput,
   CreateEmpresaInput,
@@ -75,6 +76,7 @@ interface CatalogoSimpleRow extends QueryResultRow {
   codigo?: string | null;
   codigo_dane?: string | null;
   departamento_id?: string | null;
+  es_identificacion_personal?: boolean | null;
   id: string;
   label: string;
   requiere_fecha_expedicion?: boolean | null;
@@ -691,7 +693,10 @@ const ensureCargoCanDeactivate = async (client: PoolClient, cargoId: number): Pr
 const listCatalogoSimple = async (
   tableName: string,
   labelColumn: string,
-  query: ConfiguracionCatalogListQuery | ConfiguracionMunicipiosListQuery,
+  query:
+    | ConfiguracionCatalogListQuery
+    | ConfiguracionMunicipiosListQuery
+    | ConfiguracionTiposDocumentoListQuery,
   options?: {
     activeColumn?: string;
     extraSelect?: string[];
@@ -766,6 +771,9 @@ const listCatalogoSimple = async (
         : {}),
       ...(row.categoria_documento !== undefined
         ? { categoria_documento: row.categoria_documento }
+        : {}),
+      ...(row.es_identificacion_personal !== undefined
+        ? { es_identificacion_personal: row.es_identificacion_personal }
         : {})
     })),
     pagination: buildPagination(query.page, query.limit, total)
@@ -1765,9 +1773,27 @@ export const listSexos = async (query: ConfiguracionCatalogListQuery): Promise<P
   return listCatalogoSimple('sexo', 'nombre_sexo', query);
 };
 
-export const listTiposDocumento = async (query: ConfiguracionCatalogListQuery): Promise<PaginatedResult<Record<string, unknown>>> => {
+export const listTiposDocumento = async (
+  query: ConfiguracionTiposDocumentoListQuery
+): Promise<PaginatedResult<Record<string, unknown>>> => {
+  const extraWhere: { clause: string; params?: unknown[] }[] = [];
+
+  if (query.es_identificacion_personal !== undefined) {
+    extraWhere.push({
+      clause: 'COALESCE(es_identificacion_personal, FALSE) = $1',
+      params: [query.es_identificacion_personal]
+    });
+  }
+
   return listCatalogoSimple('tipos_documentos', 'nombre_documento', query, {
-    extraSelect: ['codigo', 'requiere_fecha_expedicion', 'requiere_fecha_vencimiento', 'categoria_documento'],
+    extraSelect: [
+      'codigo',
+      'requiere_fecha_expedicion',
+      'requiere_fecha_vencimiento',
+      'categoria_documento',
+      'COALESCE(es_identificacion_personal, FALSE) AS es_identificacion_personal'
+    ],
+    extraWhere,
     orderBy: 'codigo ASC, id ASC'
   });
 };

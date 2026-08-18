@@ -12,6 +12,7 @@ import {
   configuracionEmpresasListQuerySchema,
   configuracionEntityIdParamSchema,
   configuracionMunicipiosListQuerySchema,
+  configuracionTiposDocumentoListQuerySchema,
   configuracionToggleEstadoSchema,
   createContratoCargoSchema,
   createContratoSchema,
@@ -197,7 +198,7 @@ export const getCajasCompensacionHandler = makeCatalogHandler(configuracionCatal
 export const getNivelesEstudioHandler = makeCatalogHandler(configuracionCatalogListQuerySchema, listNivelesEstudio, 'Niveles de estudio retrieved successfully');
 export const getEstadosCivilesHandler = makeCatalogHandler(configuracionCatalogListQuerySchema, listEstadosCiviles, 'Estados civiles retrieved successfully');
 export const getSexosHandler = makeCatalogHandler(configuracionCatalogListQuerySchema, listSexos, 'Sexos retrieved successfully');
-export const getTiposDocumentoHandler = makeCatalogHandler(configuracionCatalogListQuerySchema, listTiposDocumento, 'Tipos de documento retrieved successfully');
+export const getTiposDocumentoHandler = makeCatalogHandler(configuracionTiposDocumentoListQuerySchema, listTiposDocumento, 'Tipos de documento retrieved successfully');
 
 export const getMetodosPagoHandler = asyncHandler(async (_req: Request, res: Response) => {
   const data = await listMetodosPago();
