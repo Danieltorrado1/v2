@@ -34,6 +34,7 @@ export interface VinculacionFilters {
 
 export interface ContractPersonalFilters {
   contrato_id: number;
+  contrato_cargo_id?: number;
   estado_vinculacion?: VinculacionEstado;
   search?: string;
   page?: number;

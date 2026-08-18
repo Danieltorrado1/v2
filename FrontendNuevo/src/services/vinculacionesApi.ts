@@ -40,6 +40,7 @@ export async function getContractPersonal(
 ): Promise<ContractPersonalListResponse> {
   const params: Record<string, string | number | boolean | undefined> = {
     contrato_id: filters.contrato_id,
+    contrato_cargo_id: filters.contrato_cargo_id,
     estado_vinculacion: filters.estado_vinculacion,
     search: filters.search,
     page: filters.page,

@@ -68,6 +68,7 @@ export interface PaginatedVinculaciones {
 
 interface ContractPersonalRow extends QueryResultRow {
   cargo_nombre: string | null;
+  contrato_cargo_id: number | string | null;
   contrato_id: number | string;
   empresa_id: number | string;
   estado_vinculacion: string | null;
@@ -862,6 +863,12 @@ export const listContractPersonal = async (
         OR p.primer_apellido ILIKE $${paramIndex}
         OR COALESCE(p.segundo_apellido, '') ILIKE $${paramIndex}
       )`);
+      paramIndex += 1;
+    }
+
+    if (filters.contrato_cargo_id !== undefined && filters.contrato_cargo_id !== null) {
+      params.push(filters.contrato_cargo_id);
+      conditions.push(`v.contrato_cargo_id = $${paramIndex}::bigint`);
       paramIndex += 1;
     }
 

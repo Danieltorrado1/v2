@@ -115,6 +115,7 @@ export const listOpsVinculacionesQuerySchema = z.object({
 
 export const listContractPersonalQuerySchema = z.object({
   contrato_id: numericIdSchema.transform((value) => Number(value)),
+  contrato_cargo_id: nullableNumericIdSchema.optional(),
   estado_vinculacion: vinculacionEstadoSchema.optional(),
   search: nullableTrimmedString.optional(),
   page: z.coerce.number().int().min(1).default(1),
