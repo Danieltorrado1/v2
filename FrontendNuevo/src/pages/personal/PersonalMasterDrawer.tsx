@@ -10,7 +10,6 @@ import {
   PencilLine,
   ShieldPlus,
   UserCircle2,
-  UserPlus,
   X,
 } from 'lucide-react';
 
@@ -88,7 +87,6 @@ interface PersonalMasterDrawerProps {
   error: string;
   onClose: () => void;
   onOpenManagement: () => void;
-  onOpenNewWorker: () => void;
   onRefresh: () => void;
   permissions: string[];
   tipoDocumentoOptions: CatalogoItem[];
@@ -190,6 +188,15 @@ function displayValue(value: string | number | null | undefined): string {
   return String(value);
 }
 
+function abbreviateIdentification(value: string | null | undefined): string {
+  const normalized = value?.toLocaleLowerCase('es-CO') ?? '';
+  if (normalized.includes('ciudadan')) return 'C.C.';
+  if (normalized.includes('extranjer')) return 'C.E.';
+  if (normalized.includes('pasaporte')) return 'P.P.';
+  if (normalized.includes('identidad')) return 'T.I.';
+  return value || 'Identificación';
+}
+
 function toOptionMap<T extends { id: number }>(items: T[]): Map<number, T> {
   return new Map(items.map((item) => [item.id, item]));
 }
@@ -274,7 +281,6 @@ export default function PersonalMasterDrawer({
   error,
   onClose,
   onOpenManagement,
-  onOpenNewWorker,
   onRefresh,
   permissions,
   tipoDocumentoOptions,
@@ -698,14 +704,16 @@ export default function PersonalMasterDrawer({
             <StateBlock tone="error" message={datosState.error} compact onAction={() => setDatosRetry((value) => value + 1)} />
           )}
 
-          <div className="pmd-grid two">
+          <div className="pmd-info-grid compact-four">
             <DataItem label="Tipo de identificación" value={currentIdentification?.tipo_documento_nombre ?? `Tipo ${currentIdentification?.tipo_documento_id ?? activeExpediente.persona.tipo_documento_id ?? '—'}`} />
             <DataItem label="Número de identificación" value={currentIdentification?.numero_documento ?? activeExpediente.persona.numero_documento} />
             <DataItem label="Fecha de expedición" value={formatDate(currentIdentification?.fecha_expedicion_documento ?? activeExpediente.persona.fecha_expedicion_documento)} />
             <DataItem label="Lugar de expedición" value={currentIdentification?.municipio_expedicion_nombre ?? 'Sin registrar'} />
           </div>
 
-          <div className="pmd-history-list">
+          {identificaciones.length > 1 && <details className="pmd-inline-history">
+            <summary>Ver historial de identificaciones ({identificaciones.length})</summary>
+            <div className="pmd-history-list">
             {identificaciones.map((item) => (
               <div key={item.id} className="pmd-history-item">
                 <div className="pmd-history-head">
@@ -723,14 +731,15 @@ export default function PersonalMasterDrawer({
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          </details>}
         </section>
 
         <section className="pmd-card">
           <div className="pmd-card-header">
             <div>
-              <h3>Datos personales y contacto</h3>
-              <p>La persona es la identidad maestra, independiente de sus vinculaciones.</p>
+              <h3>Información personal</h3>
+              <p>Consulta rápida de identidad, contacto y residencia.</p>
             </div>
             <button
               type="button"
@@ -743,7 +752,7 @@ export default function PersonalMasterDrawer({
               disabled={!canUpdatePersona}
             >
               <PencilLine size={15} />
-              {isEditingPersonal ? 'Cancelar edición' : 'Editar'}
+              {isEditingPersonal ? 'Cancelar edición' : 'Editar datos'}
             </button>
           </div>
 
@@ -843,13 +852,15 @@ export default function PersonalMasterDrawer({
                 </button>
                 <button type="button" className="pmd-button primary" onClick={() => { void handleSavePersonal(); }} disabled={savingPersonal}>
                   {savingPersonal ? <Loader2 size={15} className="spin" /> : <CheckCircle2 size={15} />}
-                  Guardar datos personales
+                  Guardar cambios
                 </button>
               </div>
             </div>
           ) : (
-            <>
-              <div className="pmd-grid two">
+            <div className="pmd-profile-sections">
+              <section className="pmd-info-section">
+                <h4>Información personal</h4>
+                <div className="pmd-info-grid compact-three">
                 <DataItem label="Primer nombre" value={personaDetail.primer_nombre} />
                 <DataItem label="Segundo nombre" value={displayValue(personaDetail.segundo_nombre)} />
                 <DataItem label="Primer apellido" value={personaDetail.primer_apellido} />
@@ -859,26 +870,33 @@ export default function PersonalMasterDrawer({
                 <DataItem label="Estado civil" value={personaDetail.estado_civil_id ? estadosCivilesMap.get(personaDetail.estado_civil_id)?.label ?? displayValue(activeExpediente.persona.estado_civil) : displayValue(activeExpediente.persona.estado_civil)} />
                 <DataItem label="Tipo de sangre" value={displayValue(activeExpediente.persona.tipo_sangre)} />
                 <DataItem label="Estatura" value={personaDetail.estatura == null ? 'Sin registrar' : `${personaDetail.estatura} cm`} />
+                <DataItem label="Nacionalidad" value={displayValue(personaDetail.perfil_demografico?.nacionalidad)} />
+                <DataItem label="Nivel educativo" value={displayValue(personaDetail.perfil_demografico?.nivel_escolaridad)} />
+                </div>
+              </section>
+
+              <section className="pmd-info-section">
+                <h4>Contacto y residencia</h4>
+                <div className="pmd-info-grid compact-three">
                 <DataItem label="Teléfono" value={displayValue(personaDetail.telefono)} />
                 <DataItem label="Correo" value={displayValue(personaDetail.correo)} />
                 <DataItem label="Dirección" value={displayValue(personaDetail.direccion)} />
                 <DataItem label="Barrio" value={displayValue(personaDetail.barrio)} />
                 <DataItem label="Municipio de residencia" value={personaDetail.municipio_residencia_id ? municipioMap.get(personaDetail.municipio_residencia_id)?.label ?? `ID ${personaDetail.municipio_residencia_id}` : 'Sin registrar'} />
                 <DataItem label="País de nacimiento" value={displayValue(personaDetail.pais_nacimiento)} />
-                <DataItem label="Nacionalidad" value={displayValue(personaDetail.perfil_demografico?.nacionalidad)} />
-                <DataItem label="Nivel educativo" value={displayValue(personaDetail.perfil_demografico?.nivel_escolaridad)} />
-              </div>
+                </div>
+              </section>
 
-              <div className="pmd-subcard">
+              <section className="pmd-info-section">
                 <h4>Contacto de emergencia</h4>
-                <div className="pmd-grid two">
+                <div className="pmd-info-grid compact-four">
                   <DataItem label="Nombre" value={displayValue(personaDetail.contacto_emergencia?.nombre_contacto)} />
                   <DataItem label="Parentesco" value={displayValue(personaDetail.contacto_emergencia?.parentesco)} />
                   <DataItem label="Teléfono" value={displayValue(personaDetail.contacto_emergencia?.telefono)} />
                   <DataItem label="Dirección" value={displayValue(personaDetail.contacto_emergencia?.direccion)} />
                 </div>
-              </div>
-            </>
+              </section>
+            </div>
           )}
         </section>
       </div>
@@ -900,7 +918,7 @@ export default function PersonalMasterDrawer({
             </button>
           </div>
 
-          <div className="pmd-grid two">
+          <div className="pmd-info-grid compact-four">
             <DataItem label="Empresa" value={displayValue(activeExpediente.empresa.nombre_empresa)} />
             <DataItem label="Contrato" value={displayValue(activeExpediente.contrato.numero_contrato)} />
             <DataItem label="Cargo" value={displayValue(activeExpediente.cargo.nombre_cargo)} />
@@ -931,23 +949,20 @@ export default function PersonalMasterDrawer({
               {vinculacionState.error && (
                 <StateBlock tone="error" message={vinculacionState.error} compact onAction={() => setVinculacionRetry((value) => value + 1)} />
               )}
-              <div className="pmd-history-list">
-              {vinculacionesHistory.map((item) => (
-                <div key={item.id} className="pmd-history-item">
-                  <div className="pmd-history-head">
-                    <strong>{contratosHistoryMap.get(item.contrato_id)?.numero_contrato ?? `Contrato #${item.contrato_id}`}</strong>
-                    <span className={`pmd-inline-badge ${item.estado_vinculacion === 'ACTIVA' ? 'ok' : item.estado_vinculacion === 'SUSPENDIDA' ? 'warn' : 'danger'}`}>
-                      {item.estado_vinculacion}
-                    </span>
-                  </div>
-                  <div className="pmd-history-meta">
-                    <span>Empresa: {contratosHistoryMap.get(item.contrato_id)?.empresa.nombre_empresa ?? `#${item.empresa_id}`}</span>
-                    <span>Cargo: {cargosHistoryMap.get(item.contrato_cargo_id)?.nombre_cargo ?? `#${item.contrato_cargo_id}`}</span>
-                    <span>Ingreso: {formatDate(item.fecha_inicio)}</span>
-                    <span>Retiro: {formatDate(item.fecha_fin)}</span>
-                  </div>
-                </div>
-              ))}
+              <div className="pmd-table-wrap">
+                <table className="pmd-compact-table">
+                  <thead><tr><th>Contrato</th><th>Empresa</th><th>Cargo</th><th>Ingreso</th><th>Retiro</th><th>Estado</th></tr></thead>
+                  <tbody>{vinculacionesHistory.map((item) => (
+                    <tr key={item.id}>
+                      <td>{contratosHistoryMap.get(item.contrato_id)?.numero_contrato ?? `#${item.contrato_id}`}</td>
+                      <td>{contratosHistoryMap.get(item.contrato_id)?.empresa.nombre_empresa ?? `#${item.empresa_id}`}</td>
+                      <td>{cargosHistoryMap.get(item.contrato_cargo_id)?.nombre_cargo ?? `#${item.contrato_cargo_id}`}</td>
+                      <td>{formatDate(item.fecha_inicio)}</td>
+                      <td>{formatDate(item.fecha_fin)}</td>
+                      <td><span className={`pmd-inline-badge ${item.estado_vinculacion === 'ACTIVA' ? 'ok' : item.estado_vinculacion === 'SUSPENDIDA' ? 'warn' : 'danger'}`}>{item.estado_vinculacion}</span></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
               </div>
             </>
           )}
@@ -1076,7 +1091,13 @@ export default function PersonalMasterDrawer({
           )}
 
           {sstExamenes.length === 0 ? (
-            <StateBlock tone="empty" message="No hay requisitos o exámenes registrados para esta persona." compact />
+            <StateBlock
+              tone="empty"
+              message="No hay requisitos de salud registrados."
+              compact
+              actionLabel="Registrar requisito"
+              onAction={canWriteSst ? () => setShowRequisitoForm(true) : undefined}
+            />
           ) : (
             <div className="pmd-requirements-list">
               {sstExamenes.map((item) => (
@@ -1120,24 +1141,16 @@ export default function PersonalMasterDrawer({
               </span>
             </div>
             <p>
-              {currentIdentification?.tipo_documento_nombre ?? 'Identificación'} {currentIdentification?.numero_documento ?? activeExpediente.persona.numero_documento}
+              {abbreviateIdentification(currentIdentification?.tipo_documento_nombre)} {currentIdentification?.numero_documento ?? activeExpediente.persona.numero_documento}
               {' · '}
               {activeExpediente.cargo.nombre_cargo ?? 'Sin cargo'}
             </p>
             {personaDetail && !datosState.loading && !datosState.error && !fichaCompleta && (
-              <small>Faltan: {fichaMissingFields.join(', ')}</small>
+              <small><strong>Faltan {fichaMissingFields.length} datos:</strong> {fichaMissingFields.join(', ')}</small>
             )}
           </div>
 
           <div className="pmd-header-actions">
-            <button type="button" className="pmd-button secondary" onClick={onOpenNewWorker}>
-              <UserPlus size={15} />
-              Nuevo trabajador
-            </button>
-            <button type="button" className="pmd-button ghost" onClick={onOpenManagement}>
-              <FolderOpen size={15} />
-              Gestión avanzada
-            </button>
             <button type="button" className="pmd-close" onClick={onClose} aria-label="Cerrar ficha">
               <X size={16} />
             </button>
@@ -1219,8 +1232,9 @@ function DataItem({
   label: string;
   value: string;
 }) {
+  const isEmpty = value === 'Sin registrar';
   return (
-    <div className="pmd-data-item">
+    <div className={`pmd-data-item ${isEmpty ? 'is-empty' : ''}`}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>

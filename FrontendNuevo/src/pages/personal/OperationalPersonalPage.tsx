@@ -728,7 +728,6 @@ export default function OperationalPersonalPage() {
               error={selectedError}
               onClose={closeDrawer}
               onOpenManagement={() => navigate(buildManagementUrl(false))}
-              onOpenNewWorker={() => navigate(buildManagementUrl(true))}
               onRefresh={() => setRefreshIndex((current) => current + 1)}
               permissions={permissions}
               tipoDocumentoOptions={tiposDocumento}

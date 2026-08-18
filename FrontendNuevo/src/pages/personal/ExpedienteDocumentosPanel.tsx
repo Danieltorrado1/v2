@@ -21,7 +21,7 @@ import {
 
 // ── Local types ───────────────────────────────────────────────────────────────
 
-type TabId = "persona" | "vinculacion" | "checklist";
+type TabId = "all" | "persona" | "vinculacion" | "checklist";
 
 interface UploadForm {
   scope: "persona" | "vinculacion";
@@ -39,14 +39,14 @@ const S: Record<string, CSSProperties> = {
   panel: {
     background: "var(--bg-card)",
     border: "1px solid var(--border-color)",
-    borderRadius: "12px",
+    borderRadius: "14px",
     overflow: "hidden",
   },
   header: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "14px 20px",
+    padding: "10px 14px",
     borderBottom: "1px solid var(--border-color)",
   },
   headerTitle: {
@@ -124,7 +124,7 @@ const S: Record<string, CSSProperties> = {
     borderBottom: "1px solid var(--border-color)",
     background: "var(--bg-surface)",
   },
-  tableWrap: { overflowX: "auto", maxHeight: "320px", overflowY: "auto" },
+  tableWrap: { overflowX: "auto", maxHeight: "min(52vh, 420px)", overflowY: "auto" },
   table: { width: "100%", borderCollapse: "collapse", fontSize: "0.79rem" },
   th: {
     padding: "8px 12px",
@@ -168,7 +168,7 @@ const S: Record<string, CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     gap: "8px",
-    padding: "32px",
+    padding: "22px 16px",
     color: "var(--text-secondary)",
     fontSize: "0.82rem",
   },
@@ -225,7 +225,7 @@ const EMPTY_FORM: UploadForm = {
 
 function fmt(fecha: string | null | undefined): string {
   if (!fecha) return "—";
-  const [y, m, d] = fecha.split("-");
+  const [y, m, d] = fecha.slice(0, 10).split("-");
   return `${d ?? "?"}/${m ?? "?"}/${y ?? "?"}`;
 }
 
@@ -256,7 +256,7 @@ export default function ExpedienteDocumentosPanel({
   vinculacionId: number;
   tipoDocumentoOptions?: CatalogoItem[];
 }) {
-  const [activeTab, setActiveTab] = useState<TabId>("persona");
+  const [activeTab, setActiveTab] = useState<TabId>("all");
   const [docsPersona, setDocsPersona] = useState<DocumentoListItem[]>([]);
   const [docsVinculacion, setDocsVinculacion] = useState<DocumentoListItem[]>([]);
   const [checklist, setChecklist] = useState<VinculacionChecklistApi | null>(null);
@@ -322,7 +322,7 @@ export default function ExpedienteDocumentosPanel({
     setDocsPersona([]);
     setDocsVinculacion([]);
     setChecklist(null);
-    setActiveTab("persona");
+    setActiveTab("all");
     setShowUpload(false);
     checklistAsked.current = false;
     void loadPersona();
@@ -393,11 +393,11 @@ export default function ExpedienteDocumentosPanel({
         if (scope === "persona") {
           const result = await uploadDocumentoPersona(personaId, file, fields);
           setDocsPersona((prev) => [normalizeDocumentoPersona(result), ...prev]);
-          setActiveTab("persona");
+          setActiveTab("all");
         } else {
           const result = await uploadDocumentoVinculacion(vinculacionId, file, fields);
           setDocsVinculacion((prev) => [normalizeDocumentoVinculacion(result), ...prev]);
-          setActiveTab("vinculacion");
+          setActiveTab("all");
         }
         setShowUpload(false);
         setUploadForm(EMPTY_FORM);
@@ -549,8 +549,15 @@ export default function ExpedienteDocumentosPanel({
         </form>
       )}
 
-      {/* Tabs */}
+      {/* Compact filters */}
       <div style={S.tabs}>
+        <button
+          type="button"
+          style={tabStyle(activeTab === "all")}
+          onClick={() => setActiveTab("all")}
+        >
+          Todos ({docsPersona.length + docsVinculacion.length})
+        </button>
         <button
           type="button"
           style={tabStyle(activeTab === "persona")}
@@ -574,8 +581,21 @@ export default function ExpedienteDocumentosPanel({
         </button>
       </div>
 
-      {/* Tab content */}
+      {/* Filtered content */}
       <div style={S.tableWrap}>
+        {activeTab === "all" && (
+          <DocTable
+            docs={[...docsPersona, ...docsVinculacion]}
+            loading={loadingP || loadingV}
+            error={errorP ?? errorV}
+            viewingId={viewingId}
+            deactivatingId={deactivatingId}
+            onView={handleView}
+            onDeactivate={handleDeactivate}
+            onRetry={() => { void loadPersona(); void loadVinculacion(); }}
+            onUpload={() => setShowUpload(true)}
+          />
+        )}
         {activeTab === "persona" && (
           <DocTable
             docs={docsPersona}
@@ -586,6 +606,7 @@ export default function ExpedienteDocumentosPanel({
             onView={handleView}
             onDeactivate={handleDeactivate}
             onRetry={loadPersona}
+            onUpload={() => setShowUpload(true)}
           />
         )}
         {activeTab === "vinculacion" && (
@@ -598,6 +619,7 @@ export default function ExpedienteDocumentosPanel({
             onView={handleView}
             onDeactivate={handleDeactivate}
             onRetry={loadVinculacion}
+            onUpload={() => setShowUpload(true)}
           />
         )}
         {activeTab === "checklist" && (
@@ -624,6 +646,7 @@ function DocTable({
   onView,
   onDeactivate,
   onRetry,
+  onUpload,
 }: {
   docs: DocumentoListItem[];
   loading: boolean;
@@ -633,11 +656,12 @@ function DocTable({
   onView: (doc: DocumentoListItem) => void;
   onDeactivate: (doc: DocumentoListItem) => void;
   onRetry: () => void;
+  onUpload: () => void;
 }) {
   if (loading && docs.length === 0) {
     return <div style={S.center}>Cargando documentos...</div>;
   }
-  if (error) {
+  if (error && docs.length === 0) {
     return (
       <div style={S.center}>
         <span style={{ color: "var(--color-danger, #ef4444)", fontSize: "0.8rem" }}>{error}</span>
@@ -648,18 +672,33 @@ function DocTable({
     );
   }
   if (docs.length === 0) {
-    return <div style={S.center}>Sin documentos cargados</div>;
+    return (
+      <div style={S.center}>
+        <FileText size={20} />
+        <span>No hay documentos cargados para esta persona.</span>
+        <button type="button" style={S.uploadBtn} onClick={onUpload}>Subir primer documento</button>
+      </div>
+    );
   }
 
   return (
+    <>
+    {error && (
+      <div style={{ ...S.center, padding: "10px 16px", flexDirection: "row" }}>
+        <span style={{ color: "var(--color-danger, #ef4444)", fontSize: "0.8rem" }}>{error}</span>
+        <button type="button" style={S.retryBtn} onClick={onRetry}>Reintentar</button>
+      </div>
+    )}
     <table style={S.table}>
       <thead>
         <tr>
           <th style={S.th}>Tipo</th>
+          <th style={S.th}>Ámbito</th>
           <th style={S.th}>Archivo</th>
           <th style={S.th}>Ver.</th>
           <th style={S.th}>Estado</th>
           <th style={S.th}>Vencimiento</th>
+          <th style={S.th}>Actualización</th>
           <th style={S.th}>Acciones</th>
         </tr>
       </thead>
@@ -667,6 +706,7 @@ function DocTable({
         {docs.map((doc) => (
           <tr key={doc.id} style={doc.activo ? undefined : { opacity: 0.55 }}>
             <td style={S.td}>{doc.tipoNombre}</td>
+            <td style={S.td}>{doc.origen === "PERSONA" ? "Persona" : "Vinculación"}</td>
             <td
               style={{
                 ...S.td,
@@ -689,6 +729,9 @@ function DocTable({
             </td>
             <td style={{ ...S.td, fontSize: "0.74rem", color: "var(--text-secondary)" }}>
               {fmt(doc.fechaVencimiento)}
+            </td>
+            <td style={{ ...S.td, fontSize: "0.74rem", color: "var(--text-secondary)" }}>
+              {fmt(doc.fechaCarga)}
             </td>
             <td style={S.td}>
               <div style={{ display: "flex", gap: "6px" }}>
@@ -726,6 +769,7 @@ function DocTable({
         ))}
       </tbody>
     </table>
+    </>
   );
 }
 
@@ -753,7 +797,9 @@ function ChecklistView({
       </div>
     );
   }
-  if (!checklist) return <div style={S.center}>Sin datos de checklist</div>;
+  if (!checklist || checklist.total_requisitos === 0) {
+    return <div style={S.center}>No hay requisitos documentales configurados para este contexto.</div>;
+  }
 
   const { cumplimiento_porcentaje, total_requisitos, cargados, faltantes, vencidos, requisitos } =
     checklist;

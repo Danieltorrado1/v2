@@ -171,6 +171,68 @@
   color: var(--color-warning);
 }
 
+/* Compact master-record layout */
+.pmd-header > div:first-child { min-width: 0; }
+.pmd-header small { max-width: 760px; margin-top: 3px; line-height: 1.35; }
+
+.pmd-profile-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+
+.pmd-info-section {
+  min-width: 0;
+  padding: 9px 0 4px;
+  border-top: 1px solid color-mix(in srgb, var(--border-color) 82%, transparent);
+}
+
+.pmd-info-section:first-child { padding-top: 0; border-top: 0; }
+.pmd-info-section:last-child { grid-column: 1 / -1; }
+.pmd-info-section h4 {
+  margin: 0 0 6px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.pmd-info-grid { display: grid; gap: 2px 16px; }
+.pmd-info-grid.compact-three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pmd-info-grid.compact-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.pmd-data-item.is-empty strong { color: var(--text-secondary); font-weight: 500; }
+
+.pmd-inline-history { margin-top: 7px; color: var(--text-secondary); font-size: 0.75rem; }
+.pmd-inline-history summary { width: fit-content; cursor: pointer; color: var(--color-primary); font-weight: 650; }
+.pmd-inline-history .pmd-history-list { margin-top: 7px; }
+.pmd-table-wrap { overflow-x: auto; }
+.pmd-compact-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+.pmd-compact-table th, .pmd-compact-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 80%, transparent);
+  text-align: left;
+  white-space: nowrap;
+}
+.pmd-compact-table th {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .pmd-info-grid.compact-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pmd-profile-sections { grid-template-columns: 1fr; }
+  .pmd-info-section:last-child { grid-column: auto; }
+}
+
+@media (max-width: 620px) {
+  .pmd-info-grid.compact-three, .pmd-info-grid.compact-four { grid-template-columns: 1fr; }
+  .pmd-compact-table { min-width: 700px; }
+}
+
 .pmd-status-chip.loading {
   background: color-mix(in srgb, var(--color-info) 14%, transparent);
   color: var(--text-secondary);
@@ -448,4 +510,44 @@
     padding-left: 14px;
     padding-right: 14px;
   }
+}
+
+/* Final density overrides must follow the legacy drawer rules. */
+.pmd-header { flex: 0 0 auto; padding: 11px 16px 10px; }
+.pmd-header h2 { font-size: 1.08rem; line-height: 1.25; }
+.pmd-header p { margin-top: 3px; font-size: 0.82rem; }
+.pmd-header small { margin-top: 3px; line-height: 1.35; }
+.pmd-close { width: 34px; height: 34px; }
+.pmd-tabs { flex: 0 0 auto; gap: 5px; padding: 6px 16px; }
+.pmd-tab { gap: 6px; padding: 6px 10px; border-radius: 9px; font-size: 0.8rem; }
+.pmd-body { padding: 11px 16px 14px; scrollbar-gutter: stable; }
+.pmd-stack { gap: 10px; }
+.pmd-card { padding: 12px 14px; border-radius: 14px; }
+.pmd-card-header { margin-bottom: 9px; }
+.pmd-card-header h3 { font-size: 0.9rem; }
+.pmd-card-header p { margin-top: 2px; font-size: 0.74rem; }
+.pmd-button { padding: 6px 10px; border-radius: 9px; font-size: 0.8rem; }
+.pmd-data-item {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.75fr) minmax(0, 1.25fr);
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.pmd-data-item span { font-size: 0.69rem; }
+.pmd-data-item strong { font-size: 0.82rem; line-height: 1.35; }
+.pmd-history-item, .pmd-requirement-row { padding: 8px 10px; border-radius: 10px; }
+.pmd-history-meta { margin-top: 4px; font-size: 0.73rem; }
+.pmd-requirements-list { gap: 5px; }
+.pmd-state { min-height: 0; padding: 14px; }
+
+@media (max-width: 620px) {
+  .pmd-header { flex-direction: row; align-items: flex-start; }
+  .pmd-header-actions { flex-direction: row; align-items: center; }
+  .pmd-body, .pmd-header, .pmd-tabs { padding-left: 11px; padding-right: 11px; }
+  .pmd-info-grid.compact-three, .pmd-info-grid.compact-four { grid-template-columns: 1fr; }
+  .pmd-data-item { grid-template-columns: minmax(100px, 0.8fr) minmax(0, 1.2fr); }
 }
