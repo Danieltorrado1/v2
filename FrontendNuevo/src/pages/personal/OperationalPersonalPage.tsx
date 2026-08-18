@@ -7,13 +7,11 @@ import {
   Building2,
   Download,
   FileText,
-  FolderOpen,
   RefreshCw,
   Search,
   Upload,
   UserPlus,
   Users,
-  X,
 } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
@@ -26,10 +24,10 @@ import {
 import type { CatalogoItem, Contrato, Empresa } from "../../types/configuracion.types";
 import type { VinculacionEstado, VinculacionExpedienteApi } from "../../types/personas.types";
 import type { ContractPersonalListResponse } from "../../types/vinculaciones.types";
-import ExpedienteDocumentosPanel from "./ExpedienteDocumentosPanel";
+import PersonalMasterDrawer from "./PersonalMasterDrawer";
 import "./OperationalPersonalPage.css";
 
-const DEFAULT_PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 50;
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 type PersonalRow = {
@@ -48,22 +46,6 @@ type PersonalTableData = {
 
 function hasAnyPermission(current: string[], expected: string[]): boolean {
   return expected.some((permission) => current.includes(permission));
-}
-
-function buildNombreCompleto(persona: {
-  primer_nombre: string;
-  segundo_nombre: string | null;
-  primer_apellido: string;
-  segundo_apellido: string | null;
-}): string {
-  return [
-    persona.primer_nombre,
-    persona.segundo_nombre,
-    persona.primer_apellido,
-    persona.segundo_apellido,
-  ]
-    .filter(Boolean)
-    .join(" ");
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -116,10 +98,11 @@ export default function OperationalPersonalPage() {
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [cargos, setCargos] = useState<CatalogoItem[]>([]);
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([]);
+  const [tiposIdentificacion, setTiposIdentificacion] = useState<CatalogoItem[]>([]);
 
   const [empresaId, setEmpresaId] = useState<number | null>(null);
   const [contratoId, setContratoId] = useState<number | null>(null);
-  const [cargoId, setCargoId] = useState<string>("");
+  const [cargoId, setCargoId] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<"" | VinculacionEstado>("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -136,10 +119,6 @@ export default function OperationalPersonalPage() {
   const [selectedError, setSelectedError] = useState("");
 
   const searchValue = search.trim();
-  const importMessage =
-    "Existe backend de importaciones personas-vinculaciones, pero el flujo UI de lotes, validación y confirmación todavía no está integrado en /personal.";
-  const exportMessage =
-    "No existe todavía un endpoint exportable de personal por contrato que respete filtros activos fuera de la página visible.";
 
   useEffect(() => {
     if (!canReadContext) {
@@ -276,18 +255,28 @@ export default function OperationalPersonalPage() {
 
     async function loadTiposDocumento() {
       try {
-        const response = await configuracionApi.listarTiposDocumento({
-          page: 1,
-          limit: 100,
-          activo: true,
-        });
+        const [documentosResponse, identificacionesResponse] = await Promise.all([
+          configuracionApi.listarTiposDocumento({
+            page: 1,
+            limit: 200,
+            activo: true,
+          }),
+          configuracionApi.listarTiposDocumento({
+            page: 1,
+            limit: 200,
+            activo: true,
+            es_identificacion_personal: true,
+          }),
+        ]);
 
         if (!cancelled) {
-          setTiposDocumento(response.items);
+          setTiposDocumento(documentosResponse.items);
+          setTiposIdentificacion(identificacionesResponse.items);
         }
       } catch {
         if (!cancelled) {
           setTiposDocumento([]);
+          setTiposIdentificacion([]);
         }
       }
     }
@@ -455,24 +444,6 @@ export default function OperationalPersonalPage() {
 
   return (
     <div className="op-personal-page">
-      <header className="op-header">
-        <div className="op-header-copy">
-          <span className="op-eyebrow">Personal</span>
-          <div className="op-header-title-row">
-            <h1>Personal del contrato</h1>
-            <button
-              type="button"
-              className="op-button ghost"
-              onClick={() => navigate(buildManagementUrl(false))}
-            >
-              <BriefcaseBusiness size={15} />
-              Gestionar vinculaciones
-            </button>
-          </div>
-          <p>Consulta masiva, búsqueda operativa y acceso rápido al expediente sin salir del contexto contractual.</p>
-        </div>
-      </header>
-
       <section className="op-context-bar">
         <label className="op-context-field">
           <span>Empresa</span>
@@ -488,7 +459,7 @@ export default function OperationalPersonalPage() {
                 setSelectedError("");
               }}
             >
-              <option value="">Seleccionar empresa</option>
+              <option value="">Empresa</option>
               {empresas.map((empresa) => (
                 <option key={empresa.id} value={empresa.id}>
                   {empresa.nombre_empresa}
@@ -512,7 +483,7 @@ export default function OperationalPersonalPage() {
               }}
               disabled={!empresaId}
             >
-              <option value="">Seleccionar contrato</option>
+              <option value="">Contrato</option>
               {contratos.map((contrato) => (
                 <option key={contrato.id} value={contrato.id}>
                   {contrato.numero_contrato}
@@ -521,10 +492,21 @@ export default function OperationalPersonalPage() {
             </select>
           </div>
         </label>
+
+        <div className="op-context-actions">
+          <button
+            type="button"
+            className="op-button ghost"
+            onClick={() => navigate(buildManagementUrl(false))}
+          >
+            <BriefcaseBusiness size={15} />
+            Gestionar vinculaciones
+          </button>
+        </div>
       </section>
 
-      <section className="op-tools-card">
-        <div className="op-tools-main">
+      <section className="op-tools-bar">
+        <div className="op-tools-row">
           <label className="op-search" aria-label="Buscar por documento o nombre">
             <Search size={15} />
             <input
@@ -542,7 +524,7 @@ export default function OperationalPersonalPage() {
                 onChange={(event) => setCargoId(event.target.value)}
                 disabled={!contratoId}
               >
-                <option value="">Todos los cargos</option>
+                <option value="">Cargo</option>
                 {cargos.map((cargo) => (
                   <option key={cargo.id} value={cargo.id}>
                     {cargo.label}
@@ -558,82 +540,80 @@ export default function OperationalPersonalPage() {
                 onChange={(event) => setEstadoFiltro(event.target.value as "" | VinculacionEstado)}
                 disabled={!contratoId}
               >
-                <option value="">Todos los estados</option>
+                <option value="">Estado</option>
                 <option value="ACTIVA">Activa</option>
                 <option value="SUSPENDIDA">Suspendida</option>
                 <option value="RETIRADA">Retirada</option>
               </select>
             </label>
           </div>
-        </div>
 
-        <div className="op-tools-actions">
-          <button
-            type="button"
-            className="op-button secondary"
-            disabled
-            title={importMessage}
-            aria-disabled="true"
-          >
-            <Upload size={15} />
-            Importar
-          </button>
-          <button
-            type="button"
-            className="op-button secondary"
-            disabled
-            title={exportMessage}
-            aria-disabled="true"
-          >
-            <Download size={15} />
-            Exportar
-          </button>
-          <button
-            type="button"
-            className="op-button secondary"
-            onClick={() => setRefreshIndex((current) => current + 1)}
-          >
-            <RefreshCw size={15} />
-            Actualizar
-          </button>
-          <button
-            type="button"
-            className="op-button primary"
-            onClick={() => navigate(buildManagementUrl(true))}
-            disabled={!contratoId || !canCreateVinculacion}
-          >
-            <UserPlus size={15} />
-            Nuevo trabajador
-          </button>
+          <div className="op-tools-actions">
+            <button
+              type="button"
+              className="op-button secondary"
+              disabled
+              title="Proximamente"
+              aria-disabled="true"
+            >
+              <Upload size={15} />
+              Importar
+            </button>
+
+            <button
+              type="button"
+              className="op-button secondary"
+              disabled
+              title="Proximamente"
+              aria-disabled="true"
+            >
+              <Download size={15} />
+              Exportar
+            </button>
+
+            <button
+              type="button"
+              className="op-button secondary op-icon-button"
+              onClick={() => setRefreshIndex((current) => current + 1)}
+              aria-label="Actualizar"
+              title="Actualizar"
+            >
+              <RefreshCw size={15} />
+            </button>
+
+            <button
+              type="button"
+              className="op-button primary"
+              onClick={() => navigate(buildManagementUrl(true))}
+              disabled={!contratoId || !canCreateVinculacion}
+            >
+              <UserPlus size={15} />
+              Nuevo trabajador
+            </button>
+          </div>
         </div>
       </section>
 
       <section className="op-table-card">
-        <div className="op-card-header">
-          <div>
-            <span className="op-eyebrow">Listado</span>
-            <h2>Personal del contrato</h2>
-          </div>
+        <div className="op-table-meta">
+          <span className="op-count-inline">
+            {tableData?.pagination.total ? tableData.pagination.total.toLocaleString("es-CO") : "0"} trabajadores
+          </span>
 
-          <div className="op-card-meta">
-            <span className="op-count">
-              {tableData?.pagination.total ? tableData.pagination.total.toLocaleString("es-CO") : "0"}
-            </span>
-            <label className="op-page-size">
-              <span>Filas</span>
-              <select
-                value={pageSize}
-                onChange={(event) => setPageSize(Number(event.target.value))}
-                disabled={!contratoId || tableLoading}
-              >
-                {PAGE_SIZE_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <label className="op-page-size">
+            <span>Filas</span>
+            <select
+              value={pageSize}
+              onChange={(event) => setPageSize(Number(event.target.value))}
+              disabled={!contratoId || tableLoading}
+            >
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {!contratoId ? (
@@ -667,6 +647,7 @@ export default function OperationalPersonalPage() {
                       </td>
                     </tr>
                   )}
+
                   {(tableData?.items ?? []).map((item) => (
                     <tr
                       key={item.vinculacion_id}
@@ -719,6 +700,7 @@ export default function OperationalPersonalPage() {
                 >
                   Anterior
                 </button>
+
                 <button
                   type="button"
                   className="op-button secondary"
@@ -740,91 +722,18 @@ export default function OperationalPersonalPage() {
       {selectedVinculacionId !== null && (
         <div className="op-drawer-layer" onClick={closeDrawer}>
           <aside className="op-drawer" onClick={(event) => event.stopPropagation()}>
-            <div className="op-drawer-header">
-              <div>
-                <span className="op-eyebrow">Expediente</span>
-                <h2>Expediente del trabajador</h2>
-                <p>Consulta datos de vinculación y gestiona documentos sin salir del contrato actual.</p>
-              </div>
-              <button
-                type="button"
-                className="op-close-button"
-                onClick={closeDrawer}
-                aria-label="Cerrar expediente"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="op-drawer-body">
-              {selectedError ? (
-                <div className="op-state error">
-                  <AlertTriangle size={16} />
-                  {selectedError}
-                </div>
-              ) : selectedLoading && !selectedExpediente ? (
-                <div className="op-empty">Abriendo expediente...</div>
-              ) : !selectedExpediente ? (
-                <div className="op-empty">Selecciona una vinculación para abrir su expediente.</div>
-              ) : (
-                <>
-                  <div className="op-summary-grid">
-                    <div className="op-summary-item">
-                      <span>Trabajador</span>
-                      <strong>{buildNombreCompleto(selectedExpediente.persona)}</strong>
-                    </div>
-                    <div className="op-summary-item">
-                      <span>Documento</span>
-                      <strong>{selectedExpediente.persona.numero_documento}</strong>
-                    </div>
-                    <div className="op-summary-item">
-                      <span>Cargo</span>
-                      <strong>{selectedExpediente.cargo.nombre_cargo ?? "Sin cargo"}</strong>
-                    </div>
-                    <div className="op-summary-item">
-                      <span>Estado</span>
-                      <strong>{getStatusLabel(selectedExpediente.vinculacion.estado_vinculacion)}</strong>
-                    </div>
-                    <div className="op-summary-item">
-                      <span>Ingreso</span>
-                      <strong>{formatDate(selectedExpediente.vinculacion.fecha_inicio)}</strong>
-                    </div>
-                    <div className="op-summary-item">
-                      <span>Documentos</span>
-                      <strong>
-                        {selectedExpediente.documentos_persona.length +
-                          selectedExpediente.documentos_vinculacion.length}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="op-drawer-actions">
-                    <button
-                      type="button"
-                      className="op-button secondary"
-                      onClick={() => navigate(buildManagementUrl(true))}
-                    >
-                      <UserPlus size={15} />
-                      Nuevo trabajador
-                    </button>
-                    <button
-                      type="button"
-                      className="op-button ghost"
-                      onClick={() => navigate(buildManagementUrl(false))}
-                    >
-                      <FolderOpen size={15} />
-                      Modo avanzado
-                    </button>
-                  </div>
-
-                  <ExpedienteDocumentosPanel
-                    personaId={selectedExpediente.persona.id}
-                    vinculacionId={selectedExpediente.vinculacion.id}
-                    tipoDocumentoOptions={tiposDocumento}
-                  />
-                </>
-              )}
-            </div>
+            <PersonalMasterDrawer
+              expediente={selectedExpediente}
+              loading={selectedLoading}
+              error={selectedError}
+              onClose={closeDrawer}
+              onOpenManagement={() => navigate(buildManagementUrl(false))}
+              onOpenNewWorker={() => navigate(buildManagementUrl(true))}
+              onRefresh={() => setRefreshIndex((current) => current + 1)}
+              permissions={permissions}
+              tipoDocumentoOptions={tiposDocumento}
+              tipoIdentificacionOptions={tiposIdentificacion}
+            />
           </aside>
         </div>
       )}

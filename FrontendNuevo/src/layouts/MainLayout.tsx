@@ -49,8 +49,8 @@ export default function MainLayout() {
   const canAccessAdmin = user?.roles.includes("ADMINISTRADOR") === true;
   const logoSrc =
     theme === "dark"
-      ? "/branding/empiria-logo-horizontal-dark.png"
-      : "/branding/empiria-logo-horizontal-light.png";
+      ? "/branding/empiria-logo-horizontal-dark-web.png"
+      : "/branding/empiria-logo-horizontal-light-web.png";
 
   useEffect(() => {
     setLogoFallback(false);
@@ -70,7 +70,7 @@ export default function MainLayout() {
             <img
               src={logoSrc}
               alt="Empiria"
-              className="logo-image"
+              className={`logo-image logo-image--${theme}`}
               onError={() => setLogoFallback(true)}
             />
           )}

@@ -47,6 +47,57 @@ import type {
   UpdateSstPlanPayload,
 } from '../types/sst.types';
 
+export type SstExamenEstado = 'vigente' | 'vencido' | 'sin_vencimiento' | 'proximo_a_vencer';
+export type SstExamenConceptoMedico = 'APTO' | 'APTO_CON_RESTRICCIONES' | 'NO_APTO' | 'PENDIENTE';
+
+export interface SstExamenOcupacionalRecord {
+  id: string;
+  empresa_id: string;
+  empresa_nombre: string | null;
+  contrato_id: string | null;
+  contrato_numero: string | null;
+  nombre_examen: string;
+  tipo_examen: string;
+  descripcion: string | null;
+  obligatorio: boolean;
+  vigencia_meses: number | null;
+  activo: boolean;
+  created_at: string;
+}
+
+export interface SstExamenPersonaRecord {
+  id: string;
+  examen_id: string;
+  persona_id: string;
+  vinculacion_id: string | null;
+  fecha_examen: string;
+  fecha_vencimiento: string | null;
+  estado_examen: SstExamenEstado;
+  concepto_medico: SstExamenConceptoMedico;
+  restricciones: string | null;
+  documento_id: string | null;
+  observacion: string | null;
+  activo: boolean;
+  created_at: string;
+  examen_nombre: string;
+  examen_tipo_examen: string;
+  examen_vigencia_meses: number | null;
+  vinculacion_estado: string | null;
+}
+
+export interface CreateSstExamenPersonaRecordPayload {
+  examen_id: number;
+  persona_id: number;
+  vinculacion_id?: number | null;
+  fecha_examen: string;
+  fecha_vencimiento?: string | null;
+  concepto_medico?: SstExamenConceptoMedico;
+  restricciones?: string | null;
+  documento_persona_id?: number | null;
+  observacion?: string | null;
+  activo?: boolean;
+}
+
 const withPagination = (
   page?: number,
   limit?: number,
@@ -141,6 +192,71 @@ export async function listarVinculacionesPersonaSst(personaId: number): Promise<
     option.label = buildVinculacionLabel(option);
     return option;
   });
+}
+
+export async function listarExamenesOcupacionalesSst(params: {
+  empresa_id?: number | null;
+  contrato_id?: number | null;
+  activo?: boolean | null;
+  page?: number;
+  limit?: number;
+} = {}): Promise<SstPaginatedResult<SstExamenOcupacionalRecord>> {
+  const response = await apiClient.get<ApiResponse<SstPaginatedResult<SstExamenOcupacionalRecord>>>(
+    '/sst/examenes-ocupacionales',
+    {
+      params: {
+        ...withPagination(params.page, params.limit),
+        ...withMaybe({
+          empresa_id: params.empresa_id,
+          contrato_id: params.contrato_id,
+          activo: params.activo,
+        }),
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function listarExamenesPersonaSst(params: {
+  persona_id?: number | null;
+  vinculacion_id?: number | null;
+  examen_id?: number | null;
+  empresa_id?: number | null;
+  contrato_id?: number | null;
+  concepto_medico?: SstExamenConceptoMedico | null;
+  estado?: SstExamenEstado | null;
+  activo?: boolean | null;
+  page?: number;
+  limit?: number;
+} = {}): Promise<SstPaginatedResult<SstExamenPersonaRecord>> {
+  const response = await apiClient.get<ApiResponse<SstPaginatedResult<SstExamenPersonaRecord>>>(
+    '/sst/examenes-persona',
+    {
+      params: {
+        ...withPagination(params.page, params.limit),
+        ...withMaybe({
+          persona_id: params.persona_id,
+          vinculacion_id: params.vinculacion_id,
+          examen_id: params.examen_id,
+          empresa_id: params.empresa_id,
+          contrato_id: params.contrato_id,
+          concepto_medico: params.concepto_medico,
+          estado: params.estado,
+          activo: params.activo,
+        }),
+      },
+    },
+  );
+
+  return response.data;
+}
+
+export async function crearExamenPersonaSst(
+  payload: CreateSstExamenPersonaRecordPayload,
+): Promise<SstExamenPersonaRecord> {
+  const response = await apiClient.post<ApiResponse<SstExamenPersonaRecord>>('/sst/examenes-persona', payload);
+  return response.data;
 }
 
 export async function listarEventosSst(filters: SstEventoFilters = {}): Promise<SstPaginatedResult<SstEvento>> {

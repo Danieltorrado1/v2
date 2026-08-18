@@ -36,6 +36,19 @@ export interface CreatePersonaPayload {
   motivo_cambio_identificacion?: string | null;
 }
 
+export interface UpdatePersonaContactoEmergenciaPayload {
+  nombre_contacto?: string | null;
+  parentesco?: string | null;
+  telefono?: string | null;
+  direccion?: string | null;
+  activo?: boolean;
+}
+
+export interface UpdatePersonaPerfilDemograficoPayload {
+  nacionalidad?: string | null;
+  nivel_escolaridad?: string | null;
+}
+
 export interface CreatePersonaIdentificacionPayload {
   tipo_documento_id: number;
   numero_documento: string;
@@ -44,7 +57,20 @@ export interface CreatePersonaIdentificacionPayload {
   motivo_cambio: string;
 }
 
-export type UpdatePersonaPayload = Partial<CreatePersonaPayload>;
+export type UpdatePersonaPayload = Partial<CreatePersonaPayload> & {
+  municipio_nacimiento_id?: number | null;
+  municipio_residencia_id?: number | null;
+  sexo_id?: number | null;
+  estado_civil_id?: number | null;
+  tipo_sangre_id?: number | null;
+  estatura?: number | null;
+  zona_id?: number | null;
+  pais_nacimiento?: string | null;
+  nacimiento_extranjero?: boolean;
+  ciudad_nacimiento_extranjero?: string | null;
+  contacto_emergencia?: UpdatePersonaContactoEmergenciaPayload | null;
+  perfil_demografico?: UpdatePersonaPerfilDemograficoPayload | null;
+};
 
 const MAX_BATCH_LIMIT = 100;
 const OPS_METODOS_PAGO = new Set([

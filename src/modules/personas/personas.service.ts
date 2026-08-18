@@ -1,6 +1,7 @@
 ﻿import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
+import { assertTenantAccessForPersonaId, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { AppError } from '../../utils/AppError';
 import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditoria.helper';
 import {
@@ -79,6 +80,26 @@ interface PersonaIdentificacionRow extends QueryResultRow {
   vigente_hasta: Date | string | null;
 }
 
+interface PersonaContactoEmergenciaRow extends QueryResultRow {
+  activo: boolean | null;
+  created_at: Date | string | null;
+  direccion: string | null;
+  id: string | number;
+  nombre_contacto: string;
+  parentesco: string | null;
+  persona_id: string | number;
+  telefono: string | null;
+}
+
+interface PersonaPerfilDemograficoRow extends QueryResultRow {
+  activo: boolean | null;
+  id: string | number;
+  nacionalidad: string | null;
+  nivel_escolaridad: string | null;
+  persona_id: string | number;
+  updated_at: Date | string | null;
+}
+
 interface CountRow extends QueryResultRow {
   total: number;
 }
@@ -106,6 +127,7 @@ export interface PersonaIdentificacion {
 export interface Persona {
   barrio: string | null;
   ciudad_nacimiento_extranjero: string | null;
+  contacto_emergencia?: PersonaContactoEmergencia | null;
   correo: string | null;
   direccion: string | null;
   estado_civil_id: number | null;
@@ -130,6 +152,27 @@ export interface Persona {
   tipo_documento_id: number;
   tipo_sangre_id: number | null;
   zona_id: number | null;
+  perfil_demografico?: PersonaPerfilDemografico | null;
+}
+
+export interface PersonaContactoEmergencia {
+  activo: boolean;
+  created_at: string | null;
+  direccion: string | null;
+  id: number;
+  nombre_contacto: string;
+  parentesco: string | null;
+  persona_id: number;
+  telefono: string | null;
+}
+
+export interface PersonaPerfilDemografico {
+  activo: boolean;
+  id: number;
+  nacionalidad: string | null;
+  nivel_escolaridad: string | null;
+  persona_id: number;
+  updated_at: string | null;
 }
 
 export interface PaginatedPersonas {
@@ -213,6 +256,42 @@ const mapPersonaIdentificacion = (row: PersonaIdentificacionRow): PersonaIdentif
     vigente_desde: formatTimestampValue(row.vigente_desde) ?? '',
     vigente_hasta: formatTimestampValue(row.vigente_hasta),
     reemplaza_identificacion_id: toNullableNumber(row.reemplaza_identificacion_id)
+  };
+};
+
+const mapPersonaContactoEmergencia = (
+  row: PersonaContactoEmergenciaRow | null | undefined
+): PersonaContactoEmergencia | null => {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: toRequiredNumber(row.id),
+    persona_id: toRequiredNumber(row.persona_id),
+    nombre_contacto: row.nombre_contacto,
+    parentesco: row.parentesco,
+    telefono: row.telefono,
+    direccion: row.direccion,
+    activo: row.activo ?? true,
+    created_at: formatTimestampValue(row.created_at)
+  };
+};
+
+const mapPersonaPerfilDemografico = (
+  row: PersonaPerfilDemograficoRow | null | undefined
+): PersonaPerfilDemografico | null => {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: toRequiredNumber(row.id),
+    persona_id: toRequiredNumber(row.persona_id),
+    nacionalidad: row.nacionalidad,
+    nivel_escolaridad: row.nivel_escolaridad,
+    activo: row.activo ?? true,
+    updated_at: formatTimestampValue(row.updated_at)
   };
 };
 
@@ -352,6 +431,74 @@ const getPersonaIdentificationSelect = (): string => {
     LEFT JOIN municipios mu ON mu.id = pi.municipio_expedicion_id
     LEFT JOIN usuarios u ON u.id = pi.registrado_por_usuario_id
   `;
+};
+
+const getPersonaContactoEmergenciaByPersonaId = async (
+  client: PoolClient,
+  personaId: string
+): Promise<PersonaContactoEmergenciaRow | null> => {
+  const result = await client.query<PersonaContactoEmergenciaRow>(
+    `
+      SELECT
+        id,
+        persona_id,
+        nombre_contacto,
+        parentesco,
+        telefono,
+        direccion,
+        activo,
+        created_at
+      FROM persona_contactos_emergencia
+      WHERE persona_id::text = $1
+        AND COALESCE(activo, TRUE) = TRUE
+      ORDER BY id DESC
+      LIMIT 1
+    `,
+    [personaId]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const getPersonaPerfilDemograficoByPersonaId = async (
+  client: PoolClient,
+  personaId: string
+): Promise<PersonaPerfilDemograficoRow | null> => {
+  const result = await client.query<PersonaPerfilDemograficoRow>(
+    `
+      SELECT
+        id,
+        persona_id,
+        nacionalidad,
+        nivel_escolaridad,
+        activo,
+        updated_at
+      FROM sst_perfil_demografico
+      WHERE persona_id::text = $1
+        AND COALESCE(activo, TRUE) = TRUE
+      ORDER BY updated_at DESC NULLS LAST, id DESC
+      LIMIT 1
+    `,
+    [personaId]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const enrichPersonaWithProfile = async (
+  client: PoolClient,
+  persona: Persona
+): Promise<Persona> => {
+  const [contactoEmergencia, perfilDemografico] = await Promise.all([
+    getPersonaContactoEmergenciaByPersonaId(client, String(persona.id)),
+    getPersonaPerfilDemograficoByPersonaId(client, String(persona.id))
+  ]);
+
+  return {
+    ...persona,
+    contacto_emergencia: mapPersonaContactoEmergencia(contactoEmergencia),
+    perfil_demografico: mapPersonaPerfilDemografico(perfilDemografico)
+  };
 };
 
 const buildPersonaIdentificationCoreFromPersonaRow = (row: PersonaRow): PersonaIdentificationCore => {
@@ -705,11 +852,191 @@ const buildMutationAuditMeta = (context?: PersonaMutationContext): AuditRequestM
   };
 };
 
+const appendPersonaTenantScope = (
+  conditions: string[],
+  params: unknown[],
+  tenant?: TenantAccessContext
+): void => {
+  if (!tenant || tenant.isGlobalAdmin) {
+    return;
+  }
+
+  if (tenant.contratoIds.length > 0) {
+    params.push(tenant.contratoIds);
+    conditions.push(`
+      EXISTS (
+        SELECT 1
+        FROM vinculaciones v
+        WHERE v.persona_id = p.id
+          AND v.contrato_id = ANY($${params.length}::bigint[])
+      )
+    `);
+    return;
+  }
+
+  if (tenant.empresaIds.length > 0) {
+    params.push(tenant.empresaIds);
+    conditions.push(`
+      EXISTS (
+        SELECT 1
+        FROM vinculaciones v
+        INNER JOIN contratos c ON c.id = v.contrato_id
+        WHERE v.persona_id = p.id
+          AND c.empresa_id = ANY($${params.length}::bigint[])
+      )
+    `);
+    return;
+  }
+
+  conditions.push('1 = 0');
+};
+
+const upsertPersonaContactoEmergencia = async (
+  client: PoolClient,
+  personaId: string,
+  input: Exclude<UpdatePersonaInput['contacto_emergencia'], undefined>
+): Promise<{ after: PersonaContactoEmergencia | null; before: PersonaContactoEmergencia | null }> => {
+  const currentRow = await getPersonaContactoEmergenciaByPersonaId(client, personaId);
+  const before = mapPersonaContactoEmergencia(currentRow);
+  if (input === null) {
+    if (currentRow) {
+      await client.query(
+        `
+          UPDATE persona_contactos_emergencia
+          SET activo = FALSE
+          WHERE id = $1::bigint
+        `,
+        [currentRow.id]
+      );
+    }
+
+    return { before, after: null };
+  }
+
+  const hasMeaningfulData = Boolean(
+    input.nombre_contacto || input.parentesco || input.telefono || input.direccion
+  );
+
+  if (!hasMeaningfulData || input.activo === false) {
+    if (currentRow) {
+      await client.query(
+        `
+          UPDATE persona_contactos_emergencia
+          SET activo = FALSE
+          WHERE id = $1::bigint
+        `,
+        [currentRow.id]
+      );
+    }
+
+    return { before, after: null };
+  }
+
+  if (currentRow) {
+    await client.query(
+      `
+        UPDATE persona_contactos_emergencia
+        SET
+          nombre_contacto = $2,
+          parentesco = $3,
+          telefono = $4,
+          direccion = $5,
+          activo = TRUE
+        WHERE id = $1::bigint
+      `,
+      [
+        currentRow.id,
+        input.nombre_contacto ?? '',
+        input.parentesco ?? null,
+        input.telefono ?? null,
+        input.direccion ?? null
+      ]
+    );
+  } else {
+    await client.query(
+      `
+        INSERT INTO persona_contactos_emergencia (
+          persona_id,
+          nombre_contacto,
+          parentesco,
+          telefono,
+          direccion,
+          activo
+        )
+        VALUES ($1::bigint, $2, $3, $4, $5, TRUE)
+      `,
+      [
+        personaId,
+        input.nombre_contacto ?? '',
+        input.parentesco ?? null,
+        input.telefono ?? null,
+        input.direccion ?? null
+      ]
+    );
+  }
+
+  const after = mapPersonaContactoEmergencia(await getPersonaContactoEmergenciaByPersonaId(client, personaId));
+  return { before, after };
+};
+
+const upsertPersonaPerfilDemografico = async (
+  client: PoolClient,
+  personaId: string,
+  input: Exclude<UpdatePersonaInput['perfil_demografico'], undefined>
+): Promise<{ after: PersonaPerfilDemografico | null; before: PersonaPerfilDemografico | null }> => {
+  const currentRow = await getPersonaPerfilDemograficoByPersonaId(client, personaId);
+  const before = mapPersonaPerfilDemografico(currentRow);
+  if (input === null) {
+    return { before, after: before };
+  }
+
+  const hasMeaningfulData = Boolean(input.nacionalidad || input.nivel_escolaridad);
+
+  if (!hasMeaningfulData) {
+    return { before, after: before };
+  }
+
+  if (currentRow) {
+    await client.query(
+      `
+        UPDATE sst_perfil_demografico
+        SET
+          nacionalidad = $2,
+          nivel_escolaridad = $3,
+          activo = TRUE,
+          updated_at = NOW()
+        WHERE id = $1::bigint
+      `,
+      [currentRow.id, input.nacionalidad ?? null, input.nivel_escolaridad ?? null]
+    );
+  } else {
+    await client.query(
+      `
+        INSERT INTO sst_perfil_demografico (
+          persona_id,
+          nacionalidad,
+          nivel_escolaridad,
+          activo,
+          updated_at
+        )
+        VALUES ($1::bigint, $2, $3, TRUE, NOW())
+      `,
+      [personaId, input.nacionalidad ?? null, input.nivel_escolaridad ?? null]
+    );
+  }
+
+  const after = mapPersonaPerfilDemografico(await getPersonaPerfilDemograficoByPersonaId(client, personaId));
+  return { before, after };
+};
+
 export const listPersonas = async (
-  filters: ListPersonasQuery
+  filters: ListPersonasQuery,
+  tenant?: TenantAccessContext
 ): Promise<PaginatedPersonas> => {
   const conditions: string[] = [];
   const params: unknown[] = [];
+
+  appendPersonaTenantScope(conditions, params, tenant);
 
   if (filters.search) {
     params.push(`%${filters.search}%`);
@@ -773,22 +1100,39 @@ export const listPersonas = async (
   };
 };
 
-export const getPersonaById = async (personaId: string): Promise<Persona | null> => {
-  const result = await dbQuery<PersonaRow>(
-    `
-      ${getPersonaSelect()}
-      WHERE p.id::text = $1
-      LIMIT 1
-    `,
-    [personaId]
-  );
+export const getPersonaById = async (
+  personaId: string,
+  tenant?: TenantAccessContext
+): Promise<Persona | null> => {
+  const client = await dbPool.connect();
 
-  const row = result.rows[0];
-  return row ? mapPersona(row) : null;
+  try {
+    await assertTenantAccessForPersonaId(tenant, personaId);
+
+    const result = await client.query<PersonaRow>(
+      `
+        ${getPersonaSelect()}
+        WHERE p.id::text = $1
+        LIMIT 1
+      `,
+      [personaId]
+    );
+
+    const row = result.rows[0];
+
+    if (!row) {
+      return null;
+    }
+
+    return enrichPersonaWithProfile(client, mapPersona(row));
+  } finally {
+    client.release();
+  }
 };
 
 export const getPersonaByNumeroDocumento = async (
-  numeroDocumento: string
+  numeroDocumento: string,
+  tenant?: TenantAccessContext
 ): Promise<Persona | null> => {
   const result = await dbQuery<PersonaRow>(
     `
@@ -800,15 +1144,25 @@ export const getPersonaByNumeroDocumento = async (
   );
 
   const row = result.rows[0];
-  return row ? mapPersona(row) : null;
+
+  if (!row) {
+    return null;
+  }
+
+  await assertTenantAccessForPersonaId(tenant, row.id);
+
+  return mapPersona(row);
 };
 
 export const listPersonaIdentificaciones = async (
-  personaId: string
+  personaId: string,
+  tenant?: TenantAccessContext
 ): Promise<PersonaIdentificacion[]> => {
   const client = await dbPool.connect();
 
   try {
+    await assertTenantAccessForPersonaId(tenant, personaId);
+
     const existingPersona = await getPersonaRowById(client, personaId);
 
     if (!existingPersona) {
@@ -965,7 +1319,8 @@ export const createPersona = async (
 export const updatePersona = async (
   personaId: string,
   input: UpdatePersonaInput,
-  context?: PersonaMutationContext
+  context?: PersonaMutationContext,
+  tenant?: TenantAccessContext
 ): Promise<Persona> => {
   const client = await dbPool.connect();
 
@@ -977,6 +1332,8 @@ export const updatePersona = async (
     if (!existingPersona) {
       throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
     }
+
+    await assertTenantAccessForPersonaId(tenant, personaId);
 
     const currentIdentificationRow = await getCurrentPersonaIdentificationRow(client, personaId);
     const currentIdentificationCore = currentIdentificationRow
@@ -1021,13 +1378,22 @@ export const updatePersona = async (
       await syncPersonaCurrentIdentification(client, personaId, nextIdentificationCore);
     }
 
+    const contactoEmergenciaAudit =
+      input.contacto_emergencia !== undefined
+        ? await upsertPersonaContactoEmergencia(client, personaId, input.contacto_emergencia)
+        : null;
+    const perfilDemograficoAudit =
+      input.perfil_demografico !== undefined
+        ? await upsertPersonaPerfilDemografico(client, personaId, input.perfil_demografico)
+        : null;
+
     const updatedPersonaRow = await getPersonaRowById(client, personaId);
 
     if (!updatedPersonaRow) {
       throw new AppError('Failed to update persona', 500, 'PERSONA_UPDATE_FAILED');
     }
 
-    const updatedPersona = mapPersona(updatedPersonaRow);
+    const updatedPersona = await enrichPersonaWithProfile(client, mapPersona(updatedPersonaRow));
     const auditMeta = buildMutationAuditMeta(context);
 
     await registerAuditEntry({
@@ -1056,6 +1422,38 @@ export const updatePersona = async (
       });
     }
 
+    if (contactoEmergenciaAudit) {
+      await registerAuditEntry({
+        accion: 'ACTUALIZAR_CONTACTO_EMERGENCIA_PERSONA',
+        after: contactoEmergenciaAudit.after,
+        before: contactoEmergenciaAudit.before,
+        client,
+        descripcion: 'Actualizacion de contacto de emergencia de persona',
+        registro_id: contactoEmergenciaAudit.after
+          ? String(contactoEmergenciaAudit.after.id)
+          : `${personaId}:contacto_emergencia`,
+        tabla: 'persona_contactos_emergencia',
+        usuario_id: context?.actorUserId ?? null,
+        ...auditMeta
+      });
+    }
+
+    if (perfilDemograficoAudit) {
+      await registerAuditEntry({
+        accion: 'ACTUALIZAR_PERFIL_DEMOGRAFICO_PERSONA',
+        after: perfilDemograficoAudit.after,
+        before: perfilDemograficoAudit.before,
+        client,
+        descripcion: 'Actualizacion de perfil demografico de persona',
+        registro_id: perfilDemograficoAudit.after
+          ? String(perfilDemograficoAudit.after.id)
+          : `${personaId}:perfil_demografico`,
+        tabla: 'sst_perfil_demografico',
+        usuario_id: context?.actorUserId ?? null,
+        ...auditMeta
+      });
+    }
+
     await client.query('COMMIT');
     return updatedPersona;
   } catch (error) {
@@ -1069,7 +1467,8 @@ export const updatePersona = async (
 export const createPersonaIdentificacion = async (
   personaId: string,
   input: CreatePersonaIdentificacionInput,
-  context?: PersonaMutationContext
+  context?: PersonaMutationContext,
+  tenant?: TenantAccessContext
 ): Promise<PersonaIdentificacion> => {
   const client = await dbPool.connect();
 
@@ -1081,6 +1480,8 @@ export const createPersonaIdentificacion = async (
     if (!existingPersona) {
       throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
     }
+
+    await assertTenantAccessForPersonaId(tenant, personaId);
 
     const currentIdentificationRow = await getCurrentPersonaIdentificationRow(client, personaId);
     const currentIdentificationCore = currentIdentificationRow

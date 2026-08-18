@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { requirePermissions } from '../../middlewares/roleMiddleware';
+import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
 import {
   createPersonaHandler,
   createPersonaIdentificacionHandler,
@@ -16,6 +17,7 @@ import {
 const personasRoutes = Router();
 
 personasRoutes.use(authMiddleware);
+personasRoutes.use(tenantMiddleware);
 
 personasRoutes.get('/', requirePermissions('personas.read'), getPersonas);
 personasRoutes.get(

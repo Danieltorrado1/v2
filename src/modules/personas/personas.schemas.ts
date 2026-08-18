@@ -81,6 +81,19 @@ const personaIdentificationFieldsSchema = z.object({
   municipio_expedicion_id: nullableNumericIdSchema.optional().default(null)
 });
 
+const personaContactoEmergenciaSchema = z.object({
+  nombre_contacto: nullableTrimmedString.optional().default(null),
+  parentesco: nullableTrimmedString.optional().default(null),
+  telefono: nullableTrimmedString.optional().default(null),
+  direccion: nullableTrimmedString.optional().default(null),
+  activo: nullableBooleanSchema.optional().default(true)
+});
+
+const personaPerfilDemograficoSchema = z.object({
+  nacionalidad: nullableTrimmedString.optional().default(null),
+  nivel_escolaridad: nullableTrimmedString.optional().default(null)
+});
+
 export const personaIdParamSchema = z.object({
   id: requiredTrimmedString
 });
@@ -146,7 +159,9 @@ export const updatePersonaSchema = z
     pais_nacimiento: nullableTrimmedString.optional(),
     nacimiento_extranjero: nullableBooleanSchema.optional(),
     ciudad_nacimiento_extranjero: nullableTrimmedString.optional(),
-    motivo_cambio_identificacion: nullableTrimmedString.optional()
+    motivo_cambio_identificacion: nullableTrimmedString.optional(),
+    contacto_emergencia: personaContactoEmergenciaSchema.nullable().optional(),
+    perfil_demografico: personaPerfilDemograficoSchema.nullable().optional()
   })
   .refine(
     (data) => Object.keys(data).length > 0,

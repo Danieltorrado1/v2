@@ -27,8 +27,8 @@
 }
 
 .logo-area {
-  min-width: 168px;
-  min-height: 44px;
+  min-width: 196px;
+  min-height: 56px;
 }
 
 .logo-link {
@@ -36,15 +36,24 @@
   align-items: center;
   justify-content: flex-start;
   text-decoration: none;
+  overflow: hidden;
 }
 
 .logo-image {
-  width: 160px;
   max-width: 100%;
-  height: 40px;
   display: block;
   object-fit: contain;
   object-position: left center;
+}
+
+.logo-image--dark {
+  width: 220px;
+  height: 56px;
+}
+
+.logo-image--light {
+  width: 188px;
+  height: 52px;
 }
 
 .logo-fallback {

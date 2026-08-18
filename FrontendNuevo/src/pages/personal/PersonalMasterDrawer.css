@@ -1,0 +1,441 @@
+.pmd-shell {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 22px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-surface) 10%, var(--bg-elevated)),
+      var(--bg-elevated)
+    );
+  border: 1px solid color-mix(in srgb, var(--color-primary) 14%, var(--border-color));
+  box-shadow: var(--shadow-elevated);
+}
+
+.pmd-header,
+.pmd-header-top,
+.pmd-header-actions,
+.pmd-tabs,
+.pmd-card-header,
+.pmd-actions-row,
+.pmd-history-head,
+.pmd-requirement-row,
+.pmd-requirement-actions,
+.pmd-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pmd-button,
+.pmd-close,
+.pmd-tab {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.pmd-button:hover,
+.pmd-close:hover,
+.pmd-tab:hover {
+  transform: translateY(-1px);
+}
+
+.pmd-button:disabled,
+.pmd-close:disabled,
+.pmd-tab:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pmd-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pmd-button.primary {
+  background: linear-gradient(
+    135deg,
+    var(--color-primary),
+    color-mix(in srgb, var(--color-primary) 62%, var(--color-secondary))
+  );
+  color: #062535;
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+.pmd-button.secondary,
+.pmd-button.ghost,
+.pmd-close {
+  border-color: var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.pmd-button.ghost {
+  background: transparent;
+  color: var(--color-primary);
+}
+
+.pmd-close {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pmd-header {
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+}
+
+.pmd-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.pmd-header p,
+.pmd-header small,
+.pmd-card-header p,
+.pmd-data-item span,
+.pmd-field span,
+.pmd-history-meta,
+.pmd-state span {
+  color: var(--text-secondary);
+}
+
+.pmd-header p {
+  margin: 5px 0 0;
+  font-size: 0.9rem;
+}
+
+.pmd-header small {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.76rem;
+}
+
+.pmd-header-top {
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.pmd-header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pmd-status-chip,
+.pmd-inline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pmd-status-chip.ok,
+.pmd-inline-badge.ok {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  color: color-mix(in srgb, var(--color-accent) 35%, var(--text-primary));
+}
+
+.pmd-status-chip.warn,
+.pmd-inline-badge.warn {
+  background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+  color: var(--color-warning);
+}
+
+.pmd-inline-badge.danger {
+  background: color-mix(in srgb, var(--color-danger) 16%, transparent);
+  color: var(--color-danger);
+}
+
+.pmd-inline-badge.muted {
+  background: color-mix(in srgb, var(--border-color) 55%, transparent);
+  color: var(--text-secondary);
+}
+
+.pmd-tabs {
+  padding: 10px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 70%, transparent);
+  overflow-x: auto;
+}
+
+.pmd-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.pmd-tab.is-active {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--border-color));
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--text-primary);
+}
+
+.pmd-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 18px 18px;
+}
+
+.pmd-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pmd-card,
+.pmd-subcard {
+  border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
+}
+
+.pmd-card {
+  padding: 16px;
+}
+
+.pmd-subcard {
+  padding: 14px;
+  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+}
+
+.pmd-card-header {
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.pmd-card-header h3,
+.pmd-subcard h4 {
+  margin: 0;
+}
+
+.pmd-card-header h3 {
+  font-size: 0.98rem;
+}
+
+.pmd-card-header p {
+  margin: 5px 0 0;
+  font-size: 0.8rem;
+}
+
+.pmd-subcard h4 {
+  margin-bottom: 12px;
+  font-size: 0.86rem;
+}
+
+.pmd-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.pmd-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pmd-data-item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+}
+
+.pmd-data-item span,
+.pmd-field span {
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.pmd-data-item strong {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.pmd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pmd-field input,
+.pmd-field select,
+.pmd-field textarea {
+  width: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  padding: 10px 12px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.pmd-field textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.pmd-field input:focus,
+.pmd-field select:focus,
+.pmd-field textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--color-primary) 62%, var(--border-color));
+  box-shadow: var(--focus-ring);
+  background: color-mix(in srgb, var(--bg-input) 90%, var(--color-primary) 10%);
+}
+
+.pmd-edit-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pmd-actions-row {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.pmd-history-list,
+.pmd-requirements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pmd-history-item,
+.pmd-requirement-row {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
+}
+
+.pmd-history-head,
+.pmd-requirement-row {
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.pmd-history-head strong {
+  overflow-wrap: anywhere;
+}
+
+.pmd-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 8px;
+  font-size: 0.78rem;
+}
+
+.pmd-requirement-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pmd-state {
+  justify-content: center;
+  padding: 18px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+  text-align: center;
+}
+
+.pmd-state.is-error {
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--bg-panel));
+  border-color: color-mix(in srgb, var(--color-danger) 26%, var(--border-color));
+  color: var(--color-danger);
+}
+
+.pmd-state.is-error span {
+  color: inherit;
+}
+
+.pmd-state.is-compact {
+  padding: 12px;
+}
+
+.spin,
+.spin-soft {
+  animation: pmd-spin 0.9s linear infinite;
+}
+
+@keyframes pmd-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1100px) {
+  .pmd-grid.two {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .pmd-header,
+  .pmd-header-actions,
+  .pmd-card-header,
+  .pmd-actions-row,
+  .pmd-requirement-row,
+  .pmd-requirement-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pmd-body,
+  .pmd-header,
+  .pmd-tabs {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}

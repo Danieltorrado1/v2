@@ -24,6 +24,8 @@ export interface PersonaApi {
   id: number;
   identificador_interno?: string;
   identificacion_vigente?: PersonaIdentificacionApi | null;
+  contacto_emergencia?: PersonaContactoEmergenciaApi | null;
+  perfil_demografico?: PersonaPerfilDemograficoApi | null;
   tipo_documento_id: number;
   numero_documento: string;
   primer_nombre: string;
@@ -47,6 +49,26 @@ export interface PersonaApi {
   pais_nacimiento: string | null;
   nacimiento_extranjero: boolean;
   ciudad_nacimiento_extranjero: string | null;
+}
+
+export interface PersonaContactoEmergenciaApi {
+  id: number;
+  persona_id: number;
+  nombre_contacto: string;
+  parentesco: string | null;
+  telefono: string | null;
+  direccion: string | null;
+  activo: boolean;
+  created_at: string | null;
+}
+
+export interface PersonaPerfilDemograficoApi {
+  id: number;
+  persona_id: number;
+  nacionalidad: string | null;
+  nivel_escolaridad: string | null;
+  activo: boolean;
+  updated_at: string | null;
 }
 
 export interface PersonaNombreInput {
@@ -86,6 +108,10 @@ export interface VinculacionApi {
   motivo_retiro: string | null;
   cuenta_como_experiencia: boolean;
   metodo_pago: string | null;
+  empresa_nombre?: string | null;
+  contrato_numero?: string | null;
+  cargo_nombre?: string | null;
+  tipo_vinculacion_nombre?: string | null;
 }
 
 // /api/vinculaciones/:id/expediente

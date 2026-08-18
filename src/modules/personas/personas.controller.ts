@@ -38,7 +38,7 @@ const getOptionalActorUserId = (req: Request): string | null => {
 
 export const getPersonas = asyncHandler(async (req: Request, res: Response) => {
   const filters = listPersonasQuerySchema.parse(req.query);
-  const personas = await listPersonas(filters);
+  const personas = await listPersonas(filters, req.tenant);
 
   await registerAuditEntry({
     accion: 'CONSULTAR_LISTADO_PERSONAS',
@@ -61,7 +61,7 @@ export const getPersonas = asyncHandler(async (req: Request, res: Response) => {
 
 export const getPersona = asyncHandler(async (req: Request, res: Response) => {
   const { id } = personaIdParamSchema.parse(req.params);
-  const persona = await getPersonaById(id);
+  const persona = await getPersonaById(id, req.tenant);
 
   if (!persona) {
     throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
@@ -87,7 +87,7 @@ export const getPersona = asyncHandler(async (req: Request, res: Response) => {
 
 export const getPersonaByDocumento = asyncHandler(async (req: Request, res: Response) => {
   const { numero_documento } = personaDocumentoParamSchema.parse(req.params);
-  const persona = await getPersonaByNumeroDocumento(numero_documento);
+  const persona = await getPersonaByNumeroDocumento(numero_documento, req.tenant);
 
   if (!persona) {
     throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
@@ -114,7 +114,7 @@ export const getPersonaByDocumento = asyncHandler(async (req: Request, res: Resp
 
 export const getPersonaIdentificacionesHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = personaIdParamSchema.parse(req.params);
-  const identificaciones = await listPersonaIdentificaciones(id);
+  const identificaciones = await listPersonaIdentificaciones(id, req.tenant);
 
   await registerAuditEntry({
     accion: 'CONSULTAR_HISTORIAL_IDENTIFICACIONES_PERSONA',
@@ -155,7 +155,7 @@ export const updatePersonaHandler = asyncHandler(async (req: Request, res: Respo
   const persona = await updatePersona(id, input, {
     actorUserId: getRequiredActorUserId(req),
     auditMeta: getAuditRequestMeta(req)
-  });
+  }, req.tenant);
 
   return successResponse(res, {
     message: 'Persona updated successfully',
@@ -169,7 +169,7 @@ export const createPersonaIdentificacionHandler = asyncHandler(async (req: Reque
   const identificacion = await createPersonaIdentificacion(id, input, {
     actorUserId: getRequiredActorUserId(req),
     auditMeta: getAuditRequestMeta(req)
-  });
+  }, req.tenant);
 
   return successResponse(res, {
     message: 'Persona identification created successfully',

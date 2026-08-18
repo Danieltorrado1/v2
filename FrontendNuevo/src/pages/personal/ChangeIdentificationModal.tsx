@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 
+import type { CatalogoItem, Municipio } from '../../types/configuracion.types';
 import {
   createPersonaIdentificacion,
   isPersonaDuplicateDocumentError,
@@ -12,19 +13,21 @@ interface ChangeIdentificationModalProps {
   onClose: () => void;
   onSuccess: (identificacion: PersonaIdentificacionApi) => void;
   personaId: number;
+  tipoDocumentoOptions?: CatalogoItem[];
+  municipioOptions?: Municipio[];
 }
 
-const overlayStyle: React.CSSProperties = {
+const overlayStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.45)',
+  background: 'rgba(0, 0, 0, 0.45)',
   zIndex: 400,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
 };
 
-const boxStyle: React.CSSProperties = {
+const boxStyle: CSSProperties = {
   background: 'var(--bg)',
   border: '1px solid var(--border-color)',
   borderRadius: 16,
@@ -36,7 +39,7 @@ const boxStyle: React.CSSProperties = {
   overflowY: 'auto',
 };
 
-const fieldLabelStyle: React.CSSProperties = {
+const fieldLabelStyle: CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   color: 'var(--text-secondary)',
@@ -45,7 +48,7 @@ const fieldLabelStyle: React.CSSProperties = {
   gap: 4,
 };
 
-const fieldInputStyle: React.CSSProperties = {
+const fieldInputStyle: CSSProperties = {
   display: 'block',
   width: '100%',
   padding: '8px 10px',
@@ -62,6 +65,8 @@ export default function ChangeIdentificationModal({
   onClose,
   onSuccess,
   personaId,
+  tipoDocumentoOptions = [],
+  municipioOptions = [],
 }: ChangeIdentificationModalProps) {
   const [form, setForm] = useState<CreatePersonaIdentificacionPayload>({
     tipo_documento_id: currentIdentification?.tipo_documento_id ?? 0,
@@ -80,16 +85,16 @@ export default function ChangeIdentificationModal({
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  async function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
     if (!form.tipo_documento_id || form.tipo_documento_id <= 0) {
-      setApiError('Ingrese un tipo de documento válido.');
+      setApiError('Ingresa un tipo de identificación válido.');
       return;
     }
 
     if (!form.numero_documento.trim()) {
-      setApiError('El número de documento es obligatorio.');
+      setApiError('El número de identificación es obligatorio.');
       return;
     }
 
@@ -112,7 +117,7 @@ export default function ChangeIdentificationModal({
       onSuccess(created);
     } catch (error) {
       if (isPersonaDuplicateDocumentError(error)) {
-        setApiError('Ya existe una persona con ese número de documento vigente.');
+        setApiError('Ya existe una persona con ese número de identificación vigente.');
       } else {
         setApiError(error instanceof Error ? error.message : 'Error al actualizar la identificación.');
       }
@@ -144,31 +149,62 @@ export default function ChangeIdentificationModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <label style={fieldLabelStyle}>
-                Tipo documento *
-                <input
-                  type="number"
-                  min={1}
-                  required
-                  style={fieldInputStyle}
-                  value={form.tipo_documento_id || ''}
-                  onChange={(event) => setField('tipo_documento_id', parseInt(event.target.value, 10) || 0)}
-                />
+                Tipo de identificación *
+                {tipoDocumentoOptions.length > 0 ? (
+                  <select
+                    required
+                    style={fieldInputStyle}
+                    value={form.tipo_documento_id || ''}
+                    onChange={(event) => setField('tipo_documento_id', parseInt(event.target.value, 10) || 0)}
+                  >
+                    <option value="">Seleccionar tipo</option>
+                    {tipoDocumentoOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.codigo ? `${option.codigo} · ${option.label}` : option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    style={fieldInputStyle}
+                    value={form.tipo_documento_id || ''}
+                    onChange={(event) => setField('tipo_documento_id', parseInt(event.target.value, 10) || 0)}
+                  />
+                )}
               </label>
 
               <label style={fieldLabelStyle}>
-                Municipio expedición
-                <input
-                  type="number"
-                  min={1}
-                  style={fieldInputStyle}
-                  value={form.municipio_expedicion_id ?? ''}
-                  onChange={(event) => setField('municipio_expedicion_id', parseInt(event.target.value, 10) || null)}
-                />
+                Lugar de expedición
+                {municipioOptions.length > 0 ? (
+                  <select
+                    style={fieldInputStyle}
+                    value={form.municipio_expedicion_id ?? ''}
+                    onChange={(event) => setField('municipio_expedicion_id', parseInt(event.target.value, 10) || null)}
+                  >
+                    <option value="">Sin registrar</option>
+                    {municipioOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="number"
+                    min={1}
+                    style={fieldInputStyle}
+                    value={form.municipio_expedicion_id ?? ''}
+                    onChange={(event) => setField('municipio_expedicion_id', parseInt(event.target.value, 10) || null)}
+                  />
+                )}
               </label>
             </div>
 
             <label style={fieldLabelStyle}>
-              Número documento *
+              Número de identificación *
               <input
                 type="text"
                 required
@@ -179,7 +215,7 @@ export default function ChangeIdentificationModal({
             </label>
 
             <label style={fieldLabelStyle}>
-              Fecha expedición
+              Fecha de expedición
               <input
                 type="date"
                 style={fieldInputStyle}
