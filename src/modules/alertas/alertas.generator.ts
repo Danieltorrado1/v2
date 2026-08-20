@@ -342,7 +342,7 @@ export const generateSystemAlertCandidates = async (
         WITH cobertura_resumen AS (
           SELECT
             ff.contrato_id::text AS contrato_id,
-            c.nombre AS contrato_nombre,
+            c.numero_contrato AS contrato_nombre,
             ff.cobertura_requerida AS manipuladores_requeridos,
             COALESCE(asg.asignados_cobertura, 0)::numeric AS asignados_cobertura
           FROM focalizacion_final ff
@@ -350,7 +350,7 @@ export const generateSystemAlertCandidates = async (
           LEFT JOIN (
             SELECT
               ca.focalizacion_final_id::text AS focalizacion_final_id,
-              COALESCE(SUM(ca.fraccion_cobertura), 0) AS asignados_cobertura
+              COALESCE(SUM(COALESCE(ca.porcentaje_cobertura, 0)), 0) AS asignados_cobertura
             FROM cobertura_asignaciones ca
             WHERE ca.activo = TRUE
             GROUP BY ca.focalizacion_final_id::text

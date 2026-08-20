@@ -37,7 +37,9 @@
     "test:nomina-correcciones": "npm run build && node dist/scripts/test-nomina-correcciones.js",
     "db:migrate:administracion-catalogos": "node --experimental-strip-types src/scripts/migrate-administracion-catalogos.ts",
     "seed:administracion-permisos": "node --experimental-strip-types src/scripts/seed-administracion-permisos.ts",
-    "test:administracion-catalogos": "tsx src/scripts/test-administracion-catalogos.ts"
+    "test:administracion-catalogos": "tsx src/scripts/test-administracion-catalogos.ts",
+    "bootstrap:focalizacion": "tsx src/scripts/bootstrap-focalizacion-dry-run.ts",
+    "bootstrap:focalizacion:dry-run": "tsx src/scripts/bootstrap-focalizacion-dry-run.ts --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.0",

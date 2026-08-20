@@ -134,6 +134,8 @@ interface FocalizacionVigenciaRow extends QueryResultRow {
   cobertura_requerida: number | null;
   cobertura_estado: string;
   origen: string;
+  preliminar_id: string | null;
+  carga_id: string | null;
 }
 
 interface FocalizacionImportSummary {
@@ -414,7 +416,7 @@ const findHeaderRowIndex = (rows: unknown[][]): number => {
       normalized.includes('CONSECUTIVO') &&
       normalized.includes('MUNICIPIO') &&
       normalized.includes('SEDE EDUCATIVA') &&
-      normalized.includes('MODALIDAD');
+      normalized.some((value) => value === 'MODALIDAD' || value.startsWith('MODALIDAD '));
     if (hasBase) {
       return index;
     }
@@ -427,14 +429,14 @@ const findHeaderRowIndex = (rows: unknown[][]): number => {
   );
 };
 
-const buildColumnMap = (headerRow: unknown[], subHeaderRow: unknown[]): Record<string, number> => {
+const buildColumnMap = (headerRow: unknown[], groupHeaderRow: unknown[]): Record<string, number> => {
   const groups: string[] = [];
   let activeGroup = '';
 
   for (let index = 0; index < headerRow.length; index += 1) {
     const current = normalizeFocalizacionText(
-      typeof headerRow[index] === 'string' || typeof headerRow[index] === 'number'
-        ? String(headerRow[index])
+      typeof groupHeaderRow[index] === 'string' || typeof groupHeaderRow[index] === 'number'
+        ? String(groupHeaderRow[index])
         : null,
     );
     if (current) {
@@ -452,24 +454,20 @@ const buildColumnMap = (headerRow: unknown[], subHeaderRow: unknown[]): Record<s
         : null,
     );
     const group = groups[index] ?? '';
-    const sub = normalizeFocalizacionText(
-      typeof subHeaderRow[index] === 'string' || typeof subHeaderRow[index] === 'number'
-        ? String(subHeaderRow[index])
-        : null,
-    );
+    const sub = direct;
 
     if (direct === 'CONSECUTIVO') map.consecutivo = index;
     if (direct === 'MUNICIPIO') map.municipio = index;
     if (direct === 'INSTITUCION EDUCATIVA') map.institucion = index;
     if (direct === 'SEDE EDUCATIVA') map.sede = index;
-    if (direct === 'MODALIDAD') map.modalidad = index;
+    if (direct === 'MODALIDAD' || direct.startsWith('MODALIDAD ')) map.modalidad = index;
 
-    if (group === 'TECHO' && sub === 'PRIMARIA') map.techo_primaria = index;
-    if (group === 'TECHO' && sub === 'SECUNDARIA') map.techo_secundaria = index;
-    if (group === 'TECHO' && sub === 'TOTAL') map.techo_total = index;
-    if (group === 'FOCALIZACION' && sub === 'PRIMARIA') map.focalizacion_primaria = index;
-    if (group === 'FOCALIZACION' && sub === 'SECUNDARIA') map.focalizacion_secundaria = index;
-    if (group === 'FOCALIZACION' && sub === 'TOTAL') map.focalizacion_total = index;
+    if (group.startsWith('TECHO') && sub === 'PRIMARIA') map.techo_primaria = index;
+    if (group.startsWith('TECHO') && sub === 'SECUNDARIA') map.techo_secundaria = index;
+    if (group.startsWith('TECHO') && sub === 'TOTAL') map.techo_total = index;
+    if (group.startsWith('FOCALIZACION') && sub === 'PRIMARIA') map.focalizacion_primaria = index;
+    if (group.startsWith('FOCALIZACION') && sub === 'SECUNDARIA') map.focalizacion_secundaria = index;
+    if (group.startsWith('FOCALIZACION') && sub === 'TOTAL') map.focalizacion_total = index;
   }
 
   const required = ['consecutivo', 'municipio', 'institucion', 'sede', 'modalidad', 'focalizacion_total'];
@@ -486,7 +484,7 @@ const buildColumnMap = (headerRow: unknown[], subHeaderRow: unknown[]): Record<s
   return map;
 };
 
-const parseWorkbookRows = (
+export const parseWorkbookRows = (
   buffer: Buffer,
 ): {
   fechaDetectada: { fecha_inicio_vigencia: string; fecha_fin_vigencia: string } | null;
@@ -509,7 +507,7 @@ const parseWorkbookRows = (
   }) as unknown[][];
 
   const headerRowIndex = findHeaderRowIndex(rawRows);
-  const columnMap = buildColumnMap(rawRows[headerRowIndex] ?? [], rawRows[headerRowIndex + 1] ?? []);
+  const columnMap = buildColumnMap(rawRows[headerRowIndex] ?? [], rawRows[headerRowIndex - 1] ?? []);
   const candidates = [
     sheetName,
     ...rawRows
@@ -528,7 +526,7 @@ const parseWorkbookRows = (
   const modalidadIndex = columnMap.modalidad as number;
   const focalizacionTotalIndex = columnMap.focalizacion_total as number;
 
-  for (let index = headerRowIndex + 2; index < rawRows.length; index += 1) {
+  for (let index = headerRowIndex + 1; index < rawRows.length; index += 1) {
     const row = rawRows[index] ?? [];
     if (isBlankRow(row)) {
       continue;
@@ -537,7 +535,8 @@ const parseWorkbookRows = (
     const modalidad = row[modalidadIndex];
     const institucion = row[institucionIndex];
     const sede = row[sedeIndex];
-    if (!modalidad && !institucion && !sede) {
+    const municipio = row[municipioIndex];
+    if (!municipio || !modalidad || !institucion || !sede) {
       continue;
     }
 
@@ -649,12 +648,18 @@ const loadSedes = async (client: PoolClient): Promise<SedeRow[]> => {
   return result.rows;
 };
 
-const resolveMunicipioId = (value: string | null, municipios: MunicipioRow[]): number | null => {
+const resolveMunicipioId = (value: string | null, municipios: MunicipioRow[], consecutivo?: string | null): number | null => {
   if (!value) {
     return null;
   }
 
   const normalized = normalizeFocalizacionText(value);
+  const consecutivoDigits = consecutivo?.replace(/\D/g, '') ?? '';
+  const municipioCode = consecutivoDigits.length >= 6 ? consecutivoDigits.slice(1, 6) : '';
+  const byEmbeddedCode = municipios.filter((row) => municipioCode && row.codigo_dane === municipioCode);
+  if (byEmbeddedCode.length === 1 && byEmbeddedCode[0]) {
+    return toNumber(byEmbeddedCode[0].id);
+  }
   const byName = municipios.filter((row) => normalizeFocalizacionText(row.nombre_municipio) === normalized);
   if (byName.length === 1 && byName[0]) {
     return toNumber(byName[0].id);
@@ -1417,6 +1422,8 @@ const syncFocalizacionFinal = async (
         fv.cobertura_requerida,
         fv.cobertura_estado,
         fv.origen,
+        fv.preliminar_id::text AS preliminar_id,
+        fv.carga_id::text AS carga_id,
         i.nombre_institucion AS institucion_nombre,
         i.codigo_dane AS codigo_dane_institucion,
         s.nombre_sede AS sede_nombre,
@@ -1452,7 +1459,9 @@ const syncFocalizacionFinal = async (
     await client.query(
       `
         UPDATE focalizacion_final
-        SET municipio_id = $2::bigint,
+        SET preliminar_id = $23::bigint,
+            carga_id = $24::bigint,
+            municipio_id = $2::bigint,
             municipio_texto = (SELECT nombre_municipio FROM municipios WHERE id = $2::bigint),
             institucion_final = $3,
             sede_final = $4,
@@ -1503,19 +1512,12 @@ const syncFocalizacionFinal = async (
         latest.cobertura_estado,
         latest.vigente_desde,
         latest.vigente_hasta ?? null,
+        latest.preliminar_id,
+        latest.carga_id,
       ],
     );
     return;
   }
-
-  const preliminarPlaceholder = await client.query<QueryResultRow>(
-    `SELECT id::text AS id FROM focalizacion_preliminar WHERE contrato_id = $1::bigint ORDER BY id ASC LIMIT 1`,
-    [contratoId],
-  );
-  const cargaPlaceholder = await client.query<QueryResultRow>(
-    `SELECT id::text AS id FROM focalizacion_cargas WHERE contrato_id = $1::bigint ORDER BY id ASC LIMIT 1`,
-    [contratoId],
-  );
 
   await client.query(
     `
@@ -1554,8 +1556,8 @@ const syncFocalizacionFinal = async (
       VALUES ($1::bigint, $2::bigint, $3::bigint, $4::bigint, (SELECT nombre_municipio FROM municipios WHERE id = $4::bigint), $5, $6, $7, $8, $9, $10, $11, $12, $13, 'APROBADO', $14, NOW(), TRUE, NOW(), NOW(), $15, $16, $17::bigint, $18::bigint, $19::bigint, $20::bigint, $21::integer, $22, $23::date, $24::date)
     `,
     [
-      preliminarPlaceholder.rows[0]?.id ?? null,
-      cargaPlaceholder.rows[0]?.id ?? null,
+      latest.preliminar_id,
+      latest.carga_id,
       contratoId,
       latest.municipio_id,
       latest.institucion_nombre,
@@ -1729,7 +1731,7 @@ const processPreliminarRow = async (
     return mapDetailRow(detail);
   }
 
-  const municipioId = resolveMunicipioId(args.row.municipio, args.municipios);
+  const municipioId = resolveMunicipioId(args.row.municipio, args.municipios, args.row.consecutivo);
   if (!municipioId) {
     await updatePreliminarResult(client, args.preliminarId, {
       estado: 'MUNICIPIO_NO_RECONOCIDO',
@@ -2472,7 +2474,7 @@ export const uploadHistoricalFocalizacionFile = async (
         const preliminarId = await insertPreliminarRow(client, cargaId, contratoId, row);
         await updatePreliminarResult(client, preliminarId, {
           estado: 'ERROR',
-          mensaje: error instanceof AppError ? error.message : 'Error inesperado procesando la fila.',
+          mensaje: error instanceof Error ? error.message : 'Error inesperado procesando la fila.',
         });
         const current = await loadPreliminarDetailRow(client, preliminarId);
         if (current) {
@@ -2659,7 +2661,7 @@ export const reprocessHistoricalFocalizacionImport = async (
         await client.query(`ROLLBACK TO SAVEPOINT focalizacion_reprocess_${row.id}`);
         await updatePreliminarResult(client, toNumber(row.id), {
           estado: 'ERROR',
-          mensaje: error instanceof AppError ? error.message : 'Error inesperado durante el reproceso de la fila.',
+          mensaje: error instanceof Error ? error.message : 'Error inesperado durante el reproceso de la fila.',
         });
       }
     }

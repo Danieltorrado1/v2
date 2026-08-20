@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+const cron = require('node-cron') as { schedule: (expression: string, task: () => void) => unknown };
 
 import { dbQuery } from '../config/db';
 import { generateAlertas } from '../modules/alertas/alertas.service';

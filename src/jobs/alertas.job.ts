@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+const cron = require('node-cron') as { schedule: (expression: string, task: () => void) => unknown };
 
 import { generateAlertas } from '../modules/alertas/alertas.service';
 import { AuditRequestMeta } from '../modules/auditoria/auditoria.helper';
