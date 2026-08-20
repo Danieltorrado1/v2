@@ -17,6 +17,10 @@ interface RolRow extends QueryResultRow {
 const PERMISOS = [
   ['configuracion', 'read', 'Permiso base para consultar configuracion administrativa'],
   ['catalogos', 'read', 'Permiso para consultar catalogos administrativos'],
+  ['administracion', 'configuracion_calculadoras.read', 'Permiso para consultar configuraciones de calculadoras administrativas'],
+  ['administracion', 'configuracion_calculadoras.create', 'Permiso para crear configuraciones de calculadoras administrativas'],
+  ['administracion', 'configuracion_calculadoras.update', 'Permiso para actualizar configuraciones de calculadoras administrativas'],
+  ['administracion', 'configuracion_calculadoras.deactivate', 'Permiso para desactivar configuraciones de calculadoras administrativas'],
   ['empresas', 'read', 'Permiso para consultar empresas'],
   ['empresas', 'create', 'Permiso para crear empresas'],
   ['empresas', 'update', 'Permiso para actualizar empresas y su estado'],

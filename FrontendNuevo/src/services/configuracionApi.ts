@@ -2,6 +2,9 @@
 import type { ApiResponse } from '../types/api.types';
 import type {
   AccesoUsuario,
+  ContratoRequisitoDocumental,
+  ContratoRequisitoDocumentalFilters,
+  CreateContratoRequisitoDocumentalPayload,
   AnularContratoDocumentoPayload,
   AnularContratoEventoPayload,
   CargoFilters,
@@ -136,6 +139,15 @@ export const configuracionApi = {
   listarEstadosCiviles: (filters: CatalogoFilters = {}) => getPaginated<CatalogoItem>('/configuracion/catalogos/estados-civiles', filters),
   listarSexos: (filters: CatalogoFilters = {}) => getPaginated<CatalogoItem>('/configuracion/catalogos/sexos', filters),
   listarTiposDocumento: (filters: CatalogoFilters = {}) => getPaginated<CatalogoItem>('/configuracion/catalogos/tipos-documentos', filters),
+
+  listarContratoRequisitosDocumentales: (id: number | string, filters: ContratoRequisitoDocumentalFilters = {}) =>
+    getData<ContratoRequisitoDocumental[]>(`/configuracion/contratos/${id}/requisitos-documentales`, filters),
+  crearContratoRequisitoDocumental: (id: number | string, payload: CreateContratoRequisitoDocumentalPayload) =>
+    postData<ContratoRequisitoDocumental>(`/configuracion/contratos/${id}/requisitos-documentales`, payload),
+  actualizarContratoRequisitoDocumental: (id: number | string, requisitoId: number | string, payload: Partial<CreateContratoRequisitoDocumentalPayload>) =>
+    patchData<ContratoRequisitoDocumental>(`/configuracion/contratos/${id}/requisitos-documentales/${requisitoId}`, payload),
+  cambiarEstadoContratoRequisitoDocumental: (id: number | string, requisitoId: number | string, activo: boolean, observacion?: string | null) =>
+    patchData<ContratoRequisitoDocumental>(`/configuracion/contratos/${id}/requisitos-documentales/${requisitoId}/estado`, { activo, observacion }),
 
   listarRoles: () => getData<Rol[]>('/configuracion/roles'),
   listarPermisos: () => getData<Permiso[]>('/configuracion/permisos'),

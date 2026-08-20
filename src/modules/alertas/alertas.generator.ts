@@ -343,7 +343,7 @@ export const generateSystemAlertCandidates = async (
           SELECT
             ff.contrato_id::text AS contrato_id,
             c.nombre AS contrato_nombre,
-            ff.manipuladores_requeridos,
+            ff.cobertura_requerida AS manipuladores_requeridos,
             COALESCE(asg.asignados_cobertura, 0)::numeric AS asignados_cobertura
           FROM focalizacion_final ff
           INNER JOIN contratos c ON c.id = ff.contrato_id
@@ -356,6 +356,8 @@ export const generateSystemAlertCandidates = async (
             GROUP BY ca.focalizacion_final_id::text
           ) asg ON asg.focalizacion_final_id = ff.id::text
           WHERE ff.activo = TRUE
+            AND COALESCE(ff.cobertura_estado, 'OK') <> 'SIN_REGLA_COBERTURA'
+            AND ff.cobertura_requerida IS NOT NULL
         )
         SELECT
           cr.contrato_id,

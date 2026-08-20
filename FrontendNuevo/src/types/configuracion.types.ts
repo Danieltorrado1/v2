@@ -27,6 +27,7 @@ export interface Empresa {
 
 export interface EmpresaFilters {
   activo?: boolean;
+  alcance?: string | null;
   search?: string;
   page?: number;
   limit?: number;
@@ -396,10 +397,74 @@ export interface CatalogoItem {
   codigo_dane?: string;
   departamento_id?: number;
   activo?: boolean;
+  alcance?: string | null;
   es_identificacion_personal?: boolean;
   requiere_fecha_expedicion?: boolean;
   requiere_fecha_vencimiento?: boolean;
   categoria_documento?: string | null;
+}
+
+export type AmbitoDocumental = 'PERSONA' | 'VINCULACION';
+
+export interface ContratoRequisitoDocumental {
+  id: number;
+  contrato_id: number;
+  nombre_requisito: string;
+  ambito_documental: AmbitoDocumental;
+  obligatorio: boolean;
+  requiere_fecha_expedicion: boolean;
+  requiere_fecha_vencimiento: boolean;
+  vigencia_meses: number | null;
+  dias_proximo_vencimiento: number;
+  activo: boolean;
+  updated_at: string;
+  tipo_documento: {
+    id: number;
+    codigo: string | null;
+    nombre: string | null;
+    alcance: string | null;
+  };
+  cargo: {
+    id: number | null;
+    nombre: string | null;
+  };
+  tipo_vinculacion: {
+    id: number | null;
+    codigo: string | null;
+    nombre: string | null;
+  };
+}
+
+export interface ContratoRequisitoDocumentalFilters {
+  activo?: boolean;
+  contrato_cargo_id?: number;
+  tipo_vinculacion_id?: number;
+}
+
+export interface CreateContratoRequisitoDocumentalPayload {
+  tipo_documento_id: number;
+  ambito_documental: AmbitoDocumental;
+  obligatorio?: boolean;
+  contrato_cargo_id?: number | null;
+  tipo_vinculacion_id?: number | null;
+  requiere_fecha_expedicion?: boolean;
+  requiere_fecha_vencimiento?: boolean;
+  vigencia_meses?: number | null;
+  dias_proximo_vencimiento?: number;
+  activo?: boolean;
+}
+
+export interface UpdateContratoRequisitoDocumentalPayload {
+  tipo_documento_id?: number;
+  ambito_documental?: AmbitoDocumental;
+  obligatorio?: boolean;
+  contrato_cargo_id?: number | null;
+  tipo_vinculacion_id?: number | null;
+  requiere_fecha_expedicion?: boolean;
+  requiere_fecha_vencimiento?: boolean;
+  vigencia_meses?: number | null;
+  dias_proximo_vencimiento?: number;
+  activo?: boolean;
 }
 
 export interface CatalogoFilters {

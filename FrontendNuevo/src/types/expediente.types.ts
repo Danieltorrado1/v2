@@ -44,13 +44,19 @@ export interface ExpedienteIndicadoresApi {
 // ── Checklist ─────────────────────────────────────────────────────────────────
 
 export type ChecklistEstado = 'CARGADO' | 'FALTANTE' | 'VENCIDO';
-export type ChecklistOrigen = 'GENERAL' | 'CARGO';
+export type ChecklistEstadoDetallado = 'COMPLETO' | 'PENDIENTE' | 'PROXIMO_A_VENCER' | 'VENCIDO' | 'NO_APLICA';
+export type ChecklistOrigen = 'GENERAL' | 'CARGO' | 'TIPO_VINCULACION' | 'CARGO_TIPO_VINCULACION';
 export type DocFuente = 'PERSONA' | 'VINCULACION';
 
 export interface ChecklistItemApi {
+  ambito_documental: 'PERSONA' | 'VINCULACION';
   codigo: string | null;
+  contrato_cargo_id: number | null;
+  detalle_contexto: ChecklistOrigen;
+  dias_para_vencimiento: number | null;
   documento_id: number | null;
   estado: ChecklistEstado;
+  estado_detallado: ChecklistEstadoDetallado;
   fecha_vencimiento: string | null;
   fuente_documento: DocFuente | null;
   nombre_requisito: string;
@@ -58,19 +64,28 @@ export interface ChecklistItemApi {
   obligatorio: boolean;
   origen: ChecklistOrigen;
   requisito_id: number;
+  requiere_fecha_expedicion: boolean;
+  requiere_fecha_vencimiento: boolean;
   tipo_documento_id: number | null;
   tipo_documento_nombre: string | null;
   tipo_requisito: string | null;
+  tipo_vinculacion_id: number | null;
+  vigencia_meses: number | null;
 }
 
 export interface VinculacionChecklistApi {
   cargados: number;
+  completos: number;
   contrato_cargo_id: number;
   contrato_id: number;
   cumplimiento_porcentaje: number;
   faltantes: number;
+  no_aplica: number;
+  pendientes: number;
   persona_id: number;
+  proximos_vencer: number;
   requisitos: ChecklistItemApi[];
+  tiene_configuracion: boolean;
   total_requisitos: number;
   vinculacion_id: number;
   vencidos: number;

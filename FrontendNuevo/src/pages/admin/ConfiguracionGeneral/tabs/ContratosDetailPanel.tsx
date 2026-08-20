@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { configuracionApi } from '../../../../services/configuracionApi';
+import { ContratoRequisitosDocumentalesPanel } from './ContratoRequisitosDocumentalesPanel';
 import type {
   CatalogoItem,
   ContratoAlertaRecord,
@@ -35,7 +36,7 @@ import type {
 import { FormModal } from '../components/FormModal';
 import { formatDate, formatDateTime, hasAnyPermission, mapKnownError, toNullableText, type AdminFeedback } from './adminTabUtils';
 
-type DetailTab = 'resumen' | 'expediente' | 'checklist' | 'eventos' | 'excepciones' | 'alertas';
+type DetailTab = 'resumen' | 'expediente' | 'requisitos' | 'checklist' | 'eventos' | 'excepciones' | 'alertas';
 type DocumentCategory = 'CREACION_EMPRESA_JURIDICA' | 'INICIO_CONTRATO' | 'EJECUCION' | 'CIERRE';
 type DocumentActionMode = 'send_review' | 'approve' | 'return' | 'annul';
 type ExceptionActionMode = 'regularize' | 'revoke';
@@ -94,6 +95,7 @@ interface Props {
 const DETAIL_TABS: Array<{ id: DetailTab; label: string }> = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'expediente', label: 'Expediente' },
+  { id: 'requisitos', label: 'Requisitos' },
   { id: 'checklist', label: 'Checklist' },
   { id: 'eventos', label: 'Eventos' },
   { id: 'excepciones', label: 'Excepciones' },
@@ -127,7 +129,7 @@ function badgeTone(value: string): 'active' | 'inactive' | 'warning' | 'primary'
 
 function resolveAlertTab(route: string | null | undefined): DetailTab | null {
   const value = /\/view\/([^/]+)/.exec(route ?? '')?.[1];
-  return value === 'resumen' || value === 'expediente' || value === 'checklist' || value === 'eventos' || value === 'excepciones' || value === 'alertas' ? value : null;
+  return value === 'resumen' || value === 'expediente' || value === 'requisitos' || value === 'checklist' || value === 'eventos' || value === 'excepciones' || value === 'alertas' ? value : null;
 }
 
 function getVersions(detail: ContratoDetail, document: ContratoDocumentoRecord): ContratoDocumentoRecord[] {
@@ -461,6 +463,15 @@ export function ContratosDetailPanel({ contratoId, detail, detailLoading, detail
             </div>
           ))}
         </div>
+      )}
+
+      {detailTab === 'requisitos' && (
+        <ContratoRequisitosDocumentalesPanel
+          contratoId={currentContratoId}
+          onFeedback={onFeedback}
+          permissions={permissions}
+          tiposDocumentoBase={tiposDocumento}
+        />
       )}
 
       {detailTab === 'checklist' && (

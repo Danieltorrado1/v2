@@ -5,9 +5,7 @@ import { PoolClient, QueryResultRow } from 'pg';
 import { dbPool, dbQuery } from '../../config/db';
 import { AppError } from '../../utils/AppError';
 import {
-  calculateRequiredCoverage,
   getEstadoCobertura,
-  normalizeModalidadBase
 } from './cobertura.calculator';
 import {
   CoberturaResumenQuery,
@@ -32,6 +30,8 @@ interface CoberturaBaseRow extends QueryResultRow {
   contrato_id: string;
   contrato_nombre: string | null;
   cupos_aprobados: number | string | null;
+  cobertura_estado_db: string | null;
+  cobertura_requerida_db: number | string | null;
   focalizacion_final_id: string;
   institucion: string | null;
   institucion_id: string | null;
@@ -174,7 +174,7 @@ interface CoverageMetrics {
   modalidad_base: ModalidadBase;
   manipuladores_requeridos: number;
   sobrecobertura: number;
-  estado_cobertura: EstadoCobertura;
+  estado_cobertura: EstadoCobertura | 'SIN_REGLA_COBERTURA';
 }
 
 const toDateString = (value: Date | string | null): string | null => {
@@ -200,6 +200,19 @@ const toNumber = (value: string | number | null | undefined): number => {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toNullableNumber = (value: string | number | null | undefined): number | null => {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 };
 
 const isModalidadBase = (value: string | null | undefined): value is ModalidadBase => {
@@ -256,19 +269,41 @@ const resolveModalidadBase = (row: {
 
 const buildCoverageMetrics = (row: CoberturaBaseRow): CoverageMetrics => {
   const modalidad_base = resolveModalidadBase(row);
-  const cupos = toNumber(row.cupos_aprobados);
-  const calculation = calculateRequiredCoverage(modalidad_base, cupos);
   const asignados = toNumber(row.asignados_db);
-  const faltantes = Math.max(0, Number((calculation.manipuladores_requeridos - asignados).toFixed(6)));
-  const sobrecobertura = Math.max(0, Number((asignados - calculation.manipuladores_requeridos).toFixed(6)));
+  const coberturaRequerida = toNullableNumber(row.cobertura_requerida_db);
+
+  if (row.cobertura_estado_db === 'SIN_REGLA_COBERTURA') {
+    return {
+      modalidad_base,
+      manipuladores_requeridos: 0,
+      asignados,
+      faltantes: 0,
+      sobrecobertura: 0,
+      estado_cobertura: 'SIN_REGLA_COBERTURA'
+    };
+  }
+
+  if (coberturaRequerida !== null) {
+    const faltantes = Math.max(0, Number((coberturaRequerida - asignados).toFixed(6)));
+    const sobrecobertura = Math.max(0, Number((asignados - coberturaRequerida).toFixed(6)));
+
+    return {
+      modalidad_base,
+      manipuladores_requeridos: coberturaRequerida,
+      asignados,
+      faltantes,
+      sobrecobertura,
+      estado_cobertura: getEstadoCobertura(coberturaRequerida, asignados)
+    };
+  }
 
   return {
     modalidad_base,
-    manipuladores_requeridos: calculation.manipuladores_requeridos,
+    manipuladores_requeridos: 0,
     asignados,
-    faltantes,
-    sobrecobertura,
-    estado_cobertura: getEstadoCobertura(calculation.manipuladores_requeridos, asignados)
+    faltantes: 0,
+    sobrecobertura: 0,
+    estado_cobertura: 'SIN_REGLA_COBERTURA'
   };
 };
 
@@ -398,6 +433,8 @@ const getCoberturaBaseRows = async (
         ff.cupos_aprobados,
         ff.categoria_cobertura,
         ff.clave_sede_modalidad,
+        ff.cobertura_requerida AS cobertura_requerida_db,
+        ff.cobertura_estado AS cobertura_estado_db,
         COALESCE(asignadas.asignados_db, 0)::numeric AS asignados_db,
         ff.activo
       FROM focalizacion_final ff
@@ -577,6 +614,8 @@ export const getCoberturaSedeModalidadDetalle = async (
         ff.cupos_aprobados,
         ff.categoria_cobertura,
         ff.clave_sede_modalidad,
+        ff.cobertura_requerida AS cobertura_requerida_db,
+        ff.cobertura_estado AS cobertura_estado_db,
         COALESCE(asignadas.asignados_db, 0)::numeric AS asignados_db,
         ff.activo
       FROM focalizacion_final ff

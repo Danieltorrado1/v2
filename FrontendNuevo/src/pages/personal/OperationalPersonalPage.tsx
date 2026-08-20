@@ -25,6 +25,7 @@ import type { CatalogoItem, Contrato, Empresa } from "../../types/configuracion.
 import type { VinculacionEstado, VinculacionExpedienteApi } from "../../types/personas.types";
 import type { ContractPersonalListResponse } from "../../types/vinculaciones.types";
 import PersonalMasterDrawer from "./PersonalMasterDrawer";
+import OperationalImportModal from "./OperationalImportModal";
 import "./OperationalPersonalPage.css";
 
 const DEFAULT_PAGE_SIZE = 50;
@@ -93,6 +94,8 @@ export default function OperationalPersonalPage() {
   ]);
   const canReadPersonal = permissions.includes("vinculaciones.read");
   const canCreateVinculacion = permissions.includes("vinculaciones.create");
+  const canImportPersonal = permissions.includes("importaciones.upload") && permissions.includes("importaciones.read");
+  const canConfirmImport = permissions.includes("importaciones.confirm");
 
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
@@ -117,8 +120,11 @@ export default function OperationalPersonalPage() {
   const [selectedExpediente, setSelectedExpediente] = useState<VinculacionExpedienteApi | null>(null);
   const [selectedLoading, setSelectedLoading] = useState(false);
   const [selectedError, setSelectedError] = useState("");
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const searchValue = search.trim();
+  const empresaSeleccionada = empresas.find((empresa) => empresa.id === empresaId) ?? null;
+  const contratoSeleccionado = contratos.find((contrato) => contrato.id === contratoId) ?? null;
 
   useEffect(() => {
     if (!canReadContext) {
@@ -552,9 +558,8 @@ export default function OperationalPersonalPage() {
             <button
               type="button"
               className="op-button secondary"
-              disabled
-              title="Proximamente"
-              aria-disabled="true"
+              onClick={() => setShowImportModal(true)}
+              disabled={!contratoId || !canImportPersonal}
             >
               <Upload size={15} />
               Importar
@@ -718,6 +723,17 @@ export default function OperationalPersonalPage() {
           </>
         )}
       </section>
+
+      {showImportModal && contratoId && empresaSeleccionada && contratoSeleccionado && (
+        <OperationalImportModal
+          contratoId={contratoId}
+          empresaNombre={empresaSeleccionada.nombre_empresa}
+          contratoNombre={contratoSeleccionado.numero_contrato}
+          canConfirm={canConfirmImport}
+          onClose={() => setShowImportModal(false)}
+          onImported={() => setRefreshIndex((current) => current + 1)}
+        />
+      )}
 
       {selectedVinculacionId !== null && (
         <div className="op-drawer-layer" onClick={closeDrawer}>

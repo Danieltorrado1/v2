@@ -1,4 +1,4 @@
-import type { PoolClient, QueryResultRow } from 'pg';
+﻿import type { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
 import { AppError } from '../../utils/AppError';
@@ -79,6 +79,7 @@ interface CatalogoSimpleRow extends QueryResultRow {
   es_identificacion_personal?: boolean | null;
   id: string;
   label: string;
+  alcance?: string | null;
   requiere_fecha_expedicion?: boolean | null;
   requiere_fecha_vencimiento?: boolean | null;
 }
@@ -763,6 +764,7 @@ const listCatalogoSimple = async (
       ...(row.codigo_dane ? { codigo_dane: row.codigo_dane } : {}),
       ...(row.departamento_id ? { departamento_id: toNumber(row.departamento_id) } : {}),
       ...(row.activo !== undefined && row.activo !== null ? { activo: row.activo } : {}),
+      ...(row.alcance !== undefined ? { alcance: row.alcance } : {}),
       ...(row.requiere_fecha_expedicion !== undefined
         ? { requiere_fecha_expedicion: row.requiere_fecha_expedicion }
         : {}),
@@ -1788,6 +1790,7 @@ export const listTiposDocumento = async (
   return listCatalogoSimple('tipos_documentos', 'nombre_documento', query, {
     extraSelect: [
       'codigo',
+      'alcance',
       'requiere_fecha_expedicion',
       'requiere_fecha_vencimiento',
       'categoria_documento',

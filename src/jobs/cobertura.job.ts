@@ -67,40 +67,16 @@ export const runCoberturaJobNow = async (
           )::text AS sobrecobertura_total
         FROM focalizacion_final ff
         INNER JOIN contratos c ON c.id = ff.contrato_id
-        LEFT JOIN modalidades m ON m.id = ff.modalidad_id AND COALESCE(m.activo, TRUE) = TRUE
         LEFT JOIN asignadas a ON a.focalizacion_final_id = ff.id::text
         CROSS JOIN LATERAL (
           SELECT
-            CASE
-              WHEN COALESCE(m.codigo_base, '') = 'CAARES' THEN (
-                CASE
-                  WHEN COALESCE(ff.cupos_aprobados, 0) * 4 <= 60 THEN 1
-                  ELSE 1 + CEIL(((COALESCE(ff.cupos_aprobados, 0) * 4) - 60) / 120.0)
-                END
-              )
-              WHEN COALESCE(m.codigo_base, '') = 'CAA' THEN (
-                CASE
-                  WHEN COALESCE(ff.cupos_aprobados, 0) <= 60 THEN 1
-                  ELSE 1 + CEIL((COALESCE(ff.cupos_aprobados, 0) - 60) / 120.0)
-                END
-              )
-              WHEN COALESCE(m.codigo_base, '') = 'RI'
-                OR UPPER(COALESCE(ff.modalidad_final, '')) LIKE '%RESIDENCIA INFANTIL%'
-                OR UPPER(COALESCE(ff.modalidad_final, '')) LIKE '%RI%' THEN (
-                CASE
-                  WHEN COALESCE(ff.cupos_aprobados, 0) <= 100 THEN 0
-                  WHEN COALESCE(ff.cupos_aprobados, 0) <= 300 THEN 1
-                  WHEN COALESCE(ff.cupos_aprobados, 0) <= 500 THEN 2
-                  WHEN COALESCE(ff.cupos_aprobados, 0) <= 800 THEN 3
-                  ELSE 4
-                END
-              )
-              ELSE 0
-            END AS manipuladores_requeridos
+            ff.cobertura_requerida AS manipuladores_requeridos
         ) required
         WHERE COALESCE(ff.activo, TRUE) = TRUE
           AND COALESCE(c.aplica_cobertura, FALSE) = TRUE
           AND COALESCE(c.activo, TRUE) = TRUE
+          AND COALESCE(ff.cobertura_estado, 'OK') <> 'SIN_REGLA_COBERTURA'
+          AND ff.cobertura_requerida IS NOT NULL
       `
     );
 

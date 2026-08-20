@@ -373,7 +373,11 @@ const getNotificationTargets = async (
 const deriveModuloFromTipoAlerta = (tipoAlerta: TipoAlerta): string => {
   if (tipoAlerta.startsWith('DOCUMENTO_')) return 'DOCUMENTOS';
   if (tipoAlerta.startsWith('CONTRATO_') || tipoAlerta.startsWith('VINCULACION_')) return 'VINCULACIONES';
-  if (tipoAlerta.startsWith('COBERTURA') || tipoAlerta === 'SOBRECOBERTURA') return 'COBERTURA';
+  if (
+    tipoAlerta.startsWith('COBERTURA') ||
+    tipoAlerta === 'SOBRECOBERTURA' ||
+    tipoAlerta.startsWith('FOCALIZACION_')
+  ) return 'COBERTURA';
   if (tipoAlerta.startsWith('NOMINA_')) return 'NOMINA';
   if (tipoAlerta.startsWith('PLAN_SST_')) return 'SST';
   return 'SISTEMA';
@@ -688,6 +692,71 @@ export const generateAlertas = async (
               'PLAN_SST_VENCIDO',
               'PLAN_SST_POR_VENCER'
             ]
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const createSystemAlertFromCandidate = async (
+  candidate: GeneratedAlertCandidate,
+  actorUserId: string,
+  auditMeta?: AuditRequestMeta,
+  explicitUserIds?: string[]
+): Promise<{ alertId: string | null; created: boolean; notificationsCreated: number }> => {
+  const client = await dbPool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const duplicate = await ensureNoDuplicateActiveAlert(client, candidate);
+    if (duplicate) {
+      await client.query('COMMIT');
+      return {
+        alertId: null,
+        created: false,
+        notificationsCreated: 0
+      };
+    }
+
+    const notificationTargets = await getNotificationTargets(client, explicitUserIds);
+    const alertId = await createAlertFromCandidate(client, candidate, actorUserId);
+    const createdAlert = await getAlertaById(alertId);
+
+    if (!createdAlert) {
+      throw new AppError('Created alert could not be loaded', 500, 'ALERTA_LOAD_FAILED');
+    }
+
+    await recordAlertAudit(client, {
+      accion: 'CREATE',
+      actorUserId,
+      after: createdAlert,
+      alertId,
+      auditMeta,
+      descripcion: 'Generacion de alerta del sistema'
+    });
+
+    let notificationsCreated = 0;
+    for (const usuarioId of notificationTargets) {
+      const created = await ensureNotificationForUser(client, {
+        alertId,
+        candidate,
+        usuarioId
+      });
+
+      if (created) {
+        notificationsCreated += 1;
+      }
+    }
+
+    await client.query('COMMIT');
+    return {
+      alertId,
+      created: true,
+      notificationsCreated
     };
   } catch (error) {
     await client.query('ROLLBACK');

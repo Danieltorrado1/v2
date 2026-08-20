@@ -13,6 +13,7 @@ interface VinculacionLookupRow extends QueryResultRow {
   contrato_id: string;
   id: string;
   persona_id: string;
+  tipo_vinculacion_id: string | null;
 }
 
 interface TipoDocumentoRow extends QueryResultRow {
@@ -25,6 +26,7 @@ export interface VinculacionLookup {
   contrato_id: string;
   id: string;
   persona_id: string;
+  tipo_vinculacion_id: string | null;
 }
 
 export interface TipoDocumentoLookup {
@@ -92,7 +94,8 @@ export const ensureVinculacionExists = async (
         id::text AS id,
         persona_id::text AS persona_id,
         contrato_id::text AS contrato_id,
-        contrato_cargo_id::text AS contrato_cargo_id
+        contrato_cargo_id::text AS contrato_cargo_id,
+        tipo_vinculacion_id::text AS tipo_vinculacion_id
       FROM vinculaciones
       WHERE id::text = $1
       LIMIT 1

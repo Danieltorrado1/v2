@@ -12,6 +12,11 @@ import {
 import { AppError } from '../../utils/AppError';
 import { createDocumentSignedUrl, uploadDocumentToStorage } from './documentos.storage';
 import {
+  buildContextualVinculacionChecklist,
+  type ContextualChecklistItem,
+  type ContextualVinculacionChecklist
+} from './documentos.checklist.service';
+import {
   normalizeRequirementName,
   resolveDocumentCodeByRequirementName
 } from './documentos.equivalencias';
@@ -145,27 +150,7 @@ export interface DocumentoDownloadInfo {
   nombre_original: string;
 }
 
-export interface ChecklistItem {
-  codigo: string | null;
-  documento_id: number | null;
-  estado: 'CARGADO' | 'FALTANTE' | 'VENCIDO';
-  fecha_vencimiento: string | null;
-  fuente_documento: 'PERSONA' | 'VINCULACION' | null;
-  nombre_requisito: string;
-  observacion: string | null;
-  obligatorio: boolean;
-  origen: 'GENERAL' | 'CARGO';
-  requisito_id: number;
-  tipo_documento_id: number | null;
-  tipo_documento_nombre: string | null;
-  tipo_requisito: string | null;
-}
-
-interface TipoDocumentoChecklistRow extends QueryResultRow {
-  codigo: string;
-  id: string;
-  nombre_documento: string | null;
-}
+export interface ChecklistItem extends ContextualChecklistItem {}
 
 export interface PersonaDocumentoSummaryItem {
   es_vigente: boolean;
@@ -178,18 +163,7 @@ export interface PersonaDocumentoSummaryItem {
   version: number;
 }
 
-export interface VinculacionChecklist {
-  cargados: number;
-  contrato_cargo_id: number;
-  contrato_id: number;
-  cumplimiento_porcentaje: number;
-  faltantes: number;
-  persona_id: number;
-  requisitos: ChecklistItem[];
-  total_requisitos: number;
-  vinculacion_id: number;
-  vencidos: number;
-}
+export interface VinculacionChecklist extends ContextualVinculacionChecklist {}
 
 const toDateString = (value: Date | string | null): string | null => {
   if (!value) {
@@ -1393,226 +1367,7 @@ export const getVinculacionChecklist = async (
     audit?: boolean;
   }
 ): Promise<VinculacionChecklist> => {
-  await assertTenantAccessForVinculacionId(tenant, vinculacionId);
-  const vinculacion = await ensureVinculacionExists(vinculacionId);
-
-  const [requirementsResult, tiposDocumentosResult, vinculacionDocumentsResult, personaDocumentsResult] =
-    await Promise.all([
-      dbQuery<ChecklistRequirementBaseRow>(
-        `
-          SELECT
-            crg.id::text AS id,
-            crg.tipo_requisito,
-            crg.nombre_requisito,
-            crg.descripcion,
-            crg.obligatorio,
-            crg.activo,
-            'GENERAL'::text AS origen
-          FROM contrato_requisitos_generales crg
-          WHERE crg.contrato_id::text = $1
-            AND crg.activo = TRUE
-
-          UNION ALL
-
-          SELECT
-            ccr.id::text AS id,
-            ccr.tipo_requisito,
-            ccr.nombre_requisito,
-            ccr.descripcion,
-            ccr.obligatorio,
-            ccr.activo,
-            'CARGO'::text AS origen
-          FROM contrato_cargo_requisitos ccr
-          WHERE ccr.contrato_cargo_id::text = $2
-            AND ccr.activo = TRUE
-        `,
-        [vinculacion.contrato_id, vinculacion.contrato_cargo_id]
-      ),
-      dbQuery<TipoDocumentoChecklistRow>(
-        `
-          SELECT
-            id::text AS id,
-            codigo,
-            nombre_documento
-          FROM tipos_documentos
-        `
-      ),
-      dbQuery<ChecklistLoadedRow>(
-        `
-          SELECT
-            dv.id::text AS id,
-            dv.tipo_documento_id::text AS tipo_documento_id,
-            td.nombre_documento AS tipo_documento_nombre,
-            dv.nombre_original,
-            dv.fecha_vencimiento,
-            dv.activo
-          FROM documentos_vinculacion dv
-          INNER JOIN tipos_documentos td ON td.id = dv.tipo_documento_id
-          WHERE dv.vinculacion_id::text = $1
-            AND dv.activo = TRUE
-          ORDER BY dv.fecha_carga DESC, dv.id DESC
-        `,
-        [vinculacionId]
-      ),
-      dbQuery<ChecklistLoadedRow>(
-        `
-          SELECT
-            dp.id::text AS id,
-            dp.tipo_documento_id::text AS tipo_documento_id,
-            td.nombre_documento AS tipo_documento_nombre,
-            dp.nombre_original,
-            dp.fecha_vencimiento,
-            dp.activo
-          FROM documentos_persona dp
-          INNER JOIN tipos_documentos td ON td.id = dp.tipo_documento_id
-          WHERE dp.persona_id::text = $1
-            AND dp.activo = TRUE
-            AND dp.es_vigente = TRUE
-          ORDER BY dp.fecha_carga DESC, dp.version DESC, dp.id DESC
-        `,
-        [vinculacion.persona_id]
-      )
-    ]);
-
-  const tipoDocumentoIndex = new Map<string, { codigo: string; id: number; nombre_documento: string | null }>();
-
-  for (const tipoDocumento of tiposDocumentosResult.rows) {
-    const mapped = {
-      codigo: tipoDocumento.codigo,
-      id: toNumber(tipoDocumento.id),
-      nombre_documento: tipoDocumento.nombre_documento
-    };
-
-    tipoDocumentoIndex.set(normalizeExactMatchKey(tipoDocumento.codigo), mapped);
-
-    if (tipoDocumento.nombre_documento) {
-      tipoDocumentoIndex.set(normalizeExactMatchKey(tipoDocumento.nombre_documento), mapped);
-    }
-  }
-
-  const vinculacionDocumentIndex = new Map<number, ChecklistLoadedRow>();
-  for (const document of vinculacionDocumentsResult.rows) {
-    const tipoDocumentoId = toNumber(document.tipo_documento_id);
-    if (!vinculacionDocumentIndex.has(tipoDocumentoId)) {
-      vinculacionDocumentIndex.set(tipoDocumentoId, document);
-    }
-  }
-
-  const personaDocumentIndex = new Map<number, ChecklistLoadedRow>();
-  for (const document of personaDocumentsResult.rows) {
-    const tipoDocumentoId = toNumber(document.tipo_documento_id);
-    if (!personaDocumentIndex.has(tipoDocumentoId)) {
-      personaDocumentIndex.set(tipoDocumentoId, document);
-    }
-  }
-
-  const today = new Date().toISOString().slice(0, 10);
-  const requisitos = requirementsResult.rows.map((requirement) => {
-    const requirementKey = normalizeExactMatchKey(requirement.nombre_requisito);
-    const tipoDocumentoMatch = tipoDocumentoIndex.get(requirementKey) ?? null;
-    const equivalenceCode = tipoDocumentoMatch ? null : resolveDocumentCodeByRequirementName(requirement.nombre_requisito);
-    const equivalenceMatch = equivalenceCode
-      ? tiposDocumentosResult.rows.find(
-          (tipoDocumento) => normalizeExactMatchKey(tipoDocumento.codigo) === normalizeExactMatchKey(equivalenceCode)
-        ) ?? null
-      : null;
-    const resolvedTipoDocumento = tipoDocumentoMatch ?? (equivalenceMatch
-      ? {
-          codigo: equivalenceMatch.codigo,
-          id: toNumber(equivalenceMatch.id),
-          nombre_documento: equivalenceMatch.nombre_documento
-        }
-      : null);
-    const tipoDocumentoId = resolvedTipoDocumento?.id ?? null;
-    const tipoDocumentoNombre = resolvedTipoDocumento?.nombre_documento ?? null;
-    const codigo = resolvedTipoDocumento?.codigo ?? null;
-    const documentoVinculacion = tipoDocumentoId !== null ? vinculacionDocumentIndex.get(tipoDocumentoId) ?? null : null;
-    const documentoPersona = tipoDocumentoId !== null ? personaDocumentIndex.get(tipoDocumentoId) ?? null : null;
-    const documento = documentoVinculacion ?? documentoPersona;
-    const fuenteDocumento = documentoVinculacion ? 'VINCULACION' : documentoPersona ? 'PERSONA' : null;
-    const fechaVencimiento = documento ? toDateString(documento.fecha_vencimiento) : null;
-    let estado: 'CARGADO' | 'FALTANTE' | 'VENCIDO' = 'FALTANTE';
-    let observacion: string | null = null;
-
-    if (!resolvedTipoDocumento) {
-      observacion = equivalenceCode
-        ? 'Equivalencia documental definida pero no existe en tipos_documentos'
-        : 'Requisito no asociado a tipos_documentos';
-
-      if (env.NODE_ENV === 'development') {
-        console.debug('Checklist requirement not resolved', {
-          equivalenceCode,
-          nombre_requisito: requirement.nombre_requisito
-        });
-      }
-    } else if (documento) {
-      estado = fechaVencimiento !== null && fechaVencimiento < today ? 'VENCIDO' : 'CARGADO';
-    } else if (env.NODE_ENV === 'development' && equivalenceCode) {
-      console.debug('Checklist requirement resolved via equivalence', {
-        equivalenceCode,
-        nombre_requisito: requirement.nombre_requisito
-      });
-    }
-
-    return {
-      codigo,
-      documento_id: documento ? toNumber(documento.id) : null,
-      estado,
-      fecha_vencimiento: fechaVencimiento,
-      fuente_documento: fuenteDocumento,
-      nombre_requisito: requirement.nombre_requisito,
-      observacion,
-      obligatorio: requirement.obligatorio,
-      origen: requirement.origen,
-      requisito_id: toNumber(requirement.id),
-      tipo_documento_id: tipoDocumentoId,
-      tipo_documento_nombre: tipoDocumentoNombre,
-      tipo_requisito: requirement.tipo_requisito
-    } satisfies ChecklistItem;
-  });
-
-  const totalRequisitos = requisitos.length;
-  const cargados = requisitos.filter((item) => item.estado === 'CARGADO').length;
-  const vencidos = requisitos.filter((item) => item.estado === 'VENCIDO').length;
-  const faltantes = requisitos.filter((item) => item.estado === 'FALTANTE').length;
-  const cumplimientoPorcentaje =
-    totalRequisitos === 0 ? 0 : Number(((cargados / totalRequisitos) * 100).toFixed(2));
-
-  if (options?.audit !== false) {
-    try {
-      await registerAuditEntry({
-        accion: 'CONSULTA_CHECKLIST',
-        after: {
-          cargados,
-          cumplimiento_porcentaje: cumplimientoPorcentaje,
-          faltantes,
-          total_requisitos: totalRequisitos,
-          vencidos,
-          vinculacionId
-        },
-        descripcion: 'Consulta de checklist documental de vinculacion',
-        registro_id: randomUUID(),
-        tabla: 'documentos_vinculacion_checklist',
-        usuario_id: null
-      });
-    } catch (error) {
-      console.error('Failed to audit checklist consultation', error);
-    }
-  }
-
-  return {
-    vinculacion_id: toNumber(vinculacionId),
-    persona_id: toNumber(vinculacion.persona_id),
-    contrato_id: toNumber(vinculacion.contrato_id),
-    contrato_cargo_id: toNumber(vinculacion.contrato_cargo_id),
-    total_requisitos: totalRequisitos,
-    cargados,
-    faltantes,
-    vencidos,
-    cumplimiento_porcentaje: cumplimientoPorcentaje,
-    requisitos
-  };
+  return buildContextualVinculacionChecklist(vinculacionId, tenant, options);
 };
-
 
 

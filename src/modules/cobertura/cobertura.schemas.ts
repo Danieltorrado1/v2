@@ -54,7 +54,8 @@ export const estadoCoberturaSchema = z.enum([
   'NO_REQUIERE',
   'FALTANTE',
   'COMPLETA',
-  'SOBRECOBERTURA'
+  'SOBRECOBERTURA',
+  'SIN_REGLA_COBERTURA'
 ]);
 
 export const contratoIdParamSchema = z.object({

@@ -1,0 +1,217 @@
+﻿.op-import-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, #02131d 65%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.op-import-modal {
+  display: flex;
+  max-height: calc(100vh - 48px);
+  width: min(1320px, 100%);
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+}
+
+.op-import-header,
+.op-import-actions-bar,
+.op-import-toolbar,
+.op-import-pagination,
+.op-import-toolbar-actions,
+.op-import-filters,
+.op-import-summary-grid,
+.op-import-steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.op-import-header,
+.op-import-toolbar,
+.op-import-pagination {
+  justify-content: space-between;
+}
+
+.op-import-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.op-import-header p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+}
+
+.op-import-steps {
+  flex-wrap: wrap;
+}
+
+.op-import-steps span {
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.op-import-steps span.is-active {
+  border-color: color-mix(in srgb, var(--color-primary) 50%, var(--border-color));
+  background: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  color: var(--text-primary);
+}
+
+.op-import-file-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.op-import-file-picker input {
+  display: none;
+}
+
+.op-import-alert,
+.op-import-empty-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.op-import-alert.error {
+  background: color-mix(in srgb, #f87171 12%, var(--bg-card));
+  color: #7f1d1d;
+}
+
+.op-import-alert.success {
+  background: color-mix(in srgb, #34d399 12%, var(--bg-card));
+  color: #065f46;
+}
+
+.op-import-empty-card {
+  border: 1px dashed var(--border-color);
+  color: var(--text-secondary);
+}
+
+.op-import-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.op-import-summary-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--bg-input);
+}
+
+.op-import-summary-grid strong {
+  font-size: 1.1rem;
+}
+
+.op-import-summary-grid span {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.op-import-filter {
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.op-import-filter.is-active {
+  border-color: var(--color-primary);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+.op-import-table-wrap {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+}
+
+.op-import-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.op-import-table th,
+.op-import-table td {
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color) 72%, transparent);
+  padding: 10px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.op-import-empty,
+.op-import-mono,
+.op-import-error-line {
+  color: var(--text-secondary);
+}
+
+.op-import-mono {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+}
+
+.op-import-error-line {
+  margin-top: 4px;
+  font-size: 0.78rem;
+}
+
+.op-import-badge {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  background: color-mix(in srgb, var(--bg-input) 82%, transparent);
+}
+
+.is-spinning {
+  animation: op-import-spin 1s linear infinite;
+}
+
+@keyframes op-import-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1024px) {
+  .op-import-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .op-import-toolbar,
+  .op-import-actions-bar,
+  .op-import-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+

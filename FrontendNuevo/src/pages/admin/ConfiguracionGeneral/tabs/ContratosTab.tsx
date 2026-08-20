@@ -17,7 +17,7 @@ import { ContratosDetailPanel } from './ContratosDetailPanel';
 import { formatDate, getErrorMessage, hasAnyPermission, mapKnownError, toNullableText } from './adminTabUtils';
 
 type EstadoFiltro = 'all' | 'active' | 'inactive';
-type DetailTab = 'resumen' | 'expediente' | 'checklist' | 'eventos' | 'excepciones' | 'alertas';
+type DetailTab = 'resumen' | 'expediente' | 'requisitos' | 'checklist' | 'eventos' | 'excepciones' | 'alertas';
 type ModalState = { mode: 'create' } | { mode: 'edit'; contrato: Contrato } | null;
 type ContratoForm = {
   empresa_id: string;
