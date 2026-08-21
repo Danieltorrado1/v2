@@ -1,0 +1,596 @@
+{
+  "total_filas_revisar": 50,
+  "filas_retiro": [
+    346,
+    425,
+    430,
+    432,
+    433,
+    434,
+    436,
+    438,
+    442,
+    443,
+    445,
+    446,
+    451,
+    453,
+    456,
+    493,
+    509,
+    521
+  ],
+  "people": [
+    {
+      "documento": "1006779606",
+      "tipo_documento": "CEDULA",
+      "persona_id": "18",
+      "nombre_bd": "KELLY HASBLEIDY TELLEZ GONZALEZ",
+      "fecha_nacimiento": "2000-01-15T05:00:00.000Z",
+      "vinculacion_id": "19",
+      "contrato_id": "18",
+      "fecha_inicio": "2026-04-15T05:00:00.000Z",
+      "fecha_fin": null,
+      "estado_vinculacion": "ACTIVA",
+      "tipo_vinculacion": "OL",
+      "nombre_cargo": "NO CONTRACTUAL"
+    },
+    {
+      "documento": "1122117236",
+      "tipo_documento": "CEDULA",
+      "persona_id": "47",
+      "nombre_bd": "KAROL TATIANA SERRATO ALARCON",
+      "fecha_nacimiento": "2004-06-29T05:00:00.000Z",
+      "vinculacion_id": "48",
+      "contrato_id": "18",
+      "fecha_inicio": "2026-04-15T05:00:00.000Z",
+      "fecha_fin": null,
+      "estado_vinculacion": "ACTIVA",
+      "tipo_vinculacion": "OL",
+      "nombre_cargo": "NO CONTRACTUAL"
+    },
+    {
+      "documento": "1122135435",
+      "tipo_documento": "CEDULA",
+      "persona_id": "14",
+      "nombre_bd": "HEIDI VANESSA BENAVIDES QUIGUA",
+      "fecha_nacimiento": "1994-06-02T05:00:00.000Z",
+      "vinculacion_id": "15",
+      "contrato_id": "18",
+      "fecha_inicio": "2026-04-15T05:00:00.000Z",
+      "fecha_fin": null,
+      "estado_vinculacion": "ACTIVA",
+      "tipo_vinculacion": "OL",
+      "nombre_cargo": "NO CONTRACTUAL"
+    },
+    {
+      "documento": "1122140014",
+      "tipo_documento": "CEDULA",
+      "persona_id": "11",
+      "nombre_bd": "ERIKA ANDREA BOHORQUEZ TRIANA",
+      "fecha_nacimiento": "1996-07-30T05:00:00.000Z",
+      "vinculacion_id": "12",
+      "contrato_id": "18",
+      "fecha_inicio": "2026-04-15T05:00:00.000Z",
+      "fecha_fin": null,
+      "estado_vinculacion": "ACTIVA",
+      "tipo_vinculacion": "OL",
+      "nombre_cargo": "NO CONTRACTUAL"
+    },
+    {
+      "documento": "28686405",
+      "tipo_documento": "CEDULA",
+      "persona_id": "100",
+      "nombre_bd": "ZAIDA MARITZA RAYO PRADA",
+      "fecha_nacimiento": "1969-07-24T05:00:00.000Z",
+      "vinculacion_id": "101",
+      "contrato_id": "18",
+      "fecha_inicio": "2026-04-15T05:00:00.000Z",
+      "fecha_fin": null,
+      "estado_vinculacion": "ACTIVA",
+      "tipo_vinculacion": "OL",
+      "nombre_cargo": "NO CONTRACTUAL"
+    },
+    {
+      "documento": "40430665",
+      "tipo_documento": "CEDULA",
+      "persona_id": "51",
+      "nombre_bd": "LUZ MYRIAN SACRISTAN CINFUENTES",
+      "fecha_nacimiento": "1975-05-05T05:00:00.000Z",
+      "vinculacion_id": "52",
+      "contrato_id": "18",
+      "fecha_inicio": "2026-04-15T05:00:00.000Z",
+      "fecha_fin": null,
+      "estado_vinculacion": "ACTIVA",
+      "tipo_vinculacion": "OL",
+      "nombre_cargo": "NO CONTRACTUAL"
+    },
+    {
+      "documento": "8780626",
+      "tipo_documento": "CEDULA",
+      "persona_id": "230",
+      "nombre_bd": "JUAN PABLO TRUJILLO BAENA",
+      "fecha_nacimiento": null,
+      "vinculacion_id": "236",
+      "contrato_id": "24",
+      "fecha_inicio": "2026-07-29T05:00:00.000Z",
+      "fecha_fin": null,
+      "estado_vinculacion": "ACTIVA",
+      "tipo_vinculacion": "OL",
+      "nombre_cargo": "REPRESENTANTE LEGAL"
+    }
+  ],
+  "document_types": [
+    {
+      "id": "1",
+      "codigo": "CEDULA",
+      "nombre_documento": "Cedula de ciudadania",
+      "es_identificacion_personal": true
+    },
+    {
+      "id": "2",
+      "codigo": "HV",
+      "nombre_documento": "Hoja de vida",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "3",
+      "codigo": "SISBEN",
+      "nombre_documento": "Sisben",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "4",
+      "codigo": "RESIDENCIA",
+      "nombre_documento": "Certificado de Residencia-Alcaldia",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "5",
+      "codigo": "CURSO MAN DE ALIMENTOS",
+      "nombre_documento": "Curso de Manipulación de alimentos",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "6",
+      "codigo": "EXAMENES MAN DE ALIMENTOS",
+      "nombre_documento": "Examenes de Manipulación de alimentos",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "8",
+      "codigo": "INGRESO",
+      "nombre_documento": "Examen de salud ocupacional",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "9",
+      "codigo": "CERT_BANCARIA",
+      "nombre_documento": "Certificación bancaria",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "10",
+      "codigo": "DIPLOMA_BACHILLER",
+      "nombre_documento": "Diploma de Bachiller",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "11",
+      "codigo": "ACTA_BACHILLER",
+      "nombre_documento": "Acta de Bachiller",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "12",
+      "codigo": "DIPLOMA_TECNICO",
+      "nombre_documento": "Diploma Técnico",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "13",
+      "codigo": "ACTA_TECNICO",
+      "nombre_documento": "Acta Técnica",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "14",
+      "codigo": "DIPLOMA_TECNOLOGO",
+      "nombre_documento": "Diploma Tecnólogo",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "15",
+      "codigo": "ACTA_TECNOLOGO",
+      "nombre_documento": "Acta de Tecnólogo",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "16",
+      "codigo": "DIPLOMA_PROFESIONAL",
+      "nombre_documento": "Diploma Profesional",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "17",
+      "codigo": "ACTA_PROFESIONAL",
+      "nombre_documento": "Acta Profesional",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "18",
+      "codigo": "DIPLOMA_ESPECIALIZACION",
+      "nombre_documento": "Diploma de Especialización",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "19",
+      "codigo": "ACTA_ESPECIALIZACION",
+      "nombre_documento": "Acta de Especialización",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "20",
+      "codigo": "DIPLOMA_MAESTRIA",
+      "nombre_documento": "Diploma de Maestría",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "21",
+      "codigo": "ACTA_MAESTRIA",
+      "nombre_documento": "Acta de Maestría",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "22",
+      "codigo": "TARJETA_PROFESIONAL",
+      "nombre_documento": "Tarjeta Profesional",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "23",
+      "codigo": "ANTECEDENTES_PROFESIONALES",
+      "nombre_documento": "Antecedentes Profesionales",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "24",
+      "codigo": "CERT_LABORAL",
+      "nombre_documento": "Certificación laboral",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "25",
+      "codigo": "ANT_PROCURADURIA",
+      "nombre_documento": "Antecedente Procuraduría",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "26",
+      "codigo": "ANT_CONTRALORIA",
+      "nombre_documento": "Antecedente Contraloría",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "27",
+      "codigo": "ANT_JUDICIALES",
+      "nombre_documento": "Antecedentes Judiciales",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "28",
+      "codigo": "ANT_MEDIDAS_CORRECTIVAS",
+      "nombre_documento": "Antecedente Medidas Correctivas",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "29",
+      "codigo": "ANT_REDAM",
+      "nombre_documento": "Antecedente REDAM",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "30",
+      "codigo": "ANT_INHABILIDADES",
+      "nombre_documento": "Certificado de Inhabilidades",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "31",
+      "codigo": "AUT_TRATAMIENTO_DATOS",
+      "nombre_documento": "Autorización Tratamiento de Datos Personales",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "32",
+      "codigo": "AUT_CONSULTA_DELITOS_SEXUALES",
+      "nombre_documento": "Autorización Consulta de Delitos Sexuales",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "33",
+      "codigo": "CONTRATO",
+      "nombre_documento": "Contrato",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "34",
+      "codigo": "AFILIACION_EPS",
+      "nombre_documento": "Afiliación EPS",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "35",
+      "codigo": "AFILIACION_ARL",
+      "nombre_documento": "Afiliación ARL",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "36",
+      "codigo": "AFILIACION_PENSION",
+      "nombre_documento": "Afiliación Pensión",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "37",
+      "codigo": "AFILIACION_CAJA_COMPENSACION",
+      "nombre_documento": "Afiliación Caja de Compensación",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "38",
+      "codigo": "INDUCCION",
+      "nombre_documento": "Formato de Inducción",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "39",
+      "codigo": "DOTACION",
+      "nombre_documento": "Acta de Entrega de Dotación",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "41",
+      "codigo": "DESPRENDIBLE_PAGO",
+      "nombre_documento": "Desprendible de pago",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "42",
+      "codigo": "CUENTA_COBRO_OPS",
+      "nombre_documento": "Cuenta de cobro OPS",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "43",
+      "codigo": "LIQUIDACION_LABORAL",
+      "nombre_documento": "Liquidación laboral",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "44",
+      "codigo": "DESPRENDIBLE_CORREGIDO",
+      "nombre_documento": "Desprendible de pago corregido",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "45",
+      "codigo": "EXAMEN_SALUD_OCUPACIONAL",
+      "nombre_documento": "Exámenes de Salud Ocupacional",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "46",
+      "codigo": "TITULO_PROFESIONAL",
+      "nombre_documento": "Título Profesional",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "47",
+      "codigo": "AUT_DATOS_PERSONALES",
+      "nombre_documento": "Autorización de Datos Personales",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "48",
+      "codigo": "CARNET_VACUNACION",
+      "nombre_documento": "Carnet de Vacunación",
+      "es_identificacion_personal": false
+    },
+    {
+      "id": "49",
+      "codigo": "AUT_INHABILIDADES",
+      "nombre_documento": "Autorización de Inhabilidades",
+      "es_identificacion_personal": false
+    }
+  ],
+  "vinc_types": [
+    {
+      "id": "1",
+      "codigo": "TF",
+      "nombre_vinculacion": "CONTRATO A TÉRMINO FIJO"
+    },
+    {
+      "id": "2",
+      "codigo": "OL",
+      "nombre_vinculacion": "CONTRATO OBRA O LABOR"
+    },
+    {
+      "id": "3",
+      "codigo": "TI",
+      "nombre_vinculacion": "CONTRATO A TÉRMINO INDEFINIDO"
+    },
+    {
+      "id": "4",
+      "codigo": "OPS",
+      "nombre_vinculacion": "PRESTACIÓN DE SERVICIOS PROFESIONALES"
+    },
+    {
+      "id": "5",
+      "codigo": "AS",
+      "nombre_vinculacion": "APRENDIZ SENA"
+    },
+    {
+      "id": "6",
+      "codigo": "PR",
+      "nombre_vinculacion": "PRACTICANTE"
+    }
+  ],
+  "cargos": [
+    {
+      "id": "33",
+      "nombre_cargo": "MANIPULADOR(A) DE ALIMENTOS",
+      "activo": true
+    },
+    {
+      "id": "34",
+      "nombre_cargo": "REPRESENTANTE LEGAL",
+      "activo": true
+    },
+    {
+      "id": "37",
+      "nombre_cargo": "OPERARIOS DE BODEGA, TRANSPORTADORES Y AUXILIARES",
+      "activo": true
+    },
+    {
+      "id": "38",
+      "nombre_cargo": "ADMINISTRATIVO",
+      "activo": true
+    }
+  ],
+  "locations": [
+    {
+      "id": "1",
+      "nombre_ubicacion": "BODEGA RI",
+      "activo": true
+    },
+    {
+      "id": "2",
+      "nombre_ubicacion": "BODEGA RP",
+      "activo": true
+    },
+    {
+      "id": "3",
+      "nombre_ubicacion": "BODEGA GRANADA",
+      "activo": true
+    },
+    {
+      "id": "4",
+      "nombre_ubicacion": "AUXILIAR DE RUTA RI",
+      "activo": true
+    },
+    {
+      "id": "5",
+      "nombre_ubicacion": "AUXILIAR DE RUTA RP",
+      "activo": true
+    },
+    {
+      "id": "6",
+      "nombre_ubicacion": "TALENTO HUMANO",
+      "activo": true
+    },
+    {
+      "id": "7",
+      "nombre_ubicacion": "FACTURACION",
+      "activo": true
+    },
+    {
+      "id": "8",
+      "nombre_ubicacion": "SUMINISTRO",
+      "activo": true
+    },
+    {
+      "id": "9",
+      "nombre_ubicacion": "CALIDAD",
+      "activo": true
+    },
+    {
+      "id": "10",
+      "nombre_ubicacion": "GESTION DE ZONA",
+      "activo": true
+    },
+    {
+      "id": "11",
+      "nombre_ubicacion": "AUXILIAR GESTION DE ZONA",
+      "activo": true
+    }
+  ],
+  "profiles": [
+    {
+      "codigo_perfil": "MANIPULADORAS_ALIMENTOS",
+      "nombre_perfil": "MANIPULADORAS DE ALIMENTOS",
+      "cantidad_requerida": 100,
+      "contrato_cargo_equivalente_id": "33",
+      "cargo_equivalente": "MANIPULADOR(A) DE ALIMENTOS"
+    },
+    {
+      "codigo_perfil": "OPER_BOD_TRANS_AUX",
+      "nombre_perfil": "OPERARIOS DE BODEGA, TRANSPORTADORES Y AUXILIARES",
+      "cantidad_requerida": 35,
+      "contrato_cargo_equivalente_id": "37",
+      "cargo_equivalente": "OPERARIOS DE BODEGA, TRANSPORTADORES Y AUXILIARES"
+    },
+    {
+      "codigo_perfil": "AUX_ADMIN",
+      "nombre_perfil": "AUXILIARES ADMINISTRATIVOS",
+      "cantidad_requerida": 10,
+      "contrato_cargo_equivalente_id": "38",
+      "cargo_equivalente": "ADMINISTRATIVO"
+    },
+    {
+      "codigo_perfil": "COORD_ZONA",
+      "nombre_perfil": "COORDINADORES DE ZONA",
+      "cantidad_requerida": 18,
+      "contrato_cargo_equivalente_id": "38",
+      "cargo_equivalente": "ADMINISTRATIVO"
+    },
+    {
+      "codigo_perfil": "COORD_SUMINISTRO",
+      "nombre_perfil": "COORDINADORES DE SUMINISTRO",
+      "cantidad_requerida": 2,
+      "contrato_cargo_equivalente_id": "38",
+      "cargo_equivalente": "ADMINISTRATIVO"
+    },
+    {
+      "codigo_perfil": "SUP_CALIDAD",
+      "nombre_perfil": "SUPERVISORES DE CALIDAD",
+      "cantidad_requerida": 2,
+      "contrato_cargo_equivalente_id": "38",
+      "cargo_equivalente": "ADMINISTRATIVO"
+    }
+  ],
+  "coverage_assignments": [],
+  "labor_assignments": [],
+  "economic_columns": [
+    {
+      "table_name": "nomina_empleados",
+      "column_name": "motivo_caso_especial",
+      "data_type": "text"
+    },
+    {
+      "table_name": "personal_asignaciones_laborales",
+      "column_name": "vigencia_desde",
+      "data_type": "date"
+    },
+    {
+      "table_name": "personal_asignaciones_laborales",
+      "column_name": "vigencia_hasta",
+      "data_type": "date"
+    }
+  ],
+  "bd_before": {
+    "personas": 230,
+    "vinculaciones": 235,
+    "cobertura_asignaciones": 0,
+    "personal_asignaciones_laborales": 0,
+    "personal_presentaciones_licitacion": 0
+  },
+  "bd_after": {
+    "personas": 230,
+    "vinculaciones": 235,
+    "cobertura_asignaciones": 0,
+    "personal_asignaciones_laborales": 0,
+    "personal_presentaciones_licitacion": 0
+  },
+  "escrituras_bd": 0
+}

@@ -1,0 +1,40 @@
+{
+  "revisar_v4": 50,
+  "total_incidencias_v4": 53,
+  "incidencias_adicionales_nombres_faltantes": 2,
+  "total_incidencias_auditadas": 55,
+  "incidencias_resueltas_automaticamente": 2,
+  "resoluciones_automaticas": [
+    {
+      "fila": 690,
+      "campo": "CARGO",
+      "valor": "ADMINISTRATIVO",
+      "evidencia": "COORD_SUMINISTRO -> contrato_cargo_equivalente_id 38"
+    },
+    {
+      "fila": 692,
+      "campo": "CARGO",
+      "valor": "ADMINISTRATIVO",
+      "evidencia": "SUP_CALIDAD -> contrato_cargo_equivalente_id 38"
+    }
+  ],
+  "filas_resueltas_automaticamente": 0,
+  "requieren_usuario": 50,
+  "fechas_retiro_requeridas": 18,
+  "otras_fechas_requeridas": 14,
+  "identidades": 4,
+  "casos_especiales": 4,
+  "ubicaciones": 9,
+  "cargos_pendientes": 0,
+  "catalogos": 4,
+  "categorias": {
+    "LISTA_IMPORTAR_ACTIVA": 656,
+    "LISTA_IMPORTAR_SIN_COBERTURA": 66,
+    "RETIRO_CONFIRMADO": 0,
+    "REVISAR": 50
+  },
+  "duplicadas_entre_categorias": 0,
+  "cobertura_modificada": false,
+  "bd_modificada": false,
+  "excel": "C:\\Users\\human\\Documents\\v2\\reports\\DECISIONES_FINALES_PERSONAL_META26.xlsx"
+}
