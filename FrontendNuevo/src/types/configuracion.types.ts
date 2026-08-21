@@ -368,6 +368,65 @@ export interface ContratoCargo {
   };
 }
 
+export interface ContratoUbicacionLaboral {
+  id: number;
+  contrato_id: number;
+  nombre_ubicacion: string;
+  descripcion: string | null;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContratoPerfilLicitacion {
+  id: number;
+  contrato_id: number;
+  codigo_perfil: string;
+  nombre_perfil: string;
+  cantidad_requerida: number;
+  vigencia_desde: string;
+  vigencia_hasta: string | null;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+  contrato_cargo_equivalente: {
+    id: number | null;
+    nombre_cargo: string | null;
+  };
+}
+
+export interface CreateContratoUbicacionLaboralPayload {
+  nombre_ubicacion: string;
+  descripcion?: string | null;
+  activo?: boolean;
+}
+
+export interface UpdateContratoUbicacionLaboralPayload {
+  nombre_ubicacion?: string;
+  descripcion?: string | null;
+  activo?: boolean;
+}
+
+export interface CreateContratoPerfilLicitacionPayload {
+  codigo_perfil: string;
+  nombre_perfil: string;
+  cantidad_requerida: number;
+  vigencia_desde: string;
+  vigencia_hasta?: string | null;
+  contrato_cargo_equivalente_id?: number | null;
+  activo?: boolean;
+}
+
+export interface UpdateContratoPerfilLicitacionPayload {
+  codigo_perfil?: string;
+  nombre_perfil?: string;
+  cantidad_requerida?: number;
+  vigencia_desde?: string;
+  vigencia_hasta?: string | null;
+  contrato_cargo_equivalente_id?: number | null;
+  activo?: boolean;
+}
+
 export interface CargoFilters {
   activo?: boolean;
   contrato_id?: number;

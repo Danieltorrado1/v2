@@ -197,7 +197,13 @@ const toDateString = (value: Date | string | null): string | null => {
 
   return value.slice(0, 10);
 };
-const normalizeComparableText = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase();
+const normalizeComparableText = (value: string): string =>
+  value
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 
 const buildPagination = (page: number, limit: number, total: number) => ({
   page,
@@ -1805,8 +1811,12 @@ export const listMetodosPago = async (): Promise<Array<{ etiqueta: string; valor
   return METODOS_PAGO.map((value) => ({
     valor: value,
     etiqueta:
-      value === 'ASISTENCIA'
+      value === 'COBERTURA'
+        ? 'Cobertura'
+        : value === 'ASISTENCIA'
         ? 'Asistencia'
+        : value === 'CASO_ESPECIAL'
+          ? 'Caso Especial'
         : value === 'CATEGORIA'
           ? 'Categoria'
           : value === 'OPS_CUENTA_COBRO'

@@ -1,0 +1,2454 @@
+{
+  "archivo": {
+    "path": "data/focalizacion-agosto-2026.xlsx",
+    "sha256": "6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719"
+  },
+  "carga_auditada": {
+    "id": "4",
+    "nombre_archivo": "focalizacion-agosto-2026.xlsx",
+    "archivo_sha256": "6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719",
+    "estado": "PROCESADO",
+    "fecha_importacion": "2026-08-20 22:33:26.803564"
+  },
+  "counts": {
+    "filas_auditadas": 687,
+    "municipio_correcto": 630,
+    "municipio_incorrecto": 57,
+    "institucion_correcta": 687,
+    "institucion_incorrecta": 0,
+    "sede_correcta": 687,
+    "sede_incorrecta": 0,
+    "modalidad_correcta": 687,
+    "modalidad_incorrecta": 0
+  },
+  "municipios_xlsx": [
+    "ACACÍAS",
+    "BARRANCA DE UPÍA",
+    "CABUYARO",
+    "CASTILLA LA NUEVA",
+    "CUMARAL",
+    "EL CALVARIO",
+    "EL CASTILLO",
+    "EL DORADO",
+    "FUENTE DE ORO",
+    "GRANADA",
+    "GUAMAL",
+    "LA MACARENA",
+    "LEJANÍAS",
+    "MAPIRIPÁN",
+    "MESETAS",
+    "PUERTO CONCORDIA",
+    "PUERTO GAITÁN",
+    "PUERTO LLERAS",
+    "PUERTO LOPEZ",
+    "PUERTO LÓPEZ",
+    "PUERTO RICO",
+    "RESTREPO",
+    "SAN CARLOS DE GUAROA",
+    "SAN JUAN DE ARAMA",
+    "SAN JUANITO",
+    "SAN LUIS DE CUBARRAL",
+    "SAN MARTÍN",
+    "URIBE",
+    "VISTAHERMOSA"
+  ],
+  "municipios_bd": [
+    "ACACÍAS",
+    "CABUYARO",
+    "CASTILLA LA NUEVA",
+    "CUMARAL",
+    "EL CALVARIO",
+    "EL CASTILLO",
+    "FUENTE DE ORO",
+    "GRANADA",
+    "GUAMAL",
+    "LA MACARENA",
+    "LEJANÍAS",
+    "MAPIRIPÁN",
+    "MESETAS",
+    "PUERTO CONCORDIA",
+    "PUERTO GAITÁN",
+    "PUERTO LLERAS",
+    "PUERTO LÓPEZ",
+    "PUERTO RICO",
+    "RESTREPO",
+    "SAN CARLOS DE GUAROA",
+    "SAN JUAN DE ARAMA",
+    "SAN JUANITO",
+    "SAN LUIS DE CUBARRAL",
+    "SAN MARTÍN",
+    "URIBE",
+    "VISTAHERMOSA"
+  ],
+  "municipios_desalineados": [
+    {
+      "municipio_xlsx": "BARRANCA DE UPÍA",
+      "municipio_bd": "CUMARAL",
+      "filas_afectadas": 4
+    },
+    {
+      "municipio_xlsx": "EL DORADO",
+      "municipio_bd": "SAN LUIS DE CUBARRAL",
+      "filas_afectadas": 4
+    },
+    {
+      "municipio_xlsx": "PUERTO CONCORDIA",
+      "municipio_bd": "PUERTO LLERAS",
+      "filas_afectadas": 10
+    },
+    {
+      "municipio_xlsx": "URIBE",
+      "municipio_bd": "MESETAS",
+      "filas_afectadas": 39
+    }
+  ],
+  "mismatches": {
+    "MUNICIPIO_INCORRECTO": 57
+  },
+  "repair_preview": [
+    {
+      "tabla": "focalizacion_final",
+      "id": 26,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La fila XLSX 402 indica PUERTO CONCORDIA, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 189,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La fila XLSX 29 indica BARRANCA DE UPÍA, pero la fila final quedo asociada a CUMARAL.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 190,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La fila XLSX 30 indica BARRANCA DE UPÍA, pero la fila final quedo asociada a CUMARAL.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 191,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La fila XLSX 31 indica BARRANCA DE UPÍA, pero la fila final quedo asociada a CUMARAL.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 192,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La fila XLSX 32 indica BARRANCA DE UPÍA, pero la fila final quedo asociada a CUMARAL.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 247,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La fila XLSX 87 indica EL DORADO, pero la fila final quedo asociada a SAN LUIS DE CUBARRAL.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 248,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La fila XLSX 88 indica EL DORADO, pero la fila final quedo asociada a SAN LUIS DE CUBARRAL.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 249,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La fila XLSX 89 indica EL DORADO, pero la fila final quedo asociada a SAN LUIS DE CUBARRAL.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 250,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La fila XLSX 90 indica EL DORADO, pero la fila final quedo asociada a SAN LUIS DE CUBARRAL.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 391,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La fila XLSX 393 indica PUERTO CONCORDIA, pero la fila final quedo asociada a LA MACARENA.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 392,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La fila XLSX 394 indica PUERTO CONCORDIA, pero la fila final quedo asociada a LA MACARENA.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 393,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La fila XLSX 395 indica PUERTO CONCORDIA, pero la fila final quedo asociada a LA MACARENA.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 394,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La fila XLSX 396 indica PUERTO CONCORDIA, pero la fila final quedo asociada a LA MACARENA.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 395,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La fila XLSX 397 indica PUERTO CONCORDIA, pero la fila final quedo asociada a LA MACARENA.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 396,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La fila XLSX 398 indica PUERTO CONCORDIA, pero la fila final quedo asociada a LA MACARENA.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 397,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La fila XLSX 399 indica PUERTO CONCORDIA, pero la fila final quedo asociada a LA MACARENA.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 398,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La fila XLSX 400 indica PUERTO CONCORDIA, pero la fila final quedo asociada a LA MACARENA.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 399,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La fila XLSX 401 indica PUERTO CONCORDIA, pero la fila final quedo asociada a LA MACARENA.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 581,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 583 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 582,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 584 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 583,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 585 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 584,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 586 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 585,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 587 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 586,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 588 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 587,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 589 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 588,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 590 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 589,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 591 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 590,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 592 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 591,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 593 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 592,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 594 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 593,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 595 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 594,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 596 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 595,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 597 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 596,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 598 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 597,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 599 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 598,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 600 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 599,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 601 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 600,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 602 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 601,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 603 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 602,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 604 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 603,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 605 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 604,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 606 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 605,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 607 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 606,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 608 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 607,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 609 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 608,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 610 indica URIBE, pero la fila final quedo asociada a PUERTO LLERAS.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 609,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 611 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 610,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 612 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 611,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 613 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 612,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 614 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 613,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 615 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 614,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 616 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 615,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 617 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 616,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 618 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 617,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 619 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 618,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 620 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_final",
+      "id": 619,
+      "operacion_propuesta": "UPDATE municipio_id, municipio_texto",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La fila XLSX 621 indica URIBE, pero la fila final quedo asociada a PUERTO LÓPEZ.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 194,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 195,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 196,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 197,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 252,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 253,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 254,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 255,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 398,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 399,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 400,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 402,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 404,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 405,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 406,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 407,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 408,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 567,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 593,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 594,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 595,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 596,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 597,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 598,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 599,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 600,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 601,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 602,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 603,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 604,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 605,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 606,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 607,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 608,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 609,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 610,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 611,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 612,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 613,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 614,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 615,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 616,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 617,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 618,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 619,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 620,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 621,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 622,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 623,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 624,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 625,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 626,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 627,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 628,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 629,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 630,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "focalizacion_vigencias",
+      "id": 631,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La vigencia activa alimenta focalizacion_final y debe quedar alineada con la fila oficial del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 9,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La institucion INSTITUCIÓN EDUCATIVA FRANCISCO WALTER fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 24,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La institucion INSTITUCIÓN EDUCATIVA EL DORADO fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 44,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La institucion INSTITUCIÓN EDUCATIVA NUESTRA SENORA DE LA MACARENA fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 45,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La institucion INSTITUCIÓN EDUCATIVA HECTOR IVAN HERNANDEZ fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 63,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La institucion INSTITUCIÓN EDUCATIVA PUERTO IRIS fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 68,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La institucion CENTRO EDUCATIVO TIERRA GRATA fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 69,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La institucion INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 70,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La institucion INSTITUCIÓN EDUCATIVA CHARCO TRECE fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 71,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La institucion INSTITUCIÓN EDUCATIVA MAJESTUOSO ARIARI INEMA fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 72,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La institucion CENTRO EDUCATIVO NUESTRA SENORA DE FATIMA fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "instituciones",
+      "id": 73,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La institucion CENTRO EDUCATIVO PONTON DE RIO NEGRO fue creada/reutilizada bajo municipio incorrecto por priorizar el consecutivo sobre el nombre del XLSX.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 24,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La sede SEDE JORGE ELIECER GAITAN conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 25,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "268|CUMARAL",
+      "valor_correcto": "87|BARRANCA DE UPÍA",
+      "motivo": "La sede SEDE PRINCIPAL FRANCISCO WALTER conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 68,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La sede SEDE PRINCIPAL EL DORADO conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 69,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La sede SEDE PUEBLO SANCHEZ conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 70,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "861|SAN LUIS DE CUBARRAL",
+      "valor_correcto": "304|EL DORADO",
+      "motivo": "La sede SEDE SAN ISIDRO conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 199,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La sede SEDE JHON F KENNEDY conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 200,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La sede SEDE PRINCIPAL NUESTRA SENORA DE LA MACARENA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 202,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La sede SEDE BRISAS DEL GRINGO conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 203,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La sede SEDE CANO LIMON conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 204,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La sede SEDE CENTRAL CANO GRINGO conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 205,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La sede SEDE GIRASOL conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 206,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "477|LA MACARENA",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La sede SEDE LA UNION II conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 348,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "722|PUERTO CONCORDIA",
+      "motivo": "La sede SEDE LA VALLENATA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 371,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE EL TURPIAL conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 372,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE EL CAIRO conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 373,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE PALMERAS conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 374,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE PRINCIPAL HECTOR JARAMILLO DUQUE conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 375,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE LA UNION conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 376,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE LA ISLANDIA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 377,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE LA TIGRERA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 378,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE EL CARIBE conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 379,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE BELLA VISTA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 380,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE VERACRUZ JOSE MARIA BAJO conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 381,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE LA ESPERANZA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 382,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE NUESTRA SENORA DE LA PAZ conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 383,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE PRINCIPAL INTERNADO CHARCO TRECE conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 384,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE BRISAS DEL GUEJAR conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 385,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE ALTO CUNUMIA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 386,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE EL DIAMANTE conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 387,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE LA ARGENTINA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 388,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE INOCENCIO CHINCA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 389,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE MANUELA BELTRAN conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 390,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "728|PUERTO LLERAS",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE PRINCIPAL MAJESTUOSO ARIARI INEMA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 391,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE CAMINO DE EMAUS conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 392,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE EL TURPIAL conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 393,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE LAS LEONAS conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 394,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE PRINCIPAL NUESTRA SENORA DE FATIMA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 395,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE PUEBLO NUEVO conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 396,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE LA COLINA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 397,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE ANTONIA SANTOS conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 398,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE BOCAS DEL GUAYURIBA conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 399,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE EL PORVENIR conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    },
+    {
+      "tabla": "sedes",
+      "id": 400,
+      "operacion_propuesta": "UPDATE municipio_id",
+      "valor_actual": "729|PUERTO LÓPEZ",
+      "valor_correcto": "1054|URIBE",
+      "motivo": "La sede SEDE GUICHIRAL conserva el municipio incorrecto heredado de la misma resolucion defectuosa.",
+      "fuente": "data/focalizacion-agosto-2026.xlsx (6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719)"
+    }
+  ],
+  "trees": {
+    "BARRANCA DE UPIA": [
+      {
+        "municipio_esperado": "BARRANCA DE UPÍA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA FRANCISCO WALTER",
+        "institucion_id": 9,
+        "sede_actual": "SEDE JORGE ELIECER GAITAN",
+        "sede_id": 24,
+        "modalidad": "CAJU-RI",
+        "modalidad_id": 4,
+        "final_id": 189,
+        "focalizacion_final_municipio": "CUMARAL",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 27,
+        "consecutivo": "25022600017402"
+      },
+      {
+        "municipio_esperado": "BARRANCA DE UPÍA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA FRANCISCO WALTER",
+        "institucion_id": 9,
+        "sede_actual": "SEDE JORGE ELIECER GAITAN",
+        "sede_id": 24,
+        "modalidad": "CAA-JU",
+        "modalidad_id": 5,
+        "final_id": 190,
+        "focalizacion_final_municipio": "CUMARAL",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 28,
+        "consecutivo": "25022600017402"
+      },
+      {
+        "municipio_esperado": "BARRANCA DE UPÍA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA FRANCISCO WALTER",
+        "institucion_id": 9,
+        "sede_actual": "SEDE PRINCIPAL FRANCISCO WALTER",
+        "sede_id": 25,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 191,
+        "focalizacion_final_municipio": "CUMARAL",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 29,
+        "consecutivo": "25022600017401"
+      },
+      {
+        "municipio_esperado": "BARRANCA DE UPÍA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA FRANCISCO WALTER",
+        "institucion_id": 9,
+        "sede_actual": "SEDE PRINCIPAL FRANCISCO WALTER",
+        "sede_id": 25,
+        "modalidad": "CAA",
+        "modalidad_id": 1,
+        "final_id": 192,
+        "focalizacion_final_municipio": "CUMARAL",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 30,
+        "consecutivo": "25022600017401"
+      }
+    ],
+    "EL DORADO": [
+      {
+        "municipio_esperado": "EL DORADO",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA EL DORADO",
+        "institucion_id": 24,
+        "sede_actual": "SEDE PRINCIPAL EL DORADO",
+        "sede_id": 68,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 247,
+        "focalizacion_final_municipio": "SAN LUIS DE CUBARRAL",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 85,
+        "consecutivo": "25022300039401"
+      },
+      {
+        "municipio_esperado": "EL DORADO",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA EL DORADO",
+        "institucion_id": 24,
+        "sede_actual": "SEDE PUEBLO SANCHEZ",
+        "sede_id": 69,
+        "modalidad": "CAA",
+        "modalidad_id": 1,
+        "final_id": 248,
+        "focalizacion_final_municipio": "SAN LUIS DE CUBARRAL",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 86,
+        "consecutivo": "25022300039402"
+      },
+      {
+        "municipio_esperado": "EL DORADO",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA EL DORADO",
+        "institucion_id": 24,
+        "sede_actual": "SEDE PUEBLO SANCHEZ",
+        "sede_id": 69,
+        "modalidad": "CAARES",
+        "modalidad_id": 2,
+        "final_id": 249,
+        "focalizacion_final_municipio": "SAN LUIS DE CUBARRAL",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 87,
+        "consecutivo": "25022300039402"
+      },
+      {
+        "municipio_esperado": "EL DORADO",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA EL DORADO",
+        "institucion_id": 24,
+        "sede_actual": "SEDE SAN ISIDRO",
+        "sede_id": 70,
+        "modalidad": "CAA",
+        "modalidad_id": 1,
+        "final_id": 250,
+        "focalizacion_final_municipio": "SAN LUIS DE CUBARRAL",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 88,
+        "consecutivo": "25022300039403"
+      }
+    ],
+    "PUERTO CONCORDIA": [
+      {
+        "municipio_esperado": "PUERTO CONCORDIA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA NUESTRA SENORA DE LA MACARENA",
+        "institucion_id": 44,
+        "sede_actual": "SEDE JHON F KENNEDY",
+        "sede_id": 199,
+        "modalidad": "CAA",
+        "modalidad_id": 1,
+        "final_id": 391,
+        "focalizacion_final_municipio": "LA MACARENA",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 231,
+        "consecutivo": "25057700047201"
+      },
+      {
+        "municipio_esperado": "PUERTO CONCORDIA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA NUESTRA SENORA DE LA MACARENA",
+        "institucion_id": 44,
+        "sede_actual": "SEDE PRINCIPAL NUESTRA SENORA DE LA MACARENA",
+        "sede_id": 200,
+        "modalidad": "CAA",
+        "modalidad_id": 1,
+        "final_id": 392,
+        "focalizacion_final_municipio": "LA MACARENA",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 232,
+        "consecutivo": "25057700047201"
+      },
+      {
+        "municipio_esperado": "PUERTO CONCORDIA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA NUESTRA SENORA DE LA MACARENA",
+        "institucion_id": 44,
+        "sede_actual": "SEDE PRINCIPAL NUESTRA SENORA DE LA MACARENA",
+        "sede_id": 200,
+        "modalidad": "CAJU-RI",
+        "modalidad_id": 4,
+        "final_id": 393,
+        "focalizacion_final_municipio": "LA MACARENA",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 233,
+        "consecutivo": "25057700047206"
+      },
+      {
+        "municipio_esperado": "PUERTO CONCORDIA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA NUESTRA SENORA DE LA MACARENA",
+        "institucion_id": 44,
+        "sede_actual": "SEDE PRINCIPAL NUESTRA SENORA DE LA MACARENA",
+        "sede_id": 200,
+        "modalidad": "CAARES",
+        "modalidad_id": 2,
+        "final_id": 394,
+        "focalizacion_final_municipio": "LA MACARENA",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 235,
+        "consecutivo": "25057700047207"
+      },
+      {
+        "municipio_esperado": "PUERTO CONCORDIA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR IVAN HERNANDEZ",
+        "institucion_id": 45,
+        "sede_actual": "SEDE BRISAS DEL GRINGO",
+        "sede_id": 202,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 395,
+        "focalizacion_final_municipio": "LA MACARENA",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 237,
+        "consecutivo": "25057700047204"
+      },
+      {
+        "municipio_esperado": "PUERTO CONCORDIA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR IVAN HERNANDEZ",
+        "institucion_id": 45,
+        "sede_actual": "SEDE CANO LIMON",
+        "sede_id": 203,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 396,
+        "focalizacion_final_municipio": "LA MACARENA",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 238,
+        "consecutivo": "25057700047204"
+      },
+      {
+        "municipio_esperado": "PUERTO CONCORDIA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR IVAN HERNANDEZ",
+        "institucion_id": 45,
+        "sede_actual": "SEDE CENTRAL CANO GRINGO",
+        "sede_id": 204,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 397,
+        "focalizacion_final_municipio": "LA MACARENA",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 239,
+        "consecutivo": "25057700047203"
+      },
+      {
+        "municipio_esperado": "PUERTO CONCORDIA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR IVAN HERNANDEZ",
+        "institucion_id": 45,
+        "sede_actual": "SEDE GIRASOL",
+        "sede_id": 205,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 398,
+        "focalizacion_final_municipio": "LA MACARENA",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 240,
+        "consecutivo": "25057700047203"
+      },
+      {
+        "municipio_esperado": "PUERTO CONCORDIA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR IVAN HERNANDEZ",
+        "institucion_id": 45,
+        "sede_actual": "SEDE LA UNION II",
+        "sede_id": 206,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 399,
+        "focalizacion_final_municipio": "LA MACARENA",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 241,
+        "consecutivo": "25057700047202"
+      },
+      {
+        "municipio_esperado": "PUERTO CONCORDIA",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA PUERTO IRIS",
+        "institucion_id": 63,
+        "sede_actual": "SEDE LA VALLENATA",
+        "sede_id": 348,
+        "modalidad": "CAJU-RI",
+        "modalidad_id": 4,
+        "final_id": 26,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 400,
+        "consecutivo": "25057700047202"
+      }
+    ],
+    "URIBE": [
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO TIERRA GRATA",
+        "institucion_id": 68,
+        "sede_actual": "SEDE EL TURPIAL",
+        "sede_id": 371,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 581,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 426,
+        "consecutivo": "25033000029101"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO TIERRA GRATA",
+        "institucion_id": 68,
+        "sede_actual": "SEDE EL CAIRO",
+        "sede_id": 372,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 582,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 427,
+        "consecutivo": "25033000029113"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO TIERRA GRATA",
+        "institucion_id": 68,
+        "sede_actual": "SEDE PALMERAS",
+        "sede_id": 373,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 583,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 428,
+        "consecutivo": "25033000029109"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE",
+        "institucion_id": 69,
+        "sede_actual": "SEDE PRINCIPAL HECTOR JARAMILLO DUQUE",
+        "sede_id": 374,
+        "modalidad": "CAJU-RI",
+        "modalidad_id": 4,
+        "final_id": 584,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 429,
+        "consecutivo": "25033000029115"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE",
+        "institucion_id": 69,
+        "sede_actual": "SEDE PRINCIPAL HECTOR JARAMILLO DUQUE",
+        "sede_id": 374,
+        "modalidad": "CAA-JU",
+        "modalidad_id": 5,
+        "final_id": 585,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 430,
+        "consecutivo": "25033000029103"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE",
+        "institucion_id": 69,
+        "sede_actual": "SEDE PRINCIPAL HECTOR JARAMILLO DUQUE",
+        "sede_id": 374,
+        "modalidad": "CAARES",
+        "modalidad_id": 2,
+        "final_id": 586,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 431,
+        "consecutivo": "25033000029111"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE",
+        "institucion_id": 69,
+        "sede_actual": "SEDE LA UNION",
+        "sede_id": 375,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 587,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 432,
+        "consecutivo": "25033000029112"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE",
+        "institucion_id": 69,
+        "sede_actual": "SEDE LA ISLANDIA",
+        "sede_id": 376,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 588,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 433,
+        "consecutivo": "25033000029106"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE",
+        "institucion_id": 69,
+        "sede_actual": "SEDE LA TIGRERA",
+        "sede_id": 377,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 589,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 434,
+        "consecutivo": "25033000029104"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE",
+        "institucion_id": 69,
+        "sede_actual": "SEDE EL CARIBE",
+        "sede_id": 378,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 590,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 435,
+        "consecutivo": "25033000029108"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE",
+        "institucion_id": 69,
+        "sede_actual": "SEDE BELLA VISTA",
+        "sede_id": 379,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 591,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 436,
+        "consecutivo": "25033000029107"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE",
+        "institucion_id": 69,
+        "sede_actual": "SEDE VERACRUZ JOSE MARIA BAJO",
+        "sede_id": 380,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 592,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 437,
+        "consecutivo": "25033000029102"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA HECTOR JARAMILLO DUQUE",
+        "institucion_id": 69,
+        "sede_actual": "SEDE LA ESPERANZA",
+        "sede_id": 381,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 593,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 438,
+        "consecutivo": "25033000029110"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA CHARCO TRECE",
+        "institucion_id": 70,
+        "sede_actual": "SEDE NUESTRA SENORA DE LA PAZ",
+        "sede_id": 382,
+        "modalidad": "CAJU-RI",
+        "modalidad_id": 4,
+        "final_id": 594,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 439,
+        "consecutivo": "25033000062321"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA CHARCO TRECE",
+        "institucion_id": 70,
+        "sede_actual": "SEDE NUESTRA SENORA DE LA PAZ",
+        "sede_id": 382,
+        "modalidad": "CAA-JU",
+        "modalidad_id": 5,
+        "final_id": 595,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 440,
+        "consecutivo": "25033000062302"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA CHARCO TRECE",
+        "institucion_id": 70,
+        "sede_actual": "SEDE PRINCIPAL INTERNADO CHARCO TRECE",
+        "sede_id": 383,
+        "modalidad": "CAJU-RI",
+        "modalidad_id": 4,
+        "final_id": 596,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 441,
+        "consecutivo": "25033000062308"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA CHARCO TRECE",
+        "institucion_id": 70,
+        "sede_actual": "SEDE PRINCIPAL INTERNADO CHARCO TRECE",
+        "sede_id": 383,
+        "modalidad": "CAA-JU",
+        "modalidad_id": 5,
+        "final_id": 597,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 442,
+        "consecutivo": "25033000062311"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA CHARCO TRECE",
+        "institucion_id": 70,
+        "sede_actual": "SEDE PRINCIPAL INTERNADO CHARCO TRECE",
+        "sede_id": 383,
+        "modalidad": "CAARES",
+        "modalidad_id": 2,
+        "final_id": 598,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 443,
+        "consecutivo": "25033000062319"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA CHARCO TRECE",
+        "institucion_id": 70,
+        "sede_actual": "SEDE BRISAS DEL GUEJAR",
+        "sede_id": 384,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 599,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 444,
+        "consecutivo": "25033000062331"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA CHARCO TRECE",
+        "institucion_id": 70,
+        "sede_actual": "SEDE ALTO CUNUMIA",
+        "sede_id": 385,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 600,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 445,
+        "consecutivo": "25033000062307"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA CHARCO TRECE",
+        "institucion_id": 70,
+        "sede_actual": "SEDE EL DIAMANTE",
+        "sede_id": 386,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 601,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 446,
+        "consecutivo": "25033000062332"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA CHARCO TRECE",
+        "institucion_id": 70,
+        "sede_actual": "SEDE LA ARGENTINA",
+        "sede_id": 387,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 602,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 447,
+        "consecutivo": "25033000062305"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA MAJESTUOSO ARIARI INEMA",
+        "institucion_id": 71,
+        "sede_actual": "SEDE INOCENCIO CHINCA",
+        "sede_id": 388,
+        "modalidad": "CAA-JU",
+        "modalidad_id": 5,
+        "final_id": 603,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 448,
+        "consecutivo": "25033000062317"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA MAJESTUOSO ARIARI INEMA",
+        "institucion_id": 71,
+        "sede_actual": "SEDE INOCENCIO CHINCA",
+        "sede_id": 388,
+        "modalidad": "CAJU-RI",
+        "modalidad_id": 4,
+        "final_id": 604,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 449,
+        "consecutivo": "25033000062310"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA MAJESTUOSO ARIARI INEMA",
+        "institucion_id": 71,
+        "sede_actual": "SEDE INOCENCIO CHINCA",
+        "sede_id": 388,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 605,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 450,
+        "consecutivo": "25033000062309"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA MAJESTUOSO ARIARI INEMA",
+        "institucion_id": 71,
+        "sede_actual": "SEDE MANUELA BELTRAN",
+        "sede_id": 389,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 606,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 451,
+        "consecutivo": "25033000062303"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA MAJESTUOSO ARIARI INEMA",
+        "institucion_id": 71,
+        "sede_actual": "SEDE PRINCIPAL MAJESTUOSO ARIARI INEMA",
+        "sede_id": 390,
+        "modalidad": "CAA-JU",
+        "modalidad_id": 5,
+        "final_id": 607,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 452,
+        "consecutivo": "25033000062316"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "INSTITUCIÓN EDUCATIVA MAJESTUOSO ARIARI INEMA",
+        "institucion_id": 71,
+        "sede_actual": "SEDE PRINCIPAL MAJESTUOSO ARIARI INEMA",
+        "sede_id": 390,
+        "modalidad": "CAJU-RI",
+        "modalidad_id": 4,
+        "final_id": 608,
+        "focalizacion_final_municipio": "PUERTO LLERAS",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 453,
+        "consecutivo": "25033000062304"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO NUESTRA SENORA DE FATIMA",
+        "institucion_id": 72,
+        "sede_actual": "SEDE CAMINO DE EMAUS",
+        "sede_id": 391,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 609,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 454,
+        "consecutivo": "25033000062312"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO NUESTRA SENORA DE FATIMA",
+        "institucion_id": 72,
+        "sede_actual": "SEDE EL TURPIAL",
+        "sede_id": 392,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 610,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 455,
+        "consecutivo": "25033000062315"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO NUESTRA SENORA DE FATIMA",
+        "institucion_id": 72,
+        "sede_actual": "SEDE LAS LEONAS",
+        "sede_id": 393,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 611,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 456,
+        "consecutivo": "25033000062313"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO NUESTRA SENORA DE FATIMA",
+        "institucion_id": 72,
+        "sede_actual": "SEDE PRINCIPAL NUESTRA SENORA DE FATIMA",
+        "sede_id": 394,
+        "modalidad": "CAA",
+        "modalidad_id": 1,
+        "final_id": 612,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 457,
+        "consecutivo": "25033000062325"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO NUESTRA SENORA DE FATIMA",
+        "institucion_id": 72,
+        "sede_actual": "SEDE PUEBLO NUEVO",
+        "sede_id": 395,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 613,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 458,
+        "consecutivo": "25033000062318"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO NUESTRA SENORA DE FATIMA",
+        "institucion_id": 72,
+        "sede_actual": "SEDE LA COLINA",
+        "sede_id": 396,
+        "modalidad": "CAA",
+        "modalidad_id": 1,
+        "final_id": 614,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 459,
+        "consecutivo": "25033000062301"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO NUESTRA SENORA DE FATIMA",
+        "institucion_id": 72,
+        "sede_actual": "SEDE LA COLINA",
+        "sede_id": 396,
+        "modalidad": "CAARES",
+        "modalidad_id": 2,
+        "final_id": 615,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 460,
+        "consecutivo": "25033000062301"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO PONTON DE RIO NEGRO",
+        "institucion_id": 73,
+        "sede_actual": "SEDE ANTONIA SANTOS",
+        "sede_id": 397,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 616,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 461,
+        "consecutivo": "25033000062330"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO PONTON DE RIO NEGRO",
+        "institucion_id": 73,
+        "sede_actual": "SEDE BOCAS DEL GUAYURIBA",
+        "sede_id": 398,
+        "modalidad": "CAA",
+        "modalidad_id": 1,
+        "final_id": 617,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 462,
+        "consecutivo": "25033000062306"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO PONTON DE RIO NEGRO",
+        "institucion_id": 73,
+        "sede_actual": "SEDE EL PORVENIR",
+        "sede_id": 399,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 618,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 463,
+        "consecutivo": "25033000062329"
+      },
+      {
+        "municipio_esperado": "URIBE",
+        "institucion_actual": "CENTRO EDUCATIVO PONTON DE RIO NEGRO",
+        "institucion_id": 73,
+        "sede_actual": "SEDE GUICHIRAL",
+        "sede_id": 400,
+        "modalidad": "CAJM/JT-RI",
+        "modalidad_id": 3,
+        "final_id": 619,
+        "focalizacion_final_municipio": "PUERTO LÓPEZ",
+        "focalizacion_vigencia_id": null,
+        "sede_modalidad_id": 464,
+        "consecutivo": "25033000062328"
+      }
+    ]
+  },
+  "simulation": {
+    "revisar_despues": 363,
+    "manipuladoras_asignables": 349,
+    "municipios_no_reconocidos": 0,
+    "instituciones_no_reconocidas": 121,
+    "sedes_no_reconocidas": 20,
+    "sede_modalidad_no_existe": 197,
+    "decisiones_humanas_despues": 75
+  },
+  "bd_before": {
+    "personas": 230,
+    "vinculaciones": 235,
+    "cobertura_asignaciones": 0,
+    "personal_asignaciones_laborales": 0,
+    "personal_presentaciones_licitacion": 0
+  },
+  "bd_after": {
+    "personas": 230,
+    "vinculaciones": 235,
+    "cobertura_asignaciones": 0,
+    "personal_asignaciones_laborales": 0,
+    "personal_presentaciones_licitacion": 0
+  },
+  "escrituras_bd": 0
+}

@@ -1,0 +1,236 @@
+{
+  "deleted": {
+    "cargas": 1,
+    "preliminares": 10,
+    "vigencias": 10
+  },
+  "detachedHistory": {
+    "instituciones": 0,
+    "sedeInstitucion": 0,
+    "sedes": 9
+  },
+  "officialLoadId": 4,
+  "repairedValorAnterior": [
+    {
+      "newValorAnteriorId": null,
+      "officialVigenciaId": "185",
+      "previousSmokeVigenciaId": "1"
+    },
+    {
+      "newValorAnteriorId": null,
+      "officialVigenciaId": "186",
+      "previousSmokeVigenciaId": "19"
+    },
+    {
+      "newValorAnteriorId": null,
+      "officialVigenciaId": "264",
+      "previousSmokeVigenciaId": "20"
+    },
+    {
+      "newValorAnteriorId": null,
+      "officialVigenciaId": "316",
+      "previousSmokeVigenciaId": "21"
+    },
+    {
+      "newValorAnteriorId": null,
+      "officialVigenciaId": "401",
+      "previousSmokeVigenciaId": "22"
+    },
+    {
+      "newValorAnteriorId": null,
+      "officialVigenciaId": "403",
+      "previousSmokeVigenciaId": "23"
+    },
+    {
+      "newValorAnteriorId": null,
+      "officialVigenciaId": "431",
+      "previousSmokeVigenciaId": "24"
+    },
+    {
+      "newValorAnteriorId": null,
+      "officialVigenciaId": "435",
+      "previousSmokeVigenciaId": "25"
+    },
+    {
+      "newValorAnteriorId": null,
+      "officialVigenciaId": "567",
+      "previousSmokeVigenciaId": "26"
+    },
+    {
+      "newValorAnteriorId": null,
+      "officialVigenciaId": "849",
+      "previousSmokeVigenciaId": "27"
+    }
+  ],
+  "snapshot": {
+    "officialLoad": {
+      "id": "4",
+      "contrato_id": "24",
+      "nombre_archivo": "focalizacion-agosto-2026.xlsx",
+      "archivo_sha256": "6f55c28567d7dd2f9f92182f90f89398f3769b00dbcfbedac19c8ec604422719",
+      "fecha_inicio_vigencia": "2026-08-01",
+      "fecha_fin_vigencia": "2026-08-31",
+      "estado": "PROCESADO",
+      "activo": true,
+      "created_by": "2",
+      "usuario_carga_id": "2",
+      "storage_bucket": null,
+      "storage_path": null,
+      "archivo_bytes_len": 80830,
+      "created_at": "2026-08-21T03:33:26.803Z"
+    },
+    "officialReferenceCount": 10,
+    "officialReferences": [
+      {
+        "oficial_vigencia_id": "185",
+        "oficial_carga_id": "4",
+        "previous_smoke_vigencia_id": "1"
+      },
+      {
+        "oficial_vigencia_id": "186",
+        "oficial_carga_id": "4",
+        "previous_smoke_vigencia_id": "19"
+      },
+      {
+        "oficial_vigencia_id": "264",
+        "oficial_carga_id": "4",
+        "previous_smoke_vigencia_id": "20"
+      },
+      {
+        "oficial_vigencia_id": "316",
+        "oficial_carga_id": "4",
+        "previous_smoke_vigencia_id": "21"
+      },
+      {
+        "oficial_vigencia_id": "401",
+        "oficial_carga_id": "4",
+        "previous_smoke_vigencia_id": "22"
+      },
+      {
+        "oficial_vigencia_id": "403",
+        "oficial_carga_id": "4",
+        "previous_smoke_vigencia_id": "23"
+      },
+      {
+        "oficial_vigencia_id": "431",
+        "oficial_carga_id": "4",
+        "previous_smoke_vigencia_id": "24"
+      },
+      {
+        "oficial_vigencia_id": "435",
+        "oficial_carga_id": "4",
+        "previous_smoke_vigencia_id": "25"
+      },
+      {
+        "oficial_vigencia_id": "567",
+        "oficial_carga_id": "4",
+        "previous_smoke_vigencia_id": "26"
+      },
+      {
+        "oficial_vigencia_id": "849",
+        "oficial_carga_id": "4",
+        "previous_smoke_vigencia_id": "27"
+      }
+    ],
+    "smokeAuditEvents": [
+      {
+        "id": "2079",
+        "accion": "focalizacion.import.upload",
+        "descripcion": "Importacion historica de focalizacion focalizacion-smoke-agosto-2026.xlsx",
+        "entidad": "focalizacion_cargas",
+        "entidad_id": "2"
+      },
+      {
+        "id": "2080",
+        "accion": "focalizacion.import.reprocess",
+        "descripcion": "Reproceso de lote historico de focalizacion 2",
+        "entidad": "focalizacion_cargas",
+        "entidad_id": "2"
+      },
+      {
+        "id": "2081",
+        "accion": "focalizacion.import.reprocess",
+        "descripcion": "Reproceso de lote historico de focalizacion 2",
+        "entidad": "focalizacion_cargas",
+        "entidad_id": "2"
+      }
+    ],
+    "smokeFinalCount": 0,
+    "smokeInstitucionHistoryCount": 0,
+    "smokeLegacyAuditCount": 3,
+    "smokeLegacyHistoryCount": 3,
+    "smokeLoad": {
+      "id": "2",
+      "contrato_id": "24",
+      "nombre_archivo": "focalizacion-smoke-agosto-2026.xlsx",
+      "archivo_sha256": "f20577074045f888f6be0d294d4cdd157e7f613bb3cce3e8db3d58c876d480b6",
+      "fecha_inicio_vigencia": "2026-08-01",
+      "fecha_fin_vigencia": "2026-08-31",
+      "estado": "PROCESADO",
+      "activo": true,
+      "created_by": "2",
+      "usuario_carga_id": "2",
+      "storage_bucket": null,
+      "storage_path": null,
+      "archivo_bytes_len": 20882,
+      "created_at": "2026-08-21T00:54:28.061Z"
+    },
+    "smokeNovedadesCount": 0,
+    "smokePrelimCount": 10,
+    "smokeSedeHistoryCount": 9,
+    "smokeSedeInstitucionHistoryCount": 0,
+    "smokeSystemAlertCount": 0,
+    "smokeVigencias": [
+      {
+        "id": "1",
+        "preliminar_id": "1",
+        "valor_anterior_id": null
+      },
+      {
+        "id": "19",
+        "preliminar_id": "3",
+        "valor_anterior_id": null
+      },
+      {
+        "id": "20",
+        "preliminar_id": "5",
+        "valor_anterior_id": null
+      },
+      {
+        "id": "21",
+        "preliminar_id": "6",
+        "valor_anterior_id": null
+      },
+      {
+        "id": "22",
+        "preliminar_id": "8",
+        "valor_anterior_id": null
+      },
+      {
+        "id": "23",
+        "preliminar_id": "10",
+        "valor_anterior_id": null
+      },
+      {
+        "id": "24",
+        "preliminar_id": "12",
+        "valor_anterior_id": null
+      },
+      {
+        "id": "25",
+        "preliminar_id": "14",
+        "valor_anterior_id": null
+      },
+      {
+        "id": "26",
+        "preliminar_id": "16",
+        "valor_anterior_id": null
+      },
+      {
+        "id": "27",
+        "preliminar_id": "18",
+        "valor_anterior_id": null
+      }
+    ]
+  }
+}

@@ -71,6 +71,33 @@ export interface ContextualChecklistItem {
   vigencia_meses: number | null;
 }
 
+export interface ContextualChecklistRequirementInput {
+  ambito_documental: 'PERSONA' | 'VINCULACION';
+  codigo: string | null;
+  contrato_cargo_id: number | null;
+  dias_proximo_vencimiento: number;
+  id: number;
+  nombre_documento: string | null;
+  nombre_requisito: string;
+  obligatorio: boolean;
+  requiere_fecha_expedicion: boolean;
+  requiere_fecha_vencimiento: boolean;
+  tipo_documento_id: number;
+  tipo_vinculacion_id: number | null;
+  vigencia_meses: number | null;
+}
+
+export interface ContextualChecklistDocumentInput {
+  activo: boolean;
+  fecha_carga: Date | string | null;
+  fecha_expedicion: Date | string | null;
+  fecha_vencimiento: Date | string | null;
+  id: number;
+  nombre_original: string;
+  tipo_documento_id: number;
+  tipo_documento_nombre: string | null;
+}
+
 export interface ContextualVinculacionChecklist {
   cargados: number;
   completos: number;
@@ -145,15 +172,178 @@ const resolveOrigin = (
   return 'GENERAL';
 };
 
+export const filterContextualChecklistRequirements = (
+  requirements: ContextualChecklistRequirementInput[],
+  context: {
+    contratoCargoId: number | null;
+    tipoVinculacionId: number | null;
+  }
+): ContextualChecklistRequirementInput[] =>
+  requirements.filter(
+    (requirement) =>
+      (requirement.contrato_cargo_id === null ||
+        requirement.contrato_cargo_id === context.contratoCargoId) &&
+      (requirement.tipo_vinculacion_id === null ||
+        requirement.tipo_vinculacion_id === context.tipoVinculacionId)
+  );
+
+const buildDocumentIndex = (
+  documents: ContextualChecklistDocumentInput[]
+): Map<number, ContextualChecklistDocumentInput> => {
+  const index = new Map<number, ContextualChecklistDocumentInput>();
+
+  for (const document of documents) {
+    if (document.activo && !index.has(document.tipo_documento_id)) {
+      index.set(document.tipo_documento_id, document);
+    }
+  }
+
+  return index;
+};
+
+export const buildContextualChecklistSnapshot = (input: {
+  contratoCargoId: number;
+  contratoId: number;
+  personaDocuments: ContextualChecklistDocumentInput[];
+  personaId: number;
+  requirements: ContextualChecklistRequirementInput[];
+  todayIso?: string;
+  vinculacionDocuments: ContextualChecklistDocumentInput[];
+  vinculacionId: number;
+}): ContextualVinculacionChecklist => {
+  const personaDocumentIndex = buildDocumentIndex(input.personaDocuments);
+  const vinculacionDocumentIndex = buildDocumentIndex(input.vinculacionDocuments);
+  const todayIso = input.todayIso ?? new Date().toISOString().slice(0, 10);
+
+  const requisitos = input.requirements.map((requirement) => {
+    const sourceDocument =
+      requirement.ambito_documental === 'PERSONA'
+        ? personaDocumentIndex.get(requirement.tipo_documento_id) ?? null
+        : vinculacionDocumentIndex.get(requirement.tipo_documento_id) ?? null;
+    const fechaExpedicion = sourceDocument ? toDateString(sourceDocument.fecha_expedicion) : null;
+    const explicitFechaVencimiento = sourceDocument
+      ? toDateString(sourceDocument.fecha_vencimiento)
+      : null;
+    const computedFechaVencimiento =
+      explicitFechaVencimiento ??
+      (fechaExpedicion && requirement.vigencia_meses
+        ? addMonths(fechaExpedicion, requirement.vigencia_meses)
+        : null);
+    const diasParaVencimiento = computedFechaVencimiento
+      ? daysBetween(todayIso, computedFechaVencimiento)
+      : null;
+    const origin = resolveOrigin(requirement.contrato_cargo_id, requirement.tipo_vinculacion_id);
+    let estado: LegacyChecklistState = 'FALTANTE';
+    let estadoDetallado: ChecklistDetailedState = 'PENDIENTE';
+    let observacion: string | null = null;
+
+    if (!sourceDocument) {
+      if (requirement.obligatorio) {
+        estado = 'FALTANTE';
+        estadoDetallado = 'PENDIENTE';
+      } else {
+        estado = 'FALTANTE';
+        estadoDetallado = 'NO_APLICA';
+        observacion = 'Requisito opcional sin documento cargado.';
+      }
+    } else if (computedFechaVencimiento && computedFechaVencimiento < todayIso) {
+      estado = 'VENCIDO';
+      estadoDetallado = 'VENCIDO';
+    } else if (
+      computedFechaVencimiento &&
+      diasParaVencimiento !== null &&
+      diasParaVencimiento <= requirement.dias_proximo_vencimiento
+    ) {
+      estado = 'CARGADO';
+      estadoDetallado = 'PROXIMO_A_VENCER';
+    } else {
+      estado = 'CARGADO';
+      estadoDetallado = 'COMPLETO';
+    }
+
+    return {
+      requisito_id: requirement.id,
+      nombre_requisito: requirement.nombre_requisito,
+      codigo: requirement.codigo,
+      tipo_documento_id: requirement.tipo_documento_id,
+      tipo_documento_nombre: requirement.nombre_documento,
+      tipo_requisito: null,
+      ambito_documental: requirement.ambito_documental,
+      obligatorio: requirement.obligatorio,
+      requiere_fecha_expedicion: requirement.requiere_fecha_expedicion,
+      requiere_fecha_vencimiento: requirement.requiere_fecha_vencimiento,
+      vigencia_meses: requirement.vigencia_meses,
+      contrato_cargo_id: requirement.contrato_cargo_id,
+      tipo_vinculacion_id: requirement.tipo_vinculacion_id,
+      origen: origin,
+      detalle_contexto: origin,
+      documento_id: sourceDocument ? sourceDocument.id : null,
+      fuente_documento: sourceDocument ? requirement.ambito_documental : null,
+      fecha_vencimiento: computedFechaVencimiento,
+      dias_para_vencimiento: diasParaVencimiento,
+      estado,
+      estado_detallado: estadoDetallado,
+      observacion
+    } satisfies ContextualChecklistItem;
+  });
+
+  const totalRequisitos = requisitos.length;
+  const completos = requisitos.filter((item) => item.estado_detallado === 'COMPLETO').length;
+  const proximosVencer = requisitos.filter(
+    (item) => item.estado_detallado === 'PROXIMO_A_VENCER'
+  ).length;
+  const pendientes = requisitos.filter((item) => item.estado_detallado === 'PENDIENTE').length;
+  const noAplica = requisitos.filter((item) => item.estado_detallado === 'NO_APLICA').length;
+  const cargados = requisitos.filter((item) => item.estado === 'CARGADO').length;
+  const vencidos = requisitos.filter((item) => item.estado === 'VENCIDO').length;
+  const cumplimientoPorcentaje =
+    totalRequisitos === 0
+      ? 0
+      : Number((((completos + proximosVencer) / totalRequisitos) * 100).toFixed(2));
+
+  return {
+    vinculacion_id: input.vinculacionId,
+    persona_id: input.personaId,
+    contrato_id: input.contratoId,
+    contrato_cargo_id: input.contratoCargoId,
+    total_requisitos: totalRequisitos,
+    tiene_configuracion: totalRequisitos > 0,
+    completos,
+    cargados,
+    faltantes: pendientes,
+    pendientes,
+    proximos_vencer: proximosVencer,
+    no_aplica: noAplica,
+    vencidos,
+    cumplimiento_porcentaje: cumplimientoPorcentaje,
+    requisitos
+  };
+};
+
 export const buildContextualVinculacionChecklist = async (
   vinculacionId: string,
   tenant?: TenantAccessContext,
   options?: {
     audit?: boolean;
+    contratoCargoIdOverride?: number | null;
+    tipoVinculacionIdOverride?: number | null;
   }
 ): Promise<ContextualVinculacionChecklist> => {
   await assertTenantAccessForVinculacionId(tenant, vinculacionId);
   const vinculacion = await ensureVinculacionExists(vinculacionId);
+
+  const contratoCargoContext =
+    options?.contratoCargoIdOverride === undefined
+      ? vinculacion.contrato_cargo_id
+      : options.contratoCargoIdOverride === null
+        ? null
+        : String(options.contratoCargoIdOverride);
+  const tipoVinculacionContext =
+    options?.tipoVinculacionIdOverride === undefined
+      ? vinculacion.tipo_vinculacion_id
+      : options.tipoVinculacionIdOverride === null
+        ? null
+        : String(options.tipoVinculacionIdOverride);
 
   const [requirementsResult, vinculacionDocumentsResult, personaDocumentsResult] = await Promise.all([
     dbQuery<ChecklistRequirementRow>(
@@ -185,7 +375,7 @@ export const buildContextualVinculacionChecklist = async (
           COALESCE(r.tipo_vinculacion_id, 0) ASC,
           r.id ASC
       `,
-      [vinculacion.contrato_id, vinculacion.contrato_cargo_id, vinculacion.tipo_vinculacion_id]
+      [vinculacion.contrato_id, contratoCargoContext, tipoVinculacionContext]
     ),
     dbQuery<ChecklistLoadedRow>(
       `
@@ -228,130 +418,64 @@ export const buildContextualVinculacionChecklist = async (
     )
   ]);
 
-  const vinculacionDocumentIndex = new Map<number, ChecklistLoadedRow>();
-  for (const document of vinculacionDocumentsResult.rows) {
-    const tipoDocumentoId = toNumber(document.tipo_documento_id);
-    if (!vinculacionDocumentIndex.has(tipoDocumentoId)) {
-      vinculacionDocumentIndex.set(tipoDocumentoId, document);
-    }
-  }
-
-  const personaDocumentIndex = new Map<number, ChecklistLoadedRow>();
-  for (const document of personaDocumentsResult.rows) {
-    const tipoDocumentoId = toNumber(document.tipo_documento_id);
-    if (!personaDocumentIndex.has(tipoDocumentoId)) {
-      personaDocumentIndex.set(tipoDocumentoId, document);
-    }
-  }
-
-  const todayIso = new Date().toISOString().slice(0, 10);
-
-  const requisitos = requirementsResult.rows.map((requirement) => {
-    const tipoDocumentoId = toNumber(requirement.tipo_documento_id);
-    const sourceDocument =
-      requirement.ambito_documental === 'PERSONA'
-        ? personaDocumentIndex.get(tipoDocumentoId) ?? null
-        : vinculacionDocumentIndex.get(tipoDocumentoId) ?? null;
-    const fechaExpedicion = sourceDocument ? toDateString(sourceDocument.fecha_expedicion) : null;
-    const explicitFechaVencimiento = sourceDocument
-      ? toDateString(sourceDocument.fecha_vencimiento)
-      : null;
-    const computedFechaVencimiento =
-      explicitFechaVencimiento ??
-      (fechaExpedicion && requirement.vigencia_meses
-        ? addMonths(fechaExpedicion, requirement.vigencia_meses)
-        : null);
-    const diasParaVencimiento = computedFechaVencimiento
-      ? daysBetween(todayIso, computedFechaVencimiento)
-      : null;
-    const origin = resolveOrigin(
-      requirement.contrato_cargo_id ? toNumber(requirement.contrato_cargo_id) : null,
-      requirement.tipo_vinculacion_id ? toNumber(requirement.tipo_vinculacion_id) : null
-    );
-    let estado: LegacyChecklistState = 'FALTANTE';
-    let estadoDetallado: ChecklistDetailedState = 'PENDIENTE';
-    let observacion: string | null = null;
-
-    if (!sourceDocument) {
-      if (requirement.obligatorio) {
-        estado = 'FALTANTE';
-        estadoDetallado = 'PENDIENTE';
-      } else {
-        estado = 'FALTANTE';
-        estadoDetallado = 'NO_APLICA';
-        observacion = 'Requisito opcional sin documento cargado.';
-      }
-    } else if (computedFechaVencimiento && computedFechaVencimiento < todayIso) {
-      estado = 'VENCIDO';
-      estadoDetallado = 'VENCIDO';
-    } else if (
-      computedFechaVencimiento &&
-      diasParaVencimiento !== null &&
-      diasParaVencimiento <= requirement.dias_proximo_vencimiento
-    ) {
-      estado = 'CARGADO';
-      estadoDetallado = 'PROXIMO_A_VENCER';
-    } else {
-      estado = 'CARGADO';
-      estadoDetallado = 'COMPLETO';
-    }
-
-    return {
-      requisito_id: toNumber(requirement.id),
+  const checklist = buildContextualChecklistSnapshot({
+    vinculacionId: toNumber(vinculacionId),
+    personaId: toNumber(vinculacion.persona_id),
+    contratoId: toNumber(vinculacion.contrato_id),
+    contratoCargoId: toNumber(contratoCargoContext ?? vinculacion.contrato_cargo_id),
+    requirements: requirementsResult.rows.map((requirement) => ({
+      id: toNumber(requirement.id),
       nombre_requisito: requirement.nombre_requisito,
-      codigo: requirement.codigo,
-      tipo_documento_id: tipoDocumentoId,
-      tipo_documento_nombre: requirement.nombre_documento,
-      tipo_requisito: null,
-      ambito_documental: requirement.ambito_documental,
       obligatorio: requirement.obligatorio,
+      ambito_documental: requirement.ambito_documental,
       requiere_fecha_expedicion: requirement.requiere_fecha_expedicion,
       requiere_fecha_vencimiento: requirement.requiere_fecha_vencimiento,
       vigencia_meses: requirement.vigencia_meses,
+      dias_proximo_vencimiento: requirement.dias_proximo_vencimiento,
       contrato_cargo_id: requirement.contrato_cargo_id
         ? toNumber(requirement.contrato_cargo_id)
         : null,
       tipo_vinculacion_id: requirement.tipo_vinculacion_id
         ? toNumber(requirement.tipo_vinculacion_id)
         : null,
-      origen: origin,
-      detalle_contexto: origin,
-      documento_id: sourceDocument ? toNumber(sourceDocument.id) : null,
-      fuente_documento: sourceDocument ? requirement.ambito_documental : null,
-      fecha_vencimiento: computedFechaVencimiento,
-      dias_para_vencimiento: diasParaVencimiento,
-      estado,
-      estado_detallado: estadoDetallado,
-      observacion
-    } satisfies ContextualChecklistItem;
+      tipo_documento_id: toNumber(requirement.tipo_documento_id),
+      codigo: requirement.codigo,
+      nombre_documento: requirement.nombre_documento
+    })),
+    vinculacionDocuments: vinculacionDocumentsResult.rows.map((document) => ({
+      id: toNumber(document.id),
+      tipo_documento_id: toNumber(document.tipo_documento_id),
+      tipo_documento_nombre: document.tipo_documento_nombre,
+      nombre_original: document.nombre_original,
+      fecha_expedicion: document.fecha_expedicion,
+      fecha_vencimiento: document.fecha_vencimiento,
+      fecha_carga: document.fecha_carga,
+      activo: document.activo
+    })),
+    personaDocuments: personaDocumentsResult.rows.map((document) => ({
+      id: toNumber(document.id),
+      tipo_documento_id: toNumber(document.tipo_documento_id),
+      tipo_documento_nombre: document.tipo_documento_nombre,
+      nombre_original: document.nombre_original,
+      fecha_expedicion: document.fecha_expedicion,
+      fecha_vencimiento: document.fecha_vencimiento,
+      fecha_carga: document.fecha_carga,
+      activo: document.activo
+    }))
   });
-
-  const totalRequisitos = requisitos.length;
-  const completos = requisitos.filter((item) => item.estado_detallado === 'COMPLETO').length;
-  const proximosVencer = requisitos.filter(
-    (item) => item.estado_detallado === 'PROXIMO_A_VENCER'
-  ).length;
-  const pendientes = requisitos.filter((item) => item.estado_detallado === 'PENDIENTE').length;
-  const noAplica = requisitos.filter((item) => item.estado_detallado === 'NO_APLICA').length;
-  const cargados = requisitos.filter((item) => item.estado === 'CARGADO').length;
-  const vencidos = requisitos.filter((item) => item.estado === 'VENCIDO').length;
-  const cumplimientoPorcentaje =
-    totalRequisitos === 0
-      ? 0
-      : Number(((((completos + proximosVencer) / totalRequisitos) * 100)).toFixed(2));
 
   if (options?.audit !== false) {
     try {
       await registerAuditEntry({
         accion: 'CONSULTA_CHECKLIST',
         after: {
-          completos,
-          cumplimiento_porcentaje: cumplimientoPorcentaje,
-          no_aplica: noAplica,
-          pendientes,
-          proximos_vencer: proximosVencer,
-          total_requisitos: totalRequisitos,
-          vencidos,
+          completos: checklist.completos,
+          cumplimiento_porcentaje: checklist.cumplimiento_porcentaje,
+          no_aplica: checklist.no_aplica,
+          pendientes: checklist.pendientes,
+          proximos_vencer: checklist.proximos_vencer,
+          total_requisitos: checklist.total_requisitos,
+          vencidos: checklist.vencidos,
           vinculacionId
         },
         descripcion: 'Consulta de checklist documental contextual de vinculacion',
@@ -364,31 +488,15 @@ export const buildContextualVinculacionChecklist = async (
     }
   }
 
-  if (env.NODE_ENV === 'development' && totalRequisitos === 0) {
+  if (env.NODE_ENV === 'development' && checklist.total_requisitos === 0) {
     console.debug('No configured contextual document requirements found', {
       contrato_id: vinculacion.contrato_id,
-      contrato_cargo_id: vinculacion.contrato_cargo_id,
-      tipo_vinculacion_id: vinculacion.tipo_vinculacion_id,
+      contrato_cargo_id: contratoCargoContext,
+      tipo_vinculacion_id: tipoVinculacionContext,
       vinculacion_id: vinculacionId
     });
   }
 
-  return {
-    vinculacion_id: toNumber(vinculacionId),
-    persona_id: toNumber(vinculacion.persona_id),
-    contrato_id: toNumber(vinculacion.contrato_id),
-    contrato_cargo_id: toNumber(vinculacion.contrato_cargo_id),
-    total_requisitos: totalRequisitos,
-    tiene_configuracion: totalRequisitos > 0,
-    completos,
-    cargados,
-    faltantes: pendientes,
-    pendientes,
-    proximos_vencer: proximosVencer,
-    no_aplica: noAplica,
-    vencidos,
-    cumplimiento_porcentaje: cumplimientoPorcentaje,
-    requisitos
-  };
+  return checklist;
 };
 

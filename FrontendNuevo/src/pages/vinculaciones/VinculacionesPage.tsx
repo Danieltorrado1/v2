@@ -35,7 +35,9 @@ const ESTADO_CFG: Record<VinculacionEstado, EstadoConfig> = {
 };
 
 const METODO_LABEL: Record<string, string> = {
+  COBERTURA:        'Cobertura',
   ASISTENCIA:       'Asistencia',
+  CASO_ESPECIAL:    'Caso especial',
   CATEGORIA:        'Categoría',
   OPS_CUENTA_COBRO: 'OPS Cta. Cobro',
   OPS_VALOR_FIJO:   'OPS Valor Fijo',

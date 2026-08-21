@@ -191,6 +191,70 @@ export interface VinculacionExpedienteApi {
   documentos_vinculacion: DocumentoExpedienteVinculacionApi[];
   checklist: unknown;
   afiliaciones: VinculacionAfiliacionesApi | null;
+  personal_contexto: VinculacionPersonalContextApi;
+}
+
+export interface AsignacionOperativaApi {
+  id: number;
+  focalizacion_final_id: number;
+  institucion: string;
+  sede: string;
+  modalidad: string;
+  categoria_cobertura: string | null;
+  municipio_id: number | null;
+  porcentaje_cobertura: number;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  observacion: string | null;
+  activo: boolean;
+  created_at: string;
+  tipo_asignacion: string;
+}
+
+export interface AsignacionLaboralApi {
+  id: number;
+  ubicacion_laboral_id: number;
+  nombre_ubicacion: string;
+  vigencia_desde: string;
+  vigencia_hasta: string | null;
+  estado: 'ACTIVA' | 'FINALIZADA' | 'ANULADA';
+  origen: 'MANUAL' | 'IMPORTACION' | 'AJUSTE';
+  observacion: string | null;
+  created_by_user_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PresentacionLicitacionApi {
+  id: number;
+  vigencia_desde: string;
+  vigencia_hasta: string | null;
+  estado: 'PRESENTADA' | 'RETIRADA' | 'REEMPLAZADA' | 'ANULADA';
+  cumple_requisitos: boolean | null;
+  cumple_requisitos_estado: 'CUMPLE' | 'NO_CUMPLE' | 'PENDIENTE';
+  observacion: string | null;
+  created_by_user_id: number | null;
+  created_at: string;
+  updated_at: string;
+  perfil: {
+    id: number;
+    nombre_perfil: string;
+    cantidad_requerida: number;
+    contrato_cargo_equivalente: {
+      id: number | null;
+      nombre_cargo: string | null;
+    };
+  };
+}
+
+export interface VinculacionPersonalContextApi {
+  es_manipuladora: boolean;
+  asignacion_operativa_actual: AsignacionOperativaApi | null;
+  historial_asignacion_operativa: AsignacionOperativaApi[];
+  asignacion_laboral_actual: AsignacionLaboralApi | null;
+  historial_asignacion_laboral: AsignacionLaboralApi[];
+  presentada_licitacion_actual: PresentacionLicitacionApi | null;
+  historial_presentacion_licitacion: PresentacionLicitacionApi[];
 }
 
 // Frontend normalized types

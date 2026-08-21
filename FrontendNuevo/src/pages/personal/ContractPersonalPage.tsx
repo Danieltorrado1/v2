@@ -894,6 +894,8 @@ export default function ContractPersonalPage() {
                       <th>Documento</th>
                       <th>Nombre completo</th>
                       <th>Cargo</th>
+                      <th>Asignación actual</th>
+                      <th>Licitación</th>
                       <th>Estado</th>
                       <th>Ingreso</th>
                       <th>Expediente</th>
@@ -902,7 +904,7 @@ export default function ContractPersonalPage() {
                   <tbody>
                     {(personal?.items ?? []).length === 0 && (
                       <tr>
-                        <td colSpan={6} className="cp-empty-row">
+                        <td colSpan={8} className="cp-empty-row">
                           No hay personal vinculado a este contrato con los filtros actuales.
                         </td>
                       </tr>
@@ -916,6 +918,12 @@ export default function ContractPersonalPage() {
                         <td className="cp-mono">{item.numero_documento}</td>
                         <td>{item.nombre_completo}</td>
                         <td>{item.cargo.nombre_cargo ?? "Sin cargo"}</td>
+                        <td>
+                          {item.es_manipuladora
+                            ? [item.asignacion_actual.institucion, item.asignacion_actual.sede, item.asignacion_actual.modalidad].filter(Boolean).join(" · ") || "Sin asignación"
+                            : item.asignacion_actual.nombre || "Sin asignación"}
+                        </td>
+                        <td>{item.presentada_licitacion_actual ? item.perfil_licitacion_actual ?? "Sí" : "No"}</td>
                         <td>
                           <span className={`cp-badge status-${item.estado_vinculacion.toLowerCase()}`}>
                             {getStatusLabel(item.estado_vinculacion)}

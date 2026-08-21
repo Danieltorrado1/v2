@@ -2,9 +2,13 @@
 import type { ApiResponse } from '../types/api.types';
 import type {
   AccesoUsuario,
+  ContratoPerfilLicitacion,
   ContratoRequisitoDocumental,
   ContratoRequisitoDocumentalFilters,
+  ContratoUbicacionLaboral,
+  CreateContratoPerfilLicitacionPayload,
   CreateContratoRequisitoDocumentalPayload,
+  CreateContratoUbicacionLaboralPayload,
   AnularContratoDocumentoPayload,
   AnularContratoEventoPayload,
   CargoFilters,
@@ -38,8 +42,10 @@ import type {
   ReviewContratoDocumentoPayload,
   RevocarContratoExcepcionPayload,
   Rol,
+  UpdateContratoPerfilLicitacionPayload,
   UpdateCargoPayload,
   UpdateContratoPayload,
+  UpdateContratoUbicacionLaboralPayload,
   UpdateEmpresaPayload,
   UpdateUsuarioAdminPayload,
   UpdateUsuarioEstadoPayload,
@@ -124,6 +130,18 @@ export const configuracionApi = {
   crearCargo: (payload: CreateCargoPayload) => postData<ContratoCargo>('/configuracion/cargos', payload),
   actualizarCargo: (id: number | string, payload: UpdateCargoPayload) => patchData<ContratoCargo>(`/configuracion/cargos/${id}`, payload),
   cambiarEstadoCargo: (id: number | string, payload: EstadoPayload) => patchData<ContratoCargo>(`/configuracion/cargos/${id}/estado`, payload),
+  listarContratoUbicacionesLaborales: (id: number | string, activo?: boolean) =>
+    getData<ContratoUbicacionLaboral[]>(`/configuracion/contratos/${id}/ubicaciones-laborales`, activo === undefined ? undefined : { activo }),
+  crearContratoUbicacionLaboral: (id: number | string, payload: CreateContratoUbicacionLaboralPayload) =>
+    postData<ContratoUbicacionLaboral>(`/configuracion/contratos/${id}/ubicaciones-laborales`, payload),
+  actualizarContratoUbicacionLaboral: (id: number | string, ubicacionId: number | string, payload: UpdateContratoUbicacionLaboralPayload) =>
+    patchData<ContratoUbicacionLaboral>(`/configuracion/contratos/${id}/ubicaciones-laborales/${ubicacionId}`, payload),
+  listarContratoPerfilesLicitacion: (id: number | string, activo?: boolean) =>
+    getData<ContratoPerfilLicitacion[]>(`/configuracion/contratos/${id}/perfiles-licitacion`, activo === undefined ? undefined : { activo }),
+  crearContratoPerfilLicitacion: (id: number | string, payload: CreateContratoPerfilLicitacionPayload) =>
+    postData<ContratoPerfilLicitacion>(`/configuracion/contratos/${id}/perfiles-licitacion`, payload),
+  actualizarContratoPerfilLicitacion: (id: number | string, perfilId: number | string, payload: UpdateContratoPerfilLicitacionPayload) =>
+    patchData<ContratoPerfilLicitacion>(`/configuracion/contratos/${id}/perfiles-licitacion/${perfilId}`, payload),
 
   listarTiposVinculacion: (filters: CatalogoFilters = {}) => getPaginated<CatalogoItem>('/configuracion/catalogos/tipos-vinculacion', filters),
   listarTiposJornada: (filters: CatalogoFilters = {}) => getPaginated<CatalogoItem>('/configuracion/catalogos/tipos-jornada', filters),

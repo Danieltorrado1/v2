@@ -14,7 +14,7 @@ interface ContratoCoberturaRow extends QueryResultRow {
 
 interface VinculacionCoberturaRow extends QueryResultRow {
   contrato_cargo_id: string;
-  estado: string;
+  estado_vinculacion: string;
   id: string;
 }
 
@@ -158,7 +158,7 @@ export const ensureVinculacionActivaManipulador = async (
     `
       SELECT
         id::text AS id,
-        estado,
+        estado_vinculacion,
         contrato_cargo_id::text AS contrato_cargo_id
       FROM vinculaciones
       WHERE id::text = $1
@@ -173,7 +173,7 @@ export const ensureVinculacionActivaManipulador = async (
     throw new AppError('Vinculacion not found', 404, 'VINCULACION_NOT_FOUND');
   }
 
-  if (vinculacion.estado !== 'ACTIVA') {
+  if (vinculacion.estado_vinculacion !== 'ACTIVA' && vinculacion.estado_vinculacion !== 'ACTIVO') {
     throw new AppError(
       'Vinculacion must be active for coverage assignment',
       409,
@@ -185,9 +185,13 @@ export const ensureVinculacionActivaManipulador = async (
     `
       SELECT
         (
-          COALESCE(cc.es_manipulador_alimentos, FALSE)
-          OR LOWER(COALESCE(cc.nombre, '')) LIKE '%manipulador%'
-          OR LOWER(COALESCE(cc.codigo, '')) LIKE '%manip%'
+          (
+            COALESCE(cc.aplica_cobertura, FALSE)
+            AND (
+              LOWER(COALESCE(cc.nombre_cargo, '')) LIKE '%manipulador%'
+              OR LOWER(COALESCE(cc.nombre_cargo, '')) LIKE '%manipuladora%'
+            )
+          )
         ) AS es_manipulador
       FROM contrato_cargos cc
       WHERE cc.id::text = $1

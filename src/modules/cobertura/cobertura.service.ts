@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
+import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import { AppError } from '../../utils/AppError';
 import {
   getEstadoCobertura,
@@ -362,6 +363,27 @@ const mapCoberturaAsignacion = (row: CoberturaAsignacionRow): CoberturaAsignacio
     municipio_id: row.municipio_id,
     tipo_asignacion: row.tipo_asignacion
   };
+};
+
+const recordCoberturaAudit = async (input: {
+  action: string;
+  actorUserId: string;
+  after?: unknown;
+  before?: unknown;
+  client: PoolClient;
+  description: string;
+  recordId: string;
+}): Promise<void> => {
+  await registerAuditEntry({
+    client: input.client,
+    usuario_id: input.actorUserId,
+    accion: input.action,
+    tabla: 'cobertura_asignaciones',
+    registro_id: input.recordId,
+    descripcion: input.description,
+    before: input.before,
+    after: input.after
+  });
 };
 
 const buildBaseWhereClause = (
@@ -847,6 +869,15 @@ export const createCoberturaAsignacion = async (
       );
     }
 
+    await recordCoberturaAudit({
+      client,
+      action: 'COBERTURA_ASIGNACION_CREATE',
+      actorUserId,
+      after: mapCoberturaAsignacion(created),
+      description: 'Creacion de asignacion operativa de cobertura',
+      recordId: created.id
+    });
+
     await client.query('COMMIT');
     return mapCoberturaAsignacion(created);
   } catch (error) {
@@ -934,6 +965,16 @@ export const updateCoberturaAsignacion = async (
       );
     }
 
+    await recordCoberturaAudit({
+      client,
+      action: 'COBERTURA_ASIGNACION_UPDATE',
+      actorUserId,
+      before: mapCoberturaAsignacion(current),
+      after: mapCoberturaAsignacion(updated),
+      description: 'Actualizacion de asignacion operativa de cobertura',
+      recordId: updated.id
+    });
+
     await client.query('COMMIT');
     return mapCoberturaAsignacion(updated);
   } catch (error) {
@@ -1001,6 +1042,16 @@ export const deactivateCoberturaAsignacion = async (
         'COBERTURA_ASIGNACION_DEACTIVATE_FAILED'
       );
     }
+
+    await recordCoberturaAudit({
+      client,
+      action: 'COBERTURA_ASIGNACION_DEACTIVATE',
+      actorUserId,
+      before: mapCoberturaAsignacion(current),
+      after: mapCoberturaAsignacion(updated),
+      description: 'Desactivacion de asignacion operativa de cobertura',
+      recordId: updated.id
+    });
 
     await client.query('COMMIT');
     return mapCoberturaAsignacion(updated);

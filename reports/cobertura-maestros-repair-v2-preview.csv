@@ -1,0 +1,169 @@
+tabla,id,campo,valor_actual,valor_nuevo,fila_origen_evidencia,preliminar_id,motivo,seguro_si_no
+focalizacion_final,26,"municipio_id, municipio_texto",728|PUERTO LLERAS,722|PUERTO CONCORDIA,402,559,Linaje exacto fila_origen 402: final 26 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,189,"municipio_id, municipio_texto",268|CUMARAL,87|BARRANCA DE UPÍA,29,186,Linaje exacto fila_origen 29: final 189 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,190,"municipio_id, municipio_texto",268|CUMARAL,87|BARRANCA DE UPÍA,30,187,Linaje exacto fila_origen 30: final 190 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,191,"municipio_id, municipio_texto",268|CUMARAL,87|BARRANCA DE UPÍA,31,188,Linaje exacto fila_origen 31: final 191 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,192,"municipio_id, municipio_texto",268|CUMARAL,87|BARRANCA DE UPÍA,32,189,Linaje exacto fila_origen 32: final 192 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,247,"municipio_id, municipio_texto",861|SAN LUIS DE CUBARRAL,304|EL DORADO,87,244,Linaje exacto fila_origen 87: final 247 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,248,"municipio_id, municipio_texto",861|SAN LUIS DE CUBARRAL,304|EL DORADO,88,245,Linaje exacto fila_origen 88: final 248 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,249,"municipio_id, municipio_texto",861|SAN LUIS DE CUBARRAL,304|EL DORADO,89,246,Linaje exacto fila_origen 89: final 249 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,250,"municipio_id, municipio_texto",861|SAN LUIS DE CUBARRAL,304|EL DORADO,90,247,Linaje exacto fila_origen 90: final 250 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,547,"municipio_id, municipio_texto",728|PUERTO LLERAS,722|PUERTO CONCORDIA,393,550,Linaje exacto fila_origen 393: final 547 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,548,"municipio_id, municipio_texto",728|PUERTO LLERAS,722|PUERTO CONCORDIA,394,551,Linaje exacto fila_origen 394: final 548 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,549,"municipio_id, municipio_texto",728|PUERTO LLERAS,722|PUERTO CONCORDIA,395,552,Linaje exacto fila_origen 395: final 549 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,550,"municipio_id, municipio_texto",728|PUERTO LLERAS,722|PUERTO CONCORDIA,396,553,Linaje exacto fila_origen 396: final 550 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,551,"municipio_id, municipio_texto",728|PUERTO LLERAS,722|PUERTO CONCORDIA,397,554,Linaje exacto fila_origen 397: final 551 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,552,"municipio_id, municipio_texto",728|PUERTO LLERAS,722|PUERTO CONCORDIA,398,555,Linaje exacto fila_origen 398: final 552 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,553,"municipio_id, municipio_texto",728|PUERTO LLERAS,722|PUERTO CONCORDIA,399,556,Linaje exacto fila_origen 399: final 553 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,554,"municipio_id, municipio_texto",728|PUERTO LLERAS,722|PUERTO CONCORDIA,400,557,Linaje exacto fila_origen 400: final 554 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,555,"municipio_id, municipio_texto",728|PUERTO LLERAS,722|PUERTO CONCORDIA,401,558,Linaje exacto fila_origen 401: final 555 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,736,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,583,740,Linaje exacto fila_origen 583: final 736 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,737,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,584,741,Linaje exacto fila_origen 584: final 737 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,738,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,585,742,Linaje exacto fila_origen 585: final 738 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,739,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,586,743,Linaje exacto fila_origen 586: final 739 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,740,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,587,744,Linaje exacto fila_origen 587: final 740 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,741,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,588,745,Linaje exacto fila_origen 588: final 741 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,742,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,589,746,Linaje exacto fila_origen 589: final 742 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,743,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,590,747,Linaje exacto fila_origen 590: final 743 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,744,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,591,748,Linaje exacto fila_origen 591: final 744 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,745,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,592,749,Linaje exacto fila_origen 592: final 745 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,746,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,593,750,Linaje exacto fila_origen 593: final 746 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,747,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,594,751,Linaje exacto fila_origen 594: final 747 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,748,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,595,752,Linaje exacto fila_origen 595: final 748 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,749,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,596,753,Linaje exacto fila_origen 596: final 749 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,750,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,597,754,Linaje exacto fila_origen 597: final 750 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,751,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,598,755,Linaje exacto fila_origen 598: final 751 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,752,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,599,756,Linaje exacto fila_origen 599: final 752 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,753,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,600,757,Linaje exacto fila_origen 600: final 753 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,754,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,601,758,Linaje exacto fila_origen 601: final 754 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,755,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,602,759,Linaje exacto fila_origen 602: final 755 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,756,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,603,760,Linaje exacto fila_origen 603: final 756 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,757,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,604,761,Linaje exacto fila_origen 604: final 757 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,758,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,605,762,Linaje exacto fila_origen 605: final 758 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,759,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,606,763,Linaje exacto fila_origen 606: final 759 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,760,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,607,764,Linaje exacto fila_origen 607: final 760 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,761,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,608,765,Linaje exacto fila_origen 608: final 761 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,762,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,609,766,Linaje exacto fila_origen 609: final 762 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,763,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,610,767,Linaje exacto fila_origen 610: final 763 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,764,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,611,768,Linaje exacto fila_origen 611: final 764 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,765,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,612,769,Linaje exacto fila_origen 612: final 765 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,766,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,613,770,Linaje exacto fila_origen 613: final 766 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,767,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,614,771,Linaje exacto fila_origen 614: final 767 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,768,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,615,772,Linaje exacto fila_origen 615: final 768 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,769,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,616,773,Linaje exacto fila_origen 616: final 769 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,770,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,617,774,Linaje exacto fila_origen 617: final 770 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,771,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,618,775,Linaje exacto fila_origen 618: final 771 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,772,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,619,776,Linaje exacto fila_origen 619: final 772 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,773,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,620,777,Linaje exacto fila_origen 620: final 773 debe usar el municipio explícito del XLSX.,SI
+focalizacion_final,774,"municipio_id, municipio_texto",565|MESETAS,1054|URIBE,621,778,Linaje exacto fila_origen 621: final 774 debe usar el municipio explícito del XLSX.,SI
+focalizacion_vigencias,194,municipio_id,268|CUMARAL,87|BARRANCA DE UPÍA,29,186,Linaje exacto fila_origen 29: vigencia 194 deriva exclusivamente del preliminar 186.,SI
+focalizacion_vigencias,195,municipio_id,268|CUMARAL,87|BARRANCA DE UPÍA,30,187,Linaje exacto fila_origen 30: vigencia 195 deriva exclusivamente del preliminar 187.,SI
+focalizacion_vigencias,196,municipio_id,268|CUMARAL,87|BARRANCA DE UPÍA,31,188,Linaje exacto fila_origen 31: vigencia 196 deriva exclusivamente del preliminar 188.,SI
+focalizacion_vigencias,197,municipio_id,268|CUMARAL,87|BARRANCA DE UPÍA,32,189,Linaje exacto fila_origen 32: vigencia 197 deriva exclusivamente del preliminar 189.,SI
+focalizacion_vigencias,252,municipio_id,861|SAN LUIS DE CUBARRAL,304|EL DORADO,87,244,Linaje exacto fila_origen 87: vigencia 252 deriva exclusivamente del preliminar 244.,SI
+focalizacion_vigencias,253,municipio_id,861|SAN LUIS DE CUBARRAL,304|EL DORADO,88,245,Linaje exacto fila_origen 88: vigencia 253 deriva exclusivamente del preliminar 245.,SI
+focalizacion_vigencias,254,municipio_id,861|SAN LUIS DE CUBARRAL,304|EL DORADO,89,246,Linaje exacto fila_origen 89: vigencia 254 deriva exclusivamente del preliminar 246.,SI
+focalizacion_vigencias,255,municipio_id,861|SAN LUIS DE CUBARRAL,304|EL DORADO,90,247,Linaje exacto fila_origen 90: vigencia 255 deriva exclusivamente del preliminar 247.,SI
+focalizacion_vigencias,558,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,393,550,Linaje exacto fila_origen 393: vigencia 558 deriva exclusivamente del preliminar 550.,SI
+focalizacion_vigencias,559,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,394,551,Linaje exacto fila_origen 394: vigencia 559 deriva exclusivamente del preliminar 551.,SI
+focalizacion_vigencias,560,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,395,552,Linaje exacto fila_origen 395: vigencia 560 deriva exclusivamente del preliminar 552.,SI
+focalizacion_vigencias,561,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,396,553,Linaje exacto fila_origen 396: vigencia 561 deriva exclusivamente del preliminar 553.,SI
+focalizacion_vigencias,562,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,397,554,Linaje exacto fila_origen 397: vigencia 562 deriva exclusivamente del preliminar 554.,SI
+focalizacion_vigencias,563,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,398,555,Linaje exacto fila_origen 398: vigencia 563 deriva exclusivamente del preliminar 555.,SI
+focalizacion_vigencias,564,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,399,556,Linaje exacto fila_origen 399: vigencia 564 deriva exclusivamente del preliminar 556.,SI
+focalizacion_vigencias,565,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,400,557,Linaje exacto fila_origen 400: vigencia 565 deriva exclusivamente del preliminar 557.,SI
+focalizacion_vigencias,566,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,401,558,Linaje exacto fila_origen 401: vigencia 566 deriva exclusivamente del preliminar 558.,SI
+focalizacion_vigencias,567,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,402,559,Linaje exacto fila_origen 402: vigencia 567 deriva exclusivamente del preliminar 559.,SI
+focalizacion_vigencias,748,municipio_id,565|MESETAS,1054|URIBE,583,740,Linaje exacto fila_origen 583: vigencia 748 deriva exclusivamente del preliminar 740.,SI
+focalizacion_vigencias,749,municipio_id,565|MESETAS,1054|URIBE,584,741,Linaje exacto fila_origen 584: vigencia 749 deriva exclusivamente del preliminar 741.,SI
+focalizacion_vigencias,750,municipio_id,565|MESETAS,1054|URIBE,585,742,Linaje exacto fila_origen 585: vigencia 750 deriva exclusivamente del preliminar 742.,SI
+focalizacion_vigencias,751,municipio_id,565|MESETAS,1054|URIBE,586,743,Linaje exacto fila_origen 586: vigencia 751 deriva exclusivamente del preliminar 743.,SI
+focalizacion_vigencias,752,municipio_id,565|MESETAS,1054|URIBE,587,744,Linaje exacto fila_origen 587: vigencia 752 deriva exclusivamente del preliminar 744.,SI
+focalizacion_vigencias,753,municipio_id,565|MESETAS,1054|URIBE,588,745,Linaje exacto fila_origen 588: vigencia 753 deriva exclusivamente del preliminar 745.,SI
+focalizacion_vigencias,754,municipio_id,565|MESETAS,1054|URIBE,589,746,Linaje exacto fila_origen 589: vigencia 754 deriva exclusivamente del preliminar 746.,SI
+focalizacion_vigencias,755,municipio_id,565|MESETAS,1054|URIBE,590,747,Linaje exacto fila_origen 590: vigencia 755 deriva exclusivamente del preliminar 747.,SI
+focalizacion_vigencias,756,municipio_id,565|MESETAS,1054|URIBE,591,748,Linaje exacto fila_origen 591: vigencia 756 deriva exclusivamente del preliminar 748.,SI
+focalizacion_vigencias,757,municipio_id,565|MESETAS,1054|URIBE,592,749,Linaje exacto fila_origen 592: vigencia 757 deriva exclusivamente del preliminar 749.,SI
+focalizacion_vigencias,758,municipio_id,565|MESETAS,1054|URIBE,593,750,Linaje exacto fila_origen 593: vigencia 758 deriva exclusivamente del preliminar 750.,SI
+focalizacion_vigencias,759,municipio_id,565|MESETAS,1054|URIBE,594,751,Linaje exacto fila_origen 594: vigencia 759 deriva exclusivamente del preliminar 751.,SI
+focalizacion_vigencias,760,municipio_id,565|MESETAS,1054|URIBE,595,752,Linaje exacto fila_origen 595: vigencia 760 deriva exclusivamente del preliminar 752.,SI
+focalizacion_vigencias,761,municipio_id,565|MESETAS,1054|URIBE,596,753,Linaje exacto fila_origen 596: vigencia 761 deriva exclusivamente del preliminar 753.,SI
+focalizacion_vigencias,762,municipio_id,565|MESETAS,1054|URIBE,597,754,Linaje exacto fila_origen 597: vigencia 762 deriva exclusivamente del preliminar 754.,SI
+focalizacion_vigencias,763,municipio_id,565|MESETAS,1054|URIBE,598,755,Linaje exacto fila_origen 598: vigencia 763 deriva exclusivamente del preliminar 755.,SI
+focalizacion_vigencias,764,municipio_id,565|MESETAS,1054|URIBE,599,756,Linaje exacto fila_origen 599: vigencia 764 deriva exclusivamente del preliminar 756.,SI
+focalizacion_vigencias,765,municipio_id,565|MESETAS,1054|URIBE,600,757,Linaje exacto fila_origen 600: vigencia 765 deriva exclusivamente del preliminar 757.,SI
+focalizacion_vigencias,766,municipio_id,565|MESETAS,1054|URIBE,601,758,Linaje exacto fila_origen 601: vigencia 766 deriva exclusivamente del preliminar 758.,SI
+focalizacion_vigencias,767,municipio_id,565|MESETAS,1054|URIBE,602,759,Linaje exacto fila_origen 602: vigencia 767 deriva exclusivamente del preliminar 759.,SI
+focalizacion_vigencias,768,municipio_id,565|MESETAS,1054|URIBE,603,760,Linaje exacto fila_origen 603: vigencia 768 deriva exclusivamente del preliminar 760.,SI
+focalizacion_vigencias,769,municipio_id,565|MESETAS,1054|URIBE,604,761,Linaje exacto fila_origen 604: vigencia 769 deriva exclusivamente del preliminar 761.,SI
+focalizacion_vigencias,770,municipio_id,565|MESETAS,1054|URIBE,605,762,Linaje exacto fila_origen 605: vigencia 770 deriva exclusivamente del preliminar 762.,SI
+focalizacion_vigencias,771,municipio_id,565|MESETAS,1054|URIBE,606,763,Linaje exacto fila_origen 606: vigencia 771 deriva exclusivamente del preliminar 763.,SI
+focalizacion_vigencias,772,municipio_id,565|MESETAS,1054|URIBE,607,764,Linaje exacto fila_origen 607: vigencia 772 deriva exclusivamente del preliminar 764.,SI
+focalizacion_vigencias,773,municipio_id,565|MESETAS,1054|URIBE,608,765,Linaje exacto fila_origen 608: vigencia 773 deriva exclusivamente del preliminar 765.,SI
+focalizacion_vigencias,774,municipio_id,565|MESETAS,1054|URIBE,609,766,Linaje exacto fila_origen 609: vigencia 774 deriva exclusivamente del preliminar 766.,SI
+focalizacion_vigencias,775,municipio_id,565|MESETAS,1054|URIBE,610,767,Linaje exacto fila_origen 610: vigencia 775 deriva exclusivamente del preliminar 767.,SI
+focalizacion_vigencias,776,municipio_id,565|MESETAS,1054|URIBE,611,768,Linaje exacto fila_origen 611: vigencia 776 deriva exclusivamente del preliminar 768.,SI
+focalizacion_vigencias,777,municipio_id,565|MESETAS,1054|URIBE,612,769,Linaje exacto fila_origen 612: vigencia 777 deriva exclusivamente del preliminar 769.,SI
+focalizacion_vigencias,778,municipio_id,565|MESETAS,1054|URIBE,613,770,Linaje exacto fila_origen 613: vigencia 778 deriva exclusivamente del preliminar 770.,SI
+focalizacion_vigencias,779,municipio_id,565|MESETAS,1054|URIBE,614,771,Linaje exacto fila_origen 614: vigencia 779 deriva exclusivamente del preliminar 771.,SI
+focalizacion_vigencias,780,municipio_id,565|MESETAS,1054|URIBE,615,772,Linaje exacto fila_origen 615: vigencia 780 deriva exclusivamente del preliminar 772.,SI
+focalizacion_vigencias,781,municipio_id,565|MESETAS,1054|URIBE,616,773,Linaje exacto fila_origen 616: vigencia 781 deriva exclusivamente del preliminar 773.,SI
+focalizacion_vigencias,782,municipio_id,565|MESETAS,1054|URIBE,617,774,Linaje exacto fila_origen 617: vigencia 782 deriva exclusivamente del preliminar 774.,SI
+focalizacion_vigencias,783,municipio_id,565|MESETAS,1054|URIBE,618,775,Linaje exacto fila_origen 618: vigencia 783 deriva exclusivamente del preliminar 775.,SI
+focalizacion_vigencias,784,municipio_id,565|MESETAS,1054|URIBE,619,776,Linaje exacto fila_origen 619: vigencia 784 deriva exclusivamente del preliminar 776.,SI
+focalizacion_vigencias,785,municipio_id,565|MESETAS,1054|URIBE,620,777,Linaje exacto fila_origen 620: vigencia 785 deriva exclusivamente del preliminar 777.,SI
+focalizacion_vigencias,786,municipio_id,565|MESETAS,1054|URIBE,621,778,Linaje exacto fila_origen 621: vigencia 786 deriva exclusivamente del preliminar 778.,SI
+instituciones,9,municipio_id,268|CUMARAL,87|BARRANCA DE UPÍA,29,186,Todas las filas oficiales de institucion_id 9 esperan el mismo municipio.,SI
+instituciones,24,municipio_id,861|SAN LUIS DE CUBARRAL,304|EL DORADO,87,244,Todas las filas oficiales de institucion_id 24 esperan el mismo municipio.,SI
+instituciones,63,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,393,550,Todas las filas oficiales de institucion_id 63 esperan el mismo municipio.,SI
+instituciones,103,municipio_id,565|MESETAS,1054|URIBE,583,740,Todas las filas oficiales de institucion_id 103 esperan el mismo municipio.,SI
+instituciones,104,municipio_id,565|MESETAS,1054|URIBE,596,753,Todas las filas oficiales de institucion_id 104 esperan el mismo municipio.,SI
+sedes,24,municipio_id,268|CUMARAL,87|BARRANCA DE UPÍA,29,186,Todas las filas oficiales de sede_id 24 esperan el mismo municipio.,SI
+sedes,25,municipio_id,268|CUMARAL,87|BARRANCA DE UPÍA,31,188,Todas las filas oficiales de sede_id 25 esperan el mismo municipio.,SI
+sedes,68,municipio_id,861|SAN LUIS DE CUBARRAL,304|EL DORADO,87,244,Todas las filas oficiales de sede_id 68 esperan el mismo municipio.,SI
+sedes,69,municipio_id,861|SAN LUIS DE CUBARRAL,304|EL DORADO,88,245,Todas las filas oficiales de sede_id 69 esperan el mismo municipio.,SI
+sedes,70,municipio_id,861|SAN LUIS DE CUBARRAL,304|EL DORADO,90,247,Todas las filas oficiales de sede_id 70 esperan el mismo municipio.,SI
+sedes,343,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,393,550,Todas las filas oficiales de sede_id 343 esperan el mismo municipio.,SI
+sedes,344,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,395,552,Todas las filas oficiales de sede_id 344 esperan el mismo municipio.,SI
+sedes,345,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,396,553,Todas las filas oficiales de sede_id 345 esperan el mismo municipio.,SI
+sedes,346,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,397,554,Todas las filas oficiales de sede_id 346 esperan el mismo municipio.,SI
+sedes,347,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,399,556,Todas las filas oficiales de sede_id 347 esperan el mismo municipio.,SI
+sedes,348,municipio_id,728|PUERTO LLERAS,722|PUERTO CONCORDIA,401,558,Todas las filas oficiales de sede_id 348 esperan el mismo municipio.,SI
+sedes,504,municipio_id,565|MESETAS,1054|URIBE,583,740,Todas las filas oficiales de sede_id 504 esperan el mismo municipio.,SI
+sedes,505,municipio_id,565|MESETAS,1054|URIBE,584,741,Todas las filas oficiales de sede_id 505 esperan el mismo municipio.,SI
+sedes,506,municipio_id,565|MESETAS,1054|URIBE,585,742,Todas las filas oficiales de sede_id 506 esperan el mismo municipio.,SI
+sedes,507,municipio_id,565|MESETAS,1054|URIBE,586,743,Todas las filas oficiales de sede_id 507 esperan el mismo municipio.,SI
+sedes,508,municipio_id,565|MESETAS,1054|URIBE,587,744,Todas las filas oficiales de sede_id 508 esperan el mismo municipio.,SI
+sedes,509,municipio_id,565|MESETAS,1054|URIBE,588,745,Todas las filas oficiales de sede_id 509 esperan el mismo municipio.,SI
+sedes,510,municipio_id,565|MESETAS,1054|URIBE,589,746,Todas las filas oficiales de sede_id 510 esperan el mismo municipio.,SI
+sedes,511,municipio_id,565|MESETAS,1054|URIBE,590,747,Todas las filas oficiales de sede_id 511 esperan el mismo municipio.,SI
+sedes,512,municipio_id,565|MESETAS,1054|URIBE,591,748,Todas las filas oficiales de sede_id 512 esperan el mismo municipio.,SI
+sedes,513,municipio_id,565|MESETAS,1054|URIBE,592,749,Todas las filas oficiales de sede_id 513 esperan el mismo municipio.,SI
+sedes,514,municipio_id,565|MESETAS,1054|URIBE,593,750,Todas las filas oficiales de sede_id 514 esperan el mismo municipio.,SI
+sedes,515,municipio_id,565|MESETAS,1054|URIBE,594,751,Todas las filas oficiales de sede_id 515 esperan el mismo municipio.,SI
+sedes,516,municipio_id,565|MESETAS,1054|URIBE,595,752,Todas las filas oficiales de sede_id 516 esperan el mismo municipio.,SI
+sedes,517,municipio_id,565|MESETAS,1054|URIBE,596,753,Todas las filas oficiales de sede_id 517 esperan el mismo municipio.,SI
+sedes,518,municipio_id,565|MESETAS,1054|URIBE,597,754,Todas las filas oficiales de sede_id 518 esperan el mismo municipio.,SI
+sedes,519,municipio_id,565|MESETAS,1054|URIBE,598,755,Todas las filas oficiales de sede_id 519 esperan el mismo municipio.,SI
+sedes,520,municipio_id,565|MESETAS,1054|URIBE,599,756,Todas las filas oficiales de sede_id 520 esperan el mismo municipio.,SI
+sedes,521,municipio_id,565|MESETAS,1054|URIBE,600,757,Todas las filas oficiales de sede_id 521 esperan el mismo municipio.,SI
+sedes,522,municipio_id,565|MESETAS,1054|URIBE,601,758,Todas las filas oficiales de sede_id 522 esperan el mismo municipio.,SI
+sedes,523,municipio_id,565|MESETAS,1054|URIBE,602,759,Todas las filas oficiales de sede_id 523 esperan el mismo municipio.,SI
+sedes,524,municipio_id,565|MESETAS,1054|URIBE,603,760,Todas las filas oficiales de sede_id 524 esperan el mismo municipio.,SI
+sedes,525,municipio_id,565|MESETAS,1054|URIBE,604,761,Todas las filas oficiales de sede_id 525 esperan el mismo municipio.,SI
+sedes,526,municipio_id,565|MESETAS,1054|URIBE,605,762,Todas las filas oficiales de sede_id 526 esperan el mismo municipio.,SI
+sedes,527,municipio_id,565|MESETAS,1054|URIBE,606,763,Todas las filas oficiales de sede_id 527 esperan el mismo municipio.,SI
+sedes,528,municipio_id,565|MESETAS,1054|URIBE,607,764,Todas las filas oficiales de sede_id 528 esperan el mismo municipio.,SI
+sedes,529,municipio_id,565|MESETAS,1054|URIBE,608,765,Todas las filas oficiales de sede_id 529 esperan el mismo municipio.,SI
+sedes,530,municipio_id,565|MESETAS,1054|URIBE,609,766,Todas las filas oficiales de sede_id 530 esperan el mismo municipio.,SI
+sedes,531,municipio_id,565|MESETAS,1054|URIBE,610,767,Todas las filas oficiales de sede_id 531 esperan el mismo municipio.,SI
+sedes,532,municipio_id,565|MESETAS,1054|URIBE,611,768,Todas las filas oficiales de sede_id 532 esperan el mismo municipio.,SI
+sedes,533,municipio_id,565|MESETAS,1054|URIBE,612,769,Todas las filas oficiales de sede_id 533 esperan el mismo municipio.,SI
+sedes,534,municipio_id,565|MESETAS,1054|URIBE,613,770,Todas las filas oficiales de sede_id 534 esperan el mismo municipio.,SI
+sedes,535,municipio_id,565|MESETAS,1054|URIBE,614,771,Todas las filas oficiales de sede_id 535 esperan el mismo municipio.,SI
+sedes,536,municipio_id,565|MESETAS,1054|URIBE,615,772,Todas las filas oficiales de sede_id 536 esperan el mismo municipio.,SI
+sedes,537,municipio_id,565|MESETAS,1054|URIBE,616,773,Todas las filas oficiales de sede_id 537 esperan el mismo municipio.,SI
+sedes,538,municipio_id,565|MESETAS,1054|URIBE,618,775,Todas las filas oficiales de sede_id 538 esperan el mismo municipio.,SI
+sedes,539,municipio_id,565|MESETAS,1054|URIBE,619,776,Todas las filas oficiales de sede_id 539 esperan el mismo municipio.,SI
+sedes,540,municipio_id,565|MESETAS,1054|URIBE,620,777,Todas las filas oficiales de sede_id 540 esperan el mismo municipio.,SI
+sedes,541,municipio_id,565|MESETAS,1054|URIBE,621,778,Todas las filas oficiales de sede_id 541 esperan el mismo municipio.,SI

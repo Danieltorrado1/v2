@@ -1,7 +1,9 @@
 import type { VinculacionApi, VinculacionEstado } from './personas.types';
 
 export type MetodoPago =
+  | 'COBERTURA'
   | 'ASISTENCIA'
+  | 'CASO_ESPECIAL'
   | 'CATEGORIA'
   | 'OPS_CUENTA_COBRO'
   | 'OPS_VALOR_FIJO'
@@ -46,9 +48,18 @@ export interface ContractPersonalListItem {
   persona_id: number;
   numero_documento: string;
   nombre_completo: string;
+  es_manipuladora: boolean;
   cargo: {
     nombre_cargo: string | null;
   };
+  asignacion_actual: {
+    nombre: string | null;
+    institucion: string | null;
+    sede: string | null;
+    modalidad: string | null;
+  };
+  presentada_licitacion_actual: boolean;
+  perfil_licitacion_actual: string | null;
   estado_vinculacion: VinculacionEstado;
   fecha_ingreso: string;
   fecha_fin: string | null;

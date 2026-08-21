@@ -38,6 +38,14 @@ import {
   updateEmpresaHandler
 } from './configuracion.admin.controller';
 import {
+  createContratoPerfilLicitacionHandler,
+  createContratoUbicacionLaboralHandler,
+  listContratoPerfilesLicitacionHandler,
+  listContratoUbicacionesLaboralesHandler,
+  updateContratoPerfilLicitacionHandler,
+  updateContratoUbicacionLaboralHandler
+} from './configuracion.personal.controller';
+import {
   createPersonalConfigHandler,
   createSalarioConfigHandler,
   getPersonalConfigActivaHandler,
@@ -138,6 +146,36 @@ configuracionRoutes.get('/contratos/:id', requireAnyPermissions('configuracion.r
 configuracionRoutes.post('/contratos', requireAnyPermissions('contratos.create', 'contracts.create'), createContratoHandler);
 configuracionRoutes.patch('/contratos/:id', requireAnyPermissions('contratos.update', 'contracts.update'), updateContratoHandler);
 configuracionRoutes.patch('/contratos/:id/estado', requireAnyPermissions('contratos.update', 'contracts.status.update'), setContratoEstadoHandler);
+configuracionRoutes.get(
+  '/contratos/:contratoId/ubicaciones-laborales',
+  requireAnyPermissions('configuracion.read', 'contratos.read', 'contracts.read'),
+  listContratoUbicacionesLaboralesHandler
+);
+configuracionRoutes.post(
+  '/contratos/:contratoId/ubicaciones-laborales',
+  requireAnyPermissions('contratos.update', 'contracts.update'),
+  createContratoUbicacionLaboralHandler
+);
+configuracionRoutes.patch(
+  '/contratos/:contratoId/ubicaciones-laborales/:id',
+  requireAnyPermissions('contratos.update', 'contracts.update'),
+  updateContratoUbicacionLaboralHandler
+);
+configuracionRoutes.get(
+  '/contratos/:contratoId/perfiles-licitacion',
+  requireAnyPermissions('configuracion.read', 'contratos.read', 'contracts.read'),
+  listContratoPerfilesLicitacionHandler
+);
+configuracionRoutes.post(
+  '/contratos/:contratoId/perfiles-licitacion',
+  requireAnyPermissions('contratos.update', 'contracts.update'),
+  createContratoPerfilLicitacionHandler
+);
+configuracionRoutes.patch(
+  '/contratos/:contratoId/perfiles-licitacion/:id',
+  requireAnyPermissions('contratos.update', 'contracts.update'),
+  updateContratoPerfilLicitacionHandler
+);
 configuracionRoutes.use('/contratos', contratosLifecycleRoutes);
 
 configuracionRoutes.use('/cargos', tenantMiddleware);

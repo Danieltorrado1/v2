@@ -17,6 +17,17 @@ import {
   suspenderVinculacionHandler,
   updateVinculacionHandler
 } from './vinculaciones.controller';
+import {
+  createAsignacionLaboralHandler,
+  createPresentacionLicitacionHandler,
+  getAsignacionesLaboralesByVinculacionHandler,
+  getAsignacionesOperativasByVinculacionHandler,
+  getContratoLicitacionResumenHandler,
+  getPresentacionesLicitacionByVinculacionHandler,
+  getVinculacionPersonalContextHandler,
+  updateAsignacionLaboralHandler,
+  updatePresentacionLicitacionHandler
+} from './vinculaciones.personal.controller';
 
 const vinculacionesRoutes = Router();
 
@@ -26,6 +37,7 @@ vinculacionesRoutes.use(tenantMiddleware);
 vinculacionesRoutes.get('/ops/catalogos', requirePermissions('vinculaciones.read'), getOpsCatalogosHandler);
 vinculacionesRoutes.get('/ops', requirePermissions('vinculaciones.read'), getOpsVinculacionesHandler);
 vinculacionesRoutes.get('/personal', requirePermissions('vinculaciones.read'), getContractPersonalHandler);
+vinculacionesRoutes.get('/personal/licitacion/resumen', requirePermissions('vinculaciones.read'), getContratoLicitacionResumenHandler);
 vinculacionesRoutes.get('/', requirePermissions('vinculaciones.read'), getVinculaciones);
 vinculacionesRoutes.get(
   '/persona/:persona_id',
@@ -36,6 +48,46 @@ vinculacionesRoutes.get(
   '/:id/expediente',
   requirePermissions('vinculaciones.read'),
   getVinculacionExpedienteHandler
+);
+vinculacionesRoutes.get(
+  '/:id/contexto-personal',
+  requirePermissions('vinculaciones.read'),
+  getVinculacionPersonalContextHandler
+);
+vinculacionesRoutes.get(
+  '/:id/asignaciones-operativas',
+  requirePermissions('vinculaciones.read'),
+  getAsignacionesOperativasByVinculacionHandler
+);
+vinculacionesRoutes.get(
+  '/:id/asignaciones-laborales',
+  requirePermissions('vinculaciones.read'),
+  getAsignacionesLaboralesByVinculacionHandler
+);
+vinculacionesRoutes.post(
+  '/:id/asignaciones-laborales',
+  requirePermissions('vinculaciones.update'),
+  createAsignacionLaboralHandler
+);
+vinculacionesRoutes.patch(
+  '/:id/asignaciones-laborales/:asignacionId',
+  requirePermissions('vinculaciones.update'),
+  updateAsignacionLaboralHandler
+);
+vinculacionesRoutes.get(
+  '/:id/presentaciones-licitacion',
+  requirePermissions('vinculaciones.read'),
+  getPresentacionesLicitacionByVinculacionHandler
+);
+vinculacionesRoutes.post(
+  '/:id/presentaciones-licitacion',
+  requirePermissions('vinculaciones.update'),
+  createPresentacionLicitacionHandler
+);
+vinculacionesRoutes.patch(
+  '/:id/presentaciones-licitacion/:presentacionId',
+  requirePermissions('vinculaciones.update'),
+  updatePresentacionLicitacionHandler
 );
 vinculacionesRoutes.get('/:id', requirePermissions('vinculaciones.read'), getVinculacion);
 vinculacionesRoutes.post(

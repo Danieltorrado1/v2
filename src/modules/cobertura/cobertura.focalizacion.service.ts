@@ -648,7 +648,7 @@ const loadSedes = async (client: PoolClient): Promise<SedeRow[]> => {
   return result.rows;
 };
 
-const resolveMunicipioId = (value: string | null, municipios: MunicipioRow[], consecutivo?: string | null): number | null => {
+export const resolveMunicipioId = (value: string | null, municipios: MunicipioRow[], consecutivo?: string | null): number | null => {
   if (!value) {
     return null;
   }
@@ -656,10 +656,6 @@ const resolveMunicipioId = (value: string | null, municipios: MunicipioRow[], co
   const normalized = normalizeFocalizacionText(value);
   const consecutivoDigits = consecutivo?.replace(/\D/g, '') ?? '';
   const municipioCode = consecutivoDigits.length >= 6 ? consecutivoDigits.slice(1, 6) : '';
-  const byEmbeddedCode = municipios.filter((row) => municipioCode && row.codigo_dane === municipioCode);
-  if (byEmbeddedCode.length === 1 && byEmbeddedCode[0]) {
-    return toNumber(byEmbeddedCode[0].id);
-  }
   const byName = municipios.filter((row) => normalizeFocalizacionText(row.nombre_municipio) === normalized);
   if (byName.length === 1 && byName[0]) {
     return toNumber(byName[0].id);
@@ -668,6 +664,11 @@ const resolveMunicipioId = (value: string | null, municipios: MunicipioRow[], co
   const byCode = municipios.filter((row) => normalizeFocalizacionText(row.codigo_dane) === normalized);
   if (byCode.length === 1 && byCode[0]) {
     return toNumber(byCode[0].id);
+  }
+
+  const byEmbeddedCode = municipios.filter((row) => municipioCode && row.codigo_dane === municipioCode);
+  if (byEmbeddedCode.length === 1 && byEmbeddedCode[0]) {
+    return toNumber(byEmbeddedCode[0].id);
   }
 
   return null;

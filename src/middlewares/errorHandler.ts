@@ -75,7 +75,7 @@ export const errorHandler = (
     return errorResponse(res, {
       statusCode: 400,
       message: isMetodoPagoConstraint
-        ? 'metodo_pago debe ser uno de los valores permitidos: ASISTENCIA, CATEGORIA, OPS_CUENTA_COBRO, OPS_VALOR_FIJO o OPS_POR_PRODUCTO'
+        ? 'metodo_pago debe ser uno de los valores permitidos: COBERTURA, ASISTENCIA, CASO_ESPECIAL, CATEGORIA, OPS_CUENTA_COBRO, OPS_VALOR_FIJO o OPS_POR_PRODUCTO'
         : 'Constraint validation failed',
       errorCode: 'CHECK_CONSTRAINT_VIOLATION',
       details: env.NODE_ENV === 'production' ? undefined : dbError.details

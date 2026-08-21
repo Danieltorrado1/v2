@@ -1,0 +1,228 @@
+{
+  "cobertura_postcommit": {
+    "municipio_incorrecto": 0,
+    "barranca_de_upia": {
+      "municipio": "BARRANCA DE UPÍA",
+      "filas": 4,
+      "municipios_bd": [
+        "BARRANCA DE UPÍA"
+      ],
+      "instituciones": [
+        "INSTITUCIÓN EDUCATIVA FRANCISCO WALTER"
+      ],
+      "sedes": 2,
+      "sede_modalidades": 4,
+      "incorrectas": 0
+    },
+    "el_dorado": {
+      "municipio": "EL DORADO",
+      "filas": 4,
+      "municipios_bd": [
+        "EL DORADO"
+      ],
+      "instituciones": [
+        "INSTITUCIÓN EDUCATIVA EL DORADO"
+      ],
+      "sedes": 3,
+      "sede_modalidades": 4,
+      "incorrectas": 0
+    },
+    "puerto_concordia": {
+      "municipio": "PUERTO CONCORDIA",
+      "filas": 37,
+      "municipios_bd": [
+        "PUERTO CONCORDIA"
+      ],
+      "instituciones": [
+        "CENTRO EDUCATIVO LA VEGA",
+        "CENTRO EDUCATIVO MI LLANURA",
+        "INSTITUCIÓN EDUCATIVA NUEVA ESPERANZA",
+        "INSTITUCIÓN EDUCATIVA PUERTO IRIS",
+        "INSTITUCIÓN EDUCATIVA VALENTIN APARICIO PERSONA"
+      ],
+      "sedes": 29,
+      "sede_modalidades": 37,
+      "incorrectas": 0
+    },
+    "uribe": {
+      "municipio": "URIBE",
+      "filas": 52,
+      "municipios_bd": [
+        "URIBE"
+      ],
+      "instituciones": [
+        "CENTRO EDUCATIVO EL DIVISO",
+        "INSTITUCIÓN EDUCATIVA LA JULIA",
+        "INSTITUCIÓN EDUCATIVA RAFAEL URIBE URIBE"
+      ],
+      "sedes": 50,
+      "sede_modalidades": 52,
+      "incorrectas": 0
+    },
+    "la_macarena": {
+      "municipio": "LA MACARENA",
+      "filas": 132,
+      "municipios_bd": [
+        "LA MACARENA"
+      ],
+      "instituciones": [
+        "CENTRO EDUCATIVO LA CATALINA",
+        "CENTRO EDUCATIVO LAS BRISAS",
+        "INSTITUCIÓN EDUCATIVA BOCAS DEL PERDIDO",
+        "INSTITUCIÓN EDUCATIVA EL RUBI",
+        "INSTITUCIÓN EDUCATIVA HECTOR IVAN HERNANDEZ",
+        "INSTITUCIÓN EDUCATIVA NUESTRA SENORA DE LA MACARENA",
+        "INSTITUCIÓN EDUCATIVA NUEVO HORIZONTE",
+        "INSTITUCIÓN EDUCATIVA SANTA TERESA",
+        "INSTITUCIÓN EDUCATIVA TERCER MILENIO"
+      ],
+      "sedes": 121,
+      "sede_modalidades": 132,
+      "incorrectas": 0
+    },
+    "focalizacion_total": 76650,
+    "cobertura_requerida_total": 662,
+    "huérfanos": {
+      "instituciones": 0,
+      "sedes": 0,
+      "focalizacion_vigencias": 0,
+      "focalizacion_final": 0
+    },
+    "duplicados": {
+      "instituciones_duplicadas_fuertes": 0,
+      "sedes_duplicadas_fuertes": 0,
+      "sede_modalidades_duplicadas_fuertes": 0
+    },
+    "idempotencia": {
+      "relaciones_incorrectas": 0,
+      "updates_propuestos": 0
+    }
+  },
+  "personal_dry_run": {
+    "filas": 772,
+    "personas_crear": 569,
+    "personas_reutilizar": 200,
+    "vinculaciones_crear": 772,
+    "revisar": 307,
+    "manipuladoras_totales": 687,
+    "manipuladoras_asignables": 413,
+    "manipuladoras_no_asignables": 274,
+    "coverage_status": {
+      "MUNICIPIO_NO_RECONOCIDO": 0,
+      "INSTITUCION_NO_RECONOCIDA": 40,
+      "SEDE_NO_RECONOCIDA": 26,
+      "SEDE_MODALIDAD_NO_EXISTE": 208
+    },
+    "coverage_summary": {
+      "requeridas_total": 662,
+      "asignadas_total": 413,
+      "deficit_total": 260,
+      "exceso_total": 11,
+      "completas": 559,
+      "deficitarias": 122,
+      "excesos": 6,
+      "sin_personal": 489
+    },
+    "identity": {
+      "filas": 2,
+      "conflictos": [
+        {
+          "cedula": "40430665",
+          "nombre_archivo": "LUZ MYRIAM SACRISTAN CIFUENTES",
+          "nombre_bd": "LUZ MYRIAN SACRISTAN CINFUENTES"
+        },
+        {
+          "cedula": "8780626",
+          "nombre_archivo": "JUAN PABLO BAENA TRUJILLO",
+          "nombre_bd": "JUAN PABLO TRUJILLO BAENA"
+        }
+      ]
+    },
+    "contractual": {
+      "filas": 14,
+      "codigos": {
+        "FECHA_FIN_REQUERIDA_FALTANTE": 12,
+        "FECHA_INICIO_FALTANTE": 2
+      }
+    },
+    "ubicaciones": {
+      "filas": 9,
+      "ubicaciones_no_reconocidas": [
+        "AUXILIAR ADMINISTRATIVO",
+        "AUXILIAR DE SERVICIOS GENERALES",
+        "BODEGA",
+        "COORDINADOR AUXILIAR OPERATIVO",
+        "OPERARIO DE BODEGA, AUXILIARES Y TRANSPORTADORES",
+        "REPRESENTANTE LEGAL",
+        "SEGURIDAD Y SALUD EN EL TRABAJO"
+      ]
+    },
+    "caso_especial": {
+      "filas": 4,
+      "modelo_alertas": [
+        "La tabla vinculaciones no tiene columna valor_caso_especial."
+      ]
+    },
+    "catalogos": {
+      "filas": 4
+    },
+    "licitacion": {
+      "total_requeridas": 167,
+      "total_presentaciones": 151,
+      "per_profile": {
+        "MANIPULADORAS_ALIMENTOS": {
+          "perfil": "MANIPULADORAS_ALIMENTOS",
+          "requeridos": 100,
+          "presentados": 99,
+          "diferencia": -1,
+          "estado": "DEFICIT",
+          "documental_estado": "PENDIENTE_CONFIGURACION_REQUISITOS"
+        },
+        "OPER_BOD_TRANS_AUX": {
+          "perfil": "OPER_BOD_TRANS_AUX",
+          "requeridos": 35,
+          "presentados": 21,
+          "diferencia": -14,
+          "estado": "DEFICIT",
+          "documental_estado": "PENDIENTE_CONFIGURACION_REQUISITOS"
+        },
+        "AUX_ADMIN": {
+          "perfil": "AUX_ADMIN",
+          "requeridos": 10,
+          "presentados": 9,
+          "diferencia": -1,
+          "estado": "DEFICIT",
+          "documental_estado": "PENDIENTE_CONFIGURACION_REQUISITOS"
+        },
+        "COORD_ZONA": {
+          "perfil": "COORD_ZONA",
+          "requeridos": 18,
+          "presentados": 18,
+          "diferencia": 0,
+          "estado": "CUMPLE",
+          "documental_estado": "PENDIENTE_CONFIGURACION_REQUISITOS"
+        },
+        "COORD_SUMINISTRO": {
+          "perfil": "COORD_SUMINISTRO",
+          "requeridos": 2,
+          "presentados": 2,
+          "diferencia": 0,
+          "estado": "CUMPLE",
+          "documental_estado": "PENDIENTE_CONFIGURACION_REQUISITOS"
+        },
+        "SUP_CALIDAD": {
+          "perfil": "SUP_CALIDAD",
+          "requeridos": 2,
+          "presentados": 2,
+          "diferencia": 0,
+          "estado": "CUMPLE",
+          "documental_estado": "PENDIENTE_CONFIGURACION_REQUISITOS"
+        }
+      }
+    },
+    "decisiones_humanas": 307,
+    "blockers": [
+      "MODELO_BD_SIN_CAMPO_VALOR_CASO_ESPECIAL"
+    ]
+  }
+}

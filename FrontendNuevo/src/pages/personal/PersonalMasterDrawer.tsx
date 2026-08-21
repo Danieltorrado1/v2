@@ -904,6 +904,9 @@ export default function PersonalMasterDrawer({
   }
 
   function renderVinculacionTab() {
+    const personalContext = activeExpediente.personal_contexto;
+    const licitacionActual = personalContext.presentada_licitacion_actual;
+
     return (
       <div className="pmd-stack">
         <section className="pmd-card">
@@ -927,6 +930,51 @@ export default function PersonalMasterDrawer({
             <DataItem label="Retiro" value={formatDate(activeExpediente.vinculacion.fecha_fin)} />
             <DataItem label="Estado" value={activeExpediente.vinculacion.estado_vinculacion} />
             <DataItem label="Método de pago" value={displayValue(activeExpediente.vinculacion.metodo_pago)} />
+          </div>
+        </section>
+
+        <section className="pmd-card">
+          <div className="pmd-card-header">
+            <div>
+              <h3>{personalContext.es_manipuladora ? 'Asignación operativa' : 'Asignación laboral'}</h3>
+              <p>
+                {personalContext.es_manipuladora
+                  ? 'La cobertura vigente se toma desde la sede-modalidad asignada.'
+                  : 'La ubicación laboral se conserva separada del cargo real y de la cobertura.'}
+              </p>
+            </div>
+          </div>
+
+          {personalContext.es_manipuladora ? (
+            <div className="pmd-info-grid compact-four">
+              <DataItem label="Cobertura" value={personalContext.asignacion_operativa_actual ? 'Cuenta cobertura' : 'Sin asignación'} />
+              <DataItem label="Institución" value={displayValue(personalContext.asignacion_operativa_actual?.institucion)} />
+              <DataItem label="Sede" value={displayValue(personalContext.asignacion_operativa_actual?.sede)} />
+              <DataItem label="Modalidad" value={displayValue(personalContext.asignacion_operativa_actual?.modalidad)} />
+            </div>
+          ) : (
+            <div className="pmd-info-grid compact-four">
+              <DataItem label="Asignación actual" value={displayValue(personalContext.asignacion_laboral_actual?.nombre_ubicacion)} />
+              <DataItem label="Estado asignación" value={displayValue(personalContext.asignacion_laboral_actual?.estado)} />
+              <DataItem label="Desde" value={formatDate(personalContext.asignacion_laboral_actual?.vigencia_desde)} />
+              <DataItem label="Hasta" value={formatDate(personalContext.asignacion_laboral_actual?.vigencia_hasta)} />
+            </div>
+          )}
+        </section>
+
+        <section className="pmd-card">
+          <div className="pmd-card-header">
+            <div>
+              <h3>Licitación</h3>
+              <p>La acreditación de licitación se muestra sin alterar el cargo real.</p>
+            </div>
+          </div>
+
+          <div className="pmd-info-grid compact-four">
+            <DataItem label="Presentada en licitación" value={licitacionActual ? 'Sí' : 'No'} />
+            <DataItem label="Perfil licitación" value={displayValue(licitacionActual?.perfil.nombre_perfil)} />
+            <DataItem label="Estado requisitos" value={displayValue(licitacionActual?.cumple_requisitos_estado)} />
+            <DataItem label="Vigencia actual" value={licitacionActual ? `${formatDate(licitacionActual.vigencia_desde)} a ${formatDate(licitacionActual.vigencia_hasta)}` : 'Sin registrar'} />
           </div>
         </section>
 

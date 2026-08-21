@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 export const vinculacionEstadoSchema = z.enum(['ACTIVA', 'RETIRADA', 'SUSPENDIDA']);
 export const METODOS_PAGO = [
+  'COBERTURA',
   'ASISTENCIA',
+  'CASO_ESPECIAL',
   'CATEGORIA',
   'OPS_CUENTA_COBRO',
   'OPS_VALOR_FIJO',

@@ -6,6 +6,10 @@ import { AppError } from '../../utils/AppError';
 import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { getVinculacionChecklist } from '../documentos/documentos.service';
 import {
+  getVinculacionPersonalContext,
+  type VinculacionPersonalContext
+} from './vinculaciones.personal.service';
+import {
   CreateVinculacionInput,
   ListContractPersonalQuery,
   ListVinculacionesQuery,
@@ -67,9 +71,15 @@ export interface PaginatedVinculaciones {
 }
 
 interface ContractPersonalRow extends QueryResultRow {
+  asignacion_laboral_actual: string | null;
+  institucion_actual: string | null;
+  modalidad_actual: string | null;
+  perfil_licitacion_actual: string | null;
+  presentada_licitacion_actual: boolean;
   cargo_nombre: string | null;
   contrato_cargo_id: number | string | null;
   contrato_id: number | string;
+  es_manipuladora: boolean;
   empresa_id: number | string;
   estado_vinculacion: string | null;
   fecha_fin: string | Date | null;
@@ -78,21 +88,31 @@ interface ContractPersonalRow extends QueryResultRow {
   persona_id: number | string;
   primer_apellido: string;
   primer_nombre: string;
+  sede_actual: string | null;
   segundo_apellido: string | null;
   segundo_nombre: string | null;
   vinculacion_id: number | string;
 }
 
 export interface ContractPersonalListItem {
+  asignacion_actual: {
+    institucion: string | null;
+    modalidad: string | null;
+    nombre: string | null;
+    sede: string | null;
+  };
   cargo: {
     nombre_cargo: string | null;
   };
+  es_manipuladora: boolean;
   estado_vinculacion: VinculacionEstado;
   fecha_fin: string | null;
   fecha_ingreso: string;
   nombre_completo: string;
   numero_documento: string;
+  perfil_licitacion_actual: string | null;
   persona_id: number;
+  presentada_licitacion_actual: boolean;
   vinculacion_id: number;
 }
 
@@ -322,6 +342,7 @@ export interface VinculacionExpediente {
     caja_compensacion_id: number | null;
     caja_compensacion: string | null;
   } | null;
+  personal_contexto: VinculacionPersonalContext;
   vinculacion: Vinculacion;
 }
 
@@ -403,9 +424,18 @@ const mapContractPersonal = (row: ContractPersonalRow): ContractPersonalListItem
     cargo: {
       nombre_cargo: row.cargo_nombre
     },
+    es_manipuladora: row.es_manipuladora,
     estado_vinculacion: normalizeEstado(row.estado_vinculacion),
     fecha_ingreso: toDateString(row.fecha_inicio) ?? '',
-    fecha_fin: toDateString(row.fecha_fin)
+    fecha_fin: toDateString(row.fecha_fin),
+    asignacion_actual: {
+      nombre: row.asignacion_laboral_actual,
+      institucion: row.institucion_actual,
+      sede: row.sede_actual,
+      modalidad: row.modalidad_actual
+    },
+    presentada_licitacion_actual: row.presentada_licitacion_actual,
+    perfil_licitacion_actual: row.perfil_licitacion_actual
   };
 };
 
@@ -888,6 +918,41 @@ export const listContractPersonal = async (
     const listParams = [...params, filters.limit, offset];
     const result = await client.query<ContractPersonalRow>(
       `
+        WITH cobertura_actual AS (
+          SELECT DISTINCT ON (ca.vinculacion_id)
+            ca.vinculacion_id,
+            ca.institucion,
+            ca.sede,
+            ca.modalidad
+          FROM cobertura_asignaciones ca
+          WHERE ca.activo = TRUE
+            AND ca.fecha_inicio <= DATE '2026-08-21'
+            AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= DATE '2026-08-21')
+          ORDER BY ca.vinculacion_id, ca.fecha_inicio DESC, ca.id DESC
+        ),
+        asignacion_laboral_actual AS (
+          SELECT DISTINCT ON (pal.vinculacion_id)
+            pal.vinculacion_id,
+            cul.nombre_ubicacion
+          FROM personal_asignaciones_laborales pal
+          INNER JOIN contrato_ubicaciones_laborales cul ON cul.id = pal.ubicacion_laboral_id
+          WHERE pal.estado = 'ACTIVA'
+            AND pal.vigencia_desde <= DATE '2026-08-21'
+            AND (pal.vigencia_hasta IS NULL OR pal.vigencia_hasta >= DATE '2026-08-21')
+          ORDER BY pal.vinculacion_id, pal.vigencia_desde DESC, pal.id DESC
+        ),
+        presentacion_licitacion_actual AS (
+          SELECT DISTINCT ON (ppl.vinculacion_id)
+            ppl.vinculacion_id,
+            TRUE AS presentada_licitacion_actual,
+            cpl.nombre_perfil AS perfil_licitacion_actual
+          FROM personal_presentaciones_licitacion ppl
+          INNER JOIN contrato_perfiles_licitacion cpl ON cpl.id = ppl.perfil_licitacion_id
+          WHERE ppl.estado = 'PRESENTADA'
+            AND ppl.vigencia_desde <= DATE '2026-08-21'
+            AND (ppl.vigencia_hasta IS NULL OR ppl.vigencia_hasta >= DATE '2026-08-21')
+          ORDER BY ppl.vinculacion_id, ppl.vigencia_desde DESC, ppl.id DESC
+        )
         SELECT
           v.id AS vinculacion_id,
           v.persona_id,
@@ -902,10 +967,23 @@ export const listContractPersonal = async (
           p.segundo_nombre,
           p.primer_apellido,
           p.segundo_apellido,
-          cc.nombre_cargo AS cargo_nombre
+          cc.nombre_cargo AS cargo_nombre,
+          (
+            COALESCE(cc.aplica_cobertura, FALSE)
+            AND LOWER(COALESCE(cc.nombre_cargo, '')) LIKE '%manipulad%'
+          ) AS es_manipuladora,
+          ala.nombre_ubicacion AS asignacion_laboral_actual,
+          caa.institucion AS institucion_actual,
+          caa.sede AS sede_actual,
+          caa.modalidad AS modalidad_actual,
+          COALESCE(pla.presentada_licitacion_actual, FALSE) AS presentada_licitacion_actual,
+          pla.perfil_licitacion_actual
         FROM vinculaciones v
         INNER JOIN personas p ON p.id = v.persona_id
         LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
+        LEFT JOIN cobertura_actual caa ON caa.vinculacion_id = v.id
+        LEFT JOIN asignacion_laboral_actual ala ON ala.vinculacion_id = v.id
+        LEFT JOIN presentacion_licitacion_actual pla ON pla.vinculacion_id = v.id
         ${whereClause}
         ORDER BY v.fecha_inicio DESC, p.primer_apellido ASC, p.primer_nombre ASC, v.id DESC
         LIMIT $${listParams.length - 1}::int
@@ -967,7 +1045,8 @@ export const getVinculacionExpediente = async (
     documentosPersonaResult,
     documentosVinculacionResult,
     checklist,
-    afiliacionResult
+    afiliacionResult,
+    personalContexto
   ] = await Promise.all([
     dbQuery<PersonaExpedienteRow>(
       `
@@ -1140,7 +1219,8 @@ export const getVinculacionExpediente = async (
         LIMIT 1
       `,
       [vinculacion.id]
-    )
+    ),
+    getVinculacionPersonalContext(vinculacion.id, tenant)
   ]);
 
   const personaRow = personaResult.rows[0];
@@ -1197,6 +1277,7 @@ export const getVinculacionExpediente = async (
     documentos_persona: documentosPersonaResult.rows.map(mapDocumentoPersonaExpediente),
     documentos_vinculacion: documentosVinculacionResult.rows.map(mapDocumentoVinculacionExpediente),
     checklist,
+    personal_contexto: personalContexto,
     afiliaciones: afiliacionRow
       ? {
           eps_id: afiliacionRow.eps_id === null ? null : toNumber(afiliacionRow.eps_id),
