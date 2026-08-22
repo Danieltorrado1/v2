@@ -213,7 +213,7 @@
   border-radius: 999px;
   border: 2px solid var(--bg-primary);
   background: var(--color-danger);
-  color: #ffffff;
+  color: var(--danger-foreground);
   font-size: 10px;
   font-weight: 800;
   line-height: 1;
@@ -298,3 +298,11 @@
     white-space: nowrap;
   }
 }
+
+/* Shared shell geometry stays identical across themes. */
+.layout { height: 100dvh; min-height: 100dvh; }
+.logo-area { width: 196px; height: 56px; min-width: 196px; min-height: 56px; flex: 0 0 196px; }
+.logo-link { width: 196px; height: 56px; flex: 0 0 196px; }
+.logo-image--light, .logo-image--dark { width: 196px; height: 56px; flex: 0 0 196px; object-fit: contain; }
+.content, .page-scroll, .page-content { min-height: 0; }
+@media (max-width: 900px) { .topbar { gap: 14px; padding-inline: 18px; } .logo-area, .logo-link, .logo-image--light, .logo-image--dark { width: 160px; min-width: 160px; flex-basis: 160px; } }

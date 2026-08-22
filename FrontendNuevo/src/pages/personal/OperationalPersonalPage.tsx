@@ -575,10 +575,10 @@ export default function OperationalPersonalPage() {
 
           <div className="op-filters">
             <label className="op-filter"><span>Municipio</span><select value={municipioId} onChange={(event) => { setMunicipioId(event.target.value); setInstitucionId(""); setSedeId(""); setModalidadId(""); }} disabled={!contratoId}><option value="">Todos</option>{filterOptions.municipios.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
-            <label className="op-filter"><span>InstituciÃ³n</span><select value={institucionId} onChange={(event) => { setInstitucionId(event.target.value); setSedeId(""); setModalidadId(""); }} disabled={!contratoId || !municipioId}><option value="">Todas</option>{filterOptions.instituciones.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
+            <label className="op-filter"><span>{"Instituci\u00f3n"}</span><select value={institucionId} onChange={(event) => { setInstitucionId(event.target.value); setSedeId(""); setModalidadId(""); }} disabled={!contratoId || !municipioId}><option value="">Todas</option>{filterOptions.instituciones.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
             <label className="op-filter"><span>Sede</span><select value={sedeId} onChange={(event) => { setSedeId(event.target.value); setModalidadId(""); }} disabled={!contratoId || !institucionId}><option value="">Todas</option>{filterOptions.sedes.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
             <label className="op-filter"><span>Modalidad</span><select value={modalidadId} onChange={(event) => setModalidadId(event.target.value)} disabled={!contratoId || !sedeId}><option value="">Todas</option>{filterOptions.modalidades.map((item) => <option key={item.id} value={item.id}>{item.codigo ?? item.nombre}</option>)}</select></label>
-            <label className="op-filter"><span>UbicaciÃ³n</span><select value={ubicacionId} onChange={(event) => setUbicacionId(event.target.value)} disabled={!contratoId}><option value="">Todas</option>{filterOptions.ubicaciones_laborales.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
+            <label className="op-filter"><span>{"Ubicaci\u00f3n"}</span><select value={ubicacionId} onChange={(event) => setUbicacionId(event.target.value)} disabled={!contratoId}><option value="">Todas</option>{filterOptions.ubicaciones_laborales.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
             <label className="op-filter"><span>Cobertura</span><select value={coberturaFiltro} onChange={(event) => setCoberturaFiltro(event.target.value as "" | "SI" | "NO" | "RETIRADA")} disabled={!contratoId}><option value="">Todas</option><option value="SI">Con cobertura</option><option value="NO">Sin cobertura</option><option value="RETIRADA">Retirada</option></select></label>
             <label className="op-filter"><span>Oferta</span><select value={licitacionFiltro} onChange={(event) => setLicitacionFiltro(event.target.value as "" | "PRESENTADA" | "NO_PRESENTADA")} disabled={!contratoId}><option value="">Todas</option><option value="PRESENTADA">Presentada</option><option value="NO_PRESENTADA">No presentada</option></select></label>
             <label className="op-filter">
@@ -703,7 +703,7 @@ export default function OperationalPersonalPage() {
                     <th className="is-name">Nombre completo</th>
                     <th className="is-role">Cargo</th>
                     <th>Municipio</th>
-                    <th>UbicaciÃ³n / cobertura</th>
+                    <th>{"Asignaci\u00f3n"}</th>
                     <th>Oferta</th>
                     <th className="is-status">Estado</th>
                     <th className="is-date">Ingreso</th>
@@ -713,7 +713,7 @@ export default function OperationalPersonalPage() {
                 <tbody>
                   {(tableData?.items ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={8} className="op-empty-row">
+                      <td colSpan={9} className="op-empty-row">
                         No hay personal vinculado a este contrato con los filtros actuales.
                       </td>
                     </tr>
@@ -729,19 +729,9 @@ export default function OperationalPersonalPage() {
                       <td className="op-name-cell">{item.nombre_completo}</td>
                       <td>{item.cargo_nombre ?? "Sin cargo"}</td>
                       <td>{item.asignacion_actual.municipio ?? "Sin municipio"}</td>
+                      <td><div className="op-context-cell"><strong>{item.asignacion_actual.institucion && item.asignacion_actual.sede ? `${item.asignacion_actual.institucion} - ${item.asignacion_actual.sede}` : item.asignacion_actual.nombre ?? "Sin asignaci\u00f3n"}</strong>{item.asignacion_actual.modalidad && <small>{item.asignacion_actual.modalidad}</small>}<span className={`op-badge ${item.estado_vinculacion === "RETIRADA" ? "status-retirada" : item.asignacion_actual.institucion ? "status-activa" : "status-suspendida"}`}>{item.estado_vinculacion === "RETIRADA" ? "RETIRADA" : item.asignacion_actual.institucion ? "COBERTURA SI" : "COBERTURA NO"}</span></div></td>
                       <td>
-                        <div className="op-context-cell">
-                          <strong>{item.asignacion_actual.institucion && item.asignacion_actual.sede ? `${item.asignacion_actual.institucion} Â· ${item.asignacion_actual.sede}` : item.asignacion_actual.nombre ?? "Sin asignaciÃ³n"}</strong>
-                          {item.asignacion_actual.modalidad && <small>{item.asignacion_actual.modalidad}</small>}
-                          <span className={`op-badge ${item.estado_vinculacion === "RETIRADA" ? "status-retirada" : item.asignacion_actual.institucion ? "status-activa" : "status-suspendida"}`}>
-                            {item.estado_vinculacion === "RETIRADA" ? "RETIRADA" : item.asignacion_actual.institucion ? "COBERTURA SÃ" : "COBERTURA NO"}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`op-badge ${item.presentada_licitacion_actual ? "status-activa" : "status-suspendida"}`}>
-                          {item.presentada_licitacion_actual ? `PRESENTADA${item.perfil_licitacion_actual ? ` Â· ${item.perfil_licitacion_actual}` : ""}` : "NO PRESENTADA"}
-                        </span>
+                        <span className={`op-badge ${item.presentada_licitacion_actual ? "status-activa" : "status-suspendida"}`}>{item.presentada_licitacion_actual ? `PRESENTADA${item.perfil_licitacion_actual ? ` - ${item.perfil_licitacion_actual}` : ""}` : "NO PRESENTADA"}</span>
                       </td>
                       <td>
                         <span className={`op-badge status-${item.estado_vinculacion.toLowerCase()}`}>

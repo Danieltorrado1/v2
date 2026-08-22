@@ -235,3 +235,8 @@ a:focus-visible {
   background: color-mix(in srgb, var(--color-info) 16%, transparent);
   color: color-mix(in srgb, var(--color-info) 88%, #042019);
 }
+
+/* Semantic state tokens shared by light/dark components. */
+:root { --accent-foreground: #062535; --danger-foreground: #ffffff; --success-bg: #d9f7ed; --success-text: #12624b; --success-border: #8bd9bd; --warning-bg: #fff2d7; --warning-text: #8a5700; --warning-border: #f2c46b; --danger-bg: #ffe2e5; --danger-text: #a52d3c; --danger-border: #efa0aa; --info-bg: #dff5fb; --info-text: #075b72; --info-border: #8ed8e9; }
+[data-theme="dark"] { --accent-foreground: #07151e; --danger-foreground: #19070a; --success-bg: color-mix(in srgb, var(--color-accent) 20%, var(--bg-card)); --success-text: #b9ffe8; --success-border: color-mix(in srgb, var(--color-accent) 48%, var(--border-color)); --warning-bg: color-mix(in srgb, var(--color-warning) 20%, var(--bg-card)); --warning-text: #ffd98a; --warning-border: color-mix(in srgb, var(--color-warning) 48%, var(--border-color)); --danger-bg: color-mix(in srgb, var(--color-danger) 20%, var(--bg-card)); --danger-text: #ffb3bd; --danger-border: color-mix(in srgb, var(--color-danger) 48%, var(--border-color)); --info-bg: color-mix(in srgb, var(--color-info) 20%, var(--bg-card)); --info-text: #b8f2ff; --info-border: color-mix(in srgb, var(--color-info) 48%, var(--border-color)); }
+html, body, #root { height: 100dvh; min-height: 100dvh; }

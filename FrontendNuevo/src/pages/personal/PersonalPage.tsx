@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
   Bell,
@@ -88,7 +88,7 @@ const MESES = [
 ] as const;
 
 function formatFechaCorta(fecha: string | null | undefined): string {
-  if (!fecha) return "â€”";
+  if (!fecha) return "—";
   const [y, m, d] = fecha.split("-");
   const year = Number(y);
   const month = Number(m);
@@ -98,13 +98,13 @@ function formatFechaCorta(fecha: string | null | undefined): string {
 }
 
 function calcularEdad(fechaNacimiento: string | null | undefined): string {
-  if (!fechaNacimiento) return "â€”";
+  if (!fechaNacimiento) return "—";
   const hoy = new Date();
   const nac = new Date(fechaNacimiento + "T12:00:00");
   let edad = hoy.getFullYear() - nac.getFullYear();
   const diffMes = hoy.getMonth() - nac.getMonth();
   if (diffMes < 0 || (diffMes === 0 && hoy.getDate() < nac.getDate())) edad--;
-  return `${edad} aÃ±os`;
+  return `${edad} años`;
 }
 
 function todayIso(): string {
@@ -154,23 +154,23 @@ const FIELD_INPUT: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-// â”€â”€ Toolbar filter labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Toolbar filter labels ─────────────────────────────────────────────────────
 
 const PENDING_FILTERS = [
   "Cargo",
-  "DocumentaciÃ³n",
+  "Documentación",
   "Municipio",
   "Gestor de Zona",
-  "InstituciÃ³n",
+  "Institución",
   "Sede",
   "Modalidad",
   "Ordenar por...",
 ];
 
-// â”€â”€ CSV Export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CSV Export ────────────────────────────────────────────────────────────────
 
 function exportarCSV(rows: PaginatedPersonasApi["items"]): void {
-  const header = "Nombre completo,Documento,Correo,TelÃ©fono";
+  const header = "Nombre completo,Documento,Correo,Teléfono";
   const lines = rows.map((p) => {
     const nombre = [p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido]
       .filter(Boolean)
@@ -192,7 +192,7 @@ function exportarCSV(rows: PaginatedPersonasApi["items"]): void {
   URL.revokeObjectURL(url);
 }
 
-// â”€â”€ PersonalPage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PersonalPage ──────────────────────────────────────────────────────────────
 
 export default function PersonalPage() {
   const {
@@ -497,7 +497,7 @@ export default function PersonalPage() {
                           <strong>{item.nombreCompleto}</strong>
                         </div>
                         <p>CC {item.numeroDocumento}</p>
-                        <small>{item.correo ?? item.telefono ?? "â€”"}</small>
+                        <small>{item.correo ?? item.telefono ?? "—"}</small>
                       </div>
 
                       <div className="alert ok">Ver</div>
@@ -508,11 +508,11 @@ export default function PersonalPage() {
                 <div className="people-table">
                   <div className="table-head">
                     <span>Empleado</span>
-                    <span>Municipio / InstituciÃ³n</span>
+                    <span>Municipio / Institución</span>
                     <span>Ingreso / Retiro</span>
-                    <span>DocumentaciÃ³n</span>
+                    <span>Documentación</span>
                     <span>Alertas</span>
-                    <span>AcciÃ³n</span>
+                    <span>Acción</span>
                   </div>
 
                   {listLoading && personaRows.length === 0 ? (
@@ -566,18 +566,18 @@ export default function PersonalPage() {
                           </div>
 
                           <div className="cell-meta">
-                            <strong>â€”</strong>
-                            <span>â€”</span>
+                            <strong>—</strong>
+                            <span>—</span>
                           </div>
 
                           <div className="cell-date">
-                            <span>â€”</span>
-                            <strong>â€”</strong>
+                            <span>—</span>
+                            <strong>—</strong>
                           </div>
 
-                          <div className="cell-doc">â€”</div>
+                          <div className="cell-doc">—</div>
 
-                          <div className="alert ok">â€”</div>
+                          <div className="alert ok">—</div>
 
                           <div className="cell-action">
                             Ver <ChevronRight size={14} />
@@ -605,7 +605,7 @@ export default function PersonalPage() {
 
             <div>
               <select defaultValue="25">
-                <option value="25">25 por pÃ¡gina</option>
+                <option value="25">25 por página</option>
               </select>
 
               <button
@@ -625,7 +625,7 @@ export default function PersonalPage() {
               </button>
 
               {currentPage > 2 && (
-                <span style={{ padding: "0 2px", color: "var(--text-secondary)" }}>â€¦</span>
+                <span style={{ padding: "0 2px", color: "var(--text-secondary)" }}>…</span>
               )}
 
               {currentPage !== 1 && currentPage !== totalPages && (
@@ -635,7 +635,7 @@ export default function PersonalPage() {
               )}
 
               {totalPages > 2 && currentPage < totalPages - 1 && (
-                <span style={{ padding: "0 2px", color: "var(--text-secondary)" }}>â€¦</span>
+                <span style={{ padding: "0 2px", color: "var(--text-secondary)" }}>…</span>
               )}
 
               {totalPages > 1 && (
@@ -724,7 +724,7 @@ export default function PersonalPage() {
   );
 }
 
-// â”€â”€ RIESGO color map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── RIESGO color map ──────────────────────────────────────────────────────────
 
 const RIESGO_COLOR: Record<string, string> = {
   BAJO: "var(--color-success, #22c55e)",
@@ -748,10 +748,10 @@ function formatVinculacionResumen(vinculacion: VinculacionApi): string {
     `Contrato ${vinculacion.contrato_id}`,
     `Cargo ${vinculacion.contrato_cargo_id}`,
     `Tipo ${vinculacion.tipo_vinculacion_id}`,
-  ].join(" Â· ");
+  ].join(" · ");
 }
 
-// â”€â”€ QuickEmployeeView â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── QuickEmployeeView ─────────────────────────────────────────────────────────
 
 function QuickEmployeeView({
   persona,
@@ -827,7 +827,7 @@ function QuickEmployeeView({
   return (
     <div className="quick-employee-view">
       <div className="profile-actions">
-        <span className="profile-view-label">Vista rÃ¡pida del colaborador</span>
+        <span className="profile-view-label">Vista rápida del colaborador</span>
 
         <div className="profile-actions-buttons">
           <button
@@ -855,7 +855,7 @@ function QuickEmployeeView({
               disabled={!vinculacionPrincipal}
             >
               <MoreHorizontal size={18} />
-              MÃ¡s acciones
+              Más acciones
               <ChevronDown size={15} />
             </button>
 
@@ -877,7 +877,7 @@ function QuickEmployeeView({
                 <button
                   type="button"
                   style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "not-allowed", fontSize: 13, color: "var(--text-secondary)", opacity: 0.55 }}
-                  title="Requiere catÃ¡logo de cargos â€” pendiente de endpoint"
+                  title="Requiere catálogo de cargos — pendiente de endpoint"
                   disabled
                 >
                   Cambio de cargo
@@ -885,7 +885,7 @@ function QuickEmployeeView({
                 <button
                   type="button"
                   style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "not-allowed", fontSize: 13, color: "var(--text-secondary)", opacity: 0.55 }}
-                  title="Requiere catÃ¡logo de municipios â€” pendiente de endpoint"
+                  title="Requiere catálogo de municipios — pendiente de endpoint"
                   disabled
                 >
                   Traslado de municipio
@@ -899,7 +899,7 @@ function QuickEmployeeView({
                     style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--color-warning, #f59e0b)" }}
                     onClick={() => { setShowSuspenderModal(true); setShowMasAcciones(false); }}
                   >
-                    Suspender vinculaciÃ³n
+                    Suspender vinculación
                   </button>
                 )}
 
@@ -909,7 +909,7 @@ function QuickEmployeeView({
                     style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "var(--color-primary)" }}
                     onClick={() => { setShowReactivarModal(true); setShowMasAcciones(false); }}
                   >
-                    Reactivar vinculaciÃ³n
+                    Reactivar vinculación
                   </button>
                 )}
 
@@ -928,7 +928,7 @@ function QuickEmployeeView({
                     type="button"
                     style={{ display: "block", width: "100%", padding: "9px 16px", textAlign: "left", background: "none", border: "none", cursor: "not-allowed", fontSize: 13, color: "var(--text-secondary)", opacity: 0.55 }}
                     disabled
-                    title="La vinculaciÃ³n ya estÃ¡ retirada"
+                    title="La vinculación ya está retirada"
                   >
                     Colaborador ya retirado
                   </button>
@@ -939,8 +939,8 @@ function QuickEmployeeView({
 
           <button
             type="button"
-            title="Generar PDF del expediente â€” prÃ³ximamente disponible"
-            onClick={() => onShowToast("GeneraciÃ³n de PDF del expediente: prÃ³ximamente disponible")}
+            title="Generar PDF del expediente — próximamente disponible"
+            onClick={() => onShowToast("Generación de PDF del expediente: próximamente disponible")}
           >
             <FileText size={17} />
           </button>
@@ -949,7 +949,7 @@ function QuickEmployeeView({
             type="button"
             className="profile-close-button"
             onClick={onClose}
-            aria-label="Cerrar vista rÃ¡pida"
+            aria-label="Cerrar vista rápida"
           >
             <X size={18} />
           </button>
@@ -1015,19 +1015,19 @@ function QuickEmployeeView({
 
             <div className="hero-main">
               <h2>{nombreCompleto}</h2>
-              <p>{expediente.cargo.nombre_cargo ?? "â€”"}</p>
+              <p>{expediente.cargo.nombre_cargo ?? "—"}</p>
 
               <div className="hero-subtitle">
-                <span>{expediente.empresa.nombre_empresa ?? "â€”"}</span>
+                <span>{expediente.empresa.nombre_empresa ?? "—"}</span>
                 <i />
-                <span>{expediente.tipo_vinculacion.nombre_vinculacion ?? "â€”"}</span>
+                <span>{expediente.tipo_vinculacion.nombre_vinculacion ?? "—"}</span>
                 <b className={estado === "ACTIVA" ? "" : "retired"}>{estado}</b>
               </div>
 
               <div className="hero-chips">
                 <div>
                   <MapPin size={17} />
-                  {expediente.persona.pais_nacimiento ?? "â€”"}
+                  {expediente.persona.pais_nacimiento ?? "—"}
                 </div>
                 <div>
                   <FileText size={17} />
@@ -1035,7 +1035,7 @@ function QuickEmployeeView({
                 </div>
                 <div>
                   <UserRound size={17} />
-                  {expediente.cargo.nombre_cargo ?? "â€”"}
+                  {expediente.cargo.nombre_cargo ?? "—"}
                 </div>
                 <div>
                   <CalendarDays size={17} />
@@ -1050,31 +1050,31 @@ function QuickEmployeeView({
           <section className="profile-grid three">
             <InfoCard
               icon={<IdCard size={18} />}
-              title="InformaciÃ³n personal"
+              title="Información personal"
               rows={[
                 ["Documento", documentoVigente],
                 ["Fecha de nacimiento", formatFechaCorta(expediente.persona.fecha_nacimiento)],
                 ["Edad", calcularEdad(expediente.persona.fecha_nacimiento)],
-                ["Sexo", expediente.persona.sexo ?? "â€”"],
-                ["Estado civil", expediente.persona.estado_civil ?? "â€”"],
-                ["Grupo sanguÃ­neo", expediente.persona.tipo_sangre ?? "â€”"],
-                ["DirecciÃ³n", expediente.persona.direccion ?? "â€”"],
-                ["Barrio", expediente.persona.barrio ?? "â€”"],
-                ["Zona", expediente.persona.zona ?? "â€”"],
+                ["Sexo", expediente.persona.sexo ?? "—"],
+                ["Estado civil", expediente.persona.estado_civil ?? "—"],
+                ["Grupo sanguíneo", expediente.persona.tipo_sangre ?? "—"],
+                ["Dirección", expediente.persona.direccion ?? "—"],
+                ["Barrio", expediente.persona.barrio ?? "—"],
+                ["Zona", expediente.persona.zona ?? "—"],
               ]}
             />
 
             <InfoCard
               icon={<BriefcaseBusiness size={18} />}
-              title="InformaciÃ³n laboral"
+              title="Información laboral"
               rows={[
-                ["Empresa", expediente.empresa.nombre_empresa ?? "â€”"],
-                ["Contrato", expediente.contrato.numero_contrato ?? "â€”"],
-                ["Cargo", expediente.cargo.nombre_cargo ?? "â€”"],
-                ["Tipo vinculaciÃ³n", expediente.tipo_vinculacion.nombre_vinculacion ?? "â€”"],
-                ["Sede", "â€”"],
-                ["Modalidad", "â€”"],
-                ["Municipio", "â€”"],
+                ["Empresa", expediente.empresa.nombre_empresa ?? "—"],
+                ["Contrato", expediente.contrato.numero_contrato ?? "—"],
+                ["Cargo", expediente.cargo.nombre_cargo ?? "—"],
+                ["Tipo vinculación", expediente.tipo_vinculacion.nombre_vinculacion ?? "—"],
+                ["Sede", "—"],
+                ["Modalidad", "—"],
+                ["Municipio", "—"],
               ]}
             />
 
@@ -1082,11 +1082,11 @@ function QuickEmployeeView({
               icon={<ShieldCheck size={18} />}
               title="Afiliaciones"
               rows={[
-                ["EPS", expediente.afiliaciones?.eps ?? "â€”"],
-                ["AFP", expediente.afiliaciones?.pension ?? "â€”"],
-                ["ARL", expediente.afiliaciones?.arl ?? "â€”"],
-                ["Caja de compensaciÃ³n", expediente.afiliaciones?.caja_compensacion ?? "â€”"],
-                ["CesantÃ­as", "â€”"],
+                ["EPS", expediente.afiliaciones?.eps ?? "—"],
+                ["AFP", expediente.afiliaciones?.pension ?? "—"],
+                ["ARL", expediente.afiliaciones?.arl ?? "—"],
+                ["Caja de compensación", expediente.afiliaciones?.caja_compensacion ?? "—"],
+                ["Cesantías", "—"],
               ]}
             />
           </section>
@@ -1152,7 +1152,7 @@ function QuickEmployeeView({
                 <TimelineItem
                   date={formatFechaCorta(expediente.vinculacion.fecha_inicio)}
                   title="Ingreso"
-                  detail={`${expediente.cargo.nombre_cargo ?? "Cargo"} Â· ${expediente.empresa.nombre_empresa ?? "Empresa"}`}
+                  detail={`${expediente.cargo.nombre_cargo ?? "Cargo"} · ${expediente.empresa.nombre_empresa ?? "Empresa"}`}
                   author="Sistema"
                 />
                 {expediente.vinculacion.fecha_fin && (
@@ -1177,7 +1177,7 @@ function QuickEmployeeView({
               <button
                 type="button"
                 className="link-button"
-                onClick={() => onShowToast("Historial completo: mÃ³dulo de auditorÃ­a prÃ³ximamente disponible")}
+                onClick={() => onShowToast("Historial completo: módulo de auditoría próximamente disponible")}
               >
                 Ver todo el historial <ChevronRight size={16} />
               </button>
@@ -1205,11 +1205,11 @@ function QuickEmployeeView({
                         ? `${Math.round(checklistPct)}%`
                         : consolidadoLoading
                           ? "..."
-                          : "â€”"}
+                          : "—"}
                     </strong>
                   </div>
                 </div>
-                <p>DocumentaciÃ³n</p>
+                <p>Documentación</p>
                 <span
                   style={
                     riesgoNivel
@@ -1228,12 +1228,12 @@ function QuickEmployeeView({
               <div className="status-summary">
                 <button
                   type="button"
-                  onClick={() => onShowToast("Alertas activas: revise la pestaÃ±a Documentos del expediente")}
+                  onClick={() => onShowToast("Alertas activas: revise la pestaña Documentos del expediente")}
                 >
                   <span className="status-icon warning">
                     <AlertTriangle size={12} />
                   </span>
-                  <strong>{alertasActivas ?? (consolidadoLoading ? "..." : "â€”")}</strong>
+                  <strong>{alertasActivas ?? (consolidadoLoading ? "..." : "—")}</strong>
                   Alertas activas
                   <ChevronRight size={15} />
                 </button>
@@ -1243,7 +1243,7 @@ function QuickEmployeeView({
                   onClick={() => onShowToast("Documentos faltantes: revise el checklist del expediente")}
                 >
                   <span className="status-icon info">i</span>
-                  <strong>{checklistFaltantes ?? (consolidadoLoading ? "..." : "â€”")}</strong>
+                  <strong>{checklistFaltantes ?? (consolidadoLoading ? "..." : "—")}</strong>
                   Docs faltantes
                   <ChevronRight size={15} />
                 </button>
@@ -1251,9 +1251,9 @@ function QuickEmployeeView({
                 <button
                   type="button"
                   style={docsVencidos !== null && docsVencidos > 0 ? { color: "var(--color-danger)" } : undefined}
-                  onClick={() => onShowToast("Documentos vencidos: revise la pestaÃ±a Documentos del expediente")}
+                  onClick={() => onShowToast("Documentos vencidos: revise la pestaña Documentos del expediente")}
                 >
-                  <span className="status-icon success">âœ“</span>
+                  <span className="status-icon success">✓</span>
                   {docsVencidos !== null
                     ? docsVencidos === 0
                       ? "Sin documentos vencidos"
@@ -1315,7 +1315,7 @@ function QuickEmployeeView({
               <div className="hero-chips">
                 <div>
                   <MapPin size={17} />
-                  {personaActual.pais_nacimiento ?? "â€”"}
+                  {personaActual.pais_nacimiento ?? "—"}
                 </div>
                 <div>
                   <IdCard size={17} />
@@ -1345,10 +1345,10 @@ function QuickEmployeeView({
                 ["Documento", documentoVigente],
                 ["Fecha de nacimiento", formatFechaCorta(personaActual.fecha_nacimiento)],
                 ["Edad", calcularEdad(personaActual.fecha_nacimiento)],
-                ["Correo", personaActual.correo ?? "â€”"],
-                ["Telefono", personaActual.telefono ?? "â€”"],
-                ["Direccion", personaActual.direccion ?? "â€”"],
-                ["Barrio", personaActual.barrio ?? "â€”"],
+                ["Correo", personaActual.correo ?? "—"],
+                ["Telefono", personaActual.telefono ?? "—"],
+                ["Direccion", personaActual.direccion ?? "—"],
+                ["Barrio", personaActual.barrio ?? "—"],
               ]}
             />
 
@@ -1468,7 +1468,7 @@ function QuickEmployeeView({
   );
 }
 
-// â”€â”€ InfoCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── InfoCard ──────────────────────────────────────────────────────────────────
 
 function InfoCard({
   icon,
@@ -1498,7 +1498,7 @@ function InfoCard({
   );
 }
 
-// â”€â”€ TimelineItem â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── TimelineItem ──────────────────────────────────────────────────────────────
 
 function TimelineItem({
   date,
@@ -1522,7 +1522,7 @@ function TimelineItem({
   );
 }
 
-// â”€â”€ FormError â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── FormError ─────────────────────────────────────────────────────────────────
 
 function FormError({ msg }: { msg: string }) {
   return (
@@ -1542,7 +1542,7 @@ function FormError({ msg }: { msg: string }) {
   );
 }
 
-// â”€â”€ ModalHeader â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ModalHeader ───────────────────────────────────────────────────────────────
 
 function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
   return (
@@ -1561,7 +1561,7 @@ function ModalHeader({ title, onClose }: { title: string; onClose: () => void })
   );
 }
 
-// â”€â”€ ModalFooter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ModalFooter ───────────────────────────────────────────────────────────────
 
 function ModalFooter({
   onCancel,
@@ -1605,7 +1605,7 @@ function ModalFooter({
   );
 }
 
-// â”€â”€ NuevoEmpleadoModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── NuevoEmpleadoModal ────────────────────────────────────────────────────────
 
 function NuevoEmpleadoModal({
   onClose,
@@ -1634,11 +1634,11 @@ function NuevoEmpleadoModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.primer_nombre.trim() || !form.primer_apellido.trim() || !form.numero_documento.trim()) {
-      setApiError("Nombre, apellido y nÃºmero de documento son obligatorios.");
+      setApiError("Nombre, apellido y número de documento son obligatorios.");
       return;
     }
     if (!form.tipo_documento_id || form.tipo_documento_id <= 0) {
-      setApiError("Ingrese un ID de tipo de documento vÃ¡lido (nÃºmero mayor a 0).");
+      setApiError("Ingrese un ID de tipo de documento válido (número mayor a 0).");
       return;
     }
     setSubmitting(true);
@@ -1684,8 +1684,8 @@ function NuevoEmpleadoModal({
             lineHeight: 1.55,
           }}
         >
-          El ID del tipo de documento es un valor numÃ©rico del sistema (ej: 1 para CÃ©dula de ciudadanÃ­a).
-          El catÃ¡logo de tipos estarÃ¡ disponible prÃ³ximamente.
+          El ID del tipo de documento es un valor numérico del sistema (ej: 1 para Cédula de ciudadanía).
+          El catálogo de tipos estará disponible próximamente.
         </div>
 
         <form onSubmit={(e) => { void handleSubmit(e); }}>
@@ -1704,7 +1704,7 @@ function NuevoEmpleadoModal({
             </label>
 
             <label style={FIELD_LABEL}>
-              NÃºmero de documento *
+              Número de documento *
               <input
                 type="text"
                 required
@@ -1748,7 +1748,7 @@ function NuevoEmpleadoModal({
                   style={FIELD_INPUT}
                   value={form.primer_apellido}
                   onChange={(e) => set("primer_apellido", e.target.value)}
-                  placeholder="GarcÃ­a"
+                  placeholder="García"
                 />
               </label>
               <label style={FIELD_LABEL}>
@@ -1758,13 +1758,13 @@ function NuevoEmpleadoModal({
                   style={FIELD_INPUT}
                   value={form.segundo_apellido ?? ""}
                   onChange={(e) => set("segundo_apellido", e.target.value)}
-                  placeholder="LÃ³pez"
+                  placeholder="López"
                 />
               </label>
             </div>
 
             <label style={FIELD_LABEL}>
-              Correo electrÃ³nico
+              Correo electrónico
               <input
                 type="email"
                 style={FIELD_INPUT}
@@ -1775,7 +1775,7 @@ function NuevoEmpleadoModal({
             </label>
 
             <label style={FIELD_LABEL}>
-              TelÃ©fono
+              Teléfono
               <input
                 type="text"
                 style={FIELD_INPUT}
@@ -1794,7 +1794,7 @@ function NuevoEmpleadoModal({
   );
 }
 
-// â”€â”€ EditarEmpleadoModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── EditarEmpleadoModal ───────────────────────────────────────────────────────
 
 function EditarEmpleadoModal({
   persona,
@@ -1883,19 +1883,19 @@ function EditarEmpleadoModal({
             </div>
 
             <label style={FIELD_LABEL}>
-              Correo electrÃ³nico
+              Correo electrónico
               <input type="email" style={FIELD_INPUT} value={form.correo}
                 onChange={(e) => set("correo", e.target.value)} />
             </label>
 
             <label style={FIELD_LABEL}>
-              TelÃ©fono
+              Teléfono
               <input type="text" style={FIELD_INPUT} value={form.telefono}
                 onChange={(e) => set("telefono", e.target.value)} />
             </label>
 
             <label style={FIELD_LABEL}>
-              DirecciÃ³n
+              Dirección
               <input type="text" style={FIELD_INPUT} value={form.direccion}
                 onChange={(e) => set("direccion", e.target.value)} />
             </label>
@@ -1915,7 +1915,7 @@ function EditarEmpleadoModal({
   );
 }
 
-// â”€â”€ RetirarModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── RetirarModal ──────────────────────────────────────────────────────────────
 
 function RetirarModal({
   vinculacionId,
@@ -1959,8 +1959,8 @@ function RetirarModal({
         <ModalHeader title="Retirar colaborador" onClose={onClose} />
 
         <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-secondary)" }}>
-          EstÃ¡ a punto de retirar a <strong style={{ color: "var(--text-primary)" }}>{nombreCompleto}</strong>.
-          Esta acciÃ³n cambiarÃ¡ el estado de la vinculaciÃ³n a RETIRADA.
+          Está a punto de retirar a <strong style={{ color: "var(--text-primary)" }}>{nombreCompleto}</strong>.
+          Esta acción cambiará el estado de la vinculación a RETIRADA.
         </p>
 
         <form onSubmit={(e) => { void handleSubmit(e); }}>
@@ -1997,7 +1997,7 @@ function RetirarModal({
   );
 }
 
-// â”€â”€ SuspenderModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SuspenderModal ────────────────────────────────────────────────────────────
 
 function SuspenderModal({
   vinculacionId,
@@ -2018,7 +2018,7 @@ function SuspenderModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!fecha) { setApiError("La fecha de suspensiÃ³n es obligatoria."); return; }
+    if (!fecha) { setApiError("La fecha de suspensión es obligatoria."); return; }
     setSubmitting(true);
     setApiError(null);
     try {
@@ -2029,7 +2029,7 @@ function SuspenderModal({
       });
       onSuccess();
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : "Error al procesar la suspensiÃ³n.");
+      setApiError(err instanceof Error ? err.message : "Error al procesar la suspensión.");
     } finally {
       setSubmitting(false);
     }
@@ -2038,17 +2038,17 @@ function SuspenderModal({
   return (
     <div style={MODAL_OVERLAY} onClick={onClose}>
       <div style={{ ...MODAL_BOX, maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
-        <ModalHeader title="Suspender vinculaciÃ³n" onClose={onClose} />
+        <ModalHeader title="Suspender vinculación" onClose={onClose} />
 
         <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-secondary)" }}>
-          Se suspenderÃ¡ la vinculaciÃ³n activa de{" "}
+          Se suspenderá la vinculación activa de{" "}
           <strong style={{ color: "var(--text-primary)" }}>{nombreCompleto}</strong>.
         </p>
 
         <form onSubmit={(e) => { void handleSubmit(e); }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <label style={FIELD_LABEL}>
-              Fecha de suspensiÃ³n *
+              Fecha de suspensión *
               <input type="date" required style={FIELD_INPUT} value={fecha}
                 onChange={(e) => setFecha(e.target.value)} />
             </label>
@@ -2078,7 +2078,7 @@ function SuspenderModal({
   );
 }
 
-// â”€â”€ ReactivarModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ReactivarModal ────────────────────────────────────────────────────────────
 
 function ReactivarModal({
   vinculacionId,
@@ -2107,7 +2107,7 @@ function ReactivarModal({
       });
       onSuccess();
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : "Error al reactivar la vinculaciÃ³n.");
+      setApiError(err instanceof Error ? err.message : "Error al reactivar la vinculación.");
     } finally {
       setSubmitting(false);
     }
@@ -2116,17 +2116,17 @@ function ReactivarModal({
   return (
     <div style={MODAL_OVERLAY} onClick={onClose}>
       <div style={{ ...MODAL_BOX, maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-        <ModalHeader title="Reactivar vinculaciÃ³n" onClose={onClose} />
+        <ModalHeader title="Reactivar vinculación" onClose={onClose} />
 
         <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-secondary)" }}>
-          Se reactivarÃ¡ la vinculaciÃ³n de{" "}
+          Se reactivará la vinculación de{" "}
           <strong style={{ color: "var(--text-primary)" }}>{nombreCompleto}</strong>.
         </p>
 
         <form onSubmit={(e) => { void handleSubmit(e); }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <label style={FIELD_LABEL}>
-              Fecha de reactivaciÃ³n
+              Fecha de reactivación
               <input type="date" style={FIELD_INPUT} value={fecha}
                 onChange={(e) => setFecha(e.target.value)} />
             </label>
@@ -2149,7 +2149,7 @@ function ReactivarModal({
   );
 }
 
-// â”€â”€ ImportarModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ImportarModal ─────────────────────────────────────────────────────────────
 
 function ImportarModal({ onClose }: { onClose: () => void }) {
   return (
@@ -2169,11 +2169,11 @@ function ImportarModal({ onClose }: { onClose: () => void }) {
         >
           <Upload size={32} style={{ color: "var(--color-primary)", marginBottom: 10, opacity: 0.7 }} />
           <p style={{ margin: "0 0 6px", fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>
-            ImportaciÃ³n masiva pendiente de endpoint
+            Importación masiva pendiente de endpoint
           </p>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>
-            El endpoint de importaciÃ³n desde Excel no estÃ¡ disponible aÃºn en el backend.
-            Registre colaboradores individualmente desde el botÃ³n{" "}
+            El endpoint de importación desde Excel no está disponible aún en el backend.
+            Registre colaboradores individualmente desde el botón{" "}
             <strong>Nuevo empleado</strong>.
           </p>
         </div>
