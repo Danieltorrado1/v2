@@ -3,8 +3,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowRight,
-  Building2,
-  FileText,
   FolderOpen,
   Plus,
   RefreshCw,
@@ -16,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
+import { useCompanyContext } from "../../context/CompanyContext";
 import { ApiClientError } from "../../services/apiClient";
 import { configuracionApi } from "../../services/configuracionApi";
 import { createPersona, getPersonaByDocumento } from "../../services/personasApi";
@@ -28,7 +27,6 @@ import {
 import type {
   CatalogoItem,
   Contrato,
-  Empresa,
   MetodoPagoPermitido,
 } from "../../types/configuracion.types";
 import type {
@@ -144,6 +142,7 @@ export default function ContractPersonalPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { empresas, empresaId, setEmpresaId } = useCompanyContext();
   const permissions = user?.permissions ?? [];
   const requestedEmpresaId = Number(searchParams.get("empresa_id") ?? "");
   const requestedContratoId = Number(searchParams.get("contrato_id") ?? "");
@@ -161,8 +160,6 @@ export default function ContractPersonalPage() {
   const canCreateVinculacion = permissions.includes("vinculaciones.create");
   const canOpenAdmin = user?.roles.includes("ADMINISTRADOR") === true;
 
-  const [empresaSearch, setEmpresaSearch] = useState("");
-  const [contratoSearch, setContratoSearch] = useState("");
   const [personalSearch, setPersonalSearch] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<"" | VinculacionEstado>("");
   const [cargoFiltro, setCargoFiltro] = useState<number | null>(null);
@@ -174,8 +171,8 @@ export default function ContractPersonalPage() {
   const [coberturaFiltro, setCoberturaFiltro] = useState<"" | "SI" | "NO">("");
   const [licitacionFiltro, setLicitacionFiltro] = useState<"" | "PRESENTADA" | "NO_PRESENTADA">("");
   const [fechaConsulta, setFechaConsulta] = useState(todayIso());
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
 
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [cargos, setCargos] = useState<CatalogoItem[]>([]);
   const [tiposVinculacion, setTiposVinculacion] = useState<CatalogoItem[]>([]);
@@ -184,7 +181,6 @@ export default function ContractPersonalPage() {
   const [metodosPago, setMetodosPago] = useState<MetodoPagoPermitido[]>([]);
   const [filterOptions, setFilterOptions] = useState<ContractPersonalFilterOptions>({ municipios: [], instituciones: [], sedes: [], modalidades: [], ubicaciones_laborales: [] });
 
-  const [empresaId, setEmpresaId] = useState<number | null>(null);
   const [contratoId, setContratoId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [refreshIndex, setRefreshIndex] = useState(0);
@@ -208,10 +204,6 @@ export default function ContractPersonalPage() {
   const [vinculacionForm, setVinculacionForm] = useState<VinculacionForm>(createBlankVinculacion());
   const [savingWorker, setSavingWorker] = useState(false);
 
-  const selectedEmpresa = useMemo(
-    () => empresas.find((empresa) => empresa.id === empresaId) ?? null,
-    [empresaId, empresas]
-  );
   const selectedContrato = useMemo(
     () => contratos.find((contrato) => contrato.id === contratoId) ?? null,
     [contratoId, contratos]
@@ -225,7 +217,7 @@ export default function ContractPersonalPage() {
     if (empresas.some((empresa) => empresa.id === requestedEmpresaId) && empresaId !== requestedEmpresaId) {
       setEmpresaId(requestedEmpresaId);
     }
-  }, [empresaId, empresas, requestedEmpresaId]);
+  }, [empresaId, empresas, requestedEmpresaId, setEmpresaId]);
 
   useEffect(() => {
     if (!Number.isFinite(requestedContratoId) || requestedContratoId <= 0 || contratos.length === 0) {
@@ -236,50 +228,6 @@ export default function ContractPersonalPage() {
       setContratoId(requestedContratoId);
     }
   }, [contratoId, contratos, requestedContratoId]);
-
-  useEffect(() => {
-    if (!canReadContext) {
-      return;
-    }
-
-    let cancelled = false;
-
-    async function loadEmpresas() {
-      try {
-        const response = await configuracionApi.listarEmpresas({
-          page: 1,
-          limit: 100,
-          activo: true,
-          search: empresaSearch.trim() || undefined,
-        });
-
-        if (cancelled) return;
-
-        setEmpresas(response.items);
-        setEmpresaId((current) => {
-          if (current && response.items.some((empresa) => empresa.id === current)) {
-            return current;
-          }
-          return response.items[0]?.id ?? null;
-        });
-      } catch (error) {
-        if (!cancelled) {
-          setEmpresas([]);
-          setEmpresaId(null);
-          setFeedback({
-            tone: "error",
-            text: getErrorMessage(error, "No fue posible cargar las empresas autorizadas."),
-          });
-        }
-      }
-    }
-
-    void loadEmpresas();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [canReadContext, empresaSearch]);
 
   useEffect(() => {
     if (!canReadContext || !empresaId) {
@@ -298,7 +246,6 @@ export default function ContractPersonalPage() {
           limit: 100,
           activo: true,
           empresa_id: currentEmpresaId,
-          search: contratoSearch.trim() || undefined,
         });
 
         if (cancelled) return;
@@ -327,7 +274,7 @@ export default function ContractPersonalPage() {
     return () => {
       cancelled = true;
     };
-  }, [canReadContext, contratoSearch, empresaId]);
+  }, [canReadContext, empresaId]);
 
   useEffect(() => {
     if (!canReadContext || !contratoId) {
@@ -401,7 +348,7 @@ export default function ContractPersonalPage() {
         if (!cancelled) {
           setFeedback({
             tone: "error",
-            text: getErrorMessage(error, "No fue posible cargar los catálogos del flujo."),
+            text: getErrorMessage(error, "No fue posible cargar los catalogos del flujo."),
           });
         }
       }
@@ -573,7 +520,7 @@ export default function ContractPersonalPage() {
     if (!tiposIdentificacion.length) {
       setFeedback({
         tone: "error",
-        text: "No hay tipos de identificación personal configurados para este flujo.",
+        text: "No hay tipos de identificacion personal configurados para este flujo.",
       });
       return;
     }
@@ -602,7 +549,7 @@ export default function ContractPersonalPage() {
 
   async function handleBuscarPersona() {
     if (!personaForm.numero_documento.trim()) {
-      setLookupError("Debes ingresar el número de identificación.");
+      setLookupError("Debes ingresar el numero de identificacion.");
       return;
     }
 
@@ -650,13 +597,13 @@ export default function ContractPersonalPage() {
       !vinculacionForm.tipo_vinculacion_id ||
       !vinculacionForm.fecha_inicio
     ) {
-      setLookupError("Cargo, tipo de vinculación y fecha de ingreso son obligatorios.");
+      setLookupError("Cargo, tipo de vinculacion y fecha de ingreso son obligatorios.");
       return;
     }
 
     if (requiresCreation) {
       if (!personaForm.tipo_documento_id || !personaForm.primer_nombre.trim() || !personaForm.primer_apellido.trim()) {
-        setLookupError("Completa los datos mínimos de la persona nueva.");
+        setLookupError("Completa los datos minimos de la persona nueva.");
         return;
       }
     }
@@ -703,7 +650,7 @@ export default function ContractPersonalPage() {
       setShowModal(false);
       setFeedback({
         tone: "success",
-        text: "Vinculación creada. Ya puedes cargar documentos y continuar con el siguiente trabajador.",
+        text: "Vinculacion creada. Ya puedes cargar documentos y continuar con el siguiente trabajador.",
       });
       setPage(1);
       setPersonalSearch("");
@@ -712,9 +659,9 @@ export default function ContractPersonalPage() {
       resetWorkerFlow();
     } catch (error) {
       if (error instanceof ApiClientError && error.code === "VINCULACION_ACTIVE_CONFLICT") {
-        setLookupError("La persona ya tiene una vinculación activa en este contrato.");
+        setLookupError("La persona ya tiene una vinculacion activa en este contrato.");
       } else {
-        setLookupError(getErrorMessage(error, "No fue posible guardar la vinculación."));
+        setLookupError(getErrorMessage(error, "No fue posible guardar la vinculacion."));
       }
     } finally {
       setSavingWorker(false);
@@ -737,10 +684,17 @@ export default function ContractPersonalPage() {
       <div className="cp-toolbar">
         <div>
           <h1>Personal del contrato</h1>
-          <p>Flujo operativo real: empresa, contrato, personal, vinculación, expediente y documentos.</p>
+          <p>Flujo operativo real: empresa, contrato, personal, vinculacion, expediente y documentos.</p>
         </div>
 
         <div className="cp-toolbar-actions">
+          <label className="cp-compact-contract" title={selectedContrato?.numero_contrato ?? "Contrato activo"}>
+            <span>Contrato</span>
+            <select value={contratoId ?? ""} onChange={(event) => { setContratoId(event.target.value ? Number(event.target.value) : null); setSelectedVinculacionId(null); setSelectedExpediente(null); }} disabled={!empresaId}>
+              <option value="">Seleccionar</option>
+              {contratos.map((contrato) => <option key={contrato.id} value={contrato.id}>{contrato.numero_contrato}</option>)}
+            </select>
+          </label>
           <button
             type="button"
             className="cp-button secondary"
@@ -774,108 +728,6 @@ export default function ContractPersonalPage() {
         </div>
       )}
 
-      <div className="cp-context-grid">
-        <section className="cp-card">
-          <div className="cp-card-header">
-            <div>
-              <span className="cp-eyebrow">Empresa</span>
-              <h2>Seleccionar empresa</h2>
-            </div>
-            <Building2 size={18} />
-          </div>
-          <div className="cp-field-stack">
-            <label className="cp-label">
-              Buscar empresa
-              <div className="cp-input-wrap">
-                <Search size={15} />
-                <input
-                  className="cp-input"
-                  value={empresaSearch}
-                  onChange={(event) => setEmpresaSearch(event.target.value)}
-                  placeholder="Nombre, NIT o ciudad"
-                />
-              </div>
-            </label>
-            <label className="cp-label">
-              Empresa activa
-              <select
-                className="cp-select"
-                value={empresaId ?? ""}
-                onChange={(event) => {
-                  setEmpresaId(event.target.value ? Number(event.target.value) : null);
-                  setContratoId(null);
-                  setSelectedVinculacionId(null);
-                  setSelectedExpediente(null);
-                }}
-              >
-                <option value="">Seleccionar empresa</option>
-                {empresas.map((empresa) => (
-                  <option key={empresa.id} value={empresa.id}>
-                    {empresa.nombre_empresa}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </section>
-
-        <section className="cp-card">
-          <div className="cp-card-header">
-            <div>
-              <span className="cp-eyebrow">Contrato</span>
-              <h2>Seleccionar contrato</h2>
-            </div>
-            <FileText size={18} />
-          </div>
-          <div className="cp-field-stack">
-            <label className="cp-label">
-              Buscar contrato
-              <div className="cp-input-wrap">
-                <Search size={15} />
-                <input
-                  className="cp-input"
-                  value={contratoSearch}
-                  onChange={(event) => setContratoSearch(event.target.value)}
-                  placeholder="Número, objeto o entidad"
-                  disabled={!empresaId}
-                />
-              </div>
-            </label>
-            <label className="cp-label">
-              Contrato activo
-              <select
-                className="cp-select"
-                value={contratoId ?? ""}
-                onChange={(event) => {
-                  setContratoId(event.target.value ? Number(event.target.value) : null);
-                  setSelectedVinculacionId(null);
-                  setSelectedExpediente(null);
-                }}
-                disabled={!empresaId}
-              >
-                <option value="">Seleccionar contrato</option>
-                {contratos.map((contrato) => (
-                  <option key={contrato.id} value={contrato.id}>
-                    {contrato.numero_contrato} · {contrato.entidad_contratante}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </section>
-      </div>
-
-      <div className="cp-active-context">
-        <div>
-          <span>EMPRESA ACTIVA</span>
-          <strong>{selectedEmpresa?.nombre_empresa ?? "Sin seleccionar"}</strong>
-        </div>
-        <div>
-          <span>CONTRATO ACTIVO</span>
-          <strong>{selectedContrato?.numero_contrato ?? "Sin seleccionar"}</strong>
-        </div>
-      </div>
-
       <div className="cp-layout">
         <section className="cp-card cp-list-card">
           <div className="cp-card-header">
@@ -895,7 +747,7 @@ export default function ContractPersonalPage() {
               <option value="">Municipio</option>{filterOptions.municipios.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
             </select>
             <select className="cp-select" value={institucionFiltro ?? ""} onChange={(event) => { setInstitucionFiltro(Number(event.target.value) || null); setSedeFiltro(null); setModalidadFiltro(null); }} disabled={!selectedContrato || !municipioFiltro}>
-              <option value="">Institución</option>{filterOptions.instituciones.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+              <option value="">Institucion</option>{filterOptions.instituciones.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
             </select>
             <select className="cp-select" value={sedeFiltro ?? ""} onChange={(event) => { setSedeFiltro(Number(event.target.value) || null); setModalidadFiltro(null); }} disabled={!selectedContrato || !institucionFiltro}>
               <option value="">Sede</option>{filterOptions.sedes.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
@@ -906,21 +758,26 @@ export default function ContractPersonalPage() {
             <select className="cp-select" value={cargoFiltro ?? ""} onChange={(event) => setCargoFiltro(Number(event.target.value) || null)} disabled={!selectedContrato}>
               <option value="">Cargo</option>{cargos.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
-            <select className="cp-select" value={estadoFiltro} onChange={(event) => setEstadoFiltro(event.target.value as "" | VinculacionEstado)} disabled={!selectedContrato}>
-              <option value="">Estado</option><option value="ACTIVA">Activas</option><option value="SUSPENDIDA">Suspendidas</option><option value="RETIRADA">Retiradas</option>
-            </select>
-            <select className="cp-select" value={ubicacionFiltro ?? ""} onChange={(event) => setUbicacionFiltro(Number(event.target.value) || null)} disabled={!selectedContrato}>
-              <option value="">Ubicación asignada</option>{filterOptions.ubicaciones_laborales.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
-            </select>
-            <select className="cp-select" value={coberturaFiltro} onChange={(event) => setCoberturaFiltro(event.target.value as "" | "SI" | "NO")} disabled={!selectedContrato}>
-              <option value="">Cobertura</option><option value="SI">Con cobertura</option><option value="NO">Sin cobertura</option>
-            </select>
-            <select className="cp-select" value={licitacionFiltro} onChange={(event) => setLicitacionFiltro(event.target.value as "" | "PRESENTADA" | "NO_PRESENTADA")} disabled={!selectedContrato}>
-              <option value="">Oferta</option><option value="PRESENTADA">Presentada</option><option value="NO_PRESENTADA">No presentada</option>
-            </select>
-            <input className="cp-input-solid" type="date" value={fechaConsulta} onChange={(event) => setFechaConsulta(event.target.value)} disabled={!selectedContrato} aria-label="Fecha de consulta" />
-            <button type="button" className="cp-button ghost" onClick={() => { setPersonalSearch(""); setMunicipioFiltro(null); setInstitucionFiltro(null); setSedeFiltro(null); setModalidadFiltro(null); setCargoFiltro(null); setUbicacionFiltro(null); setCoberturaFiltro(""); setLicitacionFiltro(""); setEstadoFiltro(""); setFechaConsulta(todayIso()); setPage(1); }}>Limpiar filtros</button>
+            <button type="button" className="cp-more-filters" onClick={() => setMoreFiltersOpen((open) => !open)} aria-expanded={moreFiltersOpen}>Mas filtros ({[ubicacionFiltro, coberturaFiltro, licitacionFiltro, estadoFiltro].filter(Boolean).length})</button>
+            {moreFiltersOpen && <div className="cp-more-filters-panel">
+              <select className="cp-select" value={estadoFiltro} onChange={(event) => setEstadoFiltro(event.target.value as "" | VinculacionEstado)} disabled={!selectedContrato}>
+                <option value="">Estado</option><option value="ACTIVA">Activas</option><option value="SUSPENDIDA">Suspendidas</option><option value="RETIRADA">Retiradas</option>
+              </select>
+              <select className="cp-select" value={ubicacionFiltro ?? ""} onChange={(event) => setUbicacionFiltro(Number(event.target.value) || null)} disabled={!selectedContrato}>
+                <option value="">Ubicacion asignada</option>{filterOptions.ubicaciones_laborales.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+              </select>
+              <select className="cp-select" value={coberturaFiltro} onChange={(event) => setCoberturaFiltro(event.target.value as "" | "SI" | "NO")} disabled={!selectedContrato}>
+                <option value="">Cobertura</option><option value="SI">Con cobertura</option><option value="NO">Sin cobertura</option>
+              </select>
+              <select className="cp-select" value={licitacionFiltro} onChange={(event) => setLicitacionFiltro(event.target.value as "" | "PRESENTADA" | "NO_PRESENTADA")} disabled={!selectedContrato}>
+                <option value="">Oferta</option><option value="PRESENTADA">Presentada</option><option value="NO_PRESENTADA">No presentada</option>
+              </select>
+              <input className="cp-input-solid" type="date" value={fechaConsulta} onChange={(event) => setFechaConsulta(event.target.value)} disabled={!selectedContrato} aria-label="Fecha de consulta" />
+            </div>}
+            <button type="button" className="cp-button ghost cp-clear-filters" onClick={() => { setPersonalSearch(""); setMunicipioFiltro(null); setInstitucionFiltro(null); setSedeFiltro(null); setModalidadFiltro(null); setCargoFiltro(null); setUbicacionFiltro(null); setCoberturaFiltro(""); setLicitacionFiltro(""); setEstadoFiltro(""); setFechaConsulta(todayIso()); setPage(1); }}>Limpiar</button>
           </div>
+
+          <div className="cp-results-summary"><strong>{personal?.pagination.personas_total ?? personal?.pagination.total ?? 0} personas</strong><span></span><span>{personal?.pagination.total ?? 0} vinculaciones</span></div>
 
           {!selectedContrato ? (
             <div className="cp-list-body">
@@ -941,13 +798,14 @@ export default function ContractPersonalPage() {
             <div className="cp-list-body">
               <div className="cp-table-wrap">
                 <table className="cp-table">
+                  <colgroup><col className="cp-col-doc" /><col className="cp-col-name" /><col className="cp-col-cargo" /><col className="cp-col-assignment" /><col className="cp-col-offer" /><col className="cp-col-status" /><col className="cp-col-date" /><col className="cp-col-action" /></colgroup>
                   <thead>
                     <tr>
                       <th>Documento</th>
                       <th>Nombre completo</th>
                       <th>Cargo</th>
-                      <th>Asignación actual</th>
-                      <th>Licitación</th>
+                      <th>Asignacion actual</th>
+                      <th>Licitacion</th>
                       <th>Estado</th>
                       <th>Ingreso</th>
                       <th>Expediente</th>
@@ -968,20 +826,29 @@ export default function ContractPersonalPage() {
                         onClick={() => setSelectedVinculacionId(item.vinculacion_id)}
                       >
                         <td className="cp-mono">{item.numero_documento}</td>
-                        <td>{item.nombre_completo}</td>
+                        <td className="cp-name-cell"><strong>{item.nombre_completo}</strong></td>
                         <td>{item.cargo.nombre_cargo ?? "Sin cargo"}</td>
-                        <td>
-                          {item.es_manipuladora
-                            ? [item.asignacion_actual.institucion, item.asignacion_actual.sede, item.asignacion_actual.modalidad].filter(Boolean).join(" · ") || "Sin asignación"
-                            : item.asignacion_actual.nombre || "Sin asignación"}
+                        <td className="cp-assignment-cell">
+                          {item.es_manipuladora ? <>
+                            <strong>{item.asignacion_actual.municipio ?? "Sin municipio"}</strong>
+                            <span>{item.asignacion_actual.institucion ?? "Institucion no informada"}</span>
+                            <span>{item.asignacion_actual.sede ?? "Sede no informada"}</span>
+                            <small>{item.asignacion_actual.modalidad ?? "Modalidad no informada"}  Cobertura si</small>
+                          </> : <>
+                            <strong>Administrativo</strong>
+                            <span>{item.asignacion_actual.nombre ?? "Sin ubicacin laboral"}</span>
+                          </>}
                         </td>
-                        <td>{item.presentada_licitacion_actual ? item.perfil_licitacion_actual ?? "Sí" : "No"}</td>
+                        <td className="cp-offer-cell">
+                          <span className={item.presentada_licitacion_actual ? "cp-badge offer-presented" : "cp-badge offer-none"}>{item.presentada_licitacion_actual ? "Presentada" : "No presentada"}</span>
+                          {item.presentada_licitacion_actual && item.perfil_licitacion_actual && <small title={item.perfil_licitacion_actual}>{item.perfil_licitacion_actual}</small>}
+                        </td>
                         <td>
                           <span className={`cp-badge status-${item.estado_vinculacion.toLowerCase()}`}>
                             {getStatusLabel(item.estado_vinculacion)}
                           </span>
                         </td>
-                        <td>{formatDate(item.fecha_ingreso)}</td>
+                        <td className="cp-date-cell">{formatDate(item.fecha_ingreso)}</td>
                         <td>
                           <button
                             type="button"
@@ -1054,7 +921,7 @@ export default function ContractPersonalPage() {
             </div>
           ) : !selectedExpediente ? (
             <div className="cp-detail-body">
-              <div className="cp-empty">Selecciona una vinculación para abrir su expediente.</div>
+              <div className="cp-empty">Selecciona una vinculacion para abrir su expediente.</div>
             </div>
           ) : (
             <div className="cp-detail-body">
@@ -1084,12 +951,12 @@ export default function ContractPersonalPage() {
                   <strong>{selectedExpediente.documentos_persona.length}</strong>
                 </div>
                 <div className="cp-summary-item">
-                  <span>Documentos vinculación</span>
+                  <span>Documentos vinculacion</span>
                   <strong>{selectedExpediente.documentos_vinculacion.length}</strong>
                 </div>
                 <div className="cp-summary-item">
                   <span>Contrato</span>
-                  <strong>{selectedExpediente.contrato.numero_contrato ?? "Sin número"}</strong>
+                  <strong>{selectedExpediente.contrato.numero_contrato ?? "Sin numero"}</strong>
                 </div>
               </div>
 
@@ -1118,7 +985,7 @@ export default function ContractPersonalPage() {
                 <span className="cp-eyebrow">Agregar personal</span>
                 <h2>Agregar personal al contrato</h2>
                 <p className="cp-modal-helper">
-                  Buscar, crear o reutilizar persona y completar su vinculación.
+                  Buscar, crear o reutilizar persona y completar su vinculacion.
                 </p>
               </div>
               <button
@@ -1138,14 +1005,14 @@ export default function ContractPersonalPage() {
                   <div>
                     <h3 className="cp-subtitle">Buscar persona</h3>
                     <p className="cp-modal-helper">
-                      La búsqueda reutiliza la identificación vigente y evita duplicar personas.
+                      La bsqueda reutiliza la identificacion vigente y evita duplicar personas.
                     </p>
                   </div>
                 </div>
 
                 <div className="cp-modal-grid">
                   <label className="cp-label">
-                    Tipo de identificación
+                    Tipo de identificacion
                     <select
                       className="cp-select"
                       value={personaForm.tipo_documento_id}
@@ -1156,14 +1023,14 @@ export default function ContractPersonalPage() {
                       <option value="">Seleccionar</option>
                       {tiposIdentificacion.map((item) => (
                         <option key={item.id} value={item.id}>
-                          {item.codigo ? `${item.codigo} · ${item.label}` : item.label}
+                          {item.codigo ? `${item.codigo}  ${item.label}` : item.label}
                         </option>
                       ))}
                     </select>
                   </label>
 
                   <label className="cp-label">
-                    Número de identificación
+                    Nmero de identificacion
                     <input
                       className="cp-input cp-input-solid"
                       value={personaForm.numero_documento}
@@ -1206,7 +1073,7 @@ export default function ContractPersonalPage() {
                 {requiresCreation && (
                   <div className="cp-state cp-modal-notice">
                     <AlertTriangle size={16} />
-                    No existe una persona con esa identificación vigente. Completa los datos mínimos para crearla.
+                    No existe una persona con esa identificacion vigente. Completa los datos minimos para crearla.
                   </div>
                 )}
               </section>
@@ -1218,7 +1085,7 @@ export default function ContractPersonalPage() {
                     <div>
                       <h3 className="cp-subtitle">Datos personales</h3>
                       <p className="cp-modal-helper">
-                        Solo se solicitan los datos mínimos soportados por el backend actual.
+                        Solo se solicitan los datos minimos soportados por el backend actual.
                       </p>
                     </div>
                   </div>
@@ -1265,7 +1132,7 @@ export default function ContractPersonalPage() {
                       />
                     </label>
                     <label className="cp-label">
-                      Teléfono
+                      Telfono
                       <input
                         className="cp-input cp-input-solid"
                         value={personaForm.telefono}
@@ -1294,7 +1161,7 @@ export default function ContractPersonalPage() {
                   <div className="cp-modal-section-head">
                     <span className="cp-modal-section-eyebrow">{requiresCreation ? "3" : "2"}</span>
                     <div>
-                      <h3 className="cp-subtitle">Datos de vinculación</h3>
+                      <h3 className="cp-subtitle">Datos de vinculacion</h3>
                       <p className="cp-modal-helper">
                         Estos datos pertenecen al contrato activo y no a la persona maestra.
                       </p>
@@ -1321,7 +1188,7 @@ export default function ContractPersonalPage() {
                     </label>
 
                     <label className="cp-label">
-                      Tipo de vinculación
+                      Tipo de vinculacion
                       <select
                         className="cp-select"
                         value={vinculacionForm.tipo_vinculacion_id}
@@ -1332,7 +1199,7 @@ export default function ContractPersonalPage() {
                         <option value="">Seleccionar tipo</option>
                         {tiposVinculacion.map((item) => (
                           <option key={item.id} value={item.id}>
-                            {item.codigo ? `${item.codigo} · ${item.label}` : item.label}
+                            {item.codigo ? `${item.codigo}  ${item.label}` : item.label}
                           </option>
                         ))}
                       </select>
@@ -1351,7 +1218,7 @@ export default function ContractPersonalPage() {
                     </label>
 
                     <label className="cp-label">
-                      Método de pago
+                      Mtodo de pago
                       <select
                         className="cp-select"
                         value={vinculacionForm.metodo_pago}
@@ -1359,7 +1226,7 @@ export default function ContractPersonalPage() {
                           setVinculacionForm((current) => ({ ...current, metodo_pago: event.target.value }))
                         }
                       >
-                        <option value="">Sin método</option>
+                        <option value="">Sin metodo</option>
                         {metodosPago.map((item) => (
                           <option key={item.valor} value={item.valor}>
                             {item.etiqueta}
@@ -1409,7 +1276,7 @@ export default function ContractPersonalPage() {
                   disabled={savingWorker}
                 >
                   <Plus size={15} />
-                  {savingWorker ? "Guardando..." : "Guardar vinculación"}
+                  {savingWorker ? "Guardando..." : "Guardar vinculacion"}
                 </button>
               )}
             </div>

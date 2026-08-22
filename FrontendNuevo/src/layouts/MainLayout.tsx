@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { Bell, LogOut, Moon, Sun } from "lucide-react";
+import { Bell, Building2, ChevronDown, LogOut, Moon, Sun } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
+import { useCompanyContext } from "../context/CompanyContext";
 import { NavDropdown } from "./NavDropdown";
 import {
   NotificationsPanel,
@@ -42,6 +43,7 @@ const repositorioLinks = [
 export default function MainLayout() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { empresas, empresaId, empresaActiva, isLoading, setEmpresaId } = useCompanyContext();
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(INITIAL_UNREAD_COUNT);
   const [logoFallback, setLogoFallback] = useState(false);
@@ -133,6 +135,21 @@ export default function MainLayout() {
           >
             {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
           </button>
+
+          {empresas.length > 0 && (
+            <label className="company-context-control" title={empresaActiva?.nombre_empresa ?? "Empresa activa"}>
+              <Building2 size={16} aria-hidden="true" />
+              <select
+                value={empresaId ?? ""}
+                onChange={(event) => setEmpresaId(event.target.value ? Number(event.target.value) : null)}
+                disabled={isLoading || empresas.length === 1}
+                aria-label="Empresa activa"
+              >
+                {empresas.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}
+              </select>
+              <ChevronDown size={14} aria-hidden="true" />
+            </label>
+          )}
 
           <div className="user-area">
             <span>{user?.name ?? "Usuario"}</span>

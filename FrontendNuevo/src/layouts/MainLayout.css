@@ -306,3 +306,35 @@
 .logo-image--light, .logo-image--dark { width: 196px; height: 56px; flex: 0 0 196px; object-fit: contain; }
 .content, .page-scroll, .page-content { min-height: 0; }
 @media (max-width: 900px) { .topbar { gap: 14px; padding-inline: 18px; } .logo-area, .logo-link, .logo-image--light, .logo-image--dark { width: 160px; min-width: 160px; flex-basis: 160px; } }
+
+.company-context-control {
+  min-width: 190px;
+  max-width: 260px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-button);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-soft);
+}
+.company-context-control svg { flex: 0 0 auto; color: var(--color-primary); }
+.company-context-control select {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  appearance: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
+.company-context-control select:disabled { opacity: .9; }
+@media (max-width: 1100px) { .company-context-control { min-width: 150px; max-width: 190px; } }
+@media (max-width: 900px) { .company-context-control { min-width: 40px; width: 40px; padding: 0; justify-content: center; } .company-context-control select { display: none; } .company-context-control > svg:last-child { display: none; } }

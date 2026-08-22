@@ -14,6 +14,7 @@ export interface VinculacionPagination {
   limit: number;
   total: number;
   total_pages: number;
+  personas_total?: number;
 }
 
 export interface VinculacionListResponse {

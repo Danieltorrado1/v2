@@ -125,6 +125,7 @@ export interface PaginatedContractPersonal {
     page: number;
     total: number;
     total_pages: number;
+    personas_total?: number;
   };
 }
 
@@ -946,7 +947,7 @@ export const listContractPersonal = async (
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
     const countResult = await client.query<CountRow>(
       `
-        SELECT COUNT(*)::int AS total
+        SELECT COUNT(*)::int AS total, COUNT(DISTINCT v.persona_id)::int AS personas_total
         FROM vinculaciones v
         INNER JOIN personas p ON p.id = v.persona_id
         ${whereClause}
@@ -955,6 +956,7 @@ export const listContractPersonal = async (
     );
 
     const total = countResult.rows[0]?.total ?? 0;
+    const personasTotal = countResult.rows[0]?.personas_total ?? total;
     const offset = (filters.page - 1) * filters.limit;
     const listParams = [...params, filters.limit, offset];
     const result = await client.query<ContractPersonalRow>(
@@ -1043,6 +1045,7 @@ export const listContractPersonal = async (
         page: filters.page,
         limit: filters.limit,
         total,
+        personas_total: personasTotal,
         total_pages: total === 0 ? 0 : Math.ceil(total / filters.limit)
       }
     };
