@@ -310,6 +310,29 @@
   grid-template-columns: minmax(0, 1fr) 220px;
 }
 
+.cp-list-filters-expanded {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  align-items: stretch;
+}
+
+.cp-list-filters-expanded .cp-search-filter {
+  grid-column: span 2;
+}
+
+.cp-list-filters-expanded .cp-input-solid,
+.cp-list-filters-expanded .cp-button {
+  min-width: 0;
+}
+
+.cp-table {
+  min-width: 760px;
+}
+
+.cp-table td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
 .cp-table-wrap {
   flex: 1;
   min-height: 0;

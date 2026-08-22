@@ -47,6 +47,14 @@ export async function getContractPersonal(
     page: filters.page,
     limit: filters.limit,
     fecha: filters.fecha,
+    municipio_id: filters.municipio_id,
+    institucion_id: filters.institucion_id,
+    sede_id: filters.sede_id,
+    modalidad_id: filters.modalidad_id,
+    modalidad_codigo: filters.modalidad_codigo,
+    ubicacion_laboral_id: filters.ubicacion_laboral_id,
+    cobertura: filters.cobertura,
+    licitacion: filters.licitacion,
   };
   const res = await apiClient.get<ApiResponse<ContractPersonalListResponse>>('/vinculaciones/personal', {
     params,
