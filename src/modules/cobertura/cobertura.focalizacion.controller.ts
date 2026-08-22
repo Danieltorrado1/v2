@@ -9,12 +9,14 @@ import {
   buildFocalizacionImportTemplate,
   createManualFocalizacionAdjustment,
   getFocalizacionImportDetail,
+  compareFocalizacionImports,
   listFocalizacionImportaciones,
   reprocessHistoricalFocalizacionImport,
   uploadHistoricalFocalizacionFile,
 } from './cobertura.focalizacion.service';
 import {
   focalizacionImportDetailQuerySchema,
+  focalizacionComparisonQuerySchema,
   focalizacionImportIdParamSchema,
   focalizacionImportListQuerySchema,
   focalizacionImportReprocessSchema,
@@ -68,6 +70,12 @@ export const listFocalizacionImportacionesHandler = asyncHandler(async (req: Req
     message: 'Focalizacion imports retrieved successfully',
     data: result,
   });
+});
+
+export const compareFocalizacionImportsHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = focalizacionComparisonQuerySchema.parse(req.query);
+  const result = await compareFocalizacionImports(query, req.tenant);
+  return successResponse(res, { message: "Focalizacion comparison retrieved successfully", data: result });
 });
 
 export const getFocalizacionImportDetailHandler = asyncHandler(async (req: Request, res: Response) => {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const trimmedStringSchema = z.string().trim().min(1);
-const numericStringSchema = z.string().trim().regex(/^\d+$/, 'Debe ser un número entero válido');
+const numericStringSchema = z.string().trim().regex(/^\d+$/, 'Debe ser un nÃºmero entero vÃ¡lido');
 
 const numericIdSchema = z.preprocess((value) => {
   if (typeof value === 'string') {
@@ -78,6 +78,7 @@ export const coberturaResumenQuerySchema = z.object({
   categoria_cobertura: nullableTrimmedStringSchema.optional(),
   modalidad_base: modalidadBaseSchema.optional(),
   estado_cobertura: estadoCoberturaSchema.optional(),
+  fecha: nullableDateSchema.optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10)
 });

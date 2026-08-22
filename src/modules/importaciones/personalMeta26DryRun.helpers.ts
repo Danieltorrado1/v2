@@ -141,12 +141,31 @@ type FechaIssueCode =
   | 'FIN_ANTERIOR_INICIO'
   | 'COMBINACION_CONTRACTUAL_INVALIDA';
 
+export type RetirementIssueCode =
+  | 'FECHA_RETIRO_FALTANTE'
+  | 'FECHA_RETIRO_INVALIDA'
+  | 'RETIRO_ANTERIOR_INICIO'
+  | 'RETIRO_POSTERIOR_CONTEXTO';
+
+const repairMojibake = (value: string): string => {
+  if (!/[ÃÂ]/.test(value)) {
+    return value;
+  }
+
+  try {
+    const repaired = Buffer.from(value, 'latin1').toString('utf8');
+    return repaired.includes('�') ? value : repaired;
+  } catch {
+    return value;
+  }
+};
+
 const normalizeComparableText = (value: string | null | undefined): string => {
   if (!value) {
     return '';
   }
 
-  return value
+  return repairMojibake(value)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ')
@@ -154,12 +173,21 @@ const normalizeComparableText = (value: string | null | undefined): string => {
     .toUpperCase();
 };
 
+const isIsoDate = (value: string | null | undefined): value is string => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+};
+
 const normalizeCoverageText = (value: string | null | undefined): string => {
   if (!value) {
     return '';
   }
 
-  return value
+  return repairMojibake(value)
     .trim()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -306,6 +334,44 @@ export const validateContractDates = (input: {
   }
 
   return { normalized, issues };
+};
+
+export const validateRetirementDate = (input: {
+  allowSameDayStart?: boolean;
+  contextDate?: string | null;
+  retirementDate: string | null;
+  startDate: string | null;
+}): { valid: boolean; issues: RetirementIssueCode[] } => {
+  const issues: RetirementIssueCode[] = [];
+  const allowSameDayStart = input.allowSameDayStart ?? true;
+
+  if (!input.retirementDate) {
+    issues.push('FECHA_RETIRO_FALTANTE');
+    return { valid: false, issues };
+  }
+
+  if (!isIsoDate(input.retirementDate)) {
+    issues.push('FECHA_RETIRO_INVALIDA');
+    return { valid: false, issues };
+  }
+
+  if (
+    input.startDate &&
+    (!isIsoDate(input.startDate) ||
+      input.retirementDate < input.startDate ||
+      (!allowSameDayStart && input.retirementDate === input.startDate))
+  ) {
+    issues.push('RETIRO_ANTERIOR_INICIO');
+  }
+
+  if (input.contextDate && isIsoDate(input.contextDate) && input.retirementDate > input.contextDate) {
+    issues.push('RETIRO_POSTERIOR_CONTEXTO');
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues
+  };
 };
 
 export const resolveCargoMapping = (sourceCargo: string | null, cargoRows: HelperCargoRow[]): { proposed: string | null; resolved: HelperCargoRow | null } => {

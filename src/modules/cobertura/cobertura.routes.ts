@@ -9,6 +9,7 @@ import {
   downloadFocalizacionImportReportHandler,
   downloadFocalizacionImportTemplateHandler,
   getFocalizacionImportDetailHandler,
+  compareFocalizacionImportsHandler,
   listFocalizacionImportacionesHandler,
   reprocessFocalizacionImportHandler,
   uploadHistoricalFocalizacionHandler,
@@ -20,6 +21,7 @@ import {
   getCoberturaContratoHandler,
   getCoberturaFaltantesHandler,
   getCoberturaResumenHandler,
+  getCoberturaDashboardHandler,
   getCoberturaSedeModalidadHandler,
   getCoberturaSobrecoberturaHandler,
   recalculateCoberturaHandler,
@@ -33,6 +35,7 @@ coberturaRoutes.use(authMiddleware);
 coberturaRoutes.use(tenantMiddleware);
 
 coberturaRoutes.get('/resumen', requirePermissions('cobertura.read'), getCoberturaResumenHandler);
+coberturaRoutes.get('/dashboard', requirePermissions('cobertura.read'), getCoberturaDashboardHandler);
 coberturaRoutes.get('/contrato/:contrato_id', requirePermissions('cobertura.read'), getCoberturaContratoHandler);
 coberturaRoutes.get('/sede-modalidad/:id', requirePermissions('cobertura.read'), getCoberturaSedeModalidadHandler);
 coberturaRoutes.get('/faltantes', requirePermissions('cobertura.read'), getCoberturaFaltantesHandler);
@@ -40,6 +43,7 @@ coberturaRoutes.get('/sobrecobertura', requirePermissions('cobertura.read'), get
 
 coberturaRoutes.get('/focalizacion/template', requirePermissions('cobertura.read'), downloadFocalizacionImportTemplateHandler);
 coberturaRoutes.get('/focalizacion/importaciones', requirePermissions('cobertura.read'), listFocalizacionImportacionesHandler);
+coberturaRoutes.get('/focalizacion/comparar', requirePermissions('cobertura.read'), compareFocalizacionImportsHandler);
 coberturaRoutes.get('/focalizacion/importaciones/:id', requirePermissions('cobertura.read'), getFocalizacionImportDetailHandler);
 coberturaRoutes.get('/focalizacion/importaciones/:id/reporte', requirePermissions('cobertura.read'), downloadFocalizacionImportReportHandler);
 coberturaRoutes.post('/focalizacion/importaciones', requirePermissions('cobertura.update'), upload.single('file'), uploadHistoricalFocalizacionHandler);

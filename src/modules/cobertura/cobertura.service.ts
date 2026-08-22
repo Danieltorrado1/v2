@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+﻿import { randomUUID } from 'crypto';
 
 import { PoolClient, QueryResultRow } from 'pg';
 
@@ -22,6 +22,7 @@ import {
   ensureUniqueActiveCoverageAssignment,
   ensureVinculacionActivaManipulador
 } from './cobertura.validator';
+import { resolveCoberturaFechaConsulta } from './cobertura.temporal';
 
 interface CoberturaBaseRow extends QueryResultRow {
   activo: boolean;
@@ -105,6 +106,7 @@ export interface CoberturaResumenItem {
 }
 
 export interface CoberturaResumenResponse {
+  fecha_consulta: string;
   items: CoberturaResumenItem[];
   pagination: {
     limit: number;
@@ -114,8 +116,17 @@ export interface CoberturaResumenResponse {
   };
 }
 
+export interface CoberturaDashboardResponse {
+  fecha_consulta: string;
+  kpis: { focalizacion_total: number; cobertura_requerida: number; asignadas: number; deficit_distribuido: number; exceso_distribuido: number; cumplimiento_nominal: number };
+  estado_sede_modalidad: { completas: number; deficitarias: number; con_exceso: number; sin_personal: number };
+  modalidades: Array<{ modalidad: string; sedes: number; sede_modalidades: number; asignadas: number; requeridas: number }>;
+  municipios: Array<{ municipio: string; asignadas: number; requeridas: number }>;
+  detalle: Array<{ focalizacion_final_id: number; municipio: string | null; institucion: string | null; sede: string | null; modalidad: string; requeridas: number; asignadas: number; diferencia: number; estado: EstadoCobertura }>;
+}
 export interface CoberturaContratoDetalle {
   contrato_id: string;
+  fecha_consulta: string;
   contrato_nombre: string | null;
   resumen: {
     asignados_cobertura: number;
@@ -425,8 +436,10 @@ const buildBaseWhereClause = (
 
 const getCoberturaBaseRows = async (
   filters: CoberturaResumenQuery
-): Promise<CoberturaResumenItem[]> => {
+): Promise<{ fechaConsulta: string; items: CoberturaResumenItem[] }> => {
   const { params, whereSql } = buildBaseWhereClause(filters);
+  const fechaConsulta = resolveCoberturaFechaConsulta(filters.fecha ?? null);
+  const datePlaceholder = `$${params.length + 1}`;
 
   const result = await dbQuery<CoberturaBaseRow>(
     `
@@ -435,7 +448,12 @@ const getCoberturaBaseRows = async (
           ca.focalizacion_final_id::text AS focalizacion_final_id,
           COALESCE(SUM(COALESCE(ca.porcentaje_cobertura, 0)), 0) AS asignados_db
         FROM cobertura_asignaciones ca
+        INNER JOIN vinculaciones v ON v.id = ca.vinculacion_id
         WHERE COALESCE(ca.activo, TRUE) = TRUE
+          AND ca.fecha_inicio <= ${datePlaceholder}::date
+          AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= ${datePlaceholder}::date)
+          AND v.fecha_inicio <= ${datePlaceholder}::date
+          AND (v.fecha_fin IS NULL OR v.fecha_fin >= ${datePlaceholder}::date)
         GROUP BY ca.focalizacion_final_id::text
       )
       SELECT
@@ -471,10 +489,13 @@ const getCoberturaBaseRows = async (
         COALESCE(ff.sede_final, '') ASC,
         ff.id ASC
     `,
-    params
+    [...params, fechaConsulta]
   );
 
-  return result.rows.map(mapCoberturaRow);
+  return {
+    fechaConsulta,
+    items: result.rows.map(mapCoberturaRow)
+  };
 };
 
 const applyFilters = (
@@ -497,13 +518,15 @@ const applyFilters = (
 const paginate = (
   items: CoberturaResumenItem[],
   page: number,
-  limit: number
+  limit: number,
+  fechaConsulta: string
 ): CoberturaResumenResponse => {
   const total = items.length;
   const offset = (page - 1) * limit;
   const paginatedItems = items.slice(offset, offset + limit);
 
   return {
+    fecha_consulta: fechaConsulta,
     items: paginatedItems,
     pagination: {
       page,
@@ -570,9 +593,9 @@ const getCoberturaAsignacionByIdForUpdate = async (
 export const getCoberturaResumen = async (
   filters: CoberturaResumenQuery
 ): Promise<CoberturaResumenResponse> => {
-  const baseItems = await getCoberturaBaseRows(filters);
-  const filtered = applyFilters(baseItems, filters);
-  return paginate(filtered, filters.page, filters.limit);
+  const { fechaConsulta, items } = await getCoberturaBaseRows(filters);
+  const filtered = applyFilters(items, filters);
+  return paginate(filtered, filters.page, filters.limit, fechaConsulta);
 };
 
 export const getCoberturaContratoDetalle = async (
@@ -590,7 +613,7 @@ export const getCoberturaContratoDetalle = async (
     [contratoId]
   );
 
-  const items = await getCoberturaBaseRows({
+  const { fechaConsulta, items } = await getCoberturaBaseRows({
     contrato_id: contratoId,
     page: 1,
     limit: 1000
@@ -600,6 +623,7 @@ export const getCoberturaContratoDetalle = async (
 
   return {
     contrato_id: contratoId,
+    fecha_consulta: fechaConsulta,
     contrato_nombre: contratoResult.rows[0]?.contrato_nombre ?? null,
     resumen,
     items
@@ -697,25 +721,25 @@ export const getCoberturaSedeModalidadDetalle = async (
 export const getCoberturaFaltantes = async (
   filters: CoberturaResumenQuery
 ): Promise<CoberturaResumenResponse> => {
-  const baseItems = await getCoberturaBaseRows(filters);
-  const filtered = applyFilters(baseItems, {
+  const { fechaConsulta, items } = await getCoberturaBaseRows(filters);
+  const filtered = applyFilters(items, {
     ...filters,
     estado_cobertura: 'FALTANTE'
   });
 
-  return paginate(filtered, filters.page, filters.limit);
+  return paginate(filtered, filters.page, filters.limit, fechaConsulta);
 };
 
 export const getCoberturaSobrecobertura = async (
   filters: CoberturaResumenQuery
 ): Promise<CoberturaResumenResponse> => {
-  const baseItems = await getCoberturaBaseRows(filters);
-  const filtered = applyFilters(baseItems, {
+  const { fechaConsulta, items } = await getCoberturaBaseRows(filters);
+  const filtered = applyFilters(items, {
     ...filters,
     estado_cobertura: 'SOBRECOBERTURA'
   });
 
-  return paginate(filtered, filters.page, filters.limit);
+  return paginate(filtered, filters.page, filters.limit, fechaConsulta);
 };
 
 export const recalculateCobertura = async (

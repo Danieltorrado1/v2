@@ -41,6 +41,15 @@ export interface ContractPersonalFilters {
   search?: string;
   page?: number;
   limit?: number;
+  fecha?: string;
+  municipio_id?: number;
+  institucion_id?: number;
+  sede_id?: number;
+  modalidad_id?: number;
+  modalidad_codigo?: string;
+  ubicacion_laboral_id?: number;
+  cobertura?: "SI" | "NO" | "RETIRADA";
+  licitacion?: "PRESENTADA" | "NO_PRESENTADA";
 }
 
 export interface ContractPersonalListItem {
@@ -55,6 +64,7 @@ export interface ContractPersonalListItem {
   asignacion_actual: {
     nombre: string | null;
     institucion: string | null;
+    municipio: string | null;
     sede: string | null;
     modalidad: string | null;
   };
@@ -111,4 +121,12 @@ export interface SuspenderVinculacionPayload {
 export interface ReactivarVinculacionPayload {
   fecha_reactivacion?: string;
   observaciones?: string | null;
+}
+
+export interface ContractPersonalFilterOptions {
+  municipios: Array<{ id: number; nombre: string }>;
+  instituciones: Array<{ id: number; nombre: string; municipio_id: number | null }>;
+  sedes: Array<{ id: number; nombre: string; institucion_id: number | null }>;
+  modalidades: Array<{ id: number; codigo: string | null; nombre: string }>;
+  ubicaciones_laborales: Array<{ id: number; nombre: string }>;
 }

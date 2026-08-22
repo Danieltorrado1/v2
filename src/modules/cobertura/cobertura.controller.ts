@@ -1,3 +1,4 @@
+﻿import { getCoberturaDashboard } from './cobertura.dashboard';
 import { Request, Response } from 'express';
 
 import { AppError } from '../../utils/AppError';
@@ -45,6 +46,11 @@ export const getCoberturaResumenHandler = asyncHandler(async (req: Request, res:
   });
 });
 
+export const getCoberturaDashboardHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = coberturaResumenQuerySchema.parse(req.query);
+  const result = await getCoberturaDashboard(query);
+  return successResponse(res, { message: 'Cobertura dashboard retrieved successfully', data: result });
+});
 export const getCoberturaContratoHandler = asyncHandler(async (req: Request, res: Response) => {
   const { contrato_id } = contratoIdParamSchema.parse(req.params);
   const result = await getCoberturaContratoDetalle(contrato_id);

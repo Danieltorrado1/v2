@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-08-22T05:26:35.573Z",
+  "source_sha256": "00698440d9590373a1864749e298dcf2606a77a39eac28f6b28f2ec099233e9d",
+  "total_rows": 772,
+  "counts": {
+    "IMPORTAR_ACTIVA_CON_COBERTURA": 670,
+    "IMPORTAR_RETIRADA_HISTORICA": 17,
+    "IMPORTAR_ACTIVA_SIN_COBERTURA": 85
+  },
+  "expected": {
+    "total_rows": 772,
+    "active_with_coverage": 670,
+    "active_without_coverage": 85,
+    "retired_historical": 17,
+    "review": 0
+  },
+  "duplicates": 0,
+  "omitted": 0,
+  "blockers": [],
+  "ready": true
+}

@@ -32,7 +32,7 @@ test('termino fijo sin fecha fin genera revision', async () => {
   const { validateContractDates } = await modulePromise;
   assert.ok(
     validateContractDates({
-      tipoContrato: 'TÉRMINO FIJO',
+      tipoContrato: 'TERMINO FIJO',
       tipoVinculacion: 'LABORAL',
       startDate: '2026-08-01',
       endDate: null
@@ -52,6 +52,53 @@ test('fechas invertidas se marcan como invalidas', async () => {
   );
 });
 
+test('retiro 2026-08-02 dentro del periodo es valido', async () => {
+  const { validateRetirementDate } = await modulePromise;
+  assert.deepEqual(
+    validateRetirementDate({
+      startDate: '2026-08-01',
+      retirementDate: '2026-08-02',
+      contextDate: '2026-08-22'
+    }).issues,
+    []
+  );
+});
+
+test('retiro el mismo dia de inicio es valido si el modelo lo permite', async () => {
+  const { validateRetirementDate } = await modulePromise;
+  assert.equal(
+    validateRetirementDate({
+      startDate: '2026-08-02',
+      retirementDate: '2026-08-02',
+      contextDate: '2026-08-22',
+      allowSameDayStart: true
+    }).valid,
+    true
+  );
+});
+
+test('retiro anterior al inicio es invalido', async () => {
+  const { validateRetirementDate } = await modulePromise;
+  assert.ok(
+    validateRetirementDate({
+      startDate: '2026-08-03',
+      retirementDate: '2026-08-02',
+      contextDate: '2026-08-22'
+    }).issues.includes('RETIRO_ANTERIOR_INICIO')
+  );
+});
+
+test('retiro posterior al contexto importado es invalido', async () => {
+  const { validateRetirementDate } = await modulePromise;
+  assert.ok(
+    validateRetirementDate({
+      startDate: '2026-08-01',
+      retirementDate: '2026-08-23',
+      contextDate: '2026-08-22'
+    }).issues.includes('RETIRO_POSTERIOR_CONTEXTO')
+  );
+});
+
 test('cargo manipuladora se mapea a cargo de contrato con nombre inclusivo', async () => {
   const { resolveCargoMapping } = await modulePromise;
   const result = resolveCargoMapping('MANIPULADORA DE ALIMENTOS', [
@@ -65,7 +112,7 @@ test('administrativo usa asignacion laboral y no cobertura', async () => {
   const { resolveLaborLocation } = await modulePromise;
   const result = resolveLaborLocation({
     cargo_laboral: 'ADMINISTRATIVO',
-    asignacion_laboral: 'GESTIÓN DE ZONA',
+    asignacion_laboral: 'GESTION DE ZONA',
     ubicacion_operativa: null,
     municipio: null,
     institucion_educativa: null,
@@ -82,7 +129,7 @@ test('no manipuladora con sede/modalidad queda ambigua y no se mezcla con cobert
   const { resolveLaborLocation } = await modulePromise;
   const result = resolveLaborLocation({
     cargo_laboral: 'ADMINISTRATIVO',
-    asignacion_laboral: 'GESTIÓN DE ZONA',
+    asignacion_laboral: 'GESTION DE ZONA',
     ubicacion_operativa: null,
     municipio: 'ACACIAS',
     institucion_educativa: 'I.E. X',
@@ -187,7 +234,7 @@ test('manipuladora ambigua se mantiene en revisar', async () => {
 test('municipio con tilde se concilia con maestro oficial', async () => {
   const { matchCoverageAssignment } = await modulePromise;
   const result = matchCoverageAssignment({
-    municipio: 'PUERTO LÓPEZ',
+    municipio: 'PUERTO LOPEZ',
     institucion_educativa: 'IE CENTRAL',
     sede: 'SEDE PRINCIPAL',
     modalidad: 'CAA'
@@ -202,7 +249,7 @@ test('municipio con tilde se concilia con maestro oficial', async () => {
       sede_id: 30,
       sede_nombre: 'SEDE PRINCIPAL',
       modalidad_id: 40,
-      modalidad_nombre: 'Atención CAA',
+      modalidad_nombre: 'AtenciÃƒÂ³n CAA',
       modalidad_codigo_original: 'CAA',
       cobertura_requerida: 1
     }
@@ -228,7 +275,7 @@ test('prefijo IE se resuelve dentro del municipio correcto', async () => {
       sede_id: 3,
       sede_nombre: 'SEDE PRINCIPAL JUAN ROZO',
       modalidad_id: 4,
-      modalidad_nombre: 'Atención CAA',
+      modalidad_nombre: 'AtenciÃƒÂ³n CAA',
       modalidad_codigo_original: 'CAA',
       cobertura_requerida: 1
     }
@@ -254,7 +301,7 @@ test('prefijo SEDE se resuelve dentro de la institucion correcta', async () => {
       sede_id: 3,
       sede_nombre: 'SEDE RAFAEL POMBO',
       modalidad_id: 4,
-      modalidad_nombre: 'Atención CAA',
+      modalidad_nombre: 'AtenciÃƒÂ³n CAA',
       modalidad_codigo_original: 'CAA',
       cobertura_requerida: 1
     }
@@ -315,7 +362,7 @@ test('instituciones homonimas en municipios distintos no se mezclan', async () =
       sede_id: 3,
       sede_nombre: 'SEDE PRINCIPAL',
       modalidad_id: 4,
-      modalidad_nombre: 'Atención CAA',
+      modalidad_nombre: 'AtenciÃƒÂ³n CAA',
       modalidad_codigo_original: 'CAA',
       cobertura_requerida: 1
     },
@@ -329,7 +376,7 @@ test('instituciones homonimas en municipios distintos no se mezclan', async () =
       sede_id: 7,
       sede_nombre: 'SEDE PRINCIPAL',
       modalidad_id: 4,
-      modalidad_nombre: 'Atención CAA',
+      modalidad_nombre: 'AtenciÃƒÂ³n CAA',
       modalidad_codigo_original: 'CAA',
       cobertura_requerida: 1
     }
@@ -343,7 +390,7 @@ test('instituciones homonimas en municipios distintos no se mezclan', async () =
     { id: 3, institucion_id: 2, municipio_id: 1, codigo_dane: null, consecutivo_sede: null, nombre_sede: 'SEDE PRINCIPAL' },
     { id: 7, institucion_id: 8, municipio_id: 9, codigo_dane: null, consecutivo_sede: null, nombre_sede: 'SEDE PRINCIPAL' }
   ], [
-    { id: 4, codigo_original: 'CAA', codigo_base: 'CAA', nombre_modalidad: 'Atención CAA' }
+    { id: 4, codigo_original: 'CAA', codigo_base: 'CAA', nombre_modalidad: 'AtenciÃƒÂ³n CAA' }
   ]);
   assert.equal(result.status, 'ASIGNACION_OK');
   assert.equal(result.sede_modalidad_id, 15);
@@ -367,7 +414,7 @@ test('sedes homonimas se acotan por institucion', async () => {
       sede_id: 3,
       sede_nombre: 'SEDE PRINCIPAL',
       modalidad_id: 4,
-      modalidad_nombre: 'Atención CAA',
+      modalidad_nombre: 'AtenciÃƒÂ³n CAA',
       modalidad_codigo_original: 'CAA',
       cobertura_requerida: 1
     },
@@ -381,7 +428,7 @@ test('sedes homonimas se acotan por institucion', async () => {
       sede_id: 7,
       sede_nombre: 'SEDE PRINCIPAL',
       modalidad_id: 4,
-      modalidad_nombre: 'Atención CAA',
+      modalidad_nombre: 'AtenciÃƒÂ³n CAA',
       modalidad_codigo_original: 'CAA',
       cobertura_requerida: 1
     }
@@ -394,7 +441,7 @@ test('sedes homonimas se acotan por institucion', async () => {
     { id: 3, institucion_id: 2, municipio_id: 1, codigo_dane: null, consecutivo_sede: null, nombre_sede: 'SEDE PRINCIPAL' },
     { id: 7, institucion_id: 8, municipio_id: 1, codigo_dane: null, consecutivo_sede: null, nombre_sede: 'SEDE PRINCIPAL' }
   ], [
-    { id: 4, codigo_original: 'CAA', codigo_base: 'CAA', nombre_modalidad: 'Atención CAA' }
+    { id: 4, codigo_original: 'CAA', codigo_base: 'CAA', nombre_modalidad: 'AtenciÃƒÂ³n CAA' }
   ]);
   assert.equal(result.status, 'ASIGNACION_OK');
   assert.equal(result.sede_modalidad_id, 15);
@@ -418,7 +465,7 @@ test('sede modalidad inexistente no se acepta automaticamente', async () => {
       sede_id: 3,
       sede_nombre: 'SEDE PRINCIPAL',
       modalidad_id: 4,
-      modalidad_nombre: 'Atención CAA',
+      modalidad_nombre: 'AtenciÃƒÂ³n CAA',
       modalidad_codigo_original: 'CAA',
       cobertura_requerida: 1
     }
@@ -429,7 +476,7 @@ test('sede modalidad inexistente no se acepta automaticamente', async () => {
   ], [
     { id: 3, institucion_id: 2, municipio_id: 1, codigo_dane: null, consecutivo_sede: null, nombre_sede: 'SEDE PRINCIPAL' }
   ], [
-    { id: 4, codigo_original: 'CAA', codigo_base: 'CAA', nombre_modalidad: 'Atención CAA' },
+    { id: 4, codigo_original: 'CAA', codigo_base: 'CAA', nombre_modalidad: 'AtenciÃƒÂ³n CAA' },
     { id: 5, codigo_original: 'CAJU-RI', codigo_base: 'CAJU-RI', nombre_modalidad: 'Residencia Indigena' }
   ]);
   assert.equal(result.status, 'SEDE_MODALIDAD_NO_EXISTE');
@@ -453,7 +500,7 @@ test('alias ambiguo generado se rechaza', async () => {
       sede_id: 3,
       sede_nombre: 'SEDE EL CARMEN',
       modalidad_id: 4,
-      modalidad_nombre: 'Atención CAA',
+      modalidad_nombre: 'AtenciÃƒÂ³n CAA',
       modalidad_codigo_original: 'CAA',
       cobertura_requerida: 1
     },
@@ -467,7 +514,7 @@ test('alias ambiguo generado se rechaza', async () => {
       sede_id: 5,
       sede_nombre: 'PRINCIPAL EL CARMEN',
       modalidad_id: 4,
-      modalidad_nombre: 'Atención CAA',
+      modalidad_nombre: 'AtenciÃƒÂ³n CAA',
       modalidad_codigo_original: 'CAA',
       cobertura_requerida: 1
     }
@@ -479,7 +526,7 @@ test('alias ambiguo generado se rechaza', async () => {
     { id: 3, institucion_id: 2, municipio_id: 1, codigo_dane: null, consecutivo_sede: null, nombre_sede: 'SEDE EL CARMEN' },
     { id: 5, institucion_id: 2, municipio_id: 1, codigo_dane: null, consecutivo_sede: null, nombre_sede: 'PRINCIPAL EL CARMEN' }
   ], [
-    { id: 4, codigo_original: 'CAA', codigo_base: 'CAA', nombre_modalidad: 'Atención CAA' }
+    { id: 4, codigo_original: 'CAA', codigo_base: 'CAA', nombre_modalidad: 'AtenciÃƒÂ³n CAA' }
   ]);
   assert.equal(result.status, 'AMBIGUA');
 });

@@ -1,0 +1,62 @@
+[
+  {
+    "cargo": "MANIPULADORA DE ALIMENTOS",
+    "categoria_final": "IMPORTAR_ACTIVA_CON_COBERTURA",
+    "cedula": "1122135435",
+    "criterio": "MANIPULADORA_COBERTURA",
+    "fila_xlsx": 18,
+    "metodo_pago": "COBERTURA",
+    "nombre": "HEIDI VANESSA BENAVIDES QUIGUA",
+    "observacion": "Manipuladora activa con cobertura."
+  },
+  {
+    "cargo": "MANIPULADORA DE ALIMENTOS",
+    "categoria_final": "IMPORTAR_ACTIVA_CON_COBERTURA",
+    "cedula": "40430665",
+    "criterio": "PERSONA_REUTILIZADA",
+    "fila_xlsx": 27,
+    "metodo_pago": "COBERTURA",
+    "nombre": "LUZ MYRIAM SACRISTAN CIFUENTES",
+    "observacion": "Reutiliza persona existente."
+  },
+  {
+    "cargo": "MANIPULADORA DE ALIMENTOS",
+    "categoria_final": "IMPORTAR_ACTIVA_CON_COBERTURA",
+    "cedula": "20660317",
+    "criterio": "PERSONA_NUEVA",
+    "fila_xlsx": 76,
+    "metodo_pago": "COBERTURA",
+    "nombre": "ADRIANA MONTAÑA MORENO",
+    "observacion": "Crea persona nueva."
+  },
+  {
+    "cargo": "OPERARIOS DE BODEGA, TRANSPORTADORES Y AUXILIARES",
+    "categoria_final": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+    "cedula": "1001045603",
+    "criterio": "ADMINISTRATIVO",
+    "fila_xlsx": 713,
+    "metodo_pago": "ASISTENCIA",
+    "nombre": "BRAYAN STEVEN ROJAS MORALES",
+    "observacion": "Administrativo."
+  },
+  {
+    "cargo": "VACÍO",
+    "categoria_final": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+    "cedula": "39533864",
+    "criterio": "LICITACION",
+    "fila_xlsx": 690,
+    "metodo_pago": "ASISTENCIA",
+    "nombre": "MARIA NICOLASA CACERES GONZALEZ",
+    "observacion": "Cuenta en licitaciÃ³n."
+  },
+  {
+    "cargo": "MANIPULADORA DE ALIMENTOS",
+    "categoria_final": "IMPORTAR_ACTIVA_CON_COBERTURA",
+    "cedula": "1122117236",
+    "criterio": "CASO_ESPECIAL",
+    "fila_xlsx": 20,
+    "metodo_pago": "CASO_ESPECIAL",
+    "nombre": "KAROL TATIANA SERRATO ALARCON",
+    "observacion": "Caso especial."
+  }
+]

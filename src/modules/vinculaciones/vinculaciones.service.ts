@@ -73,6 +73,7 @@ export interface PaginatedVinculaciones {
 interface ContractPersonalRow extends QueryResultRow {
   asignacion_laboral_actual: string | null;
   institucion_actual: string | null;
+  municipio_actual: string | null;
   modalidad_actual: string | null;
   perfil_licitacion_actual: string | null;
   presentada_licitacion_actual: boolean;
@@ -97,6 +98,7 @@ interface ContractPersonalRow extends QueryResultRow {
 export interface ContractPersonalListItem {
   asignacion_actual: {
     institucion: string | null;
+    municipio: string | null;
     modalidad: string | null;
     nombre: string | null;
     sede: string | null;
@@ -431,6 +433,7 @@ const mapContractPersonal = (row: ContractPersonalRow): ContractPersonalListItem
     asignacion_actual: {
       nombre: row.asignacion_laboral_actual,
       institucion: row.institucion_actual,
+    municipio: row.municipio_actual,
       sede: row.sede_actual,
       modalidad: row.modalidad_actual
     },
@@ -874,9 +877,53 @@ export const listContractPersonal = async (
     const params: unknown[] = [filters.contrato_id];
     let paramIndex = 2;
 
+    if (filters.municipio_id !== undefined && filters.municipio_id !== null) {
+      params.push(filters.municipio_id);
+      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $${paramIndex}::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $${paramIndex}::date) AND ff_f.municipio_id = $${paramIndex}::bigint)`);
+      paramIndex += 1;
+    }
+    if (filters.institucion_id !== undefined && filters.institucion_id !== null) {
+      params.push(filters.institucion_id);
+      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $${paramIndex}::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $${paramIndex}::date) AND ff_f.institucion_id = $${paramIndex}::bigint)`);
+      paramIndex += 1;
+    }
+    if (filters.sede_id !== undefined && filters.sede_id !== null) {
+      params.push(filters.sede_id);
+      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $${paramIndex}::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $${paramIndex}::date) AND ff_f.sede_id = $${paramIndex}::bigint)`);
+      paramIndex += 1;
+    }
+    if (filters.modalidad_id !== undefined && filters.modalidad_id !== null) {
+      params.push(filters.modalidad_id);
+      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $${paramIndex}::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $${paramIndex}::date) AND ff_f.modalidad_id = $${paramIndex}::bigint)`);
+      paramIndex += 1;
+    }
+    if (filters.modalidad_codigo) {
+      params.push(filters.modalidad_codigo);
+      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id INNER JOIN modalidades m_f ON m_f.id = ff_f.modalidad_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $${paramIndex}::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $${paramIndex}::date) AND (m_f.codigo_modalidad = $${paramIndex} OR m_f.codigo_base = $${paramIndex} OR m_f.nombre_modalidad = $${paramIndex}))`);
+      paramIndex += 1;
+    }
+    if (filters.ubicacion_laboral_id !== undefined && filters.ubicacion_laboral_id !== null) {
+      params.push(filters.ubicacion_laboral_id);
+      params.push(filters.fecha ?? new Date().toISOString().slice(0, 10));
+      conditions.push(`EXISTS (SELECT 1 FROM personal_asignaciones_laborales pal_f WHERE pal_f.vinculacion_id = v.id AND pal_f.ubicacion_laboral_id = $${paramIndex}::bigint AND pal_f.estado = 'ACTIVA' AND pal_f.vigencia_desde <= $${paramIndex + 1}::date AND (pal_f.vigencia_hasta IS NULL OR pal_f.vigencia_hasta >= $${paramIndex + 1}::date))`);
+      paramIndex += 2;
+    }
+
+    if (filters.cobertura === 'SI') { params.push(filters.fecha ?? new Date().toISOString().slice(0, 10)); conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $${paramIndex}::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $${paramIndex}::date))`); paramIndex += 1; }
+    if (filters.cobertura === 'NO') { params.push(filters.fecha ?? new Date().toISOString().slice(0, 10)); conditions.push(`NOT EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $${paramIndex}::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $${paramIndex}::date))`); paramIndex += 1; }
+    if (filters.cobertura === 'RETIRADA') { params.push(filters.fecha ?? new Date().toISOString().slice(0, 10)); conditions.push(`v.fecha_fin IS NOT NULL AND v.fecha_fin < $${paramIndex}::date`); paramIndex += 1; }
+    if (filters.licitacion === 'PRESENTADA') { params.push(filters.fecha ?? new Date().toISOString().slice(0, 10)); conditions.push(`EXISTS (SELECT 1 FROM personal_presentaciones_licitacion ppl_f WHERE ppl_f.vinculacion_id = v.id AND ppl_f.estado = 'PRESENTADA' AND ppl_f.vigencia_desde <= $${paramIndex}::date AND (ppl_f.vigencia_hasta IS NULL OR ppl_f.vigencia_hasta >= $${paramIndex}::date))`); paramIndex += 1; }
+    if (filters.licitacion === 'NO_PRESENTADA') { params.push(filters.fecha ?? new Date().toISOString().slice(0, 10)); conditions.push(`NOT EXISTS (SELECT 1 FROM personal_presentaciones_licitacion ppl_f WHERE ppl_f.vinculacion_id = v.id AND ppl_f.estado = 'PRESENTADA' AND ppl_f.vigencia_desde <= $${paramIndex}::date AND (ppl_f.vigencia_hasta IS NULL OR ppl_f.vigencia_hasta >= $${paramIndex}::date))`); paramIndex += 1; }
+
     if (filters.estado_vinculacion) {
       if (filters.estado_vinculacion === 'ACTIVA') {
-        conditions.push(`v.estado_vinculacion IN ('ACTIVA', 'ACTIVO')`);
+        params.push(['ACTIVA', 'ACTIVO']);
+        const estadoParam = paramIndex;
+        paramIndex += 1;
+        params.push(filters.fecha ?? new Date().toISOString().slice(0, 10));
+        const fechaParam = paramIndex;
+        conditions.push("v.estado_vinculacion = ANY($" + estadoParam + "::text[]) AND v.fecha_inicio <= $" + fechaParam + "::date AND (v.fecha_fin IS NULL OR v.fecha_fin >= $" + fechaParam + "::date)");
+        paramIndex += 1;
       } else {
         params.push(filters.estado_vinculacion);
         conditions.push(`v.estado_vinculacion = $${paramIndex}`);
@@ -903,6 +950,7 @@ export const listContractPersonal = async (
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const consultaFecha = filters.fecha ?? new Date().toISOString().slice(0, 10);
     const countResult = await client.query<CountRow>(
       `
         SELECT COUNT(*)::int AS total
@@ -923,11 +971,14 @@ export const listContractPersonal = async (
             ca.vinculacion_id,
             ca.institucion,
             ca.sede,
-            ca.modalidad
+            ca.modalidad,
+            COALESCE(ff.municipio_texto, mu.nombre_municipio) AS municipio_actual
           FROM cobertura_asignaciones ca
+          INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+          LEFT JOIN municipios mu ON mu.id = ff.municipio_id
           WHERE ca.activo = TRUE
-            AND ca.fecha_inicio <= DATE '2026-08-21'
-            AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= DATE '2026-08-21')
+            AND ca.fecha_inicio <= DATE '${consultaFecha}'
+            AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= DATE '${consultaFecha}')
           ORDER BY ca.vinculacion_id, ca.fecha_inicio DESC, ca.id DESC
         ),
         asignacion_laboral_actual AS (
@@ -937,8 +988,8 @@ export const listContractPersonal = async (
           FROM personal_asignaciones_laborales pal
           INNER JOIN contrato_ubicaciones_laborales cul ON cul.id = pal.ubicacion_laboral_id
           WHERE pal.estado = 'ACTIVA'
-            AND pal.vigencia_desde <= DATE '2026-08-21'
-            AND (pal.vigencia_hasta IS NULL OR pal.vigencia_hasta >= DATE '2026-08-21')
+            AND pal.vigencia_desde <= DATE '${consultaFecha}'
+            AND (pal.vigencia_hasta IS NULL OR pal.vigencia_hasta >= DATE '${consultaFecha}')
           ORDER BY pal.vinculacion_id, pal.vigencia_desde DESC, pal.id DESC
         ),
         presentacion_licitacion_actual AS (
@@ -949,8 +1000,8 @@ export const listContractPersonal = async (
           FROM personal_presentaciones_licitacion ppl
           INNER JOIN contrato_perfiles_licitacion cpl ON cpl.id = ppl.perfil_licitacion_id
           WHERE ppl.estado = 'PRESENTADA'
-            AND ppl.vigencia_desde <= DATE '2026-08-21'
-            AND (ppl.vigencia_hasta IS NULL OR ppl.vigencia_hasta >= DATE '2026-08-21')
+            AND ppl.vigencia_desde <= DATE '${consultaFecha}'
+            AND (ppl.vigencia_hasta IS NULL OR ppl.vigencia_hasta >= DATE '${consultaFecha}')
           ORDER BY ppl.vinculacion_id, ppl.vigencia_desde DESC, ppl.id DESC
         )
         SELECT
@@ -974,6 +1025,7 @@ export const listContractPersonal = async (
           ) AS es_manipuladora,
           ala.nombre_ubicacion AS asignacion_laboral_actual,
           caa.institucion AS institucion_actual,
+          caa.municipio_actual,
           caa.sede AS sede_actual,
           caa.modalidad AS modalidad_actual,
           COALESCE(pla.presentada_licitacion_actual, FALSE) AS presentada_licitacion_actual,
@@ -1006,6 +1058,47 @@ export const listContractPersonal = async (
   }
 };
 
+export interface ContractPersonalFilterOptions {
+  municipios: Array<{ id: number; nombre: string }>;
+  instituciones: Array<{ id: number; nombre: string; municipio_id: number | null }>;
+  sedes: Array<{ id: number; nombre: string; institucion_id: number | null }>;
+  modalidades: Array<{ id: number; codigo: string | null; nombre: string }>;
+  ubicaciones_laborales: Array<{ id: number; nombre: string }>;
+}
+
+export const getContractPersonalFilterOptions = async (
+  contratoId: number,
+  filters: { municipio_id?: number | null; institucion_id?: number | null; sede_id?: number | null; fecha?: string },
+  tenant?: TenantAccessContext
+): Promise<ContractPersonalFilterOptions> => {
+  const client = await dbPool.connect();
+  try {
+    await ensureContractTenantAccess(client, tenant, contratoId);
+    const fecha = filters.fecha ?? new Date().toISOString().slice(0, 10);
+    const base = `
+      FROM focalizacion_final ff
+      LEFT JOIN municipios mu ON mu.id = ff.municipio_id
+      LEFT JOIN instituciones ins ON ins.id = ff.institucion_id
+      LEFT JOIN sedes se ON se.id = ff.sede_id
+      LEFT JOIN modalidades mo ON mo.id = ff.modalidad_id
+      WHERE ff.contrato_id = $1::bigint AND ff.activo = TRUE
+        AND ($2::bigint IS NULL OR ff.municipio_id = $2::bigint)
+        AND ($3::bigint IS NULL OR ff.institucion_id = $3::bigint)
+        AND ($4::bigint IS NULL OR ff.sede_id = $4::bigint)
+    `;
+    const params = [contratoId, filters.municipio_id ?? null, filters.institucion_id ?? null, filters.sede_id ?? null, fecha];
+    const [municipios, instituciones, sedes, modalidades, ubicaciones] = await Promise.all([
+      client.query<{ id: number; nombre: string }>(`SELECT DISTINCT mu.id::int AS id, mu.nombre_municipio AS nombre ${base} ORDER BY nombre`, params),
+      client.query<{ id: number; nombre: string; municipio_id: number | null }>(`SELECT DISTINCT ins.id::int AS id, ins.nombre_institucion AS nombre, ins.municipio_id::int AS municipio_id ${base} ORDER BY nombre`, params),
+      client.query<{ id: number; nombre: string; institucion_id: number | null }>(`SELECT DISTINCT se.id::int AS id, se.nombre_sede AS nombre, se.institucion_id::int AS institucion_id ${base} ORDER BY nombre`, params),
+      client.query<{ id: number; codigo: string | null; nombre: string }>(`SELECT DISTINCT mo.id::int AS id, COALESCE(mo.codigo_modalidad, mo.codigo_base) AS codigo, mo.nombre_modalidad AS nombre ${base} ORDER BY nombre`, params),
+      client.query<{ id: number; nombre: string }>(`SELECT id::int AS id, nombre_ubicacion AS nombre FROM contrato_ubicaciones_laborales WHERE contrato_id = $1::bigint AND activo = TRUE ORDER BY nombre`, [contratoId])
+    ]);
+    return { municipios: municipios.rows, instituciones: instituciones.rows, sedes: sedes.rows, modalidades: modalidades.rows, ubicaciones_laborales: ubicaciones.rows };
+  } finally {
+    client.release();
+  }
+};
 export const getVinculacionById = async (
   vinculacionId: number,
   tenant?: TenantAccessContext
@@ -1813,6 +1906,3 @@ export const reactivarVinculacion = async (
     client.release();
   }
 };
-
-
-

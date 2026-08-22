@@ -1,0 +1,10 @@
+{
+  "personas_duplicadas": 0,
+  "vinculaciones_duplicadas": 0,
+  "asignaciones_duplicadas": 0,
+  "presentaciones_duplicadas": 0,
+  "cobertura_duplicada": 0,
+  "solapamientos_economicos": 0,
+  "huerfanos": 0,
+  "fk_rotas": 0
+}

@@ -6,6 +6,7 @@ import { requirePermissions } from '../../middlewares/roleMiddleware';
 import {
   createVinculacionHandler,
   getContractPersonalHandler,
+  getContractPersonalFilterOptionsHandler,
   getOpsCatalogosHandler,
   getOpsVinculacionesHandler,
   getVinculacionExpedienteHandler,
@@ -36,6 +37,7 @@ vinculacionesRoutes.use(tenantMiddleware);
 
 vinculacionesRoutes.get('/ops/catalogos', requirePermissions('vinculaciones.read'), getOpsCatalogosHandler);
 vinculacionesRoutes.get('/ops', requirePermissions('vinculaciones.read'), getOpsVinculacionesHandler);
+vinculacionesRoutes.get('/personal/opciones', requirePermissions('vinculaciones.read'), getContractPersonalFilterOptionsHandler);
 vinculacionesRoutes.get('/personal', requirePermissions('vinculaciones.read'), getContractPersonalHandler);
 vinculacionesRoutes.get('/personal/licitacion/resumen', requirePermissions('vinculaciones.read'), getContratoLicitacionResumenHandler);
 vinculacionesRoutes.get('/', requirePermissions('vinculaciones.read'), getVinculaciones);

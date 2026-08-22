@@ -19,11 +19,12 @@ import { ApiClientError } from "../../services/apiClient";
 import { configuracionApi } from "../../services/configuracionApi";
 import {
   getContractPersonal,
+  getContractPersonalFilterOptions,
   getVinculacionExpediente,
 } from "../../services/vinculacionesApi";
 import type { CatalogoItem, Contrato, Empresa } from "../../types/configuracion.types";
 import type { VinculacionEstado, VinculacionExpedienteApi } from "../../types/personas.types";
-import type { ContractPersonalListResponse } from "../../types/vinculaciones.types";
+import type { ContractPersonalFilterOptions, ContractPersonalListResponse } from "../../types/vinculaciones.types";
 import PersonalMasterDrawer from "./PersonalMasterDrawer";
 import OperationalImportModal from "./OperationalImportModal";
 import "./OperationalPersonalPage.css";
@@ -38,6 +39,9 @@ type PersonalRow = {
   cargo_nombre: string | null;
   estado_vinculacion: VinculacionEstado;
   fecha_ingreso: string;
+  asignacion_actual: { nombre: string | null; institucion: string | null; municipio: string | null; sede: string | null; modalidad: string | null };
+  presentada_licitacion_actual: boolean;
+  perfil_licitacion_actual: string | null;
 };
 
 type PersonalTableData = {
@@ -108,6 +112,15 @@ export default function OperationalPersonalPage() {
   const [cargoId, setCargoId] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<"" | VinculacionEstado>("");
   const [search, setSearch] = useState("");
+  const [fechaConsulta, setFechaConsulta] = useState(() => new Date().toISOString().slice(0, 10));
+  const [municipioId, setMunicipioId] = useState("");
+  const [institucionId, setInstitucionId] = useState("");
+  const [sedeId, setSedeId] = useState("");
+  const [modalidadId, setModalidadId] = useState("");
+  const [ubicacionId, setUbicacionId] = useState("");
+  const [coberturaFiltro, setCoberturaFiltro] = useState<"" | "SI" | "NO" | "RETIRADA">("");
+  const [licitacionFiltro, setLicitacionFiltro] = useState<"" | "PRESENTADA" | "NO_PRESENTADA">("");
+  const [filterOptions, setFilterOptions] = useState<ContractPersonalFilterOptions>({ municipios: [], instituciones: [], sedes: [], modalidades: [], ubicaciones_laborales: [] });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [refreshIndex, setRefreshIndex] = useState(0);
@@ -295,6 +308,25 @@ export default function OperationalPersonalPage() {
   }, [canReadContext]);
 
   useEffect(() => {
+    if (!contratoId) {
+      setFilterOptions({ municipios: [], instituciones: [], sedes: [], modalidades: [], ubicaciones_laborales: [] });
+      return;
+    }
+    let cancelled = false;
+    void getContractPersonalFilterOptions({ contrato_id: contratoId, municipio_id: municipioId ? Number(municipioId) : undefined, institucion_id: institucionId ? Number(institucionId) : undefined, sede_id: sedeId ? Number(sedeId) : undefined, fecha: fechaConsulta }).then((options) => {
+      if (!cancelled) {
+        setFilterOptions(options);
+        if (institucionId && !options.instituciones.some((item) => String(item.id) === institucionId)) { setInstitucionId(""); setSedeId(""); setModalidadId(""); }
+        if (sedeId && !options.sedes.some((item) => String(item.id) === sedeId)) { setSedeId(""); setModalidadId(""); }
+        if (modalidadId && !options.modalidades.some((item) => String(item.id) === modalidadId)) setModalidadId("");
+      }
+    }).catch(() => {
+      if (!cancelled) setFilterOptions({ municipios: [], instituciones: [], sedes: [], modalidades: [], ubicaciones_laborales: [] });
+    });
+    return () => { cancelled = true; };
+  }, [contratoId, fechaConsulta, municipioId, institucionId, sedeId, modalidadId]);
+
+  useEffect(() => {
     if (!canReadPersonal || !contratoId) {
       setTableData(null);
       setTableError("");
@@ -316,6 +348,14 @@ export default function OperationalPersonalPage() {
           contrato_cargo_id: cargoId ? Number(cargoId) : undefined,
           estado_vinculacion: estadoFiltro || undefined,
           search: searchValue || undefined,
+          fecha: fechaConsulta,
+          municipio_id: municipioId ? Number(municipioId) : undefined,
+          institucion_id: institucionId ? Number(institucionId) : undefined,
+          sede_id: sedeId ? Number(sedeId) : undefined,
+          modalidad_id: modalidadId ? Number(modalidadId) : undefined,
+          ubicacion_laboral_id: ubicacionId ? Number(ubicacionId) : undefined,
+          cobertura: coberturaFiltro || undefined,
+          licitacion: licitacionFiltro || undefined,
           page,
           limit: pageSize,
         });
@@ -330,6 +370,9 @@ export default function OperationalPersonalPage() {
             cargo_nombre: item.cargo.nombre_cargo,
             estado_vinculacion: item.estado_vinculacion,
             fecha_ingreso: item.fecha_ingreso,
+            asignacion_actual: item.asignacion_actual,
+            presentada_licitacion_actual: item.presentada_licitacion_actual,
+            perfil_licitacion_actual: item.perfil_licitacion_actual,
           })),
           pagination: response.pagination,
         };
@@ -366,6 +409,14 @@ export default function OperationalPersonalPage() {
     pageSize,
     refreshIndex,
     searchValue,
+    fechaConsulta,
+    municipioId,
+    institucionId,
+    sedeId,
+    modalidadId,
+    ubicacionId,
+    coberturaFiltro,
+    licitacionFiltro,
   ]);
 
   useEffect(() => {
@@ -408,7 +459,7 @@ export default function OperationalPersonalPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [cargoId, contratoId, empresaId, estadoFiltro, pageSize, searchValue]);
+  }, [cargoId, contratoId, empresaId, estadoFiltro, fechaConsulta, pageSize, searchValue, municipioId, institucionId, sedeId, modalidadId, ubicacionId, coberturaFiltro, licitacionFiltro]);
 
   function buildManagementUrl(openAdd = false): string {
     const params = new URLSearchParams();
@@ -523,6 +574,17 @@ export default function OperationalPersonalPage() {
           </label>
 
           <div className="op-filters">
+            <label className="op-filter"><span>Municipio</span><select value={municipioId} onChange={(event) => { setMunicipioId(event.target.value); setInstitucionId(""); setSedeId(""); setModalidadId(""); }} disabled={!contratoId}><option value="">Todos</option>{filterOptions.municipios.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
+            <label className="op-filter"><span>InstituciÃ³n</span><select value={institucionId} onChange={(event) => { setInstitucionId(event.target.value); setSedeId(""); setModalidadId(""); }} disabled={!contratoId || !municipioId}><option value="">Todas</option>{filterOptions.instituciones.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
+            <label className="op-filter"><span>Sede</span><select value={sedeId} onChange={(event) => { setSedeId(event.target.value); setModalidadId(""); }} disabled={!contratoId || !institucionId}><option value="">Todas</option>{filterOptions.sedes.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
+            <label className="op-filter"><span>Modalidad</span><select value={modalidadId} onChange={(event) => setModalidadId(event.target.value)} disabled={!contratoId || !sedeId}><option value="">Todas</option>{filterOptions.modalidades.map((item) => <option key={item.id} value={item.id}>{item.codigo ?? item.nombre}</option>)}</select></label>
+            <label className="op-filter"><span>UbicaciÃ³n</span><select value={ubicacionId} onChange={(event) => setUbicacionId(event.target.value)} disabled={!contratoId}><option value="">Todas</option>{filterOptions.ubicaciones_laborales.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
+            <label className="op-filter"><span>Cobertura</span><select value={coberturaFiltro} onChange={(event) => setCoberturaFiltro(event.target.value as "" | "SI" | "NO" | "RETIRADA")} disabled={!contratoId}><option value="">Todas</option><option value="SI">Con cobertura</option><option value="NO">Sin cobertura</option><option value="RETIRADA">Retirada</option></select></label>
+            <label className="op-filter"><span>Oferta</span><select value={licitacionFiltro} onChange={(event) => setLicitacionFiltro(event.target.value as "" | "PRESENTADA" | "NO_PRESENTADA")} disabled={!contratoId}><option value="">Todas</option><option value="PRESENTADA">Presentada</option><option value="NO_PRESENTADA">No presentada</option></select></label>
+            <label className="op-filter">
+              <span>Al</span>
+              <input type="date" value={fechaConsulta} onChange={(event) => setFechaConsulta(event.target.value)} disabled={!contratoId} />
+            </label>
             <label className="op-filter">
               <BriefcaseBusiness size={14} />
               <select
@@ -554,6 +616,7 @@ export default function OperationalPersonalPage() {
             </label>
           </div>
 
+          <button type="button" className="op-button ghost" onClick={() => { setSearch(""); setMunicipioId(""); setInstitucionId(""); setSedeId(""); setModalidadId(""); setCargoId(""); setUbicacionId(""); setCoberturaFiltro(""); setLicitacionFiltro(""); setEstadoFiltro(""); setPage(1); }}>Limpiar filtros</button>
           <div className="op-tools-actions">
             <button
               type="button"
@@ -639,6 +702,9 @@ export default function OperationalPersonalPage() {
                     <th className="is-document">Documento</th>
                     <th className="is-name">Nombre completo</th>
                     <th className="is-role">Cargo</th>
+                    <th>Municipio</th>
+                    <th>UbicaciÃ³n / cobertura</th>
+                    <th>Oferta</th>
                     <th className="is-status">Estado</th>
                     <th className="is-date">Ingreso</th>
                     <th className="is-action">Expediente</th>
@@ -647,7 +713,7 @@ export default function OperationalPersonalPage() {
                 <tbody>
                   {(tableData?.items ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={6} className="op-empty-row">
+                      <td colSpan={8} className="op-empty-row">
                         No hay personal vinculado a este contrato con los filtros actuales.
                       </td>
                     </tr>
@@ -662,6 +728,21 @@ export default function OperationalPersonalPage() {
                       <td className="op-mono">{item.numero_documento}</td>
                       <td className="op-name-cell">{item.nombre_completo}</td>
                       <td>{item.cargo_nombre ?? "Sin cargo"}</td>
+                      <td>{item.asignacion_actual.municipio ?? "Sin municipio"}</td>
+                      <td>
+                        <div className="op-context-cell">
+                          <strong>{item.asignacion_actual.institucion && item.asignacion_actual.sede ? `${item.asignacion_actual.institucion} Â· ${item.asignacion_actual.sede}` : item.asignacion_actual.nombre ?? "Sin asignaciÃ³n"}</strong>
+                          {item.asignacion_actual.modalidad && <small>{item.asignacion_actual.modalidad}</small>}
+                          <span className={`op-badge ${item.estado_vinculacion === "RETIRADA" ? "status-retirada" : item.asignacion_actual.institucion ? "status-activa" : "status-suspendida"}`}>
+                            {item.estado_vinculacion === "RETIRADA" ? "RETIRADA" : item.asignacion_actual.institucion ? "COBERTURA SÃ" : "COBERTURA NO"}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`op-badge ${item.presentada_licitacion_actual ? "status-activa" : "status-suspendida"}`}>
+                          {item.presentada_licitacion_actual ? `PRESENTADA${item.perfil_licitacion_actual ? ` Â· ${item.perfil_licitacion_actual}` : ""}` : "NO PRESENTADA"}
+                        </span>
+                      </td>
                       <td>
                         <span className={`op-badge status-${item.estado_vinculacion.toLowerCase()}`}>
                           {getStatusLabel(item.estado_vinculacion)}

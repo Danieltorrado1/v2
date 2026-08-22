@@ -9,6 +9,7 @@ import NominaPage from "../pages/nomina/NominaPage";
 import CalculadoraSalarioPage from "../pages/herramientas/CalculadoraSalarioPage";
 import CalculadoraCoberturaPage from "../pages/herramientas/CalculadoraCoberturaPage";
 import CoberturaHerramientasPage from "../pages/herramientas/CoberturaHerramientasPage";
+import CoberturaDashboardPage from "../pages/herramientas/CoberturaDashboardPage";
 import LiquidacionPage from "../pages/nomina/LiquidacionPage";
 import TurnosPage from "../pages/nomina/TurnosPage";
 import PersonalOpsPage from "../pages/nomina/PersonalOpsPage";
@@ -37,7 +38,8 @@ export default function AppRouter() {
             <Route path="nomina/correccion" element={<CorreccionNominaPage />} />
             <Route path="herramientas/calculadora-salario" element={<CalculadoraSalarioPage />} />
             <Route path="herramientas/calculadora-cobertura" element={<CalculadoraCoberturaPage />} />
-            <Route path="herramientas/cobertura" element={<CoberturaHerramientasPage />} />
+            <Route path="herramientas/cobertura" element={<CoberturaDashboardPage />} />
+            <Route path="herramientas/cobertura/importaciones" element={<CoberturaHerramientasPage />} />
             <Route path="sst" element={<SstPage />} />
             <Route path="sst/incidentes" element={<Navigate to="/sst?tab=eventos" replace />} />
             <Route path="sst/riesgos" element={<Navigate to="/sst?tab=inspecciones" replace />} />

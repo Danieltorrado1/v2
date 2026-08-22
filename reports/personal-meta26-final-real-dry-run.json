@@ -1,0 +1,915 @@
+{
+  "baseline_review": 32,
+  "categories": {
+    "active_with_coverage": 670,
+    "active_without_coverage": 85,
+    "retired_historical": 17,
+    "review": 0
+  },
+  "coverage_summary": {
+    "asignadas_total": 669,
+    "completas": 666,
+    "deficit_total": 15,
+    "deficitarias": 10,
+    "exceso_total": 22,
+    "excesos": 11,
+    "requeridas_total": 662,
+    "sin_personal": 375
+  },
+  "data_error_rows": 0,
+  "decision_humana_pendiente_rows": 0,
+  "decisiones_consumidas_correctamente": 34,
+  "decisiones_encontradas": 34,
+  "decisiones_invalidas": 0,
+  "fechas_pendientes": 0,
+  "files": {
+    "decisiones_reales": {
+      "path": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\DECISIONES_REALES_PERSONAL_META26.xlsx",
+      "sha256": "20e4e457977edf326046f4ac14c115a5eb857bd9eb0396b2528a35351de7f6fa",
+      "read_at": "2026-08-22T04:41:33.260Z",
+      "sheets": [
+        {
+          "name": "FECHAS",
+          "rows": 13
+        },
+        {
+          "name": "IDENTIDADES",
+          "rows": 4
+        },
+        {
+          "name": "CASOS_ESPECIALES",
+          "rows": 4
+        },
+        {
+          "name": "UBICACIONES",
+          "rows": 9
+        },
+        {
+          "name": "CATALOGOS",
+          "rows": 4
+        },
+        {
+          "name": "RESUMEN",
+          "rows": 10
+        }
+      ]
+    },
+    "personal": {
+      "path": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\data\\Importacion_Personal_CONSORCIO_PAE_META_26.xlsx",
+      "sha256": "00698440d9590373a1864749e298dcf2606a77a39eac28f6b28f2ec099233e9d",
+      "read_at": "2026-08-22T04:41:33.260Z",
+      "sheets": [
+        {
+          "name": "IMPORTACION_META",
+          "rows": 772
+        },
+        {
+          "name": "PENDIENTES_REVISION",
+          "rows": 1675
+        },
+        {
+          "name": "CATALOGOS_META",
+          "rows": 13
+        },
+        {
+          "name": "INSTRUCCIONES",
+          "rows": 12
+        }
+      ]
+    }
+  },
+  "importable_counts": {
+    "personas_crear": 570,
+    "personas_reutilizar": 202,
+    "vinculaciones_crear": 772,
+    "vinculaciones_reutilizar": 0
+  },
+  "licitacion_perfiles": [
+    {
+      "perfil": "MANIPULADORAS_ALIMENTOS",
+      "requeridos": 100,
+      "presentados": 99,
+      "diferencia": -1,
+      "estado": "DEFICIT"
+    },
+    {
+      "perfil": "OPER_BOD_TRANS_AUX",
+      "requeridos": 35,
+      "presentados": 21,
+      "diferencia": -14,
+      "estado": "DEFICIT"
+    },
+    {
+      "perfil": "AUX_ADMIN",
+      "requeridos": 10,
+      "presentados": 9,
+      "diferencia": -1,
+      "estado": "DEFICIT"
+    },
+    {
+      "perfil": "COORD_ZONA",
+      "requeridos": 18,
+      "presentados": 18,
+      "diferencia": 0,
+      "estado": "CUMPLE"
+    },
+    {
+      "perfil": "COORD_SUMINISTRO",
+      "requeridos": 2,
+      "presentados": 2,
+      "diferencia": 0,
+      "estado": "CUMPLE"
+    },
+    {
+      "perfil": "SUP_CALIDAD",
+      "requeridos": 2,
+      "presentados": 2,
+      "diferencia": 0,
+      "estado": "CUMPLE"
+    }
+  ],
+  "manipuladoras": {
+    "total": 687,
+    "activas": 670,
+    "retiradas": 17,
+    "asignables": 670,
+    "pendientes": 0
+  },
+  "pending_counts": {
+    "caso_especiales": 0,
+    "catalogos": 0,
+    "fechas": 0,
+    "identidades": 0,
+    "ubicaciones": 0
+  },
+  "postcheck_bd": {
+    "before": {
+      "personas": 230,
+      "vinculaciones": 235,
+      "cobertura_asignaciones": 0,
+      "personal_asignaciones_laborales": 0,
+      "personal_presentaciones_licitacion": 0,
+      "vinculacion_condiciones_economicas": 0
+    },
+    "after": {
+      "personas": 230,
+      "vinculaciones": 235,
+      "cobertura_asignaciones": 0,
+      "personal_asignaciones_laborales": 0,
+      "personal_presentaciones_licitacion": 0,
+      "vinculacion_condiciones_economicas": 0
+    }
+  },
+  "ppt_status": "YA_CATALOGADO",
+  "review_zero": true,
+  "row_states": [
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 18,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "1122135435",
+      "data_errors": [],
+      "fila_xlsx": 18,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "COBERTURA",
+      "name": "HEIDI VANESSA BENAVIDES QUIGUA",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 76,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "20660317",
+      "data_errors": [],
+      "fila_xlsx": 76,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "COBERTURA",
+      "name": "ADRIANA MONTAÑA MORENO",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 351,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "1006875233",
+      "data_errors": [],
+      "fila_xlsx": 351,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "COBERTURA",
+      "name": "CLARA LUCIA SANCHEZ ANTOLINEZ",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 358,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "40285166",
+      "data_errors": [],
+      "fila_xlsx": 358,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "COBERTURA",
+      "name": "MARIA ROSALBA MONDRAGON REYES",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 678,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "40277414",
+      "data_errors": [],
+      "fila_xlsx": 678,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "COBERTURA",
+      "name": "SANDRA JUDHITD RIOS ORTIZ",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 713,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1001045603",
+      "data_errors": [],
+      "fila_xlsx": 713,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "BRAYAN STEVEN ROJAS MORALES",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 717,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1006823957",
+      "data_errors": [],
+      "fila_xlsx": 717,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "DAVID STEVEN GONZALES ROLDAN",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 737,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "86080456",
+      "data_errors": [],
+      "fila_xlsx": 737,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "JOSE FABIO CASTAÑEDA BELTRAN",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 738,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1005254023",
+      "data_errors": [],
+      "fila_xlsx": 738,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "JUAN CAMILO CASTILLO CUBILLOS",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 742,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1006799816",
+      "data_errors": [],
+      "fila_xlsx": 742,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "KEVIN STEVEN TOQUICA TORRES",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "fila": 753,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-11-30",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46356",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1007680615",
+      "data_errors": [],
+      "fila_xlsx": 753,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "ROBERTO LAITON DEL CAMPO",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46232",
+          "fila": 769,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-07-29",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46232",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1120026798",
+      "data_errors": [],
+      "fila_xlsx": 769,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "ANGIE PAOLA ARENAS MORA",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FECHA_VALIDA",
+          "consumed": true,
+          "detail": "DECISION=PROPORCIONAR_FECHA | VALOR=46232",
+          "fila": 771,
+          "kind": "RESUELTA",
+          "normalized_value": "2026-07-29",
+          "row_decision": "DECISION=PROPORCIONAR_FECHA | VALOR=46232",
+          "sheet": "FECHAS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1000033661",
+      "data_errors": [],
+      "fila_xlsx": 771,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "MIGUEL ANGEL NAVAS SIERRA",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "IDENTIDAD_REUTILIZADA",
+          "consumed": true,
+          "detail": "",
+          "fila": 27,
+          "kind": "RESUELTA",
+          "normalized_value": "MISMA_PERSONA",
+          "row_decision": "DECISION=MISMA_PERSONA",
+          "sheet": "IDENTIDADES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "40430665",
+      "data_errors": [],
+      "fila_xlsx": 27,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "COBERTURA",
+      "name": "LUZ MYRIAM SACRISTAN CIFUENTES",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "IDENTIDAD_REUTILIZADA",
+          "consumed": true,
+          "detail": "",
+          "fila": 740,
+          "kind": "RESUELTA",
+          "normalized_value": "MISMA_PERSONA",
+          "row_decision": "DECISION=MISMA_PERSONA",
+          "sheet": "IDENTIDADES"
+        },
+        {
+          "code": "UBICACION_NO_APLICA",
+          "consumed": true,
+          "detail": "",
+          "fila": 740,
+          "kind": "RESUELTA",
+          "normalized_value": "NO_APLICA",
+          "row_decision": "DECISION=NO_APLICA",
+          "sheet": "UBICACIONES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "8780626",
+      "data_errors": [],
+      "fila_xlsx": 740,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "JUAN PABLO BAENA TRUJILLO",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "NOMBRE_LEGAL_CONFIRMADO",
+          "consumed": true,
+          "detail": "",
+          "fila": 772,
+          "kind": "RESUELTA",
+          "normalized_value": "DANIEL ESTIVEN SANCHEZ CASTILLO",
+          "row_decision": "DECISION=NOMBRE_LEGAL_COMPLETO | VALOR=DANIEL ESTIVEN SANCHEZ CASTILLO",
+          "sheet": "IDENTIDADES"
+        },
+        {
+          "code": "UBICACION_EXISTENTE_CONFIRMADA",
+          "consumed": true,
+          "detail": "",
+          "fila": 772,
+          "kind": "RESUELTA",
+          "normalized_value": "BODEGA RI",
+          "row_decision": "DECISION=USAR_EXISTENTE | VALOR=BODEGA RI",
+          "sheet": "UBICACIONES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1029984442",
+      "data_errors": [],
+      "fila_xlsx": 772,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "NOMBRE_LEGAL_CONFIRMADO",
+          "consumed": true,
+          "detail": "",
+          "fila": 773,
+          "kind": "RESUELTA",
+          "normalized_value": "SANDRA MILENA DIAZ VELASQUEZ",
+          "row_decision": "DECISION=NOMBRE_LEGAL_COMPLETO | VALOR=SANDRA MILENA DIAZ VELASQUEZ",
+          "sheet": "IDENTIDADES"
+        },
+        {
+          "code": "TIPO_VINCULACION_CONFIRMADO",
+          "consumed": true,
+          "detail": "",
+          "fila": 773,
+          "kind": "RESUELTA",
+          "normalized_value": "LABORAL_OL",
+          "row_decision": "DECISION=LABORAL_OL",
+          "sheet": "CATALOGOS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1121836989",
+      "data_errors": [],
+      "fila_xlsx": 773,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "CASO_ESPECIAL_COMPLETO",
+          "consumed": true,
+          "detail": "Motivo=EL VALOR ES UN MISMO DE UN CAJU-RI SOLO QUE ESTA EMBARAZADA | VigenciaDesde=2026-07-29 | VigenciaHasta=",
+          "fila": 20,
+          "kind": "RESUELTA",
+          "normalized_value": "1042205",
+          "row_decision": "DECISION=COMPLETAR_CASO_ESPECIAL | VALOR=1042205 | OBS=EL VALOR ES UN MISMO DE UN CAJU-RI SOLO QUE ESTA EMBARAZADA",
+          "sheet": "CASOS_ESPECIALES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "1122117236",
+      "data_errors": [],
+      "fila_xlsx": 20,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "CASO_ESPECIAL",
+      "name": "KAROL TATIANA SERRATO ALARCON",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "CASO_ESPECIAL_COMPLETO",
+          "consumed": true,
+          "detail": "Motivo=EL VALOR ES UN MISMO DE UN CAJU-RI SOLO QUE ESTA EN LICENCIA DE MATERNIDAD | VigenciaDesde=2026-07-29 | VigenciaHasta=",
+          "fila": 181,
+          "kind": "RESUELTA",
+          "normalized_value": "1042205",
+          "row_decision": "DECISION=COMPLETAR_CASO_ESPECIAL | VALOR=1042205 | OBS=EL VALOR ES UN MISMO DE UN CAJU-RI SOLO QUE ESTA EN LICENCIA DE MATERNIDAD",
+          "sheet": "CASOS_ESPECIALES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "1074131699",
+      "data_errors": [],
+      "fila_xlsx": 181,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "CASO_ESPECIAL",
+      "name": "CLAUDIA BAQUERO CASTAÑEDA",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "CASO_ESPECIAL_COMPLETO",
+          "consumed": true,
+          "detail": "Motivo=EL VALOR ES UN MISMO DE UN CAA SOLO QUE ESTA EMBARAZADA | VigenciaDesde=2026-07-29 | VigenciaHasta=",
+          "fila": 324,
+          "kind": "RESUELTA",
+          "normalized_value": "1750905",
+          "row_decision": "DECISION=COMPLETAR_CASO_ESPECIAL | VALOR=1750905 | OBS=EL VALOR ES UN MISMO DE UN CAA SOLO QUE ESTA EMBARAZADA",
+          "sheet": "CASOS_ESPECIALES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "1119580452",
+      "data_errors": [],
+      "fila_xlsx": 324,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "CASO_ESPECIAL",
+      "name": "ZULY YULIANA YAIMA GUTIERREZ",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "CASO_ESPECIAL_COMPLETO",
+          "consumed": true,
+          "detail": "Motivo=EL VALOR ES UN MISMO DE UN CAJU-RI SOLO QUE ESTA EMBARAZADA | VigenciaDesde=2026-07-29 | VigenciaHasta=",
+          "fila": 518,
+          "kind": "RESUELTA",
+          "normalized_value": "1042205",
+          "row_decision": "DECISION=COMPLETAR_CASO_ESPECIAL | VALOR=1042205 | OBS=EL VALOR ES UN MISMO DE UN CAJU-RI SOLO QUE ESTA EMBARAZADA",
+          "sheet": "CASOS_ESPECIALES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "1120874851",
+      "data_errors": [],
+      "fila_xlsx": 518,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "CASO_ESPECIAL",
+      "name": "SAMARA GERALDINE LÓPEZ OCHOA",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "UBICACION_EXISTENTE_CONFIRMADA",
+          "consumed": true,
+          "detail": "",
+          "fila": 690,
+          "kind": "RESUELTA",
+          "normalized_value": "CALIDAD",
+          "row_decision": "DECISION=USAR_EXISTENTE | VALOR=CALIDAD",
+          "sheet": "UBICACIONES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "39533864",
+      "data_errors": [],
+      "fila_xlsx": 690,
+      "human_pending": [],
+      "licitacion_perfil": "COORD_SUMINISTRO",
+      "method_payment": "ASISTENCIA",
+      "name": "MARIA NICOLASA CACERES GONZALEZ",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "UBICACION_EXISTENTE_CONFIRMADA",
+          "consumed": true,
+          "detail": "",
+          "fila": 692,
+          "kind": "RESUELTA",
+          "normalized_value": "FACTURACION",
+          "row_decision": "DECISION=USAR_EXISTENTE | VALOR=FACTURACION",
+          "sheet": "UBICACIONES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "34002565",
+      "data_errors": [],
+      "fila_xlsx": 692,
+      "human_pending": [],
+      "licitacion_perfil": "SUP_CALIDAD",
+      "method_payment": "ASISTENCIA",
+      "name": "PAULA LORENA LOPEZ GARCIA",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "UBICACION_YA_EXISTE",
+          "consumed": true,
+          "detail": "",
+          "fila": 725,
+          "kind": "RESUELTA",
+          "normalized_value": "SERVICIOS GENERALES",
+          "row_decision": "DECISION=CREAR_NUEVA_UBICACION | VALOR=SERVICIOS GENERALES",
+          "sheet": "UBICACIONES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "40437946",
+      "data_errors": [],
+      "fila_xlsx": 725,
+      "human_pending": [],
+      "licitacion_perfil": "AUX_ADMIN",
+      "method_payment": "ASISTENCIA",
+      "name": "HERCILIA LADINO MORALES",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "UBICACION_YA_EXISTE",
+          "consumed": true,
+          "detail": "",
+          "fila": 741,
+          "kind": "RESUELTA",
+          "normalized_value": "SST",
+          "row_decision": "DECISION=CREAR_NUEVA_UBICACION | VALOR=SST",
+          "sheet": "UBICACIONES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1000336808",
+      "data_errors": [],
+      "fila_xlsx": 741,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "KEVIN FERNANADO GOMEZ CAMARGO",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "UBICACION_EXISTENTE_CONFIRMADA",
+          "consumed": true,
+          "detail": "",
+          "fila": 743,
+          "kind": "RESUELTA",
+          "normalized_value": "TALENTO HUMANO",
+          "row_decision": "DECISION=USAR_EXISTENTE | VALOR=TALENTO HUMANO",
+          "sheet": "UBICACIONES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1122919988",
+      "data_errors": [],
+      "fila_xlsx": 743,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "LAURA SOFIA ESGUERRA AGUDELO",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "UBICACION_YA_EXISTE",
+          "consumed": true,
+          "detail": "",
+          "fila": 764,
+          "kind": "RESUELTA",
+          "normalized_value": "SERVICIOS GENERALES",
+          "row_decision": "DECISION=CREAR_NUEVA_UBICACION | VALOR=SERVICIOS GENERALES",
+          "sheet": "UBICACIONES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "40215970",
+      "data_errors": [],
+      "fila_xlsx": 764,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "YINA PAOLA DAZA SUTA",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "UBICACION_EXISTENTE_CONFIRMADA",
+          "consumed": true,
+          "detail": "",
+          "fila": 766,
+          "kind": "RESUELTA",
+          "normalized_value": "FACTURACION",
+          "row_decision": "DECISION=USAR_EXISTENTE | VALOR=FACTURACION",
+          "sheet": "UBICACIONES"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "1006771797",
+      "data_errors": [],
+      "fila_xlsx": 766,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "DANIELA YISED ACEVEDO DUQUE",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FOCALIZACION_ACEPTADA",
+          "consumed": true,
+          "detail": "",
+          "fila": 13,
+          "kind": "RESUELTA",
+          "normalized_value": "ACACÍAS | INSTITUCIÓN EDUCATIVA JUAN ROZO | SEDE ENRIQUE DANIELS | CAJM/JT-RI",
+          "row_decision": "DECISION=ACEPTAR_OPCION_FOCALIZACION",
+          "sheet": "CATALOGOS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "1122140014",
+      "data_errors": [],
+      "fila_xlsx": 13,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "COBERTURA",
+      "name": "ERIKA ANDREA BOHORQUEZ TRIANA",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "FOCALIZACION_ACEPTADA",
+          "consumed": true,
+          "detail": "",
+          "fila": 21,
+          "kind": "RESUELTA",
+          "normalized_value": "ACACÍAS | INSTITUCIÓN EDUCATIVA JUAN ROZO | SEDE ENRIQUE DANIELS | CAJM/JT-RI",
+          "row_decision": "DECISION=ACEPTAR_OPCION_FOCALIZACION",
+          "sheet": "CATALOGOS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_CON_COBERTURA",
+      "cedula": "1006779606",
+      "data_errors": [],
+      "fila_xlsx": 21,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "COBERTURA",
+      "name": "KELLY HASBLEIDY TELLEZ GONZALEZ",
+      "technical_pending": []
+    },
+    {
+      "assessments": [
+        {
+          "code": "TIPO_PPT_YA_EXISTE",
+          "consumed": true,
+          "detail": "",
+          "fila": 715,
+          "kind": "RESUELTA",
+          "normalized_value": "PPT",
+          "row_decision": "DECISION=CREAR_TIPO_PPT",
+          "sheet": "CATALOGOS"
+        }
+      ],
+      "category": "IMPORTAR_ACTIVA_SIN_COBERTURA",
+      "cedula": "6038597",
+      "data_errors": [],
+      "fila_xlsx": 715,
+      "human_pending": [],
+      "licitacion_perfil": null,
+      "method_payment": "ASISTENCIA",
+      "name": "DANIEL DAVID MENDEZ MENDEZ",
+      "technical_pending": []
+    }
+  ],
+  "smoke_plan_path": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\personal-meta26-smoke-plan.json",
+  "technical_parametrizations": [],
+  "technical_pending_rows": 0,
+  "total_filas": 772,
+  "writes_to_db": 0
+}

@@ -1,0 +1,9 @@
+fila_xlsx,persona_id,vinculacion_id,contrato_id,empresa_id,contrato_cargo_id,tipo_vinculacion_id,fecha_inicio,fecha_fin,estado_vinculacion,cobertura_asignacion_id,focalizacion_final_id,asignacion_laboral_id,ubicacion_laboral_id,presentacion_licitacion_id,perfil_licitacion_id,condicion_economica_id,valor,condicion_vigencia_desde,condicion_vigencia_hasta,tipo_documento_id,tipo_documento_codigo
+2,4,250,24,15,33,2,Wed Jul 29 2026 00:00:00 GMT-0500 (hora estándar de Colombia),,ACTIVA,12,173,,,7,1,,,,,1,CEDULA
+3,5,251,24,15,33,2,Wed Jul 29 2026 00:00:00 GMT-0500 (hora estándar de Colombia),,ACTIVA,13,172,,,,,,,,,1,CEDULA
+8,237,249,24,15,33,2,Wed Jul 29 2026 00:00:00 GMT-0500 (hora estándar de Colombia),,ACTIVA,11,182,,,,,,,,,1,CEDULA
+12,10,252,24,15,33,2,Wed Jul 29 2026 00:00:00 GMT-0500 (hora estándar de Colombia),,ACTIVA,14,169,,,8,1,,,,,1,CEDULA
+20,47,254,24,15,33,2,Wed Jul 29 2026 00:00:00 GMT-0500 (hora estándar de Colombia),,ACTIVA,15,186,,,,,3,1042205.00,Wed Jul 29 2026 00:00:00 GMT-0500 (hora estándar de Colombia),,1,CEDULA
+425,240,256,24,15,33,2,Wed Jul 29 2026 00:00:00 GMT-0500 (hora estándar de Colombia),Sun Aug 02 2026 00:00:00 GMT-0500 (hora estándar de Colombia),RETIRADA,,,,,,,,,,,1,CEDULA
+689,238,253,24,15,38,2,Wed Jul 29 2026 00:00:00 GMT-0500 (hora estándar de Colombia),,ACTIVA,,,3,8,9,5,,,,,1,CEDULA
+715,239,255,24,15,37,2,Wed Jul 29 2026 00:00:00 GMT-0500 (hora estándar de Colombia),,ACTIVA,,,4,1,,,,,,,50,PPT

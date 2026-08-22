@@ -6,6 +6,8 @@ import type {
   FocalizacionImportDetailResult,
   FocalizacionImportListResult,
   FocalizacionUploadResult,
+  CoberturaDashboard,
+  FocalizacionComparisonResult,
 } from '../types/cobertura.types';
 
 export async function uploadHistoricalFocalizacion(file: File, contratoId: number): Promise<FocalizacionUploadResult> {
@@ -34,6 +36,11 @@ export async function getFocalizacionImportDetail(
   return response.data;
 }
 
+
+export async function compareFocalizacionImports(params: { carga_a_id: number; carga_b_id: number; municipio?: string; modalidad?: string; tipo_cambio?: string; solo_cambios?: boolean; fecha?: string; page?: number; limit?: number }): Promise<FocalizacionComparisonResult> {
+  const response = await apiClient.get<ApiResponse<FocalizacionComparisonResult>>('/cobertura/focalizacion/comparar', { params });
+  return response.data;
+}
 
 export async function reprocessFocalizacionImport(
   loteId: number,
@@ -78,4 +85,11 @@ export async function downloadFocalizacionTemplate(): Promise<void> {
 
 export async function downloadFocalizacionReport(loteId: number): Promise<void> {
   await downloadProtectedFile(`/cobertura/focalizacion/importaciones/${loteId}/reporte`, `resultado-focalizacion-${loteId}.xlsx`);
+}
+
+export async function getCoberturaDashboard(contratoId: number, fecha: string): Promise<CoberturaDashboard> {
+  const response = await apiClient.get<ApiResponse<CoberturaDashboard>>('/cobertura/dashboard', {
+    params: { contrato_id: contratoId, fecha, page: 1, limit: 100 },
+  });
+  return response.data;
 }

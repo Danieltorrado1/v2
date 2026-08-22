@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 const trimmedStringSchema = z.string().trim().min(1);
 
@@ -56,3 +56,15 @@ export const focalizacionManualAdjustmentSchema = z.object({
 });
 
 export type FocalizacionImportUploadInput = z.infer<typeof focalizacionImportUploadSchema>;
+
+export const focalizacionComparisonQuerySchema = z.object({
+  carga_a_id: numericIdSchema,
+  carga_b_id: numericIdSchema,
+  municipio: z.string().trim().optional(),
+  modalidad: z.string().trim().optional(),
+  tipo_cambio: z.enum(["NUEVA", "RETIRADA", "AUMENTÓ", "DISMINUYÓ", "MODALIDAD CAMBIÓ", "SIN CAMBIO"]).optional(),
+  solo_cambios: z.coerce.boolean().default(false),
+  fecha: z.string().date().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});

@@ -21,6 +21,7 @@ import {
   getVinculacionById,
   getVinculacionesByPersonaId,
   listContractPersonal,
+  getContractPersonalFilterOptions,
   listVinculaciones,
   reactivarVinculacion,
   retirarVinculacion,
@@ -58,6 +59,17 @@ export const getVinculaciones = asyncHandler(async (req: Request, res: Response)
   });
 });
 
+export const getContractPersonalFilterOptionsHandler = asyncHandler(async (req: Request, res: Response) => {
+  const contratoId = Number(req.query.contrato_id);
+  if (!Number.isInteger(contratoId) || contratoId <= 0) throw new AppError('contrato_id inválido', 400, 'INVALID_CONTRACT_ID');
+  const result = await getContractPersonalFilterOptions(contratoId, {
+    municipio_id: req.query.municipio_id ? Number(req.query.municipio_id) : null,
+    institucion_id: req.query.institucion_id ? Number(req.query.institucion_id) : null,
+    sede_id: req.query.sede_id ? Number(req.query.sede_id) : null,
+    fecha: typeof req.query.fecha === 'string' ? req.query.fecha : undefined
+  }, req.tenant);
+  return successResponse(res, { message: 'Contract personal filter options retrieved successfully', data: result });
+});
 export const getContractPersonalHandler = asyncHandler(async (req: Request, res: Response) => {
   const filters = listContractPersonalQuerySchema.parse(req.query);
   const result = await listContractPersonal(filters, req.tenant);

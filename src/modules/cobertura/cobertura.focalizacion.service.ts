@@ -2710,6 +2710,84 @@ export const reprocessHistoricalFocalizacionImport = async (
   }
 };
 
+export interface FocalizacionComparisonItem {
+  municipio: string | null;
+  institucion: string;
+  sede: string;
+  modalidad_anterior: string | null;
+  modalidad_nueva: string | null;
+  focalizacion_anterior: number | null;
+  focalizacion_nueva: number | null;
+  delta_focalizacion: number;
+  requeridas_antes: number | null;
+  requeridas_ahora: number | null;
+  delta_requeridas: number;
+  tipo_cambio: 'NUEVA' | 'RETIRADA' | 'AUMENTÓ' | 'DISMINUYÓ' | 'MODALIDAD CAMBIÓ' | 'SIN CAMBIO';
+  personal_asignado_actual: number;
+  impacto_personal: string;
+}
+
+export interface FocalizacionComparisonResult {
+  carga_a_id: number;
+  carga_b_id: number;
+  resumen: { sedes_nuevas: number; sedes_retiradas: number; cambios_modalidad: number; aumentos: number; disminuciones: number; manipuladoras_adicionales: number; potencialmente_excedentes: number };
+  filas: FocalizacionComparisonItem[];
+  pagination: { page: number; limit: number; total: number; total_pages: number };
+  graficos: { municipios: Array<{ municipio: string; anterior: number; nueva: number; requeridas_antes: number; requeridas_ahora: number }>; modalidades: Array<{ modalidad: string; requeridas_antes: number; requeridas_ahora: number }> };
+}
+
+const comparisonText = (value: string | null | undefined): string => normalizeFocalizacionText(value ?? '');
+const comparisonBaseKey = (row: FocalizacionImportRowDetail): string => [row.municipio, row.institucion, row.sede, row.consecutivo].map(comparisonText).join('|');
+
+export const compareFocalizacionImports = async (
+  input: { carga_a_id: number; carga_b_id: number; municipio?: string; modalidad?: string; tipo_cambio?: FocalizacionComparisonItem['tipo_cambio']; solo_cambios: boolean; fecha?: string; page: number; limit: number },
+  tenant?: TenantAccessContext,
+): Promise<FocalizacionComparisonResult> => {
+  const [a, b] = await Promise.all([
+    getFocalizacionImportDetail(input.carga_a_id, 1, 5000, 'TODOS', tenant),
+    getFocalizacionImportDetail(input.carga_b_id, 1, 5000, 'TODOS', tenant),
+  ]);
+  if (a.lote.contrato_id !== b.lote.contrato_id) throw new AppError('Las focalizaciones deben pertenecer al mismo contrato.', 422, 'FOCALIZACION_COMPARISON_CONTRACT_MISMATCH');
+  const byBase = (rows: FocalizacionImportRowDetail[]) => new Map([...rows.reduce((map, row) => { const key = comparisonBaseKey(row); if (!map.has(key)) map.set(key, row); return map; }, new Map<string, FocalizacionImportRowDetail>())]);
+  const oldMap = byBase(a.rows);
+  const newMap = byBase(b.rows);
+  const keys = new Set([...oldMap.keys(), ...newMap.keys()]);
+  const client = await dbPool.connect();
+  try {
+    const fecha = input.fecha ?? new Date().toISOString().slice(0, 10);
+    const assigned = await client.query<{ municipio: string | null; institucion: string | null; sede: string | null; consecutivo: string | null; assigned: number }>(`SELECT ff.municipio_texto AS municipio, ff.institucion_final AS institucion, ff.sede_final AS sede, ff.consecutivo_final AS consecutivo, COUNT(DISTINCT ca.vinculacion_id)::int AS assigned FROM focalizacion_final ff LEFT JOIN cobertura_asignaciones ca ON ca.focalizacion_final_id = ff.id AND ca.activo = TRUE AND ca.fecha_inicio <= $2::date AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $2::date) WHERE ff.contrato_id = $1::bigint GROUP BY ff.municipio_texto, ff.institucion_final, ff.sede_final, ff.consecutivo_final`, [a.lote.contrato_id, fecha]);
+    const assignedMap = new Map(assigned.rows.map((row) => [[row.municipio, row.institucion, row.sede, row.consecutivo].map((value) => comparisonText(value)).join("|"), row.assigned]));
+    const rows: FocalizacionComparisonItem[] = [];
+    for (const key of keys) {
+      const oldRow = oldMap.get(key) ?? null;
+      const newRow = newMap.get(key) ?? null;
+      const oldModalidad = oldRow?.modalidad ?? null;
+      const newModalidad = newRow?.modalidad ?? null;
+      const oldFocal = oldRow?.focalizacion_total ?? null;
+      const newFocal = newRow?.focalizacion_total ?? null;
+      const oldReq = oldRow?.cobertura_requerida ?? null;
+      const newReq = newRow?.cobertura_requerida ?? null;
+      const deltaFocal = (newFocal ?? 0) - (oldFocal ?? 0);
+      const deltaReq = (newReq ?? 0) - (oldReq ?? 0);
+      let tipo: FocalizacionComparisonItem['tipo_cambio'] = 'SIN CAMBIO';
+      if (!oldRow) tipo = 'NUEVA'; else if (!newRow) tipo = 'RETIRADA'; else if (comparisonText(oldModalidad) !== comparisonText(newModalidad)) tipo = 'MODALIDAD CAMBIÓ'; else if (deltaFocal > 0 || deltaReq > 0) tipo = 'AUMENTÓ'; else if (deltaFocal < 0 || deltaReq < 0) tipo = 'DISMINUYÓ';
+      const assignedCount = assignedMap.get(key) ?? 0;
+      let impact = 'SIN IMPACTO';
+      if (tipo === 'NUEVA') impact = `REQUIERE ASIGNAR ${newReq ?? 0}`;
+      else if (tipo === 'RETIRADA') impact = `REVISAR REASIGNACIÓN DE ${assignedCount}`;
+      else if (tipo === 'MODALIDAD CAMBIÓ') impact = `REVISAR ${assignedCount} ASIGNACIONES`;
+      else if (deltaReq > 0) impact = `NECESITA +${deltaReq}`;
+      else if (deltaReq < 0) impact = `EXCEDENTE ${Math.abs(deltaReq)}`;
+      rows.push({ municipio: newRow?.municipio ?? oldRow?.municipio ?? null, institucion: newRow?.institucion ?? oldRow?.institucion ?? '', sede: newRow?.sede ?? oldRow?.sede ?? '', modalidad_anterior: oldModalidad, modalidad_nueva: newModalidad, focalizacion_anterior: oldFocal, focalizacion_nueva: newFocal, delta_focalizacion: deltaFocal, requeridas_antes: oldReq, requeridas_ahora: newReq, delta_requeridas: deltaReq, tipo_cambio: tipo, personal_asignado_actual: assignedCount, impacto_personal: impact });
+    }
+    const filtered = rows.filter((row) => (!input.municipio || comparisonText(row.municipio).includes(comparisonText(input.municipio))) && (!input.modalidad || comparisonText(row.modalidad_nueva ?? row.modalidad_anterior).includes(comparisonText(input.modalidad))) && (!input.tipo_cambio || row.tipo_cambio === input.tipo_cambio) && (!input.solo_cambios || row.tipo_cambio !== 'SIN CAMBIO'));
+    const municipios = [...new Set(filtered.map((row) => row.municipio ?? 'Sin municipio'))].map((municipio) => { const subset = filtered.filter((row) => (row.municipio ?? 'Sin municipio') === municipio); return { municipio, anterior: subset.reduce((sum, row) => sum + (row.focalizacion_anterior ?? 0), 0), nueva: subset.reduce((sum, row) => sum + (row.focalizacion_nueva ?? 0), 0), requeridas_antes: subset.reduce((sum, row) => sum + (row.requeridas_antes ?? 0), 0), requeridas_ahora: subset.reduce((sum, row) => sum + (row.requeridas_ahora ?? 0), 0) }; });
+    const modalidades = [...new Set(filtered.flatMap((row) => [row.modalidad_anterior, row.modalidad_nueva]).filter((value): value is string => Boolean(value)))].map((modalidad) => { const subset = filtered.filter((row) => row.modalidad_anterior === modalidad || row.modalidad_nueva === modalidad); return { modalidad, requeridas_antes: subset.reduce((sum, row) => sum + (row.modalidad_anterior === modalidad ? (row.requeridas_antes ?? 0) : 0), 0), requeridas_ahora: subset.reduce((sum, row) => sum + (row.modalidad_nueva === modalidad ? (row.requeridas_ahora ?? 0) : 0), 0) }; });
+    const offset = (input.page - 1) * input.limit;
+    const resumen = { sedes_nuevas: filtered.filter((row) => row.tipo_cambio === 'NUEVA').length, sedes_retiradas: filtered.filter((row) => row.tipo_cambio === 'RETIRADA').length, cambios_modalidad: filtered.filter((row) => row.tipo_cambio === 'MODALIDAD CAMBIÓ').length, aumentos: filtered.filter((row) => row.tipo_cambio === 'AUMENTÓ').length, disminuciones: filtered.filter((row) => row.tipo_cambio === 'DISMINUYÓ').length, manipuladoras_adicionales: filtered.reduce((sum, row) => sum + Math.max(0, row.delta_requeridas), 0), potencialmente_excedentes: filtered.reduce((sum, row) => sum + Math.max(0, -row.delta_requeridas), 0) };
+    return { carga_a_id: input.carga_a_id, carga_b_id: input.carga_b_id, resumen, filas: filtered.slice(offset, offset + input.limit), pagination: { page: input.page, limit: input.limit, total: filtered.length, total_pages: Math.max(1, Math.ceil(filtered.length / input.limit)) }, graficos: { municipios, modalidades } };
+  } finally { client.release(); }
+};
 export const createManualFocalizacionAdjustment = async (
   actorUserId: string,
   input: {

@@ -1,0 +1,98 @@
+{
+  "actor_user_id": "2",
+  "audit": {
+    "after": {
+      "auditoria": 128,
+      "auditoria_eventos": 2090,
+      "historial_cambios": 100
+    },
+    "before": {
+      "auditoria": 125,
+      "auditoria_eventos": 2086,
+      "historial_cambios": 97
+    },
+    "created": {
+      "auditoria": 3,
+      "auditoria_eventos": 4,
+      "historial_cambios": 3
+    }
+  },
+  "economic": {
+    "action": "applied",
+    "after": {
+      "columns": [
+        "id",
+        "vinculacion_id",
+        "tipo_condicion",
+        "valor",
+        "vigencia_desde",
+        "vigencia_hasta",
+        "motivo",
+        "activo",
+        "created_at",
+        "created_by",
+        "updated_at",
+        "updated_by"
+      ],
+      "constraints": [
+        "chk_vinculacion_condicion_motivo_no_vacio",
+        "chk_vinculacion_condicion_tipo_no_vacio",
+        "chk_vinculacion_condicion_valor_no_negativo",
+        "chk_vinculacion_condicion_vigencia",
+        "ex_vinculacion_condicion_economica_sin_solape",
+        "vinculacion_condiciones_economicas_created_by_fkey",
+        "vinculacion_condiciones_economicas_pkey",
+        "vinculacion_condiciones_economicas_updated_by_fkey",
+        "vinculacion_condiciones_economicas_vinculacion_id_fkey"
+      ],
+      "extension_ready": true,
+      "exists": true,
+      "indexes": [
+        "ex_vinculacion_condicion_economica_sin_solape",
+        "idx_vinculacion_condiciones_economicas_consulta",
+        "vinculacion_condiciones_economicas_pkey"
+      ],
+      "orphans": 0,
+      "overlaps": 0,
+      "ready": true
+    },
+    "before": {
+      "columns": [],
+      "constraints": [],
+      "extension_ready": false,
+      "exists": false,
+      "indexes": [],
+      "orphans": 0,
+      "overlaps": 0,
+      "ready": false
+    },
+    "migration_file": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\sql\\phase-23-2-vinculacion-condiciones-economicas.sql"
+  },
+  "escrituras_parametrizacion": {
+    "audit_rows_created": {
+      "auditoria": 3,
+      "auditoria_eventos": 4,
+      "historial_cambios": 3
+    },
+    "locations_touched": 2,
+    "migration_applied": 1,
+    "ppt_touched": 1
+  },
+  "locations": [
+    {
+      "action": "created",
+      "id": 12,
+      "label": "SERVICIOS GENERALES"
+    },
+    {
+      "action": "created",
+      "id": 13,
+      "label": "SST"
+    }
+  ],
+  "ppt": {
+    "action": "created",
+    "id": 50,
+    "label": "PERMISO POR PROTECCIÓN TEMPORAL"
+  }
+}

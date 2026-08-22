@@ -1,0 +1,92 @@
+{
+  "personal_sha256": "00698440D9590373A1864749E298DCF2606A77A39EAC28F6B28F2EC099233E9D",
+  "decisiones_sha256": "739D94B765E1F5EBFC2298F93E9B5424F262B30F6CE88CD2A596B3348A6017E0",
+  "decision_rows_entered": 32,
+  "decision_rows_valid_after_fix": 19,
+  "decision_rows_invalid_or_incomplete": 13,
+  "total_filas": 772,
+  "categories": {
+    "active_with_coverage": 657,
+    "active_without_coverage": 66,
+    "retired_historical": 17,
+    "review": 32
+  },
+  "duplicates_between_categories": 0,
+  "importable_counts": {
+    "personas_crear": 545,
+    "personas_reutilizar": 195,
+    "vinculaciones_crear": 740,
+    "vinculaciones_reutilizar": 0
+  },
+  "manipuladoras": {
+    "total": 687,
+    "activas": 666,
+    "retiradas": 17,
+    "asignables": 657,
+    "pendientes": 9
+  },
+  "coverage_summary": {
+    "asignadas_total": 657,
+    "requeridas_total": 662,
+    "deficit_total": 27,
+    "exceso_total": 22,
+    "completas": 656,
+    "deficitarias": 20,
+    "excesos": 11,
+    "sin_personal": 379
+  },
+  "licitacion_perfiles": [
+    {
+      "perfil": "MANIPULADORAS_ALIMENTOS",
+      "requeridos": 100,
+      "presentados": 99,
+      "diferencia": -1,
+      "estado": "DEFICIT"
+    },
+    {
+      "perfil": "OPER_BOD_TRANS_AUX",
+      "requeridos": 35,
+      "presentados": 21,
+      "diferencia": -14,
+      "estado": "DEFICIT"
+    },
+    {
+      "perfil": "AUX_ADMIN",
+      "requeridos": 10,
+      "presentados": 8,
+      "diferencia": -2,
+      "estado": "DEFICIT"
+    },
+    {
+      "perfil": "COORD_ZONA",
+      "requeridos": 18,
+      "presentados": 18,
+      "diferencia": 0,
+      "estado": "CUMPLE"
+    },
+    {
+      "perfil": "COORD_SUMINISTRO",
+      "requeridos": 2,
+      "presentados": 1,
+      "diferencia": -1,
+      "estado": "DEFICIT"
+    },
+    {
+      "perfil": "SUP_CALIDAD",
+      "requeridos": 2,
+      "presentados": 1,
+      "diferencia": -1,
+      "estado": "DEFICIT"
+    }
+  ],
+  "pending_counts": {
+    "fechas": 13,
+    "identidades": 4,
+    "casos_especiales": 4,
+    "ubicaciones": 9,
+    "catalogos": 4
+  },
+  "pending_report": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\PENDIENTES_FINALES_PERSONAL_META26.xlsx",
+  "review_zero": false,
+  "writes_to_db": 0
+}
