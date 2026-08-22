@@ -652,4 +652,62 @@
 .op-filters .op-filter:nth-child(8) { grid-column: 4; grid-row: 2; }
 @media (max-width: 1250px) {
   .op-filters .op-filter:nth-child(n) { grid-column: auto; grid-row: auto; }
-}
+}/* Canonical /personal layout. The route is OperationalPersonalPage. */
+.op-personal-page { gap: 10px; min-height: 0; overflow: hidden; }
+.op-page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding:2px 4px 0; flex-shrink:0; }
+.op-eyebrow { display:flex; align-items:center; gap:7px; color:var(--text-muted); font-size:.72rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.op-title-row { display:flex; align-items:center; gap:16px; margin-top:3px; }
+.op-title-row h1 { margin:0; color:var(--text-primary); font-size:1.65rem; line-height:1.15; }
+.op-page-header p { margin:5px 0 0; color:var(--text-secondary); font-size:.88rem; }
+.op-header-actions { display:flex; gap:8px; padding-top:12px; }
+.op-contract-compact { display:flex; align-items:center; gap:7px; min-width:230px; padding:6px 10px; border:1px solid var(--border-color); border-radius:10px; background:var(--bg-card); color:var(--text-secondary); font-size:.76rem; }
+.op-contract-compact span { white-space:nowrap; }
+.op-contract-compact select { min-width:0; border:0; background:transparent; color:var(--text-primary); font:inherit; font-weight:700; outline:0; }
+.op-kpi-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; flex-shrink:0; }
+.op-kpi { min-width:0; padding:10px 13px; border:1px solid var(--border-color); border-radius:13px; background:var(--bg-card); box-shadow:var(--shadow-soft); }
+.op-kpi span,.op-kpi small { display:block; color:var(--text-secondary); }
+.op-kpi span { font-size:.72rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.op-kpi strong { display:block; margin:3px 0 1px; color:var(--text-primary); font-size:1.35rem; line-height:1.1; }
+.op-kpi small { font-size:.68rem; }
+.op-tools-bar { flex-shrink:0; padding:10px 12px; }
+.op-search-row { display:flex; align-items:center; gap:10px; }
+.op-search { min-width:0; flex:1; }
+.op-search-row .op-search input { padding:8px 0; }
+.op-more-filters { flex:0 0 auto; }
+.op-more-filters b { display:inline-flex; align-items:center; justify-content:center; min-width:19px; height:19px; border-radius:999px; background:var(--color-primary); color:var(--accent-foreground,#062535); font-size:.68rem; }
+.op-primary-filters { display:grid; grid-template-columns:1.05fr 1.45fr 1.15fr .9fr 1.3fr .85fr; gap:8px; margin-top:9px; }
+.op-primary-filters .op-filter { min-width:0; }
+.op-filter { min-width:0; }
+.op-filter select,.op-filter input { min-width:0; max-width:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.op-more-filters-panel { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:8px; margin-top:9px; padding-top:9px; border-top:1px solid var(--border-color); }
+.op-active-filters { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:8px; color:var(--text-muted); font-size:.72rem; }
+.op-active-filters button { border:1px solid var(--border-color); border-radius:999px; padding:4px 8px; background:var(--bg-input); color:var(--text-secondary); font:inherit; cursor:pointer; }
+.op-active-filters .op-clear-inline { border-color:transparent; background:transparent; color:var(--color-primary); font-weight:700; }
+.op-table-card { gap:7px; }
+.op-company-context { margin-left:auto; color:var(--text-muted); font-size:.72rem; }
+.op-table { min-width:1120px; table-layout:fixed; }
+.op-table th,.op-table td { padding:9px 11px; }
+.op-table th.is-worker,.op-table td:nth-child(1) { width:20%; }
+.op-table th.is-role,.op-table td:nth-child(2) { width:15%; }
+.op-table th.is-assignment,.op-table td:nth-child(3) { width:28%; }
+.op-table th.is-modality,.op-table td:nth-child(4) { width:9%; }
+.op-table th.is-offer,.op-table td:nth-child(5) { width:11%; }
+.op-table th.is-status,.op-table td:nth-child(6) { width:8%; }
+.op-table th.is-date,.op-table td:nth-child(7) { width:9%; }
+.op-table th.is-action,.op-table td:nth-child(8) { width:110px; }
+.op-worker-cell,.op-assignment-cell,.op-offer-cell { display:grid; min-width:0; gap:2px; }
+.op-worker-cell strong { display:-webkit-box; overflow:hidden; color:var(--text-primary); font-size:.84rem; line-height:1.25; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.op-worker-cell small,.op-assignment-cell small,.op-offer-cell small { overflow:hidden; color:var(--text-secondary); font-size:.72rem; text-overflow:ellipsis; white-space:nowrap; }
+.op-assignment-cell strong { display:-webkit-box; overflow:hidden; color:var(--text-primary); font-size:.78rem; line-height:1.25; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.op-assignment-status { color:var(--success-text,var(--color-accent)); font-size:.68rem; font-weight:700; }
+.op-offer-cell .op-badge { width:max-content; max-width:100%; }
+.op-offer-cell small { font-size:.65rem; }
+.op-clamp-2 { display:-webkit-box; overflow:hidden; line-height:1.3; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+.op-muted { color:var(--text-muted); }
+.op-table td { overflow:hidden; }
+.op-table td:nth-child(4),.op-table td:nth-child(5),.op-table td:nth-child(6),.op-table td:nth-child(7),.op-table td:nth-child(8) { white-space:nowrap; }
+.op-badge { display:inline-flex; width:max-content; max-width:100%; min-height:22px; padding:3px 7px; overflow:hidden; border-radius:999px; text-overflow:ellipsis; white-space:nowrap; }
+.op-button.primary { color:var(--accent-foreground,#062535); }
+@media (max-width: 1280px) { .op-primary-filters { grid-template-columns:repeat(6,minmax(105px,1fr)); } .op-primary-filters .op-filter select { font-size:.75rem; } }
+@media (max-width: 900px) { .op-page-header { flex-direction:column; } .op-header-actions { padding-top:0; } .op-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .op-primary-filters { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media (max-width: 620px) { .op-search-row,.op-title-row { align-items:stretch; flex-direction:column; } .op-primary-filters,.op-more-filters-panel { grid-template-columns:1fr; } .op-kpi-grid { grid-template-columns:1fr; } .op-header-actions { width:100%; } .op-header-actions .op-button { flex:1; } .op-company-context { display:none; } }
