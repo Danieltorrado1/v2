@@ -81,6 +81,13 @@ export interface ContractPersonalListResponse {
   pagination: VinculacionPagination;
 }
 
+export interface PersonalResumen {
+  fecha_consulta: string;
+  trabajadores_activos: number;
+  ingresos_mes: number;
+  retiros_mes: number;
+  vacantes: number;
+}
 export interface CreateVinculacionPayload {
   persona_id: number;
   empresa_id: number;

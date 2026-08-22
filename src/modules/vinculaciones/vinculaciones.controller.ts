@@ -6,6 +6,7 @@ import { asyncHandler } from '../../utils/asyncHandler';
 import {
   createVinculacionSchema,
   listContractPersonalQuerySchema,
+  personalResumenQuerySchema,
   listOpsVinculacionesQuerySchema,
   listVinculacionesQuerySchema,
   reactivarVinculacionSchema,
@@ -21,6 +22,7 @@ import {
   getVinculacionById,
   getVinculacionesByPersonaId,
   listContractPersonal,
+  getPersonalResumen,
   getContractPersonalFilterOptions,
   listVinculaciones,
   reactivarVinculacion,
@@ -69,6 +71,14 @@ export const getContractPersonalFilterOptionsHandler = asyncHandler(async (req: 
     fecha: typeof req.query.fecha === 'string' ? req.query.fecha : undefined
   }, req.tenant);
   return successResponse(res, { message: 'Contract personal filter options retrieved successfully', data: result });
+});
+export const getPersonalResumenHandler = asyncHandler(async (req: Request, res: Response) => {
+  const filters = personalResumenQuerySchema.parse(req.query);
+  const result = await getPersonalResumen(filters, req.tenant);
+  return successResponse(res, {
+    message: 'Contract personal summary retrieved successfully',
+    data: result
+  });
 });
 export const getContractPersonalHandler = asyncHandler(async (req: Request, res: Response) => {
   const filters = listContractPersonalQuerySchema.parse(req.query);

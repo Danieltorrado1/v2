@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { Bell, Building2, ChevronDown, LogOut, Moon, Sun } from "lucide-react";
+import { Bell, Building2, ChevronDown, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { useCompanyContext } from "../context/CompanyContext";
@@ -48,7 +48,13 @@ export default function MainLayout() {
   const [unreadCount, setUnreadCount] = useState(INITIAL_UNREAD_COUNT);
   const [logoFallback, setLogoFallback] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [accountDetailsOpen, setAccountDetailsOpen] = useState(false);
   const canAccessAdmin = user?.roles.includes("ADMINISTRADOR") === true;
+  const displayName = user?.name ?? "Usuario";
+  const roleLabel = user?.roles?.[0] ?? "Usuario";
+  const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "US";
   const logoSrc =
     theme === "dark"
       ? "/branding/empiria-logo-horizontal-dark-web.png"
@@ -58,6 +64,21 @@ export default function MainLayout() {
     setLogoFallback(false);
   }, [logoSrc]);
 
+  useEffect(() => {
+    if (!accountOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAccountOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [accountOpen]);
   function toggleNotif() {
     setNotifOpen((value) => !value);
   }
@@ -151,17 +172,41 @@ export default function MainLayout() {
             </label>
           )}
 
-          <div className="user-area">
-            <span>{user?.name ?? "Usuario"}</span>
+          <div className="account-area" ref={accountRef}>
             <button
               type="button"
-              className="theme-button"
-              onClick={logout}
-              title={"Cerrar sesi\u00f3n"}
-              aria-label={"Cerrar sesi\u00f3n"}
+              className="account-trigger"
+              onClick={() => { setAccountOpen((open) => !open); setAccountDetailsOpen(false); }}
+              aria-expanded={accountOpen}
+              aria-haspopup="menu"
+              aria-label="Abrir menu de cuenta"
             >
-              <LogOut size={18} />
+              <span className="account-avatar" aria-hidden="true">{initials}</span>
+              <span className="account-copy">
+                <strong>{displayName}</strong>
+                <small>{roleLabel}</small>
+              </span>
+              <ChevronDown size={15} aria-hidden="true" />
             </button>
+            {accountOpen && (
+              <div className="account-menu" role="menu">
+                <div className="account-menu-heading">
+                  <span className="account-avatar account-avatar-large" aria-hidden="true">{initials}</span>
+                  <div><strong>{displayName}</strong><small>{roleLabel}</small></div>
+                </div>
+                {accountDetailsOpen && (
+                  <div className="account-details">
+                    <span>Correo</span><strong>{user?.email ?? "No disponible"}</strong>
+                    <span>Rol</span><strong>{roleLabel}</strong>
+                  </div>
+                )}                <button type="button" className="account-menu-item" role="menuitem" aria-expanded={accountDetailsOpen} onClick={() => setAccountDetailsOpen((open) => !open)}>
+                  <UserRound size={16} /> Mi cuenta
+                </button>
+                <button type="button" className="account-menu-item account-menu-item-danger" role="menuitem" onClick={logout}>
+                  <LogOut size={16} /> Cerrar sesion
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>

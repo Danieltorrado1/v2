@@ -12,6 +12,7 @@ import {
 import {
   CreateVinculacionInput,
   ListContractPersonalQuery,
+  PersonalResumenQuery,
   ListVinculacionesQuery,
   ReactivarVinculacionInput,
   RetirarVinculacionInput,
@@ -118,6 +119,13 @@ export interface ContractPersonalListItem {
   vinculacion_id: number;
 }
 
+export interface PersonalResumen {
+  fecha_consulta: string;
+  trabajadores_activos: number;
+  ingresos_mes: number;
+  retiros_mes: number;
+  vacantes: number;
+}
 export interface PaginatedContractPersonal {
   items: ContractPersonalListItem[];
   pagination: {
@@ -1062,6 +1070,30 @@ export interface ContractPersonalFilterOptions {
   ubicaciones_laborales: Array<{ id: number; nombre: string }>;
 }
 
+export const getPersonalResumen = async (
+  filters: PersonalResumenQuery,
+  tenant?: TenantAccessContext
+): Promise<PersonalResumen> => {
+  const client = await dbPool.connect();
+  try {
+    await ensureContractTenantAccess(client, tenant, filters.contrato_id);
+    const fecha = filters.fecha ?? new Date().toISOString().slice(0, 10);
+    const result = await client.query<{ trabajadores_activos: number; ingresos_mes: number; retiros_mes: number; vacantes: number }>(
+      "WITH periodo AS (SELECT date_trunc('month', $2::date)::date AS inicio, (date_trunc('month', $2::date) + interval '1 month')::date AS siguiente), cobertura AS (SELECT ff.id, COALESCE(ff.cobertura_requerida, 0)::numeric AS requeridas, COALESCE(SUM(CASE WHEN ca.id IS NOT NULL AND ca.activo = TRUE AND ca.fecha_inicio <= $2::date AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $2::date) AND vca.fecha_inicio <= $2::date AND (vca.fecha_fin IS NULL OR vca.fecha_fin >= $2::date) THEN COALESCE(ca.porcentaje_cobertura, 0) ELSE 0 END), 0)::numeric AS asignadas FROM focalizacion_final ff LEFT JOIN cobertura_asignaciones ca ON ca.focalizacion_final_id = ff.id LEFT JOIN vinculaciones vca ON vca.id = ca.vinculacion_id AND vca.contrato_id = $1 WHERE ff.contrato_id = $1 AND COALESCE(ff.activo, TRUE) = TRUE GROUP BY ff.id, ff.cobertura_requerida) SELECT COUNT(*) FILTER (WHERE v.fecha_inicio <= $2::date AND (v.fecha_fin IS NULL OR v.fecha_fin >= $2::date))::int AS trabajadores_activos, COUNT(*) FILTER (WHERE v.fecha_inicio >= periodo.inicio AND v.fecha_inicio < periodo.siguiente)::int AS ingresos_mes, COUNT(*) FILTER (WHERE v.fecha_fin >= periodo.inicio AND v.fecha_fin < periodo.siguiente)::int AS retiros_mes, COALESCE((SELECT SUM(GREATEST(requeridas - asignadas, 0)) FROM cobertura), 0)::int AS vacantes FROM vinculaciones v CROSS JOIN periodo WHERE v.contrato_id = $1",
+      [filters.contrato_id, fecha]
+    );
+    const row = result.rows[0];
+    return {
+      fecha_consulta: fecha,
+      trabajadores_activos: Number(row?.trabajadores_activos ?? 0),
+      ingresos_mes: Number(row?.ingresos_mes ?? 0),
+      retiros_mes: Number(row?.retiros_mes ?? 0),
+      vacantes: Number(row?.vacantes ?? 0)
+    };
+  } finally {
+    client.release();
+  }
+};
 export const getContractPersonalFilterOptions = async (
   contratoId: number,
   filters: { municipio_id?: number | null; institucion_id?: number | null; sede_id?: number | null; fecha?: string },

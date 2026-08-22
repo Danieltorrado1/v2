@@ -5,6 +5,7 @@ import type {
   ContractPersonalFilters,
   ContractPersonalListResponse,
   ContractPersonalFilterOptions,
+  PersonalResumen,
   VinculacionFilters,
   VinculacionListResponse,
   CreateVinculacionPayload,
@@ -62,6 +63,10 @@ export async function getContractPersonal(
   return res.data;
 }
 
+export async function getPersonalResumen(filters: { contrato_id: number; fecha?: string }): Promise<PersonalResumen> {
+  const res = await apiClient.get<ApiResponse<PersonalResumen>>('/vinculaciones/personal/resumen', { params: filters });
+  return res.data;
+}
 export async function getContractPersonalFilterOptions(filters: { contrato_id: number; municipio_id?: number; institucion_id?: number; sede_id?: number; fecha?: string }): Promise<ContractPersonalFilterOptions> {
   const res = await apiClient.get<ApiResponse<ContractPersonalFilterOptions>>('/vinculaciones/personal/opciones', { params: filters });
   return res.data;
