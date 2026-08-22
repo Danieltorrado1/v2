@@ -1,0 +1,3 @@
+.empiria-icon { flex:0 0 auto; color:var(--icon-accent,var(--color-primary)); }
+.empiria-icon--duotone { filter:drop-shadow(0 0 7px color-mix(in srgb,var(--icon-accent,var(--color-primary)) 18%,transparent)); }
+.empiria-icon--muted { color:var(--text-muted); }
