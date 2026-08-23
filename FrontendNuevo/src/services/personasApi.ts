@@ -1,13 +1,19 @@
+import { env } from '../config/env';
 import { apiClient } from './apiClient';
 import { ApiClientError } from './apiClient';
 import {
   getVinculacionExpediente as getVinculacionExpedienteById,
   getVinculaciones,
 } from './vinculacionesApi';
+import { getAuthToken } from './tokenStorage';
 import type { ApiResponse } from '../types/api.types';
 import type {
   PersonalOPSFilters,
   PersonaApi,
+  PersonaCuentaBancariaApi,
+  PersonalExportFieldDefinitionApi,
+  PersonalExportTemplateApi,
+  PersonaHistorialCambioApi,
   PersonaIdentificacionApi,
   PersonaNombreInput,
   PaginatedPersonasApi,
@@ -68,9 +74,69 @@ export type UpdatePersonaPayload = Partial<CreatePersonaPayload> & {
   pais_nacimiento?: string | null;
   nacimiento_extranjero?: boolean;
   ciudad_nacimiento_extranjero?: string | null;
+  motivo_cambio?: string | null;
   contacto_emergencia?: UpdatePersonaContactoEmergenciaPayload | null;
   perfil_demografico?: UpdatePersonaPerfilDemograficoPayload | null;
 };
+
+export interface CreatePersonaCuentaBancariaPayload {
+  entidad_bancaria: string;
+  tipo_cuenta: 'AHORROS' | 'CORRIENTE' | 'OTRA';
+  numero_cuenta: string;
+  titular: string;
+  nombre_titular?: string | null;
+  documento_titular?: string | null;
+  estado?: 'PENDIENTE' | 'VERIFICADA' | 'RECHAZADA' | 'INACTIVA';
+  fecha_verificacion?: string | null;
+  observaciones?: string | null;
+  soporte_documento_persona_id?: number | null;
+  vigencia_desde?: string | null;
+  marcar_como_vigente?: boolean;
+  motivo_cambio: string;
+}
+
+export interface UpdatePersonaCuentaBancariaPayload {
+  entidad_bancaria?: string;
+  tipo_cuenta?: 'AHORROS' | 'CORRIENTE' | 'OTRA';
+  numero_cuenta?: string;
+  titular?: string;
+  nombre_titular?: string | null;
+  documento_titular?: string | null;
+  estado?: 'PENDIENTE' | 'VERIFICADA' | 'RECHAZADA' | 'INACTIVA';
+  fecha_verificacion?: string | null;
+  observaciones?: string | null;
+  soporte_documento_persona_id?: number | null;
+  vigencia_desde?: string | null;
+  vigencia_hasta?: string | null;
+  es_vigente?: boolean;
+  motivo_cambio: string;
+}
+
+export interface PersonalExportGeneratePayload {
+  scope: 'TODOS' | 'FILTRADOS' | 'SELECCIONADOS';
+  formato: 'csv';
+  contrato_id: number;
+  fecha?: string;
+  contrato_cargo_id?: number | null;
+  municipio_id?: number | null;
+  institucion_id?: number | null;
+  sede_id?: number | null;
+  modalidad_id?: number | null;
+  ubicacion_laboral_id?: number | null;
+  cobertura?: 'SI' | 'NO' | 'RETIRADA';
+  licitacion?: 'PRESENTADA' | 'NO_PRESENTADA';
+  estado_vinculacion?: 'ACTIVA' | 'RETIRADA' | 'SUSPENDIDA';
+  search?: string | null;
+  fields: string[];
+  selected_vinculacion_ids?: number[];
+}
+
+export interface PersonalExportTemplatePayload {
+  nombre: string;
+  campos: string[];
+  orden: string[];
+  formato: 'csv';
+}
 
 const MAX_BATCH_LIMIT = 100;
 const OPS_METODOS_PAGO = new Set([
@@ -263,6 +329,26 @@ export async function getPersonaIdentificaciones(personaId: number): Promise<Per
   return res.data;
 }
 
+export async function getPersonaHistorialCambios(
+  personaId: number,
+  limit = 50
+): Promise<PersonaHistorialCambioApi[]> {
+  const res = await apiClient.get<ApiResponse<PersonaHistorialCambioApi[]>>(
+    `/personas/${personaId}/historial-cambios`,
+    { params: { limit } }
+  );
+  return res.data;
+}
+
+export async function getPersonaCuentasBancarias(
+  personaId: number
+): Promise<PersonaCuentaBancariaApi[]> {
+  const res = await apiClient.get<ApiResponse<PersonaCuentaBancariaApi[]>>(
+    `/personas/${personaId}/cuentas-bancarias`
+  );
+  return res.data;
+}
+
 export async function getVinculacionesByPersonaId(personaId: number): Promise<VinculacionApi[]> {
   const res = await apiClient.get<ApiResponse<VinculacionApi[]>>(
     `/vinculaciones/persona/${personaId}`
@@ -318,6 +404,29 @@ export async function updatePersona(id: number, payload: UpdatePersonaPayload): 
   return res.data;
 }
 
+export async function createPersonaCuentaBancaria(
+  personaId: number,
+  payload: CreatePersonaCuentaBancariaPayload
+): Promise<PersonaCuentaBancariaApi> {
+  const res = await apiClient.post<ApiResponse<PersonaCuentaBancariaApi>>(
+    `/personas/${personaId}/cuentas-bancarias`,
+    payload
+  );
+  return res.data;
+}
+
+export async function updatePersonaCuentaBancaria(
+  personaId: number,
+  cuentaBancariaId: number,
+  payload: UpdatePersonaCuentaBancariaPayload
+): Promise<PersonaCuentaBancariaApi> {
+  const res = await apiClient.patch<ApiResponse<PersonaCuentaBancariaApi>>(
+    `/personas/${personaId}/cuentas-bancarias/${cuentaBancariaId}`,
+    payload
+  );
+  return res.data;
+}
+
 export async function createPersonaIdentificacion(
   personaId: number,
   payload: CreatePersonaIdentificacionPayload
@@ -331,4 +440,57 @@ export async function createPersonaIdentificacion(
 
 export function isPersonaDuplicateDocumentError(error: unknown): boolean {
   return error instanceof ApiClientError && error.code === 'PERSONA_DUPLICATE_DOCUMENT';
+}
+
+export async function getPersonalExportFieldCatalog(): Promise<PersonalExportFieldDefinitionApi[]> {
+  const res = await apiClient.get<ApiResponse<PersonalExportFieldDefinitionApi[]>>(
+    '/personas/exportaciones/campos'
+  );
+  return res.data;
+}
+
+export async function listPersonalExportTemplates(): Promise<PersonalExportTemplateApi[]> {
+  const res = await apiClient.get<ApiResponse<PersonalExportTemplateApi[]>>(
+    '/personas/exportaciones/plantillas'
+  );
+  return res.data;
+}
+
+export async function createPersonalExportTemplate(
+  payload: PersonalExportTemplatePayload
+): Promise<PersonalExportTemplateApi> {
+  const res = await apiClient.post<ApiResponse<PersonalExportTemplateApi>>(
+    '/personas/exportaciones/plantillas',
+    payload
+  );
+  return res.data;
+}
+
+export async function downloadPersonalExport(
+  payload: PersonalExportGeneratePayload
+): Promise<void> {
+  const token = getAuthToken();
+  const response = await fetch(`${env.apiUrl}/personas/exportaciones/generar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    throw new ApiClientError('No fue posible generar la exportacion.', response.status);
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('content-disposition') ?? '';
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  const fileName = match?.[1] ?? `personal-${payload.contrato_id}.csv`;
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }

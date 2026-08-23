@@ -2,7 +2,7 @@ import { Router } from 'express';
 
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
-import { requirePermissions } from '../../middlewares/roleMiddleware';
+import { requireAnyPermissions, requirePermissions } from '../../middlewares/roleMiddleware';
 import {
   createVinculacionHandler,
   getContractPersonalHandler,
@@ -102,7 +102,13 @@ vinculacionesRoutes.post(
 );
 vinculacionesRoutes.patch(
   '/:id',
-  requirePermissions('vinculaciones.update'),
+  requireAnyPermissions(
+    'vinculaciones.update',
+    'vinculacion.editar',
+    'vinculacion.editar_cargo',
+    'vinculacion.editar_fechas',
+    'vinculacion.editar_estado'
+  ),
   updateVinculacionHandler
 );
 vinculacionesRoutes.patch(

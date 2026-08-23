@@ -6,7 +6,10 @@ export interface PersonaIdentificationCore {
 }
 
 export const normalizeNumeroDocumento = (value: string): string => {
-  return value.trim();
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[\s.,-]+/g, '');
 };
 
 export const buildPersonaIdentificationCore = (input: PersonaIdentificationCore): PersonaIdentificationCore => {

@@ -71,6 +71,66 @@ export interface PersonaPerfilDemograficoApi {
   updated_at: string | null;
 }
 
+export interface PersonaCuentaBancariaApi {
+  id: number;
+  persona_id: number;
+  entidad_bancaria: string;
+  tipo_cuenta: 'AHORROS' | 'CORRIENTE' | 'OTRA';
+  numero_cuenta: string;
+  numero_cuenta_mascara: string;
+  titular: string;
+  nombre_titular: string | null;
+  documento_titular: string | null;
+  estado: 'PENDIENTE' | 'VERIFICADA' | 'RECHAZADA' | 'INACTIVA';
+  fecha_verificacion: string | null;
+  observaciones: string | null;
+  soporte_documento_persona_id: number | null;
+  vigencia_desde: string;
+  vigencia_hasta: string | null;
+  es_vigente: boolean;
+  verified_by_user_id: number | null;
+  created_by_user_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PersonaHistorialCambioApi {
+  id: number;
+  tabla_afectada: string;
+  registro_id: number;
+  campo: string;
+  valor_anterior: string | null;
+  valor_nuevo: string | null;
+  motivo: string | null;
+  fecha_hora: string | null;
+  usuario_id: number | null;
+  usuario_nombre: string | null;
+  usuario_correo: string | null;
+}
+
+export interface PersonalExportFieldDefinitionApi {
+  code: string;
+  group:
+    | 'IDENTIDAD'
+    | 'CONTACTO'
+    | 'LABORAL'
+    | 'TERRITORIAL'
+    | 'SEGURIDAD_SOCIAL'
+    | 'BANCARIO';
+  label: string;
+}
+
+export interface PersonalExportTemplateApi {
+  id: number;
+  nombre: string;
+  campos: string[];
+  orden: string[];
+  formato: 'csv';
+  created_by_user_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PersonaNombreInput {
   primer_nombre: string;
   segundo_nombre: string | null;

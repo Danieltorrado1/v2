@@ -29,6 +29,83 @@ const shouldWriteHistorial = (input: RegisterAuditEntryInput): boolean => {
   return input.before !== undefined || input.after !== undefined;
 };
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+const normalizeHistorialValue = (value: unknown): string | null => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value);
+  }
+
+  return JSON.stringify(value);
+};
+
+const flattenAuditObject = (
+  value: unknown,
+  prefix = ''
+): Record<string, string | null> => {
+  if (!isPlainObject(value)) {
+    return prefix
+      ? { [prefix]: normalizeHistorialValue(value) }
+      : { root: normalizeHistorialValue(value) };
+  }
+
+  const entries: Record<string, string | null> = {};
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    const nextPrefix = prefix ? `${prefix}.${key}` : key;
+
+    if (isPlainObject(nestedValue)) {
+      Object.assign(entries, flattenAuditObject(nestedValue, nextPrefix));
+      continue;
+    }
+
+    entries[nextPrefix] = normalizeHistorialValue(nestedValue);
+  }
+
+  return entries;
+};
+
+const buildHistorialDiffRows = (
+  input: RegisterAuditEntryInput
+): Array<{ campo: string; valor_anterior: string | null; valor_nuevo: string | null }> => {
+  const beforeFlat = flattenAuditObject(input.before ?? null);
+  const afterFlat = flattenAuditObject(input.after ?? null);
+  const keys = new Set([...Object.keys(beforeFlat), ...Object.keys(afterFlat)]);
+  const rows: Array<{ campo: string; valor_anterior: string | null; valor_nuevo: string | null }> =
+    [];
+
+  for (const key of keys) {
+    const previousValue = beforeFlat[key] ?? null;
+    const nextValue = afterFlat[key] ?? null;
+
+    if (previousValue === nextValue) {
+      continue;
+    }
+
+    rows.push({
+      campo: key,
+      valor_anterior: previousValue,
+      valor_nuevo: nextValue
+    });
+  }
+
+  return rows;
+};
+
 const toLegacyBigInt = (value: string | null | undefined): number | null => {
   if (typeof value !== 'string' || !/^\d+$/.test(value.trim())) {
     return null;
@@ -141,6 +218,34 @@ const insertLegacyAuditRows = async (
       input.descripcion
     ]
   );
+
+  const diffRows = buildHistorialDiffRows(input);
+
+  for (const row of diffRows) {
+    await client.query(
+      `
+        INSERT INTO historial_cambios (
+          usuario_id,
+          tabla_afectada,
+          registro_id,
+          campo,
+          valor_anterior,
+          valor_nuevo,
+          motivo
+        )
+        VALUES ($1::bigint, $2, $3::bigint, $4, $5, $6, $7)
+      `,
+      [
+        legacyUsuarioId,
+        input.tabla,
+        legacyRegistroId,
+        row.campo,
+        row.valor_anterior,
+        row.valor_nuevo,
+        input.descripcion
+      ]
+    );
+  }
 };
 
 export const registerAuditEntry = async (

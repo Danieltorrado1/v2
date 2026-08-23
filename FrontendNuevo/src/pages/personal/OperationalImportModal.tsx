@@ -1,27 +1,55 @@
-﻿import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, RefreshCw, Upload, XCircle } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  FileSpreadsheet,
+  RefreshCw,
+  Upload,
+  XCircle,
+} from 'lucide-react';
 
 import { ApiClientError } from '../../services/apiClient';
 import {
-  confirmOperationalImport,
-  downloadOperationalImportReport,
-  downloadOperationalImportTemplate,
-  getOperationalImportPreview,
-  uploadOperationalImport,
+  analyzeMasterImport,
+  applyMasterImport,
+  downloadMasterImportReport,
+  downloadMasterImportTemplate,
+  getMasterImportPreview,
+  listMasterImportHistory,
+  validateMasterImport,
 } from '../../services/importacionesApi';
 import type {
-  OperationalImportConfirmResult,
-  OperationalImportFilter,
-  OperationalImportPreviewResult,
+  MasterImportAnalyzeResponse,
+  MasterImportApplyResponse,
+  MasterImportClassification,
+  MasterImportFilter,
+  MasterImportLote,
+  MasterImportPreviewResponse,
+  MasterImportType,
 } from '../../types/importaciones.types';
 import './OperationalImportModal.css';
 
-const FILTERS: Array<{ key: OperationalImportFilter; label: string }> = [
+const FILTERS: Array<{ key: MasterImportFilter; label: string }> = [
   { key: 'TODOS', label: 'Todos' },
-  { key: 'LISTOS', label: 'Listos' },
-  { key: 'REUTILIZADOS', label: 'Reutilizados' },
-  { key: 'YA_VINCULADOS', label: 'Ya vinculados' },
+  { key: 'NUEVAS', label: 'Nuevas' },
+  { key: 'ACTUALIZACIONES', label: 'Actualizaciones' },
+  { key: 'SIN_CAMBIOS', label: 'Sin cambios' },
   { key: 'ERRORES', label: 'Errores' },
+  { key: 'DUPLICADOS', label: 'Duplicados' },
+];
+
+const TYPE_OPTIONS: Array<{ key: MasterImportType; label: string; description: string }> = [
+  {
+    key: 'DATOS_PERSONALES',
+    label: 'Datos personales',
+    description: 'Actualiza o crea informacion maestra de persona usando identidad canonica.',
+  },
+  {
+    key: 'INFORMACION_BANCARIA',
+    label: 'Informacion bancaria',
+    description: 'Versiona persona_cuentas_bancarias sin destruir historico.',
+  },
 ];
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -30,98 +58,189 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function classificationTone(value: MasterImportClassification): string {
+  if (value === 'ERROR') return 'status-error';
+  if (value === 'POSIBLE_DUPLICADO') return 'status-warning';
+  if (value === 'SIN_CAMBIOS') return 'status-muted';
+  return 'status-success';
+}
+
 export default function OperationalImportModal({
   contratoId,
   empresaNombre,
   contratoNombre,
-  canConfirm,
+  canApply,
   onClose,
   onImported,
 }: {
   contratoId: number;
   empresaNombre: string;
   contratoNombre: string;
-  canConfirm: boolean;
+  canApply: boolean;
   onClose: () => void;
   onImported: () => void;
 }) {
+  const [selectedType, setSelectedType] = useState<MasterImportType>('DATOS_PERSONALES');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [preview, setPreview] = useState<OperationalImportPreviewResult | null>(null);
-  const [confirmResult, setConfirmResult] = useState<OperationalImportConfirmResult | null>(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState('');
-  const [filter, setFilter] = useState<OperationalImportFilter>('TODOS');
+  const [analysis, setAnalysis] = useState<MasterImportAnalyzeResponse | null>(null);
+  const [preview, setPreview] = useState<MasterImportPreviewResponse | null>(null);
+  const [applyResult, setApplyResult] = useState<MasterImportApplyResponse | null>(null);
+  const [history, setHistory] = useState<MasterImportLote[]>([]);
+  const [columnMappings, setColumnMappings] = useState<Record<string, string | null>>({});
+  const [filter, setFilter] = useState<MasterImportFilter>('TODOS');
   const [page, setPage] = useState(1);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [validating, setValidating] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState('');
+
+  const currentStep = useMemo(() => {
+    if (applyResult) return 5;
+    if (preview) return 4;
+    if (analysis) return 3;
+    if (analyzing) return 2;
+    return 1;
+  }, [analysis, analyzing, applyResult, preview]);
+
+  const availableFields = useMemo(() => {
+    return selectedType === 'DATOS_PERSONALES'
+      ? [
+          'tipo_documento',
+          'numero_documento',
+          'primer_nombre',
+          'segundo_nombre',
+          'primer_apellido',
+          'segundo_apellido',
+          'fecha_nacimiento',
+          'telefono',
+          'correo',
+          'direccion',
+          'barrio',
+          'municipio_residencia',
+          'pais_nacimiento',
+        ]
+      : [
+          'tipo_documento',
+          'numero_documento',
+          'nombre',
+          'entidad_bancaria',
+          'tipo_cuenta',
+          'numero_cuenta',
+          'titular',
+          'nombre_titular',
+          'documento_titular',
+          'observacion',
+        ];
+  }, [selectedType]);
 
   useEffect(() => {
-    const loteId = preview?.lote.id;
-    if (typeof loteId !== 'number') return;
-    const currentLoteId = loteId;
+    setLoadingHistory(true);
+    void listMasterImportHistory({ page: 1, limit: 6, tipo: selectedType })
+      .then((response) => {
+        setHistory(response.items.filter((item) => item.contrato?.id === contratoId));
+      })
+      .catch(() => {
+        setHistory([]);
+      })
+      .finally(() => {
+        setLoadingHistory(false);
+      });
+  }, [contratoId, selectedType]);
+
+  useEffect(() => {
+    if (!preview?.lote.id) return;
     let cancelled = false;
-    async function loadPreview() {
-      setLoadingPreview(true);
-      try {
-        const nextPreview = await getOperationalImportPreview(currentLoteId, { page, limit: 50, filter });
+    setLoadingPreview(true);
+
+    void getMasterImportPreview(preview.lote.id, { page, limit: 50, filter })
+      .then((response) => {
         if (!cancelled) {
-          setPreview(nextPreview);
+          setPreview(response);
         }
-      } catch (nextError) {
-        if (!cancelled) setError(getErrorMessage(nextError, 'No fue posible cargar el preview del lote.'));
-      } finally {
-        if (!cancelled) setLoadingPreview(false);
-      }
-    }
-    void loadPreview();
+      })
+      .catch((nextError) => {
+        if (!cancelled) {
+          setError(getErrorMessage(nextError, 'No fue posible recargar el preview del lote.'));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingPreview(false);
+        }
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [filter, page, preview?.lote.id, refreshKey]);
+  }, [filter, page, preview?.lote.id]);
 
-  const currentStep = useMemo(() => {
-    if (confirmResult) return 5;
-    if (preview) return 3;
-    if (uploading || loadingPreview) return 2;
-    return 1;
-  }, [confirmResult, loadingPreview, preview, uploading]);
-
-  async function handleUpload(): Promise<void> {
+  async function handleAnalyze(): Promise<void> {
     if (!selectedFile) {
-      setError('Selecciona un archivo CSV/XLSX antes de continuar.');
+      setError('Selecciona un archivo XLSX o CSV antes de continuar.');
       return;
     }
+
+    setAnalyzing(true);
     setError('');
-    setConfirmResult(null);
-    setUploading(true);
+    setPreview(null);
+    setApplyResult(null);
     setPage(1);
     setFilter('TODOS');
+
     try {
-      const result = await uploadOperationalImport(selectedFile, contratoId);
-      const nextPreview = await getOperationalImportPreview(result.lote.id, { page: 1, limit: 50, filter: 'TODOS' });
-      setPreview(nextPreview);
-    } catch (uploadError) {
-      setPreview(null);
-      setError(getErrorMessage(uploadError, 'No fue posible procesar el archivo de importación.'));
+      const result = await analyzeMasterImport(selectedFile, selectedType, contratoId);
+      const nextMappings = Object.fromEntries(
+        result.analysis.detected_headers.map((header) => {
+          const suggestion = result.analysis.suggestions.find((item) => item.header === header);
+          return [header, suggestion?.suggested_field ?? null];
+        })
+      );
+      setAnalysis(result);
+      setColumnMappings(nextMappings);
+    } catch (nextError) {
+      setAnalysis(null);
+      setError(getErrorMessage(nextError, 'No fue posible analizar el archivo.'));
     } finally {
-      setUploading(false);
+      setAnalyzing(false);
     }
   }
 
-  async function handleConfirm(): Promise<void> {
-    if (!preview?.lote.id || !canConfirm) return;
-    setConfirming(true);
+  async function handleValidate(): Promise<void> {
+    if (!analysis?.lote.id) {
+      setError('Primero analiza un archivo.');
+      return;
+    }
+
+    setValidating(true);
+    setError('');
+    setApplyResult(null);
+    try {
+      const result = await validateMasterImport(analysis.lote.id, columnMappings);
+      setPreview(result);
+      setFilter('TODOS');
+      setPage(1);
+    } catch (nextError) {
+      setError(getErrorMessage(nextError, 'No fue posible generar el dry-run.'));
+    } finally {
+      setValidating(false);
+    }
+  }
+
+  async function handleApply(): Promise<void> {
+    if (!preview?.lote.id || !canApply) return;
+    setApplying(true);
     setError('');
     try {
-      const result = await confirmOperationalImport(preview.lote.id);
-      setConfirmResult(result);
-      setRefreshKey((current) => current + 1);
+      const result = await applyMasterImport(preview.lote.id);
+      setApplyResult(result);
+      setPreview(await getMasterImportPreview(preview.lote.id, { page: 1, limit: 50, filter: 'TODOS' }));
       onImported();
-    } catch (confirmError) {
-      setError(getErrorMessage(confirmError, 'No fue posible confirmar la importación.'));
+    } catch (nextError) {
+      setError(getErrorMessage(nextError, 'No fue posible aplicar la importacion.'));
     } finally {
-      setConfirming(false);
+      setApplying(false);
     }
   }
 
@@ -130,8 +249,8 @@ export default function OperationalImportModal({
       <div className="op-import-modal" onClick={(event) => event.stopPropagation()}>
         <div className="op-import-header">
           <div>
-            <h2>Importar personal</h2>
-            <p>Importando a: <strong>{empresaNombre}</strong> / <strong>{contratoNombre}</strong></p>
+            <h2>Importar desde personal</h2>
+            <p>Empresa: <strong>{empresaNombre}</strong> / Contrato: <strong>{contratoNombre}</strong></p>
           </div>
           <button type="button" className="op-close-button" onClick={onClose} aria-label="Cerrar">
             <XCircle size={18} />
@@ -144,47 +263,135 @@ export default function OperationalImportModal({
           ))}
         </div>
 
+        {error ? <div className="op-import-alert error"><AlertTriangle size={16} /> {error}</div> : null}
+
+        <div className="op-import-type-grid">
+          {TYPE_OPTIONS.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              className={`op-import-type-card ${selectedType === option.key ? 'is-active' : ''}`}
+              onClick={() => {
+                setSelectedType(option.key);
+                setAnalysis(null);
+                setPreview(null);
+                setApplyResult(null);
+                setSelectedFile(null);
+              }}
+            >
+              <strong>{option.label}</strong>
+              <span>{option.description}</span>
+            </button>
+          ))}
+        </div>
+
         <div className="op-import-actions-bar">
-          <button type="button" className="op-button secondary" onClick={() => void downloadOperationalImportTemplate()}>
+          <button type="button" className="op-button secondary" onClick={() => void downloadMasterImportTemplate(selectedType)}>
             <Download size={15} /> Descargar plantilla
           </button>
           <label className="op-import-file-picker">
             <FileSpreadsheet size={15} />
             <span>{selectedFile?.name ?? 'Seleccionar archivo'}</span>
-            <input type="file" accept=".csv,.xlsx,.xls" onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} />
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
+            />
           </label>
-          <button type="button" className="op-button primary" onClick={() => void handleUpload()} disabled={uploading || !selectedFile}>
-            {uploading ? <RefreshCw size={15} className="is-spinning" /> : <Upload size={15} />} Analizar archivo
+          <button type="button" className="op-button primary" onClick={() => void handleAnalyze()} disabled={analyzing || !selectedFile}>
+            {analyzing ? <RefreshCw size={15} className="is-spinning" /> : <Upload size={15} />} Analizar
           </button>
         </div>
 
-        {error ? <div className="op-import-alert error"><AlertTriangle size={16} /> {error}</div> : null}
+        {analysis ? (
+          <section className="op-import-table-wrap op-import-mapping-wrap">
+            <div className="op-import-summary-grid">
+              <div><strong>{analysis.analysis.total_rows}</strong><span>Filas detectadas</span></div>
+              <div><strong>{analysis.analysis.detected_headers.length}</strong><span>Columnas</span></div>
+              <div><strong>{analysis.analysis.required_fields.length}</strong><span>Obligatorias</span></div>
+            </div>
+
+            <div className="op-import-toolbar">
+              <strong>Mapeo de columnas</strong>
+              <button type="button" className="op-button primary" onClick={() => void handleValidate()} disabled={validating}>
+                {validating ? <RefreshCw size={15} className="is-spinning" /> : <CheckCircle2 size={15} />} Validar y dry-run
+              </button>
+            </div>
+
+            <table className="op-import-table">
+              <thead>
+                <tr>
+                  <th>Columna Excel</th>
+                  <th>Campo Empiria</th>
+                  <th>Auto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analysis.analysis.detected_headers.map((header) => {
+                  const suggestion = analysis.analysis.suggestions.find((item) => item.header === header);
+                  return (
+                    <tr key={header}>
+                      <td>{header}</td>
+                      <td>
+                        <select
+                          value={columnMappings[header] ?? ''}
+                          onChange={(event) => setColumnMappings((current) => ({
+                            ...current,
+                            [header]: event.target.value || null,
+                          }))}
+                        >
+                          <option value="">Ignorar columna</option>
+                          {availableFields.map((field) => (
+                            <option key={field} value={field}>{field}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>{suggestion?.suggested_field ?? 'Sin coincidencia'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </section>
+        ) : (
+          <div className="op-import-empty-card">
+            Subir archivo nunca escribe datos maestros. Primero se analiza, despues se mapea y solo al final se aplica.
+          </div>
+        )}
 
         {preview ? (
           <>
             <div className="op-import-summary-grid">
               <div><strong>{preview.summary.total_filas}</strong><span>Total filas</span></div>
-              <div><strong>{preview.summary.listas}</strong><span>Listas</span></div>
-              <div><strong>{preview.summary.personas_nuevas}</strong><span>Personas nuevas</span></div>
-              <div><strong>{preview.summary.personas_reutilizadas}</strong><span>Reutilizadas</span></div>
-              <div><strong>{preview.summary.ya_vinculadas}</strong><span>Ya vinculadas</span></div>
-              <div><strong>{preview.summary.con_errores}</strong><span>Con errores</span></div>
+              <div><strong>{preview.summary.nuevas}</strong><span>Nuevas</span></div>
+              <div><strong>{preview.summary.actualizaciones}</strong><span>Actualizaciones</span></div>
+              <div><strong>{preview.summary.sin_cambios}</strong><span>Sin cambios</span></div>
+              <div><strong>{preview.summary.errores}</strong><span>Errores</span></div>
+              <div><strong>{preview.summary.posibles_duplicados}</strong><span>Posibles duplicados</span></div>
             </div>
 
             <div className="op-import-toolbar">
               <div className="op-import-filters">
                 {FILTERS.map((option) => (
-                  <button key={option.key} type="button" className={`op-import-filter ${filter === option.key ? 'is-active' : ''}`} onClick={() => { setFilter(option.key); setPage(1); }}>
+                  <button
+                    key={option.key}
+                    type="button"
+                    className={`op-import-filter ${filter === option.key ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setFilter(option.key);
+                      setPage(1);
+                    }}
+                  >
                     {option.label}
                   </button>
                 ))}
               </div>
               <div className="op-import-toolbar-actions">
-                <button type="button" className="op-button secondary" onClick={() => void downloadOperationalImportReport(preview.lote.id)}>
-                  <Download size={15} /> Descargar resultado
+                <button type="button" className="op-button secondary" onClick={() => void downloadMasterImportReport(preview.lote.id)}>
+                  <Download size={15} /> Descargar reporte
                 </button>
-                <button type="button" className="op-button primary" onClick={() => void handleConfirm()} disabled={!canConfirm || !preview.lote.puede_confirmar || confirming}>
-                  {confirming ? <RefreshCw size={15} className="is-spinning" /> : <CheckCircle2 size={15} />} Confirmar importación
+                <button type="button" className="op-button primary" onClick={() => void handleApply()} disabled={!canApply || applying}>
+                  {applying ? <RefreshCw size={15} className="is-spinning" /> : <CheckCircle2 size={15} />} Aplicar
                 </button>
               </div>
             </div>
@@ -196,30 +403,31 @@ export default function OperationalImportModal({
                     <th>Fila</th>
                     <th>Documento</th>
                     <th>Nombre</th>
-                    <th>Cargo</th>
-                    <th>Tipo vinc.</th>
-                    <th>Persona</th>
-                    <th>Vinculación</th>
                     <th>Resultado</th>
-                    <th>Mensaje</th>
+                    <th>Diff / errores</th>
                   </tr>
                 </thead>
                 <tbody>
                   {preview.rows.length === 0 ? (
-                    <tr><td colSpan={9} className="op-import-empty">No hay filas para este filtro.</td></tr>
+                    <tr><td colSpan={5} className="op-import-empty">No hay filas para este filtro.</td></tr>
                   ) : preview.rows.map((row) => (
                     <tr key={row.fila}>
                       <td>{row.fila}</td>
-                      <td>{row.tipo_documento ?? 'Sin tipo'}<br /><span className="op-import-mono">{row.numero_documento ?? 'Sin número'}</span></td>
+                      <td>{row.tipo_documento ?? 'Sin tipo'}<br /><span className="op-import-mono">{row.numero_documento ?? 'Sin numero'}</span></td>
                       <td>{row.nombre ?? 'Sin nombre'}</td>
-                      <td>{row.cargo_original ?? 'Sin cargo'}</td>
-                      <td>{row.tipo_vinculacion_original ?? 'Sin tipo'}</td>
-                      <td>{row.estado_persona}</td>
-                      <td>{row.estado_vinculacion}</td>
-                      <td><span className={`op-import-badge status-${row.resultado.toLowerCase()}`}>{row.resultado}</span></td>
+                      <td><span className={`op-import-badge ${classificationTone(row.clasificacion)}`}>{row.clasificacion}</span></td>
                       <td>
-                        <div>{row.mensaje}</div>
-                        {row.errors.map((item) => <div key={`${row.fila}-${item.field}-${item.code}`} className="op-import-error-line">{item.message}</div>)}
+                        {row.diffs.map((diff) => (
+                          <div key={`${row.fila}-${diff.field}`} className="op-import-diff-line">
+                            <strong>{diff.label}</strong>: {diff.current_value ?? '—'} {'->'} {diff.next_value ?? '—'}
+                          </div>
+                        ))}
+                        {row.errores.map((issue) => (
+                          <div key={`${row.fila}-${issue.field}-${issue.code}`} className="op-import-error-line">{issue.message}</div>
+                        ))}
+                        {row.advertencias.map((issue) => (
+                          <div key={`${row.fila}-${issue.field}-${issue.code}`} className="op-import-warning-line">{issue.message}</div>
+                        ))}
                       </td>
                     </tr>
                   ))}
@@ -235,20 +443,43 @@ export default function OperationalImportModal({
               </div>
             </div>
           </>
-        ) : (
-          <div className="op-import-empty-card">Sube un archivo y Empiria hará el análisis sin crear personas ni vinculaciones todavía.</div>
-        )}
+        ) : null}
 
-        {confirmResult ? (
+        {applyResult ? (
           <div className="op-import-alert success">
-            <CheckCircle2 size={16} /> Importación completada: {confirmResult.created_vinculaciones} vinculaciones creadas, {confirmResult.reused_personas} personas reutilizadas y {confirmResult.skipped_already_linked} ya vinculadas.
+            <CheckCircle2 size={16} /> Apply completado: {applyResult.applied_rows} filas aplicadas, {applyResult.created_personas} personas creadas, {applyResult.updated_personas} personas actualizadas, {applyResult.created_bank_accounts} cuentas nuevas y {applyResult.updated_bank_accounts} cuentas versionadas.
           </div>
         ) : null}
+
+        <section className="op-import-table-wrap op-import-history-wrap">
+          <div className="op-import-toolbar">
+            <strong>Historial reciente</strong>
+            {loadingHistory ? <span className="op-count-inline">Cargando...</span> : null}
+          </div>
+          <table className="op-import-table">
+            <thead>
+              <tr>
+                <th>Archivo</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Filas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.length === 0 ? (
+                <tr><td colSpan={4} className="op-import-empty">No hay lotes maestros recientes para este contrato.</td></tr>
+              ) : history.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.archivo_nombre}</td>
+                  <td>{item.estado}</td>
+                  <td>{new Date(item.created_at).toLocaleString('es-CO')}</td>
+                  <td>{item.total_filas}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       </div>
     </div>
   );
 }
-
-
-
-

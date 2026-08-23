@@ -422,6 +422,25 @@
   min-height: 28px;
 }
 
+.op-table-meta-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.op-selected-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .op-count-inline,
 .op-empty,
 .op-empty-row,
@@ -530,6 +549,10 @@
   width: 250px;
 }
 
+.op-table .is-select {
+  width: 52px;
+}
+
 .op-table .is-role {
   width: 144px;
 }
@@ -569,6 +592,11 @@
 .op-table td.is-updated,
 .op-table td.is-action {
   white-space: nowrap;
+}
+
+.op-table th.is-select,
+.op-table td.is-select {
+  text-align: center;
 }
 
 .op-table th.is-action,
@@ -786,6 +814,8 @@
 
   .op-header-actions {
     padding-top: 0;
+    width: 100%;
+    flex-wrap: wrap;
   }
 
   .op-kpi-grid {
@@ -824,6 +854,16 @@
 
   .op-header-actions .op-button {
     flex: 1;
+  }
+
+  .op-table-meta {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .op-table-meta-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .op-drawer-layer {

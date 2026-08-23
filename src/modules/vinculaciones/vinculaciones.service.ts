@@ -1670,7 +1670,8 @@ export const updateVinculacion = async (
       before: current,
       after: updatedVinculacion,
       metadata: {
-        campo_modificado: 'vinculacion'
+        campo_modificado: 'vinculacion',
+        observacion: input.motivo_cambio ?? null
       }
     });
 

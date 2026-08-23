@@ -112,6 +112,7 @@ export interface UpdateVinculacionPayload {
   estado_vinculacion?: VinculacionEstado;
   cuenta_como_experiencia?: boolean;
   metodo_pago?: MetodoPago | null;
+  motivo_cambio?: string | null;
 }
 
 export interface RetirarVinculacionPayload {

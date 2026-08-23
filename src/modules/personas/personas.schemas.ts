@@ -160,6 +160,7 @@ export const updatePersonaSchema = z
     nacimiento_extranjero: nullableBooleanSchema.optional(),
     ciudad_nacimiento_extranjero: nullableTrimmedString.optional(),
     motivo_cambio_identificacion: nullableTrimmedString.optional(),
+    motivo_cambio: nullableTrimmedString.optional(),
     contacto_emergencia: personaContactoEmergenciaSchema.nullable().optional(),
     perfil_demografico: personaPerfilDemograficoSchema.nullable().optional()
   })

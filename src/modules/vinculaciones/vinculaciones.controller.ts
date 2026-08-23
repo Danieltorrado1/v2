@@ -30,6 +30,83 @@ import {
   suspenderVinculacion,
   updateVinculacion
 } from './vinculaciones.service';
+
+const VINCULACION_CARGO_FIELDS = new Set(['contrato_cargo_id', 'tipo_vinculacion_id']);
+const VINCULACION_DATE_FIELDS = new Set(['fecha_inicio', 'fecha_fin']);
+const VINCULACION_STATUS_FIELDS = new Set(['estado_vinculacion']);
+const VINCULACION_SENSITIVE_FIELDS = new Set([
+  ...VINCULACION_CARGO_FIELDS,
+  ...VINCULACION_DATE_FIELDS,
+  ...VINCULACION_STATUS_FIELDS,
+  'empresa_id',
+  'contrato_id',
+  'persona_id',
+  'metodo_pago'
+]);
+
+const hasAnyPermission = (currentPermissions: string[], expected: string[]): boolean =>
+  expected.some((permission) => currentPermissions.includes(permission));
+
+const ensureVinculacionUpdatePermissions = (req: Request, input: Record<string, unknown>): void => {
+  const roles = req.user?.roles ?? [];
+  if (roles.includes('ADMINISTRADOR')) {
+    return;
+  }
+
+  const permissions = req.user?.permissions ?? [];
+  const touchedFields = Object.keys(input);
+  const touchesCargo = touchedFields.some((field) => VINCULACION_CARGO_FIELDS.has(field));
+  const touchesDates = touchedFields.some((field) => VINCULACION_DATE_FIELDS.has(field));
+  const touchesStatus = touchedFields.some((field) => VINCULACION_STATUS_FIELDS.has(field));
+  const touchesGeneral = touchedFields.some(
+    (field) =>
+      field !== 'motivo_cambio' &&
+      !VINCULACION_CARGO_FIELDS.has(field) &&
+      !VINCULACION_DATE_FIELDS.has(field) &&
+      !VINCULACION_STATUS_FIELDS.has(field)
+  );
+
+  if (
+    touchesCargo &&
+    !hasAnyPermission(permissions, ['vinculaciones.update', 'vinculacion.editar', 'vinculacion.editar_cargo'])
+  ) {
+    throw new AppError('Insufficient permissions for vinculation role updates', 403, 'FORBIDDEN');
+  }
+
+  if (
+    touchesDates &&
+    !hasAnyPermission(permissions, ['vinculaciones.update', 'vinculacion.editar', 'vinculacion.editar_fechas'])
+  ) {
+    throw new AppError('Insufficient permissions for vinculation date updates', 403, 'FORBIDDEN');
+  }
+
+  if (
+    touchesStatus &&
+    !hasAnyPermission(permissions, ['vinculaciones.update', 'vinculacion.editar', 'vinculacion.editar_estado'])
+  ) {
+    throw new AppError('Insufficient permissions for vinculation status updates', 403, 'FORBIDDEN');
+  }
+
+  if (touchesGeneral && !hasAnyPermission(permissions, ['vinculaciones.update', 'vinculacion.editar'])) {
+    throw new AppError('Insufficient permissions for vinculation updates', 403, 'FORBIDDEN');
+  }
+};
+
+const ensureVinculacionSensitiveReason = (input: Record<string, unknown>): void => {
+  const touchedSensitive = Object.keys(input).some((field) => VINCULACION_SENSITIVE_FIELDS.has(field));
+  if (!touchedSensitive) {
+    return;
+  }
+
+  const reason = typeof input.motivo_cambio === 'string' ? input.motivo_cambio.trim() : '';
+  if (!reason) {
+    throw new AppError(
+      'El motivo es obligatorio para modificar campos sensibles de la vinculacion',
+      400,
+      'VINCULACION_REASON_REQUIRED'
+    );
+  }
+};
 import {
   getVinculacionesOpsCatalogos,
   listOpsVinculacionesEnriched
@@ -157,6 +234,8 @@ export const createVinculacionHandler = asyncHandler(async (req: Request, res: R
 export const updateVinculacionHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = vinculacionIdParamSchema.parse(req.params) as { id: number };
   const input = updateVinculacionSchema.parse(req.body);
+  ensureVinculacionUpdatePermissions(req, input);
+  ensureVinculacionSensitiveReason(input);
   const vinculacion = await updateVinculacion(id, input, getActorUserId(req), req.tenant);
 
   return successResponse(res, {

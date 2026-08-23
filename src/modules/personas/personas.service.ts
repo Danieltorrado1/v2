@@ -188,6 +188,7 @@ export interface PaginatedPersonas {
 interface PersonaMutationContext {
   actorUserId?: string | null;
   auditMeta?: AuditRequestMeta;
+  reason?: string | null;
 }
 
 const hasOwn = <T extends object>(value: T, key: PropertyKey): boolean => {
@@ -852,6 +853,14 @@ const buildMutationAuditMeta = (context?: PersonaMutationContext): AuditRequestM
   };
 };
 
+const buildAuditDescription = (base: string, reason?: string | null): string => {
+  if (!reason || reason.trim().length === 0) {
+    return base;
+  }
+
+  return `${base}. Motivo: ${reason.trim()}`;
+};
+
 const appendPersonaTenantScope = (
   conditions: string[],
   params: unknown[],
@@ -1184,6 +1193,128 @@ export const listPersonaIdentificaciones = async (
   }
 };
 
+export const createPersonaWithClient = async (
+  client: PoolClient,
+  input: CreatePersonaInput,
+  context?: PersonaMutationContext
+): Promise<Persona> => {
+  const identificationCore = buildPersonaIdentificationCore({
+    tipo_documento_id: input.tipo_documento_id,
+    numero_documento: input.numero_documento,
+    fecha_expedicion_documento: input.fecha_expedicion_documento,
+    municipio_expedicion_id: input.municipio_expedicion_id
+  });
+
+  await ensureNumeroDocumentoAvailable(client, identificationCore.numero_documento);
+
+  const result = await client.query<{ id: string | number }>(
+    `
+      INSERT INTO personas (
+        tipo_documento_id,
+        numero_documento,
+        primer_nombre,
+        segundo_nombre,
+        primer_apellido,
+        segundo_apellido,
+        fecha_nacimiento,
+        fecha_expedicion_documento,
+        municipio_nacimiento_id,
+        municipio_expedicion_id,
+        municipio_residencia_id,
+        sexo_id,
+        estado_civil_id,
+        tipo_sangre_id,
+        estatura,
+        telefono,
+        correo,
+        direccion,
+        barrio,
+        zona_id,
+        pais_nacimiento,
+        nacimiento_extranjero,
+        ciudad_nacimiento_extranjero
+      )
+      VALUES (
+        $1::bigint, $2, $3, $4, $5, $6, $7, $8, $9::bigint, $10::bigint,
+        $11::bigint, $12::bigint, $13::bigint, $14::bigint, $15, $16, $17, $18, $19, $20::bigint, $21, $22, $23
+      )
+      RETURNING id
+    `,
+    [
+      identificationCore.tipo_documento_id,
+      identificationCore.numero_documento,
+      input.primer_nombre,
+      input.segundo_nombre,
+      input.primer_apellido,
+      input.segundo_apellido,
+      input.fecha_nacimiento,
+      identificationCore.fecha_expedicion_documento,
+      input.municipio_nacimiento_id,
+      identificationCore.municipio_expedicion_id,
+      input.municipio_residencia_id,
+      input.sexo_id,
+      input.estado_civil_id,
+      input.tipo_sangre_id,
+      input.estatura,
+      input.telefono,
+      input.correo,
+      input.direccion,
+      input.barrio,
+      input.zona_id,
+      input.pais_nacimiento,
+      input.nacimiento_extranjero,
+      input.ciudad_nacimiento_extranjero
+    ]
+  );
+
+  const personaId = String(result.rows[0]?.id ?? '');
+
+  if (!personaId) {
+    throw new AppError('Failed to create persona', 500, 'PERSONA_CREATION_FAILED');
+  }
+
+  const createdIdentification = await insertPersonaIdentificationVersion(client, {
+    personaId,
+    identification: identificationCore,
+    motivoCambio: input.motivo_cambio_identificacion ?? 'REGISTRO_INICIAL_IDENTIFICACION',
+    actorUserId: context?.actorUserId ?? null,
+    replacesIdentificationId: null
+  });
+
+  const createdPersonaRow = await getPersonaRowById(client, personaId);
+
+  if (!createdPersonaRow) {
+    throw new AppError('Failed to create persona', 500, 'PERSONA_CREATION_FAILED');
+  }
+
+  const createdPersona = mapPersona(createdPersonaRow);
+  const auditMeta = buildMutationAuditMeta(context);
+
+  await registerAuditEntry({
+    accion: 'CREAR_PERSONA',
+    after: createdPersona,
+    client,
+    descripcion: 'Creacion de persona',
+    registro_id: String(createdPersona.id),
+    tabla: 'personas',
+    usuario_id: context?.actorUserId ?? null,
+    ...auditMeta
+  });
+
+  await registerAuditEntry({
+    accion: 'CREAR_PERSONA_IDENTIFICACION',
+    after: mapPersonaIdentificacion(createdIdentification),
+    client,
+    descripcion: 'Creacion de identificacion vigente de persona',
+    registro_id: String(createdIdentification.id),
+    tabla: 'persona_identificaciones',
+    usuario_id: context?.actorUserId ?? null,
+    ...auditMeta
+  });
+
+  return createdPersona;
+};
+
 export const createPersona = async (
   input: CreatePersonaInput,
   context?: PersonaMutationContext
@@ -1192,120 +1323,7 @@ export const createPersona = async (
 
   try {
     await client.query('BEGIN');
-    const identificationCore = buildPersonaIdentificationCore({
-      tipo_documento_id: input.tipo_documento_id,
-      numero_documento: input.numero_documento,
-      fecha_expedicion_documento: input.fecha_expedicion_documento,
-      municipio_expedicion_id: input.municipio_expedicion_id
-    });
-
-    await ensureNumeroDocumentoAvailable(client, identificationCore.numero_documento);
-
-    const result = await client.query<{ id: string | number }>(
-      `
-        INSERT INTO personas (
-          tipo_documento_id,
-          numero_documento,
-          primer_nombre,
-          segundo_nombre,
-          primer_apellido,
-          segundo_apellido,
-          fecha_nacimiento,
-          fecha_expedicion_documento,
-          municipio_nacimiento_id,
-          municipio_expedicion_id,
-          municipio_residencia_id,
-          sexo_id,
-          estado_civil_id,
-          tipo_sangre_id,
-          estatura,
-          telefono,
-          correo,
-          direccion,
-          barrio,
-          zona_id,
-          pais_nacimiento,
-          nacimiento_extranjero,
-          ciudad_nacimiento_extranjero
-        )
-        VALUES (
-          $1::bigint, $2, $3, $4, $5, $6, $7, $8, $9::bigint, $10::bigint,
-          $11::bigint, $12::bigint, $13::bigint, $14::bigint, $15, $16, $17, $18, $19, $20::bigint, $21, $22, $23
-        )
-        RETURNING id
-      `,
-      [
-        identificationCore.tipo_documento_id,
-        identificationCore.numero_documento,
-        input.primer_nombre,
-        input.segundo_nombre,
-        input.primer_apellido,
-        input.segundo_apellido,
-        input.fecha_nacimiento,
-        identificationCore.fecha_expedicion_documento,
-        input.municipio_nacimiento_id,
-        identificationCore.municipio_expedicion_id,
-        input.municipio_residencia_id,
-        input.sexo_id,
-        input.estado_civil_id,
-        input.tipo_sangre_id,
-        input.estatura,
-        input.telefono,
-        input.correo,
-        input.direccion,
-        input.barrio,
-        input.zona_id,
-        input.pais_nacimiento,
-        input.nacimiento_extranjero,
-        input.ciudad_nacimiento_extranjero
-      ]
-    );
-
-    const personaId = String(result.rows[0]?.id ?? '');
-
-    if (!personaId) {
-      throw new AppError('Failed to create persona', 500, 'PERSONA_CREATION_FAILED');
-    }
-
-    const createdIdentification = await insertPersonaIdentificationVersion(client, {
-      personaId,
-      identification: identificationCore,
-      motivoCambio: input.motivo_cambio_identificacion ?? 'REGISTRO_INICIAL_IDENTIFICACION',
-      actorUserId: context?.actorUserId ?? null,
-      replacesIdentificationId: null
-    });
-
-    const createdPersonaRow = await getPersonaRowById(client, personaId);
-
-    if (!createdPersonaRow) {
-      throw new AppError('Failed to create persona', 500, 'PERSONA_CREATION_FAILED');
-    }
-
-    const createdPersona = mapPersona(createdPersonaRow);
-    const auditMeta = buildMutationAuditMeta(context);
-
-    await registerAuditEntry({
-      accion: 'CREAR_PERSONA',
-      after: createdPersona,
-      client,
-      descripcion: 'Creacion de persona',
-      registro_id: String(createdPersona.id),
-      tabla: 'personas',
-      usuario_id: context?.actorUserId ?? null,
-      ...auditMeta
-    });
-
-    await registerAuditEntry({
-      accion: 'CREAR_PERSONA_IDENTIFICACION',
-      after: mapPersonaIdentificacion(createdIdentification),
-      client,
-      descripcion: 'Creacion de identificacion vigente de persona',
-      registro_id: String(createdIdentification.id),
-      tabla: 'persona_identificaciones',
-      usuario_id: context?.actorUserId ?? null,
-      ...auditMeta
-    });
-
+    const createdPersona = await createPersonaWithClient(client, input, context);
     await client.query('COMMIT');
     return createdPersona;
   } catch (error) {
@@ -1314,6 +1332,152 @@ export const createPersona = async (
   } finally {
     client.release();
   }
+};
+
+export const updatePersonaWithClient = async (
+  client: PoolClient,
+  personaId: string,
+  input: UpdatePersonaInput,
+  context?: PersonaMutationContext,
+  tenant?: TenantAccessContext
+): Promise<Persona> => {
+  const existingPersona = await getPersonaRowById(client, personaId);
+
+  if (!existingPersona) {
+    throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
+  }
+
+  await assertTenantAccessForPersonaId(tenant, personaId);
+
+  const currentIdentificationRow = await getCurrentPersonaIdentificationRow(client, personaId);
+  const currentIdentificationCore = currentIdentificationRow
+    ? buildPersonaIdentificationCoreFromHistoryRow(currentIdentificationRow)
+    : buildPersonaIdentificationCoreFromPersonaRow(existingPersona);
+
+  const identificationFieldsWereProvided = [
+    hasOwn(input, 'tipo_documento_id'),
+    hasOwn(input, 'numero_documento'),
+    hasOwn(input, 'fecha_expedicion_documento'),
+    hasOwn(input, 'municipio_expedicion_id')
+  ].some(Boolean);
+
+  const nextIdentificationCore = buildNextIdentificationCore(currentIdentificationCore, input);
+  const shouldRotateIdentification = currentIdentificationRow === null
+    ? true
+    : identificationFieldsWereProvided && hasPersonaIdentificationChanged(currentIdentificationCore, nextIdentificationCore);
+
+  if (shouldRotateIdentification) {
+    await ensureNumeroDocumentoAvailable(client, nextIdentificationCore.numero_documento, personaId);
+  }
+
+  await updatePersonaBaseFields(client, personaId, input, existingPersona, nextIdentificationCore);
+
+  let createdIdentification: PersonaIdentificacion | null = null;
+
+  if (shouldRotateIdentification) {
+    if (currentIdentificationRow) {
+      await deactivateCurrentPersonaIdentification(client, toRequiredNumber(currentIdentificationRow.id));
+    }
+
+    const insertedIdentification = await insertPersonaIdentificationVersion(client, {
+      personaId,
+      identification: nextIdentificationCore,
+      motivoCambio: input.motivo_cambio_identificacion
+        ?? (currentIdentificationRow ? 'ACTUALIZACION_IDENTIFICACION_VIGENTE' : 'RECONSTRUCCION_IDENTIFICACION_VIGENTE'),
+      actorUserId: context?.actorUserId ?? null,
+      replacesIdentificationId: currentIdentificationRow ? toRequiredNumber(currentIdentificationRow.id) : null
+    });
+
+    createdIdentification = mapPersonaIdentificacion(insertedIdentification);
+    await syncPersonaCurrentIdentification(client, personaId, nextIdentificationCore);
+  }
+
+  const contactoEmergenciaAudit =
+    input.contacto_emergencia !== undefined
+      ? await upsertPersonaContactoEmergencia(client, personaId, input.contacto_emergencia)
+      : null;
+  const perfilDemograficoAudit =
+    input.perfil_demografico !== undefined
+      ? await upsertPersonaPerfilDemografico(client, personaId, input.perfil_demografico)
+      : null;
+
+  const updatedPersonaRow = await getPersonaRowById(client, personaId);
+
+  if (!updatedPersonaRow) {
+    throw new AppError('Failed to update persona', 500, 'PERSONA_UPDATE_FAILED');
+  }
+
+  const updatedPersona = await enrichPersonaWithProfile(client, mapPersona(updatedPersonaRow));
+  const auditMeta = buildMutationAuditMeta(context);
+
+  await registerAuditEntry({
+    accion: 'ACTUALIZAR_PERSONA',
+    after: updatedPersona,
+    before: mapPersona(existingPersona),
+    client,
+    descripcion: buildAuditDescription('Actualizacion de persona', context?.reason),
+    registro_id: String(updatedPersona.id),
+    tabla: 'personas',
+    usuario_id: context?.actorUserId ?? null,
+    ...auditMeta
+  });
+
+  if (createdIdentification) {
+    await registerAuditEntry({
+      accion: 'ACTUALIZAR_PERSONA_IDENTIFICACION_VIGENTE',
+      after: createdIdentification,
+      before: currentIdentificationRow ? mapPersonaIdentificacion(currentIdentificationRow) : null,
+      client,
+      descripcion: buildAuditDescription(
+        'Cambio de identificacion vigente de persona',
+        context?.reason ?? input.motivo_cambio_identificacion
+      ),
+      registro_id: String(createdIdentification.id),
+      tabla: 'persona_identificaciones',
+      usuario_id: context?.actorUserId ?? null,
+      ...auditMeta
+    });
+  }
+
+  if (contactoEmergenciaAudit) {
+    await registerAuditEntry({
+      accion: 'ACTUALIZAR_CONTACTO_EMERGENCIA_PERSONA',
+      after: contactoEmergenciaAudit.after,
+      before: contactoEmergenciaAudit.before,
+      client,
+      descripcion: buildAuditDescription(
+        'Actualizacion de contacto de emergencia de persona',
+        context?.reason
+      ),
+      registro_id: contactoEmergenciaAudit.after
+        ? String(contactoEmergenciaAudit.after.id)
+        : `${personaId}:contacto_emergencia`,
+      tabla: 'persona_contactos_emergencia',
+      usuario_id: context?.actorUserId ?? null,
+      ...auditMeta
+    });
+  }
+
+  if (perfilDemograficoAudit) {
+    await registerAuditEntry({
+      accion: 'ACTUALIZAR_PERFIL_DEMOGRAFICO_PERSONA',
+      after: perfilDemograficoAudit.after,
+      before: perfilDemograficoAudit.before,
+      client,
+      descripcion: buildAuditDescription(
+        'Actualizacion de perfil demografico de persona',
+        context?.reason
+      ),
+      registro_id: perfilDemograficoAudit.after
+        ? String(perfilDemograficoAudit.after.id)
+        : `${personaId}:perfil_demografico`,
+      tabla: 'sst_perfil_demografico',
+      usuario_id: context?.actorUserId ?? null,
+      ...auditMeta
+    });
+  }
+
+  return updatedPersona;
 };
 
 export const updatePersona = async (
@@ -1326,134 +1490,7 @@ export const updatePersona = async (
 
   try {
     await client.query('BEGIN');
-
-    const existingPersona = await getPersonaRowById(client, personaId);
-
-    if (!existingPersona) {
-      throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
-    }
-
-    await assertTenantAccessForPersonaId(tenant, personaId);
-
-    const currentIdentificationRow = await getCurrentPersonaIdentificationRow(client, personaId);
-    const currentIdentificationCore = currentIdentificationRow
-      ? buildPersonaIdentificationCoreFromHistoryRow(currentIdentificationRow)
-      : buildPersonaIdentificationCoreFromPersonaRow(existingPersona);
-
-    const identificationFieldsWereProvided = [
-      hasOwn(input, 'tipo_documento_id'),
-      hasOwn(input, 'numero_documento'),
-      hasOwn(input, 'fecha_expedicion_documento'),
-      hasOwn(input, 'municipio_expedicion_id')
-    ].some(Boolean);
-
-    const nextIdentificationCore = buildNextIdentificationCore(currentIdentificationCore, input);
-    const shouldRotateIdentification = currentIdentificationRow === null
-      ? true
-      : identificationFieldsWereProvided && hasPersonaIdentificationChanged(currentIdentificationCore, nextIdentificationCore);
-
-    if (shouldRotateIdentification) {
-      await ensureNumeroDocumentoAvailable(client, nextIdentificationCore.numero_documento, personaId);
-    }
-
-    await updatePersonaBaseFields(client, personaId, input, existingPersona, nextIdentificationCore);
-
-    let createdIdentification: PersonaIdentificacion | null = null;
-
-    if (shouldRotateIdentification) {
-      if (currentIdentificationRow) {
-        await deactivateCurrentPersonaIdentification(client, toRequiredNumber(currentIdentificationRow.id));
-      }
-
-      const insertedIdentification = await insertPersonaIdentificationVersion(client, {
-        personaId,
-        identification: nextIdentificationCore,
-        motivoCambio: input.motivo_cambio_identificacion
-          ?? (currentIdentificationRow ? 'ACTUALIZACION_IDENTIFICACION_VIGENTE' : 'RECONSTRUCCION_IDENTIFICACION_VIGENTE'),
-        actorUserId: context?.actorUserId ?? null,
-        replacesIdentificationId: currentIdentificationRow ? toRequiredNumber(currentIdentificationRow.id) : null
-      });
-
-      createdIdentification = mapPersonaIdentificacion(insertedIdentification);
-      await syncPersonaCurrentIdentification(client, personaId, nextIdentificationCore);
-    }
-
-    const contactoEmergenciaAudit =
-      input.contacto_emergencia !== undefined
-        ? await upsertPersonaContactoEmergencia(client, personaId, input.contacto_emergencia)
-        : null;
-    const perfilDemograficoAudit =
-      input.perfil_demografico !== undefined
-        ? await upsertPersonaPerfilDemografico(client, personaId, input.perfil_demografico)
-        : null;
-
-    const updatedPersonaRow = await getPersonaRowById(client, personaId);
-
-    if (!updatedPersonaRow) {
-      throw new AppError('Failed to update persona', 500, 'PERSONA_UPDATE_FAILED');
-    }
-
-    const updatedPersona = await enrichPersonaWithProfile(client, mapPersona(updatedPersonaRow));
-    const auditMeta = buildMutationAuditMeta(context);
-
-    await registerAuditEntry({
-      accion: 'ACTUALIZAR_PERSONA',
-      after: updatedPersona,
-      before: mapPersona(existingPersona),
-      client,
-      descripcion: 'Actualizacion de persona',
-      registro_id: String(updatedPersona.id),
-      tabla: 'personas',
-      usuario_id: context?.actorUserId ?? null,
-      ...auditMeta
-    });
-
-    if (createdIdentification) {
-      await registerAuditEntry({
-        accion: 'ACTUALIZAR_PERSONA_IDENTIFICACION_VIGENTE',
-        after: createdIdentification,
-        before: currentIdentificationRow ? mapPersonaIdentificacion(currentIdentificationRow) : null,
-        client,
-        descripcion: 'Cambio de identificacion vigente de persona',
-        registro_id: String(createdIdentification.id),
-        tabla: 'persona_identificaciones',
-        usuario_id: context?.actorUserId ?? null,
-        ...auditMeta
-      });
-    }
-
-    if (contactoEmergenciaAudit) {
-      await registerAuditEntry({
-        accion: 'ACTUALIZAR_CONTACTO_EMERGENCIA_PERSONA',
-        after: contactoEmergenciaAudit.after,
-        before: contactoEmergenciaAudit.before,
-        client,
-        descripcion: 'Actualizacion de contacto de emergencia de persona',
-        registro_id: contactoEmergenciaAudit.after
-          ? String(contactoEmergenciaAudit.after.id)
-          : `${personaId}:contacto_emergencia`,
-        tabla: 'persona_contactos_emergencia',
-        usuario_id: context?.actorUserId ?? null,
-        ...auditMeta
-      });
-    }
-
-    if (perfilDemograficoAudit) {
-      await registerAuditEntry({
-        accion: 'ACTUALIZAR_PERFIL_DEMOGRAFICO_PERSONA',
-        after: perfilDemograficoAudit.after,
-        before: perfilDemograficoAudit.before,
-        client,
-        descripcion: 'Actualizacion de perfil demografico de persona',
-        registro_id: perfilDemograficoAudit.after
-          ? String(perfilDemograficoAudit.after.id)
-          : `${personaId}:perfil_demografico`,
-        tabla: 'sst_perfil_demografico',
-        usuario_id: context?.actorUserId ?? null,
-        ...auditMeta
-      });
-    }
-
+    const updatedPersona = await updatePersonaWithClient(client, personaId, input, context, tenant);
     await client.query('COMMIT');
     return updatedPersona;
   } catch (error) {
@@ -1527,7 +1564,10 @@ export const createPersonaIdentificacion = async (
       after: createdIdentification,
       before: currentIdentificationRow ? mapPersonaIdentificacion(currentIdentificationRow) : null,
       client,
-      descripcion: 'Cambio de identificacion vigente de persona',
+      descripcion: buildAuditDescription(
+        'Cambio de identificacion vigente de persona',
+        context?.reason ?? input.motivo_cambio
+      ),
       registro_id: String(createdIdentification.id),
       tabla: 'persona_identificaciones',
       usuario_id: context?.actorUserId ?? null,

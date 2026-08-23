@@ -3,7 +3,18 @@ import { Router } from 'express';
 
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
-import { requirePermissions } from '../../middlewares/roleMiddleware';
+import { requireAnyPermissions, requirePermissions } from '../../middlewares/roleMiddleware';
+import {
+  analyzeMasterImportHandler,
+  applyMasterImportHandler,
+  downloadDatosPersonalesTemplateHandler,
+  downloadInformacionBancariaTemplateHandler,
+  downloadMasterImportReportHandler,
+  getMasterImportLoteHandler,
+  getMasterImportPreviewHandler,
+  listMasterImportLotesHandler,
+  validateMasterImportHandler
+} from './importaciones.master.controller';
 import {
   cancelarImportacion,
   confirmarImportacion,
@@ -22,14 +33,73 @@ const importacionesRoutes = Router();
 importacionesRoutes.use(authMiddleware);
 importacionesRoutes.use(tenantMiddleware);
 
-importacionesRoutes.get('/personas-vinculaciones/template', requirePermissions('importaciones.upload'), downloadImportacionTemplate);
-importacionesRoutes.post('/personas-vinculaciones/upload', requirePermissions('importaciones.upload'), upload.single('file'), uploadPersonasVinculaciones);
+importacionesRoutes.get(
+  '/personas-vinculaciones/template',
+  requireAnyPermissions('importaciones.upload', 'importaciones.preparar'),
+  downloadImportacionTemplate
+);
+importacionesRoutes.get(
+  '/informacion-bancaria/template',
+  requirePermissions('importaciones.preparar'),
+  downloadInformacionBancariaTemplateHandler
+);
+importacionesRoutes.get(
+  '/datos-personales/template',
+  requirePermissions('importaciones.preparar'),
+  downloadDatosPersonalesTemplateHandler
+);
+importacionesRoutes.post(
+  '/personas-vinculaciones/upload',
+  requireAnyPermissions('importaciones.upload', 'importaciones.preparar'),
+  upload.single('file'),
+  uploadPersonasVinculaciones
+);
+importacionesRoutes.post(
+  '/maestro/analizar',
+  requirePermissions('importaciones.preparar'),
+  upload.single('file'),
+  analyzeMasterImportHandler
+);
+importacionesRoutes.post(
+  '/maestro/lotes/:id/validar',
+  requirePermissions('importaciones.preparar'),
+  validateMasterImportHandler
+);
+importacionesRoutes.get(
+  '/maestro/lotes',
+  requireAnyPermissions('importaciones.preparar', 'importaciones.aplicar', 'importaciones.read'),
+  listMasterImportLotesHandler
+);
+importacionesRoutes.get(
+  '/maestro/lotes/:id',
+  requireAnyPermissions('importaciones.preparar', 'importaciones.aplicar', 'importaciones.read'),
+  getMasterImportLoteHandler
+);
+importacionesRoutes.get(
+  '/maestro/lotes/:id/preview',
+  requireAnyPermissions('importaciones.preparar', 'importaciones.aplicar', 'importaciones.read'),
+  getMasterImportPreviewHandler
+);
+importacionesRoutes.get(
+  '/maestro/lotes/:id/reporte',
+  requireAnyPermissions('importaciones.preparar', 'importaciones.aplicar', 'importaciones.read'),
+  downloadMasterImportReportHandler
+);
+importacionesRoutes.post(
+  '/maestro/lotes/:id/aplicar',
+  requirePermissions('importaciones.aplicar'),
+  applyMasterImportHandler
+);
 importacionesRoutes.get('/lotes', requirePermissions('importaciones.read'), getImportacionLotes);
 importacionesRoutes.get('/lotes/:id', requirePermissions('importaciones.read'), getImportacionLote);
 importacionesRoutes.get('/lotes/:id/preview', requirePermissions('importaciones.read'), getImportacionPreviewHandler);
 importacionesRoutes.get('/lotes/:id/errores', requirePermissions('importaciones.read'), getImportacionErrores);
 importacionesRoutes.get('/lotes/:id/reporte', requirePermissions('importaciones.read'), downloadImportacionReportHandler);
-importacionesRoutes.post('/lotes/:id/confirmar', requirePermissions('importaciones.confirm'), confirmarImportacion);
+importacionesRoutes.post(
+  '/lotes/:id/confirmar',
+  requireAnyPermissions('importaciones.confirm', 'importaciones.aplicar'),
+  confirmarImportacion
+);
 importacionesRoutes.post('/lotes/:id/cancelar', requirePermissions('importaciones.cancel'), cancelarImportacion);
 
 export { importacionesRoutes };

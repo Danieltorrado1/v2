@@ -220,7 +220,7 @@ const appendTenantScope = (conditions: string[], params: unknown[], tenant?: Ten
   if (tenant.contratoIds.length > 0) { params.push(tenant.contratoIds); conditions.push(`contrato_id = ANY($${params.length}::bigint[])`); return; }
   params.push(tenant.empresaIds); conditions.push(`empresa_id = ANY($${params.length}::bigint[])`);
 };
-const loadDocTypes = async (client: PoolClient): Promise<DocTypeRow[]> => (await client.query<DocTypeRow>(`SELECT id, codigo, nombre_documento FROM tipos_documentos WHERE COALESCE(activo, TRUE) = TRUE AND COALESCE(es_identificacion_personal, FALSE) = TRUE ORDER BY nombre_documento ASC, id ASC`)).rows;
+const loadDocTypes = async (client: PoolClient): Promise<DocTypeRow[]> => (await client.query<DocTypeRow>(`SELECT id, codigo, nombre_documento FROM tipos_documentos WHERE COALESCE(es_identificacion_personal, FALSE) = TRUE ORDER BY nombre_documento ASC, id ASC`)).rows;
 const loadCargos = async (client: PoolClient, contratoId: number): Promise<CargoRow[]> => (await client.query<CargoRow>(`SELECT id, nombre_cargo FROM contrato_cargos WHERE contrato_id = $1::bigint AND COALESCE(activo, TRUE) = TRUE ORDER BY nombre_cargo ASC, id ASC`, [contratoId])).rows;
 const loadTiposVinc = async (client: PoolClient): Promise<TipoVincRow[]> => (await client.query<TipoVincRow>(`SELECT id, codigo, nombre_vinculacion FROM tipos_vinculacion ORDER BY nombre_vinculacion ASC, id ASC`)).rows;
 const resolveDocType = (value: string | null, docs: DocTypeRow[]) => {

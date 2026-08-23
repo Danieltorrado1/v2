@@ -4,13 +4,16 @@ import { AppError } from '../../utils/AppError';
 import { successResponse } from '../../utils/apiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
 import {
+  buildBankingImportTemplateCsv,
+  buildOperationalImportTemplateCsv
+} from './importaciones.domain';
+import {
   importacionLoteIdParamSchema,
   importacionPreviewQuerySchema,
   listImportacionLotesQuerySchema,
   uploadPersonasVinculacionesSchema
 } from './importaciones.schemas';
 import {
-  buildOperationalImportTemplateCsv,
   cancelImportacionLote,
   confirmImportacionLote,
   downloadImportacionReport,
@@ -31,6 +34,13 @@ export const downloadImportacionTemplate = asyncHandler(async (_req: Request, re
   const csv = buildOperationalImportTemplateCsv();
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="plantilla-importacion-personal.csv"');
+  res.status(200).send(csv);
+});
+
+export const downloadBankingImportTemplate = asyncHandler(async (_req: Request, res: Response) => {
+  const csv = buildBankingImportTemplateCsv();
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="plantilla-importacion-bancaria.csv"');
   res.status(200).send(csv);
 });
 

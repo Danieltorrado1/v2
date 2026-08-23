@@ -299,3 +299,37 @@ export const buildOperationalImportTemplateCsv = (): string => {
 
   return [header, sample].join('\n');
 };
+
+export const buildBankingImportTemplateCsv = (): string => {
+  const header = [
+    'TIPO_DOCUMENTO',
+    'NUMERO_DOCUMENTO',
+    'NOMBRE',
+    'BANCO',
+    'TIPO_CUENTA',
+    'NUMERO_CUENTA',
+    'TITULAR',
+    'NOMBRE_TITULAR',
+    'DOCUMENTO_TITULAR',
+    'OBSERVACION'
+  ]
+    .map(csvEscape)
+    .join(',');
+
+  const sample = [
+    'CC',
+    '1121836989',
+    'SANDRA MILENA DIAZ VELASQUEZ',
+    'BANCOLOMBIA',
+    'AHORROS',
+    '1234567890',
+    'PERSONA',
+    'SANDRA MILENA DIAZ VELASQUEZ',
+    '1121836989',
+    'Cuenta principal vigente'
+  ]
+    .map(csvEscape)
+    .join(',');
+
+  return [header, sample].join('\n');
+};

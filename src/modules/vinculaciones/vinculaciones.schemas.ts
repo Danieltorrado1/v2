@@ -170,7 +170,8 @@ export const updateVinculacionSchema = z
     fecha_fin: nullableDateSchema.optional(),
     estado_vinculacion: vinculacionEstadoSchema.optional(),
     cuenta_como_experiencia: nullableBooleanSchema.optional(),
-    metodo_pago: nullableMetodoPagoSchema.optional()
+    metodo_pago: nullableMetodoPagoSchema.optional(),
+    motivo_cambio: nullableTrimmedString.optional()
   })
   .refine(
     (data) => Object.keys(data).length > 0,

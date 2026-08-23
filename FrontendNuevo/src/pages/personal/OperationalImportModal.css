@@ -193,6 +193,123 @@
   background: color-mix(in srgb, var(--bg-input) 82%, transparent);
 }
 
+.op-import-type-grid,
+.op-export-groups,
+.op-export-field-list,
+.op-export-toolbar {
+  display: flex;
+  gap: 10px;
+}
+
+.op-import-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.op-import-type-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-input);
+  padding: 14px;
+  text-align: left;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.op-import-type-card.is-active {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-input));
+}
+
+.op-import-type-card span,
+.op-export-field span,
+.op-export-toolbar strong {
+  color: var(--text-secondary);
+}
+
+.op-import-mapping-wrap,
+.op-import-history-wrap,
+.op-export-section {
+  padding: 14px;
+}
+
+.op-import-diff-line,
+.op-import-warning-line {
+  margin-top: 4px;
+  font-size: 0.78rem;
+}
+
+.op-import-warning-line {
+  color: var(--color-warning);
+}
+
+.op-import-badge.status-error {
+  color: var(--color-danger);
+}
+
+.op-import-badge.status-warning {
+  color: var(--color-warning);
+}
+
+.op-import-badge.status-success {
+  color: var(--color-accent);
+}
+
+.op-import-badge.status-muted {
+  color: var(--text-secondary);
+}
+
+.op-export-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.op-export-toolbar {
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.op-export-toolbar select,
+.op-export-toolbar input {
+  min-height: 36px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  padding: 0 10px;
+}
+
+.op-export-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.op-export-group {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-input);
+  padding: 14px;
+}
+
+.op-export-group h3 {
+  margin: 0 0 10px;
+  font-size: 0.92rem;
+}
+
+.op-export-field-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.op-export-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .is-spinning {
   animation: op-import-spin 1s linear infinite;
 }
@@ -205,6 +322,12 @@
 @media (max-width: 1024px) {
   .op-import-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .op-import-type-grid,
+  .op-export-groups,
+  .op-export-field-list {
+    grid-template-columns: 1fr;
   }
 
   .op-import-toolbar,

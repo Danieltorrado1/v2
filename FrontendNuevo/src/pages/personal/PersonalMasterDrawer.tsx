@@ -6,6 +6,7 @@ import {
   ClipboardList,
   FileText,
   FolderOpen,
+  Landmark,
   Loader2,
   PencilLine,
   ShieldPlus,
@@ -14,40 +15,29 @@ import {
 } from 'lucide-react';
 
 import { configuracionApi } from '../../services/configuracionApi';
-import { getDocumentoDownloadUrl, getDocumentosPersona } from '../../services/documentosApi';
 import {
+  createPersonaCuentaBancaria,
   getPersonaById,
+  getPersonaCuentasBancarias,
+  getPersonaHistorialCambios,
   getPersonaIdentificaciones,
   getVinculacionesByPersonaId,
   updatePersona,
+  updatePersonaCuentaBancaria,
 } from '../../services/personasApi';
-import {
-  crearExamenPersonaSst,
-  listarExamenesOcupacionalesSst,
-  listarExamenesPersonaSst,
-  type CreateSstExamenPersonaRecordPayload,
-  type SstExamenConceptoMedico,
-  type SstExamenOcupacionalRecord,
-  type SstExamenPersonaRecord,
-} from '../../services/sstApi';
+import { updateVinculacion } from '../../services/vinculacionesApi';
 import type {
   CatalogoItem,
   Contrato,
   ContratoCargo,
   Municipio,
 } from '../../types/configuracion.types';
-import type { DocumentoPersonaApi } from '../../types/documentos.types';
-import type {
-  PersonaApi,
-  PersonaIdentificacionApi,
-  VinculacionApi,
-  VinculacionExpedienteApi,
-} from '../../types/personas.types';
+import type { PersonaCuentaBancariaApi, PersonaHistorialCambioApi, PersonaApi, PersonaIdentificacionApi, VinculacionApi, VinculacionExpedienteApi } from '../../types/personas.types';
 import ChangeIdentificationModal from './ChangeIdentificationModal';
 import ExpedienteDocumentosPanel from './ExpedienteDocumentosPanel';
 import './PersonalMasterDrawer.css';
 
-type MasterTab = 'datos' | 'vinculacion' | 'documentos' | 'salud';
+type MasterTab = 'personal' | 'laboral' | 'documentos' | 'historial';
 
 type PersonalFormState = {
   primer_nombre: string;
@@ -69,16 +59,29 @@ type PersonalFormState = {
   contacto_parentesco: string;
   contacto_telefono: string;
   contacto_direccion: string;
+  motivo_cambio: string;
 };
 
-type RequisitoFormState = {
-  examen_id: string;
-  fecha_examen: string;
-  fecha_vencimiento: string;
-  concepto_medico: SstExamenConceptoMedico;
-  restricciones: string;
-  observacion: string;
-  documento_persona_id: string;
+type LaboralFormState = {
+  contrato_cargo_id: string;
+  tipo_vinculacion_id: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  estado_vinculacion: 'ACTIVA' | 'RETIRADA' | 'SUSPENDIDA';
+  motivo_cambio: string;
+};
+
+type BankFormState = {
+  entidad_bancaria: string;
+  tipo_cuenta: 'AHORROS' | 'CORRIENTE' | 'OTRA';
+  numero_cuenta: string;
+  titular: string;
+  nombre_titular: string;
+  documento_titular: string;
+  estado: 'PENDIENTE' | 'VERIFICADA' | 'RECHAZADA' | 'INACTIVA';
+  fecha_verificacion: string;
+  observaciones: string;
+  motivo_cambio: string;
 };
 
 interface PersonalMasterDrawerProps {
@@ -102,10 +105,10 @@ const IDLE_SECTION_STATE: SectionLoadState = { error: '', loading: false };
 const API_MAX_PAGE_SIZE = 100;
 
 const TAB_META: Array<{ id: MasterTab; label: string; icon: typeof UserCircle2 }> = [
-  { id: 'datos', label: 'Datos personales', icon: UserCircle2 },
-  { id: 'vinculacion', label: 'Vinculación', icon: BriefcaseBusiness },
+  { id: 'personal', label: 'Personal', icon: UserCircle2 },
+  { id: 'laboral', label: 'Laboral', icon: BriefcaseBusiness },
   { id: 'documentos', label: 'Documentos', icon: FileText },
-  { id: 'salud', label: 'Salud / Requisitos', icon: ShieldPlus },
+  { id: 'historial', label: 'Historial', icon: ShieldPlus },
 ];
 
 const EMPTY_PERSONAL_FORM: PersonalFormState = {
@@ -128,11 +131,21 @@ const EMPTY_PERSONAL_FORM: PersonalFormState = {
   contacto_parentesco: '',
   contacto_telefono: '',
   contacto_direccion: '',
+  motivo_cambio: '',
 };
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+const EMPTY_BANK_FORM: BankFormState = {
+  entidad_bancaria: '',
+  tipo_cuenta: 'AHORROS',
+  numero_cuenta: '',
+  titular: 'PERSONA',
+  nombre_titular: '',
+  documento_titular: '',
+  estado: 'PENDIENTE',
+  fecha_verificacion: '',
+  observaciones: '',
+  motivo_cambio: '',
+};
 
 function buildNombreCompleto(persona: {
   primer_nombre: string;
@@ -151,10 +164,7 @@ function buildNombreCompleto(persona: {
 }
 
 function formatDate(value: string | null | undefined): string {
-  if (!value) {
-    return 'Sin registrar';
-  }
-
+  if (!value) return 'Sin registrar';
   try {
     return new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' }).format(
       new Date(`${value}T00:00:00`),
@@ -165,15 +175,9 @@ function formatDate(value: string | null | undefined): string {
 }
 
 function formatDateTime(value: string | null | undefined): string {
-  if (!value) {
-    return 'Sin registrar';
-  }
-
+  if (!value) return 'Sin registrar';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
+  if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString('es-CO', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -181,10 +185,7 @@ function formatDateTime(value: string | null | undefined): string {
 }
 
 function displayValue(value: string | number | null | undefined): string {
-  if (value === null || value === undefined || value === '') {
-    return 'Sin registrar';
-  }
-
+  if (value === null || value === undefined || value === '') return 'Sin registrar';
   return String(value);
 }
 
@@ -217,9 +218,7 @@ async function getAllCatalogPages<T>(
 }
 
 function buildPersonalForm(persona: PersonaApi | null): PersonalFormState {
-  if (!persona) {
-    return EMPTY_PERSONAL_FORM;
-  }
+  if (!persona) return EMPTY_PERSONAL_FORM;
 
   return {
     primer_nombre: persona.primer_nombre ?? '',
@@ -241,38 +240,59 @@ function buildPersonalForm(persona: PersonaApi | null): PersonalFormState {
     contacto_parentesco: persona.contacto_emergencia?.parentesco ?? '',
     contacto_telefono: persona.contacto_emergencia?.telefono ?? '',
     contacto_direccion: persona.contacto_emergencia?.direccion ?? '',
+    motivo_cambio: '',
+  };
+}
+
+function buildLaboralForm(expediente: VinculacionExpedienteApi | null): LaboralFormState {
+  return {
+    contrato_cargo_id: expediente?.vinculacion.contrato_cargo_id
+      ? String(expediente.vinculacion.contrato_cargo_id)
+      : '',
+    tipo_vinculacion_id: expediente?.vinculacion.tipo_vinculacion_id
+      ? String(expediente.vinculacion.tipo_vinculacion_id)
+      : '',
+    fecha_inicio: expediente?.vinculacion.fecha_inicio ?? '',
+    fecha_fin: expediente?.vinculacion.fecha_fin ?? '',
+    estado_vinculacion: expediente?.vinculacion.estado_vinculacion ?? 'ACTIVA',
+    motivo_cambio: '',
+  };
+}
+
+function buildBankForm(account: PersonaCuentaBancariaApi | null): BankFormState {
+  if (!account) {
+    return EMPTY_BANK_FORM;
+  }
+
+  return {
+    entidad_bancaria: account.entidad_bancaria,
+    tipo_cuenta: account.tipo_cuenta,
+    numero_cuenta: '',
+    titular: account.titular,
+    nombre_titular: account.nombre_titular ?? '',
+    documento_titular: account.documento_titular ?? '',
+    estado: account.estado,
+    fecha_verificacion: account.fecha_verificacion ?? '',
+    observaciones: account.observaciones ?? '',
+    motivo_cambio: '',
   };
 }
 
 function buildFichaChecklist(persona: PersonaApi | null): string[] {
-  if (!persona) {
-    return [];
-  }
+  if (!persona) return [];
 
   const missing: string[] = [];
-
   if (!persona.identificacion_vigente?.numero_documento && !persona.numero_documento) missing.push('Identificación vigente');
   if (!persona.primer_nombre) missing.push('Primer nombre');
   if (!persona.primer_apellido) missing.push('Primer apellido');
-  if (!persona.fecha_nacimiento) missing.push('Fecha de nacimiento');
   if (!persona.telefono) missing.push('Teléfono');
   if (!persona.correo) missing.push('Correo');
   if (!persona.direccion) missing.push('Dirección');
-  if (!persona.municipio_residencia_id) missing.push('Municipio de residencia');
-
   return missing;
 }
 
-function buildRequisitoForm(): RequisitoFormState {
-  return {
-    examen_id: '',
-    fecha_examen: todayIso(),
-    fecha_vencimiento: '',
-    concepto_medico: 'APTO',
-    restricciones: '',
-    observacion: '',
-    documento_persona_id: '',
-  };
+function hasAnyPermission(current: string[], expected: string[]): boolean {
+  return expected.some((permission) => current.includes(permission));
 }
 
 export default function PersonalMasterDrawer({
@@ -286,41 +306,69 @@ export default function PersonalMasterDrawer({
   tipoDocumentoOptions,
   tipoIdentificacionOptions,
 }: PersonalMasterDrawerProps) {
-  const [activeTab, setActiveTab] = useState<MasterTab>('datos');
+  const [activeTab, setActiveTab] = useState<MasterTab>('personal');
   const [personaDetail, setPersonaDetail] = useState<PersonaApi | null>(null);
   const [identificaciones, setIdentificaciones] = useState<PersonaIdentificacionApi[]>([]);
   const [vinculacionesHistory, setVinculacionesHistory] = useState<VinculacionApi[]>([]);
   const [contratosHistoryMap, setContratosHistoryMap] = useState<Map<number, Contrato>>(new Map());
   const [cargosHistoryMap, setCargosHistoryMap] = useState<Map<number, ContratoCargo>>(new Map());
-  const [documentosPersona, setDocumentosPersona] = useState<DocumentoPersonaApi[]>([]);
-  const [sstCatalog, setSstCatalog] = useState<SstExamenOcupacionalRecord[]>([]);
-  const [sstExamenes, setSstExamenes] = useState<SstExamenPersonaRecord[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<PersonaCuentaBancariaApi[]>([]);
+  const [historyItems, setHistoryItems] = useState<PersonaHistorialCambioApi[]>([]);
   const [datosState, setDatosState] = useState<SectionLoadState>(IDLE_SECTION_STATE);
   const [vinculacionState, setVinculacionState] = useState<SectionLoadState>(IDLE_SECTION_STATE);
-  const [documentosState, setDocumentosState] = useState<SectionLoadState>(IDLE_SECTION_STATE);
-  const [saludState, setSaludState] = useState<SectionLoadState>(IDLE_SECTION_STATE);
+  const [bankState, setBankState] = useState<SectionLoadState>(IDLE_SECTION_STATE);
+  const [historyState, setHistoryState] = useState<SectionLoadState>(IDLE_SECTION_STATE);
   const [datosRetry, setDatosRetry] = useState(0);
   const [vinculacionRetry, setVinculacionRetry] = useState(0);
-  const [documentosRetry, setDocumentosRetry] = useState(0);
-  const [saludRetry, setSaludRetry] = useState(0);
+  const [bankRetry, setBankRetry] = useState(0);
+  const [historyRetry, setHistoryRetry] = useState(0);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
+  const [isEditingLaboral, setIsEditingLaboral] = useState(false);
+  const [isEditingBank, setIsEditingBank] = useState(false);
   const [showIdentificationModal, setShowIdentificationModal] = useState(false);
-  const [showRequisitoForm, setShowRequisitoForm] = useState(false);
   const [savingPersonal, setSavingPersonal] = useState(false);
-  const [savingRequisito, setSavingRequisito] = useState(false);
+  const [savingLaboral, setSavingLaboral] = useState(false);
+  const [savingBank, setSavingBank] = useState(false);
   const [personalError, setPersonalError] = useState('');
-  const [requisitoError, setRequisitoError] = useState('');
+  const [laboralError, setLaboralError] = useState('');
+  const [bankError, setBankError] = useState('');
   const [personalForm, setPersonalForm] = useState<PersonalFormState>(EMPTY_PERSONAL_FORM);
-  const [requisitoForm, setRequisitoForm] = useState<RequisitoFormState>(buildRequisitoForm());
+  const [laboralForm, setLaboralForm] = useState<LaboralFormState>(buildLaboralForm(expediente));
+  const [bankForm, setBankForm] = useState<BankFormState>(EMPTY_BANK_FORM);
   const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [sexos, setSexos] = useState<CatalogoItem[]>([]);
   const [estadosCiviles, setEstadosCiviles] = useState<CatalogoItem[]>([]);
   const [nivelesEstudio, setNivelesEstudio] = useState<CatalogoItem[]>([]);
+  const [tiposVinculacion, setTiposVinculacion] = useState<CatalogoItem[]>([]);
+  const [cargoOptions, setCargoOptions] = useState<ContratoCargo[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
 
-  const canUpdatePersona = permissions.includes('personas.update');
-  const canReadSst = permissions.includes('sst.examenes.read');
-  const canWriteSst = permissions.includes('sst.examenes.write');
+  const canUpdatePersona = hasAnyPermission(permissions, [
+    'personas.update',
+    'persona.editar',
+    'persona.editar_contacto',
+    'persona.editar_identidad',
+  ]);
+  const canUpdateVinculacion = hasAnyPermission(permissions, [
+    'vinculaciones.update',
+    'vinculacion.editar',
+    'vinculacion.editar_cargo',
+    'vinculacion.editar_fechas',
+    'vinculacion.editar_estado',
+  ]);
+  const canReadBank = hasAnyPermission(permissions, [
+    'personas.update',
+    'bancario.ver',
+    'bancario.editar',
+    'bancario.verificar',
+    'bancario.ver_numero_completo',
+  ]);
+  const canWriteBank = hasAnyPermission(permissions, [
+    'personas.update',
+    'bancario.editar',
+    'bancario.verificar',
+  ]);
+
   const municipioMap = useMemo(() => toOptionMap(municipios), [municipios]);
   const sexosMap = useMemo(() => toOptionMap(sexos), [sexos]);
   const estadosCivilesMap = useMemo(() => toOptionMap(estadosCiviles), [estadosCiviles]);
@@ -334,41 +382,43 @@ export default function PersonalMasterDrawer({
         ? { label: fichaCompleta ? 'Ficha completa' : 'Ficha incompleta', tone: fichaCompleta ? 'ok' : 'warn' }
         : { label: 'Verificando ficha...', tone: 'loading' };
   const currentIdentification = personaDetail?.identificacion_vigente ?? identificaciones.find((item) => item.es_vigente) ?? null;
+  const currentBankAccount = bankAccounts.find((item) => item.es_vigente) ?? bankAccounts[0] ?? null;
 
   useEffect(() => {
-    setActiveTab('datos');
+    setActiveTab('personal');
     setIsEditingPersonal(false);
+    setIsEditingLaboral(false);
+    setIsEditingBank(false);
     setShowIdentificationModal(false);
-    setShowRequisitoForm(false);
     setPersonalError('');
-    setRequisitoError('');
+    setLaboralError('');
+    setBankError('');
   }, [expediente?.vinculacion.id]);
+
+  useEffect(() => {
+    setLaboralForm(buildLaboralForm(expediente));
+  }, [expediente]);
+
+  useEffect(() => {
+    setBankForm(buildBankForm(currentBankAccount));
+  }, [currentBankAccount]);
 
   useEffect(() => {
     if (!expediente) {
       setPersonaDetail(null);
       setIdentificaciones([]);
-      setVinculacionesHistory([]);
-      setContratosHistoryMap(new Map());
-      setCargosHistoryMap(new Map());
-      setDocumentosPersona([]);
-      setSstCatalog([]);
-      setSstExamenes([]);
       setDatosState(IDLE_SECTION_STATE);
-      setVinculacionState(IDLE_SECTION_STATE);
-      setDocumentosState(IDLE_SECTION_STATE);
-      setSaludState(IDLE_SECTION_STATE);
       return;
     }
 
     let cancelled = false;
-    const activeExpediente = expediente;
+    const personaId = expediente.persona.id;
 
-    async function loadDatos() {
+    void (async () => {
       setDatosState({ loading: true, error: '' });
       const [personaResult, identificacionesResult] = await Promise.allSettled([
-        getPersonaById(activeExpediente.persona.id),
-        getPersonaIdentificaciones(activeExpediente.persona.id),
+        getPersonaById(personaId),
+        getPersonaIdentificaciones(personaId),
       ]);
       if (cancelled) return;
 
@@ -378,21 +428,18 @@ export default function PersonalMasterDrawer({
       } else {
         setPersonaDetail(null);
       }
-      if (identificacionesResult.status === 'fulfilled') {
-        setIdentificaciones(identificacionesResult.value);
-      } else {
-        setIdentificaciones([]);
-      }
 
-      const errorMessage = personaResult.status === 'rejected'
-        ? 'No fue posible cargar los datos personales.'
-        : identificacionesResult.status === 'rejected'
-          ? 'No fue posible cargar el historial de identificaciones.'
-          : '';
-      setDatosState({ loading: false, error: errorMessage });
-    }
-
-    void loadDatos();
+      setIdentificaciones(identificacionesResult.status === 'fulfilled' ? identificacionesResult.value : []);
+      setDatosState({
+        loading: false,
+        error:
+          personaResult.status === 'rejected'
+            ? 'No fue posible cargar la ficha maestra.'
+            : identificacionesResult.status === 'rejected'
+              ? 'No fue posible cargar el historial de identificaciones.'
+              : '',
+      });
+    })();
 
     return () => {
       cancelled = true;
@@ -400,14 +447,21 @@ export default function PersonalMasterDrawer({
   }, [datosRetry, expediente]);
 
   useEffect(() => {
-    if (!expediente) return;
-    let cancelled = false;
-    const activeExpediente = expediente;
+    if (!expediente) {
+      setVinculacionesHistory([]);
+      setContratosHistoryMap(new Map());
+      setCargosHistoryMap(new Map());
+      setVinculacionState(IDLE_SECTION_STATE);
+      return;
+    }
 
-    async function loadVinculaciones() {
+    let cancelled = false;
+    const personaId = expediente.persona.id;
+
+    void (async () => {
       setVinculacionState({ loading: true, error: '' });
       try {
-        const vinculacionesResult = await getVinculacionesByPersonaId(activeExpediente.persona.id);
+        const vinculacionesResult = await getVinculacionesByPersonaId(personaId);
         const contractIds = Array.from(new Set(vinculacionesResult.map((item) => item.contrato_id)));
         const cargoIds = Array.from(new Set(vinculacionesResult.map((item) => item.contrato_cargo_id)));
         const [contratosResult, cargosResult] = await Promise.all([
@@ -418,93 +472,102 @@ export default function PersonalMasterDrawer({
         setVinculacionesHistory(vinculacionesResult);
         setContratosHistoryMap(new Map(contratosResult.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])));
         setCargosHistoryMap(new Map(cargosResult.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])));
-        const hasMetadataError = [...contratosResult, ...cargosResult].some((result) => result.status === 'rejected');
-        setVinculacionState({ loading: false, error: hasMetadataError ? 'Algunos detalles del historial contractual no pudieron cargarse.' : '' });
+        setVinculacionState({
+          loading: false,
+          error: [...contratosResult, ...cargosResult].some((result) => result.status === 'rejected')
+            ? 'Algunos detalles del historial contractual no pudieron cargarse.'
+            : '',
+        });
       } catch {
         if (!cancelled) {
           setVinculacionesHistory([]);
           setVinculacionState({ loading: false, error: 'No fue posible cargar las vinculaciones.' });
         }
       }
-    }
+    })();
 
-    void loadVinculaciones();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [expediente, vinculacionRetry]);
 
   useEffect(() => {
-    if (!expediente) return;
-    let cancelled = false;
-    const personaId = expediente.persona.id;
-    setDocumentosState({ loading: true, error: '' });
-    void getDocumentosPersona(personaId)
-      .then((result) => {
-        if (!cancelled) {
-          setDocumentosPersona(result);
-          setDocumentosState({ loading: false, error: '' });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setDocumentosPersona([]);
-          setDocumentosState({ loading: false, error: 'No fue posible cargar los documentos.' });
-        }
-      });
-    return () => { cancelled = true; };
-  }, [documentosRetry, expediente]);
-
-  useEffect(() => {
-    if (!expediente) return;
-    if (!canReadSst) {
-      setSstExamenes([]);
-      setSstCatalog([]);
-      setSaludState(IDLE_SECTION_STATE);
-      return;
-    }
-    let cancelled = false;
-    const activeExpediente = expediente;
-    setSaludState({ loading: true, error: '' });
-
-    void Promise.allSettled([
-      listarExamenesPersonaSst({ persona_id: activeExpediente.persona.id, page: 1, limit: API_MAX_PAGE_SIZE, activo: true }),
-      listarExamenesOcupacionalesSst({
-        empresa_id: activeExpediente.empresa.id,
-        contrato_id: activeExpediente.contrato.id,
-        activo: true,
-        page: 1,
-        limit: API_MAX_PAGE_SIZE,
-      }),
-    ]).then(([examenesResult, catalogoResult]) => {
-      if (cancelled) return;
-      setSstExamenes(examenesResult.status === 'fulfilled' ? examenesResult.value.items : []);
-      setSstCatalog(catalogoResult.status === 'fulfilled' ? catalogoResult.value.items : []);
-      const failed = Number(examenesResult.status === 'rejected') + Number(catalogoResult.status === 'rejected');
-      setSaludState({
-        loading: false,
-        error: failed === 0 ? '' : failed === 2
-          ? 'No fue posible cargar los requisitos de salud.'
-          : 'Parte de la información de salud no pudo cargarse.',
-      });
-    });
-    return () => { cancelled = true; };
-  }, [canReadSst, expediente, saludRetry]);
-
-  useEffect(() => {
-    if (!isEditingPersonal && !showIdentificationModal) {
-      return;
-    }
-
-    if (municipios.length > 0 && sexos.length > 0 && estadosCiviles.length > 0 && nivelesEstudio.length > 0) {
+    if (!expediente || !canReadBank) {
+      setBankAccounts([]);
+      setBankState(IDLE_SECTION_STATE);
       return;
     }
 
     let cancelled = false;
-
-    async function loadCatalogs() {
-      setCatalogLoading(true);
-
+    void (async () => {
+      setBankState({ loading: true, error: '' });
       try {
-        const [municipiosResult, sexosResult, estadosCivilesResult, nivelesEstudioResult] = await Promise.all([
+        const result = await getPersonaCuentasBancarias(expediente.persona.id);
+        if (!cancelled) {
+          setBankAccounts(result);
+          setBankState({ loading: false, error: '' });
+        }
+      } catch {
+        if (!cancelled) {
+          setBankAccounts([]);
+          setBankState({ loading: false, error: 'No fue posible cargar la información bancaria.' });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bankRetry, canReadBank, expediente]);
+
+  useEffect(() => {
+    if (!expediente) {
+      setHistoryItems([]);
+      setHistoryState(IDLE_SECTION_STATE);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      setHistoryState({ loading: true, error: '' });
+      try {
+        const result = await getPersonaHistorialCambios(expediente.persona.id, 80);
+        if (!cancelled) {
+          setHistoryItems(result);
+          setHistoryState({ loading: false, error: '' });
+        }
+      } catch {
+        if (!cancelled) {
+          setHistoryItems([]);
+          setHistoryState({ loading: false, error: 'No fue posible cargar el historial de cambios.' });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [expediente, historyRetry]);
+
+  useEffect(() => {
+    if (!expediente || (!isEditingPersonal && !isEditingLaboral)) {
+      return;
+    }
+
+    let cancelled = false;
+    const contratoId = expediente.contrato.id;
+
+    void (async () => {
+      setCatalogLoading(true);
+      try {
+        const [
+          municipiosResult,
+          sexosResult,
+          estadosCivilesResult,
+          nivelesEstudioResult,
+          tiposVinculacionResult,
+          cargosResult,
+        ] = await Promise.all([
           municipios.length > 0
             ? Promise.resolve(municipios)
             : getAllCatalogPages((page, limit) => configuracionApi.listarMunicipios({ page, limit, activo: true })),
@@ -517,37 +580,30 @@ export default function PersonalMasterDrawer({
           nivelesEstudio.length > 0
             ? Promise.resolve(nivelesEstudio)
             : getAllCatalogPages((page, limit) => configuracionApi.listarNivelesEstudio({ page, limit })),
+          tiposVinculacion.length > 0
+            ? Promise.resolve(tiposVinculacion)
+            : getAllCatalogPages((page, limit) => configuracionApi.listarTiposVinculacion({ page, limit })),
+          configuracionApi.listarCargos({ contrato_id: contratoId, activo: true, page: 1, limit: 200 }).then((result) => result.items),
         ]);
 
-        if (cancelled) {
-          return;
-        }
-
+        if (cancelled) return;
         setMunicipios(municipiosResult);
         setSexos(sexosResult);
         setEstadosCiviles(estadosCivilesResult);
         setNivelesEstudio(nivelesEstudioResult);
+        setTiposVinculacion(tiposVinculacionResult);
+        setCargoOptions(cargosResult);
       } finally {
         if (!cancelled) {
           setCatalogLoading(false);
         }
       }
-    }
-
-    void loadCatalogs();
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [estadosCiviles, isEditingPersonal, municipios, nivelesEstudio, sexos, showIdentificationModal]);
-
-  useEffect(() => {
-    if (!personaDetail) {
-      return;
-    }
-
-    setPersonalForm(buildPersonalForm(personaDetail));
-  }, [personaDetail]);
+  }, [expediente, isEditingLaboral, isEditingPersonal, municipios, sexos, estadosCiviles, nivelesEstudio, tiposVinculacion]);
 
   if (!expediente) {
     return null;
@@ -555,16 +611,22 @@ export default function PersonalMasterDrawer({
 
   const activeExpediente = expediente;
 
-  function setFormField<K extends keyof PersonalFormState>(field: K, value: PersonalFormState[K]) {
+  function setPersonalField<K extends keyof PersonalFormState>(field: K, value: PersonalFormState[K]) {
     setPersonalForm((current) => ({ ...current, [field]: value }));
   }
 
-  function setRequisitoField<K extends keyof RequisitoFormState>(field: K, value: RequisitoFormState[K]) {
-    setRequisitoForm((current) => ({ ...current, [field]: value }));
+  function setLaboralField<K extends keyof LaboralFormState>(field: K, value: LaboralFormState[K]) {
+    setLaboralForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function setBankField<K extends keyof BankFormState>(field: K, value: BankFormState[K]) {
+    setBankForm((current) => ({ ...current, [field]: value }));
   }
 
   async function handleSavePersonal() {
-    if (!personaDetail) {
+    if (!personaDetail) return;
+    if (!personalForm.motivo_cambio.trim()) {
+      setPersonalError('El motivo es obligatorio para guardar cambios de persona.');
       return;
     }
 
@@ -572,7 +634,7 @@ export default function PersonalMasterDrawer({
     setPersonalError('');
 
     try {
-      const nivelEstudioOption = nivelesEstudio.find((item) => String(item.id) === personalForm.nivel_escolaridad);
+      const nivelEstudioOption = nivelesEstudio.find((item) => item.label === personalForm.nivel_escolaridad);
       await updatePersona(personaDetail.id, {
         primer_nombre: personalForm.primer_nombre.trim(),
         segundo_nombre: personalForm.segundo_nombre.trim() || null,
@@ -587,6 +649,7 @@ export default function PersonalMasterDrawer({
         barrio: personalForm.barrio.trim() || null,
         municipio_residencia_id: personalForm.municipio_residencia_id ? Number(personalForm.municipio_residencia_id) : null,
         pais_nacimiento: personalForm.pais_nacimiento.trim() || null,
+        motivo_cambio: personalForm.motivo_cambio.trim(),
         contacto_emergencia:
           personalForm.contacto_nombre.trim() ||
           personalForm.contacto_parentesco.trim() ||
@@ -601,18 +664,22 @@ export default function PersonalMasterDrawer({
               }
             : null,
         perfil_demografico:
-          personalForm.nacionalidad.trim() || nivelEstudioOption
+          personalForm.nacionalidad.trim() || personalForm.nivel_escolaridad.trim()
             ? {
                 nacionalidad: personalForm.nacionalidad.trim() || null,
-                nivel_escolaridad: nivelEstudioOption?.label ?? (personalForm.nivel_escolaridad || null),
+                nivel_escolaridad:
+                  nivelEstudioOption?.label ??
+                  (personalForm.nivel_escolaridad.trim() || null),
               }
             : null,
       });
 
       const refreshedPersona = await getPersonaById(personaDetail.id);
       setPersonaDetail(refreshedPersona);
+      setPersonalForm(buildPersonalForm(refreshedPersona));
       setIsEditingPersonal(false);
       onRefresh();
+      setHistoryRetry((value) => value + 1);
     } catch (saveError) {
       setPersonalError(saveError instanceof Error ? saveError.message : 'No fue posible guardar los datos personales.');
     } finally {
@@ -620,55 +687,85 @@ export default function PersonalMasterDrawer({
     }
   }
 
-  async function handleCreateRequisito() {
-    if (!personaDetail) {
+  async function handleSaveLaboral() {
+    if (!laboralForm.motivo_cambio.trim()) {
+      setLaboralError('El motivo es obligatorio para guardar cambios de vinculación.');
       return;
     }
 
-    if (!requisitoForm.examen_id || !requisitoForm.fecha_examen) {
-      setRequisitoError('Selecciona el tipo de requisito y la fecha de realización.');
-      return;
-    }
-
-    setSavingRequisito(true);
-    setRequisitoError('');
+    setSavingLaboral(true);
+    setLaboralError('');
 
     try {
-      const payload: CreateSstExamenPersonaRecordPayload = {
-        examen_id: Number(requisitoForm.examen_id),
-        persona_id: personaDetail.id,
-        vinculacion_id: activeExpediente.vinculacion.id,
-        fecha_examen: requisitoForm.fecha_examen,
-        fecha_vencimiento: requisitoForm.fecha_vencimiento || null,
-        concepto_medico: requisitoForm.concepto_medico,
-        restricciones: requisitoForm.restricciones.trim() || null,
-        observacion: requisitoForm.observacion.trim() || null,
-        documento_persona_id: requisitoForm.documento_persona_id ? Number(requisitoForm.documento_persona_id) : null,
-      };
-
-      await crearExamenPersonaSst(payload);
-      const refreshed = await listarExamenesPersonaSst({
-        persona_id: personaDetail.id,
-        page: 1,
-        limit: API_MAX_PAGE_SIZE,
-        activo: true,
+      await updateVinculacion(activeExpediente.vinculacion.id, {
+        contrato_cargo_id: laboralForm.contrato_cargo_id ? Number(laboralForm.contrato_cargo_id) : undefined,
+        tipo_vinculacion_id: laboralForm.tipo_vinculacion_id ? Number(laboralForm.tipo_vinculacion_id) : undefined,
+        fecha_inicio: laboralForm.fecha_inicio || undefined,
+        fecha_fin: laboralForm.fecha_fin || null,
+        estado_vinculacion: laboralForm.estado_vinculacion,
+        motivo_cambio: laboralForm.motivo_cambio.trim(),
       });
-      setSstExamenes(refreshed.items);
-      setShowRequisitoForm(false);
-      setRequisitoForm(buildRequisitoForm());
+
+      setIsEditingLaboral(false);
+      onRefresh();
+      setVinculacionRetry((value) => value + 1);
+      setHistoryRetry((value) => value + 1);
     } catch (saveError) {
-      setRequisitoError(saveError instanceof Error ? saveError.message : 'No fue posible registrar el requisito.');
+      setLaboralError(saveError instanceof Error ? saveError.message : 'No fue posible guardar la vinculación.');
     } finally {
-      setSavingRequisito(false);
+      setSavingLaboral(false);
     }
   }
 
-  async function handleOpenDocumento(documentoId: string) {
-    const response = await getDocumentoDownloadUrl(documentoId, 'PERSONA');
-    window.open(response.download_url, '_blank', 'noopener,noreferrer');
+  async function handleSaveBank() {
+    if (!activeExpediente.persona.id) return;
+    if (!bankForm.entidad_bancaria.trim() || !bankForm.numero_cuenta.trim()) {
+      setBankError('Banco y número de cuenta son obligatorios.');
+      return;
+    }
+    if (!bankForm.motivo_cambio.trim()) {
+      setBankError('El motivo es obligatorio para guardar información bancaria.');
+      return;
+    }
+
+    setSavingBank(true);
+    setBankError('');
+
+    try {
+      const payload = {
+        entidad_bancaria: bankForm.entidad_bancaria.trim(),
+        tipo_cuenta: bankForm.tipo_cuenta,
+        numero_cuenta: bankForm.numero_cuenta.trim(),
+        titular: bankForm.titular.trim() || 'PERSONA',
+        nombre_titular: bankForm.nombre_titular.trim() || null,
+        documento_titular: bankForm.documento_titular.trim() || null,
+        estado: bankForm.estado,
+        fecha_verificacion: bankForm.fecha_verificacion || null,
+        observaciones: bankForm.observaciones.trim() || null,
+        motivo_cambio: bankForm.motivo_cambio.trim(),
+      } as const;
+
+      if (currentBankAccount) {
+        await updatePersonaCuentaBancaria(activeExpediente.persona.id, currentBankAccount.id, payload);
+      } else {
+        await createPersonaCuentaBancaria(activeExpediente.persona.id, {
+          ...payload,
+          marcar_como_vigente: true,
+        });
+      }
+
+      setIsEditingBank(false);
+      setBankForm(EMPTY_BANK_FORM);
+      setBankRetry((value) => value + 1);
+      setHistoryRetry((value) => value + 1);
+    } catch (saveError) {
+      setBankError(saveError instanceof Error ? saveError.message : 'No fue posible guardar la información bancaria.');
+    } finally {
+      setSavingBank(false);
+    }
   }
 
-  function renderDatosTab() {
+  function renderPersonalTab() {
     if (datosState.loading && !personaDetail) {
       return <StateBlock message="Cargando ficha maestra..." />;
     }
@@ -687,22 +784,13 @@ export default function PersonalMasterDrawer({
           <div className="pmd-card-header">
             <div>
               <h3>Identificación</h3>
-              <p>La identificación vigente se conserva con historial.</p>
+              <p>La identificación vigente se conserva con historial auditable.</p>
             </div>
-            <button
-              type="button"
-              className="pmd-button ghost"
-              onClick={() => setShowIdentificationModal(true)}
-              disabled={!canUpdatePersona}
-            >
+            <button type="button" className="pmd-button ghost" onClick={() => setShowIdentificationModal(true)} disabled={!canUpdatePersona}>
               <ClipboardList size={15} />
               Cambiar identificación
             </button>
           </div>
-
-          {datosState.error && (
-            <StateBlock tone="error" message={datosState.error} compact onAction={() => setDatosRetry((value) => value + 1)} />
-          )}
 
           <div className="pmd-info-grid compact-four">
             <DataItem label="Tipo de identificación" value={currentIdentification?.tipo_documento_nombre ?? `Tipo ${currentIdentification?.tipo_documento_id ?? activeExpediente.persona.tipo_documento_id ?? '—'}`} />
@@ -711,35 +799,33 @@ export default function PersonalMasterDrawer({
             <DataItem label="Lugar de expedición" value={currentIdentification?.municipio_expedicion_nombre ?? 'Sin registrar'} />
           </div>
 
-          {identificaciones.length > 1 && <details className="pmd-inline-history">
-            <summary>Ver historial de identificaciones ({identificaciones.length})</summary>
-            <div className="pmd-history-list">
-            {identificaciones.map((item) => (
-              <div key={item.id} className="pmd-history-item">
-                <div className="pmd-history-head">
-                  <strong>
-                    {item.tipo_documento_nombre ?? `Tipo ${item.tipo_documento_id}`} · {item.numero_documento}
-                  </strong>
-                  <span className={`pmd-inline-badge ${item.es_vigente ? 'ok' : 'muted'}`}>
-                    {item.es_vigente ? 'Vigente' : 'Histórica'}
-                  </span>
-                </div>
-                <div className="pmd-history-meta">
-                  <span>Motivo: {item.motivo_cambio}</span>
-                  <span>Desde: {formatDateTime(item.vigente_desde)}</span>
-                  <span>Hasta: {formatDateTime(item.vigente_hasta)}</span>
-                </div>
+          {identificaciones.length > 1 && (
+            <details className="pmd-inline-history">
+              <summary>Ver historial de identificaciones ({identificaciones.length})</summary>
+              <div className="pmd-history-list">
+                {identificaciones.map((item) => (
+                  <div key={item.id} className="pmd-history-item">
+                    <div className="pmd-history-head">
+                      <strong>{item.tipo_documento_nombre ?? `Tipo ${item.tipo_documento_id}`} · {item.numero_documento}</strong>
+                      <span className={`pmd-inline-badge ${item.es_vigente ? 'ok' : 'muted'}`}>{item.es_vigente ? 'Vigente' : 'Histórica'}</span>
+                    </div>
+                    <div className="pmd-history-meta">
+                      <span>Motivo: {item.motivo_cambio}</span>
+                      <span>Desde: {formatDateTime(item.vigente_desde)}</span>
+                      <span>Hasta: {formatDateTime(item.vigente_hasta)}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-            </div>
-          </details>}
+            </details>
+          )}
         </section>
 
         <section className="pmd-card">
           <div className="pmd-card-header">
             <div>
-              <h3>Información personal</h3>
-              <p>Consulta rápida de identidad, contacto y residencia.</p>
+              <h3>Datos personales</h3>
+              <p>La ficha maestra se edita por bloques compactos, con motivo obligatorio.</p>
             </div>
             <button
               type="button"
@@ -752,138 +838,81 @@ export default function PersonalMasterDrawer({
               disabled={!canUpdatePersona}
             >
               <PencilLine size={15} />
-              {isEditingPersonal ? 'Cancelar edición' : 'Editar datos'}
+              {isEditingPersonal ? 'Cancelar edición' : 'Editar persona'}
             </button>
           </div>
 
           {isEditingPersonal ? (
             <div className="pmd-edit-layout">
               <div className="pmd-grid two">
-                <Field label="Primer nombre *">
-                  <input value={personalForm.primer_nombre} onChange={(event) => setFormField('primer_nombre', event.target.value)} />
-                </Field>
-                <Field label="Segundo nombre">
-                  <input value={personalForm.segundo_nombre} onChange={(event) => setFormField('segundo_nombre', event.target.value)} />
-                </Field>
-                <Field label="Primer apellido *">
-                  <input value={personalForm.primer_apellido} onChange={(event) => setFormField('primer_apellido', event.target.value)} />
-                </Field>
-                <Field label="Segundo apellido">
-                  <input value={personalForm.segundo_apellido} onChange={(event) => setFormField('segundo_apellido', event.target.value)} />
-                </Field>
-                <Field label="Fecha de nacimiento">
-                  <input type="date" value={personalForm.fecha_nacimiento} onChange={(event) => setFormField('fecha_nacimiento', event.target.value)} />
-                </Field>
-                <Field label="Sexo">
-                  <select value={personalForm.sexo_id} onChange={(event) => setFormField('sexo_id', event.target.value)} disabled={catalogLoading}>
-                    <option value="">Sin registrar</option>
-                    {sexos.map((item) => (
-                      <option key={item.id} value={item.id}>{item.label}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Estado civil">
-                  <select value={personalForm.estado_civil_id} onChange={(event) => setFormField('estado_civil_id', event.target.value)} disabled={catalogLoading}>
-                    <option value="">Sin registrar</option>
-                    {estadosCiviles.map((item) => (
-                      <option key={item.id} value={item.id}>{item.label}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Teléfono">
-                  <input value={personalForm.telefono} onChange={(event) => setFormField('telefono', event.target.value)} />
-                </Field>
-                <Field label="Correo electrónico">
-                  <input type="email" value={personalForm.correo} onChange={(event) => setFormField('correo', event.target.value)} />
-                </Field>
-                <Field label="Dirección">
-                  <input value={personalForm.direccion} onChange={(event) => setFormField('direccion', event.target.value)} />
-                </Field>
-                <Field label="Barrio">
-                  <input value={personalForm.barrio} onChange={(event) => setFormField('barrio', event.target.value)} />
-                </Field>
-                <Field label="Municipio de residencia">
-                  <select value={personalForm.municipio_residencia_id} onChange={(event) => setFormField('municipio_residencia_id', event.target.value)} disabled={catalogLoading}>
-                    <option value="">Sin registrar</option>
-                    {municipios.map((item) => (
-                      <option key={item.id} value={item.id}>{item.label}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="País de nacimiento">
-                  <input value={personalForm.pais_nacimiento} onChange={(event) => setFormField('pais_nacimiento', event.target.value)} />
-                </Field>
-                <Field label="Nacionalidad">
-                  <input value={personalForm.nacionalidad} onChange={(event) => setFormField('nacionalidad', event.target.value)} />
-                </Field>
-                <Field label="Nivel educativo">
-                  <select value={personalForm.nivel_escolaridad} onChange={(event) => setFormField('nivel_escolaridad', event.target.value)} disabled={catalogLoading}>
-                    <option value="">Sin registrar</option>
-                    {nivelesEstudio.map((item) => (
-                      <option key={item.id} value={item.id}>{item.label}</option>
-                    ))}
-                  </select>
-                </Field>
+                <Field label="Primer nombre *"><input value={personalForm.primer_nombre} onChange={(event) => setPersonalField('primer_nombre', event.target.value)} /></Field>
+                <Field label="Segundo nombre"><input value={personalForm.segundo_nombre} onChange={(event) => setPersonalField('segundo_nombre', event.target.value)} /></Field>
+                <Field label="Primer apellido *"><input value={personalForm.primer_apellido} onChange={(event) => setPersonalField('primer_apellido', event.target.value)} /></Field>
+                <Field label="Segundo apellido"><input value={personalForm.segundo_apellido} onChange={(event) => setPersonalField('segundo_apellido', event.target.value)} /></Field>
+                <Field label="Fecha de nacimiento"><input type="date" value={personalForm.fecha_nacimiento} onChange={(event) => setPersonalField('fecha_nacimiento', event.target.value)} /></Field>
+                <Field label="Sexo"><select value={personalForm.sexo_id} onChange={(event) => setPersonalField('sexo_id', event.target.value)} disabled={catalogLoading}><option value="">Sin registrar</option>{sexos.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
+                <Field label="Estado civil"><select value={personalForm.estado_civil_id} onChange={(event) => setPersonalField('estado_civil_id', event.target.value)} disabled={catalogLoading}><option value="">Sin registrar</option>{estadosCiviles.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
+                <Field label="Teléfono"><input value={personalForm.telefono} onChange={(event) => setPersonalField('telefono', event.target.value)} /></Field>
+                <Field label="Correo electrónico"><input type="email" value={personalForm.correo} onChange={(event) => setPersonalField('correo', event.target.value)} /></Field>
+                <Field label="Dirección"><input value={personalForm.direccion} onChange={(event) => setPersonalField('direccion', event.target.value)} /></Field>
+                <Field label="Barrio"><input value={personalForm.barrio} onChange={(event) => setPersonalField('barrio', event.target.value)} /></Field>
+                <Field label="Municipio de residencia"><select value={personalForm.municipio_residencia_id} onChange={(event) => setPersonalField('municipio_residencia_id', event.target.value)} disabled={catalogLoading}><option value="">Sin registrar</option>{municipios.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
+                <Field label="País de nacimiento"><input value={personalForm.pais_nacimiento} onChange={(event) => setPersonalField('pais_nacimiento', event.target.value)} /></Field>
+                <Field label="Nacionalidad"><input value={personalForm.nacionalidad} onChange={(event) => setPersonalField('nacionalidad', event.target.value)} /></Field>
+                <Field label="Nivel educativo"><input value={personalForm.nivel_escolaridad} onChange={(event) => setPersonalField('nivel_escolaridad', event.target.value)} /></Field>
               </div>
 
               <div className="pmd-subcard">
                 <h4>Contacto de emergencia</h4>
                 <div className="pmd-grid two">
-                  <Field label="Nombre">
-                    <input value={personalForm.contacto_nombre} onChange={(event) => setFormField('contacto_nombre', event.target.value)} />
-                  </Field>
-                  <Field label="Parentesco">
-                    <input value={personalForm.contacto_parentesco} onChange={(event) => setFormField('contacto_parentesco', event.target.value)} />
-                  </Field>
-                  <Field label="Teléfono">
-                    <input value={personalForm.contacto_telefono} onChange={(event) => setFormField('contacto_telefono', event.target.value)} />
-                  </Field>
-                  <Field label="Dirección">
-                    <input value={personalForm.contacto_direccion} onChange={(event) => setFormField('contacto_direccion', event.target.value)} />
-                  </Field>
+                  <Field label="Nombre"><input value={personalForm.contacto_nombre} onChange={(event) => setPersonalField('contacto_nombre', event.target.value)} /></Field>
+                  <Field label="Parentesco"><input value={personalForm.contacto_parentesco} onChange={(event) => setPersonalField('contacto_parentesco', event.target.value)} /></Field>
+                  <Field label="Teléfono"><input value={personalForm.contacto_telefono} onChange={(event) => setPersonalField('contacto_telefono', event.target.value)} /></Field>
+                  <Field label="Dirección"><input value={personalForm.contacto_direccion} onChange={(event) => setPersonalField('contacto_direccion', event.target.value)} /></Field>
                 </div>
               </div>
+
+              <Field label="Motivo del cambio *">
+                <textarea value={personalForm.motivo_cambio} onChange={(event) => setPersonalField('motivo_cambio', event.target.value)} />
+              </Field>
 
               {personalError && <StateBlock tone="error" message={personalError} compact />}
 
               <div className="pmd-actions-row">
-                <button type="button" className="pmd-button secondary" onClick={() => setIsEditingPersonal(false)}>
-                  Cancelar
-                </button>
+                <button type="button" className="pmd-button secondary" onClick={() => setIsEditingPersonal(false)}>Cancelar</button>
                 <button type="button" className="pmd-button primary" onClick={() => { void handleSavePersonal(); }} disabled={savingPersonal}>
                   {savingPersonal ? <Loader2 size={15} className="spin" /> : <CheckCircle2 size={15} />}
-                  Guardar cambios
+                  Guardar persona
                 </button>
               </div>
             </div>
           ) : (
             <div className="pmd-profile-sections">
               <section className="pmd-info-section">
-                <h4>Información personal</h4>
+                <h4>Datos personales</h4>
                 <div className="pmd-info-grid compact-three">
-                <DataItem label="Primer nombre" value={personaDetail.primer_nombre} />
-                <DataItem label="Segundo nombre" value={displayValue(personaDetail.segundo_nombre)} />
-                <DataItem label="Primer apellido" value={personaDetail.primer_apellido} />
-                <DataItem label="Segundo apellido" value={displayValue(personaDetail.segundo_apellido)} />
-                <DataItem label="Fecha de nacimiento" value={formatDate(personaDetail.fecha_nacimiento)} />
-                <DataItem label="Sexo" value={personaDetail.sexo_id ? sexosMap.get(personaDetail.sexo_id)?.label ?? displayValue(activeExpediente.persona.sexo) : displayValue(activeExpediente.persona.sexo)} />
-                <DataItem label="Estado civil" value={personaDetail.estado_civil_id ? estadosCivilesMap.get(personaDetail.estado_civil_id)?.label ?? displayValue(activeExpediente.persona.estado_civil) : displayValue(activeExpediente.persona.estado_civil)} />
-                <DataItem label="Tipo de sangre" value={displayValue(activeExpediente.persona.tipo_sangre)} />
-                <DataItem label="Estatura" value={personaDetail.estatura == null ? 'Sin registrar' : `${personaDetail.estatura} cm`} />
-                <DataItem label="Nacionalidad" value={displayValue(personaDetail.perfil_demografico?.nacionalidad)} />
-                <DataItem label="Nivel educativo" value={displayValue(personaDetail.perfil_demografico?.nivel_escolaridad)} />
+                  <DataItem label="Primer nombre" value={personaDetail.primer_nombre} />
+                  <DataItem label="Segundo nombre" value={displayValue(personaDetail.segundo_nombre)} />
+                  <DataItem label="Primer apellido" value={personaDetail.primer_apellido} />
+                  <DataItem label="Segundo apellido" value={displayValue(personaDetail.segundo_apellido)} />
+                  <DataItem label="Fecha de nacimiento" value={formatDate(personaDetail.fecha_nacimiento)} />
+                  <DataItem label="Sexo" value={personaDetail.sexo_id ? sexosMap.get(personaDetail.sexo_id)?.label ?? displayValue(activeExpediente.persona.sexo) : displayValue(activeExpediente.persona.sexo)} />
+                  <DataItem label="Estado civil" value={personaDetail.estado_civil_id ? estadosCivilesMap.get(personaDetail.estado_civil_id)?.label ?? displayValue(activeExpediente.persona.estado_civil) : displayValue(activeExpediente.persona.estado_civil)} />
+                  <DataItem label="Tipo de sangre" value={displayValue(activeExpediente.persona.tipo_sangre)} />
+                  <DataItem label="Nacionalidad" value={displayValue(personaDetail.perfil_demografico?.nacionalidad)} />
+                  <DataItem label="Nivel educativo" value={displayValue(personaDetail.perfil_demografico?.nivel_escolaridad)} />
                 </div>
               </section>
 
               <section className="pmd-info-section">
-                <h4>Contacto y residencia</h4>
+                <h4>Contacto</h4>
                 <div className="pmd-info-grid compact-three">
-                <DataItem label="Teléfono" value={displayValue(personaDetail.telefono)} />
-                <DataItem label="Correo" value={displayValue(personaDetail.correo)} />
-                <DataItem label="Dirección" value={displayValue(personaDetail.direccion)} />
-                <DataItem label="Barrio" value={displayValue(personaDetail.barrio)} />
-                <DataItem label="Municipio de residencia" value={personaDetail.municipio_residencia_id ? municipioMap.get(personaDetail.municipio_residencia_id)?.label ?? `ID ${personaDetail.municipio_residencia_id}` : 'Sin registrar'} />
-                <DataItem label="País de nacimiento" value={displayValue(personaDetail.pais_nacimiento)} />
+                  <DataItem label="Teléfono" value={displayValue(personaDetail.telefono)} />
+                  <DataItem label="Correo" value={displayValue(personaDetail.correo)} />
+                  <DataItem label="Dirección" value={displayValue(personaDetail.direccion)} />
+                  <DataItem label="Barrio" value={displayValue(personaDetail.barrio)} />
+                  <DataItem label="Municipio de residencia" value={personaDetail.municipio_residencia_id ? municipioMap.get(personaDetail.municipio_residencia_id)?.label ?? `ID ${personaDetail.municipio_residencia_id}` : 'Sin registrar'} />
+                  <DataItem label="País de nacimiento" value={displayValue(personaDetail.pais_nacimiento)} />
                 </div>
               </section>
 
@@ -899,11 +928,103 @@ export default function PersonalMasterDrawer({
             </div>
           )}
         </section>
+
+        <section className="pmd-card">
+          <div className="pmd-card-header">
+            <div>
+              <h3>Información bancaria</h3>
+              <p>Número enmascarado por defecto y edición con vigencia histórica.</p>
+            </div>
+            <button
+              type="button"
+              className="pmd-button ghost"
+              onClick={() => {
+                setBankForm(buildBankForm(currentBankAccount));
+                setIsEditingBank((current) => !current);
+                setBankError('');
+              }}
+              disabled={!canWriteBank}
+            >
+              <Landmark size={15} />
+              {isEditingBank ? 'Cancelar edición' : currentBankAccount ? 'Editar cuenta vigente' : 'Registrar cuenta'}
+            </button>
+          </div>
+
+          {bankState.loading && bankAccounts.length === 0 ? (
+            <StateBlock message="Cargando información bancaria..." compact />
+          ) : bankState.error ? (
+            <StateBlock tone="error" message={bankState.error} compact onAction={() => setBankRetry((value) => value + 1)} />
+          ) : (
+            <>
+              {currentBankAccount ? (
+                <div className="pmd-info-grid compact-four">
+                  <DataItem label="Banco" value={currentBankAccount.entidad_bancaria} />
+                  <DataItem label="Tipo cuenta" value={currentBankAccount.tipo_cuenta} />
+                  <DataItem label="Número cuenta" value={currentBankAccount.numero_cuenta} />
+                  <DataItem label="Estado" value={currentBankAccount.estado} />
+                  <DataItem label="Titular" value={currentBankAccount.titular} />
+                  <DataItem label="Nombre titular" value={displayValue(currentBankAccount.nombre_titular)} />
+                  <DataItem label="Documento titular" value={displayValue(currentBankAccount.documento_titular)} />
+                  <DataItem label="Verificada" value={formatDate(currentBankAccount.fecha_verificacion)} />
+                </div>
+              ) : (
+                <StateBlock tone="empty" message="Esta persona no tiene cuenta bancaria vigente registrada." compact />
+              )}
+
+              {bankAccounts.length > 1 && (
+                <details className="pmd-inline-history">
+                  <summary>Ver histórico bancario ({bankAccounts.length})</summary>
+                  <div className="pmd-history-list">
+                    {bankAccounts.map((item) => (
+                      <div key={item.id} className="pmd-history-item">
+                        <div className="pmd-history-head">
+                          <strong>{item.entidad_bancaria} · {item.numero_cuenta}</strong>
+                          <span className={`pmd-inline-badge ${item.es_vigente ? 'ok' : 'muted'}`}>{item.es_vigente ? 'Vigente' : 'Histórica'}</span>
+                        </div>
+                        <div className="pmd-history-meta">
+                          <span>{item.tipo_cuenta}</span>
+                          <span>Desde: {formatDate(item.vigencia_desde)}</span>
+                          <span>Hasta: {formatDate(item.vigencia_hasta)}</span>
+                          <span>Estado: {item.estado}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
+            </>
+          )}
+
+          {isEditingBank && (
+            <div className="pmd-subcard">
+              <div className="pmd-grid two">
+                <Field label="Banco *"><input value={bankForm.entidad_bancaria} onChange={(event) => setBankField('entidad_bancaria', event.target.value)} /></Field>
+                <Field label="Tipo de cuenta"><select value={bankForm.tipo_cuenta} onChange={(event) => setBankField('tipo_cuenta', event.target.value as BankFormState['tipo_cuenta'])}><option value="AHORROS">Ahorros</option><option value="CORRIENTE">Corriente</option><option value="OTRA">Otra</option></select></Field>
+                <Field label="Número de cuenta">{currentBankAccount ? <input placeholder="Ingresa el nuevo número solo si cambia" value={bankForm.numero_cuenta} onChange={(event) => setBankField('numero_cuenta', event.target.value)} /> : <input value={bankForm.numero_cuenta} onChange={(event) => setBankField('numero_cuenta', event.target.value)} />}</Field>
+                <Field label="Titular"><input value={bankForm.titular} onChange={(event) => setBankField('titular', event.target.value)} /></Field>
+                <Field label="Nombre titular"><input value={bankForm.nombre_titular} onChange={(event) => setBankField('nombre_titular', event.target.value)} /></Field>
+                <Field label="Documento titular"><input value={bankForm.documento_titular} onChange={(event) => setBankField('documento_titular', event.target.value)} /></Field>
+                <Field label="Estado"><select value={bankForm.estado} onChange={(event) => setBankField('estado', event.target.value as BankFormState['estado'])}><option value="PENDIENTE">Pendiente</option><option value="VERIFICADA">Verificada</option><option value="RECHAZADA">Rechazada</option><option value="INACTIVA">Inactiva</option></select></Field>
+                <Field label="Fecha verificación"><input type="date" value={bankForm.fecha_verificacion} onChange={(event) => setBankField('fecha_verificacion', event.target.value)} /></Field>
+              </div>
+              <Field label="Observaciones"><textarea value={bankForm.observaciones} onChange={(event) => setBankField('observaciones', event.target.value)} /></Field>
+              <Field label="Motivo del cambio *"><textarea value={bankForm.motivo_cambio} onChange={(event) => setBankField('motivo_cambio', event.target.value)} /></Field>
+              {bankError && <StateBlock tone="error" compact message={bankError} />}
+              <div className="pmd-actions-row">
+                <button type="button" className="pmd-button secondary" onClick={() => setIsEditingBank(false)}>Cancelar</button>
+                <button type="button" className="pmd-button primary" onClick={() => { void handleSaveBank(); }} disabled={savingBank}>
+                  {savingBank ? <Loader2 size={15} className="spin" /> : <CheckCircle2 size={15} />}
+                  Guardar cuenta
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
       </div>
     );
   }
 
-  function renderVinculacionTab() {
+  function renderLaboralTab() {
     const personalContext = activeExpediente.personal_contexto;
     const licitacionActual = personalContext.presentada_licitacion_actual;
 
@@ -913,51 +1034,58 @@ export default function PersonalMasterDrawer({
           <div className="pmd-card-header">
             <div>
               <h3>Vinculación actual</h3>
-              <p>Los datos contractuales permanecen separados de la persona maestra.</p>
+              <p>La edición contractual se mantiene separada de la ficha maestra de persona.</p>
             </div>
-            <button type="button" className="pmd-button ghost" onClick={onOpenManagement}>
-              <FolderOpen size={15} />
-              Gestionar vinculaciones
-            </button>
-          </div>
-
-          <div className="pmd-info-grid compact-four">
-            <DataItem label="Empresa" value={displayValue(activeExpediente.empresa.nombre_empresa)} />
-            <DataItem label="Contrato" value={displayValue(activeExpediente.contrato.numero_contrato)} />
-            <DataItem label="Cargo" value={displayValue(activeExpediente.cargo.nombre_cargo)} />
-            <DataItem label="Tipo de vinculación" value={displayValue(activeExpediente.tipo_vinculacion.nombre_vinculacion)} />
-            <DataItem label="Ingreso" value={formatDate(activeExpediente.vinculacion.fecha_inicio)} />
-            <DataItem label="Retiro" value={formatDate(activeExpediente.vinculacion.fecha_fin)} />
-            <DataItem label="Estado" value={activeExpediente.vinculacion.estado_vinculacion} />
-            <DataItem label="Método de pago" value={displayValue(activeExpediente.vinculacion.metodo_pago)} />
-          </div>
-        </section>
-
-        <section className="pmd-card">
-          <div className="pmd-card-header">
-            <div>
-              <h3>{personalContext.es_manipuladora ? 'Asignación operativa' : 'Asignación laboral'}</h3>
-              <p>
-                {personalContext.es_manipuladora
-                  ? 'La cobertura vigente se toma desde la sede-modalidad asignada.'
-                  : 'La ubicación laboral se conserva separada del cargo real y de la cobertura.'}
-              </p>
+            <div className="pmd-header-actions">
+              <button type="button" className="pmd-button ghost" onClick={onOpenManagement}>
+                <FolderOpen size={15} />
+                Gestionar vinculaciones
+              </button>
+              <button
+                type="button"
+                className="pmd-button ghost"
+                onClick={() => {
+                  setLaboralForm(buildLaboralForm(expediente));
+                  setIsEditingLaboral((current) => !current);
+                  setLaboralError('');
+                }}
+                disabled={!canUpdateVinculacion}
+              >
+                <PencilLine size={15} />
+                {isEditingLaboral ? 'Cancelar edición' : 'Editar vinculación'}
+              </button>
             </div>
           </div>
 
-          {personalContext.es_manipuladora ? (
-            <div className="pmd-info-grid compact-four">
-              <DataItem label="Cobertura" value={personalContext.asignacion_operativa_actual ? 'Cuenta cobertura' : 'Sin asignación'} />
-              <DataItem label="Institución" value={displayValue(personalContext.asignacion_operativa_actual?.institucion)} />
-              <DataItem label="Sede" value={displayValue(personalContext.asignacion_operativa_actual?.sede)} />
-              <DataItem label="Modalidad" value={displayValue(personalContext.asignacion_operativa_actual?.modalidad)} />
+          {isEditingLaboral ? (
+            <div className="pmd-edit-layout">
+              <div className="pmd-grid two">
+                <Field label="Cargo"><select value={laboralForm.contrato_cargo_id} onChange={(event) => setLaboralField('contrato_cargo_id', event.target.value)} disabled={catalogLoading}><option value="">Seleccionar</option>{cargoOptions.map((item) => <option key={item.id} value={item.id}>{item.nombre_cargo}</option>)}</select></Field>
+                <Field label="Tipo de vinculación"><select value={laboralForm.tipo_vinculacion_id} onChange={(event) => setLaboralField('tipo_vinculacion_id', event.target.value)} disabled={catalogLoading}><option value="">Seleccionar</option>{tiposVinculacion.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
+                <Field label="Fecha inicio"><input type="date" value={laboralForm.fecha_inicio} onChange={(event) => setLaboralField('fecha_inicio', event.target.value)} /></Field>
+                <Field label="Fecha fin"><input type="date" value={laboralForm.fecha_fin} onChange={(event) => setLaboralField('fecha_fin', event.target.value)} /></Field>
+                <Field label="Estado"><select value={laboralForm.estado_vinculacion} onChange={(event) => setLaboralField('estado_vinculacion', event.target.value as LaboralFormState['estado_vinculacion'])}><option value="ACTIVA">Activa</option><option value="SUSPENDIDA">Suspendida</option><option value="RETIRADA">Retirada</option></select></Field>
+              </div>
+              <Field label="Motivo del cambio *"><textarea value={laboralForm.motivo_cambio} onChange={(event) => setLaboralField('motivo_cambio', event.target.value)} /></Field>
+              {laboralError && <StateBlock tone="error" compact message={laboralError} />}
+              <div className="pmd-actions-row">
+                <button type="button" className="pmd-button secondary" onClick={() => setIsEditingLaboral(false)}>Cancelar</button>
+                <button type="button" className="pmd-button primary" onClick={() => { void handleSaveLaboral(); }} disabled={savingLaboral}>
+                  {savingLaboral ? <Loader2 size={15} className="spin" /> : <CheckCircle2 size={15} />}
+                  Guardar vinculación
+                </button>
+              </div>
             </div>
           ) : (
             <div className="pmd-info-grid compact-four">
-              <DataItem label="Asignación actual" value={displayValue(personalContext.asignacion_laboral_actual?.nombre_ubicacion)} />
-              <DataItem label="Estado asignación" value={displayValue(personalContext.asignacion_laboral_actual?.estado)} />
-              <DataItem label="Desde" value={formatDate(personalContext.asignacion_laboral_actual?.vigencia_desde)} />
-              <DataItem label="Hasta" value={formatDate(personalContext.asignacion_laboral_actual?.vigencia_hasta)} />
+              <DataItem label="Empresa" value={displayValue(activeExpediente.empresa.nombre_empresa)} />
+              <DataItem label="Contrato" value={displayValue(activeExpediente.contrato.numero_contrato)} />
+              <DataItem label="Cargo" value={displayValue(activeExpediente.cargo.nombre_cargo)} />
+              <DataItem label="Tipo de vinculación" value={displayValue(activeExpediente.tipo_vinculacion.nombre_vinculacion)} />
+              <DataItem label="Ingreso" value={formatDate(activeExpediente.vinculacion.fecha_inicio)} />
+              <DataItem label="Retiro" value={formatDate(activeExpediente.vinculacion.fecha_fin)} />
+              <DataItem label="Estado" value={activeExpediente.vinculacion.estado_vinculacion} />
+              <DataItem label="Método de pago" value={displayValue(activeExpediente.vinculacion.metodo_pago)} />
             </div>
           )}
         </section>
@@ -965,16 +1093,27 @@ export default function PersonalMasterDrawer({
         <section className="pmd-card">
           <div className="pmd-card-header">
             <div>
-              <h3>Licitación</h3>
-              <p>La acreditación de licitación se muestra sin alterar el cargo real.</p>
+              <h3>Asignación y seguridad social</h3>
+              <p>Cobertura y afiliaciones se muestran sin invadir el flujo específico de Cobertura.</p>
             </div>
           </div>
 
           <div className="pmd-info-grid compact-four">
-            <DataItem label="Presentada en licitación" value={licitacionActual ? 'Sí' : 'No'} />
+            <DataItem label="Cobertura" value={personalContext.es_manipuladora ? (personalContext.asignacion_operativa_actual ? 'Sí' : 'No') : 'No aplica'} />
+            <DataItem label="Institución" value={displayValue(personalContext.asignacion_operativa_actual?.institucion ?? personalContext.asignacion_laboral_actual?.nombre_ubicacion)} />
+            <DataItem label="Sede" value={displayValue(personalContext.asignacion_operativa_actual?.sede)} />
+            <DataItem label="Modalidad" value={displayValue(personalContext.asignacion_operativa_actual?.modalidad)} />
+            <DataItem label="EPS" value={displayValue(activeExpediente.afiliaciones?.eps)} />
+            <DataItem label="AFP" value={displayValue(activeExpediente.afiliaciones?.pension)} />
+            <DataItem label="ARL" value={displayValue(activeExpediente.afiliaciones?.arl)} />
+            <DataItem label="Caja" value={displayValue(activeExpediente.afiliaciones?.caja_compensacion)} />
+          </div>
+
+          <div className="pmd-info-grid compact-four">
+            <DataItem label="Licitación" value={licitacionActual ? 'Presentada' : 'No presentada'} />
             <DataItem label="Perfil licitación" value={displayValue(licitacionActual?.perfil.nombre_perfil)} />
             <DataItem label="Estado requisitos" value={displayValue(licitacionActual?.cumple_requisitos_estado)} />
-            <DataItem label="Vigencia actual" value={licitacionActual ? `${formatDate(licitacionActual.vigencia_desde)} a ${formatDate(licitacionActual.vigencia_hasta)}` : 'Sin registrar'} />
+            <DataItem label="Vigencia licitación" value={licitacionActual ? `${formatDate(licitacionActual.vigencia_desde)} a ${formatDate(licitacionActual.vigencia_hasta)}` : 'Sin registrar'} />
           </div>
         </section>
 
@@ -982,7 +1121,7 @@ export default function PersonalMasterDrawer({
           <div className="pmd-card-header">
             <div>
               <h3>Historial de vinculaciones</h3>
-              <p>Una misma persona puede tener múltiples contratos sin duplicarse.</p>
+              <p>Una misma persona puede transitar por varios contratos sin duplicarse.</p>
             </div>
           </div>
 
@@ -993,14 +1132,20 @@ export default function PersonalMasterDrawer({
           ) : vinculacionesHistory.length === 0 ? (
             <StateBlock tone="empty" message="Esta persona no tiene vinculaciones registradas." compact />
           ) : (
-            <>
-              {vinculacionState.error && (
-                <StateBlock tone="error" message={vinculacionState.error} compact onAction={() => setVinculacionRetry((value) => value + 1)} />
-              )}
-              <div className="pmd-table-wrap">
-                <table className="pmd-compact-table">
-                  <thead><tr><th>Contrato</th><th>Empresa</th><th>Cargo</th><th>Ingreso</th><th>Retiro</th><th>Estado</th></tr></thead>
-                  <tbody>{vinculacionesHistory.map((item) => (
+            <div className="pmd-table-wrap">
+              <table className="pmd-compact-table">
+                <thead>
+                  <tr>
+                    <th>Contrato</th>
+                    <th>Empresa</th>
+                    <th>Cargo</th>
+                    <th>Ingreso</th>
+                    <th>Retiro</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vinculacionesHistory.map((item) => (
                     <tr key={item.id}>
                       <td>{contratosHistoryMap.get(item.contrato_id)?.numero_contrato ?? `#${item.contrato_id}`}</td>
                       <td>{contratosHistoryMap.get(item.contrato_id)?.empresa.nombre_empresa ?? `#${item.empresa_id}`}</td>
@@ -1009,10 +1154,10 @@ export default function PersonalMasterDrawer({
                       <td>{formatDate(item.fecha_fin)}</td>
                       <td><span className={`pmd-inline-badge ${item.estado_vinculacion === 'ACTIVA' ? 'ok' : item.estado_vinculacion === 'SUSPENDIDA' ? 'warn' : 'danger'}`}>{item.estado_vinculacion}</span></td>
                     </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
       </div>
@@ -1022,10 +1167,6 @@ export default function PersonalMasterDrawer({
   function renderDocumentosTab() {
     return (
       <div className="pmd-stack">
-        {documentosState.loading && documentosPersona.length === 0 && <StateBlock message="Cargando documentos..." compact />}
-        {documentosState.error && (
-          <StateBlock tone="error" message={documentosState.error} compact onAction={() => setDocumentosRetry((value) => value + 1)} />
-        )}
         <ExpedienteDocumentosPanel
           personaId={activeExpediente.persona.id}
           vinculacionId={activeExpediente.vinculacion.id}
@@ -1035,138 +1176,40 @@ export default function PersonalMasterDrawer({
     );
   }
 
-  function renderSaludTab() {
-    if (!canReadSst) {
-      return (
-        <StateBlock
-          tone="error"
-          message="No tienes permisos SST para consultar exámenes y requisitos de esta persona."
-        />
-      );
+  function renderHistorialTab() {
+    if (historyState.loading && historyItems.length === 0) {
+      return <StateBlock message="Cargando historial de cambios..." />;
     }
 
-    if (saludState.loading && sstExamenes.length === 0 && sstCatalog.length === 0) {
-      return <StateBlock message="Cargando requisitos de salud..." />;
-    }
-
-    if (saludState.error && sstExamenes.length === 0 && sstCatalog.length === 0) {
-      return <StateBlock tone="error" message={saludState.error} onAction={() => setSaludRetry((value) => value + 1)} />;
+    if (historyState.error && historyItems.length === 0) {
+      return <StateBlock tone="error" message={historyState.error} onAction={() => setHistoryRetry((value) => value + 1)} />;
     }
 
     return (
       <div className="pmd-stack">
-        {saludState.error && (
-          <StateBlock tone="error" message={saludState.error} compact onAction={() => setSaludRetry((value) => value + 1)} />
-        )}
         <section className="pmd-card">
           <div className="pmd-card-header">
             <div>
-              <h3>Salud y requisitos</h3>
-              <p>Se reutiliza la estructura histórica SST con soporte documental opcional.</p>
+              <h3>Historial de cambios</h3>
+              <p>Cada cambio sensible conserva campo, antes, después, usuario y motivo.</p>
             </div>
-            <button
-              type="button"
-              className="pmd-button ghost"
-              onClick={() => {
-                setShowRequisitoForm((current) => !current);
-                setRequisitoError('');
-              }}
-              disabled={!canWriteSst}
-            >
-              <ShieldPlus size={15} />
-              Registrar requisito
-            </button>
           </div>
 
-          {showRequisitoForm && (
-            <div className="pmd-subcard">
-              <div className="pmd-grid two">
-                <Field label="Tipo de requisito *">
-                  <select value={requisitoForm.examen_id} onChange={(event) => setRequisitoField('examen_id', event.target.value)}>
-                    <option value="">Seleccionar</option>
-                    {sstCatalog.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.nombre_examen}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Concepto">
-                  <select value={requisitoForm.concepto_medico} onChange={(event) => setRequisitoField('concepto_medico', event.target.value as SstExamenConceptoMedico)}>
-                    <option value="APTO">Apto</option>
-                    <option value="APTO_CON_RESTRICCIONES">Apto con restricciones</option>
-                    <option value="NO_APTO">No apto</option>
-                    <option value="PENDIENTE">Pendiente</option>
-                  </select>
-                </Field>
-                <Field label="Fecha de realización *">
-                  <input type="date" value={requisitoForm.fecha_examen} onChange={(event) => setRequisitoField('fecha_examen', event.target.value)} />
-                </Field>
-                <Field label="Fecha de vencimiento">
-                  <input type="date" value={requisitoForm.fecha_vencimiento} onChange={(event) => setRequisitoField('fecha_vencimiento', event.target.value)} />
-                </Field>
-                <Field label="Documento soporte">
-                  <select value={requisitoForm.documento_persona_id} onChange={(event) => setRequisitoField('documento_persona_id', event.target.value)}>
-                    <option value="">Sin asociar</option>
-                    {documentosPersona.map((documento) => (
-                      <option key={documento.id} value={documento.id}>
-                        {documento.tipo_documento_nombre ?? `Documento ${documento.id}`} · {documento.nombre_original}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Restricciones">
-                  <input value={requisitoForm.restricciones} onChange={(event) => setRequisitoField('restricciones', event.target.value)} />
-                </Field>
-              </div>
-
-              <Field label="Observaciones">
-                <textarea value={requisitoForm.observacion} onChange={(event) => setRequisitoField('observacion', event.target.value)} />
-              </Field>
-
-              {requisitoError && <StateBlock tone="error" message={requisitoError} compact />}
-
-              <div className="pmd-actions-row">
-                <button type="button" className="pmd-button secondary" onClick={() => setShowRequisitoForm(false)}>
-                  Cancelar
-                </button>
-                <button type="button" className="pmd-button primary" onClick={() => { void handleCreateRequisito(); }} disabled={savingRequisito}>
-                  {savingRequisito ? <Loader2 size={15} className="spin" /> : <ShieldPlus size={15} />}
-                  Guardar requisito
-                </button>
-              </div>
-            </div>
-          )}
-
-          {sstExamenes.length === 0 ? (
-            <StateBlock
-              tone="empty"
-              message="No hay requisitos de salud registrados."
-              compact
-              actionLabel="Registrar requisito"
-              onAction={canWriteSst ? () => setShowRequisitoForm(true) : undefined}
-            />
+          {historyItems.length === 0 ? (
+            <StateBlock tone="empty" message="No hay cambios auditados visibles para esta persona." compact />
           ) : (
-            <div className="pmd-requirements-list">
-              {sstExamenes.map((item) => (
-                <div key={item.id} className="pmd-requirement-row">
-                  <div>
-                    <strong>{item.examen_nombre}</strong>
-                    <div className="pmd-history-meta">
-                      <span>Realización: {formatDate(item.fecha_examen)}</span>
-                      <span>Vencimiento: {formatDate(item.fecha_vencimiento)}</span>
-                      <span>Concepto: {item.concepto_medico}</span>
-                    </div>
+            <div className="pmd-history-list">
+              {historyItems.map((item) => (
+                <div key={item.id} className="pmd-history-item">
+                  <div className="pmd-history-head">
+                    <strong>{item.tabla_afectada} · {item.campo}</strong>
+                    <span className="pmd-inline-badge muted">{formatDateTime(item.fecha_hora)}</span>
                   </div>
-                  <div className="pmd-requirement-actions">
-                    <span className={`pmd-inline-badge ${mapEstadoExamenTone(item.estado_examen)}`}>
-                      {mapEstadoExamenLabel(item.estado_examen)}
-                    </span>
-                    {item.documento_id && (
-                      <button type="button" className="pmd-button ghost" onClick={() => { void handleOpenDocumento(item.documento_id!); }}>
-                        Ver soporte
-                      </button>
-                    )}
+                  <div className="pmd-history-meta">
+                    <span>Usuario: {item.usuario_nombre ?? item.usuario_correo ?? 'Sin registrar'}</span>
+                    <span>Antes: {displayValue(item.valor_anterior)}</span>
+                    <span>Después: {displayValue(item.valor_nuevo)}</span>
+                    <span>Motivo: {displayValue(item.motivo)}</span>
                   </div>
                 </div>
               ))}
@@ -1184,9 +1227,7 @@ export default function PersonalMasterDrawer({
           <div>
             <div className="pmd-header-top">
               <h2>{buildNombreCompleto(activeExpediente.persona)}</h2>
-              <span className={`pmd-status-chip ${fichaStatus.tone}`}>
-                {fichaStatus.label}
-              </span>
+              <span className={`pmd-status-chip ${fichaStatus.tone}`}>{fichaStatus.label}</span>
             </div>
             <p>
               {abbreviateIdentification(currentIdentification?.tipo_documento_nombre)} {currentIdentification?.numero_documento ?? activeExpediente.persona.numero_documento}
@@ -1227,14 +1268,14 @@ export default function PersonalMasterDrawer({
             <StateBlock tone="error" message={error} />
           ) : loading && !expediente ? (
             <StateBlock message="Abriendo ficha..." />
-          ) : activeTab === 'datos' ? (
-            renderDatosTab()
-          ) : activeTab === 'vinculacion' ? (
-            renderVinculacionTab()
+          ) : activeTab === 'personal' ? (
+            renderPersonalTab()
+          ) : activeTab === 'laboral' ? (
+            renderLaboralTab()
           ) : activeTab === 'documentos' ? (
             renderDocumentosTab()
           ) : (
-            renderSaludTab()
+            renderHistorialTab()
           )}
         </div>
       </aside>
@@ -1247,6 +1288,7 @@ export default function PersonalMasterDrawer({
             setShowIdentificationModal(false);
             setPersonaDetail(await getPersonaById(personaDetail.id));
             setIdentificaciones(await getPersonaIdentificaciones(personaDetail.id));
+            setHistoryRetry((value) => value + 1);
             onRefresh();
           }}
           personaId={personaDetail.id}
@@ -1313,18 +1355,4 @@ function StateBlock({
       )}
     </div>
   );
-}
-
-function mapEstadoExamenLabel(estado: string): string {
-  if (estado === 'proximo_a_vencer') return 'Próximo a vencer';
-  if (estado === 'sin_vencimiento') return 'Sin vencimiento';
-  if (estado === 'vencido') return 'Vencido';
-  return 'Vigente';
-}
-
-function mapEstadoExamenTone(estado: string): 'ok' | 'warn' | 'danger' | 'muted' {
-  if (estado === 'vencido') return 'danger';
-  if (estado === 'proximo_a_vencer') return 'warn';
-  if (estado === 'sin_vencimiento') return 'muted';
-  return 'ok';
 }
