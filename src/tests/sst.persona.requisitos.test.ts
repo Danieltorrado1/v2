@@ -27,9 +27,15 @@ test('modulos de expediente y personal reutilizan SST para salud y requisitos', 
     path.join(root, 'FrontendNuevo/src/pages/personal/PersonalMasterDrawer.tsx'),
     'utf8',
   );
+  const sstPanelSource = readFileSync(
+    path.join(root, 'FrontendNuevo/src/pages/personal/PersonalSstProfilePanel.tsx'),
+    'utf8',
+  );
 
   assert.match(expedienteSource, /listSstExamenesPersonaByPersonaId/);
-  assert.match(drawerSource, /listarExamenesPersonaSst/);
-  assert.match(drawerSource, /listarExamenesOcupacionalesSst/);
-  assert.match(drawerSource, /crearExamenPersonaSst/);
+  assert.match(drawerSource, /PersonalSstProfilePanel/);
+  assert.match(drawerSource, /id: 'sst'/);
+  assert.match(sstPanelSource, /getPersonaSstPerfil/);
+  assert.match(sstPanelSource, /getPersonaSstPerfilHistorial/);
+  assert.match(sstPanelSource, /updatePersonaSstPerfil/);
 });

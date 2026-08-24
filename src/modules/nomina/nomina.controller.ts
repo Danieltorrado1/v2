@@ -18,6 +18,7 @@ import {
   listNominaTiposNovedadQuerySchema,
   listNominaPeriodosQuerySchema,
   nominaAsistenciaIdParamSchema,
+  nominaMovimientoEstadoActionSchema,
   nominaEmpleadoIdParamSchema,
   nominaMovimientoIdParamSchema,
   nominaNovedadIdParamSchema,
@@ -51,6 +52,7 @@ import {
   generarNominaLiquidaciones,
   getNominaDashboard,
   getNominaAsistenciaByPeriodo,
+  getNominaMovimientoById,
   getNominaPlanoBancarioExport,
   getNominaDesprendibleByPeriodoAndVinculacion,
   getNominaLiquidacionByPeriodoAndVinculacion,
@@ -66,8 +68,11 @@ import {
   listNominaPeriodos,
   payNominaPeriodo,
   recalculateNominaPeriodo,
+  rejectNominaMovimiento,
   reopenNominaPeriodo,
+  reviewNominaMovimiento,
   reviewNominaPeriodo,
+  approveNominaMovimiento,
   updateNominaAsistencia,
   updateNominaEmpleado,
   updateNominaMovimiento,
@@ -344,8 +349,27 @@ export const getNominaMovimientosHandler = asyncHandler(async (req: Request, res
   });
 });
 
+export const getNominaMovimientoHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = nominaMovimientoIdParamSchema.parse(req.params);
+  const result = await getNominaMovimientoById(id, req.tenant);
+
+  return successResponse(res, {
+    message: 'Payroll movement retrieved successfully',
+    data: result
+  });
+});
+
 export const createNominaMovimientoHandler = asyncHandler(async (req: Request, res: Response) => {
   const input = createNominaMovimientoSchema.parse(req.body);
+
+  if (input.estado && input.estado !== 'PENDIENTE') {
+    throw new AppError(
+      'Use dedicated review/approve/reject endpoints after creation to change payroll movement state',
+      409,
+      'NOMINA_MOVIMIENTO_ESTADO_CREACION_NO_PERMITIDA'
+    );
+  }
+
   const result = await createNominaMovimiento(
     input,
     getActorUserId(req),
@@ -379,6 +403,15 @@ export const createNominaRecargoHandler = asyncHandler(async (req: Request, res:
 export const updateNominaMovimientoHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = nominaMovimientoIdParamSchema.parse(req.params);
   const input = updateNominaMovimientoSchema.parse(req.body);
+
+  if (input.estado !== undefined) {
+    throw new AppError(
+      'Use dedicated review/approve/reject endpoints to change payroll movement state',
+      409,
+      'NOMINA_MOVIMIENTO_ESTADO_TRANSICION_DIRECTA_NO_PERMITIDA'
+    );
+  }
+
   const result = await updateNominaMovimiento(
     id,
     input,
@@ -389,6 +422,57 @@ export const updateNominaMovimientoHandler = asyncHandler(async (req: Request, r
 
   return successResponse(res, {
     message: 'Payroll movement updated successfully',
+    data: result
+  });
+});
+
+export const reviewNominaMovimientoHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = nominaMovimientoIdParamSchema.parse(req.params);
+  const input = nominaMovimientoEstadoActionSchema.parse(req.body ?? {});
+  const result = await reviewNominaMovimiento(
+    id,
+    input,
+    getActorUserId(req),
+    req.tenant,
+    getAuditRequestMeta(req)
+  );
+
+  return successResponse(res, {
+    message: 'Payroll movement reviewed successfully',
+    data: result
+  });
+});
+
+export const approveNominaMovimientoHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = nominaMovimientoIdParamSchema.parse(req.params);
+  const input = nominaMovimientoEstadoActionSchema.parse(req.body ?? {});
+  const result = await approveNominaMovimiento(
+    id,
+    input,
+    getActorUserId(req),
+    req.tenant,
+    getAuditRequestMeta(req)
+  );
+
+  return successResponse(res, {
+    message: 'Payroll movement approved successfully',
+    data: result
+  });
+});
+
+export const rejectNominaMovimientoHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = nominaMovimientoIdParamSchema.parse(req.params);
+  const input = nominaMovimientoEstadoActionSchema.parse(req.body ?? {});
+  const result = await rejectNominaMovimiento(
+    id,
+    input,
+    getActorUserId(req),
+    req.tenant,
+    getAuditRequestMeta(req)
+  );
+
+  return successResponse(res, {
+    message: 'Payroll movement rejected successfully',
     data: result
   });
 });

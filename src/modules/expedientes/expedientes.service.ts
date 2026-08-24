@@ -141,6 +141,12 @@ interface NominaNovedadExpedienteRow extends QueryResultRow {
   cubierta: boolean | null;
   created_at: Date | string;
   dias: number | string | null;
+  documento_persona_id: number | string | null;
+  dp_mime_type: string | null;
+  dp_nombre_original: string | null;
+  dp_storage_bucket: string | null;
+  dp_storage_path: string | null;
+  dp_tamano_bytes: number | string | null;
   fecha_fin: Date | string | null;
   fecha_inicio: Date | string | null;
   horas: number | string | null;
@@ -749,12 +755,24 @@ const mapNominaNovedad = (row: NominaNovedadExpedienteRow): Record<string, unkno
     valor_manual: toNullableNumber(row.valor_manual),
     categoria_anterior_id: toNullableNumber(row.categoria_anterior_id),
     categoria_nueva_id: toNullableNumber(row.categoria_nueva_id),
+    documento_persona_id: toNullableNumber(row.documento_persona_id),
     observacion: row.observacion,
     revisado: toBoolean(row.revisado),
     activo: toBoolean(row.activo),
     requiere_cobertura: toBoolean(row.requiere_cobertura),
     cubierta: toBoolean(row.cubierta),
     created_at: toDateString(row.created_at),
+    documento:
+      row.documento_persona_id === null
+        ? null
+        : {
+            documento_persona_id: toNullableNumber(row.documento_persona_id),
+            nombre_original: row.dp_nombre_original,
+            mime_type: row.dp_mime_type,
+            storage_bucket: row.dp_storage_bucket,
+            storage_path: row.dp_storage_path,
+            tamano_bytes: toNullableNumber(row.dp_tamano_bytes)
+          },
     tipo_novedad: {
       id: toNumber(row.tipo_novedad_id),
       codigo: row.tipo_novedad_codigo,
@@ -1105,12 +1123,18 @@ const loadNominaNovedades = async (
         nn.valor_manual,
         nn.categoria_anterior_id,
         nn.categoria_nueva_id,
+        nn.documento_persona_id,
         nn.observacion,
         nn.revisado,
         nn.activo,
         nn.created_at,
         nn.requiere_cobertura,
         nn.cubierta,
+        dp.nombre_original AS dp_nombre_original,
+        dp.mime_type AS dp_mime_type,
+        dp.storage_bucket AS dp_storage_bucket,
+        dp.storage_path AS dp_storage_path,
+        dp.tamano_bytes AS dp_tamano_bytes,
         NULL::text AS tipo_novedad_codigo,
         ntn.nombre AS tipo_novedad_nombre,
         ntn.categoria AS tipo_novedad_categoria,
@@ -1128,6 +1152,7 @@ const loadNominaNovedades = async (
       INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
       INNER JOIN contratos c ON c.id = np.contrato_id
       INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nn.tipo_novedad_id
+      LEFT JOIN documentos_persona dp ON dp.id = nn.documento_persona_id
       WHERE v.persona_id = $1::bigint
         AND nn.vinculacion_id = ANY($2::bigint[])
         ${tenantSql}

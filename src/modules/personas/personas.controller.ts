@@ -38,6 +38,8 @@ const PERSONA_CONTACT_FIELDS = new Set([
   'contacto_emergencia'
 ]);
 
+const PERSONA_SST_FIELDS = new Set(['perfil_demografico']);
+
 const PERSONA_SENSITIVE_FIELDS = new Set([
   ...PERSONA_IDENTITY_FIELDS,
   ...PERSONA_CONTACT_FIELDS,
@@ -70,10 +72,12 @@ const ensurePersonaUpdatePermissions = (req: Request, input: Record<string, unkn
   const touchedFields = Object.keys(input);
   const touchesIdentity = touchedFields.some((field) => PERSONA_IDENTITY_FIELDS.has(field));
   const touchesContact = touchedFields.some((field) => PERSONA_CONTACT_FIELDS.has(field));
+  const touchesSst = touchedFields.some((field) => PERSONA_SST_FIELDS.has(field));
   const touchesGeneral = touchedFields.some(
     (field) =>
       field !== 'motivo_cambio' &&
       field !== 'motivo_cambio_identificacion' &&
+      !PERSONA_SST_FIELDS.has(field) &&
       !PERSONA_IDENTITY_FIELDS.has(field) &&
       !PERSONA_CONTACT_FIELDS.has(field)
   );
@@ -90,6 +94,10 @@ const ensurePersonaUpdatePermissions = (req: Request, input: Record<string, unkn
     !hasAnyPermission(permissions, ['personas.update', 'persona.editar', 'persona.editar_contacto'])
   ) {
     throw new AppError('Insufficient permissions for contact updates', 403, 'FORBIDDEN');
+  }
+
+  if (touchesSst && !hasAnyPermission(permissions, ['sst.perfil.editar', 'sst.perfil.crear'])) {
+    throw new AppError('Insufficient permissions for SST profile updates', 403, 'FORBIDDEN');
   }
 
   if (touchesGeneral && !hasAnyPermission(permissions, ['personas.update', 'persona.editar'])) {

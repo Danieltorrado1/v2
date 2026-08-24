@@ -33,10 +33,12 @@ test('applyMasterImportLote usa helpers transaccionales y no wrappers autonomos'
   assert.match(applySection, /\bupdatePersonaWithClient\(/);
   assert.match(applySection, /\bcreatePersonaCuentaBancariaWithClient\(/);
   assert.match(applySection, /\bupdatePersonaCuentaBancariaWithClient\(/);
+  assert.match(applySection, /\bupsertSstPerfilSociodemograficoWithClient\(/);
   assert.doesNotMatch(applySection, /\bcreatePersona\(/);
   assert.doesNotMatch(applySection, /\bupdatePersona\(/);
   assert.doesNotMatch(applySection, /\bcreatePersonaCuentaBancaria\(/);
   assert.doesNotMatch(applySection, /\bupdatePersonaCuentaBancaria\(/);
+  assert.doesNotMatch(applySection, /\bupsertSstPerfilSociodemografico\(/);
 });
 
 test('applyMasterImportLote mantiene lock del lote y una transaccion maestra explicita', () => {

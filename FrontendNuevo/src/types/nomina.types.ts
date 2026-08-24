@@ -276,6 +276,8 @@ export interface NominaMovimientosQuery {
   nomina_empleado_id?: string;
   vinculacion_id?: string;
   tipo_movimiento?: NominaMovimientoTipo;
+  estado?: 'PENDIENTE' | 'REVISADO' | 'APROBADO' | 'RECHAZADO';
+  familia_movimiento?: 'GENERAL' | 'ADICION_DEVENGO' | 'CAMBIO_OPERATIVO';
   activo?: boolean;
   page?: number;
   limit?: number;
@@ -284,13 +286,37 @@ export interface NominaMovimientosQuery {
 export interface NominaMovimientoApi {
   activo: boolean;
   afecta_seguridad_social: boolean;
+  alertas_validacion: Array<{
+    tipo: string;
+    severidad: 'INFO' | 'WARNING' | 'ERROR';
+    mensaje: string;
+    codigo?: string | null;
+    metadata?: Record<string, unknown> | null;
+  }>;
+  aprobado_at: string | null;
+  aprobado_por: string | null;
   cantidad: number | null;
+  contexto_operativo: {
+    municipio_id: string | null;
+    municipio: string | null;
+    institucion_id: string | null;
+    institucion: string | null;
+    sede_id: string | null;
+    sede: string | null;
+    modalidad_id: string | null;
+    modalidad: string | null;
+  } | null;
   created_at: string;
   descripcion: string | null;
+  documento_persona_id: string | null;
   es_deduccion: boolean;
   es_devengado: boolean;
+  estado: 'PENDIENTE' | 'REVISADO' | 'APROBADO' | 'RECHAZADO';
   fecha: string | null;
+  familia_movimiento: 'GENERAL' | 'ADICION_DEVENGO' | 'CAMBIO_OPERATIVO' | string;
   id: string;
+  motivo_ajuste_valor: string | null;
+  motivo_estado: string | null;
   nomina_empleado_id: string;
   periodo: {
     estado: string;
@@ -303,12 +329,28 @@ export interface NominaMovimientoApi {
     nombre_completo: string;
     numero_documento: string | null;
   };
+  persona_reemplazada: {
+    id: string;
+    nombre_completo: string;
+    numero_documento: string | null;
+  } | null;
+  posible_duplicado: boolean;
+  rechazado_at: string | null;
+  rechazado_por: string | null;
+  revisado_at: string | null;
+  revisado_por: string | null;
+  tarifa_config_id: string | null;
   tipo_movimiento: NominaMovimientoTipo | string;
+  updated_at: string | null;
+  updated_by: string | null;
+  valor_aplicado: number;
+  valor_calculado: number;
   valor_total: number;
   valor_unitario: number | null;
   vinculacion: {
     id: string;
   };
+  vinculacion_reemplazada_id: string | null;
   vinculacion_id: string;
 }
 
@@ -323,10 +365,28 @@ export interface CreateNominaMovimientoApi {
   vinculacion_id: string;
   fecha?: string | null;
   tipo_movimiento: NominaMovimientoTipo;
+  familia_movimiento?: 'GENERAL' | 'ADICION_DEVENGO' | 'CAMBIO_OPERATIVO';
+  estado?: 'PENDIENTE' | 'REVISADO' | 'APROBADO' | 'RECHAZADO';
   descripcion?: string | null;
   cantidad?: number | null;
+  valor_calculado?: number | null;
+  valor_aplicado?: number | null;
   valor_unitario?: number | null;
-  valor_total: number;
+  valor_total?: number | null;
+  motivo_ajuste_valor?: string | null;
+  motivo_estado?: string | null;
+  documento_persona_id?: string | null;
+  persona_reemplazada_id?: string | null;
+  vinculacion_reemplazada_id?: string | null;
+  municipio_id?: string | null;
+  institucion_id?: string | null;
+  sede_id?: string | null;
+  modalidad_id?: string | null;
+  contexto_municipio?: string | null;
+  contexto_institucion?: string | null;
+  contexto_sede?: string | null;
+  contexto_modalidad?: string | null;
+  tarifa_config_id?: string | null;
   es_devengado?: boolean;
   es_deduccion?: boolean;
   afecta_seguridad_social?: boolean;
@@ -336,10 +396,28 @@ export interface CreateNominaMovimientoApi {
 export interface UpdateNominaMovimientoApi {
   fecha?: string | null;
   tipo_movimiento?: NominaMovimientoTipo;
+  familia_movimiento?: 'GENERAL' | 'ADICION_DEVENGO' | 'CAMBIO_OPERATIVO';
+  estado?: 'PENDIENTE' | 'REVISADO' | 'APROBADO' | 'RECHAZADO';
   descripcion?: string | null;
   cantidad?: number | null;
+  valor_calculado?: number | null;
+  valor_aplicado?: number | null;
   valor_unitario?: number | null;
   valor_total?: number;
+  motivo_ajuste_valor?: string | null;
+  motivo_estado?: string | null;
+  documento_persona_id?: string | null;
+  persona_reemplazada_id?: string | null;
+  vinculacion_reemplazada_id?: string | null;
+  municipio_id?: string | null;
+  institucion_id?: string | null;
+  sede_id?: string | null;
+  modalidad_id?: string | null;
+  contexto_municipio?: string | null;
+  contexto_institucion?: string | null;
+  contexto_sede?: string | null;
+  contexto_modalidad?: string | null;
+  tarifa_config_id?: string | null;
   es_devengado?: boolean;
   es_deduccion?: boolean;
   afecta_seguridad_social?: boolean;
@@ -482,6 +560,7 @@ export interface NominaNovedadesQuery {
   periodo_id?: string;
   nomina_empleado_id?: string;
   vinculacion_id?: string;
+  persona_id?: string;
   tipo_novedad_id?: string;
   revisado?: boolean;
   activo?: boolean;
@@ -491,12 +570,38 @@ export interface NominaNovedadesQuery {
 
 export interface NominaTipoNovedad {
   id: string;
+  codigo_operativo: string | null;
   nombre: string | null;
   categoria: string | null;
+  descripcion_operativa: string | null;
   afecta_salario: boolean;
   afecta_transporte: boolean;
+  afecta_dias_laborados: boolean | null;
+  afecta_recargos: boolean | null;
+  afecta_cobertura: boolean | null;
+  efecto_salario: string;
+  efecto_auxilio_transporte: string;
+  efecto_recargos: string;
+  efecto_liquidacion: string;
+  efecto_cobertura: string;
+  efecto_operativo: string;
+  efecto_pago: string | null;
+  modelo_registro: string;
+  proyecta_periodos: boolean;
+  bloquea_otras_novedades: boolean;
+  grupo_exclusividad: string;
+  observacion_plantilla: string | null;
   es_adicion: boolean;
+  es_incapacidad: boolean;
+  es_accidente_laboral: boolean;
+  es_permiso: boolean;
+  es_suspension: boolean;
+  es_evento_operativo: boolean;
   es_deduccion: boolean;
+  requiere_soporte: boolean;
+  permite_rango: boolean;
+  requiere_revision: boolean;
+  soporte_documento_tipo: string | null;
   requiere_fechas: boolean;
   requiere_dias: boolean;
   requiere_horas: boolean;
@@ -534,8 +639,11 @@ export interface NominaNovedadApi {
   periodo_id: string;
   nomina_empleado_id: string;
   vinculacion_id: string;
+  documento_persona_id: string | null;
   fecha_inicio: string | null;
   fecha_fin: string | null;
+  fecha_inicio_evento_canonico: string | null;
+  fecha_fin_evento_canonico: string | null;
   dias: number | null;
   horas: number | null;
   valor_manual: number | null;
@@ -547,6 +655,8 @@ export interface NominaNovedadApi {
   created_at: string;
   requiere_cobertura: boolean;
   cubierta: boolean;
+  registro_tipo: 'ORDINARIA' | 'CANONICA_PROYECTADA';
+  evento_canonico_id: string | null;
   tipo_novedad: NominaNovedadTipoApi;
   persona: NominaNovedadPersonaApi;
 }
@@ -560,7 +670,10 @@ export interface CreateNominaNovedadApi {
   periodo_id: string;
   nomina_empleado_id: string;
   vinculacion_id: string;
-  tipo_novedad_id: string;
+  tipo_novedad_id?: string;
+  tipo_novedad_codigo?: string | null;
+  tipo_novedad_nombre?: string | null;
+  documento_persona_id?: string | null;
   fecha_inicio?: string | null;
   fecha_fin?: string | null;
   dias?: number | null;
@@ -577,6 +690,9 @@ export interface CreateNominaNovedadApi {
 
 export interface UpdateNominaNovedadApi {
   tipo_novedad_id?: string;
+  tipo_novedad_codigo?: string | null;
+  tipo_novedad_nombre?: string | null;
+  documento_persona_id?: string | null;
   fecha_inicio?: string | null;
   fecha_fin?: string | null;
   dias?: number | null;

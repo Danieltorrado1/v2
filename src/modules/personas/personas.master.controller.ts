@@ -49,6 +49,14 @@ const canViewFullBankAccount = (req: Request): boolean => {
   return hasAnyPermission(permissions, ['bancario.ver_numero_completo']);
 };
 
+const canExportSstProfiles = (req: Request): boolean => {
+  if (isAdmin(req)) {
+    return true;
+  }
+
+  return hasAnyPermission(req.user?.permissions ?? [], ['sst.perfil.exportar']);
+};
+
 const ensureBankReadPermission = (req: Request): void => {
   if (isAdmin(req)) {
     return;
@@ -143,10 +151,12 @@ export const updatePersonaCuentaBancariaHandler = asyncHandler(async (req: Reque
   });
 });
 
-export const getPersonalExportFieldCatalogHandler = asyncHandler(async (_req: Request, res: Response) => {
+export const getPersonalExportFieldCatalogHandler = asyncHandler(async (req: Request, res: Response) => {
   return successResponse(res, {
     message: 'Personal export field catalog retrieved successfully',
-    data: getPersonalExportFieldCatalog()
+    data: getPersonalExportFieldCatalog({
+      canExportSstProfiles: canExportSstProfiles(req)
+    })
   });
 });
 
@@ -194,6 +204,7 @@ export const exportPersonalMasterHandler = asyncHandler(async (req: Request, res
     {
       actorUserId: getActorUserId(req),
       canViewFullAccountNumber: canViewFullBankAccount(req),
+      canExportSstProfiles: canExportSstProfiles(req),
       auditMeta: getAuditRequestMeta(req)
     },
     req.tenant

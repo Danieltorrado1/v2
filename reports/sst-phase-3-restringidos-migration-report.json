@@ -1,0 +1,164 @@
+{
+  "executed_at": "2026-08-24T10:17:51.293Z",
+  "sql_file": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\sql\\phase-sst-3-restringidos.sql",
+  "baseline": {
+    "personas": 800,
+    "vinculaciones": 1007,
+    "cobertura_asignaciones": 670,
+    "focalizacion_final": 687,
+    "focalizacion_vigencias": 687,
+    "sst_perfil_demografico": 0,
+    "sst_perfil_demografico_versiones": 0,
+    "sst_perfil_restringido": 0
+  },
+  "post_counts": {
+    "personas": 800,
+    "vinculaciones": 1007,
+    "cobertura_asignaciones": 670,
+    "focalizacion_final": 687,
+    "focalizacion_vigencias": 687,
+    "sst_perfil_demografico": 0,
+    "sst_perfil_demografico_versiones": 0,
+    "sst_perfil_restringido": 0
+  },
+  "columns_before": [
+    {
+      "column_name": "id",
+      "data_type": "bigint",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "persona_id",
+      "data_type": "bigint",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "vinculacion_id",
+      "data_type": "bigint",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "tipo_sangre_rh",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "origen",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "motivo_ultima_actualizacion",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "activo",
+      "data_type": "boolean",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "created_by_user_id",
+      "data_type": "bigint",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "updated_by_user_id",
+      "data_type": "bigint",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    }
+  ],
+  "columns_after": [
+    {
+      "column_name": "id",
+      "data_type": "bigint",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "persona_id",
+      "data_type": "bigint",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "vinculacion_id",
+      "data_type": "bigint",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "tipo_sangre_rh",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "origen",
+      "data_type": "text",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "motivo_ultima_actualizacion",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "activo",
+      "data_type": "boolean",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "created_by_user_id",
+      "data_type": "bigint",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "updated_by_user_id",
+      "data_type": "bigint",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "tiene_discapacidad",
+      "data_type": "boolean",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "tipo_discapacidad",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "presenta_alergias",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "medicamentos_permanentes",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "enfermedad",
+      "data_type": "text",
+      "is_nullable": "YES"
+    }
+  ],
+  "missing_columns": []
+}

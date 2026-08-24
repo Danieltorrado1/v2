@@ -1103,6 +1103,12 @@
   color: var(--text-secondary);
 }
 
+.payroll-form-help {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
 .payroll-form-field input,
 .payroll-form-field select,
 .payroll-form-field textarea {
@@ -1184,6 +1190,81 @@
   color: var(--color-primary);
   font-size: 11px;
   font-weight: 700;
+}
+
+.payroll-type-search-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.payroll-type-search-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.payroll-type-search-option strong {
+  font-size: 12px;
+}
+
+.payroll-type-search-option span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.payroll-type-search-option.active,
+.payroll-type-search-option:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 48%, var(--border-color));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-primary));
+}
+
+.payroll-operational-legend {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-secondary);
+  padding: 12px 14px;
+}
+
+.payroll-operational-legend summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.payroll-operational-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.payroll-operational-legend-grid div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--bg-primary);
+}
+
+.payroll-operational-legend-grid strong {
+  min-width: 36px;
+  font-size: 12px;
+  color: var(--color-primary);
+}
+
+.payroll-operational-legend-grid span {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .payroll-modal-actions {

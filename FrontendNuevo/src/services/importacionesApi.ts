@@ -9,7 +9,11 @@ import type {
   MasterImportListResponse,
   MasterImportPreviewResponse,
   MasterImportStatus,
-  MasterImportType
+  MasterImportType,
+  PaginatedSstPreparationResult,
+  SstPreparationPlanItem,
+  SstPreparationSummary,
+  SstReviewCaseItem
 } from '../types/importaciones.types';
 
 export async function analyzeMasterImport(
@@ -72,6 +76,67 @@ export async function listMasterImportHistory(params: {
   return response.data;
 }
 
+export async function getSstPreparationSummary(): Promise<SstPreparationSummary> {
+  const response = await apiClient.get<ApiResponse<SstPreparationSummary>>(
+    '/importaciones/maestro/sst/preparacion/resumen'
+  );
+  return response.data;
+}
+
+export async function listSstReviewCases(params: {
+  page?: number;
+  limit?: number;
+  tipo?: 'TODOS' | 'DIGITAL' | 'AFILIACION';
+  campo?: string;
+  municipio?: string;
+  estado?: 'TODOS' | 'PENDIENTE' | 'RESUELTO' | 'DESCARTADO';
+} = {}): Promise<PaginatedSstPreparationResult<SstReviewCaseItem>> {
+  const response = await apiClient.get<ApiResponse<PaginatedSstPreparationResult<SstReviewCaseItem>>>(
+    '/importaciones/maestro/sst/revision-casos',
+    { params }
+  );
+  return response.data;
+}
+
+export async function resolveSstReviewCase(
+  caseId: number,
+  payload: {
+    decision: 'USAR_FUENTE_A' | 'USAR_FUENTE_B' | 'INGRESAR_VALOR_MANUAL' | 'MANTENER_MAESTRO' | 'DESCARTAR_CAMBIO';
+    valor_resuelto?: string | null;
+    observacion?: string | null;
+  }
+): Promise<SstReviewCaseItem> {
+  const response = await apiClient.patch<ApiResponse<SstReviewCaseItem>>(
+    `/importaciones/maestro/sst/revision-casos/${caseId}`,
+    payload
+  );
+  return response.data;
+}
+
+export async function listSstPendingCapture(params: {
+  page?: number;
+  limit?: number;
+  municipio?: string;
+} = {}): Promise<PaginatedSstPreparationResult<SstPreparationPlanItem>> {
+  const response = await apiClient.get<ApiResponse<PaginatedSstPreparationResult<SstPreparationPlanItem>>>(
+    '/importaciones/maestro/sst/pendientes',
+    { params }
+  );
+  return response.data;
+}
+
+export async function listSstApplyPlan(params: {
+  page?: number;
+  limit?: number;
+  estado?: 'TODOS' | 'APTO_APPLY_AUTOMATICO' | 'APTO_APPLY_PARCIAL' | 'REQUIERE_REVISION' | 'SIN_DATOS_DIGITALES';
+} = {}): Promise<PaginatedSstPreparationResult<SstPreparationPlanItem>> {
+  const response = await apiClient.get<ApiResponse<PaginatedSstPreparationResult<SstPreparationPlanItem>>>(
+    '/importaciones/maestro/sst/apply-plan',
+    { params }
+  );
+  return response.data;
+}
+
 async function downloadProtectedFile(path: string, fallbackFileName: string): Promise<void> {
   const token = getAuthToken();
   const response = await fetch(`${env.apiUrl}${path}`, {
@@ -98,11 +163,15 @@ export async function downloadMasterImportTemplate(tipo: MasterImportType): Prom
   const path =
     tipo === 'DATOS_PERSONALES'
       ? '/importaciones/datos-personales/template'
-      : '/importaciones/informacion-bancaria/template';
+      : tipo === 'INFORMACION_BANCARIA'
+        ? '/importaciones/informacion-bancaria/template'
+        : '/importaciones/caracterizacion-sst/template';
   const fileName =
     tipo === 'DATOS_PERSONALES'
       ? 'plantilla-datos-personales.xlsx'
-      : 'plantilla-informacion-bancaria.xlsx';
+      : tipo === 'INFORMACION_BANCARIA'
+        ? 'plantilla-informacion-bancaria.xlsx'
+        : 'plantilla-caracterizacion-sst.xlsx';
   await downloadProtectedFile(path, fileName);
 }
 

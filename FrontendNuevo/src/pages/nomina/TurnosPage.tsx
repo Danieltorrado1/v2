@@ -16,12 +16,15 @@ import {
   X,
 } from "lucide-react";
 import {
+  approveNominaTurno,
   createNominaTurno,
   deactivateNominaTurno,
   exportNominaMovimientosCsv,
   getAllNominaTurnos,
   getAllNominaPeriodoEmpleados,
   getNominaPeriodos,
+  rejectNominaTurno,
+  reviewNominaTurno,
   updateNominaTurno,
 } from "../../services/nominaApi";
 import { NOMINA_TURNO_MOVIMIENTO_TIPO } from "../../types/nomina.types";
@@ -65,8 +68,13 @@ type TurnoFormState = {
   cantidad: string;
   descripcion: string;
   fecha: string;
+  motivo_ajuste_valor: string;
+  motivo_estado: string;
   nomina_empleado_id: string;
-  valor_total: string;
+  nomina_empleado_reemplazado_id: string;
+  estado: "PENDIENTE" | "REVISADO" | "APROBADO" | "RECHAZADO";
+  valor_aplicado: string;
+  valor_calculado: string;
   valor_unitario: string;
 };
 
@@ -146,8 +154,16 @@ function getMovementStatusTone(movimiento: NominaTurno): Tone {
     return "neutral";
   }
 
-  if (movimiento.es_deduccion) {
+  if (movimiento.estado === "RECHAZADO") {
     return "danger";
+  }
+
+  if (movimiento.estado === "PENDIENTE") {
+    return "warning";
+  }
+
+  if (movimiento.estado === "REVISADO") {
+    return "info";
   }
 
   if (movimiento.tipo_movimiento === "TURNO_EXTERNO") {
@@ -162,7 +178,7 @@ function getMovementStatusTone(movimiento: NominaTurno): Tone {
 }
 
 function getMovementStatusLabel(movimiento: NominaTurno) {
-  return movimiento.activo ? "Activo" : "Inactivo";
+  return movimiento.activo ? movimiento.estado : "Inactivo";
 }
 
 function emptyForm(employeeId = ""): TurnoFormState {
@@ -172,8 +188,13 @@ function emptyForm(employeeId = ""): TurnoFormState {
     cantidad: "",
     descripcion: "",
     fecha: new Date().toISOString().slice(0, 10),
+    motivo_ajuste_valor: "",
+    motivo_estado: "",
     nomina_empleado_id: employeeId,
-    valor_total: "",
+    nomina_empleado_reemplazado_id: "",
+    estado: "PENDIENTE",
+    valor_aplicado: "",
+    valor_calculado: "",
     valor_unitario: "",
   };
 }
@@ -185,10 +206,42 @@ function mapMovementToForm(movimiento: NominaTurno): TurnoFormState {
     cantidad: movimiento.cantidad === null ? "" : String(movimiento.cantidad),
     descripcion: movimiento.descripcion ?? "",
     fecha: movimiento.fecha ?? "",
+    motivo_ajuste_valor: movimiento.motivo_ajuste_valor ?? "",
+    motivo_estado: movimiento.motivo_estado ?? "",
     nomina_empleado_id: movimiento.nomina_empleado_id,
-    valor_total: String(movimiento.valor_total),
+    nomina_empleado_reemplazado_id: "",
+    estado: movimiento.estado,
+    valor_aplicado: String(movimiento.valor_aplicado),
+    valor_calculado: String(movimiento.valor_calculado),
     valor_unitario: movimiento.valor_unitario === null ? "" : String(movimiento.valor_unitario),
   };
+}
+
+function resolveNominaEmpleadoOptionByMovement(
+  movimiento: NominaTurno,
+  empleados: PaginatedNominaEmpleadosApi["items"],
+) {
+  if (movimiento.vinculacion_reemplazada_id) {
+    const byVinculacion = empleados.find(
+      (empleado) => empleado.vinculacion_id === movimiento.vinculacion_reemplazada_id,
+    );
+
+    if (byVinculacion) {
+      return byVinculacion.id;
+    }
+  }
+
+  if (movimiento.persona_reemplazada?.id) {
+    const byPersona = empleados.find(
+      (empleado) => empleado.persona.id === movimiento.persona_reemplazada?.id,
+    );
+
+    if (byPersona) {
+      return byPersona.id;
+    }
+  }
+
+  return "";
 }
 
 function parseOptionalNumber(value: string) {
@@ -712,10 +765,16 @@ export default function TurnosPage() {
       return;
     }
 
+    const nextForm = mapMovementToForm(movimiento);
+    nextForm.nomina_empleado_reemplazado_id = resolveNominaEmpleadoOptionByMovement(
+      movimiento,
+      empleados,
+    );
+
     setEditorMode("edit");
     setEditingMovementId(movimiento.id);
     setSelectedMovementId(null);
-    setForm(mapMovementToForm(movimiento));
+    setForm(nextForm);
     setFormError(null);
     setFeedback(null);
   };
@@ -750,9 +809,19 @@ export default function TurnosPage() {
       return "La fecha es obligatoria.";
     }
 
-    const total = Number(form.valor_total);
-    if (!Number.isFinite(total) || total <= 0) {
-      return "El valor total debe ser un numero positivo.";
+    const applied = Number(form.valor_aplicado);
+    if (!Number.isFinite(applied) || applied <= 0) {
+      return "El valor aplicado debe ser un numero positivo.";
+    }
+
+    if (form.valor_calculado.trim() !== "") {
+      const calculated = Number(form.valor_calculado);
+      if (!Number.isFinite(calculated) || calculated < 0) {
+        return "El valor calculado debe ser un numero valido cuando se informa.";
+      }
+      if (Math.abs(calculated - applied) >= 0.01 && form.motivo_ajuste_valor.trim() === "") {
+        return "El motivo de ajuste es obligatorio cuando el valor aplicado difiere del calculado.";
+      }
     }
 
     if (form.valor_unitario.trim() !== "") {
@@ -767,6 +836,13 @@ export default function TurnosPage() {
       if (!Number.isFinite(quantity) || quantity <= 0) {
         return "La cantidad debe ser un numero positivo cuando se informa.";
       }
+    }
+
+    if (
+      form.nomina_empleado_reemplazado_id &&
+      form.nomina_empleado_reemplazado_id === form.nomina_empleado_id
+    ) {
+      return "La persona reemplazada no puede ser la misma que realiza el turno.";
     }
 
     return null;
@@ -788,6 +864,9 @@ export default function TurnosPage() {
       (editingMovement
         ? empleados.find((empleado) => empleado.id === editingMovement.nomina_empleado_id) ?? null
         : null);
+    const selectedReplacementEmployee = form.nomina_empleado_reemplazado_id
+      ? empleados.find((empleado) => empleado.id === form.nomina_empleado_reemplazado_id) ?? null
+      : null;
 
     if (!selectedEmployee) {
       setFormError("No fue posible resolver el colaborador seleccionado en el período.");
@@ -799,21 +878,54 @@ export default function TurnosPage() {
     setFeedback(null);
 
     try {
+      const targetEstado = form.estado;
+
+      const applyStateTransition = async (movimientoId: string, previousEstado: NominaTurno["estado"]) => {
+        if (targetEstado === previousEstado || targetEstado === "PENDIENTE") {
+          return;
+        }
+
+        const payload = {
+          motivo_estado: form.motivo_estado.trim() || null,
+        };
+
+        if (targetEstado === "REVISADO") {
+          await reviewNominaTurno(movimientoId, payload);
+          return;
+        }
+
+        if (targetEstado === "APROBADO") {
+          await approveNominaTurno(movimientoId, payload);
+          return;
+        }
+
+        if (targetEstado === "RECHAZADO") {
+          await rejectNominaTurno(movimientoId, payload);
+        }
+      };
+
       if (editorMode === "create") {
         const payload: CreateNominaTurnoPayload = {
           periodo_id: selectedPeriodId,
           nomina_empleado_id: selectedEmployee.id,
           vinculacion_id: selectedEmployee.vinculacion_id,
           fecha: form.fecha,
+          familia_movimiento: "ADICION_DEVENGO",
           descripcion: form.descripcion.trim() || null,
           cantidad: parseOptionalNumber(form.cantidad),
           valor_unitario: parseOptionalNumber(form.valor_unitario),
-          valor_total: Number(form.valor_total),
+          valor_calculado: parseOptionalNumber(form.valor_calculado),
+          valor_aplicado: Number(form.valor_aplicado),
+          valor_total: Number(form.valor_aplicado),
+          motivo_ajuste_valor: form.motivo_ajuste_valor.trim() || null,
+          persona_reemplazada_id: selectedReplacementEmployee?.persona.id ?? null,
+          vinculacion_reemplazada_id: selectedReplacementEmployee?.vinculacion_id ?? null,
           afecta_seguridad_social: form.afecta_seguridad_social,
           activo: form.activo,
         };
 
-        await createNominaTurno(payload);
+        const created = await createNominaTurno(payload);
+        await applyStateTransition(created.id, created.estado);
         setFeedback({
           tone: "success",
           message: "Turno registrado correctamente.",
@@ -824,12 +936,18 @@ export default function TurnosPage() {
           descripcion: form.descripcion.trim() || null,
           cantidad: parseOptionalNumber(form.cantidad),
           valor_unitario: parseOptionalNumber(form.valor_unitario),
-          valor_total: Number(form.valor_total),
+          valor_calculado: parseOptionalNumber(form.valor_calculado),
+          valor_aplicado: Number(form.valor_aplicado),
+          valor_total: Number(form.valor_aplicado),
+          motivo_ajuste_valor: form.motivo_ajuste_valor.trim() || null,
+          persona_reemplazada_id: selectedReplacementEmployee?.persona.id ?? null,
+          vinculacion_reemplazada_id: selectedReplacementEmployee?.vinculacion_id ?? null,
           afecta_seguridad_social: form.afecta_seguridad_social,
           activo: form.activo,
         };
 
-        await updateNominaTurno(editingMovementId, payload);
+        const updated = await updateNominaTurno(editingMovementId, payload);
+        await applyStateTransition(updated.id, updated.estado);
         setFeedback({
           tone: "success",
           message: "Turno actualizado correctamente.",
@@ -963,10 +1081,10 @@ export default function TurnosPage() {
       </header>
 
       <div className="np-inline-state neutral">
-        Auditoria backend: no existe recurso dedicado de turnos, turnos internos, obtener turno por id,
-        cuentas de cobro ni consolidacion de cuentas de cobro. Esta pantalla usa los endpoints reales
-        `GET/POST/PATCH /nomina/movimientos` filtrados a `tipo_movimiento = TURNO_EXTERNO` y se apoya en
-        `GET /nomina/periodos/:id/empleados` para enriquecer modalidad, cargo y metodo de pago cuando esos datos existen.
+        Esta pantalla usa el flujo real de <code>nomina_movimientos</code> filtrado a{" "}
+        <code>{NOMINA_TURNO_MOVIMIENTO_TIPO}</code>. El backend ya separa creacion/edicion de datos
+        y transiciones de estado (<code>revisar/aprobar/rechazar</code>), conserva valor calculado vs.
+        valor aplicado y resuelve contexto operativo desde cobertura o desde la persona reemplazada cuando aplica.
       </div>
 
       {feedback ? (
@@ -1129,13 +1247,21 @@ export default function TurnosPage() {
                 </span>
                 <span className="np-table-text">{getMovementTypeLabel(movimiento.tipo_movimiento)}</span>
                 <span className="np-badge primary">Externo</span>
-                <span className="np-table-text np-table-text-secondary">No disponible</span>
-                <span className="np-table-text np-table-text-secondary">No disponible</span>
-                <span className="np-table-text np-table-text-secondary">No disponible</span>
-                <span className="np-table-text">
-                  {employeeByNominaId.get(movimiento.nomina_empleado_id)?.categoria_salarial?.modalidad ?? "No disponible"}
+                <span className="np-table-text np-table-text-secondary">
+                  {movimiento.persona_reemplazada?.nombre_completo ?? "No disponible"}
                 </span>
-                <span className="np-table-text np-table-text-net">{formatCOP(movimiento.valor_total)}</span>
+                <span className="np-table-text np-table-text-secondary">
+                  {movimiento.contexto_operativo?.institucion ?? "No disponible"}
+                </span>
+                <span className="np-table-text np-table-text-secondary">
+                  {movimiento.contexto_operativo?.sede ?? "No disponible"}
+                </span>
+                <span className="np-table-text">
+                  {movimiento.contexto_operativo?.modalidad ??
+                    employeeByNominaId.get(movimiento.nomina_empleado_id)?.categoria_salarial?.modalidad ??
+                    "No disponible"}
+                </span>
+                <span className="np-table-text np-table-text-net">{formatCOP(movimiento.valor_aplicado)}</span>
                 <div className="np-row-status">
                   <span className={`np-badge ${getMovementStatusTone(movimiento)}`}>
                     {getMovementStatusLabel(movimiento)}
@@ -1227,7 +1353,11 @@ export default function TurnosPage() {
             </div>
             <div className="np-detail-field">
               <span>Modalidad</span>
-              <strong>{selectedMovementEmployee?.categoria_salarial?.modalidad ?? "No disponible"}</strong>
+              <strong>
+                {selectedMovement.contexto_operativo?.modalidad ??
+                  selectedMovementEmployee?.categoria_salarial?.modalidad ??
+                  "No disponible"}
+              </strong>
             </div>
             <div className="np-detail-field">
               <span>Metodo de pago</span>
@@ -1235,15 +1365,15 @@ export default function TurnosPage() {
             </div>
             <div className="np-detail-field">
               <span>Reemplaza</span>
-              <strong>No disponible</strong>
+              <strong>{selectedMovement.persona_reemplazada?.nombre_completo ?? "No disponible"}</strong>
             </div>
             <div className="np-detail-field">
               <span>Institucion</span>
-              <strong>No disponible</strong>
+              <strong>{selectedMovement.contexto_operativo?.institucion ?? "No disponible"}</strong>
             </div>
             <div className="np-detail-field">
               <span>Sede</span>
-              <strong>No disponible</strong>
+              <strong>{selectedMovement.contexto_operativo?.sede ?? "No disponible"}</strong>
             </div>
             <div className="np-detail-field">
               <span>Cuenta de cobro</span>
@@ -1259,12 +1389,16 @@ export default function TurnosPage() {
               <strong>{selectedMovement.cantidad ?? "No disponible"}</strong>
             </div>
             <div className="np-detail-field">
-              <span>Valor unitario</span>
+              <span>Valor calculado</span>
               <strong>
-                {selectedMovement.valor_unitario === null
+                {selectedMovement.valor_calculado === null
                   ? "No disponible"
-                  : formatCOP(selectedMovement.valor_unitario)}
+                  : formatCOP(selectedMovement.valor_calculado)}
               </strong>
+            </div>
+            <div className="np-detail-field">
+              <span>Valor aplicado</span>
+              <strong>{formatCOP(selectedMovement.valor_aplicado)}</strong>
             </div>
             <div className="np-detail-field">
               <span>Descripción</span>
@@ -1281,6 +1415,10 @@ export default function TurnosPage() {
             <div className="np-detail-field">
               <span>Creado</span>
               <strong>{formatDate(selectedMovement.created_at)}</strong>
+            </div>
+            <div className="np-detail-field">
+              <span>Motivo ajuste</span>
+              <strong>{selectedMovement.motivo_ajuste_valor ?? "No disponible"}</strong>
             </div>
             <div className="np-detail-field">
               <span>Periodo ID</span>
@@ -1301,9 +1439,22 @@ export default function TurnosPage() {
           </div>
 
           <div className="np-detail-total">
-            <span>Valor total</span>
-            <strong>{formatCOP(selectedMovement.valor_total)}</strong>
+            <span>Valor aplicado</span>
+            <strong>{formatCOP(selectedMovement.valor_aplicado)}</strong>
           </div>
+
+          {selectedMovement.alertas_validacion.length > 0 || selectedMovement.posible_duplicado ? (
+            <div className="np-inline-state warning">
+              {selectedMovement.posible_duplicado ? (
+                <div>El backend marcó este turno como posible duplicado y requiere revisión.</div>
+              ) : null}
+              {selectedMovement.alertas_validacion.map((alerta, index) => (
+                <div key={`${alerta.tipo}-${index}`}>
+                  {alerta.tipo}: {alerta.mensaje}
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -1354,6 +1505,21 @@ export default function TurnosPage() {
             </label>
 
             <label className="np-form-field">
+              <span>Estado</span>
+              <select
+                className="np-form-control"
+                value={form.estado}
+                onChange={(event) => handleFormChange("estado", event.target.value as TurnoFormState["estado"])}
+                disabled={isSubmitting}
+              >
+                <option value="PENDIENTE">Pendiente</option>
+                <option value="REVISADO">Revisado</option>
+                <option value="APROBADO">Aprobado</option>
+                <option value="RECHAZADO">Rechazado</option>
+              </select>
+            </label>
+
+            <label className="np-form-field">
               <span>Fecha</span>
               <input
                 className="np-form-control"
@@ -1377,6 +1543,25 @@ export default function TurnosPage() {
             </label>
 
             <label className="np-form-field">
+              <span>Persona reemplazada</span>
+              <select
+                className="np-form-control"
+                value={form.nomina_empleado_reemplazado_id}
+                onChange={(event) => handleFormChange("nomina_empleado_reemplazado_id", event.target.value)}
+                disabled={isSubmitting}
+              >
+                <option value="">No aplica</option>
+                {employeeOptions
+                  .filter((option) => option.value !== form.nomina_empleado_id)
+                  .map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+              </select>
+            </label>
+
+            <label className="np-form-field">
               <span>Valor unitario</span>
               <input
                 className="np-form-control"
@@ -1389,12 +1574,24 @@ export default function TurnosPage() {
             </label>
 
             <label className="np-form-field">
-              <span>Valor total</span>
+              <span>Valor calculado</span>
               <input
                 className="np-form-control"
                 inputMode="decimal"
-                value={form.valor_total}
-                onChange={(event) => handleFormChange("valor_total", event.target.value)}
+                value={form.valor_calculado}
+                onChange={(event) => handleFormChange("valor_calculado", event.target.value)}
+                placeholder="Opcional"
+                disabled={isSubmitting}
+              />
+            </label>
+
+            <label className="np-form-field">
+              <span>Valor aplicado</span>
+              <input
+                className="np-form-control"
+                inputMode="decimal"
+                value={form.valor_aplicado}
+                onChange={(event) => handleFormChange("valor_aplicado", event.target.value)}
                 placeholder="Obligatorio"
                 disabled={isSubmitting}
               />
@@ -1412,6 +1609,30 @@ export default function TurnosPage() {
               disabled={isSubmitting}
             />
           </label>
+
+          <div className="np-form-grid">
+            <label className="np-form-field">
+              <span>Motivo ajuste valor</span>
+              <input
+                className="np-form-control"
+                value={form.motivo_ajuste_valor}
+                onChange={(event) => handleFormChange("motivo_ajuste_valor", event.target.value)}
+                placeholder="Obligatorio si valor aplicado difiere"
+                disabled={isSubmitting}
+              />
+            </label>
+
+            <label className="np-form-field">
+              <span>Motivo estado</span>
+              <input
+                className="np-form-control"
+                value={form.motivo_estado}
+                onChange={(event) => handleFormChange("motivo_estado", event.target.value)}
+                placeholder="Opcional"
+                disabled={isSubmitting}
+              />
+            </label>
+          </div>
 
           {selectedFormEmployee ? (
             <div className="np-inline-state neutral">
@@ -1461,10 +1682,9 @@ export default function TurnosPage() {
           </div>
 
           <div className="np-inline-state neutral">
-            Brecha real del backend: este formulario no puede capturar reemplazo, institucion, sede ni cuenta
-            de cobro porque el contrato de <code>nomina_movimientos</code> no incluye esos campos.
-            La modalidad solo se consulta desde <code>nomina_empleados</code> como dato de contexto y el
-            valor del turno debe enviarse manualmente en <code>valor_total</code>.
+            El backend ya persiste reemplazo, alertas, estado y separacion entre valor calculado y aplicado.
+            El contexto operativo se resuelve prioritariamente desde la persona reemplazada y, si no existe,
+            se conserva el valor manual ingresado para revision.
           </div>
 
           {formError ? (

@@ -230,6 +230,30 @@
   color: var(--text-secondary);
 }
 
+.op-import-sst-filters,
+.op-import-sst-resolution {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.op-import-sst-filters select,
+.op-import-sst-filters input,
+.op-import-sst-resolution select,
+.op-import-sst-resolution input {
+  min-height: 34px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  padding: 0 10px;
+}
+
+.op-import-sst-resolution {
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .op-import-mapping-wrap,
 .op-import-history-wrap,
 .op-export-section {

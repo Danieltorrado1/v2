@@ -1,0 +1,8 @@
+"archivo","hoja","documento","numero_respuestas","timestamps","clasificacion_duplicado","fila_mas_reciente","filas","conflicto_campos"
+"Caracterización adicional (respuestas).xlsx","Respuestas de formulario 1","1006520051","3","2026-06-20T18:07:27.367Z | 2026-06-25T19:17:16.785Z | 2026-06-25T19:18:41.534Z","DUPLICADO_IDENTICO","280","226 | 279 | 280",""
+"Caracterización adicional (respuestas).xlsx","Respuestas de formulario 1","1006945972","2","2026-06-20T01:04:50.062Z | 2026-06-20T01:09:49.882Z","DUPLICADO_IDENTICO","79","75 | 79",""
+"Caracterización adicional (respuestas).xlsx","Respuestas de formulario 1","1122653533","2","2026-06-20T15:59:40.729Z | 2026-06-25T19:45:56.116Z","DUPLICADO_CONFLICTO","281","168 | 281","nivel_escolaridad"
+"Caracterización adicional (respuestas).xlsx","Respuestas de formulario 1","21182366","2","2026-06-20T15:36:00.927Z | 2026-06-25T22:06:08.722Z","DUPLICADO_IDENTICO","285","141 | 285",""
+"Caracterización adicional (respuestas).xlsx","Respuestas de formulario 1","21238906","2","2026-06-20T16:13:38.367Z | 2026-06-25T21:40:47.967Z","DUPLICADO_CONFLICTO","284","186 | 284","nivel_escolaridad"
+"Caracterización adicional (respuestas).xlsx","Respuestas de formulario 1","40402039","2","2026-06-20T16:34:29.331Z | 2026-06-25T19:03:16.474Z","DUPLICADO_IDENTICO","278","193 | 278",""
+"Caracterización adicional (respuestas).xlsx","Respuestas de formulario 1","52877871","2","2026-06-25T19:00:58.380Z | 2026-06-25T21:29:37.681Z","DUPLICADO_CONFLICTO","283","276 | 283","nivel_escolaridad"

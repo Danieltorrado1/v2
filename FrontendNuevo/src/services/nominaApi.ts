@@ -766,6 +766,42 @@ export async function updateNominaMovimiento(
   return response.data;
 }
 
+export async function reviewNominaMovimiento(
+  id: string,
+  input: { motivo_estado?: string | null } = {},
+): Promise<NominaMovimientoApi> {
+  const response = await apiClient.patch<ApiResponse<NominaMovimientoApi>>(
+    '/nomina/movimientos/' + id + '/revisar',
+    input,
+  );
+
+  return response.data;
+}
+
+export async function approveNominaMovimiento(
+  id: string,
+  input: { motivo_estado?: string | null } = {},
+): Promise<NominaMovimientoApi> {
+  const response = await apiClient.patch<ApiResponse<NominaMovimientoApi>>(
+    '/nomina/movimientos/' + id + '/aprobar',
+    input,
+  );
+
+  return response.data;
+}
+
+export async function rejectNominaMovimiento(
+  id: string,
+  input: { motivo_estado?: string | null } = {},
+): Promise<NominaMovimientoApi> {
+  const response = await apiClient.patch<ApiResponse<NominaMovimientoApi>>(
+    '/nomina/movimientos/' + id + '/rechazar',
+    input,
+  );
+
+  return response.data;
+}
+
 export async function updateNominaTurno(
   id: string,
   input: UpdateNominaTurnoPayload,
@@ -788,17 +824,41 @@ export async function deactivateNominaTurno(id: string): Promise<NominaTurno> {
   return mapNominaTurno(await deactivateNominaMovimiento(id));
 }
 
+export async function reviewNominaTurno(
+  id: string,
+  input: { motivo_estado?: string | null } = {},
+): Promise<NominaTurno> {
+  return mapNominaTurno(await reviewNominaMovimiento(id, input));
+}
+
+export async function approveNominaTurno(
+  id: string,
+  input: { motivo_estado?: string | null } = {},
+): Promise<NominaTurno> {
+  return mapNominaTurno(await approveNominaMovimiento(id, input));
+}
+
+export async function rejectNominaTurno(
+  id: string,
+  input: { motivo_estado?: string | null } = {},
+): Promise<NominaTurno> {
+  return mapNominaTurno(await rejectNominaMovimiento(id, input));
+}
+
 export async function updateNominaNovedad(
   id: string,
   input: UpdateNominaNovedadApi,
 ): Promise<NominaNovedadApi> {
-  const response = await apiClient.patch<ApiResponse<NominaNovedadApi>>('/nomina/novedades/' + id, input);
+  const response = await apiClient.patch<ApiResponse<NominaNovedadApi>>(
+    '/nomina/novedades/' + encodeURIComponent(id),
+    input,
+  );
   return response.data;
 }
 
 export async function deactivateNominaNovedad(id: string): Promise<NominaNovedadApi> {
   const response = await apiClient.patch<ApiResponse<NominaNovedadApi>>(
-    '/nomina/novedades/' + id + '/deactivate',
+    '/nomina/novedades/' + encodeURIComponent(id) + '/deactivate',
   );
 
   return response.data;

@@ -22,6 +22,7 @@ import {
   buildTemplateWorkbook,
   classifyBankingImportRow,
   classifyPersonalImportRow,
+  classifySstPerfilImportRow,
   mapRowWithColumnMappings,
   matchesMasterImportFilter,
   normalizeBankingMappedRow,
@@ -29,6 +30,7 @@ import {
   normalizeHeader,
   normalizeImportDocumentNumber,
   normalizePersonalMappedRow,
+  normalizeSstPerfilMappedRow,
   validateColumnMappings,
   type BankingImportSnapshot,
   type ImportValidationIssue,
@@ -38,7 +40,8 @@ import {
   type MasterImportFilter,
   type MasterImportStatus,
   type MasterImportType,
-  type PersonalImportSnapshot
+  type PersonalImportSnapshot,
+  type SstPerfilImportSnapshot
 } from './importaciones.master.domain';
 import type {
   MasterImportAnalyzeInput,
@@ -46,6 +49,7 @@ import type {
   MasterImportPreviewQuery,
   MasterImportValidateInput
 } from './importaciones.master.schemas';
+import { upsertSstPerfilSociodemograficoWithClient } from '../sst/sst.perfil.service';
 
 interface CountRow extends QueryResultRow {
   total: number;
@@ -150,6 +154,34 @@ interface BankingLookupRow extends QueryResultRow {
   observaciones: string | null;
 }
 
+interface SstPerfilLookupRow extends QueryResultRow {
+  persona_id: number | string;
+  vinculacion_id: number | string | null;
+  fecha_caracterizacion: string | Date | null;
+  origen: string | null;
+  nacionalidad: string | null;
+  estrato_socioeconomico: string | null;
+  tipo_vivienda: string | null;
+  grupo_etnico: string | null;
+  nivel_escolaridad: string | null;
+  profesion_ocupacion: string | null;
+  personas_dependen_economicamente: number | string | null;
+  cabeza_familia: boolean | null;
+  total_hijos: number | string | null;
+  hijos_viven_con_usted: number | string | null;
+  hijos_menores_edad: number | string | null;
+  hijos_mayores_edad: number | string | null;
+  tipo_sangre_rh: string | null;
+  tiene_discapacidad: boolean | null;
+  tipo_discapacidad: string | null;
+  redes_apoyo_social: string | null;
+  presenta_alergias: string | null;
+  medicamentos_permanentes: string | null;
+  enfermedad: string | null;
+  autorizacion_tratamiento_datos: boolean | null;
+  observaciones: string | null;
+}
+
 interface MasterImportLote {
   id: number;
   tipo: MasterImportType;
@@ -233,6 +265,8 @@ export interface MasterImportApplyResponse {
   updated_personas: number;
   created_bank_accounts: number;
   updated_bank_accounts: number;
+  created_sst_profiles: number;
+  updated_sst_profiles: number;
   skipped_rows: number;
 }
 
@@ -606,6 +640,84 @@ const findCurrentBankingSnapshot = async (
   };
 };
 
+const findCurrentSstPerfilSnapshot = async (
+  client: PoolClient,
+  personaId: number
+): Promise<SstPerfilImportSnapshot | null> => {
+  const result = await client.query<SstPerfilLookupRow>(
+    `
+      SELECT
+        spd.persona_id,
+        spd.vinculacion_id,
+        spd.fecha_caracterizacion,
+        spd.origen,
+        spd.nacionalidad,
+        spd.estrato_socioeconomico,
+        spd.tipo_vivienda,
+        spd.grupo_etnico,
+        spd.nivel_escolaridad,
+        spd.profesion_ocupacion,
+        spd.personas_dependen_economicamente,
+        spd.cabeza_familia,
+        spd.total_hijos,
+        spd.hijos_viven_con_usted,
+        spd.hijos_menores_edad,
+        spd.hijos_mayores_edad,
+        spr.tipo_sangre_rh,
+        spr.tiene_discapacidad,
+        spr.tipo_discapacidad,
+        spd.redes_apoyo_social,
+        spr.presenta_alergias,
+        spr.medicamentos_permanentes,
+        spr.enfermedad,
+        spd.autorizacion_tratamiento_datos,
+        spd.observaciones
+      FROM sst_perfil_demografico spd
+      LEFT JOIN sst_perfil_restringido spr
+        ON spr.persona_id = spd.persona_id
+       AND COALESCE(spr.activo, TRUE) = TRUE
+      WHERE spd.persona_id = $1::bigint
+        AND COALESCE(spd.activo, TRUE) = TRUE
+      LIMIT 1
+    `,
+    [personaId]
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    persona_id: toRequiredNumber(row.persona_id),
+    tipo_documento: null,
+    numero_documento: null,
+    fecha_caracterizacion: formatDate(row.fecha_caracterizacion),
+    origen: (row.origen as SstPerfilImportSnapshot['origen']) ?? null,
+    nacionalidad: row.nacionalidad,
+    estrato_socioeconomico: row.estrato_socioeconomico,
+    tipo_vivienda: row.tipo_vivienda,
+    grupo_etnico: row.grupo_etnico,
+    nivel_escolaridad: row.nivel_escolaridad,
+    profesion_ocupacion: row.profesion_ocupacion,
+    personas_dependen_economicamente: toNumber(row.personas_dependen_economicamente),
+    cabeza_familia: row.cabeza_familia ?? null,
+    total_hijos: toNumber(row.total_hijos),
+    hijos_viven_con_usted: toNumber(row.hijos_viven_con_usted),
+    hijos_menores_edad: toNumber(row.hijos_menores_edad),
+    hijos_mayores_edad: toNumber(row.hijos_mayores_edad),
+    tipo_sangre_rh: row.tipo_sangre_rh,
+    tiene_discapacidad: row.tiene_discapacidad ?? null,
+    tipo_discapacidad: row.tipo_discapacidad,
+    redes_apoyo_social: row.redes_apoyo_social,
+    presenta_alergias: row.presenta_alergias,
+    medicamentos_permanentes: row.medicamentos_permanentes,
+    enfermedad: row.enfermedad,
+    autorizacion_tratamiento_datos: row.autorizacion_tratamiento_datos ?? null,
+    observaciones: row.observaciones
+  };
+};
+
 const buildSummary = (
   classifications: MasterImportClassification[]
 ): MasterImportPreviewSummary => ({
@@ -613,7 +725,7 @@ const buildSummary = (
   nuevas: classifications.filter((item) => item === 'NUEVA' || item === 'CUENTA_NUEVA').length,
   actualizaciones: classifications.filter((item) => item === 'ACTUALIZACION' || item === 'CAMBIO_CUENTA').length,
   sin_cambios: classifications.filter((item) => item === 'SIN_CAMBIOS').length,
-  errores: classifications.filter((item) => item === 'ERROR').length,
+  errores: classifications.filter((item) => item === 'ERROR' || item === 'CONFLICTO').length,
   posibles_duplicados: classifications.filter((item) => item === 'POSIBLE_DUPLICADO').length
 });
 
@@ -705,7 +817,12 @@ const buildAuditMeta = (
 
 export const downloadMasterImportTemplate = (type: MasterImportType): { buffer: Buffer; fileName: string } => ({
   buffer: buildTemplateWorkbook(type),
-  fileName: type === 'DATOS_PERSONALES' ? 'plantilla-datos-personales.xlsx' : 'plantilla-informacion-bancaria.xlsx'
+  fileName:
+    type === 'DATOS_PERSONALES'
+      ? 'plantilla-datos-personales.xlsx'
+      : type === 'INFORMACION_BANCARIA'
+        ? 'plantilla-informacion-bancaria.xlsx'
+        : 'plantilla-caracterizacion-sst.xlsx'
 });
 
 export const analyzeMasterImportFile = async (
@@ -883,7 +1000,9 @@ export const validateMasterImportLote = async (
       );
       return lote.tipo === 'DATOS_PERSONALES'
         ? normalizePersonalMappedRow(mapped)
-        : normalizeBankingMappedRow(mapped);
+        : lote.tipo === 'INFORMACION_BANCARIA'
+          ? normalizeBankingMappedRow(mapped)
+          : normalizeSstPerfilMappedRow(mapped);
     });
 
     const duplicateIndexes = buildDuplicateSet(
@@ -1002,7 +1121,7 @@ export const validateMasterImportLote = async (
             current?.persona_id ?? null
           ]
         );
-      } else {
+      } else if (lote.tipo === 'INFORMACION_BANCARIA') {
         const normalized = normalizedBase as BankingImportSnapshot;
         const currentPersona = await findPersonaSnapshotByIdentity(
           client,
@@ -1097,6 +1216,119 @@ export const validateMasterImportLote = async (
             currentBanking?.cuenta_bancaria_id ?? null
           ]
         );
+      } else {
+        const normalized = normalizedBase as SstPerfilImportSnapshot;
+        const currentPersona = await findPersonaSnapshotByIdentity(
+          client,
+          normalized.tipo_documento,
+          normalized.numero_documento
+        );
+        const currentSst = currentPersona?.persona_id
+          ? await findCurrentSstPerfilSnapshot(client, currentPersona.persona_id)
+          : null;
+        const result = classifySstPerfilImportRow(
+          normalized,
+          currentSst,
+          duplicateInFile,
+          Boolean(currentPersona)
+        );
+
+        if (
+          normalized.tipo_documento &&
+          !docTypes.has(normalizeComparableText(normalized.tipo_documento))
+        ) {
+          result.errors.push({
+            field: 'tipo_documento',
+            code: 'DOCUMENT_TYPE_NOT_FOUND',
+            message: `No existe un tipo documental vigente para ${normalized.tipo_documento}.`,
+            severity: 'ERROR'
+          });
+          result.classification = 'ERROR';
+          result.requires_apply = false;
+        }
+
+        if (
+          normalized.origen &&
+          ![
+            'FORMULARIO_DIGITAL',
+            'FORMULARIO_FISICO',
+            'IMPORTACION',
+            'EDICION_MANUAL',
+            'PORTAL_COLABORADOR'
+          ].includes(normalized.origen)
+        ) {
+          result.errors.push({
+            field: 'origen',
+            code: 'SST_ORIGIN_INVALID',
+            message: `El origen ${normalized.origen} no es valido para la caracterizacion SST.`,
+            severity: 'ERROR'
+          });
+          result.classification = 'ERROR';
+          result.requires_apply = false;
+        }
+
+        classifications.push(result.classification);
+        await client.query(
+          `
+            INSERT INTO importacion_staging_maestro (
+              lote_id,
+              fila_numero,
+              tipo,
+              identidad_tipo_documento,
+              identidad_numero_documento,
+              nombre_referencia,
+              data_cruda,
+              mapping_aplicado,
+              payload_normalizado,
+              snapshot_actual,
+              diff,
+              errores,
+              advertencias,
+              clasificacion,
+              requiere_accion,
+              procesado,
+              entidad_id,
+              referencia_secundaria_id
+            )
+            VALUES (
+              $1::bigint,
+              $2::int,
+              $3,
+              $4,
+              $5,
+              NULL,
+              $6::jsonb,
+              $7::jsonb,
+              $8::jsonb,
+              $9::jsonb,
+              $10::jsonb,
+              $11::jsonb,
+              $12::jsonb,
+              $13,
+              $14,
+              FALSE,
+              $15::bigint,
+              NULL
+            )
+          `,
+          [
+            loteId,
+            rowNumber,
+            lote.tipo,
+            result.normalized.tipo_documento,
+            result.normalized.numero_documento,
+            JSON.stringify(rawRow),
+            JSON.stringify(input.column_mappings),
+            JSON.stringify(result.normalized),
+            JSON.stringify(currentSst),
+            JSON.stringify(result.diffs),
+            JSON.stringify(result.errors),
+            JSON.stringify(result.warnings),
+            result.classification,
+            result.requires_apply,
+            currentPersona?.persona_id ?? null
+          ]
+        );
       }
     }
 
@@ -1182,7 +1414,7 @@ export const listMasterImportLotes = async (
   tenant?: TenantAccessContext
 ): Promise<MasterImportListResponse> => {
   const conditions: string[] = [
-    `tipo IN ('DATOS_PERSONALES', 'INFORMACION_BANCARIA')`
+    `tipo IN ('DATOS_PERSONALES', 'INFORMACION_BANCARIA', 'CARACTERIZACION_SST')`
   ];
   const params: unknown[] = [];
   appendTenantScope(conditions, params, tenant);
@@ -1396,6 +1628,8 @@ export const applyMasterImportLote = async (
         updated_personas: Number(confirmSummary?.updated_personas ?? 0),
         created_bank_accounts: Number(confirmSummary?.created_bank_accounts ?? 0),
         updated_bank_accounts: Number(confirmSummary?.updated_bank_accounts ?? 0),
+        created_sst_profiles: Number(confirmSummary?.created_sst_profiles ?? 0),
+        updated_sst_profiles: Number(confirmSummary?.updated_sst_profiles ?? 0),
         skipped_rows: Number(confirmSummary?.skipped_rows ?? 0)
       };
     }
@@ -1411,6 +1645,8 @@ export const applyMasterImportLote = async (
     let updatedPersonas = 0;
     let createdBankAccounts = 0;
     let updatedBankAccounts = 0;
+    let createdSstProfiles = 0;
+    let updatedSstProfiles = 0;
     let skippedRows = 0;
 
     for (const row of stagedRows) {
@@ -1530,6 +1766,70 @@ export const applyMasterImportLote = async (
         continue;
       }
 
+      if (row.tipo === 'CARACTERIZACION_SST') {
+        const payload = row.payload_normalizado as unknown as SstPerfilImportSnapshot;
+        const personaId = toRequiredNumber(row.entidad_id, 'MASTER_IMPORT_PERSON_REQUIRED');
+        const beforeSst = await findCurrentSstPerfilSnapshot(client, personaId);
+        await upsertSstPerfilSociodemograficoWithClient(
+          client,
+          personaId,
+          {
+            vinculacion_id: undefined,
+            fecha_caracterizacion: payload.fecha_caracterizacion,
+            origen: payload.origen ?? 'IMPORTACION',
+            nacionalidad: payload.nacionalidad,
+            estrato_socioeconomico: payload.estrato_socioeconomico,
+            tipo_vivienda: payload.tipo_vivienda,
+            grupo_etnico: payload.grupo_etnico,
+            nivel_escolaridad: payload.nivel_escolaridad,
+            profesion_ocupacion: payload.profesion_ocupacion,
+            personas_dependen_economicamente: payload.personas_dependen_economicamente,
+            cabeza_familia: payload.cabeza_familia,
+            total_hijos: payload.total_hijos,
+            hijos_viven_con_usted: payload.hijos_viven_con_usted,
+            hijos_menores_edad: payload.hijos_menores_edad,
+            hijos_mayores_edad: payload.hijos_mayores_edad,
+            tiene_discapacidad: payload.tiene_discapacidad,
+            tipo_discapacidad: payload.tipo_discapacidad,
+            redes_apoyo_social: payload.redes_apoyo_social,
+            presenta_alergias: payload.presenta_alergias,
+            medicamentos_permanentes: payload.medicamentos_permanentes,
+            enfermedad: payload.enfermedad,
+            autorizacion_tratamiento_datos: payload.autorizacion_tratamiento_datos,
+            observaciones: payload.observaciones,
+            motivo_cambio: `Importacion maestra SST lote ${loteId} fila ${row.fila_numero}`
+          },
+          {
+            actorUserId,
+            importacionLoteId: loteId,
+            origin: 'IMPORTACION',
+            reason: `Importacion maestra SST lote ${loteId} fila ${row.fila_numero}`
+          },
+          tenant
+        );
+
+        if (beforeSst) {
+          updatedSstProfiles += 1;
+        } else {
+          createdSstProfiles += 1;
+        }
+
+        await client.query(
+          `
+            UPDATE importacion_staging_maestro
+            SET
+              procesado = TRUE,
+              resultado_aplicacion = 'SST_APLICADA',
+              mensaje_aplicacion = $3,
+              updated_at = NOW()
+            WHERE lote_id = $1::bigint
+              AND fila_numero = $2::int
+          `,
+          [loteId, row.fila_numero, `Perfil SST sincronizado para persona #${personaId}`]
+        );
+        continue;
+      }
+
       const payload = row.payload_normalizado as unknown as BankingImportSnapshot;
       const personaId = toRequiredNumber(row.entidad_id, 'MASTER_IMPORT_PERSON_REQUIRED');
 
@@ -1616,11 +1916,19 @@ export const applyMasterImportLote = async (
     const rows = mapPreviewRows(await loadStagedRows(client, loteId));
     const summary = buildSummary(rows.map((item) => item.clasificacion));
     const confirmacion = {
-      applied_rows: createdPersonas + updatedPersonas + createdBankAccounts + updatedBankAccounts,
+      applied_rows:
+        createdPersonas +
+        updatedPersonas +
+        createdBankAccounts +
+        updatedBankAccounts +
+        createdSstProfiles +
+        updatedSstProfiles,
       created_personas: createdPersonas,
       updated_personas: updatedPersonas,
       created_bank_accounts: createdBankAccounts,
       updated_bank_accounts: updatedBankAccounts,
+      created_sst_profiles: createdSstProfiles,
+      updated_sst_profiles: updatedSstProfiles,
       skipped_rows: skippedRows
     };
 

@@ -1,8 +1,18 @@
 import * as XLSX from 'xlsx';
 
 import { normalizeNumeroDocumento } from '../personas/personas.identificaciones.helpers';
+import {
+  SST_PERFIL_FIELD_DEFINITIONS,
+  SST_PERFIL_FIELD_LABELS,
+  normalizeComparableSstValue,
+  normalizeSstPerfilBooleanValue,
+  normalizeSstPerfilIntegerValue,
+  normalizeSstPerfilTextValue,
+  type SstPerfilEditableValues,
+  type SstPerfilOrigen
+} from '../sst/sst.perfil.domain';
 
-export type MasterImportType = 'DATOS_PERSONALES' | 'INFORMACION_BANCARIA';
+export type MasterImportType = 'DATOS_PERSONALES' | 'INFORMACION_BANCARIA' | 'CARACTERIZACION_SST';
 export type MasterImportStatus = 'PREPARADO' | 'VALIDADO' | 'APLICADO' | 'CANCELADO' | 'ERROR';
 export type MasterImportFilter =
   | 'TODOS'
@@ -19,7 +29,8 @@ export type MasterImportClassification =
   | 'ERROR'
   | 'POSIBLE_DUPLICADO'
   | 'CUENTA_NUEVA'
-  | 'CAMBIO_CUENTA';
+  | 'CAMBIO_CUENTA'
+  | 'CONFLICTO';
 
 export interface ImportValidationIssue {
   field: string;
@@ -88,6 +99,14 @@ export interface BankingImportSnapshot {
   observacion: string | null;
 }
 
+export interface SstPerfilImportSnapshot extends SstPerfilEditableValues {
+  persona_id: number | null;
+  tipo_documento: string | null;
+  numero_documento: string | null;
+  fecha_caracterizacion: string | null;
+  origen: SstPerfilOrigen | null;
+}
+
 export interface MasterImportClassificationResult<TPayload extends object> {
   classification: MasterImportClassification;
   name: string | null;
@@ -127,8 +146,22 @@ const BANKING_FIELDS: MasterImportFieldDefinition[] = [
   { code: 'observacion', label: 'Observacion', required: false, type: 'INFORMACION_BANCARIA', aliases: ['observacion', 'observaciones', 'nota'] }
 ];
 
+const SST_PROFILE_FIELDS: MasterImportFieldDefinition[] = [
+  { code: 'tipo_documento', label: 'Tipo documento', required: true, type: 'CARACTERIZACION_SST', aliases: ['tipo_documento', 'tipo_identificacion', 'tipo id'] },
+  { code: 'numero_documento', label: 'Numero documento', required: true, type: 'CARACTERIZACION_SST', aliases: ['numero_documento', 'documento', 'cedula', 'numero_identificacion'] },
+  { code: 'fecha_caracterizacion', label: 'Fecha caracterizacion', required: false, type: 'CARACTERIZACION_SST', aliases: ['fecha_caracterizacion', 'fecha caracterizacion', 'fecha formulario'] },
+  { code: 'origen', label: 'Origen', required: false, type: 'CARACTERIZACION_SST', aliases: ['origen', 'fuente', 'tipo_formulario'] },
+  ...SST_PERFIL_FIELD_DEFINITIONS.map((field) => ({
+    code: field.code,
+    label: field.label,
+    required: false,
+    type: 'CARACTERIZACION_SST' as const,
+    aliases: [field.code, field.label]
+  }))
+];
+
 const FIELD_LABELS = new Map(
-  [...PERSONAL_FIELDS, ...BANKING_FIELDS].map((field) => [field.code, field.label])
+  [...PERSONAL_FIELDS, ...BANKING_FIELDS, ...SST_PROFILE_FIELDS].map((field) => [field.code, field.label])
 );
 
 const PERSONAL_MUTABLE_FIELDS: Array<keyof PersonalImportSnapshot> = [
@@ -153,6 +186,12 @@ const BANKING_MUTABLE_FIELDS: Array<keyof BankingImportSnapshot> = [
   'nombre_titular',
   'documento_titular',
   'observacion'
+];
+
+const SST_MUTABLE_FIELDS: Array<keyof SstPerfilImportSnapshot> = [
+  'fecha_caracterizacion',
+  'origen',
+  ...SST_PERFIL_FIELD_DEFINITIONS.map((field) => field.code)
 ];
 
 const csvEscape = (value: string): string => `"${value.replace(/"/g, '""')}"`;
@@ -202,7 +241,12 @@ export const maskBankAccountNumber = (value: string | null | undefined): string 
 
 export const getMasterImportFieldCatalog = (
   type: MasterImportType
-): MasterImportFieldDefinition[] => (type === 'DATOS_PERSONALES' ? PERSONAL_FIELDS : BANKING_FIELDS);
+): MasterImportFieldDefinition[] =>
+  type === 'DATOS_PERSONALES'
+    ? PERSONAL_FIELDS
+    : type === 'INFORMACION_BANCARIA'
+      ? BANKING_FIELDS
+      : SST_PROFILE_FIELDS;
 
 export const getMasterImportRequiredFields = (type: MasterImportType): string[] =>
   getMasterImportFieldCatalog(type)
@@ -396,6 +440,37 @@ export const normalizeBankingMappedRow = (
   documento_titular: normalizeImportText(mappedRow.documento_titular)?.replace(/\s+/g, '') ?? null,
   observacion: normalizeImportText(mappedRow.observacion),
   cuenta_bancaria_id: null
+});
+
+export const normalizeSstPerfilMappedRow = (
+  mappedRow: Record<string, unknown>
+): SstPerfilImportSnapshot => ({
+  persona_id: null,
+  tipo_documento: normalizeImportText(mappedRow.tipo_documento)?.toUpperCase() ?? null,
+  numero_documento: normalizeImportDocumentNumber(mappedRow.numero_documento),
+  fecha_caracterizacion: toIsoDate(mappedRow.fecha_caracterizacion),
+  origen: normalizeImportText(mappedRow.origen)?.toUpperCase() as SstPerfilOrigen | null,
+  nacionalidad: normalizeSstPerfilTextValue(mappedRow.nacionalidad),
+  estrato_socioeconomico: normalizeSstPerfilTextValue(mappedRow.estrato_socioeconomico),
+  tipo_vivienda: normalizeSstPerfilTextValue(mappedRow.tipo_vivienda),
+  grupo_etnico: normalizeSstPerfilTextValue(mappedRow.grupo_etnico),
+  nivel_escolaridad: normalizeSstPerfilTextValue(mappedRow.nivel_escolaridad),
+  profesion_ocupacion: normalizeSstPerfilTextValue(mappedRow.profesion_ocupacion),
+  personas_dependen_economicamente: normalizeSstPerfilIntegerValue(mappedRow.personas_dependen_economicamente),
+  cabeza_familia: normalizeSstPerfilBooleanValue(mappedRow.cabeza_familia),
+  total_hijos: normalizeSstPerfilIntegerValue(mappedRow.total_hijos),
+  hijos_viven_con_usted: normalizeSstPerfilIntegerValue(mappedRow.hijos_viven_con_usted),
+  hijos_menores_edad: normalizeSstPerfilIntegerValue(mappedRow.hijos_menores_edad),
+  hijos_mayores_edad: normalizeSstPerfilIntegerValue(mappedRow.hijos_mayores_edad),
+  tipo_sangre_rh: normalizeSstPerfilTextValue(mappedRow.tipo_sangre_rh),
+  tiene_discapacidad: normalizeSstPerfilBooleanValue(mappedRow.tiene_discapacidad),
+  tipo_discapacidad: normalizeSstPerfilTextValue(mappedRow.tipo_discapacidad),
+  redes_apoyo_social: normalizeSstPerfilTextValue(mappedRow.redes_apoyo_social),
+  presenta_alergias: normalizeSstPerfilTextValue(mappedRow.presenta_alergias),
+  medicamentos_permanentes: normalizeSstPerfilTextValue(mappedRow.medicamentos_permanentes),
+  enfermedad: normalizeSstPerfilTextValue(mappedRow.enfermedad),
+  autorizacion_tratamiento_datos: normalizeSstPerfilBooleanValue(mappedRow.autorizacion_tratamiento_datos),
+  observaciones: normalizeSstPerfilTextValue(mappedRow.observaciones)
 });
 
 const hasMeaningfulValue = (value: unknown): boolean =>
@@ -655,6 +730,144 @@ export const classifyBankingImportRow = (
   };
 };
 
+export const classifySstPerfilImportRow = (
+  normalized: SstPerfilImportSnapshot,
+  current: SstPerfilImportSnapshot | null,
+  duplicateInFile: boolean,
+  personExists: boolean
+): MasterImportClassificationResult<SstPerfilImportSnapshot> => {
+  const errors: ImportValidationIssue[] = [];
+  const warnings: ImportValidationIssue[] = [];
+  const diffs: MasterImportDiff[] = [];
+  let hasConflict = false;
+
+  if (!normalized.tipo_documento) {
+    errors.push({
+      field: 'tipo_documento',
+      code: 'MISSING_DOCUMENT_TYPE',
+      message: 'El tipo de documento es obligatorio.',
+      severity: 'ERROR'
+    });
+  }
+
+  if (!normalized.numero_documento) {
+    errors.push({
+      field: 'numero_documento',
+      code: 'MISSING_DOCUMENT_NUMBER',
+      message: 'El numero de documento es obligatorio.',
+      severity: 'ERROR'
+    });
+  }
+
+  if (!personExists) {
+    errors.push({
+      field: 'numero_documento',
+      code: 'PERSON_NOT_FOUND',
+      message: 'No existe una persona vigente en Empiria con esa identidad.',
+      severity: 'ERROR'
+    });
+  }
+
+  if (duplicateInFile) {
+    warnings.push({
+      field: 'numero_documento',
+      code: 'POSSIBLE_DUPLICATE_IN_FILE',
+      message: 'La identidad aparece mas de una vez en el mismo archivo.',
+      severity: 'WARNING'
+    });
+  }
+
+  if (errors.length > 0) {
+    return {
+      classification: 'ERROR',
+      name: null,
+      normalized,
+      diffs,
+      errors,
+      warnings,
+      requires_apply: false
+    };
+  }
+
+  for (const field of SST_MUTABLE_FIELDS) {
+    const nextValue = normalized[field];
+    if (!hasMeaningfulValue(nextValue)) {
+      continue;
+    }
+
+    const currentValue = current?.[field] ?? null;
+    if (field === 'origen' || field === 'fecha_caracterizacion') {
+      if (!sameValue(currentValue, nextValue)) {
+        if (hasMeaningfulValue(currentValue)) {
+          hasConflict = true;
+          warnings.push({
+            field,
+            code: 'SST_CONFLICTING_VALUE',
+            message: `El campo ${FIELD_LABELS.get(field) ?? field} ya tiene un valor distinto en Empiria.`,
+            severity: 'WARNING'
+          });
+        }
+        pushDiff(diffs, field, currentValue, nextValue);
+      }
+      continue;
+    }
+
+    const comparableCurrent = normalizeComparableSstValue(field as keyof SstPerfilEditableValues, currentValue);
+    const comparableNext = normalizeComparableSstValue(field as keyof SstPerfilEditableValues, nextValue);
+    if (!comparableNext) {
+      continue;
+    }
+    if (!comparableCurrent) {
+      pushDiff(diffs, field, currentValue, nextValue);
+      continue;
+    }
+    if (comparableCurrent !== comparableNext) {
+      hasConflict = true;
+      warnings.push({
+        field,
+        code: 'SST_CONFLICTING_VALUE',
+        message: `El campo ${SST_PERFIL_FIELD_LABELS.get(field as keyof SstPerfilEditableValues) ?? field} ya tiene un valor distinto en Empiria.`,
+        severity: 'WARNING'
+      });
+      pushDiff(diffs, field, currentValue, nextValue);
+    }
+  }
+
+  if (diffs.length === 0) {
+    return {
+      classification: duplicateInFile ? 'POSIBLE_DUPLICADO' : 'SIN_CAMBIOS',
+      name: null,
+      normalized: { ...normalized, persona_id: current?.persona_id ?? normalized.persona_id },
+      diffs,
+      errors,
+      warnings,
+      requires_apply: false
+    };
+  }
+
+  if (hasConflict) {
+    return {
+      classification: 'CONFLICTO',
+      name: null,
+      normalized: { ...normalized, persona_id: current?.persona_id ?? normalized.persona_id },
+      diffs,
+      errors,
+      warnings,
+      requires_apply: false
+    };
+  }
+
+  return {
+    classification: duplicateInFile ? 'POSIBLE_DUPLICADO' : current ? 'ACTUALIZACION' : 'NUEVA',
+    name: null,
+    normalized: { ...normalized, persona_id: current?.persona_id ?? normalized.persona_id },
+    diffs,
+    errors,
+    warnings,
+    requires_apply: !duplicateInFile
+  };
+};
+
 export const matchesMasterImportFilter = (
   classification: MasterImportClassification,
   filter: MasterImportFilter
@@ -676,7 +889,7 @@ export const matchesMasterImportFilter = (
   }
 
   if (filter === 'ERRORES') {
-    return classification === 'ERROR';
+    return classification === 'ERROR' || classification === 'CONFLICTO';
   }
 
   if (filter === 'DUPLICADOS') {
@@ -724,7 +937,8 @@ export const buildTemplateWorkbook = (type: MasterImportType): Buffer => {
           'BOGOTA',
           'COLOMBIA'
         ]]
-      : [[
+      : type === 'INFORMACION_BANCARIA'
+      ? [[
           'TIPO_DOCUMENTO',
           'NUMERO_DOCUMENTO',
           'NOMBRE',
@@ -746,13 +960,52 @@ export const buildTemplateWorkbook = (type: MasterImportType): Buffer => {
           'SANDRA MILENA DIAZ VELASQUEZ',
           '1121836989',
           'Cuenta principal vigente'
+        ]]
+      : [[
+          'TIPO_DOCUMENTO',
+          'NUMERO_DOCUMENTO',
+          'FECHA_CARACTERIZACION',
+          'ORIGEN',
+          'NACIONALIDAD',
+          'NIVEL_ESCOLARIDAD',
+          'ESTRATO_SOCIOECONOMICO',
+          'TIPO_VIVIENDA',
+          'PROFESION_OCUPACION',
+          'PERSONAS_DEPENDEN_ECONOMICAMENTE',
+          'CABEZA_FAMILIA',
+          'TOTAL_HIJOS',
+          'TIENE_DISCAPACIDAD',
+          'REDES_APOYO_SOCIAL',
+          'AUTORIZACION_TRATAMIENTO_DATOS',
+          'OBSERVACIONES'
+        ], [
+          'CC',
+          '1020304050',
+          '2026-08-23',
+          'FORMULARIO_DIGITAL',
+          'COLOMBIANA',
+          'BACHILLER',
+          '2',
+          'CASA',
+          'MANIPULADORA DE ALIMENTOS',
+          '2',
+          'SI',
+          '1',
+          'NO',
+          'FAMILIA',
+          'SI',
+          'Carga inicial parcial para caracterizacion SST'
         ]];
 
   const sheet = XLSX.utils.aoa_to_sheet(rows);
   XLSX.utils.book_append_sheet(
     workbook,
     sheet,
-    type === 'DATOS_PERSONALES' ? 'datos_personales' : 'informacion_bancaria'
+    type === 'DATOS_PERSONALES'
+      ? 'datos_personales'
+      : type === 'INFORMACION_BANCARIA'
+        ? 'informacion_bancaria'
+        : 'caracterizacion_sst'
   );
   return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
 };

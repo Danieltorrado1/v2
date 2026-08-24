@@ -82,6 +82,8 @@ type KpiCard = {
 type NovedadFormState = {
   nomina_empleado_id: string;
   tipo_novedad_id: string;
+  tipo_novedad_query: string;
+  documento_persona_id: string;
   fecha_inicio: string;
   fecha_fin: string;
   dias: string;
@@ -98,21 +100,9 @@ type FeedbackState = {
   tone: "success" | "error";
 } | null;
 
-type NovedadTipoDisplay = Pick<
-  NominaTipoNovedad,
-  | "id"
-  | "nombre"
-  | "categoria"
-  | "afecta_salario"
-  | "afecta_transporte"
-  | "es_adicion"
-  | "es_deduccion"
-  | "requiere_fechas"
-  | "requiere_dias"
-  | "requiere_horas"
-  | "requiere_valor"
-  | "activo"
->;
+type NovedadTipoDisplay = Omit<NominaTipoNovedad, "created_at"> & {
+  created_at?: string;
+};
 
 const PERIODS_LIMIT = 100;
 const EMPLOYEE_PAGE_SIZE_OPTIONS = [25, 50, 100];
@@ -129,6 +119,15 @@ const NOMINA_EXPORT_OPTIONS: FilterOption[] = [
   { value: "liquidaciones", label: "Liquidaciones" },
   { value: "plano_bancario", label: "Plano bancario" },
 ];
+const NOMINA_OPERATIONAL_LEGEND = [
+  { code: "L50", label: "Dia de no clase" },
+  { code: "PR1", label: "Cita medica" },
+  { code: "PR2", label: "Incapacidad medica" },
+  { code: "PR3", label: "Calamidad familiar" },
+  { code: "PR4", label: "Citacion oficial" },
+  { code: "PNR", label: "Permiso no remunerado" },
+  { code: "S", label: "Suspension" },
+] as const;
 const tabs = [
   { id: "resumen", label: "Resumen" },
   { id: "nomina", label: "Nomina" },
@@ -141,6 +140,8 @@ function createInitialNovedadForm(empleadoId = ""): NovedadFormState {
   return {
     nomina_empleado_id: empleadoId,
     tipo_novedad_id: "",
+    tipo_novedad_query: "",
+    documento_persona_id: "",
     fecha_inicio: "",
     fecha_fin: "",
     dias: "",
@@ -220,6 +221,25 @@ function formatNovedadRange(novedad: NominaNovedadApi) {
   return "Sin fechas";
 }
 
+function isCanonicalProjectedNovedad(novedad: NominaNovedadApi) {
+  return novedad.registro_tipo === "CANONICA_PROYECTADA";
+}
+
+function getNovedadProjectionLabel(novedad: NominaNovedadApi) {
+  if (!isCanonicalProjectedNovedad(novedad)) {
+    return null;
+  }
+
+  if (!novedad.fecha_inicio_evento_canonico || !novedad.fecha_fin_evento_canonico) {
+    return "Evento canónico proyectado";
+  }
+
+  return `Evento canonico ${formatPeriodRange(
+    novedad.fecha_inicio_evento_canonico,
+    novedad.fecha_fin_evento_canonico,
+  )}`;
+}
+
 function normalizeTextValue(value: string) {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
@@ -284,16 +304,43 @@ function getNovedadStatusTone(novedad: NominaNovedadApi): Tone {
   return novedad.revisado ? "success" : "warning";
 }
 
-function getNovedadTipoLabel(tipo: Pick<NovedadTipoDisplay, "id" | "nombre" | "categoria">) {
-  if (!tipo.nombre && !tipo.categoria) {
-    return `Tipo ${tipo.id}`;
+function normalizeNovedadSearchValue(value: string | null | undefined) {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function getOperationalNovedadCodeLabel(tipo: Pick<NovedadTipoDisplay, "codigo_operativo" | "nombre">) {
+  const code = tipo.codigo_operativo?.trim();
+  const name = tipo.nombre?.trim();
+
+  if (code && name) {
+    return `${code} - ${name}`;
   }
 
-  if (!tipo.categoria) {
-    return tipo.nombre ?? `Tipo ${tipo.id}`;
+  return code ?? name ?? "Tipo sin nombre";
+}
+
+function matchesNovedadTypeSearch(
+  tipo: Pick<NovedadTipoDisplay, "codigo_operativo" | "nombre" | "categoria" | "descripcion_operativa">,
+  normalizedQuery: string,
+) {
+  if (!normalizedQuery) {
+    return true;
   }
 
-  return `${tipo.nombre ?? `Tipo ${tipo.id}`} â€” ${tipo.categoria}`;
+  return [
+    tipo.codigo_operativo,
+    tipo.nombre,
+    tipo.categoria,
+    tipo.descripcion_operativa,
+    getOperationalNovedadCodeLabel(tipo),
+  ]
+    .map((value) => normalizeNovedadSearchValue(value))
+    .some((candidate) => candidate.includes(normalizedQuery));
 }
 
 function buildHistoricalNovedadType(tipo: NominaNovedadApi["tipo_novedad"]): NovedadTipoDisplay {
@@ -303,8 +350,17 @@ function buildHistoricalNovedadType(tipo: NominaNovedadApi["tipo_novedad"]): Nov
   };
 }
 
-function getVisibleNovedadTipoLabel(tipo: Pick<NovedadTipoDisplay, "id" | "nombre" | "categoria">) {
-  return getNovedadTipoLabel(tipo).replace("Ã‚Â·", "-").replace("Â·", "-");
+function getVisibleNovedadTipoLabel(
+  tipo: Pick<NovedadTipoDisplay, "id" | "nombre" | "categoria" | "codigo_operativo">,
+) {
+  const operational = getOperationalNovedadCodeLabel(tipo);
+  const category = tipo.categoria?.trim();
+
+  if (category) {
+    return `${operational} - ${category}`;
+  }
+
+  return operational;
 }
 
 function isCatalogPermissionError(error: unknown) {
@@ -547,6 +603,7 @@ function buildKpis(
   loading: boolean,
   error: string | null,
   hasSelectedPeriod: boolean,
+  totalNovedadesOverride?: number | null,
 ): KpiCard[] {
   const unavailable = hasSelectedPeriod && !loading && !dashboard && Boolean(error);
   const countValue = (value?: number) => {
@@ -586,7 +643,7 @@ function buildKpis(
       tone: "info",
       icon: FileText,
       label: "Novedades",
-      value: countValue(dashboard?.total_novedades),
+      value: countValue(totalNovedadesOverride ?? dashboard?.total_novedades),
       caption: "Registradas en backend",
     },
     {
@@ -617,6 +674,7 @@ export default function NominaPage() {
   const [tablePage, setTablePage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [isNovedadModalOpen, setIsNovedadModalOpen] = useState(false);
+  const [editingNovedad, setEditingNovedad] = useState<NominaNovedadApi | null>(null);
   const [novedadForm, setNovedadForm] = useState<NovedadFormState>(createInitialNovedadForm());
   const [novedadFormError, setNovedadFormError] = useState<string | null>(null);
   const [isSubmittingNovedad, setIsSubmittingNovedad] = useState(false);
@@ -1175,8 +1233,36 @@ export default function NominaPage() {
     [novedadForm.tipo_novedad_id, novedadTypesById],
   );
 
+  const filteredNovedadTypeSuggestions = useMemo(() => {
+    const normalizedQuery = normalizeNovedadSearchValue(novedadForm.tipo_novedad_query);
+
+    return catalogoTiposNovedad
+      .filter((tipo) => matchesNovedadTypeSearch(tipo, normalizedQuery))
+      .sort((left, right) => {
+        const leftHasCode = left.codigo_operativo ? 0 : 1;
+        const rightHasCode = right.codigo_operativo ? 0 : 1;
+
+        if (leftHasCode !== rightHasCode) {
+          return leftHasCode - rightHasCode;
+        }
+
+        return getVisibleNovedadTipoLabel(left).localeCompare(getVisibleNovedadTipoLabel(right), "es-CO");
+      })
+      .slice(0, normalizedQuery ? 8 : 12);
+  }, [catalogoTiposNovedad, novedadForm.tipo_novedad_query]);
+
   const selectedFormEmployee =
     allEmployees.find((employee) => employee.id === novedadForm.nomina_empleado_id) ?? null;
+
+  const novedadesCountByEmpleadoId = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const novedad of allNovedades) {
+      counts.set(novedad.nomina_empleado_id, (counts.get(novedad.nomina_empleado_id) ?? 0) + 1);
+    }
+
+    return counts;
+  }, [allNovedades]);
 
   const filteredEmployees = useMemo(() => {
     const searchNeedle = searchTerm.trim().toLowerCase();
@@ -1286,6 +1372,7 @@ export default function NominaPage() {
     dashboardState.loading,
     dashboardState.error,
     Boolean(selectedPeriodId),
+    selectedPeriodId ? allNovedades.length : null,
   );
 
   const currentTabLoading = isNovedadesTab
@@ -1304,7 +1391,7 @@ export default function NominaPage() {
     !employeesState.loading &&
     allEmployees.length > 0 &&
     !catalogPermissionDenied;
-  const novedadesBadgeCount = selectedDashboard?.total_novedades ?? allNovedades.length;
+  const novedadesBadgeCount = allNovedades.length;
 
   const handleSelectPeriod = (periodId: string) => {
     setSelectedPeriodId(periodId);
@@ -1442,7 +1529,7 @@ export default function NominaPage() {
     }
   };
 
-  const openNovedadModal = (employeeId: string | null) => {
+  const openNovedadModal = (employeeId: string | null, novedad?: NominaNovedadApi | null) => {
     if (!selectedPeriodId || allEmployees.length === 0 || catalogPermissionDenied) {
       return;
     }
@@ -1451,18 +1538,38 @@ export default function NominaPage() {
       void loadTiposNovedad();
     }
 
-    const fallbackEmployeeId =
-      employeeId && allEmployees.some((employee) => employee.id === employeeId)
+    const fallbackEmployeeId = novedad
+      ? novedad.nomina_empleado_id
+      : employeeId && allEmployees.some((employee) => employee.id === employeeId)
         ? employeeId
         : allEmployees[0]?.id ?? "";
 
-    setNovedadForm(createInitialNovedadForm(fallbackEmployeeId));
+    const nextForm = createInitialNovedadForm(fallbackEmployeeId);
+
+    if (novedad) {
+      nextForm.tipo_novedad_id = novedad.tipo_novedad.id;
+      nextForm.tipo_novedad_query = getVisibleNovedadTipoLabel(novedad.tipo_novedad);
+      nextForm.documento_persona_id = novedad.documento_persona_id ?? "";
+      nextForm.fecha_inicio = novedad.fecha_inicio ?? "";
+      nextForm.fecha_fin = novedad.fecha_fin ?? "";
+      nextForm.dias = novedad.dias !== null ? String(novedad.dias) : "";
+      nextForm.horas = novedad.horas !== null ? String(novedad.horas) : "";
+      nextForm.valor_manual = novedad.valor_manual !== null ? String(novedad.valor_manual) : "";
+      nextForm.observacion = novedad.observacion ?? "";
+      nextForm.revisado = novedad.revisado;
+      nextForm.requiere_cobertura = novedad.requiere_cobertura;
+      nextForm.cubierta = novedad.cubierta;
+    }
+
+    setEditingNovedad(novedad ?? null);
+    setNovedadForm(nextForm);
     setNovedadFormError(null);
     setIsNovedadModalOpen(true);
   };
 
   const closeNovedadModal = () => {
     setIsNovedadModalOpen(false);
+    setEditingNovedad(null);
     setNovedadFormError(null);
     setIsSubmittingNovedad(false);
   };
@@ -1475,18 +1582,43 @@ export default function NominaPage() {
     }));
   };
 
-  const handleNovedadTypeChange = (tipoNovedadId: string) => {
+  const handleNovedadTypeChange = (tipoNovedadId: string, queryOverride?: string) => {
     const nextType = novedadTypesById.get(tipoNovedadId) ?? null;
 
     setNovedadFormError(null);
     setNovedadForm((current) => ({
       ...current,
       tipo_novedad_id: tipoNovedadId,
+      tipo_novedad_query: queryOverride ?? (nextType ? getVisibleNovedadTipoLabel(nextType) : current.tipo_novedad_query),
+      documento_persona_id: nextType?.requiere_soporte ? current.documento_persona_id : "",
       fecha_inicio: nextType?.requiere_fechas ? current.fecha_inicio : "",
       fecha_fin: nextType?.requiere_fechas ? current.fecha_fin : "",
       dias: nextType?.requiere_dias ? current.dias : "",
       horas: nextType?.requiere_horas ? current.horas : "",
       valor_manual: nextType?.requiere_valor ? current.valor_manual : "",
+    }));
+  };
+
+  const handleNovedadTypeQueryChange = (query: string) => {
+    const normalizedQuery = normalizeNovedadSearchValue(query);
+    const exactMatch =
+      catalogoTiposNovedad.find((tipo) => {
+        return [
+          tipo.codigo_operativo,
+          tipo.nombre,
+          tipo.descripcion_operativa,
+          getVisibleNovedadTipoLabel(tipo),
+        ]
+          .map((value) => normalizeNovedadSearchValue(value))
+          .some((candidate) => candidate === normalizedQuery);
+      }) ?? null;
+
+    setNovedadFormError(null);
+    setNovedadForm((current) => ({
+      ...current,
+      tipo_novedad_query: query,
+      tipo_novedad_id: exactMatch?.id ?? "",
+      documento_persona_id: exactMatch?.requiere_soporte ? current.documento_persona_id : "",
     }));
   };
 
@@ -1516,7 +1648,9 @@ export default function NominaPage() {
     }
 
     if (!novedadForm.tipo_novedad_id.trim()) {
-      return "Debes seleccionar un tipo de novedad.";
+      return novedadForm.tipo_novedad_query.trim()
+        ? "El codigo o descripcion digitado no corresponde a un tipo de novedad activo."
+        : "Debes seleccionar un tipo de novedad.";
     }
 
     if (!selectedNovedadType) {
@@ -1542,7 +1676,7 @@ export default function NominaPage() {
     return null;
   };
 
-  const handleCreateNovedad = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmitNovedad = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const validationMessage = validateNovedadForm();
@@ -1561,19 +1695,25 @@ export default function NominaPage() {
     setNovedadActionError(null);
 
     try {
-      const payload = {
+      const createPayload = {
         periodo_id: selectedPeriodId,
         nomina_empleado_id: selectedFormEmployee.id,
         vinculacion_id: selectedFormEmployee.vinculacion_id,
         tipo_novedad_id: selectedNovedadType.id,
+        tipo_novedad_codigo: selectedNovedadType.codigo_operativo ?? null,
         revisado: novedadForm.revisado,
         requiere_cobertura: novedadForm.requiere_cobertura,
         cubierta: novedadForm.cubierta,
         activo: true,
       } as const;
 
-      await createNominaNovedad({
-        ...payload,
+      const sharedPayload = {
+        tipo_novedad_id: selectedNovedadType.id,
+        tipo_novedad_codigo: selectedNovedadType.codigo_operativo ?? null,
+        revisado: novedadForm.revisado,
+        requiere_cobertura: novedadForm.requiere_cobertura,
+        cubierta: novedadForm.cubierta,
+        activo: true,
         ...(selectedNovedadType.requiere_fechas
           ? {
               fecha_inicio: novedadForm.fecha_inicio,
@@ -1600,7 +1740,21 @@ export default function NominaPage() {
               observacion: normalizeTextValue(novedadForm.observacion),
             }
           : {}),
-      });
+        ...(normalizeTextValue(novedadForm.documento_persona_id)
+          ? {
+              documento_persona_id: normalizeTextValue(novedadForm.documento_persona_id),
+            }
+          : {}),
+      };
+
+      if (editingNovedad) {
+        await updateNominaNovedad(editingNovedad.id, sharedPayload);
+      } else {
+        await createNominaNovedad({
+          ...createPayload,
+          ...sharedPayload,
+        });
+      }
 
       await refreshSelectedPeriodData(selectedPeriodId);
       closeNovedadModal();
@@ -1612,7 +1766,7 @@ export default function NominaPage() {
   };
 
   const handleMarkNovedadReviewed = async (novedad: NominaNovedadApi) => {
-    if (!selectedPeriodId || novedad.revisado || !novedad.activo) {
+    if (!selectedPeriodId || novedad.revisado || !novedad.activo || isCanonicalProjectedNovedad(novedad)) {
       return;
     }
 
@@ -1649,6 +1803,10 @@ export default function NominaPage() {
       setMutatingNovedadId(null);
       setMutatingNovedadAction(null);
     }
+  };
+
+  const handleEditNovedad = (novedad: NominaNovedadApi) => {
+    openNovedadModal(novedad.nomina_empleado_id, novedad);
   };
 
   const selectedPeriodLabel = selectedPeriod?.nombre_periodo ?? "Periodo seleccionado";
@@ -2009,7 +2167,11 @@ export default function NominaPage() {
 
                                     <span className="cell-neto">{formatCOP(empleado.neto_pagar)}</span>
 
-                                    <span className="cell-novedades">{formatNumber(getEmployeeTotalNovedades(empleado))}</span>
+                                    <span className="cell-novedades">
+                                      {formatNumber(
+                                        novedadesCountByEmpleadoId.get(empleado.id) ?? getEmployeeTotalNovedades(empleado),
+                                      )}
+                                    </span>
 
                                     <span className={`payroll-status-badge ${getEmployeeStatusTone(empleado)}`}>
                                       {getEmployeeStatusLabel(empleado)}
@@ -2078,7 +2240,11 @@ export default function NominaPage() {
                                         </div>
                                         <div className="payroll-detail-item">
                                           <span>Total novedades</span>
-                                          <strong>{formatNumber(getEmployeeTotalNovedades(empleado))}</strong>
+                                          <strong>
+                                            {formatNumber(
+                                              novedadesCountByEmpleadoId.get(empleado.id) ?? getEmployeeTotalNovedades(empleado),
+                                            )}
+                                          </strong>
                                         </div>
                                         <div className="payroll-detail-item">
                                           <span>Sede</span>
@@ -2177,6 +2343,9 @@ export default function NominaPage() {
                         <span className={`payroll-status-badge ${novedad.activo ? "info" : "neutral"}`}>
                           {novedad.activo ? "Activa" : "Inactiva"}
                         </span>
+                        {isCanonicalProjectedNovedad(novedad) ? (
+                          <span className="payroll-status-badge purple">Evento canonico</span>
+                        ) : null}
                       </div>
                     </div>
 
@@ -2184,6 +2353,12 @@ export default function NominaPage() {
                       <div>
                         <span>Rango</span>
                         <strong>{formatNovedadRange(novedad)}</strong>
+                      </div>
+                      <div>
+                        <span>Modelo</span>
+                        <strong>
+                          {isCanonicalProjectedNovedad(novedad) ? "Evento unico proyectado" : "Novedad por periodo"}
+                        </strong>
                       </div>
                       <div>
                         <span>Dias / Horas</span>
@@ -2203,12 +2378,15 @@ export default function NominaPage() {
 
                     <div className="payroll-novedad-meta">
                       <span>
-                        Revision: {novedad.revisado ? "Revisada" : "Pendiente"}
+                        Revision: {isCanonicalProjectedNovedad(novedad) ? "No aplica" : novedad.revisado ? "Revisada" : "Pendiente"}
                       </span>
                       <span>
                         Cobertura: {novedad.requiere_cobertura ? (novedad.cubierta ? "Cubierta" : "Pendiente") : "No requerida"}
                       </span>
                       <span>Categoria: {novedadType.categoria ?? "No disponible"}</span>
+                      {getNovedadProjectionLabel(novedad) ? (
+                        <span>{getNovedadProjectionLabel(novedad)}</span>
+                      ) : null}
                     </div>
 
                     <div className="payroll-novedad-footer">
@@ -2218,10 +2396,24 @@ export default function NominaPage() {
                         <button
                           type="button"
                           className="payroll-inline-button"
-                          onClick={() => handleMarkNovedadReviewed(novedad)}
-                          disabled={!novedad.activo || novedad.revisado || isReviewing || isDeactivating}
+                          onClick={() => handleEditNovedad(novedad)}
+                          disabled={isReviewing || isDeactivating}
                         >
-                          {isReviewing ? "Marcando..." : novedad.revisado ? "Revisada" : "Marcar revisada"}
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="payroll-inline-button"
+                          onClick={() => handleMarkNovedadReviewed(novedad)}
+                          disabled={!novedad.activo || novedad.revisado || isReviewing || isDeactivating || isCanonicalProjectedNovedad(novedad)}
+                        >
+                          {isCanonicalProjectedNovedad(novedad)
+                            ? "Revision no aplica"
+                            : isReviewing
+                              ? "Marcando..."
+                              : novedad.revisado
+                                ? "Revisada"
+                                : "Marcar revisada"}
                         </button>
                         <button
                           type="button"
@@ -2419,7 +2611,7 @@ export default function NominaPage() {
           <div className="payroll-modal" onClick={(event) => event.stopPropagation()}>
             <div className="payroll-modal-header">
               <div>
-                <h3>Registrar novedad</h3>
+                <h3>{editingNovedad ? "Editar novedad" : "Registrar novedad"}</h3>
                 <p>{modalSubtitle}</p>
               </div>
 
@@ -2433,12 +2625,13 @@ export default function NominaPage() {
               </button>
             </div>
 
-            <form className="payroll-modal-form" onSubmit={handleCreateNovedad}>
+            <form className="payroll-modal-form" onSubmit={handleSubmitNovedad}>
               <div className="payroll-inline-note">
                 <strong>Catalogo real conectado</strong>
                 <p>
-                  El selector consulta `GET /nomina/tipos-novedad` y envia el `tipo_novedad_id` real sin
-                  exponer IDs tecnicos en la interfaz.
+                  La captura rapida consulta `GET /nomina/tipos-novedad`, resuelve codigo operativo o
+                  descripcion y persiste el `tipo_novedad_id` canonico junto con el codigo operativo
+                  registrado.
                 </p>
               </div>
 
@@ -2459,7 +2652,20 @@ export default function NominaPage() {
                 </label>
 
                 <label className="payroll-form-field">
-                  <span>Tipo de novedad</span>
+                  <span>Codigo o descripcion</span>
+                  <input
+                    value={novedadForm.tipo_novedad_query}
+                    onChange={(event) => handleNovedadTypeQueryChange(event.target.value)}
+                    placeholder="PR2, PNR, suspension, incapacidad..."
+                    disabled={isSubmittingNovedad || tiposNovedadState.loading || catalogIsEmpty}
+                  />
+                  <small className="payroll-form-help">
+                    Escribe codigo operativo o descripcion. Ejemplo: `PR2`.
+                  </small>
+                </label>
+
+                <label className="payroll-form-field">
+                  <span>Tipo canonico</span>
                   <select
                     value={novedadForm.tipo_novedad_id}
                     onChange={(event) => handleNovedadTypeChange(event.target.value)}
@@ -2548,11 +2754,46 @@ export default function NominaPage() {
                 ) : null}
               </div>
 
+              {filteredNovedadTypeSuggestions.length > 0 ? (
+                <div className="payroll-type-search-results">
+                  {filteredNovedadTypeSuggestions.map((tipo) => (
+                    <button
+                      key={tipo.id}
+                      type="button"
+                      className={`payroll-type-search-option ${
+                        novedadForm.tipo_novedad_id === tipo.id ? "active" : ""
+                      }`}
+                      onClick={() => handleNovedadTypeChange(tipo.id, getVisibleNovedadTipoLabel(tipo))}
+                      disabled={isSubmittingNovedad}
+                    >
+                      <strong>{getOperationalNovedadCodeLabel(tipo)}</strong>
+                      <span>{tipo.descripcion_operativa ?? tipo.categoria ?? "Tipo de novedad"}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              <details className="payroll-operational-legend">
+                <summary>Leyenda operativa</summary>
+                <div className="payroll-operational-legend-grid">
+                  {NOMINA_OPERATIONAL_LEGEND.map((item) => (
+                    <div key={item.code}>
+                      <strong>{item.code}</strong>
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+
               {selectedNovedadType ? (
                 <div className="payroll-type-hints">
                   <span>{getVisibleNovedadTipoLabel(selectedNovedadType)}</span>
-                  <span>Salario: {selectedNovedadType.afecta_salario ? "Si" : "No"}</span>
-                  <span>Transporte: {selectedNovedadType.afecta_transporte ? "Si" : "No"}</span>
+                  <span>Modelo: {selectedNovedadType.modelo_registro === "EVENTO_CANONICO_RANGO" ? "Evento canonico" : "Por periodo"}</span>
+                  <span>Salario: {selectedNovedadType.efecto_salario}</span>
+                  <span>Transporte: {selectedNovedadType.efecto_auxilio_transporte}</span>
+                  <span>Recargos: {selectedNovedadType.efecto_recargos}</span>
+                  <span>Liquidacion: {selectedNovedadType.efecto_liquidacion}</span>
+                  <span>Efecto pago: {selectedNovedadType.efecto_pago ?? "Pendiente"}</span>
                   <span>
                     {selectedNovedadType.es_adicion
                       ? "Adicion"
@@ -2564,6 +2805,14 @@ export default function NominaPage() {
                   {selectedNovedadType.requiere_dias ? <span>Requiere dias</span> : null}
                   {selectedNovedadType.requiere_horas ? <span>Requiere horas</span> : null}
                   {selectedNovedadType.requiere_valor ? <span>Requiere valor</span> : null}
+                  {selectedNovedadType.requiere_soporte ? <span>Requiere soporte</span> : null}
+                  {selectedNovedadType.permite_rango ? <span>Permite rango</span> : null}
+                  {selectedNovedadType.requiere_revision ? <span>Requiere revision</span> : null}
+                  {selectedNovedadType.es_incapacidad ? <span>Es incapacidad</span> : null}
+                  {selectedNovedadType.es_suspension ? <span>Es suspension</span> : null}
+                  {selectedNovedadType.es_evento_operativo ? <span>Evento operativo</span> : null}
+                  {selectedNovedadType.proyecta_periodos ? <span>Proyecta periodos</span> : null}
+                  {selectedNovedadType.bloquea_otras_novedades ? <span>Bloquea otras novedades</span> : null}
                 </div>
               ) : null}
 
@@ -2599,6 +2848,30 @@ export default function NominaPage() {
                   disabled={isSubmittingNovedad}
                 />
               </label>
+
+              {selectedNovedadType?.requiere_soporte ? (
+                <label className="payroll-form-field">
+                  <span>Documento soporte</span>
+                  <input
+                    value={novedadForm.documento_persona_id}
+                    onChange={(event) => handleFormValueChange("documento_persona_id", event.target.value)}
+                    placeholder="ID tecnico de documento_persona"
+                    disabled={isSubmittingNovedad}
+                  />
+                  <small className="payroll-form-help">
+                    La relacion con expediente queda preparada usando `documento_persona_id`.
+                  </small>
+                </label>
+              ) : null}
+
+              {selectedNovedadType?.modelo_registro === "EVENTO_CANONICO_RANGO" ? (
+                <div className="payroll-inline-note compact">
+                  <p>
+                    Esta novedad se persistira como un evento canonico unico y Empiria proyectara
+                    automaticamente los tramos visibles en cada periodo intersectado.
+                  </p>
+                </div>
+              ) : null}
 
               <div className="payroll-form-checks">
                 <label>
@@ -2655,7 +2928,11 @@ export default function NominaPage() {
                   className="payroll-action primary"
                   disabled={isSubmittingNovedad || !canSubmitNovedad}
                 >
-                  {isSubmittingNovedad ? "Guardando..." : "Crear novedad"}
+                  {isSubmittingNovedad
+                    ? "Guardando..."
+                    : editingNovedad
+                      ? "Guardar cambios"
+                      : "Crear novedad"}
                 </button>
               </div>
             </form>

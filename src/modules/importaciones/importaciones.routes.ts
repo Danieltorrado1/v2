@@ -7,6 +7,7 @@ import { requireAnyPermissions, requirePermissions } from '../../middlewares/rol
 import {
   analyzeMasterImportHandler,
   applyMasterImportHandler,
+  downloadCaracterizacionSstTemplateHandler,
   downloadDatosPersonalesTemplateHandler,
   downloadInformacionBancariaTemplateHandler,
   downloadMasterImportReportHandler,
@@ -15,6 +16,13 @@ import {
   listMasterImportLotesHandler,
   validateMasterImportHandler
 } from './importaciones.master.controller';
+import {
+  getSstPreparationSummaryHandler,
+  listSstPendingCaptureHandler,
+  listSstPreparationPlanHandler,
+  listSstReviewCasesHandler,
+  resolveSstReviewCaseHandler
+} from '../sst/sst.preparacion.controller';
 import {
   cancelarImportacion,
   confirmarImportacion,
@@ -47,6 +55,11 @@ importacionesRoutes.get(
   '/datos-personales/template',
   requirePermissions('importaciones.preparar'),
   downloadDatosPersonalesTemplateHandler
+);
+importacionesRoutes.get(
+  '/caracterizacion-sst/template',
+  requirePermissions('importaciones.preparar'),
+  downloadCaracterizacionSstTemplateHandler
 );
 importacionesRoutes.post(
   '/personas-vinculaciones/upload',
@@ -89,6 +102,31 @@ importacionesRoutes.post(
   '/maestro/lotes/:id/aplicar',
   requirePermissions('importaciones.aplicar'),
   applyMasterImportHandler
+);
+importacionesRoutes.get(
+  '/maestro/sst/preparacion/resumen',
+  requireAnyPermissions('importaciones.preparar', 'sst.perfil.importar', 'sst.revision.ver'),
+  getSstPreparationSummaryHandler
+);
+importacionesRoutes.get(
+  '/maestro/sst/revision-casos',
+  requireAnyPermissions('importaciones.preparar', 'sst.perfil.importar', 'sst.revision.ver'),
+  listSstReviewCasesHandler
+);
+importacionesRoutes.patch(
+  '/maestro/sst/revision-casos/:id',
+  requirePermissions('sst.revision.resolver'),
+  resolveSstReviewCaseHandler
+);
+importacionesRoutes.get(
+  '/maestro/sst/pendientes',
+  requireAnyPermissions('importaciones.preparar', 'sst.perfil.importar', 'sst.revision.ver'),
+  listSstPendingCaptureHandler
+);
+importacionesRoutes.get(
+  '/maestro/sst/apply-plan',
+  requireAnyPermissions('importaciones.preparar', 'sst.perfil.importar', 'sst.revision.ver'),
+  listSstPreparationPlanHandler
 );
 importacionesRoutes.get('/lotes', requirePermissions('importaciones.read'), getImportacionLotes);
 importacionesRoutes.get('/lotes/:id', requirePermissions('importaciones.read'), getImportacionLote);

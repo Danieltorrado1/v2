@@ -17,6 +17,9 @@ import type {
   PersonaIdentificacionApi,
   PersonaNombreInput,
   PaginatedPersonasApi,
+  SstPerfilSociodemograficoApi,
+  SstPerfilSociodemograficoVersionApi,
+  SstPerfilOrigenApi,
   VinculacionOPS,
   VinculacionApi,
   VinculacionExpedienteApi,
@@ -53,6 +56,34 @@ export interface UpdatePersonaContactoEmergenciaPayload {
 export interface UpdatePersonaPerfilDemograficoPayload {
   nacionalidad?: string | null;
   nivel_escolaridad?: string | null;
+}
+
+export interface UpdatePersonaSstPerfilPayload {
+  vinculacion_id?: number | null;
+  fecha_caracterizacion?: string | null;
+  origen?: SstPerfilOrigenApi;
+  nacionalidad?: string | null;
+  estrato_socioeconomico?: string | null;
+  tipo_vivienda?: string | null;
+  grupo_etnico?: string | null;
+  nivel_escolaridad?: string | null;
+  profesion_ocupacion?: string | null;
+  personas_dependen_economicamente?: number | null;
+  cabeza_familia?: boolean | null;
+  total_hijos?: number | null;
+  hijos_viven_con_usted?: number | null;
+  hijos_menores_edad?: number | null;
+  hijos_mayores_edad?: number | null;
+  tipo_sangre_rh?: string | null;
+  tiene_discapacidad?: boolean | null;
+  tipo_discapacidad?: string | null;
+  redes_apoyo_social?: string | null;
+  presenta_alergias?: string | null;
+  medicamentos_permanentes?: string | null;
+  enfermedad?: string | null;
+  autorizacion_tratamiento_datos?: boolean | null;
+  observaciones?: string | null;
+  motivo_cambio: string;
 }
 
 export interface CreatePersonaIdentificacionPayload {
@@ -327,6 +358,33 @@ export async function getPersonaIdentificaciones(personaId: number): Promise<Per
     `/personas/${personaId}/identificaciones`
   );
   return res.data;
+}
+
+export async function getPersonaSstPerfil(personaId: number): Promise<SstPerfilSociodemograficoApi> {
+  const response = await apiClient.get<ApiResponse<SstPerfilSociodemograficoApi>>(
+    `/personas/${personaId}/sst/perfil`
+  );
+  return response.data;
+}
+
+export async function getPersonaSstPerfilHistorial(
+  personaId: number
+): Promise<SstPerfilSociodemograficoVersionApi[]> {
+  const response = await apiClient.get<ApiResponse<SstPerfilSociodemograficoVersionApi[]>>(
+    `/personas/${personaId}/sst/perfil/historial`
+  );
+  return response.data;
+}
+
+export async function updatePersonaSstPerfil(
+  personaId: number,
+  payload: UpdatePersonaSstPerfilPayload
+): Promise<SstPerfilSociodemograficoApi> {
+  const response = await apiClient.patch<ApiResponse<SstPerfilSociodemograficoApi>>(
+    `/personas/${personaId}/sst/perfil`,
+    payload
+  );
+  return response.data;
 }
 
 export async function getPersonaHistorialCambios(

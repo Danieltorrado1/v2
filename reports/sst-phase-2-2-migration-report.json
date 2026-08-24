@@ -1,0 +1,540 @@
+{
+  "executed_at": "2026-08-24T02:03:12.266Z",
+  "sql_file": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\sql\\phase-sst-2-2-fuentes-maestras-revision.sql",
+  "baseline": {
+    "personas": 800,
+    "vinculaciones": 1007,
+    "cobertura_asignaciones": 670,
+    "focalizacion_final": 687,
+    "focalizacion_vigencias": 687,
+    "sst_perfil_demografico": 0,
+    "sst_perfil_demografico_versiones": 0
+  },
+  "dependencies": {
+    "personas": true,
+    "vinculaciones": true,
+    "empresas": true,
+    "contratos": true,
+    "usuarios": true,
+    "documentos_persona": true,
+    "importacion_lotes": true
+  },
+  "existed_before": {
+    "persona_formacion_academica": false,
+    "sst_preparacion_personas": false,
+    "sst_revision_casos": false,
+    "sst_perfil_restringido": false
+  },
+  "existed_after": {
+    "persona_formacion_academica": true,
+    "sst_preparacion_personas": true,
+    "sst_revision_casos": true,
+    "sst_perfil_restringido": true
+  },
+  "post_counts": {
+    "persona_formacion_academica": 0,
+    "sst_preparacion_personas": 0,
+    "sst_revision_casos": 0,
+    "sst_perfil_restringido": 0
+  },
+  "columns": {
+    "persona_formacion_academica": [
+      {
+        "column_name": "id",
+        "data_type": "bigint",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "persona_id",
+        "data_type": "bigint",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "nivel_educativo",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "titulo_programa",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "institucion",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "estado_formacion",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "fecha_inicio",
+        "data_type": "date",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "fecha_fin",
+        "data_type": "date",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "actualmente_estudia",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "ciudad_municipio",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "pais",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "documento_soporte_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "origen",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "activo",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "created_by_user_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "updated_by_user_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      }
+    ],
+    "sst_preparacion_personas": [
+      {
+        "column_name": "id",
+        "data_type": "bigint",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "persona_id",
+        "data_type": "bigint",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "vinculacion_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "empresa_id",
+        "data_type": "bigint",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "contrato_id",
+        "data_type": "bigint",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "documento",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "nombre",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "municipio",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "institucion",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "sede",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "modalidad",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "cargo",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "fuente_formulario_1",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "fuente_formulario_2",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "estado_digital",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "estado_preparacion",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "porcentaje_completitud",
+        "data_type": "integer",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "completitud_estado",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "conflictos_aparentes",
+        "data_type": "integer",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "conflictos_reales",
+        "data_type": "integer",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "requiere_revision_humana",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "requiere_captura",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "apto_apply",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "propuesta_sst",
+        "data_type": "jsonb",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "propuesta_contacto_emergencia",
+        "data_type": "jsonb",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "propuesta_formacion_academica",
+        "data_type": "jsonb",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "propuesta_afiliaciones",
+        "data_type": "jsonb",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "campos_restringidos",
+        "data_type": "jsonb",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "fuentes",
+        "data_type": "jsonb",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "origen_principal",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "observaciones",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "activo",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "created_by_user_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "updated_by_user_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      }
+    ],
+    "sst_revision_casos": [
+      {
+        "column_name": "id",
+        "data_type": "bigint",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "preparacion_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "persona_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "vinculacion_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "empresa_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "contrato_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "documento",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "persona_nombre",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "municipio",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "institucion",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "sede",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "cargo",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "tipo_conflicto",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "campo",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "fuente_a",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "valor_a",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "fuente_b",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "valor_b",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "recomendacion",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "decision",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "valor_resuelto",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "estado",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "observacion",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "importacion_lote_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "contexto",
+        "data_type": "jsonb",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "huella",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "activo",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "resuelto_por_user_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "fecha_resolucion",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "created_by_user_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "updated_by_user_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      }
+    ],
+    "sst_perfil_restringido": [
+      {
+        "column_name": "id",
+        "data_type": "bigint",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "persona_id",
+        "data_type": "bigint",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "vinculacion_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "tipo_sangre_rh",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "origen",
+        "data_type": "text",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "motivo_ultima_actualizacion",
+        "data_type": "text",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "activo",
+        "data_type": "boolean",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "created_by_user_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "updated_by_user_id",
+        "data_type": "bigint",
+        "is_nullable": "YES"
+      },
+      {
+        "column_name": "created_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      },
+      {
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO"
+      }
+    ]
+  }
+}

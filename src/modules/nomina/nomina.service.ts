@@ -9,16 +9,60 @@ import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditori
 import { registerAuditEvent } from '../auditoria/auditoria.service';
 import { createDocumentSignedUrlForBucket } from '../documentos/documentos.storage';
 import {
+  compareDateStrings,
   inclusiveDaysBetween,
   maxDateString,
   minDateString
 } from './nomina.calculator';
+import {
+  countInclusiveDays,
+  generateNominaNovedadObservation,
+  nominaDateRangesOverlap,
+  projectNominaDateRangeToPeriodo,
+  projectNominaCanonicalEventsToPeriodo,
+  resolveNominaEfectosPorDia,
+  type NominaEfectoCobertura,
+  type NominaEfectoLiquidacion,
+  type NominaEfectoOperativo,
+  type NominaEfectoRecargos,
+  type NominaEfectoSalario,
+  type NominaEfectoTransporte,
+  type NominaEmploymentDateRange,
+  type NominaGrupoExclusividad,
+  type NominaModeloRegistro,
+  type NominaNovedadEffectMatrix,
+  type NominaPeriodoDateRange
+} from './nomina.effects';
+import {
+  appendNominaMovimientoAlert,
+  normalizeNominaMovimientoEstado,
+  resolveNominaMovimientoFamilia,
+  resolveNominaMovimientoValue,
+  type NominaMovimientoAlerta,
+  type NominaMovimientoEstado
+} from './nomina.movimientos';
+import {
+  buildNominaCanonicalProjectedRecordId,
+  parseNominaNovedadRecordId,
+  type NominaNovedadRegistroTipo
+} from './nomina.novedad-records';
+import {
+  classifyNominaMultipleLinks,
+  intersectsNominaPeriodo,
+  resolveNominaMetodoLiquidacion,
+  type NominaPopulationLink
+} from './nomina.population';
+import {
+  normalizeNominaNovedadLabel,
+  resolveNominaNovedadTypeSelection
+} from './nomina.novedades';
 import { buildCsv, buildSectionedCsv } from './nomina.exporter';
 import {
   CreateNominaRecargoInput,
   CreateNominaMovimientoInput,
   CreateNominaNovedadInput,
   CreateNominaPeriodoInput,
+  EstadoPeriodo,
   EstadoLiquidacion,
   ListNominaTiposNovedadQuery,
   ListNominaAsistenciaQuery,
@@ -36,7 +80,9 @@ import {
   UpdateNominaPeriodoInput
 } from './nomina.schemas';
 import {
+  ensurePersonaExists,
   ensureContratoExists,
+  ensurePeriodoRelacionadoConFecha,
   ensureVinculacionExists
 } from './nomina.validator';
 
@@ -155,6 +201,7 @@ interface ImportCandidateRow extends QueryResultRow {
   fecha_inicio: Date | string;
   metodo_pago: string | null;
   persona_id: string;
+  tipo_vinculacion_codigo: string | null;
   vinculacion_id: string;
 }
 
@@ -169,16 +216,42 @@ interface NominaTipoNovedadRow extends QueryResultRow {
   activo: boolean | null;
   afecta_salario: boolean | null;
   afecta_transporte: boolean | null;
+  afecta_cobertura: boolean | null;
+  afecta_dias_laborados: boolean | null;
+  afecta_recargos: boolean | null;
   categoria: string | null;
+  bloquea_otras_novedades: boolean | null;
+  codigo_operativo: string | null;
   created_at: Date | string;
+  descripcion_operativa: string | null;
+  efecto_auxilio_transporte: string | null;
+  efecto_cobertura_config: string | null;
+  efecto_liquidacion: string | null;
+  efecto_operativo: string | null;
+  efecto_pago: string | null;
+  efecto_recargos_detallado: string | null;
+  efecto_salario: string | null;
   es_adicion: boolean | null;
+  es_accidente_laboral: boolean | null;
   es_deduccion: boolean | null;
+  es_evento_operativo: boolean | null;
+  es_incapacidad: boolean | null;
+  es_permiso: boolean | null;
+  es_suspension: boolean | null;
+  grupo_exclusividad: string | null;
   id: string;
+  modelo_registro: string | null;
   nombre: string | null;
+  observacion_plantilla: string | null;
+  permite_rango: boolean | null;
+  proyecta_periodos: boolean | null;
+  requiere_revision: boolean | null;
+  requiere_soporte: boolean | null;
   requiere_dias: boolean | null;
   requiere_fechas: boolean | null;
   requiere_horas: boolean | null;
   requiere_valor: boolean | null;
+  soporte_documento_tipo: string | null;
 }
 
 interface NominaNovedadRealRow extends QueryResultRow {
@@ -187,6 +260,7 @@ interface NominaNovedadRealRow extends QueryResultRow {
   categoria_nueva_id: string | null;
   cubierta: boolean | null;
   created_at: Date | string;
+  documento_persona_id: string | null;
   fecha_fin: Date | string | null;
   fecha_inicio: Date | string | null;
   horas: number | string | null;
@@ -204,16 +278,58 @@ interface NominaNovedadRealRow extends QueryResultRow {
   tipo_novedad_activo: boolean | null;
   tipo_novedad_afecta_salario: boolean | null;
   tipo_novedad_afecta_transporte: boolean | null;
+  tipo_novedad_afecta_cobertura: boolean | null;
+  tipo_novedad_afecta_dias_laborados: boolean | null;
+  tipo_novedad_afecta_recargos: boolean | null;
+  tipo_novedad_bloquea_otras_novedades: boolean | null;
   tipo_novedad_categoria: string | null;
+  tipo_novedad_codigo_operativo: string | null;
+  tipo_novedad_codigo_snapshot: string | null;
+  tipo_novedad_descripcion_operativa: string | null;
+  tipo_novedad_efecto_auxilio_transporte: string | null;
+  tipo_novedad_efecto_cobertura_config: string | null;
+  tipo_novedad_efecto_liquidacion: string | null;
+  tipo_novedad_efecto_operativo: string | null;
+  tipo_novedad_efecto_pago: string | null;
+  tipo_novedad_efecto_recargos_detallado: string | null;
+  tipo_novedad_efecto_salario: string | null;
   tipo_novedad_es_adicion: boolean | null;
+  tipo_novedad_es_accidente_laboral: boolean | null;
   tipo_novedad_es_deduccion: boolean | null;
+  tipo_novedad_es_evento_operativo: boolean | null;
+  tipo_novedad_es_incapacidad: boolean | null;
+  tipo_novedad_es_permiso: boolean | null;
+  tipo_novedad_es_suspension: boolean | null;
+  tipo_novedad_grupo_exclusividad: string | null;
   tipo_novedad_id: string;
+  tipo_novedad_modelo_registro: string | null;
   tipo_novedad_nombre: string | null;
+  tipo_novedad_observacion_plantilla: string | null;
+  tipo_novedad_permite_rango: boolean | null;
+  tipo_novedad_proyecta_periodos: boolean | null;
+  tipo_novedad_requiere_revision: boolean | null;
+  tipo_novedad_requiere_soporte: boolean | null;
   tipo_novedad_requiere_dias: boolean | null;
   tipo_novedad_requiere_fechas: boolean | null;
   tipo_novedad_requiere_horas: boolean | null;
   tipo_novedad_requiere_valor: boolean | null;
+  tipo_novedad_soporte_documento_tipo: string | null;
   valor_manual: number | string | null;
+  vinculacion_id: string;
+}
+
+interface NominaNovedadCanonicaRow extends QueryResultRow {
+  activo: boolean | null;
+  created_at: Date | string;
+  documento_persona_id: string | null;
+  fecha_fin: Date | string;
+  fecha_inicio: Date | string;
+  id: string;
+  observacion: string | null;
+  origen: string | null;
+  tipo_novedad_codigo_snapshot: string | null;
+  tipo_novedad_id: string;
+  updated_at: Date | string;
   vinculacion_id: string;
 }
 
@@ -245,28 +361,88 @@ interface NominaAsistenciaRealRow extends QueryResultRow {
 interface NominaMovimientoRealRow extends QueryResultRow {
   activo: boolean | null;
   afecta_seguridad_social: boolean | null;
+  alertas_validacion: unknown;
+  aprobado_at: Date | string | null;
+  aprobado_por: string | null;
   cantidad: number | string | null;
+  contexto_institucion: string | null;
+  contexto_modalidad: string | null;
+  contexto_municipio: string | null;
+  contexto_sede: string | null;
   created_at: Date | string;
   descripcion: string | null;
+  documento_persona_id: string | null;
   es_deduccion: boolean | null;
   es_devengado: boolean | null;
+  estado: string | null;
   fecha: Date | string | null;
+  familia_movimiento: string | null;
   id: string;
+  institucion_id: string | null;
+  modalidad_id: string | null;
+  motivo_ajuste_valor: string | null;
+  motivo_estado: string | null;
+  municipio_id: string | null;
   nomina_empleado_id: string;
   periodo_contrato_id: string;
   periodo_estado: string;
   periodo_id: string;
   periodo_nombre: string;
+  persona_reemplazada_id: string | null;
+  persona_reemplazada_numero_documento: string | null;
+  persona_reemplazada_primer_apellido: string | null;
+  persona_reemplazada_primer_nombre: string | null;
+  persona_reemplazada_segundo_apellido: string | null;
+  persona_reemplazada_segundo_nombre: string | null;
   persona_id: string;
   persona_numero_documento: string | null;
+  posible_duplicado: boolean | null;
   primer_apellido: string | null;
   primer_nombre: string | null;
+  rechazado_at: Date | string | null;
+  rechazado_por: string | null;
+  revisado_at: Date | string | null;
+  revisado_por: string | null;
+  sede_id: string | null;
+  tarifa_config_id: string | null;
   segundo_apellido: string | null;
   segundo_nombre: string | null;
   tipo_movimiento: string;
+  updated_at: Date | string | null;
+  updated_by: string | null;
+  valor_calculado: number | string | null;
   valor_total: number | string | null;
   valor_unitario: number | string | null;
+  vinculacion_reemplazada_id: string | null;
   vinculacion_id: string;
+}
+
+interface NominaMovimientoTarifaRow extends QueryResultRow {
+  contrato_id: string;
+  id: string;
+  institucion_id: string | null;
+  modalidad_id: string | null;
+  municipio_id: string | null;
+  sede_id: string | null;
+  tipo_movimiento: string;
+  valor_unitario: number | string;
+  vigencia_desde: Date | string;
+  vigencia_hasta: Date | string | null;
+}
+
+interface NominaMovimientoContextRow extends QueryResultRow {
+  contexto_institucion: string | null;
+  contexto_modalidad: string | null;
+  contexto_municipio: string | null;
+  contexto_sede: string | null;
+  institucion_id: string | null;
+  modalidad_id: string | null;
+  municipio_id: string | null;
+  sede_id: string | null;
+}
+
+interface NominaMovimientoEstadoActionInput {
+  motivo_estado?: string | null;
 }
 
 interface NominaLiquidacionRealRow extends QueryResultRow {
@@ -558,16 +734,42 @@ export interface NominaTipoNovedadCatalogItem {
   activo: boolean;
   afecta_salario: boolean;
   afecta_transporte: boolean;
+  afecta_cobertura: boolean | null;
+  afecta_dias_laborados: boolean | null;
+  afecta_recargos: boolean | null;
+  bloquea_otras_novedades: boolean;
   categoria: string | null;
+  codigo_operativo: string | null;
   created_at: string;
+  descripcion_operativa: string | null;
+  efecto_auxilio_transporte: NominaEfectoTransporte;
+  efecto_cobertura: NominaEfectoCobertura;
+  efecto_liquidacion: NominaEfectoLiquidacion;
+  efecto_operativo: NominaEfectoOperativo;
+  efecto_pago: string | null;
+  efecto_recargos: NominaEfectoRecargos;
+  efecto_salario: NominaEfectoSalario;
   es_adicion: boolean;
+  es_accidente_laboral: boolean;
   es_deduccion: boolean;
+  es_evento_operativo: boolean;
+  es_incapacidad: boolean;
+  es_permiso: boolean;
+  es_suspension: boolean;
+  grupo_exclusividad: NominaGrupoExclusividad;
   id: string;
+  modelo_registro: NominaModeloRegistro;
   nombre: string | null;
+  observacion_plantilla: string | null;
+  permite_rango: boolean;
+  proyecta_periodos: boolean;
+  requiere_revision: boolean;
+  requiere_soporte: boolean;
   requiere_dias: boolean;
   requiere_fechas: boolean;
   requiere_horas: boolean;
   requiere_valor: boolean;
+  soporte_documento_tipo: string | null;
 }
 
 export interface NominaNovedad {
@@ -576,9 +778,13 @@ export interface NominaNovedad {
   categoria_nueva_id: string | null;
   cubierta: boolean;
   created_at: string;
+  documento_persona_id: string | null;
   dias: number | null;
+  evento_canonico_id: string | null;
   fecha_fin: string | null;
+  fecha_fin_evento_canonico: string | null;
   fecha_inicio: string | null;
+  fecha_inicio_evento_canonico: string | null;
   horas: number | null;
   id: string;
   nomina_empleado_id: string;
@@ -593,20 +799,48 @@ export interface NominaNovedad {
     segundo_nombre: string | null;
   };
   requiere_cobertura: boolean;
+  registro_tipo: NominaNovedadRegistroTipo;
   revisado: boolean;
   tipo_novedad: {
     activo: boolean;
     afecta_salario: boolean;
     afecta_transporte: boolean;
+    afecta_cobertura: boolean | null;
+    afecta_dias_laborados: boolean | null;
+    afecta_recargos: boolean | null;
+    bloquea_otras_novedades: boolean;
     categoria: string | null;
+    codigo_operativo: string | null;
+    codigo_operativo_registrado: string | null;
+    descripcion_operativa: string | null;
+    efecto_auxilio_transporte: NominaEfectoTransporte;
+    efecto_cobertura: NominaEfectoCobertura;
+    efecto_liquidacion: NominaEfectoLiquidacion;
+    efecto_operativo: NominaEfectoOperativo;
+    efecto_pago: string | null;
+    efecto_recargos: NominaEfectoRecargos;
+    efecto_salario: NominaEfectoSalario;
     es_adicion: boolean;
+    es_accidente_laboral: boolean;
     es_deduccion: boolean;
+    es_evento_operativo: boolean;
+    es_incapacidad: boolean;
+    es_permiso: boolean;
+    es_suspension: boolean;
+    grupo_exclusividad: NominaGrupoExclusividad;
     id: string;
+    modelo_registro: NominaModeloRegistro;
     nombre: string | null;
+    observacion_plantilla: string | null;
+    permite_rango: boolean;
+    proyecta_periodos: boolean;
+    requiere_revision: boolean;
+    requiere_soporte: boolean;
     requiere_dias: boolean;
     requiere_fechas: boolean;
     requiere_horas: boolean;
     requiere_valor: boolean;
+    soporte_documento_tipo: string | null;
   };
   valor_manual: number | null;
   vinculacion_id: string;
@@ -650,13 +884,31 @@ export interface NominaAsistencia {
 export interface NominaMovimiento {
   activo: boolean;
   afecta_seguridad_social: boolean;
+  alertas_validacion: NominaMovimientoAlerta[];
+  aprobado_at: string | null;
+  aprobado_por: string | null;
   cantidad: number | null;
+  contexto_operativo: {
+    institucion: string | null;
+    institucion_id: string | null;
+    modalidad: string | null;
+    modalidad_id: string | null;
+    municipio: string | null;
+    municipio_id: string | null;
+    sede: string | null;
+    sede_id: string | null;
+  } | null;
   created_at: string;
   descripcion: string | null;
+  documento_persona_id: string | null;
   es_deduccion: boolean;
   es_devengado: boolean;
+  estado: NominaMovimientoEstado;
   fecha: string | null;
+  familia_movimiento: string;
   id: string;
+  motivo_ajuste_valor: string | null;
+  motivo_estado: string | null;
   nomina_empleado_id: string;
   periodo: {
     estado: string;
@@ -669,12 +921,28 @@ export interface NominaMovimiento {
     nombre_completo: string;
     numero_documento: string | null;
   };
+  persona_reemplazada: {
+    id: string;
+    nombre_completo: string;
+    numero_documento: string | null;
+  } | null;
+  posible_duplicado: boolean;
+  rechazado_at: string | null;
+  rechazado_por: string | null;
+  revisado_at: string | null;
+  revisado_por: string | null;
+  tarifa_config_id: string | null;
   tipo_movimiento: string;
+  updated_at: string | null;
+  updated_by: string | null;
+  valor_aplicado: number;
+  valor_calculado: number;
   valor_total: number;
   valor_unitario: number | null;
   vinculacion: {
     id: string;
   };
+  vinculacion_reemplazada_id: string | null;
   vinculacion_id: string;
 }
 
@@ -835,6 +1103,7 @@ export interface NominaImportEmployeesResult {
   imported: number;
   periodo: NominaPeriodo;
   skipped_duplicates: number;
+  skipped_requires_review?: number;
 }
 
 export interface NominaRecalculateResult {
@@ -995,17 +1264,66 @@ const toBooleanValue = (value: boolean | null | undefined): boolean => {
   return value === true;
 };
 
-const normalizeFullName = (...parts: Array<string | null | undefined>): string => {
-  return parts.filter((part): part is string => typeof part === 'string' && part.trim().length > 0).join(' ');
+const parseNominaMovimientoAlerts = (value: unknown): NominaMovimientoAlerta[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== 'object') {
+      return [];
+    }
+
+    const record = item as Record<string, unknown>;
+    const tipo = typeof record.tipo === 'string' ? record.tipo : null;
+    const severidad = typeof record.severidad === 'string' ? record.severidad : null;
+    const mensaje = typeof record.mensaje === 'string' ? record.mensaje : null;
+
+    if (!tipo || !severidad || !mensaje) {
+      return [];
+    }
+
+    return [
+      {
+        tipo: tipo as NominaMovimientoAlerta['tipo'],
+        severidad: severidad as NominaMovimientoAlerta['severidad'],
+        mensaje,
+        codigo: typeof record.codigo === 'string' ? record.codigo : null,
+        metadata:
+          record.metadata && typeof record.metadata === 'object'
+            ? (record.metadata as Record<string, unknown>)
+            : null
+      }
+    ];
+  });
 };
 
-const normalizeNominaNovedadNombre = (value: string | null | undefined): string => {
-  return (value ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toUpperCase();
+const assertNominaMovimientoFechaVigente = (
+  fecha: string,
+  vinculacion: {
+    fecha_fin: string | null;
+    fecha_inicio: string;
+  }
+): void => {
+  if (compareDateStrings(fecha, vinculacion.fecha_inicio) < 0) {
+    throw new AppError(
+      'Movement date is before vinculacion start date',
+      409,
+      'NOMINA_MOVIMIENTO_FECHA_FUERA_VIGENCIA'
+    );
+  }
+
+  if (vinculacion.fecha_fin && compareDateStrings(fecha, vinculacion.fecha_fin) > 0) {
+    throw new AppError(
+      'Movement date is after vinculacion end date',
+      409,
+      'NOMINA_MOVIMIENTO_FECHA_FUERA_VIGENCIA'
+    );
+  }
+};
+
+const normalizeFullName = (...parts: Array<string | null | undefined>): string => {
+  return parts.filter((part): part is string => typeof part === 'string' && part.trim().length > 0).join(' ');
 };
 
 const normalizeUpperToken = (value: string | null | undefined): string | null => {
@@ -1049,19 +1367,6 @@ const resolveNominaEmpleadoClasificacion = (row: NominaEmpleadoRealRow): string 
   return tipoVinculacionCodigo;
 };
 
-const NOMINA_NOVEDADES_REDUCEN_SALARIO = new Set([
-  'PERMISO NO REMUNERADO',
-  'SUSPENSION'
-]);
-
-const NOMINA_NOVEDADES_REDUCEN_OTROS_RECARGOS = new Set([
-  'PERMISO NO REMUNERADO',
-  'SUSPENSION',
-  'INCAPACIDAD MEDICA',
-  'INCAPACIDAD POR ACCIDENTE LABORAL',
-  'LICENCIA MATERNIDAD/PATERNIDAD'
-]);
-
 const NOMINA_ASISTENCIA_DIAS_PAGADOS = new Set([
   'PRESENTE',
   'INCAPACIDAD',
@@ -1082,6 +1387,117 @@ const listDateStringsBetween = (start: string, end: string): string[] => {
   }
 
   return dates;
+};
+
+const toNominaEfectoSalario = (value: string | null | undefined): NominaEfectoSalario => {
+  switch (value) {
+    case 'DESCUENTA_PROPORCIONAL':
+    case 'LIQUIDACION_ESPECIAL':
+    case 'PENDIENTE_CONFIGURACION':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaEfectoTransporte = (
+  value: string | null | undefined
+): NominaEfectoTransporte => {
+  switch (value) {
+    case 'DESCUENTA_DIA':
+    case 'PENDIENTE_CONFIGURACION':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaEfectoRecargos = (value: string | null | undefined): NominaEfectoRecargos => {
+  switch (value) {
+    case 'EXCLUIR_DIA':
+    case 'PENDIENTE_CONFIGURACION':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaEfectoLiquidacion = (
+  value: string | null | undefined
+): NominaEfectoLiquidacion => {
+  switch (value) {
+    case 'PREPARAR_LIQUIDACION':
+    case 'PENDIENTE_CONFIGURACION':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaEfectoCobertura = (
+  value: string | null | undefined
+): NominaEfectoCobertura => {
+  switch (value) {
+    case 'PENDIENTE_CONFIGURACION':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaEfectoOperativo = (
+  value: string | null | undefined
+): NominaEfectoOperativo => {
+  switch (value) {
+    case 'PENDIENTE_NOMINA_3':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaModeloRegistro = (
+  value: string | null | undefined
+): NominaModeloRegistro => {
+  return value === 'EVENTO_CANONICO_RANGO' ? value : 'POR_PERIODO';
+};
+
+const toNominaGrupoExclusividad = (
+  value: string | null | undefined
+): NominaGrupoExclusividad => {
+  return value === 'LICENCIA_MATERNIDAD_PATERNIDAD' ? value : 'NINGUNA';
+};
+
+const buildNominaEffectMatrixFromRow = (row: {
+  bloquea_otras_novedades: boolean | null;
+  codigo_operativo: string | null;
+  efecto_auxilio_transporte: string | null;
+  efecto_cobertura_config: string | null;
+  efecto_liquidacion: string | null;
+  efecto_operativo: string | null;
+  efecto_recargos_detallado: string | null;
+  efecto_salario: string | null;
+  grupo_exclusividad: string | null;
+  modelo_registro: string | null;
+  nombre: string | null;
+  observacion_plantilla: string | null;
+  proyecta_periodos: boolean | null;
+}): NominaNovedadEffectMatrix => {
+  return {
+    codigo_operativo: row.codigo_operativo,
+    nombre: row.nombre,
+    efecto_salario: toNominaEfectoSalario(row.efecto_salario),
+    efecto_transporte: toNominaEfectoTransporte(row.efecto_auxilio_transporte),
+    efecto_recargos: toNominaEfectoRecargos(row.efecto_recargos_detallado),
+    efecto_liquidacion: toNominaEfectoLiquidacion(row.efecto_liquidacion),
+    efecto_cobertura: toNominaEfectoCobertura(row.efecto_cobertura_config),
+    efecto_operativo: toNominaEfectoOperativo(row.efecto_operativo),
+    modelo_registro: toNominaModeloRegistro(row.modelo_registro),
+    proyecta_periodos: toBooleanValue(row.proyecta_periodos),
+    bloquea_otras_novedades: toBooleanValue(row.bloquea_otras_novedades),
+    grupo_exclusividad: toNominaGrupoExclusividad(row.grupo_exclusividad),
+    observacion_plantilla: row.observacion_plantilla
+  };
 };
 
 const NOMINA_PERIODO_ESTADOS_EDITABLES = new Set(['ABIERTO']);
@@ -1318,12 +1734,38 @@ const getNominaTiposNovedadSelect = (): string => {
   return `
     SELECT
       id::text AS id,
+      codigo_operativo,
       nombre,
       categoria,
+      descripcion_operativa,
       COALESCE(afecta_salario, FALSE) AS afecta_salario,
       COALESCE(afecta_transporte, FALSE) AS afecta_transporte,
+      afecta_dias_laborados,
+      afecta_recargos,
+      afecta_cobertura,
+      efecto_salario,
+      efecto_auxilio_transporte,
+      efecto_recargos_detallado,
+      efecto_liquidacion,
+      efecto_cobertura_config,
+      efecto_operativo,
+      efecto_pago,
+      modelo_registro,
+      COALESCE(proyecta_periodos, FALSE) AS proyecta_periodos,
+      COALESCE(bloquea_otras_novedades, FALSE) AS bloquea_otras_novedades,
+      grupo_exclusividad,
+      observacion_plantilla,
       COALESCE(es_adicion, FALSE) AS es_adicion,
       COALESCE(es_deduccion, FALSE) AS es_deduccion,
+      COALESCE(requiere_soporte, FALSE) AS requiere_soporte,
+      COALESCE(permite_rango, FALSE) AS permite_rango,
+      COALESCE(requiere_revision, FALSE) AS requiere_revision,
+      COALESCE(es_incapacidad, FALSE) AS es_incapacidad,
+      COALESCE(es_accidente_laboral, FALSE) AS es_accidente_laboral,
+      COALESCE(es_permiso, FALSE) AS es_permiso,
+      COALESCE(es_suspension, FALSE) AS es_suspension,
+      COALESCE(es_evento_operativo, FALSE) AS es_evento_operativo,
+      soporte_documento_tipo,
       COALESCE(requiere_fechas, FALSE) AS requiere_fechas,
       COALESCE(requiere_dias, FALSE) AS requiere_dias,
       COALESCE(requiere_horas, FALSE) AS requiere_horas,
@@ -1349,18 +1791,46 @@ const getNominaNovedadesRealSelect = (): string => {
       nn.valor_manual,
       nn.categoria_anterior_id::text AS categoria_anterior_id,
       nn.categoria_nueva_id::text AS categoria_nueva_id,
+      nn.documento_persona_id::text AS documento_persona_id,
       nn.observacion,
       COALESCE(nn.revisado, FALSE) AS revisado,
       COALESCE(nn.activo, TRUE) AS activo,
       nn.created_at,
       COALESCE(nn.requiere_cobertura, FALSE) AS requiere_cobertura,
       COALESCE(nn.cubierta, FALSE) AS cubierta,
+      nn.tipo_novedad_codigo_operativo AS tipo_novedad_codigo_snapshot,
+      ntn.codigo_operativo AS tipo_novedad_codigo_operativo,
       ntn.nombre AS tipo_novedad_nombre,
       ntn.categoria AS tipo_novedad_categoria,
+      ntn.descripcion_operativa AS tipo_novedad_descripcion_operativa,
       COALESCE(ntn.afecta_salario, FALSE) AS tipo_novedad_afecta_salario,
       COALESCE(ntn.afecta_transporte, FALSE) AS tipo_novedad_afecta_transporte,
+      ntn.afecta_dias_laborados AS tipo_novedad_afecta_dias_laborados,
+      ntn.afecta_recargos AS tipo_novedad_afecta_recargos,
+      ntn.afecta_cobertura AS tipo_novedad_afecta_cobertura,
+      ntn.efecto_salario AS tipo_novedad_efecto_salario,
+      ntn.efecto_auxilio_transporte AS tipo_novedad_efecto_auxilio_transporte,
+      ntn.efecto_recargos_detallado AS tipo_novedad_efecto_recargos_detallado,
+      ntn.efecto_liquidacion AS tipo_novedad_efecto_liquidacion,
+      ntn.efecto_cobertura_config AS tipo_novedad_efecto_cobertura_config,
+      ntn.efecto_operativo AS tipo_novedad_efecto_operativo,
+      ntn.efecto_pago AS tipo_novedad_efecto_pago,
+      ntn.modelo_registro AS tipo_novedad_modelo_registro,
+      COALESCE(ntn.proyecta_periodos, FALSE) AS tipo_novedad_proyecta_periodos,
+      COALESCE(ntn.bloquea_otras_novedades, FALSE) AS tipo_novedad_bloquea_otras_novedades,
+      ntn.grupo_exclusividad AS tipo_novedad_grupo_exclusividad,
+      ntn.observacion_plantilla AS tipo_novedad_observacion_plantilla,
       COALESCE(ntn.es_adicion, FALSE) AS tipo_novedad_es_adicion,
       COALESCE(ntn.es_deduccion, FALSE) AS tipo_novedad_es_deduccion,
+      COALESCE(ntn.requiere_soporte, FALSE) AS tipo_novedad_requiere_soporte,
+      COALESCE(ntn.permite_rango, FALSE) AS tipo_novedad_permite_rango,
+      COALESCE(ntn.requiere_revision, FALSE) AS tipo_novedad_requiere_revision,
+      COALESCE(ntn.es_incapacidad, FALSE) AS tipo_novedad_es_incapacidad,
+      COALESCE(ntn.es_accidente_laboral, FALSE) AS tipo_novedad_es_accidente_laboral,
+      COALESCE(ntn.es_permiso, FALSE) AS tipo_novedad_es_permiso,
+      COALESCE(ntn.es_suspension, FALSE) AS tipo_novedad_es_suspension,
+      COALESCE(ntn.es_evento_operativo, FALSE) AS tipo_novedad_es_evento_operativo,
+      ntn.soporte_documento_tipo AS tipo_novedad_soporte_documento_tipo,
       COALESCE(ntn.requiere_fechas, FALSE) AS tipo_novedad_requiere_fechas,
       COALESCE(ntn.requiere_dias, FALSE) AS tipo_novedad_requiere_dias,
       COALESCE(ntn.requiere_horas, FALSE) AS tipo_novedad_requiere_horas,
@@ -1423,14 +1893,41 @@ const getNominaMovimientosRealSelect = (): string => {
       nm.vinculacion_id::text AS vinculacion_id,
       nm.fecha,
       nm.tipo_movimiento,
+      nm.familia_movimiento,
+      nm.estado,
       nm.descripcion,
       nm.cantidad,
       nm.valor_unitario,
+      nm.valor_calculado,
       nm.valor_total,
       COALESCE(nm.es_devengado, TRUE) AS es_devengado,
       COALESCE(nm.es_deduccion, FALSE) AS es_deduccion,
       COALESCE(nm.afecta_seguridad_social, TRUE) AS afecta_seguridad_social,
       COALESCE(nm.activo, TRUE) AS activo,
+      nm.documento_persona_id::text AS documento_persona_id,
+      nm.persona_reemplazada_id::text AS persona_reemplazada_id,
+      nm.vinculacion_reemplazada_id::text AS vinculacion_reemplazada_id,
+      nm.municipio_id::text AS municipio_id,
+      nm.institucion_id::text AS institucion_id,
+      nm.sede_id::text AS sede_id,
+      nm.modalidad_id::text AS modalidad_id,
+      nm.contexto_municipio,
+      nm.contexto_institucion,
+      nm.contexto_sede,
+      nm.contexto_modalidad,
+      nm.tarifa_config_id::text AS tarifa_config_id,
+      nm.motivo_ajuste_valor,
+      nm.motivo_estado,
+      nm.alertas_validacion,
+      COALESCE(nm.posible_duplicado, FALSE) AS posible_duplicado,
+      nm.revisado_por::text AS revisado_por,
+      nm.revisado_at,
+      nm.aprobado_por::text AS aprobado_por,
+      nm.aprobado_at,
+      nm.rechazado_por::text AS rechazado_por,
+      nm.rechazado_at,
+      nm.updated_at,
+      nm.updated_by::text AS updated_by,
       nm.created_at,
       np.contrato_id::text AS periodo_contrato_id,
       np.estado AS periodo_estado,
@@ -1440,11 +1937,17 @@ const getNominaMovimientosRealSelect = (): string => {
       p.primer_nombre,
       p.segundo_nombre,
       p.primer_apellido,
-      p.segundo_apellido
+      p.segundo_apellido,
+      pr.numero_documento AS persona_reemplazada_numero_documento,
+      pr.primer_nombre AS persona_reemplazada_primer_nombre,
+      pr.segundo_nombre AS persona_reemplazada_segundo_nombre,
+      pr.primer_apellido AS persona_reemplazada_primer_apellido,
+      pr.segundo_apellido AS persona_reemplazada_segundo_apellido
     FROM nomina_movimientos nm
     INNER JOIN nomina_periodos np ON np.id = nm.periodo_id
     INNER JOIN vinculaciones v ON v.id = nm.vinculacion_id
     INNER JOIN personas p ON p.id = v.persona_id
+    LEFT JOIN personas pr ON pr.id = nm.persona_reemplazada_id
   `;
 };
 
@@ -1699,27 +2202,74 @@ const mapRealNovedad = (row: NominaNovedadRealRow): NominaNovedad => {
     periodo_id: row.periodo_id,
     nomina_empleado_id: row.nomina_empleado_id,
     vinculacion_id: row.vinculacion_id,
+    documento_persona_id: row.documento_persona_id,
     fecha_inicio: toDateString(row.fecha_inicio),
     fecha_fin: toDateString(row.fecha_fin),
+    fecha_inicio_evento_canonico: null,
+    fecha_fin_evento_canonico: null,
     dias: toOptionalNumberValue(row.dias),
     horas: toOptionalNumberValue(row.horas),
     valor_manual: toOptionalNumberValue(row.valor_manual),
     categoria_anterior_id: row.categoria_anterior_id,
     categoria_nueva_id: row.categoria_nueva_id,
     observacion: row.observacion,
+    evento_canonico_id: null,
     revisado: toBooleanValue(row.revisado),
     activo: toBooleanValue(row.activo),
+    registro_tipo: 'ORDINARIA',
     created_at: toIsoString(row.created_at) ?? '',
     requiere_cobertura: toBooleanValue(row.requiere_cobertura),
     cubierta: toBooleanValue(row.cubierta),
     tipo_novedad: {
       id: row.tipo_novedad_id,
+      codigo_operativo: row.tipo_novedad_codigo_operativo,
+      codigo_operativo_registrado:
+        row.tipo_novedad_codigo_snapshot ?? row.tipo_novedad_codigo_operativo,
       nombre: row.tipo_novedad_nombre,
       categoria: row.tipo_novedad_categoria,
+      descripcion_operativa: row.tipo_novedad_descripcion_operativa,
       afecta_salario: toBooleanValue(row.tipo_novedad_afecta_salario),
       afecta_transporte: toBooleanValue(row.tipo_novedad_afecta_transporte),
+      afecta_dias_laborados:
+        row.tipo_novedad_afecta_dias_laborados === null ||
+        row.tipo_novedad_afecta_dias_laborados === undefined
+          ? null
+          : toBooleanValue(row.tipo_novedad_afecta_dias_laborados),
+      afecta_recargos:
+        row.tipo_novedad_afecta_recargos === null ||
+        row.tipo_novedad_afecta_recargos === undefined
+          ? null
+          : toBooleanValue(row.tipo_novedad_afecta_recargos),
+      afecta_cobertura:
+        row.tipo_novedad_afecta_cobertura === null ||
+        row.tipo_novedad_afecta_cobertura === undefined
+          ? null
+          : toBooleanValue(row.tipo_novedad_afecta_cobertura),
+      efecto_salario: toNominaEfectoSalario(row.tipo_novedad_efecto_salario),
+      efecto_auxilio_transporte: toNominaEfectoTransporte(
+        row.tipo_novedad_efecto_auxilio_transporte
+      ),
+      efecto_recargos: toNominaEfectoRecargos(row.tipo_novedad_efecto_recargos_detallado),
+      efecto_liquidacion: toNominaEfectoLiquidacion(row.tipo_novedad_efecto_liquidacion),
+      efecto_cobertura: toNominaEfectoCobertura(row.tipo_novedad_efecto_cobertura_config),
+      efecto_operativo: toNominaEfectoOperativo(row.tipo_novedad_efecto_operativo),
+      efecto_pago: row.tipo_novedad_efecto_pago,
+      modelo_registro: toNominaModeloRegistro(row.tipo_novedad_modelo_registro),
+      proyecta_periodos: toBooleanValue(row.tipo_novedad_proyecta_periodos),
+      bloquea_otras_novedades: toBooleanValue(row.tipo_novedad_bloquea_otras_novedades),
+      grupo_exclusividad: toNominaGrupoExclusividad(row.tipo_novedad_grupo_exclusividad),
+      observacion_plantilla: row.tipo_novedad_observacion_plantilla,
       es_adicion: toBooleanValue(row.tipo_novedad_es_adicion),
+      es_incapacidad: toBooleanValue(row.tipo_novedad_es_incapacidad),
+      es_accidente_laboral: toBooleanValue(row.tipo_novedad_es_accidente_laboral),
+      es_permiso: toBooleanValue(row.tipo_novedad_es_permiso),
+      es_suspension: toBooleanValue(row.tipo_novedad_es_suspension),
+      es_evento_operativo: toBooleanValue(row.tipo_novedad_es_evento_operativo),
       es_deduccion: toBooleanValue(row.tipo_novedad_es_deduccion),
+      requiere_soporte: toBooleanValue(row.tipo_novedad_requiere_soporte),
+      permite_rango: toBooleanValue(row.tipo_novedad_permite_rango),
+      requiere_revision: toBooleanValue(row.tipo_novedad_requiere_revision),
+      soporte_documento_tipo: row.tipo_novedad_soporte_documento_tipo,
       requiere_fechas: toBooleanValue(row.tipo_novedad_requiere_fechas),
       requiere_dias: toBooleanValue(row.tipo_novedad_requiere_dias),
       requiere_horas: toBooleanValue(row.tipo_novedad_requiere_horas),
@@ -1747,12 +2297,47 @@ const mapNominaTipoNovedad = (
 ): NominaTipoNovedadCatalogItem => {
   return {
     id: row.id,
+    codigo_operativo: row.codigo_operativo,
     nombre: row.nombre,
     categoria: row.categoria,
+    descripcion_operativa: row.descripcion_operativa,
     afecta_salario: toBooleanValue(row.afecta_salario),
     afecta_transporte: toBooleanValue(row.afecta_transporte),
+    afecta_dias_laborados:
+      row.afecta_dias_laborados === null || row.afecta_dias_laborados === undefined
+        ? null
+        : toBooleanValue(row.afecta_dias_laborados),
+    afecta_recargos:
+      row.afecta_recargos === null || row.afecta_recargos === undefined
+        ? null
+        : toBooleanValue(row.afecta_recargos),
+    afecta_cobertura:
+      row.afecta_cobertura === null || row.afecta_cobertura === undefined
+        ? null
+        : toBooleanValue(row.afecta_cobertura),
+    efecto_salario: toNominaEfectoSalario(row.efecto_salario),
+    efecto_auxilio_transporte: toNominaEfectoTransporte(row.efecto_auxilio_transporte),
+    efecto_recargos: toNominaEfectoRecargos(row.efecto_recargos_detallado),
+    efecto_liquidacion: toNominaEfectoLiquidacion(row.efecto_liquidacion),
+    efecto_cobertura: toNominaEfectoCobertura(row.efecto_cobertura_config),
+    efecto_operativo: toNominaEfectoOperativo(row.efecto_operativo),
+    efecto_pago: row.efecto_pago,
+    modelo_registro: toNominaModeloRegistro(row.modelo_registro),
+    proyecta_periodos: toBooleanValue(row.proyecta_periodos),
+    bloquea_otras_novedades: toBooleanValue(row.bloquea_otras_novedades),
+    grupo_exclusividad: toNominaGrupoExclusividad(row.grupo_exclusividad),
+    observacion_plantilla: row.observacion_plantilla,
     es_adicion: toBooleanValue(row.es_adicion),
+    es_incapacidad: toBooleanValue(row.es_incapacidad),
+    es_accidente_laboral: toBooleanValue(row.es_accidente_laboral),
+    es_permiso: toBooleanValue(row.es_permiso),
+    es_suspension: toBooleanValue(row.es_suspension),
+    es_evento_operativo: toBooleanValue(row.es_evento_operativo),
     es_deduccion: toBooleanValue(row.es_deduccion),
+    requiere_soporte: toBooleanValue(row.requiere_soporte),
+    permite_rango: toBooleanValue(row.permite_rango),
+    requiere_revision: toBooleanValue(row.requiere_revision),
+    soporte_documento_tipo: row.soporte_documento_tipo,
     requiere_fechas: toBooleanValue(row.requiere_fechas),
     requiere_dias: toBooleanValue(row.requiere_dias),
     requiere_horas: toBooleanValue(row.requiere_horas),
@@ -1808,22 +2393,62 @@ const mapRealAsistencia = (row: NominaAsistenciaRealRow): NominaAsistencia => {
 };
 
 const mapRealMovimiento = (row: NominaMovimientoRealRow): NominaMovimiento => {
+  const contextoOperativo =
+    row.municipio_id ||
+    row.institucion_id ||
+    row.sede_id ||
+    row.modalidad_id ||
+    row.contexto_municipio ||
+    row.contexto_institucion ||
+    row.contexto_sede ||
+    row.contexto_modalidad
+      ? {
+          municipio_id: row.municipio_id,
+          municipio: row.contexto_municipio,
+          institucion_id: row.institucion_id,
+          institucion: row.contexto_institucion,
+          sede_id: row.sede_id,
+          sede: row.contexto_sede,
+          modalidad_id: row.modalidad_id,
+          modalidad: row.contexto_modalidad
+        }
+      : null;
+
   return {
     id: row.id,
     periodo_id: row.periodo_id,
     nomina_empleado_id: row.nomina_empleado_id,
     vinculacion_id: row.vinculacion_id,
     fecha: toDateString(row.fecha),
+    familia_movimiento: row.familia_movimiento ?? resolveNominaMovimientoFamilia(row.tipo_movimiento),
+    estado: normalizeNominaMovimientoEstado(row.estado),
     tipo_movimiento: row.tipo_movimiento,
     descripcion: row.descripcion,
     cantidad: toOptionalNumberValue(row.cantidad),
     valor_unitario: toOptionalNumberValue(row.valor_unitario),
+    valor_calculado: toOptionalNumberValue(row.valor_calculado) ?? toNumberValue(row.valor_total),
+    valor_aplicado: toNumberValue(row.valor_total),
     valor_total: toNumberValue(row.valor_total),
     es_devengado: toBooleanValue(row.es_devengado),
     es_deduccion: toBooleanValue(row.es_deduccion),
     afecta_seguridad_social: toBooleanValue(row.afecta_seguridad_social),
     activo: toBooleanValue(row.activo),
+    documento_persona_id: row.documento_persona_id,
+    motivo_ajuste_valor: row.motivo_ajuste_valor,
+    motivo_estado: row.motivo_estado,
+    posible_duplicado: toBooleanValue(row.posible_duplicado),
+    alertas_validacion: parseNominaMovimientoAlerts(row.alertas_validacion),
     created_at: toIsoString(row.created_at) ?? '',
+    updated_at: toIsoString(row.updated_at),
+    updated_by: row.updated_by,
+    revisado_por: row.revisado_por,
+    revisado_at: toIsoString(row.revisado_at),
+    aprobado_por: row.aprobado_por,
+    aprobado_at: toIsoString(row.aprobado_at),
+    rechazado_por: row.rechazado_por,
+    rechazado_at: toIsoString(row.rechazado_at),
+    tarifa_config_id: row.tarifa_config_id,
+    contexto_operativo: contextoOperativo,
     periodo: {
       id: row.periodo_id,
       nombre_periodo: row.periodo_nombre,
@@ -1839,9 +2464,23 @@ const mapRealMovimiento = (row: NominaMovimientoRealRow): NominaMovimiento => {
         row.segundo_apellido
       )
     },
+    persona_reemplazada:
+      row.persona_reemplazada_id
+        ? {
+            id: row.persona_reemplazada_id,
+            numero_documento: row.persona_reemplazada_numero_documento,
+            nombre_completo: normalizeFullName(
+              row.persona_reemplazada_primer_nombre,
+              row.persona_reemplazada_segundo_nombre,
+              row.persona_reemplazada_primer_apellido,
+              row.persona_reemplazada_segundo_apellido
+            )
+          }
+        : null,
     vinculacion: {
       id: row.vinculacion_id
-    }
+    },
+    vinculacion_reemplazada_id: row.vinculacion_reemplazada_id
   };
 };
 
@@ -2692,6 +3331,76 @@ const loadNominaTipoNovedadByIdOrThrow = async (
   return tipo;
 };
 
+const loadNominaTiposNovedadCatalog = async (client?: PoolClient): Promise<NominaTipoNovedadRow[]> => {
+  const executor = client ?? dbPool;
+  const result = await executor.query<NominaTipoNovedadRow>(
+    `
+      ${getNominaTiposNovedadSelect()}
+      ORDER BY id ASC
+    `
+  );
+
+  return result.rows;
+};
+
+const loadNominaNovedadesCanonicasForPeriodo = async (
+  client: Pick<PoolClient, 'query'>,
+  periodo: NominaPeriodoDateRange,
+  vinculacionIds: string[],
+  options?: { activeOnly?: boolean }
+): Promise<NominaNovedadCanonicaRow[]> => {
+  if (vinculacionIds.length === 0) {
+    return [];
+  }
+
+  const activeOnly = options?.activeOnly ?? true;
+  const activeCondition = activeOnly ? 'AND COALESCE(nnc.activo, TRUE) = TRUE' : '';
+
+  const result = await client.query<NominaNovedadCanonicaRow>(
+    `
+      SELECT
+        nnc.id::text AS id,
+        nnc.vinculacion_id::text AS vinculacion_id,
+        nnc.tipo_novedad_id::text AS tipo_novedad_id,
+        nnc.tipo_novedad_codigo_operativo AS tipo_novedad_codigo_snapshot,
+        nnc.documento_persona_id::text AS documento_persona_id,
+        nnc.fecha_inicio,
+        nnc.fecha_fin,
+        nnc.observacion,
+        nnc.origen,
+        COALESCE(nnc.activo, TRUE) AS activo,
+        nnc.created_at,
+        nnc.updated_at
+      FROM nomina_novedades_canonicas nnc
+      WHERE nnc.vinculacion_id = ANY($1::bigint[])
+        ${activeCondition}
+        AND nnc.fecha_inicio <= $2::date
+        AND nnc.fecha_fin >= $3::date
+      ORDER BY nnc.fecha_inicio ASC, nnc.id ASC
+    `,
+    [vinculacionIds, periodo.end, periodo.start]
+  );
+
+  return result.rows;
+};
+
+const resolveNominaTipoNovedadOrThrow = async (
+  input: {
+    tipo_novedad_codigo?: string | null;
+    tipo_novedad_id?: string | null;
+    tipo_novedad_nombre?: string | null;
+  },
+  client?: PoolClient
+): Promise<NominaTipoNovedadRow> => {
+  const catalog = await loadNominaTiposNovedadCatalog(client);
+
+  return resolveNominaNovedadTypeSelection(catalog, {
+    id: input.tipo_novedad_id,
+    codigo_operativo: input.tipo_novedad_codigo,
+    nombre: input.tipo_novedad_nombre
+  });
+};
+
 const hasInactiveNominaTiposNovedad = async (): Promise<boolean> => {
   const result = await dbQuery<{ exists: boolean }>(
     `
@@ -2704,6 +3413,297 @@ const hasInactiveNominaTiposNovedad = async (): Promise<boolean> => {
   );
 
   return result.rows[0]?.exists === true;
+};
+
+const ensureDocumentoPersonaScope = async (
+  documentoId: string,
+  personaId: string,
+  client?: PoolClient
+): Promise<void> => {
+  const executor = client ?? dbPool;
+  const result = await executor.query<{ id: string; persona_id: string }>(
+    `
+      SELECT
+        id::text AS id,
+        persona_id::text AS persona_id
+      FROM documentos_persona
+      WHERE id::text = $1
+      LIMIT 1
+    `,
+    [documentoId]
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    throw new AppError('Documento persona not found', 400, 'DOCUMENTO_PERSONA_NOT_FOUND');
+  }
+
+  if (row.persona_id !== personaId) {
+    throw new AppError(
+      'documento_persona_id does not belong to persona_id',
+      409,
+      'NOMINA_NOVEDAD_PERSONA_DOCUMENTO_MISMATCH'
+    );
+  }
+};
+
+const loadNominaMovimientoContextFromCobertura = async (
+  vinculacionId: string,
+  fecha: string,
+  client: PoolClient
+): Promise<NominaMovimientoContextRow | null> => {
+  const result = await client.query<NominaMovimientoContextRow>(
+    `
+      SELECT
+        ff.municipio_id::text AS municipio_id,
+        ff.institucion_id::text AS institucion_id,
+        ff.sede_id::text AS sede_id,
+        ff.modalidad_id::text AS modalidad_id,
+        mu.nombre_municipio AS contexto_municipio,
+        i.nombre_institucion AS contexto_institucion,
+        s.nombre_sede AS contexto_sede,
+        m.nombre_modalidad AS contexto_modalidad
+      FROM cobertura_asignaciones ca
+      INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+      LEFT JOIN municipios mu ON mu.id = ff.municipio_id
+      LEFT JOIN instituciones i ON i.id = ff.institucion_id
+      LEFT JOIN sedes s ON s.id = ff.sede_id
+      LEFT JOIN modalidades m ON m.id = ff.modalidad_id
+      WHERE ca.vinculacion_id = $1::bigint
+        AND COALESCE(ca.activo, TRUE) = TRUE
+        AND ca.fecha_inicio <= $2::date
+        AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $2::date)
+      ORDER BY ca.fecha_inicio DESC, ca.id DESC
+      LIMIT 1
+    `,
+    [vinculacionId, fecha]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const resolveNominaMovimientoContext = async (
+  input: {
+    contexto_institucion?: string | null;
+    contexto_modalidad?: string | null;
+    contexto_municipio?: string | null;
+    contexto_sede?: string | null;
+    fecha: string;
+    institucion_id?: string | null;
+    modalidad_id?: string | null;
+    municipio_id?: string | null;
+    sede_id?: string | null;
+    vinculacion_reemplazada_id?: string | null;
+  },
+  client: PoolClient
+): Promise<NominaMovimientoContextRow> => {
+  const replacementContext = input.vinculacion_reemplazada_id
+    ? await loadNominaMovimientoContextFromCobertura(
+        input.vinculacion_reemplazada_id,
+        input.fecha,
+        client
+      )
+    : null;
+
+  return {
+    municipio_id: input.municipio_id ?? replacementContext?.municipio_id ?? null,
+    institucion_id: input.institucion_id ?? replacementContext?.institucion_id ?? null,
+    sede_id: input.sede_id ?? replacementContext?.sede_id ?? null,
+    modalidad_id: input.modalidad_id ?? replacementContext?.modalidad_id ?? null,
+    contexto_municipio:
+      input.contexto_municipio ?? replacementContext?.contexto_municipio ?? null,
+    contexto_institucion:
+      input.contexto_institucion ?? replacementContext?.contexto_institucion ?? null,
+    contexto_sede: input.contexto_sede ?? replacementContext?.contexto_sede ?? null,
+    contexto_modalidad:
+      input.contexto_modalidad ?? replacementContext?.contexto_modalidad ?? null
+  };
+};
+
+const resolveNominaMovimientoTarifa = async (
+  input: {
+    contrato_id: string;
+    fecha: string;
+    institucion_id?: string | null;
+    modalidad_id?: string | null;
+    municipio_id?: string | null;
+    sede_id?: string | null;
+    tipo_movimiento: string;
+  },
+  client: PoolClient
+): Promise<NominaMovimientoTarifaRow | null> => {
+  const result = await client.query<NominaMovimientoTarifaRow>(
+    `
+      SELECT
+        id::text AS id,
+        contrato_id::text AS contrato_id,
+        tipo_movimiento,
+        municipio_id::text AS municipio_id,
+        institucion_id::text AS institucion_id,
+        sede_id::text AS sede_id,
+        modalidad_id::text AS modalidad_id,
+        vigencia_desde,
+        vigencia_hasta,
+        valor_unitario
+      FROM nomina_movimiento_tarifas
+      WHERE contrato_id = $1::bigint
+        AND tipo_movimiento = $2
+        AND COALESCE(activo, TRUE) = TRUE
+        AND vigencia_desde <= $3::date
+        AND (vigencia_hasta IS NULL OR vigencia_hasta >= $3::date)
+        AND (municipio_id IS NULL OR municipio_id = $4::bigint)
+        AND (institucion_id IS NULL OR institucion_id = $5::bigint)
+        AND (sede_id IS NULL OR sede_id = $6::bigint)
+        AND (modalidad_id IS NULL OR modalidad_id = $7::bigint)
+      ORDER BY
+        (CASE WHEN sede_id IS NULL THEN 0 ELSE 8 END
+          + CASE WHEN institucion_id IS NULL THEN 0 ELSE 4 END
+          + CASE WHEN municipio_id IS NULL THEN 0 ELSE 2 END
+          + CASE WHEN modalidad_id IS NULL THEN 0 ELSE 1 END) DESC,
+        vigencia_desde DESC,
+        id DESC
+      LIMIT 1
+    `,
+    [
+      input.contrato_id,
+      input.tipo_movimiento,
+      input.fecha,
+      input.municipio_id,
+      input.institucion_id,
+      input.sede_id,
+      input.modalidad_id
+    ]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const buildNominaMovimientoAlerts = async (
+  input: {
+    fecha: string;
+    movimientoId?: string | null;
+    periodo_id: string;
+    tipo_movimiento: string;
+    vinculacion_id: string;
+  },
+  client: PoolClient
+): Promise<{ alerts: NominaMovimientoAlerta[]; posible_duplicado: boolean }> => {
+  let alerts: NominaMovimientoAlerta[] = [];
+  const params: unknown[] = [
+    input.vinculacion_id,
+    input.fecha,
+    input.periodo_id,
+    input.tipo_movimiento
+  ];
+  let excludeSql = '';
+
+  if (input.movimientoId) {
+    params.push(input.movimientoId);
+    excludeSql = `AND nm.id <> $${params.length}::bigint`;
+  }
+
+  const duplicateResult = await client.query<{ id: string }>(
+    `
+      SELECT nm.id::text AS id
+      FROM nomina_movimientos nm
+      WHERE nm.vinculacion_id = $1::bigint
+        AND nm.fecha = $2::date
+        AND nm.periodo_id = $3::bigint
+        AND nm.tipo_movimiento = $4
+        AND COALESCE(nm.activo, TRUE) = TRUE
+        ${excludeSql}
+      LIMIT 1
+    `,
+    params
+  );
+
+  const posibleDuplicado = Boolean(duplicateResult.rows[0]);
+
+  if (posibleDuplicado) {
+    alerts = appendNominaMovimientoAlert(alerts, {
+      tipo: 'POSIBLE_DUPLICADO',
+      severidad: 'WARNING',
+      mensaje: 'Existe al menos un movimiento activo del mismo tipo para la misma vinculacion y fecha.',
+      metadata: {
+        fecha: input.fecha,
+        periodo_id: input.periodo_id,
+        tipo_movimiento: input.tipo_movimiento
+      }
+    });
+  }
+
+  const overlapRows = await client.query<{
+    codigo_operativo: string | null;
+    es_incapacidad: boolean | null;
+    es_permiso: boolean | null;
+    es_suspension: boolean | null;
+    grupo_exclusividad: string | null;
+    nombre: string | null;
+    origen: string;
+  }>(
+    `
+      SELECT
+        ntn.codigo_operativo,
+        ntn.nombre,
+        ntn.es_incapacidad,
+        ntn.es_permiso,
+        ntn.es_suspension,
+        ntn.grupo_exclusividad,
+        'ORDINARIA' AS origen
+      FROM nomina_novedades nn
+      INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nn.tipo_novedad_id
+      INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
+      WHERE nn.vinculacion_id = $1::bigint
+        AND COALESCE(nn.activo, TRUE) = TRUE
+        AND COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio) <= $2::date
+        AND COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin) >= $2::date
+      UNION ALL
+      SELECT
+        ntn.codigo_operativo,
+        ntn.nombre,
+        ntn.es_incapacidad,
+        ntn.es_permiso,
+        ntn.es_suspension,
+        ntn.grupo_exclusividad,
+        'CANONICA' AS origen
+      FROM nomina_novedades_canonicas nnc
+      INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nnc.tipo_novedad_id
+      WHERE nnc.vinculacion_id = $1::bigint
+        AND COALESCE(nnc.activo, TRUE) = TRUE
+        AND nnc.fecha_inicio <= $2::date
+        AND nnc.fecha_fin >= $2::date
+    `,
+    [input.vinculacion_id, input.fecha]
+  );
+
+  for (const row of overlapRows.rows) {
+    const blocked =
+      toBooleanValue(row.es_permiso) ||
+      toBooleanValue(row.es_suspension) ||
+      toBooleanValue(row.es_incapacidad) ||
+      (row.grupo_exclusividad ?? 'NINGUNA') !== 'NINGUNA';
+
+    if (!blocked) {
+      continue;
+    }
+
+    alerts = appendNominaMovimientoAlert(alerts, {
+      tipo: 'CONFLICTO_NOVEDAD',
+      severidad: 'WARNING',
+      codigo: row.codigo_operativo,
+      mensaje: `La fecha ${input.fecha} ya tiene una novedad que requiere revision antes de aprobar la adicion.`,
+      metadata: {
+        nombre: row.nombre,
+        origen: row.origen,
+        codigo_operativo: row.codigo_operativo
+      }
+    });
+  }
+
+  return {
+    alerts,
+    posible_duplicado: posibleDuplicado
+  };
 };
 
 const validateNovedadInputAgainstTipo = (
@@ -2730,6 +3730,438 @@ const validateNovedadInputAgainstTipo = (
 
   if (toBooleanValue(tipo.requiere_valor) && (input.valor_manual === null || input.valor_manual === undefined)) {
     throw new AppError('This novelty type requires valor_manual', 400, 'NOMINA_NOVEDAD_VALOR_REQUERIDO');
+  }
+
+  if (toBooleanValue(tipo.activo) === false) {
+    throw new AppError('Payroll novelty type is inactive', 409, 'NOMINA_TIPO_NOVEDAD_INACTIVO');
+  }
+};
+
+const resolveNominaNovedadDateRange = (input: {
+  fecha_fin?: string | null;
+  fecha_inicio?: string | null;
+}): { fecha_fin: string; fecha_inicio: string } | null => {
+  const fechaInicio = input.fecha_inicio ?? input.fecha_fin ?? null;
+  const fechaFin = input.fecha_fin ?? input.fecha_inicio ?? null;
+
+  if (!fechaInicio || !fechaFin) {
+    return null;
+  }
+
+  if (fechaInicio > fechaFin) {
+    throw new AppError('Payroll novelty range is invalid', 400, 'NOMINA_NOVEDAD_INVALID_RANGE');
+  }
+
+  return {
+    fecha_inicio: fechaInicio,
+    fecha_fin: fechaFin
+  };
+};
+
+const assertNominaNovedadRangeIntersectsPeriodo = (
+  range: { fecha_fin: string; fecha_inicio: string } | null,
+  periodo: Pick<NominaPeriodo, 'fecha_fin' | 'fecha_inicio'> | Pick<NominaPeriodoRealRow, 'fecha_fin' | 'fecha_inicio'>
+): void => {
+  if (!range) {
+    return;
+  }
+
+  const periodoInicio = toDateString(periodo.fecha_inicio) ?? '';
+  const periodoFin = toDateString(periodo.fecha_fin) ?? '';
+
+  if (!periodoInicio || !periodoFin) {
+    throw new AppError('Payroll period dates are invalid', 500, 'NOMINA_PERIODO_FECHAS_INVALIDAS');
+  }
+
+  if (!nominaDateRangesOverlap(range.fecha_inicio, range.fecha_fin, periodoInicio, periodoFin)) {
+    throw new AppError(
+      'Payroll novelty range does not intersect the selected period',
+      409,
+      'NOMINA_NOVEDAD_FUERA_PERIODO'
+    );
+  }
+};
+
+const assertNominaNovedadRangeIntersectsVinculacion = (
+  range: { fecha_fin: string; fecha_inicio: string } | null,
+  empleado:
+    | Pick<NominaEmpleado, 'vinculacion'>
+    | Pick<NominaEmpleadoRealRow, 'fecha_fin_vinculacion' | 'fecha_inicio_vinculacion'>
+): void => {
+  if (!range) {
+    return;
+  }
+
+  const vinculacionInicio =
+    'vinculacion' in empleado
+      ? empleado.vinculacion.fecha_inicio
+      : toDateString(empleado.fecha_inicio_vinculacion);
+  const vinculacionFin =
+    'vinculacion' in empleado
+      ? empleado.vinculacion.fecha_fin ?? '9999-12-31'
+      : toDateString(empleado.fecha_fin_vinculacion) ?? '9999-12-31';
+
+  if (!vinculacionInicio) {
+    throw new AppError(
+      'Payroll employee has no vinculacion start date',
+      500,
+      'NOMINA_VINCULACION_FECHA_INICIO_INVALIDA'
+    );
+  }
+
+  if (!nominaDateRangesOverlap(range.fecha_inicio, range.fecha_fin, vinculacionInicio, vinculacionFin)) {
+    throw new AppError(
+      'Payroll novelty range does not intersect the labor validity of the vinculacion',
+      409,
+      'NOMINA_NOVEDAD_FUERA_VIGENCIA'
+    );
+  }
+};
+
+const loadNominaNovedadCanonicaByIdOrThrow = async (
+  novedadCanonicaId: string,
+  client?: PoolClient
+): Promise<NominaNovedadCanonicaRow> => {
+  const executor = client ?? dbPool;
+  const result = await executor.query<NominaNovedadCanonicaRow>(
+    `
+      SELECT
+        nnc.id::text AS id,
+        nnc.vinculacion_id::text AS vinculacion_id,
+        nnc.tipo_novedad_id::text AS tipo_novedad_id,
+        nnc.tipo_novedad_codigo_operativo AS tipo_novedad_codigo_snapshot,
+        nnc.documento_persona_id::text AS documento_persona_id,
+        nnc.fecha_inicio,
+        nnc.fecha_fin,
+        nnc.observacion,
+        nnc.origen,
+        COALESCE(nnc.activo, TRUE) AS activo,
+        nnc.created_at,
+        nnc.updated_at
+      FROM nomina_novedades_canonicas nnc
+      WHERE nnc.id = $1::bigint
+      LIMIT 1
+    `,
+    [novedadCanonicaId]
+  );
+
+  const novedad = result.rows[0];
+
+  if (!novedad) {
+    throw new AppError(
+      'Canonical payroll novelty not found',
+      404,
+      'NOMINA_NOVEDAD_CANONICA_NOT_FOUND'
+    );
+  }
+
+  return novedad;
+};
+
+const loadNominaEmpleadoRowsForPeriodo = async (
+  periodoId: string,
+  query: Pick<ListNominaNovedadesQuery, 'nomina_empleado_id' | 'persona_id' | 'vinculacion_id'>,
+  tenant?: TenantAccessContext,
+  client?: PoolClient
+): Promise<NominaEmpleadoRealRow[]> => {
+  const executor = client ?? dbPool;
+  const params: unknown[] = [periodoId];
+  const conditions = ['ne.periodo_id = $1::bigint'];
+
+  if (query.nomina_empleado_id) {
+    params.push(query.nomina_empleado_id);
+    conditions.push(`ne.id = $${params.length}::bigint`);
+  }
+
+  if (query.vinculacion_id) {
+    params.push(query.vinculacion_id);
+    conditions.push(`ne.vinculacion_id = $${params.length}::bigint`);
+  }
+
+  if (query.persona_id) {
+    params.push(query.persona_id);
+    conditions.push(`v.persona_id = $${params.length}::bigint`);
+  }
+
+  appendTenantScopeConditions(conditions, params, tenant, 'v.contrato_id', 'v.empresa_id');
+
+  const result = await executor.query<NominaEmpleadoRealRow>(
+    `
+      ${getNominaEmpleadosRealSelect()}
+      ${buildSqlWhere(conditions)}
+      ORDER BY ne.id ASC
+    `,
+    params
+  );
+
+  return result.rows;
+};
+
+const buildProjectedNominaNovedadFromCanonica = (input: {
+  canonical: NominaNovedadCanonicaRow;
+  empleado: NominaEmpleadoRealRow;
+  periodo: NominaPeriodoDateRange;
+  tipo: NominaTipoNovedadRow;
+}): NominaNovedad | null => {
+  const employment: NominaEmploymentDateRange = {
+    start: toDateString(input.empleado.fecha_inicio_pago) ?? input.periodo.start,
+    end: toDateString(input.empleado.fecha_fin_pago) ?? input.periodo.end
+  };
+  const canonicalStart = toDateString(input.canonical.fecha_inicio) ?? '';
+  const canonicalEnd = toDateString(input.canonical.fecha_fin) ?? '';
+  const projection = projectNominaDateRangeToPeriodo({
+    employment,
+    fecha_inicio: canonicalStart,
+    fecha_fin: canonicalEnd,
+    periodo: input.periodo
+  });
+
+  if (!projection) {
+    return null;
+  }
+
+  const tipo = mapNominaTipoNovedad(input.tipo);
+  const observacion =
+    input.canonical.observacion ??
+    generateNominaNovedadObservation({
+      dias: projection.dias,
+      fecha_inicio: canonicalStart,
+      fecha_fin: canonicalEnd,
+      matrix: buildNominaEffectMatrixFromRow(input.tipo)
+    });
+
+  return {
+    id: buildNominaCanonicalProjectedRecordId(input.canonical.id, input.empleado.periodo_id),
+    periodo_id: input.empleado.periodo_id,
+    nomina_empleado_id: input.empleado.id,
+    vinculacion_id: input.empleado.vinculacion_id,
+    documento_persona_id: input.canonical.documento_persona_id,
+    fecha_inicio: projection.fecha_inicio,
+    fecha_fin: projection.fecha_fin,
+    fecha_inicio_evento_canonico: canonicalStart,
+    fecha_fin_evento_canonico: canonicalEnd,
+    dias: projection.dias,
+    horas: null,
+    valor_manual: null,
+    categoria_anterior_id: null,
+    categoria_nueva_id: null,
+    observacion,
+    revisado: false,
+    activo: toBooleanValue(input.canonical.activo),
+    created_at: toIsoString(input.canonical.created_at) ?? '',
+    requiere_cobertura: false,
+    cubierta: false,
+    registro_tipo: 'CANONICA_PROYECTADA',
+    evento_canonico_id: input.canonical.id,
+    tipo_novedad: {
+      ...tipo,
+      codigo_operativo_registrado:
+        input.canonical.tipo_novedad_codigo_snapshot ?? tipo.codigo_operativo
+    },
+    persona: {
+      numero_documento: input.empleado.persona_numero_documento,
+      primer_nombre: input.empleado.primer_nombre,
+      segundo_nombre: input.empleado.segundo_nombre,
+      primer_apellido: input.empleado.primer_apellido,
+      segundo_apellido: input.empleado.segundo_apellido,
+      nombre_completo: normalizeFullName(
+        input.empleado.primer_nombre,
+        input.empleado.segundo_nombre,
+        input.empleado.primer_apellido,
+        input.empleado.segundo_apellido
+      )
+    }
+  };
+};
+
+const ensureNoBlockingCanonicalOverlap = async (
+  client: PoolClient,
+  input: {
+    excludeCanonicalId?: string | null;
+    fecha_fin: string;
+    fecha_inicio: string;
+    vinculacion_id: string;
+  }
+): Promise<void> => {
+  const params: unknown[] = [input.vinculacion_id, input.fecha_inicio, input.fecha_fin];
+  let excludeSql = '';
+
+  if (input.excludeCanonicalId) {
+    params.push(input.excludeCanonicalId);
+    excludeSql = `AND nnc.id <> $${params.length}::bigint`;
+  }
+
+  const result = await client.query<{ id: string; nombre: string | null }>(
+    `
+      SELECT
+        nnc.id::text AS id,
+        ntn.nombre
+      FROM nomina_novedades_canonicas nnc
+      INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nnc.tipo_novedad_id
+      WHERE nnc.vinculacion_id = $1::bigint
+        AND COALESCE(nnc.activo, TRUE) = TRUE
+        AND nnc.fecha_inicio <= $3::date
+        AND nnc.fecha_fin >= $2::date
+        AND (
+          COALESCE(ntn.bloquea_otras_novedades, FALSE) = TRUE
+          OR COALESCE(ntn.grupo_exclusividad, 'NINGUNA') <> 'NINGUNA'
+        )
+        ${excludeSql}
+      LIMIT 1
+    `,
+    params
+  );
+
+  const overlap = result.rows[0];
+
+  if (overlap) {
+    throw new AppError(
+      'The selected range overlaps a canonical novelty that blocks ordinary novelties',
+      409,
+      'NOMINA_NOVEDAD_CONFLICTO_LICENCIA',
+      overlap
+    );
+  }
+};
+
+const ensureNoOrdinaryNovedadOverlapWithCanonical = async (
+  client: PoolClient,
+  input: {
+    excludeNovedadId?: string | null;
+    fecha_fin: string;
+    fecha_inicio: string;
+    vinculacion_id: string;
+  }
+): Promise<void> => {
+  const params: unknown[] = [input.vinculacion_id, input.fecha_inicio, input.fecha_fin];
+  let excludeSql = '';
+
+  if (input.excludeNovedadId) {
+    params.push(input.excludeNovedadId);
+    excludeSql = `AND nn.id <> $${params.length}::bigint`;
+  }
+
+  const result = await client.query<{ id: string; nombre: string | null }>(
+    `
+      SELECT
+        nn.id::text AS id,
+        ntn.nombre
+      FROM nomina_novedades nn
+      INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nn.tipo_novedad_id
+      INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
+      WHERE nn.vinculacion_id = $1::bigint
+        AND COALESCE(nn.activo, TRUE) = TRUE
+        AND (nn.fecha_inicio IS NOT NULL OR nn.fecha_fin IS NOT NULL)
+        AND COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio) <= $3::date
+        AND COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin) >= $2::date
+        ${excludeSql}
+      LIMIT 1
+    `,
+    params
+  );
+
+  const overlap = result.rows[0];
+
+  if (overlap) {
+    throw new AppError(
+      'The selected canonical range overlaps an existing ordinary novelty',
+      409,
+      'NOMINA_NOVEDAD_CONFLICTO_CANONICA_ORDINARIA',
+      overlap
+    );
+  }
+};
+
+const ensureNoExactCanonicalDuplicate = async (
+  client: PoolClient,
+  input: {
+    excludeCanonicalId?: string | null;
+    fecha_fin: string;
+    fecha_inicio: string;
+    tipo_novedad_id: string;
+    vinculacion_id: string;
+  }
+): Promise<void> => {
+  const params: unknown[] = [
+    input.vinculacion_id,
+    input.tipo_novedad_id,
+    input.fecha_inicio,
+    input.fecha_fin
+  ];
+  let excludeSql = '';
+
+  if (input.excludeCanonicalId) {
+    params.push(input.excludeCanonicalId);
+    excludeSql = `AND nnc.id <> $${params.length}::bigint`;
+  }
+
+  const result = await client.query<{ id: string }>(
+    `
+      SELECT nnc.id::text AS id
+      FROM nomina_novedades_canonicas nnc
+      WHERE nnc.vinculacion_id = $1::bigint
+        AND nnc.tipo_novedad_id = $2::bigint
+        AND nnc.fecha_inicio = $3::date
+        AND nnc.fecha_fin = $4::date
+        AND COALESCE(nnc.activo, TRUE) = TRUE
+        ${excludeSql}
+      LIMIT 1
+    `,
+    params
+  );
+
+  if (result.rows[0]) {
+    throw new AppError(
+      'An identical canonical payroll novelty already exists',
+      409,
+      'NOMINA_NOVEDAD_CANONICA_DUPLICADA'
+    );
+  }
+};
+
+const ensureCanonicalRangeDoesNotAffectClosedPeriods = async (
+  client: PoolClient,
+  input: {
+    excludePeriodoId?: string | null;
+    fecha_fin: string;
+    fecha_inicio: string;
+    vinculacion_id: string;
+  }
+): Promise<void> => {
+  const params: unknown[] = [input.vinculacion_id, input.fecha_inicio, input.fecha_fin];
+  let excludeSql = '';
+
+  if (input.excludePeriodoId) {
+    params.push(input.excludePeriodoId);
+    excludeSql = `AND np.id <> $${params.length}::bigint`;
+  }
+
+  const result = await client.query<{ estado: string; id: string; nombre_periodo: string }>(
+    `
+      SELECT
+        np.id::text AS id,
+        np.nombre_periodo,
+        np.estado
+      FROM nomina_periodos np
+      INNER JOIN vinculaciones v ON v.id = $1::bigint
+      WHERE np.contrato_id = v.contrato_id
+        AND np.fecha_inicio <= $3::date
+        AND np.fecha_fin >= $2::date
+        AND UPPER(COALESCE(np.estado, '')) IN ('CERRADO', 'PAGADO')
+        ${excludeSql}
+      ORDER BY np.fecha_inicio ASC, np.id ASC
+      LIMIT 1
+    `,
+    params
+  );
+
+  if (result.rows[0]) {
+    throw new AppError(
+      'The canonical novelty affects a closed payroll period and requires a correction workflow',
+      409,
+      'NOMINA_NOVEDAD_CANONICA_REQUIERE_CORRECCION',
+      result.rows[0]
+    );
   }
 };
 
@@ -3015,6 +4447,81 @@ const ensureNoDuplicateNominaEmpleado = async (
   return (result.rows[0]?.total ?? 0) > 0;
 };
 
+const findExistingNominaPeriodoByContractAndRange = async (
+  input: {
+    contrato_id: string;
+    fecha_fin: string;
+    fecha_inicio: string;
+    tipo_periodo: string;
+  },
+  tenant?: TenantAccessContext,
+  client?: PoolClient
+): Promise<NominaPeriodo | null> => {
+  const executor = client ?? dbPool;
+  const result = await executor.query<NominaPeriodoRealRow>(
+    `
+      ${getNominaPeriodosRealSelect()}
+      WHERE np.contrato_id = $1::bigint
+        AND np.fecha_inicio = $2::date
+        AND np.fecha_fin = $3::date
+        AND np.tipo_periodo = $4
+      ORDER BY np.id ASC
+      LIMIT 1
+    `,
+    [input.contrato_id, input.fecha_inicio, input.fecha_fin, input.tipo_periodo]
+  );
+
+  const row = result.rows[0];
+
+  if (!row) {
+    return null;
+  }
+
+  await assertTenantAccessForContrato(row.contrato_id, tenant, client);
+  return mapRealPeriodo(row);
+};
+
+const buildImportCandidateReviewSet = (
+  candidates: ImportCandidateRow[],
+  periodoFechaInicio: string,
+  periodoFechaFin: string
+): Set<string> => {
+  const byPersona = new Map<string, NominaPopulationLink[]>();
+
+  for (const candidate of candidates) {
+    const current = byPersona.get(candidate.persona_id) ?? [];
+    current.push({
+      vinculacion_id: candidate.vinculacion_id,
+      persona_id: candidate.persona_id,
+      fecha_inicio: toDateString(candidate.fecha_inicio) ?? periodoFechaInicio,
+      fecha_fin: toDateString(candidate.fecha_fin),
+      metodo_pago: candidate.metodo_pago,
+      tipo_vinculacion_codigo: candidate.tipo_vinculacion_codigo
+    });
+    byPersona.set(candidate.persona_id, current);
+  }
+
+  const reviewSet = new Set<string>();
+
+  for (const links of byPersona.values()) {
+    const classification = classifyNominaMultipleLinks(
+      links,
+      periodoFechaInicio,
+      periodoFechaFin
+    );
+
+    if (classification === 'SOLAPADA' || classification === 'REQUIERE_REVISION') {
+      for (const link of links) {
+        if (intersectsNominaPeriodo(link.fecha_inicio, link.fecha_fin, periodoFechaInicio, periodoFechaFin)) {
+          reviewSet.add(link.vinculacion_id);
+        }
+      }
+    }
+  }
+
+  return reviewSet;
+};
+
 export const listNominaPeriodos = async (
   query: ListNominaPeriodosQuery,
   tenant?: TenantAccessContext
@@ -3112,6 +4619,22 @@ export const createNominaPeriodo = async (
     await client.query('BEGIN');
     await ensureContratoExists(input.contrato_id, client);
     await assertTenantAccessForContrato(input.contrato_id, tenant, client);
+
+    const existing = await findExistingNominaPeriodoByContractAndRange(
+      {
+        contrato_id: input.contrato_id,
+        fecha_inicio: input.fecha_inicio,
+        fecha_fin: input.fecha_fin,
+        tipo_periodo: input.tipo_periodo
+      },
+      tenant,
+      client
+    );
+
+    if (existing) {
+      await client.query('COMMIT');
+      return existing;
+    }
 
     const result = await client.query<{ id: string }>(
       `
@@ -3799,13 +5322,14 @@ export const importNominaEmpleados = async (
           v.fecha_inicio,
           v.fecha_fin,
           v.metodo_pago,
+          tv.codigo AS tipo_vinculacion_codigo,
           v.contrato_cargo_id::text AS cargo_id,
           NULL::text AS categoria_id,
           NULL::numeric AS categoria_salario_base,
           NULL::numeric AS categoria_auxilio_transporte
         FROM vinculaciones v
+        LEFT JOIN tipos_vinculacion tv ON tv.id = v.tipo_vinculacion_id
         WHERE v.contrato_id = $1::bigint
-          AND v.estado_vinculacion = 'ACTIVA'
           AND v.fecha_inicio <= $2::date
           AND COALESCE(v.fecha_fin, $2::date) >= $3::date
         ORDER BY v.id ASC
@@ -3826,13 +5350,24 @@ export const importNominaEmpleados = async (
 
     let imported = 0;
     let skippedDuplicates = 0;
+    let skippedRequiresReview = 0;
     const periodoFechaInicio = toDateString(periodo.fecha_inicio) ?? '';
     const periodoFechaFin = toDateString(periodo.fecha_fin) ?? '';
     const diasPeriodo = inclusiveDaysBetween(periodoFechaInicio, periodoFechaFin);
+    const reviewVinculacionIds = buildImportCandidateReviewSet(
+      candidatesResult.rows,
+      periodoFechaInicio,
+      periodoFechaFin
+    );
 
     for (const candidate of candidatesResult.rows) {
       if (existingVinculacionIds.has(candidate.vinculacion_id)) {
         skippedDuplicates += 1;
+        continue;
+      }
+
+      if (reviewVinculacionIds.has(candidate.vinculacion_id)) {
+        skippedRequiresReview += 1;
         continue;
       }
 
@@ -3852,6 +5387,10 @@ export const importNominaEmpleados = async (
       const diasPagados = inclusiveDaysBetween(fechaInicioPago, fechaFinPago);
       const salarioBase = toNumberValue(candidate.categoria_salario_base);
       const auxilioTransporte = toNumberValue(candidate.categoria_auxilio_transporte);
+
+      const metodoLiquidacion = resolveNominaMetodoLiquidacion({
+        metodo_pago: candidate.metodo_pago
+      });
 
       await client.query(
         `
@@ -3913,7 +5452,7 @@ export const importNominaEmpleados = async (
         [
           periodoId,
           candidate.vinculacion_id,
-          candidate.metodo_pago?.trim() || 'SALARIO',
+          metodoLiquidacion,
           candidate.categoria_id,
           salarioBase,
           auxilioTransporte,
@@ -3938,7 +5477,8 @@ export const importNominaEmpleados = async (
       {
         after: {
           imported,
-          skipped_duplicates: skippedDuplicates
+          skipped_duplicates: skippedDuplicates,
+          skipped_requires_review: skippedRequiresReview
         }
       },
       auditMeta
@@ -3949,6 +5489,7 @@ export const importNominaEmpleados = async (
     return {
       imported,
       skipped_duplicates: skippedDuplicates,
+      skipped_requires_review: skippedRequiresReview,
       periodo: updatedPeriodo
     };
   } catch (error) {
@@ -3980,6 +5521,8 @@ export const recalculateNominaPeriodo = async (
     const empleadosResult = await client.query<{
       auxilio_transporte: number | string | null;
       dias_pagados: number | string | null;
+      fecha_fin_pago: Date | string | null;
+      fecha_inicio_pago: Date | string | null;
       horas_trabajadas: number | string | null;
       id: string;
       metodo_liquidacion: string | null;
@@ -3996,6 +5539,8 @@ export const recalculateNominaPeriodo = async (
           auxilio_transporte,
           otros_devengos,
           dias_pagados,
+          fecha_inicio_pago,
+          fecha_fin_pago,
           horas_trabajadas
         FROM nomina_empleados
         WHERE periodo_id = $1::bigint
@@ -4014,6 +5559,28 @@ export const recalculateNominaPeriodo = async (
       `,
       [periodoId]
     );
+
+    const periodoRange: NominaPeriodoDateRange = {
+      start: toDateString(periodo.fecha_inicio) ?? '',
+      end: toDateString(periodo.fecha_fin) ?? ''
+    };
+
+    const tiposNovedadCatalog = await loadNominaTiposNovedadCatalog(client);
+    const tiposNovedadById = new Map(
+      tiposNovedadCatalog.map((item) => [item.id, item] as const)
+    );
+    const canonicalRows = await loadNominaNovedadesCanonicasForPeriodo(
+      client,
+      periodoRange,
+      empleadosResult.rows.map((item) => item.vinculacion_id)
+    );
+    const canonicalByVinculacion = new Map<string, NominaNovedadCanonicaRow[]>();
+
+    for (const canonicalRow of canonicalRows) {
+      const currentItems = canonicalByVinculacion.get(canonicalRow.vinculacion_id) ?? [];
+      currentItems.push(canonicalRow);
+      canonicalByVinculacion.set(canonicalRow.vinculacion_id, currentItems);
+    }
 
     const asistenciaResult = await client.query<{
       dias_pagados_base: number;
@@ -4048,14 +5615,17 @@ export const recalculateNominaPeriodo = async (
           nomina_empleado_id::text AS nomina_empleado_id,
           COALESCE(SUM(valor_total) FILTER (
             WHERE COALESCE(activo, TRUE) = TRUE
+              AND COALESCE(estado, 'APROBADO') = 'APROBADO'
               AND COALESCE(es_devengado, TRUE) = TRUE
           ), 0) AS movimientos_devengados,
           COALESCE(SUM(valor_total) FILTER (
             WHERE COALESCE(activo, TRUE) = TRUE
+              AND COALESCE(estado, 'APROBADO') = 'APROBADO'
               AND COALESCE(es_deduccion, FALSE) = TRUE
           ), 0) AS movimientos_deducciones,
           COALESCE(SUM(valor_total) FILTER (
             WHERE COALESCE(activo, TRUE) = TRUE
+              AND COALESCE(estado, 'APROBADO') = 'APROBADO'
               AND COALESCE(es_devengado, TRUE) = TRUE
               AND COALESCE(afecta_seguridad_social, TRUE) = TRUE
           ), 0) AS movimientos_ss_devengados
@@ -4105,13 +5675,89 @@ export const recalculateNominaPeriodo = async (
       const totalMovimientosDeducciones = toNumberValue(movimientosEmpleado?.movimientos_deducciones);
       const totalMovimientosSsDevengados = toNumberValue(movimientosEmpleado?.movimientos_ss_devengados);
 
-      // Regla Empiria:
-      // - Solo PERMISO NO REMUNERADO y SUSPENSION reducen salario base.
-      // - Transporte se reduce por cualquier novedad deduccion que afecte transporte.
-      // - Otros devengos variables se reducen por ausencias no remuneradas e incapacidades/licencias definidas.
-      // - Si el empleado es ASISTENCIA y existe asistencia activa, se usa como base de dias pagados
-      //   y las novedades ya no descuentan dias otra vez; solo aplican valor_manual.
-      //   La deduplicacion fina por fecha entre asistencia y novedades queda para una fase posterior.
+      const employmentRange: NominaEmploymentDateRange = {
+        start: toDateString(empleadoRow.fecha_inicio_pago) ?? periodoRange.start,
+        end: toDateString(empleadoRow.fecha_fin_pago) ?? periodoRange.end
+      };
+      const projectedCanonicals = projectNominaCanonicalEventsToPeriodo({
+        canonicalEvents: (canonicalByVinculacion.get(empleadoRow.vinculacion_id) ?? []).map(
+          (item) => ({
+            fuente_id: `CANONICO:${item.id}`,
+            vinculacion_id: item.vinculacion_id,
+            tipo_novedad_id: item.tipo_novedad_id,
+            tipo_novedad_codigo_operativo: item.tipo_novedad_codigo_snapshot,
+            fecha_inicio: toDateString(item.fecha_inicio) ?? periodoRange.start,
+            fecha_fin: toDateString(item.fecha_fin) ?? periodoRange.end
+          })
+        ),
+        employment: employmentRange,
+        periodo: periodoRange
+      });
+      const effectEvents = [
+        ...novedadesEmpleado.map((novedad) => ({
+          origen: 'PERIODO' as const,
+          fuente_id: `PERIODO:${novedad.id}`,
+          fecha_inicio: toDateString(novedad.fecha_inicio),
+          fecha_fin: toDateString(novedad.fecha_fin),
+          dias: toOptionalNumberValue(novedad.dias),
+          matrix: buildNominaEffectMatrixFromRow({
+            codigo_operativo: novedad.tipo_novedad_codigo_operativo,
+            nombre: novedad.tipo_novedad_nombre,
+            efecto_salario: novedad.tipo_novedad_efecto_salario,
+            efecto_auxilio_transporte: novedad.tipo_novedad_efecto_auxilio_transporte,
+            efecto_recargos_detallado: novedad.tipo_novedad_efecto_recargos_detallado,
+            efecto_liquidacion: novedad.tipo_novedad_efecto_liquidacion,
+            efecto_cobertura_config: novedad.tipo_novedad_efecto_cobertura_config,
+            efecto_operativo: novedad.tipo_novedad_efecto_operativo,
+            modelo_registro: novedad.tipo_novedad_modelo_registro,
+            proyecta_periodos: novedad.tipo_novedad_proyecta_periodos,
+            bloquea_otras_novedades: novedad.tipo_novedad_bloquea_otras_novedades,
+            grupo_exclusividad: novedad.tipo_novedad_grupo_exclusividad,
+            observacion_plantilla: novedad.tipo_novedad_observacion_plantilla
+          })
+        })),
+        ...projectedCanonicals.map((item) => {
+          const tipo = tiposNovedadById.get(item.tipo_novedad_id ?? '');
+
+          if (!tipo) {
+            throw new AppError(
+              'Canonical payroll novelty type not found',
+              500,
+              'NOMINA_NOVEDAD_CANONICA_TIPO_NOT_FOUND',
+              { tipo_novedad_id: item.tipo_novedad_id }
+            );
+          }
+
+          return {
+            origen: 'CANONICO' as const,
+            fuente_id: item.fuente_id,
+            fecha_inicio: item.fecha_inicio,
+            fecha_fin: item.fecha_fin,
+            dias: null,
+            matrix: buildNominaEffectMatrixFromRow(tipo)
+          };
+        })
+      ];
+      const effectResolution = resolveNominaEfectosPorDia({
+        employment: employmentRange,
+        events: effectEvents,
+        periodo: periodoRange
+      });
+
+      if (effectResolution.conflictos.length > 0) {
+        throw new AppError(
+          'Payroll novelty conflicts detected for employee',
+          409,
+          'NOMINA_NOVEDAD_CONFLICTO',
+          {
+            nomina_empleado_id: empleadoRow.id,
+            periodo_id: periodoId,
+            vinculacion_id: empleadoRow.vinculacion_id,
+            conflictos: effectResolution.conflictos
+          }
+        );
+      }
+
       let diasDescuentoSalario = 0;
       let diasDescuentoTransporte = 0;
       let diasDescuentoOtrosRecargos = 0;
@@ -4121,32 +5767,8 @@ export const recalculateNominaPeriodo = async (
       for (const novedad of novedadesEmpleado) {
         const diasNovedad = Math.max(0, toNumberValue(novedad.dias));
         const valorManual = Math.max(0, toNumberValue(novedad.valor_manual));
-        const afectaSalario = toBooleanValue(novedad.tipo_novedad_afecta_salario);
-        const afectaTransporte = toBooleanValue(novedad.tipo_novedad_afecta_transporte);
         const esAdicion = toBooleanValue(novedad.tipo_novedad_es_adicion);
         const esDeduccion = toBooleanValue(novedad.tipo_novedad_es_deduccion);
-        const nombreTipoNovedad = normalizeNominaNovedadNombre(novedad.tipo_novedad_nombre);
-        const reduceSalarioPorDias =
-          esDeduccion &&
-          diasNovedad > 0 &&
-          afectaSalario &&
-          NOMINA_NOVEDADES_REDUCEN_SALARIO.has(nombreTipoNovedad);
-        const reduceOtrosRecargosPorDias =
-          esDeduccion &&
-          diasNovedad > 0 &&
-          NOMINA_NOVEDADES_REDUCEN_OTROS_RECARGOS.has(nombreTipoNovedad);
-
-        if (!usaAsistencia && reduceSalarioPorDias) {
-          diasDescuentoSalario += diasNovedad;
-        }
-
-        if (!usaAsistencia && esDeduccion && afectaTransporte && diasNovedad > 0) {
-          diasDescuentoTransporte += diasNovedad;
-        }
-
-        if (!usaAsistencia && reduceOtrosRecargosPorDias) {
-          diasDescuentoOtrosRecargos += diasNovedad;
-        }
 
         if (esAdicion && valorManual > 0) {
           adicionesNovedad += valorManual;
@@ -4155,6 +5777,12 @@ export const recalculateNominaPeriodo = async (
         if (esDeduccion && valorManual > 0) {
           deduccionesNovedadManual += valorManual;
         }
+      }
+
+      if (!usaAsistencia) {
+        diasDescuentoSalario = effectResolution.dias_salario_descuento;
+        diasDescuentoTransporte = effectResolution.dias_transporte_descuento;
+        diasDescuentoOtrosRecargos = effectResolution.dias_recargo_excluido;
       }
 
       const diasPagadosSalario = Math.max(0, diasPagadosBase - diasDescuentoSalario);
@@ -4593,6 +6221,16 @@ export const getNominaMovimientos = async (
     conditions.push(`nm.tipo_movimiento = $${params.length}`);
   }
 
+  if (query.estado) {
+    params.push(query.estado);
+    conditions.push(`nm.estado = $${params.length}`);
+  }
+
+  if (query.familia_movimiento) {
+    params.push(query.familia_movimiento);
+    conditions.push(`nm.familia_movimiento = $${params.length}`);
+  }
+
   if (query.activo !== undefined) {
     params.push(query.activo);
     conditions.push(`COALESCE(nm.activo, TRUE) = $${params.length}`);
@@ -4637,6 +6275,13 @@ export const getNominaMovimientos = async (
   };
 };
 
+export const getNominaMovimientoById = async (
+  movimientoId: string,
+  tenant?: TenantAccessContext
+): Promise<NominaMovimiento> => {
+  return mapRealMovimiento(await loadNominaMovimientoByIdOrThrow(movimientoId, tenant));
+};
+
 export const createNominaMovimiento = async (
   input: CreateNominaMovimientoInput,
   actorUserId: string,
@@ -4661,7 +6306,167 @@ export const createNominaMovimiento = async (
       throw new AppError('Vinculacion does not match payroll employee', 409, 'NOMINA_MOVIMIENTO_INVALID_VINCULACION');
     }
 
-    await ensureVinculacionExists(input.vinculacion_id, client);
+    const vinculacion = await ensureVinculacionExists(input.vinculacion_id, client);
+    const fechaMovimiento = input.fecha ?? null;
+    const familiaMovimiento =
+      input.familia_movimiento ?? resolveNominaMovimientoFamilia(input.tipo_movimiento);
+    const estadoMovimiento = normalizeNominaMovimientoEstado(input.estado);
+
+    if (input.tipo_movimiento === 'TURNO_EXTERNO' && !fechaMovimiento) {
+      throw new AppError(
+        'fecha is required for TURNO_EXTERNO',
+        400,
+        'NOMINA_MOVIMIENTO_FECHA_REQUERIDA'
+      );
+    }
+
+    if (fechaMovimiento) {
+      ensurePeriodoRelacionadoConFecha(
+        {
+          id: periodo.id,
+          nombre: periodo.nombre_periodo,
+          tipo_periodo: periodo.tipo_periodo,
+          fecha_inicio: toDateString(periodo.fecha_inicio) ?? '',
+          fecha_fin: toDateString(periodo.fecha_fin) ?? '',
+          estado: periodo.estado as EstadoPeriodo,
+          contrato_id: periodo.contrato_id,
+          empresa_id: periodo.contrato_empresa_id
+        },
+        undefined,
+        undefined,
+        fechaMovimiento
+      );
+      assertNominaMovimientoFechaVigente(fechaMovimiento, vinculacion);
+    }
+
+    if (input.documento_persona_id) {
+      await ensureDocumentoPersonaScope(input.documento_persona_id, vinculacion.persona_id, client);
+    }
+
+    if (input.persona_reemplazada_id) {
+      await ensurePersonaExists(input.persona_reemplazada_id, client);
+    }
+
+    if (input.vinculacion_reemplazada_id) {
+      const vinculacionReemplazada = await ensureVinculacionExists(
+        input.vinculacion_reemplazada_id,
+        client
+      );
+
+      if (vinculacionReemplazada.id === input.vinculacion_id) {
+        throw new AppError(
+          'A movement cannot replace the same vinculacion',
+          409,
+          'NOMINA_MOVIMIENTO_REEMPLAZO_INVALIDO'
+        );
+      }
+
+      if (
+        input.persona_reemplazada_id &&
+        vinculacionReemplazada.persona_id !== input.persona_reemplazada_id
+      ) {
+        throw new AppError(
+          'persona_reemplazada_id does not match vinculacion_reemplazada_id',
+          409,
+          'NOMINA_MOVIMIENTO_REEMPLAZO_PERSONA_INVALIDA'
+        );
+      }
+    }
+
+    const contexto = fechaMovimiento
+      ? await resolveNominaMovimientoContext(
+          {
+            fecha: fechaMovimiento,
+            municipio_id: input.municipio_id,
+            institucion_id: input.institucion_id,
+            sede_id: input.sede_id,
+            modalidad_id: input.modalidad_id,
+            contexto_municipio: input.contexto_municipio,
+            contexto_institucion: input.contexto_institucion,
+            contexto_sede: input.contexto_sede,
+            contexto_modalidad: input.contexto_modalidad,
+            vinculacion_reemplazada_id: input.vinculacion_reemplazada_id
+          },
+          client
+        )
+      : {
+          municipio_id: input.municipio_id ?? null,
+          institucion_id: input.institucion_id ?? null,
+          sede_id: input.sede_id ?? null,
+          modalidad_id: input.modalidad_id ?? null,
+          contexto_municipio: input.contexto_municipio ?? null,
+          contexto_institucion: input.contexto_institucion ?? null,
+          contexto_sede: input.contexto_sede ?? null,
+          contexto_modalidad: input.contexto_modalidad ?? null
+        };
+
+    const tarifa =
+      fechaMovimiento === null
+        ? null
+        : await resolveNominaMovimientoTarifa(
+            {
+              contrato_id: periodo.contrato_id,
+              fecha: fechaMovimiento,
+              tipo_movimiento: input.tipo_movimiento,
+              municipio_id: contexto.municipio_id,
+              institucion_id: contexto.institucion_id,
+              sede_id: contexto.sede_id,
+              modalidad_id: contexto.modalidad_id
+            },
+            client
+          );
+
+    const resolvedValues = resolveNominaMovimientoValue({
+      cantidad: input.cantidad,
+      valor_aplicado: input.valor_aplicado ?? input.valor_total,
+      valor_calculado: input.valor_calculado,
+      valor_unitario:
+        input.valor_unitario ?? (tarifa ? toNumberValue(tarifa.valor_unitario) : null),
+      motivo_ajuste_valor: input.motivo_ajuste_valor
+    });
+
+    let movimientoAlerts: NominaMovimientoAlerta[] = [];
+    let posibleDuplicado = false;
+
+    if (fechaMovimiento) {
+      const alertResolution = await buildNominaMovimientoAlerts(
+        {
+          fecha: fechaMovimiento,
+          periodo_id: input.periodo_id,
+          tipo_movimiento: input.tipo_movimiento,
+          vinculacion_id: input.vinculacion_id
+        },
+        client
+      );
+      movimientoAlerts = alertResolution.alerts;
+      posibleDuplicado = alertResolution.posible_duplicado;
+    }
+
+    if (familiaMovimiento === 'ADICION_DEVENGO' && !tarifa) {
+      movimientoAlerts = appendNominaMovimientoAlert(movimientoAlerts, {
+        tipo: 'CONFIGURACION_TARIFA_FALTANTE',
+        severidad: 'WARNING',
+        mensaje:
+          'No se encontro una tarifa vigente para el contexto del movimiento; se conserva el valor aplicado ingresado.',
+        metadata: {
+          tipo_movimiento: input.tipo_movimiento,
+          contrato_id: periodo.contrato_id
+        }
+      });
+    }
+
+    if (movimientoAlerts.length > 0 && estadoMovimiento === 'APROBADO') {
+      throw new AppError(
+        'The movement has validation alerts and must be reviewed before approval',
+        409,
+        'NOMINA_MOVIMIENTO_REQUIERE_REVISION',
+        { alertas: movimientoAlerts }
+      );
+    }
+
+    const revisadoAt = estadoMovimiento === 'REVISADO' ? new Date().toISOString() : null;
+    const aprobadoAt = estadoMovimiento === 'APROBADO' ? new Date().toISOString() : null;
+    const rechazadoAt = estadoMovimiento === 'RECHAZADO' ? new Date().toISOString() : null;
 
     const result = await client.query<{ id: string }>(
       `
@@ -4671,14 +6476,40 @@ export const createNominaMovimiento = async (
           vinculacion_id,
           fecha,
           tipo_movimiento,
+          familia_movimiento,
+          estado,
           descripcion,
           cantidad,
           valor_unitario,
+          valor_calculado,
           valor_total,
+          documento_persona_id,
+          persona_reemplazada_id,
+          vinculacion_reemplazada_id,
+          municipio_id,
+          institucion_id,
+          sede_id,
+          modalidad_id,
+          contexto_municipio,
+          contexto_institucion,
+          contexto_sede,
+          contexto_modalidad,
+          tarifa_config_id,
+          motivo_ajuste_valor,
+          motivo_estado,
+          alertas_validacion,
+          posible_duplicado,
+          revisado_por,
+          revisado_at,
+          aprobado_por,
+          aprobado_at,
+          rechazado_por,
+          rechazado_at,
           es_devengado,
           es_deduccion,
           afecta_seguridad_social,
-          activo
+          activo,
+          updated_by
         )
         VALUES (
           $1::bigint,
@@ -4693,7 +6524,31 @@ export const createNominaMovimiento = async (
           $10,
           $11,
           $12,
-          $13
+          $13::bigint,
+          $14::bigint,
+          $15::bigint,
+          $16::bigint,
+          $17::bigint,
+          $18::bigint,
+          $19::bigint,
+          $20,
+          $21,
+          $22,
+          $23,
+          $24,
+          $25::jsonb,
+          $26,
+          $27::bigint,
+          $28::timestamptz,
+          $29::bigint,
+          $30::timestamptz,
+          $31::bigint,
+          $32::timestamptz,
+          $33,
+          $34,
+          $35,
+          $36,
+          $37::bigint
         )
         RETURNING id::text AS id
       `,
@@ -4701,16 +6556,42 @@ export const createNominaMovimiento = async (
         input.periodo_id,
         input.nomina_empleado_id,
         input.vinculacion_id,
-        input.fecha,
+        fechaMovimiento,
         input.tipo_movimiento,
+        familiaMovimiento,
+        estadoMovimiento,
         input.descripcion,
-        input.cantidad,
-        input.valor_unitario,
-        input.valor_total,
+        resolvedValues.cantidad,
+        resolvedValues.valor_unitario,
+        resolvedValues.valor_calculado,
+        resolvedValues.valor_aplicado,
+        input.documento_persona_id,
+        input.persona_reemplazada_id,
+        input.vinculacion_reemplazada_id,
+        contexto.municipio_id,
+        contexto.institucion_id,
+        contexto.sede_id,
+        contexto.modalidad_id,
+        contexto.contexto_municipio,
+        contexto.contexto_institucion,
+        contexto.contexto_sede,
+        contexto.contexto_modalidad,
+        tarifa?.id ?? input.tarifa_config_id ?? null,
+        resolvedValues.motivo_ajuste_valor,
+        input.motivo_estado,
+        JSON.stringify(movimientoAlerts),
+        posibleDuplicado,
+        estadoMovimiento === 'REVISADO' ? actorUserId : null,
+        revisadoAt,
+        estadoMovimiento === 'APROBADO' ? actorUserId : null,
+        aprobadoAt,
+        estadoMovimiento === 'RECHAZADO' ? actorUserId : null,
+        rechazadoAt,
         input.es_devengado,
         input.es_deduccion,
         input.afecta_seguridad_social,
-        input.activo
+        input.activo,
+        actorUserId
       ]
     );
 
@@ -4789,14 +6670,22 @@ export const createNominaRecargo = async (
           vinculacion_id,
           fecha,
           tipo_movimiento,
+          familia_movimiento,
+          estado,
           descripcion,
           cantidad,
           valor_unitario,
+          valor_calculado,
           valor_total,
+          alertas_validacion,
+          posible_duplicado,
           es_devengado,
           es_deduccion,
           afecta_seguridad_social,
-          activo
+          activo,
+          updated_by,
+          aprobado_por,
+          aprobado_at
         )
         VALUES (
           $1::bigint,
@@ -4808,10 +6697,17 @@ export const createNominaRecargo = async (
           $7,
           $8,
           $9,
+          $10,
+          $11,
+          $12,
+          FALSE,
           TRUE,
           FALSE,
           TRUE,
-          TRUE
+          TRUE,
+          $13::bigint,
+          $13::bigint,
+          NOW()
         )
         RETURNING id::text AS id
       `,
@@ -4821,10 +6717,15 @@ export const createNominaRecargo = async (
         input.vinculacion_id,
         input.fecha,
         input.tipo_recargo,
+        resolveNominaMovimientoFamilia(input.tipo_recargo),
+        'APROBADO',
         `Recargo automatico ${input.tipo_recargo}`,
         input.horas,
         valorUnitario,
-        valorTotal
+        valorTotal,
+        valorTotal,
+        '[]',
+        actorUserId
       ]
     );
 
@@ -4880,30 +6781,311 @@ export const updateNominaMovimiento = async (
     const periodo = await loadRealPeriodoOrThrow(current.periodo_id, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'updating payroll movements');
 
+    const nextFecha = input.fecha !== undefined ? input.fecha : toDateString(current.fecha);
+    const nextTipoMovimiento = input.tipo_movimiento ?? current.tipo_movimiento;
+    const nextFamilia =
+      input.familia_movimiento ??
+      current.familia_movimiento ??
+      resolveNominaMovimientoFamilia(nextTipoMovimiento);
+    const nextEstado = normalizeNominaMovimientoEstado(input.estado ?? current.estado);
+
+    if (nextTipoMovimiento === 'TURNO_EXTERNO' && !nextFecha) {
+      throw new AppError(
+        'fecha is required for TURNO_EXTERNO',
+        400,
+        'NOMINA_MOVIMIENTO_FECHA_REQUERIDA'
+      );
+    }
+
+    if (nextFecha) {
+      const vinculacion = await ensureVinculacionExists(current.vinculacion_id, client);
+      ensurePeriodoRelacionadoConFecha(
+        {
+          id: periodo.id,
+          nombre: periodo.nombre_periodo,
+          tipo_periodo: periodo.tipo_periodo,
+          fecha_inicio: toDateString(periodo.fecha_inicio) ?? '',
+          fecha_fin: toDateString(periodo.fecha_fin) ?? '',
+          estado: periodo.estado as EstadoPeriodo,
+          contrato_id: periodo.contrato_id,
+          empresa_id: periodo.contrato_empresa_id
+        },
+        undefined,
+        undefined,
+        nextFecha
+      );
+      assertNominaMovimientoFechaVigente(nextFecha, vinculacion);
+    }
+
+    if (input.documento_persona_id) {
+      await ensureDocumentoPersonaScope(input.documento_persona_id, current.persona.id, client);
+    }
+
+    if (input.persona_reemplazada_id) {
+      await ensurePersonaExists(input.persona_reemplazada_id, client);
+    }
+
+    if (input.vinculacion_reemplazada_id) {
+      const vinculacionReemplazada = await ensureVinculacionExists(
+        input.vinculacion_reemplazada_id,
+        client
+      );
+
+      if (vinculacionReemplazada.id === current.vinculacion_id) {
+        throw new AppError(
+          'A movement cannot replace the same vinculacion',
+          409,
+          'NOMINA_MOVIMIENTO_REEMPLAZO_INVALIDO'
+        );
+      }
+
+      if (
+        input.persona_reemplazada_id &&
+        vinculacionReemplazada.persona_id !== input.persona_reemplazada_id
+      ) {
+        throw new AppError(
+          'persona_reemplazada_id does not match vinculacion_reemplazada_id',
+          409,
+          'NOMINA_MOVIMIENTO_REEMPLAZO_PERSONA_INVALIDA'
+        );
+      }
+    }
+
+    const contexto = nextFecha
+      ? await resolveNominaMovimientoContext(
+          {
+            fecha: nextFecha,
+            municipio_id:
+              input.municipio_id !== undefined
+                ? input.municipio_id
+                : current.contexto_operativo?.municipio_id ?? null,
+            institucion_id:
+              input.institucion_id !== undefined
+                ? input.institucion_id
+                : current.contexto_operativo?.institucion_id ?? null,
+            sede_id:
+              input.sede_id !== undefined
+                ? input.sede_id
+                : current.contexto_operativo?.sede_id ?? null,
+            modalidad_id:
+              input.modalidad_id !== undefined
+                ? input.modalidad_id
+                : current.contexto_operativo?.modalidad_id ?? null,
+            contexto_municipio:
+              input.contexto_municipio !== undefined
+                ? input.contexto_municipio
+                : current.contexto_operativo?.municipio ?? null,
+            contexto_institucion:
+              input.contexto_institucion !== undefined
+                ? input.contexto_institucion
+                : current.contexto_operativo?.institucion ?? null,
+            contexto_sede:
+              input.contexto_sede !== undefined
+                ? input.contexto_sede
+                : current.contexto_operativo?.sede ?? null,
+            contexto_modalidad:
+              input.contexto_modalidad !== undefined
+                ? input.contexto_modalidad
+                : current.contexto_operativo?.modalidad ?? null,
+            vinculacion_reemplazada_id:
+              input.vinculacion_reemplazada_id !== undefined
+                ? input.vinculacion_reemplazada_id
+                : current.vinculacion_reemplazada_id
+          },
+          client
+        )
+      : {
+          municipio_id:
+            input.municipio_id !== undefined
+              ? input.municipio_id
+              : current.contexto_operativo?.municipio_id ?? null,
+          institucion_id:
+            input.institucion_id !== undefined
+              ? input.institucion_id
+              : current.contexto_operativo?.institucion_id ?? null,
+          sede_id:
+            input.sede_id !== undefined
+              ? input.sede_id
+              : current.contexto_operativo?.sede_id ?? null,
+          modalidad_id:
+            input.modalidad_id !== undefined
+              ? input.modalidad_id
+              : current.contexto_operativo?.modalidad_id ?? null,
+          contexto_municipio:
+            input.contexto_municipio !== undefined
+              ? input.contexto_municipio
+              : current.contexto_operativo?.municipio ?? null,
+          contexto_institucion:
+            input.contexto_institucion !== undefined
+              ? input.contexto_institucion
+              : current.contexto_operativo?.institucion ?? null,
+          contexto_sede:
+            input.contexto_sede !== undefined
+              ? input.contexto_sede
+              : current.contexto_operativo?.sede ?? null,
+          contexto_modalidad:
+            input.contexto_modalidad !== undefined
+              ? input.contexto_modalidad
+              : current.contexto_operativo?.modalidad ?? null
+        };
+
+    const tarifa =
+      nextFecha === null
+        ? null
+        : await resolveNominaMovimientoTarifa(
+            {
+              contrato_id: periodo.contrato_id,
+              fecha: nextFecha,
+              tipo_movimiento: nextTipoMovimiento,
+              municipio_id: contexto.municipio_id,
+              institucion_id: contexto.institucion_id,
+              sede_id: contexto.sede_id,
+              modalidad_id: contexto.modalidad_id
+            },
+            client
+          );
+
+    const resolvedValues = resolveNominaMovimientoValue({
+      cantidad:
+        input.cantidad !== undefined ? input.cantidad : toOptionalNumberValue(current.cantidad),
+      valor_aplicado:
+        input.valor_aplicado !== undefined
+          ? input.valor_aplicado
+          : input.valor_total !== undefined
+            ? input.valor_total
+            : current.valor_aplicado,
+      valor_calculado:
+        input.valor_calculado !== undefined
+          ? input.valor_calculado
+          : toOptionalNumberValue(current.valor_calculado),
+      valor_unitario:
+        input.valor_unitario !== undefined
+          ? input.valor_unitario
+          : toOptionalNumberValue(current.valor_unitario) ??
+            (tarifa ? toNumberValue(tarifa.valor_unitario) : null),
+      motivo_ajuste_valor:
+        input.motivo_ajuste_valor !== undefined
+          ? input.motivo_ajuste_valor
+          : current.motivo_ajuste_valor
+    });
+
+    let movimientoAlerts: NominaMovimientoAlerta[] = [];
+    let posibleDuplicado = false;
+
+    if (nextFecha) {
+      const alertResolution = await buildNominaMovimientoAlerts(
+        {
+          fecha: nextFecha,
+          movimientoId,
+          periodo_id: current.periodo_id,
+          tipo_movimiento: nextTipoMovimiento,
+          vinculacion_id: current.vinculacion_id
+        },
+        client
+      );
+      movimientoAlerts = alertResolution.alerts;
+      posibleDuplicado = alertResolution.posible_duplicado;
+    }
+
+    if (nextFamilia === 'ADICION_DEVENGO' && !tarifa) {
+      movimientoAlerts = appendNominaMovimientoAlert(movimientoAlerts, {
+        tipo: 'CONFIGURACION_TARIFA_FALTANTE',
+        severidad: 'WARNING',
+        mensaje:
+          'No se encontro una tarifa vigente para el contexto del movimiento; se conserva el valor aplicado ingresado.',
+        metadata: {
+          tipo_movimiento: nextTipoMovimiento,
+          contrato_id: periodo.contrato_id
+        }
+      });
+    }
+
+    if (movimientoAlerts.length > 0 && nextEstado === 'APROBADO') {
+      throw new AppError(
+        'The movement has validation alerts and must be reviewed before approval',
+        409,
+        'NOMINA_MOVIMIENTO_REQUIERE_REVISION',
+        { alertas: movimientoAlerts }
+      );
+    }
+
     await client.query(
       `
         UPDATE nomina_movimientos
         SET
           fecha = $2::date,
           tipo_movimiento = $3,
-          descripcion = $4,
-          cantidad = $5,
-          valor_unitario = $6,
-          valor_total = $7,
-          es_devengado = $8,
-          es_deduccion = $9,
-          afecta_seguridad_social = $10,
-          activo = $11
+          familia_movimiento = $4,
+          estado = $5,
+          descripcion = $6,
+          cantidad = $7,
+          valor_unitario = $8,
+          valor_calculado = $9,
+          valor_total = $10,
+          documento_persona_id = $11::bigint,
+          persona_reemplazada_id = $12::bigint,
+          vinculacion_reemplazada_id = $13::bigint,
+          municipio_id = $14::bigint,
+          institucion_id = $15::bigint,
+          sede_id = $16::bigint,
+          modalidad_id = $17::bigint,
+          contexto_municipio = $18,
+          contexto_institucion = $19,
+          contexto_sede = $20,
+          contexto_modalidad = $21,
+          tarifa_config_id = $22::bigint,
+          motivo_ajuste_valor = $23,
+          motivo_estado = $24,
+          alertas_validacion = $25::jsonb,
+          posible_duplicado = $26,
+          revisado_por = CASE WHEN $5 = 'REVISADO' THEN $27::bigint ELSE revisado_por END,
+          revisado_at = CASE WHEN $5 = 'REVISADO' THEN NOW() ELSE revisado_at END,
+          aprobado_por = CASE WHEN $5 = 'APROBADO' THEN $27::bigint ELSE aprobado_por END,
+          aprobado_at = CASE WHEN $5 = 'APROBADO' THEN NOW() ELSE aprobado_at END,
+          rechazado_por = CASE WHEN $5 = 'RECHAZADO' THEN $27::bigint ELSE rechazado_por END,
+          rechazado_at = CASE WHEN $5 = 'RECHAZADO' THEN NOW() ELSE rechazado_at END,
+          es_devengado = $28,
+          es_deduccion = $29,
+          afecta_seguridad_social = $30,
+          activo = $31,
+          updated_at = NOW(),
+          updated_by = $27::bigint
         WHERE id = $1::bigint
       `,
       [
         movimientoId,
-        input.fecha !== undefined ? input.fecha : toDateString(current.fecha),
-        input.tipo_movimiento ?? current.tipo_movimiento,
+        nextFecha,
+        nextTipoMovimiento,
+        nextFamilia,
+        nextEstado,
         input.descripcion !== undefined ? input.descripcion : current.descripcion,
-        input.cantidad !== undefined ? input.cantidad : toOptionalNumberValue(current.cantidad),
-        input.valor_unitario !== undefined ? input.valor_unitario : toOptionalNumberValue(current.valor_unitario),
-        input.valor_total !== undefined ? input.valor_total : toNumberValue(current.valor_total),
+        resolvedValues.cantidad,
+        resolvedValues.valor_unitario,
+        resolvedValues.valor_calculado,
+        resolvedValues.valor_aplicado,
+        input.documento_persona_id !== undefined
+          ? input.documento_persona_id
+          : current.documento_persona_id,
+        input.persona_reemplazada_id !== undefined
+          ? input.persona_reemplazada_id
+          : current.persona_reemplazada?.id ?? null,
+        input.vinculacion_reemplazada_id !== undefined
+          ? input.vinculacion_reemplazada_id
+          : current.vinculacion_reemplazada_id,
+        contexto.municipio_id,
+        contexto.institucion_id,
+        contexto.sede_id,
+        contexto.modalidad_id,
+        contexto.contexto_municipio,
+        contexto.contexto_institucion,
+        contexto.contexto_sede,
+        contexto.contexto_modalidad,
+        tarifa?.id ?? input.tarifa_config_id ?? current.tarifa_config_id,
+        resolvedValues.motivo_ajuste_valor,
+        input.motivo_estado !== undefined ? input.motivo_estado : current.motivo_estado,
+        JSON.stringify(movimientoAlerts),
+        posibleDuplicado,
+        actorUserId,
         input.es_devengado !== undefined ? input.es_devengado : toBooleanValue(current.es_devengado),
         input.es_deduccion !== undefined ? input.es_deduccion : toBooleanValue(current.es_deduccion),
         input.afecta_seguridad_social !== undefined
@@ -4938,6 +7120,63 @@ export const updateNominaMovimiento = async (
   }
 };
 
+export const reviewNominaMovimiento = async (
+  movimientoId: string,
+  input: NominaMovimientoEstadoActionInput,
+  actorUserId: string,
+  tenant?: TenantAccessContext,
+  auditMeta?: AuditRequestMeta
+): Promise<NominaMovimiento> => {
+  return updateNominaMovimiento(
+    movimientoId,
+    {
+      estado: 'REVISADO',
+      motivo_estado: input.motivo_estado ?? null
+    },
+    actorUserId,
+    tenant,
+    auditMeta
+  );
+};
+
+export const approveNominaMovimiento = async (
+  movimientoId: string,
+  input: NominaMovimientoEstadoActionInput,
+  actorUserId: string,
+  tenant?: TenantAccessContext,
+  auditMeta?: AuditRequestMeta
+): Promise<NominaMovimiento> => {
+  return updateNominaMovimiento(
+    movimientoId,
+    {
+      estado: 'APROBADO',
+      motivo_estado: input.motivo_estado ?? null
+    },
+    actorUserId,
+    tenant,
+    auditMeta
+  );
+};
+
+export const rejectNominaMovimiento = async (
+  movimientoId: string,
+  input: NominaMovimientoEstadoActionInput,
+  actorUserId: string,
+  tenant?: TenantAccessContext,
+  auditMeta?: AuditRequestMeta
+): Promise<NominaMovimiento> => {
+  return updateNominaMovimiento(
+    movimientoId,
+    {
+      estado: 'RECHAZADO',
+      motivo_estado: input.motivo_estado ?? null
+    },
+    actorUserId,
+    tenant,
+    auditMeta
+  );
+};
+
 export const deactivateNominaMovimiento = async (
   movimientoId: string,
   actorUserId: string,
@@ -4955,10 +7194,13 @@ export const deactivateNominaMovimiento = async (
     await client.query(
       `
         UPDATE nomina_movimientos
-        SET activo = FALSE
+        SET
+          activo = FALSE,
+          updated_at = NOW(),
+          updated_by = $2::bigint
         WHERE id = $1::bigint
       `,
-      [movimientoId]
+      [movimientoId, actorUserId]
     );
 
     const updated = mapRealMovimiento(await loadNominaMovimientoByIdOrThrow(movimientoId, tenant, client));
@@ -5429,6 +7671,11 @@ export const listNominaNovedades = async (
     conditions.push(`nn.vinculacion_id = $${params.length}::bigint`);
   }
 
+  if (query.persona_id) {
+    params.push(query.persona_id);
+    conditions.push(`v.persona_id = $${params.length}::bigint`);
+  }
+
   if (query.tipo_novedad_id) {
     params.push(query.tipo_novedad_id);
     conditions.push(`nn.tipo_novedad_id = $${params.length}::bigint`);
@@ -5444,36 +7691,88 @@ export const listNominaNovedades = async (
     conditions.push(`COALESCE(nn.activo, TRUE) = $${params.length}`);
   }
 
-  const whereSql = buildSqlWhere(conditions);
+  const ordinaryRows = (
+    await dbQuery<NominaNovedadRealRow>(
+      `
+        ${getNominaNovedadesRealSelect()}
+        ${buildSqlWhere(conditions)}
+        ORDER BY nn.created_at DESC, nn.id DESC
+      `,
+      params
+    )
+  ).rows.map(mapRealNovedad);
 
-  const countResult = await dbQuery<CountRow>(
-    `
-      SELECT COUNT(*)::int AS total
-      FROM nomina_novedades nn
-      INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
-      INNER JOIN contratos c ON c.id = np.contrato_id
-      ${whereSql}
-    `,
-    params
-  );
+  const mergedItems = [...ordinaryRows];
 
-  const total = countResult.rows[0]?.total ?? 0;
+  if (query.periodo_id) {
+    const periodo = await loadRealPeriodoOrThrow(query.periodo_id, tenant);
+    const periodoRange: NominaPeriodoDateRange = {
+      start: toDateString(periodo.fecha_inicio) ?? '',
+      end: toDateString(periodo.fecha_fin) ?? ''
+    };
+    const employeeRows = await loadNominaEmpleadoRowsForPeriodo(query.periodo_id, query, tenant);
+
+    if (employeeRows.length > 0) {
+      const catalog = await loadNominaTiposNovedadCatalog();
+      const tiposById = new Map(catalog.map((item) => [item.id, item]));
+      const canonicalRows = await loadNominaNovedadesCanonicasForPeriodo(
+        dbPool,
+        periodoRange,
+        employeeRows.map((row) => row.vinculacion_id),
+        { activeOnly: false }
+      );
+      const employeeByVinculacion = new Map(
+        employeeRows.map((row) => [row.vinculacion_id, row])
+      );
+
+      for (const canonicalRow of canonicalRows) {
+        const empleadoRow = employeeByVinculacion.get(canonicalRow.vinculacion_id);
+        const tipo = tiposById.get(canonicalRow.tipo_novedad_id);
+
+        if (!empleadoRow || !tipo) {
+          continue;
+        }
+
+        if (query.tipo_novedad_id && canonicalRow.tipo_novedad_id !== query.tipo_novedad_id) {
+          continue;
+        }
+
+        if (query.revisado === true) {
+          continue;
+        }
+
+        if (query.activo !== undefined && query.activo !== toBooleanValue(canonicalRow.activo)) {
+          continue;
+        }
+
+        const projected = buildProjectedNominaNovedadFromCanonica({
+          canonical: canonicalRow,
+          empleado: empleadoRow,
+          periodo: periodoRange,
+          tipo
+        });
+
+        if (projected) {
+          mergedItems.push(projected);
+        }
+      }
+    }
+  }
+
+  mergedItems.sort((left, right) => {
+    const createdCompare = right.created_at.localeCompare(left.created_at);
+    if (createdCompare !== 0) {
+      return createdCompare;
+    }
+
+    return right.id.localeCompare(left.id);
+  });
+
+  const total = mergedItems.length;
   const offset = (query.page - 1) * query.limit;
-  const listParams = [...params, query.limit, offset];
-
-  const result = await dbQuery<NominaNovedadRealRow>(
-    `
-      ${getNominaNovedadesRealSelect()}
-      ${whereSql}
-      ORDER BY nn.created_at DESC, nn.id DESC
-      LIMIT $${listParams.length - 1}
-      OFFSET $${listParams.length}
-    `,
-    listParams
-  );
 
   return {
-    items: result.rows.map(mapRealNovedad),
+    items: mergedItems.slice(offset, offset + query.limit),
     pagination: {
       page: query.page,
       limit: query.limit,
@@ -5496,7 +7795,14 @@ export const listNominaTiposNovedad = async (
 
   if (query.busqueda) {
     params.push(`%${query.busqueda}%`);
-    conditions.push(`(nombre ILIKE $${params.length} OR categoria ILIKE $${params.length})`);
+    conditions.push(
+      `(
+        nombre ILIKE $${params.length}
+        OR categoria ILIKE $${params.length}
+        OR COALESCE(codigo_operativo, '') ILIKE $${params.length}
+        OR COALESCE(descripcion_operativa, '') ILIKE $${params.length}
+      )`
+    );
   }
 
   if (query.activo !== undefined) {
@@ -5581,7 +7887,14 @@ export const createNominaNovedad = async (
       );
     }
 
-    const tipoNovedad = await loadNominaTipoNovedadByIdOrThrow(input.tipo_novedad_id, client);
+    const tipoNovedad = await resolveNominaTipoNovedadOrThrow(
+      {
+        tipo_novedad_id: input.tipo_novedad_id,
+        tipo_novedad_codigo: input.tipo_novedad_codigo,
+        tipo_novedad_nombre: input.tipo_novedad_nombre
+      },
+      client
+    );
     validateNovedadInputAgainstTipo(tipoNovedad, {
       fecha_inicio: input.fecha_inicio,
       fecha_fin: input.fecha_fin,
@@ -5590,6 +7903,151 @@ export const createNominaNovedad = async (
       valor_manual: input.valor_manual
     });
 
+    const nextRange = resolveNominaNovedadDateRange({
+      fecha_inicio: input.fecha_inicio,
+      fecha_fin: input.fecha_fin
+    });
+    assertNominaNovedadRangeIntersectsPeriodo(nextRange, periodo);
+    assertNominaNovedadRangeIntersectsVinculacion(nextRange, empleado);
+
+    if (input.documento_persona_id) {
+      await ensureDocumentoPersonaScope(input.documento_persona_id, empleado.persona.id, client);
+    }
+
+    if (toNominaModeloRegistro(tipoNovedad.modelo_registro) === 'EVENTO_CANONICO_RANGO') {
+      if (!nextRange) {
+        throw new AppError(
+          'Canonical payroll novelties require fecha_inicio and fecha_fin',
+          400,
+          'NOMINA_NOVEDAD_CANONICA_FECHAS_REQUERIDAS'
+        );
+      }
+
+      await ensureNoExactCanonicalDuplicate(client, {
+        vinculacion_id: input.vinculacion_id,
+        tipo_novedad_id: tipoNovedad.id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin
+      });
+      await ensureNoOrdinaryNovedadOverlapWithCanonical(client, {
+        vinculacion_id: input.vinculacion_id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin
+      });
+      await ensureCanonicalRangeDoesNotAffectClosedPeriods(client, {
+        vinculacion_id: input.vinculacion_id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin,
+        excludePeriodoId: input.periodo_id
+      });
+
+      const result = await client.query<{ id: string }>(
+        `
+          INSERT INTO nomina_novedades_canonicas (
+            vinculacion_id,
+            tipo_novedad_id,
+            tipo_novedad_codigo_operativo,
+            documento_persona_id,
+            fecha_inicio,
+            fecha_fin,
+            observacion,
+            origen,
+            activo
+          )
+          VALUES (
+            $1::bigint,
+            $2::bigint,
+            $3,
+            $4::bigint,
+            $5::date,
+            $6::date,
+            $7,
+            'NOMINA',
+            $8
+          )
+          RETURNING id::text AS id
+        `,
+        [
+          input.vinculacion_id,
+          tipoNovedad.id,
+          tipoNovedad.codigo_operativo,
+          input.documento_persona_id,
+          nextRange.fecha_inicio,
+          nextRange.fecha_fin,
+          input.observacion,
+          input.activo
+        ]
+      );
+      const createdRow = result.rows[0];
+
+      if (!createdRow) {
+        throw new AppError(
+          'Failed to create canonical payroll novelty',
+          500,
+          'NOMINA_NOVEDAD_CANONICA_CREATE_FAILED'
+        );
+      }
+
+      const canonical = await loadNominaNovedadCanonicaByIdOrThrow(createdRow.id, client);
+      const empleadoRows = await loadNominaEmpleadoRowsForPeriodo(
+        input.periodo_id,
+        { nomina_empleado_id: input.nomina_empleado_id },
+        tenant,
+        client
+      );
+      const empleadoRow = empleadoRows[0];
+
+      if (!empleadoRow) {
+        throw new AppError(
+          'Payroll employee not found for canonical novelty projection',
+          404,
+          'NOMINA_NOVEDAD_CANONICA_EMPLEADO_NOT_FOUND'
+        );
+      }
+
+      const created = buildProjectedNominaNovedadFromCanonica({
+        canonical,
+        empleado: empleadoRow,
+        periodo: {
+          start: toDateString(periodo.fecha_inicio) ?? '',
+          end: toDateString(periodo.fecha_fin) ?? ''
+        },
+        tipo: tipoNovedad
+      });
+
+      if (!created) {
+        throw new AppError(
+          'Canonical payroll novelty does not project into the selected period',
+          409,
+          'NOMINA_NOVEDAD_CANONICA_FUERA_PERIODO'
+        );
+      }
+
+      await registerAuditEntry({
+        client,
+        usuario_id: actorUserId,
+        accion: 'NOMINA_NOVEDAD_CANONICA_CREATE',
+        tabla: 'nomina_novedades_canonicas',
+        registro_id: canonical.id,
+        descripcion: 'Creacion de evento canonico de nomina',
+        before: null,
+        after: created,
+        ip: auditMeta?.ip ?? null,
+        user_agent: auditMeta?.user_agent ?? null
+      });
+
+      await client.query('COMMIT');
+      return created;
+    }
+
+    if (nextRange) {
+      await ensureNoBlockingCanonicalOverlap(client, {
+        vinculacion_id: input.vinculacion_id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin
+      });
+    }
+
     const result = await client.query<{ id: string }>(
       `
         INSERT INTO nomina_novedades (
@@ -5597,6 +8055,8 @@ export const createNominaNovedad = async (
           nomina_empleado_id,
           vinculacion_id,
           tipo_novedad_id,
+          tipo_novedad_codigo_operativo,
+          documento_persona_id,
           fecha_inicio,
           fecha_fin,
           dias,
@@ -5616,17 +8076,19 @@ export const createNominaNovedad = async (
           $3::bigint,
           $4::bigint,
           $5,
-          $6,
+          $6::bigint,
           $7,
           $8,
           $9,
-          $10::bigint,
-          $11::bigint,
-          $12,
-          $13,
+          $10,
+          $11,
+          $12::bigint,
+          $13::bigint,
           $14,
           $15,
-          $16
+          $16,
+          $17,
+          $18
         )
         RETURNING id::text AS id
       `,
@@ -5634,7 +8096,9 @@ export const createNominaNovedad = async (
         input.periodo_id,
         input.nomina_empleado_id,
         input.vinculacion_id,
-        input.tipo_novedad_id,
+        tipoNovedad.id,
+        tipoNovedad.codigo_operativo,
+        input.documento_persona_id,
         input.fecha_inicio,
         input.fecha_fin,
         input.dias,
@@ -5692,11 +8156,246 @@ export const updateNominaNovedad = async (
 
   try {
     await client.query('BEGIN');
-    const current = await loadNominaNovedadByIdOrThrow(novedadId, tenant, client);
+    const parsedId = parseNominaNovedadRecordId(novedadId);
+
+    if (parsedId.registro_tipo === 'CANONICA_PROYECTADA') {
+      const periodoId = parsedId.periodo_id;
+
+      if (!periodoId) {
+        throw new AppError(
+          'Canonical payroll novelty id requires periodo_id context',
+          400,
+          'NOMINA_NOVEDAD_CANONICA_ID_INVALIDO'
+        );
+      }
+
+      const current = await loadNominaNovedadCanonicaByIdOrThrow(parsedId.entidad_id, client);
+      const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
+      assertPeriodoAllowsOpenMutations(periodo.estado, 'updating canonical payroll novelties');
+
+      const empleadoRows = await loadNominaEmpleadoRowsForPeriodo(
+        periodoId,
+        { vinculacion_id: current.vinculacion_id },
+        tenant,
+        client
+      );
+      const empleadoRow = empleadoRows[0];
+
+      if (!empleadoRow) {
+        throw new AppError(
+          'Payroll employee not found for canonical novelty projection',
+          404,
+          'NOMINA_NOVEDAD_CANONICA_EMPLEADO_NOT_FOUND'
+        );
+      }
+
+      const empleado = await loadNominaEmpleadoByIdOrThrow(empleadoRow.id, tenant, client);
+      const currentTipo = await loadNominaTipoNovedadByIdOrThrow(current.tipo_novedad_id, client);
+      const tipoNovedad = await resolveNominaTipoNovedadOrThrow(
+        {
+          tipo_novedad_id: input.tipo_novedad_id ?? current.tipo_novedad_id,
+          tipo_novedad_codigo: input.tipo_novedad_codigo,
+          tipo_novedad_nombre: input.tipo_novedad_nombre
+        },
+        client
+      );
+
+      if (toNominaModeloRegistro(tipoNovedad.modelo_registro) !== 'EVENTO_CANONICO_RANGO') {
+        throw new AppError(
+          'The selected novelty type must use canonical range storage',
+          409,
+          'NOMINA_NOVEDAD_CANONICA_TIPO_INVALIDO'
+        );
+      }
+
+      const nextFechaInicio =
+        input.fecha_inicio !== undefined ? input.fecha_inicio : toDateString(current.fecha_inicio);
+      const nextFechaFin =
+        input.fecha_fin !== undefined ? input.fecha_fin : toDateString(current.fecha_fin);
+      const nextRange = resolveNominaNovedadDateRange({
+        fecha_inicio: nextFechaInicio,
+        fecha_fin: nextFechaFin
+      });
+      const nextDias =
+        input.dias !== undefined
+          ? input.dias
+          : nextRange
+            ? countInclusiveDays(nextRange.fecha_inicio, nextRange.fecha_fin)
+            : null;
+      const nextHoras = input.horas !== undefined ? input.horas : null;
+      const nextValorManual = input.valor_manual !== undefined ? input.valor_manual : null;
+      validateNovedadInputAgainstTipo(tipoNovedad, {
+        fecha_inicio: nextFechaInicio,
+        fecha_fin: nextFechaFin,
+        dias: nextDias,
+        horas: nextHoras,
+        valor_manual: nextValorManual
+      });
+
+      if (!nextRange) {
+        throw new AppError(
+          'Canonical payroll novelties require fecha_inicio and fecha_fin',
+          400,
+          'NOMINA_NOVEDAD_CANONICA_FECHAS_REQUERIDAS'
+        );
+      }
+
+      assertNominaNovedadRangeIntersectsPeriodo(nextRange, periodo);
+      assertNominaNovedadRangeIntersectsVinculacion(nextRange, empleado);
+
+      const nextDocumentoPersonaId =
+        input.documento_persona_id !== undefined ? input.documento_persona_id : current.documento_persona_id;
+
+      if (nextDocumentoPersonaId) {
+        await ensureDocumentoPersonaScope(nextDocumentoPersonaId, empleado.persona.id, client);
+      }
+
+      await ensureNoExactCanonicalDuplicate(client, {
+        vinculacion_id: current.vinculacion_id,
+        tipo_novedad_id: tipoNovedad.id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin,
+        excludeCanonicalId: current.id
+      });
+      await ensureNoOrdinaryNovedadOverlapWithCanonical(client, {
+        vinculacion_id: current.vinculacion_id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin
+      });
+      await ensureCanonicalRangeDoesNotAffectClosedPeriods(client, {
+        vinculacion_id: current.vinculacion_id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin,
+        excludePeriodoId: periodoId
+      });
+
+      await client.query(
+        `
+          UPDATE nomina_novedades_canonicas
+          SET
+            tipo_novedad_id = $2::bigint,
+            tipo_novedad_codigo_operativo = $3,
+            documento_persona_id = $4::bigint,
+            fecha_inicio = $5::date,
+            fecha_fin = $6::date,
+            observacion = $7,
+            activo = $8,
+            updated_at = NOW()
+          WHERE id = $1::bigint
+        `,
+        [
+          current.id,
+          tipoNovedad.id,
+          tipoNovedad.codigo_operativo,
+          nextDocumentoPersonaId,
+          nextRange.fecha_inicio,
+          nextRange.fecha_fin,
+          input.observacion !== undefined ? input.observacion : current.observacion,
+          input.activo ?? toBooleanValue(current.activo)
+        ]
+      );
+
+      const updatedCanonical = await loadNominaNovedadCanonicaByIdOrThrow(current.id, client);
+      const updated = buildProjectedNominaNovedadFromCanonica({
+        canonical: updatedCanonical,
+        empleado: empleadoRow,
+        periodo: {
+          start: toDateString(periodo.fecha_inicio) ?? '',
+          end: toDateString(periodo.fecha_fin) ?? ''
+        },
+        tipo: tipoNovedad
+      });
+
+      const before = buildProjectedNominaNovedadFromCanonica({
+        canonical: current,
+        empleado: empleadoRow,
+        periodo: {
+          start: toDateString(periodo.fecha_inicio) ?? '',
+          end: toDateString(periodo.fecha_fin) ?? ''
+        },
+        tipo: currentTipo
+      });
+
+      await registerAuditEntry({
+        client,
+        usuario_id: actorUserId,
+        accion: 'NOMINA_NOVEDAD_CANONICA_UPDATE',
+        tabla: 'nomina_novedades_canonicas',
+        registro_id: current.id,
+        descripcion: 'Actualizacion de evento canonico de nomina',
+        before,
+        after: updated,
+        ip: auditMeta?.ip ?? null,
+        user_agent: auditMeta?.user_agent ?? null
+      });
+
+      await client.query('COMMIT');
+      if (updated) {
+        return updated;
+      }
+
+      return {
+        id: buildNominaCanonicalProjectedRecordId(current.id, periodoId),
+        periodo_id: periodoId,
+        nomina_empleado_id: empleadoRow.id,
+        vinculacion_id: current.vinculacion_id,
+        documento_persona_id: updatedCanonical.documento_persona_id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin,
+        fecha_inicio_evento_canonico: nextRange.fecha_inicio,
+        fecha_fin_evento_canonico: nextRange.fecha_fin,
+        dias: null,
+        horas: null,
+        valor_manual: null,
+        categoria_anterior_id: null,
+        categoria_nueva_id: null,
+        observacion:
+          (input.observacion !== undefined ? input.observacion : current.observacion) ?? null,
+        revisado: false,
+        activo: input.activo ?? toBooleanValue(updatedCanonical.activo),
+        created_at: toIsoString(updatedCanonical.created_at) ?? '',
+        requiere_cobertura: false,
+        cubierta: false,
+        registro_tipo: 'CANONICA_PROYECTADA',
+        evento_canonico_id: updatedCanonical.id,
+        tipo_novedad: {
+          ...mapNominaTipoNovedad(tipoNovedad),
+          codigo_operativo_registrado:
+            updatedCanonical.tipo_novedad_codigo_snapshot ?? tipoNovedad.codigo_operativo
+        },
+        persona: {
+          nombre_completo: empleado.persona.nombre_completo,
+          numero_documento: empleado.persona.numero_documento,
+          primer_apellido: empleado.persona.primer_apellido,
+          primer_nombre: empleado.persona.primer_nombre,
+          segundo_apellido: empleado.persona.segundo_apellido,
+          segundo_nombre: empleado.persona.segundo_nombre
+        }
+      };
+    }
+
+    const current = await loadNominaNovedadByIdOrThrow(parsedId.entidad_id, tenant, client);
     const periodo = await loadRealPeriodoOrThrow(current.periodo_id, tenant, client);
+    const empleado = await loadNominaEmpleadoByIdOrThrow(current.nomina_empleado_id, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'updating payroll novelties');
 
-    const nextTipoNovedadId = input.tipo_novedad_id ?? current.tipo_novedad.id;
+    const tipoNovedad = await resolveNominaTipoNovedadOrThrow(
+      {
+        tipo_novedad_id: input.tipo_novedad_id ?? current.tipo_novedad.id,
+        tipo_novedad_codigo: input.tipo_novedad_codigo,
+        tipo_novedad_nombre: input.tipo_novedad_nombre
+      },
+      client
+    );
+
+    if (toNominaModeloRegistro(tipoNovedad.modelo_registro) === 'EVENTO_CANONICO_RANGO') {
+      throw new AppError(
+        'Ordinary payroll novelties cannot be converted into canonical range events',
+        409,
+        'NOMINA_NOVEDAD_CAMBIO_MODELO_INVALIDO'
+      );
+    }
+
     const nextFechaInicio =
       input.fecha_inicio !== undefined ? input.fecha_inicio : toDateString(current.fecha_inicio);
     const nextFechaFin =
@@ -5707,8 +8406,6 @@ export const updateNominaNovedad = async (
       input.horas !== undefined ? input.horas : toOptionalNumberValue(current.horas);
     const nextValorManual =
       input.valor_manual !== undefined ? input.valor_manual : toOptionalNumberValue(current.valor_manual);
-
-    const tipoNovedad = await loadNominaTipoNovedadByIdOrThrow(nextTipoNovedadId, client);
     validateNovedadInputAgainstTipo(tipoNovedad, {
       fecha_inicio: nextFechaInicio,
       fecha_fin: nextFechaFin,
@@ -5717,28 +8414,54 @@ export const updateNominaNovedad = async (
       valor_manual: nextValorManual
     });
 
+    const nextRange = resolveNominaNovedadDateRange({
+      fecha_inicio: nextFechaInicio,
+      fecha_fin: nextFechaFin
+    });
+    assertNominaNovedadRangeIntersectsPeriodo(nextRange, periodo);
+    assertNominaNovedadRangeIntersectsVinculacion(nextRange, empleado);
+
+    const nextDocumentoPersonaId =
+      input.documento_persona_id !== undefined ? input.documento_persona_id : current.documento_persona_id;
+
+    if (nextDocumentoPersonaId) {
+      await ensureDocumentoPersonaScope(nextDocumentoPersonaId, empleado.persona.id, client);
+    }
+
+    if (nextRange) {
+      await ensureNoBlockingCanonicalOverlap(client, {
+        vinculacion_id: current.vinculacion_id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin
+      });
+    }
+
     await client.query(
       `
         UPDATE nomina_novedades
         SET
           tipo_novedad_id = $2::bigint,
-          fecha_inicio = $3,
-          fecha_fin = $4,
-          dias = $5,
-          horas = $6,
-          valor_manual = $7,
-          categoria_anterior_id = $8::bigint,
-          categoria_nueva_id = $9::bigint,
-          observacion = $10,
-          revisado = $11,
-          requiere_cobertura = $12,
-          cubierta = $13,
-          activo = $14
+          tipo_novedad_codigo_operativo = $3,
+          documento_persona_id = $4::bigint,
+          fecha_inicio = $5,
+          fecha_fin = $6,
+          dias = $7,
+          horas = $8,
+          valor_manual = $9,
+          categoria_anterior_id = $10::bigint,
+          categoria_nueva_id = $11::bigint,
+          observacion = $12,
+          revisado = $13,
+          requiere_cobertura = $14,
+          cubierta = $15,
+          activo = $16
         WHERE id = $1::bigint
       `,
       [
-        novedadId,
-        nextTipoNovedadId,
+        parsedId.entidad_id,
+        tipoNovedad.id,
+        tipoNovedad.codigo_operativo,
+        nextDocumentoPersonaId,
         nextFechaInicio,
         nextFechaFin,
         nextDias,
@@ -5758,7 +8481,7 @@ export const updateNominaNovedad = async (
       ]
     );
 
-    const updated = mapRealNovedad(await loadNominaNovedadByIdOrThrow(novedadId, tenant, client));
+    const updated = mapRealNovedad(await loadNominaNovedadByIdOrThrow(parsedId.entidad_id, tenant, client));
     const before = mapRealNovedad(current);
 
     await registerAuditEntry({
@@ -5766,7 +8489,7 @@ export const updateNominaNovedad = async (
       usuario_id: actorUserId,
       accion: 'NOMINA_NOVEDAD_UPDATE',
       tabla: 'nomina_novedades',
-      registro_id: novedadId,
+      registro_id: parsedId.entidad_id,
       descripcion: 'Actualizacion de novedad de nomina',
       before,
       after: updated,
@@ -5794,7 +8517,133 @@ export const deactivateNominaNovedad = async (
 
   try {
     await client.query('BEGIN');
-    const current = await loadNominaNovedadByIdOrThrow(novedadId, tenant, client);
+    const parsedId = parseNominaNovedadRecordId(novedadId);
+
+    if (parsedId.registro_tipo === 'CANONICA_PROYECTADA') {
+      const periodoId = parsedId.periodo_id;
+
+      if (!periodoId) {
+        throw new AppError(
+          'Canonical payroll novelty id requires periodo_id context',
+          400,
+          'NOMINA_NOVEDAD_CANONICA_ID_INVALIDO'
+        );
+      }
+
+      const current = await loadNominaNovedadCanonicaByIdOrThrow(parsedId.entidad_id, client);
+      const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
+      assertPeriodoAllowsOpenMutations(periodo.estado, 'deactivating canonical payroll novelties');
+
+      await ensureCanonicalRangeDoesNotAffectClosedPeriods(client, {
+        vinculacion_id: current.vinculacion_id,
+        fecha_inicio: toDateString(current.fecha_inicio) ?? '',
+        fecha_fin: toDateString(current.fecha_fin) ?? '',
+        excludePeriodoId: periodoId
+      });
+
+      const empleadoRows = await loadNominaEmpleadoRowsForPeriodo(
+        periodoId,
+        { vinculacion_id: current.vinculacion_id },
+        tenant,
+        client
+      );
+      const empleadoRow = empleadoRows[0];
+      const tipo = await loadNominaTipoNovedadByIdOrThrow(current.tipo_novedad_id, client);
+      const before = empleadoRow
+        ? buildProjectedNominaNovedadFromCanonica({
+            canonical: current,
+            empleado: empleadoRow,
+            periodo: {
+              start: toDateString(periodo.fecha_inicio) ?? '',
+              end: toDateString(periodo.fecha_fin) ?? ''
+            },
+            tipo
+          })
+        : null;
+
+      await client.query(
+        `
+          UPDATE nomina_novedades_canonicas
+          SET
+            activo = FALSE,
+            updated_at = NOW()
+          WHERE id = $1::bigint
+        `,
+        [current.id]
+      );
+
+      const updatedCanonical = await loadNominaNovedadCanonicaByIdOrThrow(current.id, client);
+      const after = empleadoRow
+        ? buildProjectedNominaNovedadFromCanonica({
+            canonical: updatedCanonical,
+            empleado: empleadoRow,
+            periodo: {
+              start: toDateString(periodo.fecha_inicio) ?? '',
+              end: toDateString(periodo.fecha_fin) ?? ''
+            },
+            tipo
+          })
+        : null;
+
+      await registerAuditEntry({
+        client,
+        usuario_id: actorUserId,
+        accion: 'NOMINA_NOVEDAD_CANONICA_DEACTIVATE',
+        tabla: 'nomina_novedades_canonicas',
+        registro_id: current.id,
+        descripcion: 'Desactivacion de evento canonico de nomina',
+        before,
+        after,
+        ip: auditMeta?.ip ?? null,
+        user_agent: auditMeta?.user_agent ?? null
+      });
+
+      await client.query('COMMIT');
+
+      if (after) {
+        return after;
+      }
+
+      return {
+        id: buildNominaCanonicalProjectedRecordId(current.id, periodoId),
+        periodo_id: periodoId,
+        nomina_empleado_id: empleadoRow?.id ?? '',
+        vinculacion_id: current.vinculacion_id,
+        documento_persona_id: current.documento_persona_id,
+        fecha_inicio: toDateString(current.fecha_inicio),
+        fecha_fin: toDateString(current.fecha_fin),
+        fecha_inicio_evento_canonico: toDateString(current.fecha_inicio),
+        fecha_fin_evento_canonico: toDateString(current.fecha_fin),
+        dias: null,
+        horas: null,
+        valor_manual: null,
+        categoria_anterior_id: null,
+        categoria_nueva_id: null,
+        observacion: current.observacion,
+        revisado: false,
+        activo: false,
+        created_at: toIsoString(current.created_at) ?? '',
+        requiere_cobertura: false,
+        cubierta: false,
+        registro_tipo: 'CANONICA_PROYECTADA',
+        evento_canonico_id: current.id,
+        tipo_novedad: {
+          ...mapNominaTipoNovedad(tipo),
+          codigo_operativo_registrado:
+            current.tipo_novedad_codigo_snapshot ?? tipo.codigo_operativo
+        },
+        persona: {
+          nombre_completo: '',
+          numero_documento: null,
+          primer_apellido: null,
+          primer_nombre: null,
+          segundo_apellido: null,
+          segundo_nombre: null
+        }
+      };
+    }
+
+    const current = await loadNominaNovedadByIdOrThrow(parsedId.entidad_id, tenant, client);
     const periodo = await loadRealPeriodoOrThrow(current.periodo_id, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'deactivating payroll novelties');
 
@@ -5804,17 +8653,19 @@ export const deactivateNominaNovedad = async (
         SET activo = FALSE
         WHERE id = $1::bigint
       `,
-      [novedadId]
+      [parsedId.entidad_id]
     );
 
-    const updated = mapRealNovedad(await loadNominaNovedadByIdOrThrow(novedadId, tenant, client));
+    const updated = mapRealNovedad(
+      await loadNominaNovedadByIdOrThrow(parsedId.entidad_id, tenant, client)
+    );
 
     await registerAuditEntry({
       client,
       usuario_id: actorUserId,
       accion: 'NOMINA_NOVEDAD_DEACTIVATE',
       tabla: 'nomina_novedades',
-      registro_id: novedadId,
+      registro_id: parsedId.entidad_id,
       descripcion: 'Desactivacion de novedad de nomina',
       before: mapRealNovedad(current),
       after: updated,
@@ -6042,6 +8893,7 @@ export const generateNominaDesprendibles = async (
         FROM nomina_movimientos nm
         WHERE nm.periodo_id = $1::bigint
           AND COALESCE(nm.activo, TRUE) = TRUE
+          AND COALESCE(nm.estado, 'APROBADO') = 'APROBADO'
         ORDER BY nm.nomina_empleado_id ASC, nm.created_at ASC, nm.id ASC
       `,
       [periodoId]
@@ -6980,12 +9832,28 @@ const NOMINA_NOVEDADES_EXPORT_HEADERS = [
   'vinculacion_id',
   'numero_documento',
   'nombre_completo',
+  'codigo_operativo',
+  'codigo_operativo_registrado',
   'tipo_novedad',
   'categoria',
+  'descripcion_operativa',
   'afecta_salario',
   'afecta_transporte',
+  'afecta_dias_laborados',
+  'afecta_recargos',
+  'afecta_cobertura',
+  'efecto_pago',
   'es_adicion',
   'es_deduccion',
+  'es_incapacidad',
+  'es_accidente_laboral',
+  'es_permiso',
+  'es_suspension',
+  'es_evento_operativo',
+  'requiere_soporte',
+  'permite_rango',
+  'requiere_revision',
+  'documento_persona_id',
   'fecha_inicio',
   'fecha_fin',
   'dias',
@@ -7133,12 +10001,28 @@ const getNominaNovedadesExportRows = async (
     vinculacion_id: item.vinculacion_id,
     numero_documento: item.persona.numero_documento,
     nombre_completo: item.persona.nombre_completo,
+    codigo_operativo: item.tipo_novedad.codigo_operativo,
+    codigo_operativo_registrado: item.tipo_novedad.codigo_operativo_registrado,
     tipo_novedad: item.tipo_novedad.nombre,
     categoria: item.tipo_novedad.categoria,
+    descripcion_operativa: item.tipo_novedad.descripcion_operativa,
     afecta_salario: item.tipo_novedad.afecta_salario,
     afecta_transporte: item.tipo_novedad.afecta_transporte,
+    afecta_dias_laborados: item.tipo_novedad.afecta_dias_laborados,
+    afecta_recargos: item.tipo_novedad.afecta_recargos,
+    afecta_cobertura: item.tipo_novedad.afecta_cobertura,
+    efecto_pago: item.tipo_novedad.efecto_pago,
     es_adicion: item.tipo_novedad.es_adicion,
     es_deduccion: item.tipo_novedad.es_deduccion,
+    es_incapacidad: item.tipo_novedad.es_incapacidad,
+    es_accidente_laboral: item.tipo_novedad.es_accidente_laboral,
+    es_permiso: item.tipo_novedad.es_permiso,
+    es_suspension: item.tipo_novedad.es_suspension,
+    es_evento_operativo: item.tipo_novedad.es_evento_operativo,
+    requiere_soporte: item.tipo_novedad.requiere_soporte,
+    permite_rango: item.tipo_novedad.permite_rango,
+    requiere_revision: item.tipo_novedad.requiere_revision,
+    documento_persona_id: item.documento_persona_id,
     fecha_inicio: item.fecha_inicio,
     fecha_fin: item.fecha_fin,
     dias: item.dias,

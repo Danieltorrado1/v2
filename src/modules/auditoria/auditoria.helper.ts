@@ -106,6 +106,52 @@ const buildHistorialDiffRows = (
   return rows;
 };
 
+const insertHistorialDiffRows = async (
+  client: PoolClient,
+  input: RegisterAuditEntryInput,
+  diffRows: Array<{ campo: string; valor_anterior: string | null; valor_nuevo: string | null }>
+): Promise<void> => {
+  if (diffRows.length === 0) {
+    return;
+  }
+
+  await client.query(
+    `
+      INSERT INTO historial_cambios (
+        usuario_id,
+        tabla_afectada,
+        registro_id,
+        campo,
+        valor_anterior,
+        valor_nuevo,
+        motivo
+      )
+      SELECT
+        $1::bigint,
+        $2,
+        $3::bigint,
+        diff.campo,
+        diff.valor_anterior,
+        diff.valor_nuevo,
+        $4
+      FROM UNNEST(
+        $5::text[],
+        $6::text[],
+        $7::text[]
+      ) AS diff(campo, valor_anterior, valor_nuevo)
+    `,
+    [
+      toLegacyBigInt(input.usuario_id ?? null),
+      input.tabla,
+      toLegacyBigInt(input.registro_id),
+      input.descripcion,
+      diffRows.map((row) => row.campo),
+      diffRows.map((row) => row.valor_anterior),
+      diffRows.map((row) => row.valor_nuevo)
+    ]
+  );
+};
+
 const toLegacyBigInt = (value: string | null | undefined): number | null => {
   if (typeof value !== 'string' || !/^\d+$/.test(value.trim())) {
     return null;
@@ -220,32 +266,7 @@ const insertLegacyAuditRows = async (
   );
 
   const diffRows = buildHistorialDiffRows(input);
-
-  for (const row of diffRows) {
-    await client.query(
-      `
-        INSERT INTO historial_cambios (
-          usuario_id,
-          tabla_afectada,
-          registro_id,
-          campo,
-          valor_anterior,
-          valor_nuevo,
-          motivo
-        )
-        VALUES ($1::bigint, $2, $3::bigint, $4, $5, $6, $7)
-      `,
-      [
-        legacyUsuarioId,
-        input.tabla,
-        legacyRegistroId,
-        row.campo,
-        row.valor_anterior,
-        row.valor_nuevo,
-        input.descripcion
-      ]
-    );
-  }
+  await insertHistorialDiffRows(client, input, diffRows);
 };
 
 export const registerAuditEntry = async (

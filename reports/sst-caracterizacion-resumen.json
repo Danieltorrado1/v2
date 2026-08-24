@@ -1,0 +1,196 @@
+{
+  "generated_at": "2026-08-24T00:36:09.684Z",
+  "baseline": {
+    "personas": 800,
+    "vinculaciones": 1007,
+    "cobertura_asignaciones": 670,
+    "focalizacion_final": 687,
+    "focalizacion_vigencias": 687,
+    "sst_perfiles_actuales": 0,
+    "sst_perfiles_versiones": 0
+  },
+  "files": {
+    "f1": {
+      "path": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\data\\SST\\Perfil sociodemografico Complementos (respuestas).xlsx",
+      "name": "Perfil sociodemografico Complementos (respuestas).xlsx",
+      "sha256": "e38c7d8af03a22bef282d7742d038ec0c6b376750b4aec8dd3de648f0bfbc546",
+      "size_bytes": 163524,
+      "sheets": [
+        {
+          "name": "Respuestas de formulario 1",
+          "headers": [
+            "Marca temporal",
+            "Nombres y apellidos (mayúsculas, sin tildes)",
+            "Cédula (sin puntos)",
+            "Edad",
+            "Fecha de nacimiento",
+            "Nacionalidad",
+            "Departamento de nacimiento",
+            "Género",
+            "Departamento de residencia",
+            "Municipio donde labora",
+            "Estrato socioeconómico",
+            "Zona de vivienda",
+            "Tipo de vivienda",
+            "Número de celular (sin espacios)",
+            "Grupo étnico",
+            "Nivel de escolaridad",
+            "Profesión u ocupación",
+            "Estado civil",
+            "Si aplica, ¿cuántas personas dependen económicamente de usted?",
+            "¿Es usted cabeza de familia?",
+            "Total de número de hijos",
+            "Total de hijos que viven con usted",
+            "Número de hijos menores de edad",
+            "Número de hijos mayores de edad",
+            "¿Tiene usted algún tipo de discapacidad?",
+            "Seleccione el tipo de discapacidad",
+            "Seleccione los grupos o redes de apoyo social a los que pertenece",
+            "NOMBRE del contacto de emergencia",
+            "Parentesco del contacto de emergencia",
+            "Número de celular del contacto de emergencia (sin espacios)",
+            "Tipo de sangre y RH",
+            "Presenta alergias",
+            "Medicamentos permanentes",
+            "¿Sufre de alguna enfermedad?",
+            "¿A qué Entidad Promotora de Salud EPS pertenece?",
+            "¿A qué Aseguradora de Riesgos Laborales ARL pertenece?",
+            "Autorizo que los datos suministrados sean tratados de manera confidencial y utilizados exclusivamente para fines relacionados con el SG-SST."
+          ],
+          "total_rows_including_header": 840,
+          "total_data_rows": 839,
+          "useful_rows": 739,
+          "empty_columns": [],
+          "empty_rows": 100
+        }
+      ],
+      "documents": {
+        "normalized": 739,
+        "invalid": 0,
+        "empty": 0,
+        "unique": 739,
+        "duplicate_groups": 0
+      }
+    },
+    "f2": {
+      "path": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\data\\SST\\Caracterización adicional (respuestas).xlsx",
+      "name": "Caracterización adicional (respuestas).xlsx",
+      "sha256": "9fbc7ccf40dcb830c164c6631cdbfd7d53c9a4fc6dace5d53d02b7adfa978c05",
+      "size_bytes": 27937,
+      "sheets": [
+        {
+          "name": "Respuestas de formulario 1",
+          "headers": [
+            "Marca temporal",
+            "Nombres y apellidos (mayúsculas, sin tildes)",
+            "Cédula",
+            "Municipio donde labora",
+            "Nivel de escolaridad",
+            "Titulo obtenido de los estudios realizados",
+            "Actualmente se encuentra estudiando?",
+            "Si aplica, ¿qué está estudiando?"
+          ],
+          "total_rows_including_header": 385,
+          "total_data_rows": 384,
+          "useful_rows": 284,
+          "empty_columns": [],
+          "empty_rows": 100
+        }
+      ],
+      "documents": {
+        "normalized": 284,
+        "invalid": 0,
+        "empty": 0,
+        "unique": 276,
+        "duplicate_groups": 7
+      }
+    }
+  },
+  "universe": {
+    "contrato_meta26_id": 24,
+    "universo_meta26_esperado": 772,
+    "universo_meta26_real": 772,
+    "documentos_unicos_combinados": 748,
+    "respondieron_ambos": 267,
+    "solo_f1": 472,
+    "solo_f2": 9,
+    "duplicados_identicos": 4,
+    "duplicados_complementarios": 0,
+    "duplicados_conflicto": 3,
+    "fuera_meta26": 67,
+    "no_identificables": 0
+  },
+  "meta26_coverage": {
+    "completaDigital": 0,
+    "parcialDigital": 460,
+    "noEncontradaDigital": 91,
+    "conflicto": 221,
+    "requiereRevision": 0,
+    "requiereDigitacionFisica": 551
+  },
+  "conflicts": {
+    "persona": 307,
+    "contacto_emergencia": 0,
+    "afiliaciones": 6
+  },
+  "dry_run": {
+    "f1": {
+      "scope": "F1",
+      "total_canonicos": 739,
+      "dentro_meta26": 681,
+      "fuera_meta26": 58,
+      "no_identificables": 0,
+      "nuevas": 681,
+      "actualizaciones": 0,
+      "sin_cambios": 0,
+      "conflictos": 0,
+      "errores": 0,
+      "sensibles_presentes": 681,
+      "campos_ignorados": 681
+    },
+    "f2": {
+      "scope": "F2",
+      "total_canonicos": 276,
+      "dentro_meta26": 250,
+      "fuera_meta26": 26,
+      "no_identificables": 0,
+      "nuevas": 248,
+      "actualizaciones": 0,
+      "sin_cambios": 0,
+      "conflictos": 2,
+      "errores": 0,
+      "sensibles_presentes": 0,
+      "campos_ignorados": 0
+    },
+    "combinado": {
+      "scope": "COMBINADO",
+      "total_canonicos": 748,
+      "dentro_meta26": 681,
+      "fuera_meta26": 67,
+      "no_identificables": 0,
+      "nuevas": 640,
+      "actualizaciones": 0,
+      "sin_cambios": 0,
+      "conflictos": 41,
+      "errores": 0,
+      "sensibles_presentes": 681,
+      "campos_ignorados": 681
+    }
+  },
+  "sensitive_fields": {
+    "tiene_discapacidad": "Mantener visible solo para ADMINISTRADOR y rol SST; excluir de exportacion general TH.",
+    "tipo_discapacidad": "Mantener visible solo para ADMINISTRADOR y rol SST; excluir de exportacion general TH.",
+    "tipo_sangre_rh": "No importar automaticamente al perfil SST general; revisar destino maestro y permisos clinicos.",
+    "presenta_alergias": "Mantener visible solo para ADMINISTRADOR y rol SST; excluir de exportacion general TH.",
+    "medicamentos_permanentes": "Mantener visible solo para ADMINISTRADOR y rol SST; excluir de exportacion general TH.",
+    "enfermedad": "Mantener visible solo para ADMINISTRADOR y rol SST; excluir de exportacion general TH."
+  },
+  "reports": {
+    "matriz_campos": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-caracterizacion-matriz-campos.csv",
+    "duplicados": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-caracterizacion-duplicados.csv",
+    "cruce_formularios": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-caracterizacion-cruce-formularios.csv",
+    "cobertura_meta26": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-caracterizacion-cobertura-meta26.csv",
+    "valores": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-caracterizacion-valores.csv",
+    "resumen": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-caracterizacion-resumen.json"
+  }
+}

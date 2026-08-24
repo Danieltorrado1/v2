@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-export const masterImportTypeSchema = z.enum(['DATOS_PERSONALES', 'INFORMACION_BANCARIA']);
+export const masterImportTypeSchema = z.enum([
+  'DATOS_PERSONALES',
+  'INFORMACION_BANCARIA',
+  'CARACTERIZACION_SST'
+]);
 export const masterImportStatusSchema = z.enum([
   'PREPARADO',
   'VALIDADO',

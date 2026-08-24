@@ -34,6 +34,8 @@
     "db:migrate:cuentas-cobro-ops": "node --experimental-strip-types src/scripts/migrate-cuentas-cobro-ops.ts",
     "seed:nomina-correcciones-permisos": "node --experimental-strip-types src/scripts/seed-nomina-correcciones-permisos.ts",
     "db:migrate:nomina-correcciones": "node --experimental-strip-types src/scripts/migrate-nomina-correcciones.ts",
+    "db:migrate:nomina-adiciones-turnos": "node --experimental-strip-types src/scripts/migrate-nomina-adiciones-turnos.ts",
+    "seed:nomina-movimientos-permisos": "node --experimental-strip-types src/scripts/seed-nomina-movimientos-permisos.ts",
     "test:nomina-correcciones": "npm run build && node dist/scripts/test-nomina-correcciones.js",
     "db:migrate:administracion-catalogos": "node --experimental-strip-types src/scripts/migrate-administracion-catalogos.ts",
     "seed:administracion-permisos": "node --experimental-strip-types src/scripts/seed-administracion-permisos.ts",

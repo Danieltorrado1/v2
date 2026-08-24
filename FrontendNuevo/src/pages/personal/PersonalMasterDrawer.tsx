@@ -35,9 +35,10 @@ import type {
 import type { PersonaCuentaBancariaApi, PersonaHistorialCambioApi, PersonaApi, PersonaIdentificacionApi, VinculacionApi, VinculacionExpedienteApi } from '../../types/personas.types';
 import ChangeIdentificationModal from './ChangeIdentificationModal';
 import ExpedienteDocumentosPanel from './ExpedienteDocumentosPanel';
+import PersonalSstProfilePanel from './PersonalSstProfilePanel';
 import './PersonalMasterDrawer.css';
 
-type MasterTab = 'personal' | 'laboral' | 'documentos' | 'historial';
+type MasterTab = 'personal' | 'sst' | 'laboral' | 'documentos' | 'historial';
 
 type PersonalFormState = {
   primer_nombre: string;
@@ -106,6 +107,7 @@ const API_MAX_PAGE_SIZE = 100;
 
 const TAB_META: Array<{ id: MasterTab; label: string; icon: typeof UserCircle2 }> = [
   { id: 'personal', label: 'Personal', icon: UserCircle2 },
+  { id: 'sst', label: 'SST', icon: ClipboardList },
   { id: 'laboral', label: 'Laboral', icon: BriefcaseBusiness },
   { id: 'documentos', label: 'Documentos', icon: FileText },
   { id: 'historial', label: 'Historial', icon: ShieldPlus },
@@ -368,6 +370,12 @@ export default function PersonalMasterDrawer({
     'bancario.editar',
     'bancario.verificar',
   ]);
+  const canReadSst = hasAnyPermission(permissions, [
+    'sst.perfil.ver',
+    'sst.perfil.crear',
+    'sst.perfil.editar',
+  ]);
+  const visibleTabs = canReadSst ? TAB_META : TAB_META.filter((tab) => tab.id !== 'sst');
 
   const municipioMap = useMemo(() => toOptionMap(municipios), [municipios]);
   const sexosMap = useMemo(() => toOptionMap(sexos), [sexos]);
@@ -634,7 +642,6 @@ export default function PersonalMasterDrawer({
     setPersonalError('');
 
     try {
-      const nivelEstudioOption = nivelesEstudio.find((item) => item.label === personalForm.nivel_escolaridad);
       await updatePersona(personaDetail.id, {
         primer_nombre: personalForm.primer_nombre.trim(),
         segundo_nombre: personalForm.segundo_nombre.trim() || null,
@@ -661,15 +668,6 @@ export default function PersonalMasterDrawer({
                 telefono: personalForm.contacto_telefono.trim() || null,
                 direccion: personalForm.contacto_direccion.trim() || null,
                 activo: true,
-              }
-            : null,
-        perfil_demografico:
-          personalForm.nacionalidad.trim() || personalForm.nivel_escolaridad.trim()
-            ? {
-                nacionalidad: personalForm.nacionalidad.trim() || null,
-                nivel_escolaridad:
-                  nivelEstudioOption?.label ??
-                  (personalForm.nivel_escolaridad.trim() || null),
               }
             : null,
       });
@@ -858,8 +856,6 @@ export default function PersonalMasterDrawer({
                 <Field label="Barrio"><input value={personalForm.barrio} onChange={(event) => setPersonalField('barrio', event.target.value)} /></Field>
                 <Field label="Municipio de residencia"><select value={personalForm.municipio_residencia_id} onChange={(event) => setPersonalField('municipio_residencia_id', event.target.value)} disabled={catalogLoading}><option value="">Sin registrar</option>{municipios.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field>
                 <Field label="País de nacimiento"><input value={personalForm.pais_nacimiento} onChange={(event) => setPersonalField('pais_nacimiento', event.target.value)} /></Field>
-                <Field label="Nacionalidad"><input value={personalForm.nacionalidad} onChange={(event) => setPersonalField('nacionalidad', event.target.value)} /></Field>
-                <Field label="Nivel educativo"><input value={personalForm.nivel_escolaridad} onChange={(event) => setPersonalField('nivel_escolaridad', event.target.value)} /></Field>
               </div>
 
               <div className="pmd-subcard">
@@ -899,8 +895,6 @@ export default function PersonalMasterDrawer({
                   <DataItem label="Sexo" value={personaDetail.sexo_id ? sexosMap.get(personaDetail.sexo_id)?.label ?? displayValue(activeExpediente.persona.sexo) : displayValue(activeExpediente.persona.sexo)} />
                   <DataItem label="Estado civil" value={personaDetail.estado_civil_id ? estadosCivilesMap.get(personaDetail.estado_civil_id)?.label ?? displayValue(activeExpediente.persona.estado_civil) : displayValue(activeExpediente.persona.estado_civil)} />
                   <DataItem label="Tipo de sangre" value={displayValue(activeExpediente.persona.tipo_sangre)} />
-                  <DataItem label="Nacionalidad" value={displayValue(personaDetail.perfil_demografico?.nacionalidad)} />
-                  <DataItem label="Nivel educativo" value={displayValue(personaDetail.perfil_demografico?.nivel_escolaridad)} />
                 </div>
               </section>
 
@@ -1164,6 +1158,20 @@ export default function PersonalMasterDrawer({
     );
   }
 
+  function renderSstTab() {
+    if (!canReadSst) {
+      return <StateBlock tone="error" message="No tienes permisos para consultar el perfil SST." />;
+    }
+
+    return (
+      <PersonalSstProfilePanel
+        expediente={activeExpediente}
+        permissions={permissions}
+        onRefresh={onRefresh}
+      />
+    );
+  }
+
   function renderDocumentosTab() {
     return (
       <div className="pmd-stack">
@@ -1247,7 +1255,7 @@ export default function PersonalMasterDrawer({
         </div>
 
         <div className="pmd-tabs">
-          {TAB_META.map((tab) => {
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
@@ -1270,6 +1278,8 @@ export default function PersonalMasterDrawer({
             <StateBlock message="Abriendo ficha..." />
           ) : activeTab === 'personal' ? (
             renderPersonalTab()
+          ) : activeTab === 'sst' ? (
+            renderSstTab()
           ) : activeTab === 'laboral' ? (
             renderLaboralTab()
           ) : activeTab === 'documentos' ? (

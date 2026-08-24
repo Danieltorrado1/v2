@@ -78,6 +78,7 @@ import {
   updateNominaCorreccionHandler
 } from './correcciones.controller';
 import {
+  approveNominaMovimientoHandler,
   cancelNominaPeriodoHandler,
   closeNominaPeriodoHandler,
   createNominaRecargoHandler,
@@ -96,6 +97,7 @@ import {
   generarNominaLiquidacionesHandler,
   getNominaAsistenciaHandler,
   getNominaDashboardHandler,
+  getNominaMovimientoHandler,
   getNominaPlanoBancarioHandler,
   getNominaDesprendibleHandler,
   getNominaDesprendiblesHandler,
@@ -111,7 +113,9 @@ import {
   importNominaPeriodoEmpleadosHandler,
   payNominaPeriodoHandler,
   recalculateNominaPeriodoHandler,
+  rejectNominaMovimientoHandler,
   reopenNominaPeriodoHandler,
+  reviewNominaMovimientoHandler,
   reviewNominaPeriodoHandler,
   updateNominaAsistenciaHandler,
   updateNominaEmpleadoHandler,
@@ -220,12 +224,17 @@ nominaRoutes.patch(
 );
 nominaRoutes.get(
   '/movimientos',
-  requirePermissions('nomina.read'),
+  requirePermissions('nomina.movimientos.read'),
   getNominaMovimientosHandler
+);
+nominaRoutes.get(
+  '/movimientos/:id',
+  requirePermissions('nomina.movimientos.read'),
+  getNominaMovimientoHandler
 );
 nominaRoutes.post(
   '/movimientos',
-  requirePermissions('nomina.periodos.update'),
+  requirePermissions('nomina.movimientos.create'),
   createNominaMovimientoHandler
 );
 nominaRoutes.post(
@@ -235,12 +244,27 @@ nominaRoutes.post(
 );
 nominaRoutes.patch(
   '/movimientos/:id',
-  requirePermissions('nomina.periodos.update'),
+  requirePermissions('nomina.movimientos.update'),
   updateNominaMovimientoHandler
 );
 nominaRoutes.patch(
+  '/movimientos/:id/revisar',
+  requirePermissions('nomina.movimientos.review'),
+  reviewNominaMovimientoHandler
+);
+nominaRoutes.patch(
+  '/movimientos/:id/aprobar',
+  requirePermissions('nomina.movimientos.approve'),
+  approveNominaMovimientoHandler
+);
+nominaRoutes.patch(
+  '/movimientos/:id/rechazar',
+  requirePermissions('nomina.movimientos.review'),
+  rejectNominaMovimientoHandler
+);
+nominaRoutes.patch(
   '/movimientos/:id/deactivate',
-  requirePermissions('nomina.periodos.update'),
+  requirePermissions('nomina.movimientos.deactivate'),
   deactivateNominaMovimientoHandler
 );
 

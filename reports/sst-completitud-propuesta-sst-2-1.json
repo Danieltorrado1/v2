@@ -1,0 +1,53 @@
+{
+  "motivo_completa_digital_cero": "La lectura SST-2 trataba respuestas booleanas con tilde como nulas (\"Sí\" -> null) y usaba una regla estatica sin dependencias condicionales.",
+  "nueva_regla": "Mantener como obligatorios fecha_nacimiento, sexo, estado_civil, estrato, tipo_vivienda, nivel_escolaridad, profesion_ocupacion, personas_dependen_economicamente, cabeza_familia, total_hijos, tiene_discapacidad y autorizacion_tratamiento_datos; exigir hijos_* solo cuando total_hijos > 0 y tipo_discapacidad solo cuando tiene_discapacidad = true.",
+  "obligatorios": [
+    "fecha_nacimiento",
+    "sexo_id",
+    "estado_civil_id",
+    "estrato_socioeconomico",
+    "tipo_vivienda",
+    "nivel_escolaridad",
+    "profesion_ocupacion",
+    "personas_dependen_economicamente",
+    "cabeza_familia",
+    "total_hijos",
+    "tiene_discapacidad",
+    "autorizacion_tratamiento_datos"
+  ],
+  "opcionales": [
+    "nacionalidad",
+    "grupo_etnico",
+    "redes_apoyo_social",
+    "observaciones"
+  ],
+  "condicionales": [
+    "hijos_viven_con_usted",
+    "hijos_menores_edad",
+    "hijos_mayores_edad",
+    "tipo_discapacidad"
+  ],
+  "calculables": [
+    "edad"
+  ],
+  "maestros": [
+    "fecha_nacimiento",
+    "sexo_id",
+    "estado_civil_id"
+  ],
+  "restringidos": [
+    "tiene_discapacidad",
+    "tipo_discapacidad",
+    "presenta_alergias",
+    "medicamentos_permanentes",
+    "enfermedad",
+    "tipo_sangre_rh"
+  ],
+  "conteos_finales": {
+    "completa": 183,
+    "parcial": 457,
+    "conflicto_real": 41,
+    "no_encontrada": 91,
+    "requiere_revision": 0
+  }
+}

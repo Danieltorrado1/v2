@@ -16,7 +16,12 @@ import {
   downloadMasterImportReport,
   downloadMasterImportTemplate,
   getMasterImportPreview,
+  getSstPreparationSummary,
+  listSstApplyPlan,
   listMasterImportHistory,
+  listSstPendingCapture,
+  listSstReviewCases,
+  resolveSstReviewCase,
   validateMasterImport,
 } from '../../services/importacionesApi';
 import type {
@@ -27,6 +32,10 @@ import type {
   MasterImportLote,
   MasterImportPreviewResponse,
   MasterImportType,
+  PaginatedSstPreparationResult,
+  SstPreparationPlanItem,
+  SstPreparationSummary,
+  SstReviewCaseItem,
 } from '../../types/importaciones.types';
 import './OperationalImportModal.css';
 
@@ -50,6 +59,11 @@ const TYPE_OPTIONS: Array<{ key: MasterImportType; label: string; description: s
     label: 'Informacion bancaria',
     description: 'Versiona persona_cuentas_bancarias sin destruir historico.',
   },
+  {
+    key: 'CARACTERIZACION_SST',
+    label: 'Caracterizacion SST',
+    description: 'Completa perfil sociodemografico sin sobreescribir conflictos automaticamente.',
+  },
 ];
 
 function getErrorMessage(error: unknown, fallback: string): string {
@@ -70,6 +84,7 @@ export default function OperationalImportModal({
   empresaNombre,
   contratoNombre,
   canApply,
+  permissions,
   onClose,
   onImported,
 }: {
@@ -77,6 +92,7 @@ export default function OperationalImportModal({
   empresaNombre: string;
   contratoNombre: string;
   canApply: boolean;
+  permissions: string[];
   onClose: () => void;
   onImported: () => void;
 }) {
@@ -90,6 +106,19 @@ export default function OperationalImportModal({
   const [filter, setFilter] = useState<MasterImportFilter>('TODOS');
   const [page, setPage] = useState(1);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [sstSummary, setSstSummary] = useState<SstPreparationSummary | null>(null);
+  const [reviewCases, setReviewCases] = useState<PaginatedSstPreparationResult<SstReviewCaseItem> | null>(null);
+  const [pendingCapture, setPendingCapture] = useState<PaginatedSstPreparationResult<SstPreparationPlanItem> | null>(null);
+  const [applyPlan, setApplyPlan] = useState<PaginatedSstPreparationResult<SstPreparationPlanItem> | null>(null);
+  const [loadingSstPrep, setLoadingSstPrep] = useState(false);
+  const [resolvingCaseId, setResolvingCaseId] = useState<number | null>(null);
+  const [reviewTypeFilter, setReviewTypeFilter] = useState<'TODOS' | 'DIGITAL' | 'AFILIACION'>('TODOS');
+  const [reviewStateFilter, setReviewStateFilter] = useState<'TODOS' | 'PENDIENTE' | 'RESUELTO' | 'DESCARTADO'>('TODOS');
+  const [reviewFieldFilter, setReviewFieldFilter] = useState('');
+  const [reviewMunicipioFilter, setReviewMunicipioFilter] = useState('');
+  const [reviewDrafts, setReviewDrafts] = useState<
+    Record<number, { decision: '' | 'USAR_FUENTE_A' | 'USAR_FUENTE_B' | 'INGRESAR_VALOR_MANUAL' | 'MANTENER_MAESTRO' | 'DESCARTAR_CAMBIO'; valor_resuelto: string; observacion: string }>
+  >({});
   const [analyzing, setAnalyzing] = useState(false);
   const [validating, setValidating] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -103,6 +132,11 @@ export default function OperationalImportModal({
     if (analyzing) return 2;
     return 1;
   }, [analysis, analyzing, applyResult, preview]);
+
+  const canResolveReview = useMemo(
+    () => permissions.includes('sst.revision.resolver'),
+    [permissions]
+  );
 
   const availableFields = useMemo(() => {
     return selectedType === 'DATOS_PERSONALES'
@@ -121,7 +155,8 @@ export default function OperationalImportModal({
           'municipio_residencia',
           'pais_nacimiento',
         ]
-      : [
+      : selectedType === 'INFORMACION_BANCARIA'
+        ? [
           'tipo_documento',
           'numero_documento',
           'nombre',
@@ -132,6 +167,32 @@ export default function OperationalImportModal({
           'nombre_titular',
           'documento_titular',
           'observacion',
+        ]
+        : [
+          'tipo_documento',
+          'numero_documento',
+          'fecha_caracterizacion',
+          'origen',
+          'nacionalidad',
+          'estrato_socioeconomico',
+          'tipo_vivienda',
+          'grupo_etnico',
+          'nivel_escolaridad',
+          'profesion_ocupacion',
+          'personas_dependen_economicamente',
+          'cabeza_familia',
+          'total_hijos',
+          'hijos_viven_con_usted',
+          'hijos_menores_edad',
+          'hijos_mayores_edad',
+          'tiene_discapacidad',
+          'tipo_discapacidad',
+          'redes_apoyo_social',
+          'presenta_alergias',
+          'medicamentos_permanentes',
+          'enfermedad',
+          'autorizacion_tratamiento_datos',
+          'observaciones',
         ];
   }, [selectedType]);
 
@@ -148,6 +209,54 @@ export default function OperationalImportModal({
         setLoadingHistory(false);
       });
   }, [contratoId, selectedType]);
+
+  useEffect(() => {
+    if (selectedType !== 'CARACTERIZACION_SST') {
+      setSstSummary(null);
+      setReviewCases(null);
+      setPendingCapture(null);
+      setApplyPlan(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingSstPrep(true);
+
+    void Promise.all([
+      getSstPreparationSummary(),
+      listSstReviewCases({
+        page: 1,
+        limit: 12,
+        tipo: reviewTypeFilter,
+        estado: reviewStateFilter,
+        campo: reviewFieldFilter || undefined,
+        municipio: reviewMunicipioFilter || undefined,
+      }),
+      listSstPendingCapture({ page: 1, limit: 8 }),
+      listSstApplyPlan({ page: 1, limit: 8, estado: 'TODOS' }),
+    ])
+      .then(([summary, review, pending, plan]) => {
+        if (cancelled) return;
+        setSstSummary(summary);
+        setReviewCases(review);
+        setPendingCapture(pending);
+        setApplyPlan(plan);
+      })
+      .catch((nextError) => {
+        if (!cancelled) {
+          setError(getErrorMessage(nextError, 'No fue posible cargar la preparacion SST.'));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingSstPrep(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedType, reviewFieldFilter, reviewMunicipioFilter, reviewStateFilter, reviewTypeFilter]);
 
   useEffect(() => {
     if (!preview?.lote.id) return;
@@ -241,6 +350,41 @@ export default function OperationalImportModal({
       setError(getErrorMessage(nextError, 'No fue posible aplicar la importacion.'));
     } finally {
       setApplying(false);
+    }
+  }
+
+  async function handleResolveReviewCase(caseItem: SstReviewCaseItem): Promise<void> {
+    const draft = reviewDrafts[caseItem.id];
+    if (!draft?.decision) {
+      setError('Selecciona una decision antes de guardar la revision SST.');
+      return;
+    }
+
+    setResolvingCaseId(caseItem.id);
+    setError('');
+    try {
+      await resolveSstReviewCase(caseItem.id, {
+        decision: draft.decision,
+        valor_resuelto: draft.valor_resuelto || null,
+        observacion: draft.observacion || null,
+      });
+      const [summary, review] = await Promise.all([
+        getSstPreparationSummary(),
+        listSstReviewCases({
+          page: 1,
+          limit: 12,
+          tipo: reviewTypeFilter,
+          estado: reviewStateFilter,
+          campo: reviewFieldFilter || undefined,
+          municipio: reviewMunicipioFilter || undefined,
+        }),
+      ]);
+      setSstSummary(summary);
+      setReviewCases(review);
+    } catch (nextError) {
+      setError(getErrorMessage(nextError, 'No fue posible registrar la decision.'));
+    } finally {
+      setResolvingCaseId(null);
     }
   }
 
@@ -447,8 +591,160 @@ export default function OperationalImportModal({
 
         {applyResult ? (
           <div className="op-import-alert success">
-            <CheckCircle2 size={16} /> Apply completado: {applyResult.applied_rows} filas aplicadas, {applyResult.created_personas} personas creadas, {applyResult.updated_personas} personas actualizadas, {applyResult.created_bank_accounts} cuentas nuevas y {applyResult.updated_bank_accounts} cuentas versionadas.
+            <CheckCircle2 size={16} /> Apply completado: {applyResult.applied_rows} filas aplicadas, {applyResult.created_personas} personas creadas, {applyResult.updated_personas} personas actualizadas, {applyResult.created_bank_accounts} cuentas nuevas, {applyResult.updated_bank_accounts} cuentas versionadas, {applyResult.created_sst_profiles} perfiles SST nuevos y {applyResult.updated_sst_profiles} perfiles SST actualizados.
           </div>
+        ) : null}
+
+        {selectedType === 'CARACTERIZACION_SST' ? (
+          <section className="op-import-table-wrap op-import-history-wrap">
+            <div className="op-import-toolbar">
+              <strong>Preparacion SST-3</strong>
+              {loadingSstPrep ? <span className="op-count-inline">Cargando...</span> : null}
+            </div>
+
+            {sstSummary ? (
+              <div className="op-import-summary-grid">
+                <div><strong>{sstSummary.automaticos}</strong><span>Automaticos</span></div>
+                <div><strong>{sstSummary.parciales}</strong><span>Parciales</span></div>
+                <div><strong>{sstSummary.revision}</strong><span>Revision humana</span></div>
+                <div><strong>{sstSummary.sin_datos}</strong><span>Sin datos digitales</span></div>
+                <div><strong>{sstSummary.contactos_propuestos}</strong><span>Contactos propuestos</span></div>
+                <div><strong>{sstSummary.formacion_propuesta}</strong><span>Formacion propuesta</span></div>
+              </div>
+            ) : null}
+
+            <div className="op-import-toolbar">
+              <strong>Bandeja de revision humana</strong>
+              <div className="op-import-sst-filters">
+                <select value={reviewTypeFilter} onChange={(event) => setReviewTypeFilter(event.target.value as typeof reviewTypeFilter)}>
+                  <option value="TODOS">Todos</option>
+                  <option value="DIGITAL">Solo digitales</option>
+                  <option value="AFILIACION">Solo afiliaciones</option>
+                </select>
+                <select value={reviewStateFilter} onChange={(event) => setReviewStateFilter(event.target.value as typeof reviewStateFilter)}>
+                  <option value="TODOS">Todos los estados</option>
+                  <option value="PENDIENTE">Pendientes</option>
+                  <option value="RESUELTO">Resueltos</option>
+                  <option value="DESCARTADO">Descartados</option>
+                </select>
+                <input
+                  placeholder="Campo"
+                  value={reviewFieldFilter}
+                  onChange={(event) => setReviewFieldFilter(event.target.value)}
+                />
+                <input
+                  placeholder="Municipio"
+                  value={reviewMunicipioFilter}
+                  onChange={(event) => setReviewMunicipioFilter(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="op-import-table-wrap">
+              <table className="op-import-table">
+                <thead>
+                  <tr>
+                    <th>Persona</th>
+                    <th>Conflicto</th>
+                    <th>Fuentes</th>
+                    <th>Decision</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {!reviewCases || reviewCases.items.length === 0 ? (
+                    <tr><td colSpan={4} className="op-import-empty">No hay casos para este filtro.</td></tr>
+                  ) : reviewCases.items.map((item) => {
+                    const draft = reviewDrafts[item.id] ?? { decision: '', valor_resuelto: '', observacion: '' };
+                    return (
+                      <tr key={item.id}>
+                        <td>
+                          <strong>{item.persona_nombre}</strong><br />
+                          <span className="op-import-mono">{item.documento}</span><br />
+                          <small>{item.municipio ?? 'Sin municipio'} · {item.cargo ?? 'Sin cargo'}</small>
+                        </td>
+                        <td>
+                          <span className={`op-import-badge ${item.tipo_conflicto === 'AFILIACION' ? 'status-warning' : 'status-error'}`}>{item.tipo_conflicto}</span>
+                          <div className="op-import-diff-line"><strong>{item.campo}</strong></div>
+                          <div className="op-import-diff-line">{item.recomendacion ?? 'Sin recomendacion'}</div>
+                        </td>
+                        <td>
+                          <div className="op-import-diff-line"><strong>{item.fuente_a}</strong>: {item.valor_a ?? '—'}</div>
+                          <div className="op-import-diff-line"><strong>{item.fuente_b}</strong>: {item.valor_b ?? '—'}</div>
+                          {item.observacion ? <div className="op-import-warning-line">{item.observacion}</div> : null}
+                        </td>
+                        <td>
+                          <div className="op-import-sst-resolution">
+                            <select
+                              value={draft.decision}
+                              onChange={(event) => setReviewDrafts((current) => ({
+                                ...current,
+                                [item.id]: {
+                                  ...draft,
+                                  decision: event.target.value as typeof draft.decision,
+                                },
+                              }))}
+                              disabled={!canResolveReview}
+                            >
+                              <option value="">Sin decision</option>
+                              <option value="USAR_FUENTE_A">Usar fuente A</option>
+                              <option value="USAR_FUENTE_B">Usar fuente B</option>
+                              <option value="MANTENER_MAESTRO">Mantener maestro</option>
+                              <option value="INGRESAR_VALOR_MANUAL">Valor manual</option>
+                              <option value="DESCARTAR_CAMBIO">Descartar cambio</option>
+                            </select>
+                            <input
+                              placeholder="Valor manual"
+                              value={draft.valor_resuelto}
+                              onChange={(event) => setReviewDrafts((current) => ({
+                                ...current,
+                                [item.id]: {
+                                  ...draft,
+                                  valor_resuelto: event.target.value,
+                                },
+                              }))}
+                              disabled={!canResolveReview || draft.decision !== 'INGRESAR_VALOR_MANUAL'}
+                            />
+                            <input
+                              placeholder="Observacion"
+                              value={draft.observacion}
+                              onChange={(event) => setReviewDrafts((current) => ({
+                                ...current,
+                                [item.id]: {
+                                  ...draft,
+                                  observacion: event.target.value,
+                                },
+                              }))}
+                              disabled={!canResolveReview}
+                            />
+                            <button
+                              type="button"
+                              className="op-button secondary"
+                              disabled={!canResolveReview || resolvingCaseId === item.id}
+                              onClick={() => void handleResolveReviewCase(item)}
+                            >
+                              {resolvingCaseId === item.id ? <RefreshCw size={15} className="is-spinning" /> : <CheckCircle2 size={15} />}
+                              Guardar
+                            </button>
+                          </div>
+                          <small>Estado: {item.estado}</small>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="op-import-toolbar">
+              <strong>91 pendientes de captura y muestra del plan 640</strong>
+            </div>
+            <div className="op-import-summary-grid">
+              <div><strong>{pendingCapture?.pagination.total ?? 0}</strong><span>Pendientes</span></div>
+              <div><strong>{applyPlan?.pagination.total ?? 0}</strong><span>Plan total</span></div>
+              <div><strong>{applyPlan ? applyPlan.items.filter((item) => item.estado_preparacion === 'APTO_APPLY_AUTOMATICO').length : 0}</strong><span>Automaticos visibles</span></div>
+              <div><strong>{applyPlan ? applyPlan.items.filter((item) => item.estado_preparacion === 'APTO_APPLY_PARCIAL').length : 0}</strong><span>Parciales visibles</span></div>
+            </div>
+          </section>
         ) : null}
 
         <section className="op-import-table-wrap op-import-history-wrap">

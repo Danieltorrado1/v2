@@ -54,3 +54,22 @@ test('servicio de personas aplica tenant y reutiliza estructuras historicas exis
   assert.match(source, /tabla: 'persona_contactos_emergencia'/);
   assert.match(source, /tabla: 'sst_perfil_demografico'/);
 });
+
+test('perfil SST se integra al expediente por rutas dedicadas, versionado y exportacion protegida', () => {
+  const routesSource = readFileSync(path.join(root, 'src/modules/personas/personas.routes.ts'), 'utf8');
+  const sstServiceSource = readFileSync(path.join(root, 'src/modules/sst/sst.perfil.service.ts'), 'utf8');
+  const exportServiceSource = readFileSync(
+    path.join(root, 'src/modules/personas/personas.master.service.ts'),
+    'utf8'
+  );
+
+  assert.match(routesSource, /\/:id\/sst\/perfil/);
+  assert.match(routesSource, /\/:id\/sst\/perfil\/historial/);
+  assert.match(routesSource, /requireAnyPermissions\('sst\.perfil\.ver'\)/);
+  assert.match(routesSource, /requireAnyPermissions\('sst\.perfil\.crear', 'sst\.perfil\.editar'\)/);
+  assert.match(sstServiceSource, /FROM sst_perfil_demografico_versiones/);
+  assert.match(sstServiceSource, /registerAuditEntry\(/);
+  assert.match(exportServiceSource, /group: 'SST'/);
+  assert.match(exportServiceSource, /canExportSstProfiles/);
+  assert.doesNotMatch(exportServiceSource, /code: 'sst_tiene_discapacidad'/);
+});

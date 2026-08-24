@@ -1,0 +1,123 @@
+{
+  "generated_at": "2026-08-24T11:07:47.468Z",
+  "plan_summary": {
+    "automaticos_esperados": 183,
+    "parciales_esperados": 457,
+    "revision_esperados": 41,
+    "sin_datos_esperados": 91,
+    "registros_plan": 640,
+    "perfiles_completos_post_apply": 183,
+    "perfiles_incompletos_post_apply": 457,
+    "contactos_propuestos_total": 698,
+    "contactos_propuestos_meta26": 681,
+    "formacion_propuesta": 681,
+    "casos_revision": 46
+  },
+  "before": {
+    "personas": 800,
+    "vinculaciones": 1007,
+    "cobertura_asignaciones": 670,
+    "focalizacion_final": 687,
+    "focalizacion_vigencias": 687,
+    "vinculacion_afiliaciones": 223,
+    "persona_contactos_emergencia": 0,
+    "persona_formacion_academica": 0,
+    "sst_perfil_demografico": 640,
+    "sst_perfil_demografico_versiones": 640,
+    "sst_perfil_restringido": 640,
+    "sst_preparacion_personas": 772,
+    "sst_revision_casos": 46,
+    "auditoria_eventos_sst": 640,
+    "historial_cambios_sst": 27063
+  },
+  "dry_run": {
+    "completosPrevistos": 0,
+    "incompletosPrevistos": 0,
+    "conflictosInesperados": 0,
+    "personasInexistentes": 0,
+    "vinculacionesIncompatibles": 0,
+    "perfilesPrevios": 0
+  },
+  "atomicity": {
+    "ok": true,
+    "errorCode": "SST_PERFIL_VINCULACION_PERSONA_MISMATCH",
+    "firstPersonaId": 1187,
+    "secondPersonaId": 1143,
+    "firstPersistedInsideTx": 2,
+    "beforeCounts": {
+      "perfiles": 640,
+      "versiones": 640,
+      "restringidos": 640,
+      "auditoria": 640,
+      "historial": 27063
+    },
+    "afterCounts": {
+      "perfiles": 640,
+      "versiones": 640,
+      "restringidos": 640,
+      "auditoria": 640,
+      "historial": 27063
+    }
+  },
+  "first_batch": {
+    "size": 5,
+    "valid": true
+  },
+  "apply": {
+    "automaticos_aplicados": 183,
+    "parciales_aplicados": 457,
+    "total_aplicados": 640
+  },
+  "final": {
+    "completos": 183,
+    "incompletos": 457,
+    "perfiles_vigentes": 640,
+    "versiones": 640,
+    "restringidos": 640,
+    "excluded_with_profiles": 0,
+    "outside_plan_profiles": 0,
+    "duplicate_profiles": 0,
+    "orphan_versions": 0,
+    "orphan_restricted": 0,
+    "fk_rotas": 0
+  },
+  "http": {
+    "admin": {
+      "role": "ADMINISTRADOR",
+      "status": 200,
+      "ok": true,
+      "restrictedVisible": true,
+      "hiddenFlag": false
+    },
+    "sst": {
+      "role": "SST",
+      "status": 200,
+      "ok": true,
+      "restrictedVisible": true,
+      "hiddenFlag": false
+    },
+    "th": {
+      "role": "TALENTO_HUMANO",
+      "status": 200,
+      "ok": true,
+      "restrictedVisible": false,
+      "hiddenFlag": true
+    },
+    "expedienteCompletaOk": true,
+    "expedienteIncompletaOk": true,
+    "historialOk": true,
+    "fixturesCreated": 2
+  },
+  "idempotence": {
+    "falseChanges": 0,
+    "falseVersions": 0,
+    "duplicates": 0
+  },
+  "reports": {
+    "resultados": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-3-apply-resultados.csv",
+    "completos": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-3-completos.csv",
+    "incompletos": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-3-incompletos.csv",
+    "excluidos": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-3-excluidos.csv",
+    "integridad": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\reports\\sst-3-integridad.json"
+  }
+}

@@ -71,6 +71,90 @@ export interface PersonaPerfilDemograficoApi {
   updated_at: string | null;
 }
 
+export type SstPerfilOrigenApi =
+  | 'FORMULARIO_DIGITAL'
+  | 'FORMULARIO_FISICO'
+  | 'IMPORTACION'
+  | 'EDICION_MANUAL'
+  | 'PORTAL_COLABORADOR';
+
+export type SstPerfilCompletitudEstadoApi =
+  | 'COMPLETA'
+  | 'INCOMPLETA'
+  | 'NO_REALIZADA'
+  | 'REQUIERE_REVISION';
+
+export interface SstPerfilSociodemograficoValuesApi {
+  nacionalidad: string | null;
+  estrato_socioeconomico: string | null;
+  tipo_vivienda: string | null;
+  grupo_etnico: string | null;
+  nivel_escolaridad: string | null;
+  profesion_ocupacion: string | null;
+  personas_dependen_economicamente: number | null;
+  cabeza_familia: boolean | null;
+  total_hijos: number | null;
+  hijos_viven_con_usted: number | null;
+  hijos_menores_edad: number | null;
+  hijos_mayores_edad: number | null;
+  tipo_sangre_rh: string | null;
+  tiene_discapacidad: boolean | null;
+  tipo_discapacidad: string | null;
+  redes_apoyo_social: string | null;
+  presenta_alergias: string | null;
+  medicamentos_permanentes: string | null;
+  enfermedad: string | null;
+  autorizacion_tratamiento_datos: boolean | null;
+  observaciones: string | null;
+}
+
+export interface SstPerfilSociodemograficoApi {
+  id: number | null;
+  persona_id: number;
+  vinculacion_id: number | null;
+  fecha_caracterizacion: string | null;
+  origen: SstPerfilOrigenApi | null;
+  origen_resuelto: SstPerfilOrigenApi | 'MIXTO' | 'SIN_REGISTRO';
+  motivo_ultima_actualizacion: string | null;
+  created_by_user_id: number | null;
+  updated_by_user_id: number | null;
+  version_actual: number;
+  requiere_revision: boolean;
+  activo: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  edad: number | null;
+  completitud: {
+    porcentaje: number;
+    estado: SstPerfilCompletitudEstadoApi;
+    campos_requeridos: string[];
+    campos_completos: string[];
+    campos_faltantes: string[];
+  };
+  values: SstPerfilSociodemograficoValuesApi;
+  history_count: number;
+  sensitive_fields_hidden: boolean;
+}
+
+export interface SstPerfilSociodemograficoVersionApi {
+  id: number;
+  perfil_id: number;
+  persona_id: number;
+  vinculacion_id: number | null;
+  version_numero: number;
+  vigente_desde: string;
+  vigencia_hasta: string | null;
+  es_vigente: boolean;
+  fecha_caracterizacion: string | null;
+  origen: SstPerfilOrigenApi | null;
+  motivo_cambio: string | null;
+  importacion_lote_id: number | null;
+  created_by_user_id: number | null;
+  requiere_revision: boolean;
+  values: SstPerfilSociodemograficoValuesApi;
+  created_at: string | null;
+}
+
 export interface PersonaCuentaBancariaApi {
   id: number;
   persona_id: number;
@@ -116,7 +200,8 @@ export interface PersonalExportFieldDefinitionApi {
     | 'LABORAL'
     | 'TERRITORIAL'
     | 'SEGURIDAD_SOCIAL'
-    | 'BANCARIO';
+    | 'BANCARIO'
+    | 'SST';
   label: string;
 }
 

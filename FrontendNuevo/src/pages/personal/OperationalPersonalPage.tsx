@@ -1212,6 +1212,7 @@ export default function OperationalPersonalPage() {
           empresaNombre={empresaActiva.nombre_empresa}
           contratoNombre={contratoSeleccionado.numero_contrato}
           canApply={canApplyImport}
+          permissions={permissions}
           onClose={() => setShowImportModal(false)}
           onImported={() => setRefreshIndex((current) => current + 1)}
         />

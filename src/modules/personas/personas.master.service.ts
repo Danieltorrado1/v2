@@ -13,6 +13,7 @@ import type {
   PersonaHistorialQuery,
   UpdatePersonaCuentaBancariaInput
 } from './personas.master.schemas';
+import { computeSstPerfilCompleteness } from '../sst/sst.perfil.domain';
 
 interface MutationContext {
   actorUserId: string;
@@ -90,7 +91,8 @@ export interface PersonalExportFieldDefinition {
     | 'LABORAL'
     | 'TERRITORIAL'
     | 'SEGURIDAD_SOCIAL'
-    | 'BANCARIO';
+    | 'BANCARIO'
+    | 'SST';
   label: string;
 }
 
@@ -850,13 +852,30 @@ const PERSONAL_EXPORT_FIELDS: PersonalExportFieldDefinition[] = [
   { code: 'caja', group: 'SEGURIDAD_SOCIAL', label: 'Caja' },
   { code: 'banco', group: 'BANCARIO', label: 'Banco' },
   { code: 'tipo_cuenta', group: 'BANCARIO', label: 'Tipo cuenta' },
-  { code: 'numero_cuenta', group: 'BANCARIO', label: 'Numero cuenta' }
+  { code: 'numero_cuenta', group: 'BANCARIO', label: 'Numero cuenta' },
+  { code: 'sst_completitud_porcentaje', group: 'SST', label: 'SST % completitud' },
+  { code: 'sst_completitud_estado', group: 'SST', label: 'SST estado completitud' },
+  { code: 'sst_fecha_caracterizacion', group: 'SST', label: 'SST fecha caracterizacion' },
+  { code: 'sst_origen', group: 'SST', label: 'SST origen' },
+  { code: 'sst_nacionalidad', group: 'SST', label: 'SST nacionalidad' },
+  { code: 'sst_nivel_escolaridad', group: 'SST', label: 'SST nivel educativo' },
+  { code: 'sst_estrato_socioeconomico', group: 'SST', label: 'SST estrato' },
+  { code: 'sst_tipo_vivienda', group: 'SST', label: 'SST tipo vivienda' },
+  { code: 'sst_grupo_etnico', group: 'SST', label: 'SST grupo etnico' },
+  { code: 'sst_profesion_ocupacion', group: 'SST', label: 'SST profesion u ocupacion' },
+  { code: 'sst_personas_dependen_economicamente', group: 'SST', label: 'SST personas a cargo' },
+  { code: 'sst_cabeza_familia', group: 'SST', label: 'SST cabeza de familia' },
+  { code: 'sst_total_hijos', group: 'SST', label: 'SST total hijos' }
 ];
 
 const PERSONAL_EXPORT_HEADERS = new Map(PERSONAL_EXPORT_FIELDS.map((field) => [field.code, field.label]));
 
-export const getPersonalExportFieldCatalog = (): PersonalExportFieldDefinition[] =>
-  PERSONAL_EXPORT_FIELDS;
+export const getPersonalExportFieldCatalog = (options?: {
+  canExportSstProfiles?: boolean;
+}): PersonalExportFieldDefinition[] =>
+  options?.canExportSstProfiles === false
+    ? PERSONAL_EXPORT_FIELDS.filter((field) => field.group !== 'SST')
+    : PERSONAL_EXPORT_FIELDS;
 
 export const savePersonalExportTemplate = async (
   payload: PersonalExportTemplatePayload,
@@ -939,6 +958,7 @@ export const generatePersonalExport = async (
   options: {
     actorUserId: string;
     canViewFullAccountNumber: boolean;
+    canExportSstProfiles: boolean;
     auditMeta?: AuditRequestMeta;
   },
   tenant?: TenantAccessContext
@@ -1160,11 +1180,37 @@ export const generatePersonalExport = async (
           FROM persona_cuentas_bancarias pcb
           WHERE pcb.es_vigente = TRUE
           ORDER BY pcb.persona_id, pcb.vigencia_desde DESC, pcb.id DESC
+        ),
+        sst_perfil_actual AS (
+          SELECT
+            spd.persona_id,
+            spd.fecha_caracterizacion,
+            spd.origen,
+            spd.nacionalidad,
+            spd.estrato_socioeconomico,
+            spd.tipo_vivienda,
+            spd.grupo_etnico,
+            spd.nivel_escolaridad,
+            spd.profesion_ocupacion,
+            spd.personas_dependen_economicamente,
+            spd.cabeza_familia,
+            spd.total_hijos,
+            spr.tiene_discapacidad,
+            spd.autorizacion_tratamiento_datos,
+            spd.requiere_revision
+          FROM sst_perfil_demografico spd
+          LEFT JOIN sst_perfil_restringido spr
+            ON spr.persona_id = spd.persona_id
+           AND COALESCE(spr.activo, TRUE) = TRUE
+          WHERE COALESCE(spd.activo, TRUE) = TRUE
         )
         SELECT
           td.nombre_documento AS tipo_documento,
           p.numero_documento AS documento,
           CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido) AS nombre_completo,
+          p.fecha_nacimiento,
+          p.sexo_id,
+          p.estado_civil_id,
           p.telefono,
           p.correo,
           p.direccion,
@@ -1185,7 +1231,21 @@ export const generatePersonalExport = async (
           af.caja,
           cba.entidad_bancaria AS banco,
           cba.tipo_cuenta,
-          cba.numero_cuenta
+          cba.numero_cuenta,
+          spd.fecha_caracterizacion AS sst_fecha_caracterizacion,
+          spd.origen AS sst_origen,
+          spd.nacionalidad AS sst_nacionalidad,
+          spd.nivel_escolaridad AS sst_nivel_escolaridad,
+          spd.estrato_socioeconomico AS sst_estrato_socioeconomico,
+          spd.tipo_vivienda AS sst_tipo_vivienda,
+          spd.grupo_etnico AS sst_grupo_etnico,
+          spd.profesion_ocupacion AS sst_profesion_ocupacion,
+          spd.personas_dependen_economicamente AS sst_personas_dependen_economicamente,
+          spd.cabeza_familia AS sst_cabeza_familia,
+          spd.total_hijos AS sst_total_hijos,
+          spd.tiene_discapacidad AS sst_tiene_discapacidad,
+          spd.autorizacion_tratamiento_datos AS sst_autorizacion_tratamiento_datos,
+          spd.requiere_revision AS sst_requiere_revision
         FROM vinculaciones v
         INNER JOIN personas p ON p.id = v.persona_id
         LEFT JOIN tipos_documentos td ON td.id = p.tipo_documento_id
@@ -1196,13 +1256,16 @@ export const generatePersonalExport = async (
         LEFT JOIN asignacion_laboral_actual ala ON ala.vinculacion_id = v.id
         LEFT JOIN afiliacion_actual af ON af.vinculacion_id = v.id
         LEFT JOIN cuenta_bancaria_actual cba ON cba.persona_id = p.id
+        LEFT JOIN sst_perfil_actual spd ON spd.persona_id = p.id
         ${whereClause}
         ORDER BY nombre_completo ASC, documento ASC
       `,
       params
     );
 
-    const requestedFields = input.fields.filter((field) => PERSONAL_EXPORT_HEADERS.has(field));
+    const requestedFields = input.fields
+      .filter((field) => PERSONAL_EXPORT_HEADERS.has(field))
+      .filter((field) => options.canExportSstProfiles || !field.startsWith('sst_'));
     if (requestedFields.length === 0) {
       throw new AppError('At least one valid field is required', 400, 'PERSONAL_EXPORT_FIELDS_REQUIRED');
     }
@@ -1214,11 +1277,46 @@ export const generatePersonalExport = async (
     const rows = result.rows.map((row) =>
       requestedFields
         .map((field) => {
-          const raw = row[field] == null
+          const completion = computeSstPerfilCompleteness({
+            fecha_nacimiento: formatDateValue((row.fecha_nacimiento as string | Date | null | undefined) ?? null),
+            sexo_id: toNullableNumber(row.sexo_id as string | number | null | undefined),
+            estado_civil_id: toNullableNumber(row.estado_civil_id as string | number | null | undefined),
+            requiere_revision: Boolean(row.sst_requiere_revision),
+            values: {
+              nacionalidad: (row.sst_nacionalidad as string | null | undefined) ?? null,
+              estrato_socioeconomico: (row.sst_estrato_socioeconomico as string | null | undefined) ?? null,
+              tipo_vivienda: (row.sst_tipo_vivienda as string | null | undefined) ?? null,
+              grupo_etnico: (row.sst_grupo_etnico as string | null | undefined) ?? null,
+              nivel_escolaridad: (row.sst_nivel_escolaridad as string | null | undefined) ?? null,
+              profesion_ocupacion: (row.sst_profesion_ocupacion as string | null | undefined) ?? null,
+              personas_dependen_economicamente: toNullableNumber(row.sst_personas_dependen_economicamente as string | number | null | undefined),
+              cabeza_familia: row.sst_cabeza_familia as boolean | null | undefined,
+              total_hijos: toNullableNumber(row.sst_total_hijos as string | number | null | undefined),
+              hijos_viven_con_usted: null,
+              hijos_menores_edad: null,
+              hijos_mayores_edad: null,
+              tiene_discapacidad: row.sst_tiene_discapacidad as boolean | null | undefined,
+              tipo_discapacidad: null,
+              redes_apoyo_social: null,
+              presenta_alergias: null,
+              medicamentos_permanentes: null,
+              enfermedad: null,
+              autorizacion_tratamiento_datos: row.sst_autorizacion_tratamiento_datos as boolean | null | undefined,
+              observaciones: null
+            }
+          });
+
+          const resolvedValue =
+            field === 'sst_completitud_porcentaje'
+              ? `${completion.porcentaje}`
+              : field === 'sst_completitud_estado'
+                ? completion.estado
+                : row[field];
+          const raw = resolvedValue == null
             ? ''
             : field === 'numero_cuenta' && !options.canViewFullAccountNumber
-              ? maskAccountNumber(String(row[field]))
-              : String(row[field]);
+              ? maskAccountNumber(String(resolvedValue))
+              : String(resolvedValue);
           return serializeForCsv(raw);
         })
         .join(',')

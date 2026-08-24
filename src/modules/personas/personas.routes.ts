@@ -23,6 +23,11 @@ import {
   getPersonas,
   updatePersonaHandler
 } from './personas.controller';
+import {
+  getPersonaSstPerfilHandler,
+  getPersonaSstPerfilHistorialHandler,
+  updatePersonaSstPerfilHandler
+} from '../sst/sst.perfil.controller';
 
 const personasRoutes = Router();
 
@@ -59,6 +64,21 @@ personasRoutes.get(
   '/:id/identificaciones',
   requireAnyPermissions('personas.read', 'persona.ver'),
   getPersonaIdentificacionesHandler
+);
+personasRoutes.get(
+  '/:id/sst/perfil',
+  requireAnyPermissions('sst.perfil.ver'),
+  getPersonaSstPerfilHandler
+);
+personasRoutes.get(
+  '/:id/sst/perfil/historial',
+  requireAnyPermissions('sst.perfil.ver'),
+  getPersonaSstPerfilHistorialHandler
+);
+personasRoutes.patch(
+  '/:id/sst/perfil',
+  requireAnyPermissions('sst.perfil.crear', 'sst.perfil.editar'),
+  updatePersonaSstPerfilHandler
 );
 personasRoutes.post(
   '/:id/identificaciones',

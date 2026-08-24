@@ -1,4 +1,7 @@
-export type MasterImportType = 'DATOS_PERSONALES' | 'INFORMACION_BANCARIA';
+export type MasterImportType =
+  | 'DATOS_PERSONALES'
+  | 'INFORMACION_BANCARIA'
+  | 'CARACTERIZACION_SST';
 export type MasterImportStatus = 'PREPARADO' | 'VALIDADO' | 'APLICADO' | 'CANCELADO' | 'ERROR';
 export type MasterImportFilter =
   | 'TODOS'
@@ -15,7 +18,8 @@ export type MasterImportClassification =
   | 'ERROR'
   | 'POSIBLE_DUPLICADO'
   | 'CUENTA_NUEVA'
-  | 'CAMBIO_CUENTA';
+  | 'CAMBIO_CUENTA'
+  | 'CONFLICTO';
 
 export interface MasterImportColumnSuggestion {
   header: string;
@@ -118,11 +122,92 @@ export interface MasterImportApplyResponse {
   updated_personas: number;
   created_bank_accounts: number;
   updated_bank_accounts: number;
+  created_sst_profiles: number;
+  updated_sst_profiles: number;
   skipped_rows: number;
 }
 
 export interface MasterImportListResponse {
   items: MasterImportLote[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+  };
+}
+
+export interface SstPreparationSummary {
+  automaticos: number;
+  parciales: number;
+  revision: number;
+  sin_datos: number;
+  pendientes_captura: number;
+  contactos_propuestos: number;
+  formacion_propuesta: number;
+  afiliaciones_propuestas: number;
+}
+
+export interface SstReviewCaseItem {
+  id: number;
+  preparacion_id: number | null;
+  persona_id: number | null;
+  contrato_id: number | null;
+  empresa_id: number | null;
+  documento: string;
+  persona_nombre: string;
+  municipio: string | null;
+  institucion: string | null;
+  sede: string | null;
+  cargo: string | null;
+  tipo_conflicto: 'FORMULARIOS' | 'DUPLICADO_F2' | 'AFILIACION';
+  campo: string;
+  fuente_a: string;
+  valor_a: string | null;
+  fuente_b: string;
+  valor_b: string | null;
+  recomendacion: string | null;
+  decision: string | null;
+  valor_resuelto: string | null;
+  estado: 'PENDIENTE' | 'RESUELTO' | 'DESCARTADO';
+  observacion: string | null;
+  fecha_resolucion: string | null;
+  resuelto_por_user_id: number | null;
+  updated_at: string;
+}
+
+export interface SstPreparationPlanItem {
+  id: number;
+  persona_id: number;
+  vinculacion_id: number | null;
+  contrato_id: number;
+  empresa_id: number;
+  documento: string;
+  nombre: string;
+  municipio: string | null;
+  institucion: string | null;
+  sede: string | null;
+  modalidad: string | null;
+  cargo: string | null;
+  fuente_formulario_1: boolean;
+  fuente_formulario_2: boolean;
+  estado_digital: string;
+  estado_preparacion: string;
+  porcentaje_completitud: number;
+  completitud_estado: string;
+  requiere_captura: boolean;
+  apto_apply: boolean;
+  conflictos_reales: number;
+  propuesta_sst: Record<string, unknown>;
+  propuesta_contacto_emergencia: Record<string, unknown>;
+  propuesta_formacion_academica: Array<Record<string, unknown>>;
+  propuesta_afiliaciones: Array<Record<string, unknown>>;
+  campos_restringidos: Array<string> | Record<string, unknown>;
+  fuentes: Array<string>;
+}
+
+export interface PaginatedSstPreparationResult<T> {
+  items: T[];
   pagination: {
     page: number;
     limit: number;

@@ -100,6 +100,17 @@ export const nominaMovimientoTipoSchema = z.enum([
   'LIBRANZA',
   'AJUSTE'
 ]);
+export const nominaMovimientoEstadoSchema = z.enum([
+  'PENDIENTE',
+  'REVISADO',
+  'APROBADO',
+  'RECHAZADO'
+]);
+export const nominaMovimientoFamiliaSchema = z.enum([
+  'GENERAL',
+  'ADICION_DEVENGO',
+  'CAMBIO_OPERATIVO'
+]);
 export const nominaRecargoTipoSchema = z.enum([
   'HORA_EXTRA_DIURNA',
   'HORA_EXTRA_NOCTURNA',
@@ -252,6 +263,7 @@ export const listNominaNovedadesQuerySchema = paginationSchema.extend({
   periodo_id: identifierSchema.nullable().optional(),
   nomina_empleado_id: identifierSchema.nullable().optional(),
   vinculacion_id: identifierSchema.nullable().optional(),
+  persona_id: identifierSchema.nullable().optional(),
   tipo_novedad_id: identifierSchema.nullable().optional(),
   revisado: z.coerce.boolean().optional(),
   activo: z.coerce.boolean().optional()
@@ -275,6 +287,8 @@ export const listNominaMovimientosQuerySchema = paginationSchema.extend({
   nomina_empleado_id: identifierSchema.nullable().optional(),
   vinculacion_id: identifierSchema.nullable().optional(),
   tipo_movimiento: nominaMovimientoTipoSchema.optional(),
+  estado: nominaMovimientoEstadoSchema.optional(),
+  familia_movimiento: nominaMovimientoFamiliaSchema.optional(),
   activo: z.coerce.boolean().optional()
 });
 
@@ -307,20 +321,78 @@ export const createNominaMovimientoSchema = z.object({
   vinculacion_id: identifierSchema,
   fecha: nullableDateSchema.optional().default(null),
   tipo_movimiento: nominaMovimientoTipoSchema,
+  familia_movimiento: nominaMovimientoFamiliaSchema.optional(),
+  estado: nominaMovimientoEstadoSchema.optional(),
   descripcion: nullableTrimmedStringSchema.optional().default(null),
   cantidad: nullableNumberSchema.optional().default(null),
+  valor_calculado: nullableNumberSchema.optional().default(null),
+  valor_aplicado: nullableNumberSchema.optional().default(null),
   valor_unitario: nullableNumberSchema.optional().default(null),
-  valor_total: z.coerce.number(),
+  valor_total: nullableNumberSchema.optional().default(null),
+  motivo_ajuste_valor: nullableTrimmedStringSchema.optional().default(null),
+  motivo_estado: nullableTrimmedStringSchema.optional().default(null),
+  documento_persona_id: identifierSchema.nullable().optional().default(null),
+  persona_reemplazada_id: identifierSchema.nullable().optional().default(null),
+  vinculacion_reemplazada_id: identifierSchema.nullable().optional().default(null),
+  municipio_id: identifierSchema.nullable().optional().default(null),
+  institucion_id: identifierSchema.nullable().optional().default(null),
+  sede_id: identifierSchema.nullable().optional().default(null),
+  modalidad_id: identifierSchema.nullable().optional().default(null),
+  contexto_municipio: nullableTrimmedStringSchema.optional().default(null),
+  contexto_institucion: nullableTrimmedStringSchema.optional().default(null),
+  contexto_sede: nullableTrimmedStringSchema.optional().default(null),
+  contexto_modalidad: nullableTrimmedStringSchema.optional().default(null),
+  tarifa_config_id: identifierSchema.nullable().optional().default(null),
   es_devengado: z.coerce.boolean().optional().default(true),
   es_deduccion: z.coerce.boolean().optional().default(false),
   afecta_seguridad_social: z.coerce.boolean().optional().default(true),
   activo: z.coerce.boolean().optional().default(true)
 }).superRefine((data, ctx) => {
-  if (data.valor_total < 0) {
+  const hasApplied =
+    data.valor_aplicado !== null && data.valor_aplicado !== undefined;
+  const hasLegacyTotal =
+    data.valor_total !== null && data.valor_total !== undefined;
+  const hasCalculated =
+    data.valor_calculado !== null && data.valor_calculado !== undefined;
+  const hasUnit = data.valor_unitario !== null && data.valor_unitario !== undefined;
+
+  if (!hasApplied && !hasLegacyTotal && !hasCalculated && !hasUnit) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'valor_aplicado, valor_total, valor_calculado or valor_unitario is required',
+      path: ['valor_aplicado']
+    });
+  }
+
+  if (data.valor_aplicado !== null && data.valor_aplicado !== undefined && data.valor_aplicado < 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'valor_aplicado must be greater than or equal to 0',
+      path: ['valor_aplicado']
+    });
+  }
+
+  if (data.valor_total !== null && data.valor_total !== undefined && data.valor_total < 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'valor_total must be greater than or equal to 0',
       path: ['valor_total']
+    });
+  }
+
+  if (data.valor_calculado !== null && data.valor_calculado !== undefined && data.valor_calculado < 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'valor_calculado must be greater than or equal to 0',
+      path: ['valor_calculado']
+    });
+  }
+
+  if (data.persona_reemplazada_id && !data.vinculacion_reemplazada_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'vinculacion_reemplazada_id is required when persona_reemplazada_id is provided',
+      path: ['vinculacion_reemplazada_id']
     });
   }
 });
@@ -338,10 +410,28 @@ export const createNominaRecargoSchema = z.object({
 export const updateNominaMovimientoSchema = z.object({
   fecha: nullableDateSchema.optional(),
   tipo_movimiento: nominaMovimientoTipoSchema.optional(),
+  familia_movimiento: nominaMovimientoFamiliaSchema.optional(),
+  estado: nominaMovimientoEstadoSchema.optional(),
   descripcion: nullableTrimmedStringSchema.optional(),
   cantidad: nullableNumberSchema.optional(),
+  valor_calculado: nullableNumberSchema.optional(),
+  valor_aplicado: nullableNumberSchema.optional(),
   valor_unitario: nullableNumberSchema.optional(),
   valor_total: z.coerce.number().optional(),
+  motivo_ajuste_valor: nullableTrimmedStringSchema.optional(),
+  motivo_estado: nullableTrimmedStringSchema.optional(),
+  documento_persona_id: identifierSchema.nullable().optional(),
+  persona_reemplazada_id: identifierSchema.nullable().optional(),
+  vinculacion_reemplazada_id: identifierSchema.nullable().optional(),
+  municipio_id: identifierSchema.nullable().optional(),
+  institucion_id: identifierSchema.nullable().optional(),
+  sede_id: identifierSchema.nullable().optional(),
+  modalidad_id: identifierSchema.nullable().optional(),
+  contexto_municipio: nullableTrimmedStringSchema.optional(),
+  contexto_institucion: nullableTrimmedStringSchema.optional(),
+  contexto_sede: nullableTrimmedStringSchema.optional(),
+  contexto_modalidad: nullableTrimmedStringSchema.optional(),
+  tarifa_config_id: identifierSchema.nullable().optional(),
   es_devengado: z.coerce.boolean().optional(),
   es_deduccion: z.coerce.boolean().optional(),
   afecta_seguridad_social: z.coerce.boolean().optional(),
@@ -361,13 +451,46 @@ export const updateNominaMovimientoSchema = z.object({
       path: ['valor_total']
     });
   }
+
+  if (data.valor_aplicado !== undefined && data.valor_aplicado !== null && data.valor_aplicado < 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'valor_aplicado must be greater than or equal to 0',
+      path: ['valor_aplicado']
+    });
+  }
+
+  if (data.valor_calculado !== undefined && data.valor_calculado !== null && data.valor_calculado < 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'valor_calculado must be greater than or equal to 0',
+      path: ['valor_calculado']
+    });
+  }
+
+  if (data.persona_reemplazada_id && !data.vinculacion_reemplazada_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'vinculacion_reemplazada_id is required when persona_reemplazada_id is provided',
+      path: ['vinculacion_reemplazada_id']
+    });
+  }
 });
+
+export const nominaMovimientoEstadoActionSchema = z
+  .object({
+    motivo_estado: nullableTrimmedStringSchema.optional().default(null)
+  })
+  .strict();
 
 export const createNominaNovedadSchema = z.object({
   periodo_id: identifierSchema,
   nomina_empleado_id: identifierSchema,
   vinculacion_id: identifierSchema,
-  tipo_novedad_id: identifierSchema,
+  tipo_novedad_id: identifierSchema.optional(),
+  tipo_novedad_codigo: nullableTrimmedStringSchema.optional().default(null),
+  tipo_novedad_nombre: nullableTrimmedStringSchema.optional().default(null),
+  documento_persona_id: identifierSchema.nullable().optional().default(null),
   fecha_inicio: nullableDateSchema.optional().default(null),
   fecha_fin: nullableDateSchema.optional().default(null),
   dias: nullableNumberSchema.optional().default(null),
@@ -381,6 +504,14 @@ export const createNominaNovedadSchema = z.object({
   cubierta: z.coerce.boolean().optional().default(false),
   activo: z.boolean().optional().default(true)
 }).superRefine((data, ctx) => {
+  if (!data.tipo_novedad_id && !data.tipo_novedad_codigo && !data.tipo_novedad_nombre) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'tipo_novedad_id, tipo_novedad_codigo or tipo_novedad_nombre is required',
+      path: ['tipo_novedad_id']
+    });
+  }
+
   if (data.fecha_inicio && data.fecha_fin && data.fecha_inicio > data.fecha_fin) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -392,6 +523,9 @@ export const createNominaNovedadSchema = z.object({
 
 export const updateNominaNovedadSchema = z.object({
   tipo_novedad_id: identifierSchema.optional(),
+  tipo_novedad_codigo: nullableTrimmedStringSchema.optional(),
+  tipo_novedad_nombre: nullableTrimmedStringSchema.optional(),
+  documento_persona_id: identifierSchema.nullable().optional(),
   fecha_inicio: nullableDateSchema.optional(),
   fecha_fin: nullableDateSchema.optional(),
   dias: nullableNumberSchema.optional(),
