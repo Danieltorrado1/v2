@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { apiClient } from "../../services/apiClient";
 import { createNominaNovedad,getAllNominaMovimientos,getAllNominaNovedades,getAllNominaPeriodoEmpleados,getNominaPeriodos } from "../../services/nominaApi";
 import type { NominaEmpleadoApi,NominaMovimientoApi,NominaNovedadApi,NominaPeriodoApi } from "../../types/nomina.types";
+import type { ApiResponse } from "../../types/api.types";
 import { buildTramos,dateKey,isOutsideEmployment,movimientosOnDate,novedadCode,novedadesOnDate,novedadState,type PlanillaCambio,type PlanillaContexto } from "./planillaOperativa.domain";
 import "./PlanillaOperativaPage.css";
 
@@ -21,7 +22,7 @@ export default function PlanillaOperativaPage(){
  const period=periods.find(p=>String(p.id)===periodId);const start=period?.fecha_inicio??"2026-08-01",end=period?.fecha_fin??"2026-08-31";const days=useMemo(()=>Array.from({length:Number(end.slice(8))},(_,i)=>dateKey(Number(start.slice(0,4)),Number(start.slice(5,7)),i+1)),[start,end]);
  const canCreate=user?.permissions.includes("nomina.novedades.create")===true;const editable=period?.estado==="ABIERTO"&&canCreate;
  useEffect(()=>{void getNominaPeriodos({page:1,limit:100}).then(r=>setPeriods(r.items)).catch(e=>setError(String(e)));},[]);
- const load=async()=>{setLoading(true);setError("");try{const [e,n,m,c]=await Promise.all([getAllNominaPeriodoEmpleados(periodId),getAllNominaNovedades({periodo_id:periodId,activo:true}),getAllNominaMovimientos({periodo_id:periodId,activo:true}),apiClient.get<PlanillaCambio[]>("/nomina/cambios-operativos",{params:{periodo_id:periodId,activo:true}})]);setEmployees(e.items);setNovedades(n.items);setMoves(m.items);setChanges(c);}catch(e){setError(e instanceof Error?e.message:"No fue posible cargar la planilla");}finally{setLoading(false);}};
+ const load=async()=>{setLoading(true);setError("");try{const [e,n,m,c]=await Promise.all([getAllNominaPeriodoEmpleados(periodId),getAllNominaNovedades({periodo_id:periodId,activo:true}),getAllNominaMovimientos({periodo_id:periodId,activo:true}),apiClient.get<ApiResponse<PlanillaCambio[]>>("/nomina/cambios-operativos",{params:{periodo_id:periodId,activo:true}})]);if(!Array.isArray(e.items)||!Array.isArray(n.items)||!Array.isArray(m.items)||!Array.isArray(c?.data))throw new Error("La respuesta de planilla tiene una estructura inválida");setEmployees(e.items);setNovedades(n.items);setMoves(m.items);setChanges(c.data);}catch(e){setEmployees([]);setNovedades([]);setMoves([]);setChanges([]);setError(e instanceof Error?e.message:"No fue posible cargar la planilla");}finally{setLoading(false);}};
  // load is intentionally recreated with the selected period.
  // oxlint-disable-next-line react-hooks/exhaustive-deps
  useEffect(()=>{void load();},[periodId]);
