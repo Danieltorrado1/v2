@@ -84,6 +84,7 @@ import {
   createNominaRecargoHandler,
   createNominaMovimientoHandler,
   createNominaNovedadHandler,
+  createNominaNovedadConTurnoHandler,
   createNominaPeriodoHandler,
   deactivateNominaAsistenciaHandler,
   deactivateNominaMovimientoHandler,
@@ -118,6 +119,9 @@ import {
   reviewNominaMovimientoHandler,
   reviewNominaPeriodoHandler,
   updateNominaAsistenciaHandler,
+  markNominaAsistenciaHandler,
+  markNominaAsistenciaRangoHandler,
+  markNominaAsistenciaMasivaHandler,
   updateNominaEmpleadoHandler,
   updateNominaMovimientoHandler,
   updateNominaNovedadHandler,
@@ -132,6 +136,7 @@ import {
   resolverTramosHandler,
   updateCambioOperativoHandler
 } from './cambios-operativos.controller';
+import { listRevisionOperativaHandler, updateRevisionOperativaHandler } from './revision-operativa.controller';
 
 const nominaRoutes = Router();
 
@@ -276,6 +281,11 @@ nominaRoutes.patch(
   requirePermissions('nomina.movimientos.deactivate'),
   deactivateNominaMovimientoHandler
 );
+nominaRoutes.post('/periodos/:periodo_id/asistencia/marcar', requirePermissions('nomina.periodos.update'), markNominaAsistenciaHandler);
+nominaRoutes.post('/periodos/:periodo_id/asistencia/rango', requirePermissions('nomina.periodos.update'), markNominaAsistenciaRangoHandler);
+nominaRoutes.post('/periodos/:periodo_id/asistencia/masiva', requirePermissions('nomina.periodos.update'), markNominaAsistenciaMasivaHandler);
+nominaRoutes.get('/periodos/:periodo_id/revision-operativa', requirePermissions('nomina.read'), listRevisionOperativaHandler);
+nominaRoutes.patch('/periodos/:periodo_id/revision-operativa/:nomina_empleado_id', requirePermissions('nomina.periodos.update'), updateRevisionOperativaHandler);
 
 nominaRoutes.get('/cambios-operativos', requirePermissions('nomina.movimientos.read'), listCambiosOperativosHandler);
 nominaRoutes.get('/cambios-operativos/:id', requirePermissions('nomina.movimientos.read'), getCambioOperativoHandler);
@@ -315,6 +325,7 @@ nominaRoutes.post(
   requirePermissions('nomina.novedades.create'),
   createNominaNovedadHandler
 );
+nominaRoutes.post('/novedades/con-turno', requirePermissions('nomina.novedades.create'), createNominaNovedadConTurnoHandler);
 nominaRoutes.patch(
   '/novedades/:id',
   requirePermissions('nomina.novedades.update'),

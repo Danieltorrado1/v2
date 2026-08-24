@@ -688,6 +688,8 @@ export interface CreateNominaNovedadApi {
   cubierta?: boolean;
   activo?: boolean;
 }
+export interface CreateNominaNovedadConTurnoApi extends CreateNominaNovedadApi { turno: { tipo: 'INTERNO'|'EXTERNO'; contexto_operativo?: Record<string, unknown>; persona_reemplazada_id?: string|null; observacion?: string|null } }
+export interface RevisionOperativaApi { nomina_empleado_id:string; periodo_id:string; persona_id:string; vinculacion_id:string; estado_revision:'PENDIENTE'|'REVISADO'|'REQUIERE_REVISION'; revisado_por?:string|null; revisado_at?:string|null; invalidado_at?:string|null; motivo_invalidacion?:string|null }
 
 export interface UpdateNominaNovedadApi {
   tipo_novedad_id?: string;

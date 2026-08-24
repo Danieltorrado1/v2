@@ -12,7 +12,6 @@ import {
 import "./MainLayout.css";
 
 const nominaLinks = [
-  { to: "/nomina/planilla-operativa", label: "Planilla 1–31" },
   { to: "/nomina", label: "N\u00f3mina" },
   { to: "/nomina/liquidacion", label: "Liquidaci\u00f3n" },
   { to: "/nomina/turnos", label: "Turnos" },

@@ -8,6 +8,7 @@ import {
   createNominaRecargoSchema,
   createNominaMovimientoSchema,
   createNominaNovedadSchema,
+  createNominaNovedadConTurnoSchema,
   createNominaPeriodoSchema,
   exportNominaPeriodoQuerySchema,
   listNominaAsistenciaQuerySchema,
@@ -39,6 +40,7 @@ import {
   createNominaRecargo,
   createNominaMovimiento,
   createNominaNovedad,
+  createNominaNovedadConTurno,
   createNominaPeriodo,
   deactivateNominaAsistencia,
   deactivateNominaMovimiento,
@@ -74,6 +76,9 @@ import {
   reviewNominaPeriodo,
   approveNominaMovimiento,
   updateNominaAsistencia,
+  markNominaAsistencia,
+  markNominaAsistenciaRango,
+  markNominaAsistenciaMasiva,
   updateNominaEmpleado,
   updateNominaMovimiento,
   updateNominaNovedad,
@@ -597,6 +602,20 @@ export const createNominaNovedadHandler = asyncHandler(async (req: Request, res:
     message: 'Payroll novelty created successfully',
     data: result
   });
+});
+
+export const markNominaAsistenciaHandler = asyncHandler(async (req: Request,res: Response) => {
+  const periodo_id=String(req.params.periodo_id); const vinculacion_id=String(req.body?.vinculacion_id); const fecha=String(req.body?.fecha); const presente=req.body?.presente !== false;
+  if(!vinculacion_id||!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new AppError('vinculacion_id y fecha son requeridos',400,'NOMINA_ASISTENCIA_INPUT_INVALIDO');
+  const data=await markNominaAsistencia(periodo_id,vinculacion_id,fecha,presente,getActorUserId(req),req.tenant,getAuditRequestMeta(req)); return successResponse(res,{data,message:'Attendance updated successfully'});
+});
+export const markNominaAsistenciaRangoHandler = asyncHandler(async (req: Request,res: Response) => { const {vinculacion_id,fecha_inicio,fecha_fin}=req.body??{}; if(!vinculacion_id||!fecha_inicio||!fecha_fin) throw new AppError('Trabajador y rango son requeridos',400,'NOMINA_ASISTENCIA_RANGO_INPUT_INVALIDO'); const data=await markNominaAsistenciaRango(String(req.params.periodo_id),String(vinculacion_id),String(fecha_inicio),String(fecha_fin),getActorUserId(req),req.tenant,getAuditRequestMeta(req)); return successResponse(res,{data,message:'Attendance range processed'}); });
+export const markNominaAsistenciaMasivaHandler = asyncHandler(async (req: Request,res: Response) => { const {vinculacion_ids,fecha_inicio,fecha_fin}=req.body??{}; if(!Array.isArray(vinculacion_ids)||!vinculacion_ids.length) throw new AppError('Debe seleccionar trabajadores',400,'NOMINA_ASISTENCIA_SELECCION_REQUERIDA'); const data=await markNominaAsistenciaMasiva(String(req.params.periodo_id),vinculacion_ids.map(String),String(fecha_inicio),String(fecha_fin),getActorUserId(req),req.tenant,getAuditRequestMeta(req)); return successResponse(res,{data,message:'Bulk attendance processed'}); });
+
+export const createNominaNovedadConTurnoHandler = asyncHandler(async (req: Request, res: Response) => {
+  const input = createNominaNovedadConTurnoSchema.parse(req.body);
+  const result = await createNominaNovedadConTurno(input, getActorUserId(req), req.tenant, getAuditRequestMeta(req));
+  return successResponse(res, { statusCode: 201, message: 'Payroll novelty and turn captured successfully', data: result });
 });
 
 export const updateNominaNovedadHandler = asyncHandler(async (req: Request, res: Response) => {

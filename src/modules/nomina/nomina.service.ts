@@ -61,6 +61,7 @@ import {
   CreateNominaRecargoInput,
   CreateNominaMovimientoInput,
   CreateNominaNovedadInput,
+  CreateNominaNovedadConTurnoInput,
   CreateNominaPeriodoInput,
   EstadoPeriodo,
   EstadoLiquidacion,
@@ -7892,12 +7893,14 @@ export const createNominaNovedad = async (
   input: CreateNominaNovedadInput,
   actorUserId: string,
   tenant?: TenantAccessContext,
-  auditMeta?: AuditRequestMeta
+  auditMeta?: AuditRequestMeta,
+  clientOverride?: PoolClient
 ): Promise<NominaNovedad> => {
-  const client = await dbPool.connect();
+  const ownsClient = !clientOverride;
+  const client = clientOverride ?? await dbPool.connect();
 
   try {
-    await client.query('BEGIN');
+    if (ownsClient) await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(input.periodo_id, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'creating payroll novelties');
 
@@ -8069,7 +8072,7 @@ export const createNominaNovedad = async (
         user_agent: auditMeta?.user_agent ?? null
       });
 
-      await client.query('COMMIT');
+      if (ownsClient) await client.query('COMMIT');
       return created;
     }
 
@@ -8168,14 +8171,77 @@ export const createNominaNovedad = async (
       user_agent: auditMeta?.user_agent ?? null
     });
 
-    await client.query('COMMIT');
+    if (ownsClient) await client.query('COMMIT');
     return created;
+  } catch (error) {
+    if (ownsClient) await client.query('ROLLBACK');
+    throw error;
+  } finally { if (ownsClient) client.release(); }
+};
+
+export const markNominaAsistencia = async (periodoId: string, vinculacionId: string, fecha: string, presente: boolean, actorUserId: string, tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta) => {
+  const client = await dbPool.connect();
+  try {
+    await client.query('BEGIN');
+    const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client); assertPeriodoAllowsOpenMutations(periodo.estado, 'marking payroll attendance');
+    const vinc = await client.query<{fecha_inicio:string;fecha_fin:string|null}>('SELECT fecha_inicio::text, fecha_fin::text FROM vinculaciones WHERE id=$1::bigint',[vinculacionId]);
+    if (!vinc.rows[0]) throw new AppError('Vinculación no encontrada',404,'NOMINA_ASISTENCIA_VINCULACION_INVALIDA');
+    const v = vinc.rows[0]; const pStart=String(periodo.fecha_inicio).slice(0,10), pEnd=String(periodo.fecha_fin).slice(0,10);
+    if (fecha < pStart || fecha > pEnd || fecha < v.fecha_inicio || (v.fecha_fin && fecha > v.fecha_fin)) throw new AppError('La fecha está fuera de la vigencia laboral o del periodo',409,'NOMINA_ASISTENCIA_FUERA_VIGENCIA');
+    const blockers = await client.query<{codigo:string|null; nombre:string|null}>({text:`SELECT t.codigo_operativo AS codigo,t.nombre AS nombre FROM nomina_novedades n JOIN nomina_tipos_novedad t ON t.id=n.tipo_novedad_id WHERE n.vinculacion_id=$1::bigint AND n.activo=TRUE AND n.fecha_inicio <= $2::date AND COALESCE(n.fecha_fin,n.fecha_inicio) >= $2::date UNION ALL SELECT c.tipo_novedad_codigo_operativo,t.nombre FROM nomina_novedades_canonicas c JOIN nomina_tipos_novedad t ON t.id=c.tipo_novedad_id WHERE c.vinculacion_id=$1::bigint AND c.activo=TRUE AND c.fecha_inicio <= $2::date AND c.fecha_fin >= $2::date`,values:[vinculacionId,fecha]});
+    const blocking = blockers.rows.find(x=>['PNR','S'].includes(String(x.codigo).toUpperCase()) || /(matern|patern|licencia|incapacidad)/i.test(String(x.nombre??'')));
+    if (blocking) throw new AppError(`No se puede marcar asistencia: día bloqueado por ${blocking.codigo ?? blocking.nombre}` ,409,'NOMINA_ASISTENCIA_INCOMPATIBLE');
+    const existing = await client.query<{id:string}>(`SELECT id::text FROM nomina_asistencia_diaria WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint AND fecha=$3::date ORDER BY id DESC LIMIT 1`,[periodoId,vinculacionId,fecha]);
+    if (existing.rows[0]) await client.query(`UPDATE nomina_asistencia_diaria SET estado_dia=$2, activo=TRUE, observacion=$3 WHERE id=$1::bigint`,[existing.rows[0].id,presente?'PRESENTE':'PENDIENTE',presente?'Asistencia confirmada desde planilla':'Asistencia desmarcada']);
+    else if (presente) await client.query(`INSERT INTO nomina_asistencia_diaria(periodo_id,vinculacion_id,fecha,estado_dia,activo,observacion) VALUES($1::bigint,$2::bigint,$3::date,'PRESENTE',TRUE,'Asistencia confirmada desde planilla')`,[periodoId,vinculacionId,fecha]);
+    await registerAuditEntry({client,usuario_id:actorUserId,accion:presente?'NOMINA_ASISTENCIA_CREATE':'NOMINA_ASISTENCIA_UPDATE',tabla:'nomina_asistencia_diaria',registro_id:existing.rows[0]?.id??`${periodoId}:${vinculacionId}:${fecha}`,descripcion:'Marcacion rapida de asistencia desde planilla',after:{periodo_id:periodoId,vinculacion_id:vinculacionId,fecha,presente},ip:auditMeta?.ip??null,user_agent:auditMeta?.user_agent??null});
+    await client.query('COMMIT'); return { periodo_id:periodoId, vinculacion_id:vinculacionId, fecha, estado_dia:presente?'PRESENTE':'PENDIENTE', activo:presente };
+  } catch(error){await client.query('ROLLBACK');throw error;} finally{client.release();}
+};
+
+export const markNominaAsistenciaRango = async (periodoId: string, vinculacionId: string, fechaInicio: string, fechaFin: string, actorUserId: string, tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta) => {
+  const start = new Date(`${fechaInicio}T12:00:00Z`), end = new Date(`${fechaFin}T12:00:00Z`); if (start > end) throw new AppError('Rango de asistencia inválido',400,'NOMINA_ASISTENCIA_RANGO_INVALIDO');
+  const marcados: string[] = [], omitidos: Array<{fecha:string;motivo:string}> = [];
+  for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate()+1)) { const fecha=cursor.toISOString().slice(0,10); try { await markNominaAsistencia(periodoId,vinculacionId,fecha,true,actorUserId,tenant,auditMeta); marcados.push(fecha); } catch (error) { omitidos.push({fecha,motivo:error instanceof Error?error.message:'No se pudo marcar'}); } }
+  return {marcados,omitidos,total_marcados:marcados.length,total_omitidos:omitidos.length};
+};
+
+export const markNominaAsistenciaMasiva = async (periodoId: string, vinculaciones: string[], fechaInicio: string, fechaFin: string, actorUserId: string, tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta) => {
+  if (!vinculaciones.length) throw new AppError('Debe seleccionar al menos un trabajador',400,'NOMINA_ASISTENCIA_SELECCION_REQUERIDA');
+  const resultados = await Promise.all(vinculaciones.map(async vinculacion_id => ({vinculacion_id, ...(await markNominaAsistenciaRango(periodoId,vinculacion_id,fechaInicio,fechaFin,actorUserId,tenant,auditMeta))})));
+  return {trabajadores_procesados:resultados.length, resultados, dias_marcados:resultados.reduce((n,r)=>n+r.total_marcados,0), dias_omitidos:resultados.reduce((n,r)=>n+r.total_omitidos,0)};
+};
+
+/** Captura la novedad y su contexto de turno en una única operación de aplicación. */
+export const createNominaNovedadConTurno = async (
+  input: CreateNominaNovedadConTurnoInput,
+  actorUserId: string,
+  tenant?: TenantAccessContext,
+  auditMeta?: AuditRequestMeta
+) => {
+  const turno = input.turno ?? { tipo: 'INTERNO' as const, contexto_operativo: {}, persona_reemplazada_id: null, observacion: null };
+  const client = await dbPool.connect();
+  try {
+    await client.query('BEGIN');
+    const novedad = await createNominaNovedad(input, actorUserId, tenant, auditMeta, client);
+    const row = await client.query<{ id: string }>(
+      `INSERT INTO nomina_novedad_turnos
+       (periodo_id, nomina_novedad_id, nomina_empleado_id, vinculacion_id, tipo_turno,
+        persona_reemplazada_id, contexto_operativo, observacion, created_by, updated_by)
+       VALUES ($1::bigint,$2::bigint,$3::bigint,$4::bigint,$5,$6::bigint,$7::jsonb,$8,$9::bigint,$9::bigint)
+       RETURNING id::text AS id`,
+      [input.periodo_id, novedad.id, input.nomina_empleado_id, input.vinculacion_id,
+        turno.tipo, turno.persona_reemplazada_id,
+        JSON.stringify(turno.contexto_operativo ?? {}), turno.observacion, actorUserId]
+    );
+    const turnoRow = row.rows[0]; if (!turnoRow) throw new AppError('No fue posible crear relación de turno',500,'NOMINA_TURNO_CREATE_FAILED');
+    await registerAuditEntry({ client, usuario_id: actorUserId, accion: 'NOMINA_NOVEDAD_TURNO_CREATE', tabla: 'nomina_novedad_turnos', registro_id: turnoRow.id, descripcion: 'Relacion de novedad con turno operativo', before: null, after: { novedad_id: novedad.id, tipo: turno.tipo }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
+    await client.query('COMMIT');
+    return { novedad, turno_id: turnoRow.id, turno };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
-  } finally {
-    client.release();
-  }
+  } finally { client.release(); }
 };
 
 export const updateNominaNovedad = async (
@@ -8535,9 +8601,7 @@ export const updateNominaNovedad = async (
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
-  } finally {
-    client.release();
-  }
+  } finally { client.release(); }
 };
 
 export const deactivateNominaNovedad = async (

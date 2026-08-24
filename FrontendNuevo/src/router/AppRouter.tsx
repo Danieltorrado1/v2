@@ -33,13 +33,14 @@ export default function AppRouter() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="personal" element={<OperationalPersonalPage />} />
-            <Route path="nomina" element={<NominaPage />} />
+            <Route path="nomina" element={<PlanillaOperativaPage />} />
             <Route path="nomina/liquidacion" element={<LiquidacionPage />} />
             <Route path="nomina/turnos" element={<TurnosPage />} />
             <Route path="nomina/personal-ops" element={<PersonalOpsPage />} />
             <Route path="nomina/correccion" element={<CorreccionNominaPage />} />
             <Route path="nomina/cambios-operativos" element={<CambiosOperativosPage />} />
             <Route path="nomina/planilla-operativa" element={<PlanillaOperativaPage />} />
+            <Route path="nomina/gestion" element={<NominaPage />} />
             <Route path="herramientas/calculadora-salario" element={<CalculadoraSalarioPage />} />
             <Route path="herramientas/calculadora-cobertura" element={<CalculadoraCoberturaPage />} />
             <Route path="herramientas/cobertura" element={<CoberturaDashboardPage />} />

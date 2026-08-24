@@ -521,6 +521,15 @@ export const createNominaNovedadSchema = z.object({
   }
 });
 
+export const createNominaNovedadConTurnoSchema = createNominaNovedadSchema.extend({
+  turno: z.object({
+    tipo: z.enum(['INTERNO', 'EXTERNO']),
+    contexto_operativo: z.record(z.string(), z.unknown()).optional().default({}),
+    persona_reemplazada_id: identifierSchema.nullable().optional().default(null),
+    observacion: nullableTrimmedStringSchema.optional().default(null)
+  })
+});
+
 export const updateNominaNovedadSchema = z.object({
   tipo_novedad_id: identifierSchema.optional(),
   tipo_novedad_codigo: nullableTrimmedStringSchema.optional(),
@@ -581,4 +590,5 @@ export type CreateNominaMovimientoInput = z.infer<typeof createNominaMovimientoS
 export type CreateNominaRecargoInput = z.infer<typeof createNominaRecargoSchema>;
 export type UpdateNominaMovimientoInput = z.infer<typeof updateNominaMovimientoSchema>;
 export type CreateNominaNovedadInput = z.infer<typeof createNominaNovedadSchema>;
+export type CreateNominaNovedadConTurnoInput = z.infer<typeof createNominaNovedadConTurnoSchema>;
 export type UpdateNominaNovedadInput = z.infer<typeof updateNominaNovedadSchema>;

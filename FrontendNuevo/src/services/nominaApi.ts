@@ -5,6 +5,7 @@ import type {
   CreateNominaMovimientoApi,
   CreateNominaCorreccionPayload,
   CreateNominaNovedadApi,
+  CreateNominaNovedadConTurnoApi, RevisionOperativaApi,
   CreateNominaPeriodoApi,
   CreateNominaTurnoPayload,
   GenerateNominaLiquidacionesResponse,
@@ -741,6 +742,12 @@ export async function createNominaNovedad(
   const response = await apiClient.post<ApiResponse<NominaNovedadApi>>('/nomina/novedades', input);
   return response.data;
 }
+export async function createNominaNovedadConTurno(input: CreateNominaNovedadConTurnoApi) { const response=await apiClient.post<ApiResponse<{novedad:NominaNovedadApi;turno_id:string}>>('/nomina/novedades/con-turno',input); return response.data; }
+export async function getRevisionOperativa(periodoId:string) { const response=await apiClient.get<ApiResponse<RevisionOperativaApi[]>>(`/nomina/periodos/${periodoId}/revision-operativa`); return response.data; }
+export async function updateRevisionOperativa(periodoId:string,empleadoId:string,estado:RevisionOperativaApi['estado_revision']) { const response=await apiClient.patch<ApiResponse<RevisionOperativaApi>>(`/nomina/periodos/${periodoId}/revision-operativa/${empleadoId}`,{estado_revision:estado}); return response.data; }
+export async function markNominaAsistencia(periodoId:string,vinculacionId:string,fecha:string,presente:boolean) { const response=await apiClient.post<ApiResponse<unknown>>(`/nomina/periodos/${periodoId}/asistencia/marcar`,{vinculacion_id:vinculacionId,fecha,presente}); return response.data; }
+export async function markNominaAsistenciaRango(periodoId:string,vinculacionId:string,fecha_inicio:string,fecha_fin:string) { const response=await apiClient.post<ApiResponse<unknown>>(`/nomina/periodos/${periodoId}/asistencia/rango`,{vinculacion_id:vinculacionId,fecha_inicio,fecha_fin}); return response.data; }
+export async function markNominaAsistenciaMasiva(periodoId:string,vinculacion_ids:string[],fecha_inicio:string,fecha_fin:string) { const response=await apiClient.post<ApiResponse<unknown>>(`/nomina/periodos/${periodoId}/asistencia/masiva`,{vinculacion_ids,fecha_inicio,fecha_fin}); return response.data; }
 
 export async function createNominaMovimiento(
   input: CreateNominaMovimientoApi,
