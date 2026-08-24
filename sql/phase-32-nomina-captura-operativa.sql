@@ -50,7 +50,16 @@ RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE v_periodo BIGINT; v_empleado BIGINT; v_persona BIGINT; v_vinculacion BIGINT; v_reason TEXT; v_family TEXT; v_record BIGINT;
 BEGIN
   v_periodo := COALESCE(NEW.periodo_id, OLD.periodo_id);
-  v_empleado := COALESCE(NEW.nomina_empleado_id, OLD.nomina_empleado_id);
+  IF TG_TABLE_NAME='nomina_asistencia_diaria' THEN
+    SELECT ne.id INTO v_empleado
+    FROM nomina_empleados ne
+    WHERE ne.periodo_id=v_periodo
+      AND ne.vinculacion_id=COALESCE(NEW.vinculacion_id, OLD.vinculacion_id)
+    ORDER BY ne.id
+    LIMIT 1;
+  ELSE
+    v_empleado := COALESCE(NEW.nomina_empleado_id, OLD.nomina_empleado_id);
+  END IF;
   v_reason := CASE WHEN TG_TABLE_NAME='nomina_novedades' THEN CASE WHEN TG_OP='INSERT' THEN 'NOVEDAD_CREADA' ELSE CASE WHEN TG_OP='DELETE' THEN 'NOVEDAD_DESACTIVADA' ELSE 'NOVEDAD_MODIFICADA' END END
                WHEN TG_TABLE_NAME='nomina_asistencia_diaria' THEN 'ASISTENCIA_MODIFICADA'
                WHEN TG_TABLE_NAME='nomina_movimientos' THEN 'TA_MODIFICADO'

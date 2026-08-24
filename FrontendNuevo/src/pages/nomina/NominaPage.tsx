@@ -1,5 +1,6 @@
 ﻿import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, FormEvent } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Banknote,
@@ -664,6 +665,8 @@ function buildKpis(
 }
 
 export default function NominaPage() {
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("nomina");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -727,6 +730,11 @@ export default function NominaPage() {
   const tiposNovedadRequestRef = useRef(0);
   const desprendiblesRequestRef = useRef(0);
   const dashboardCacheRef = useRef<Record<string, NominaPeriodoDashboardApi>>({});
+
+  useEffect(() => {
+    const path = location.pathname;
+    setActiveTab(path.endsWith("/novedades") ? "novedades" : path.endsWith("/documentos") ? "soportes" : "nomina");
+  }, [location.pathname]);
 
   const periodos = useMemo(() => periodsState.data?.items ?? [], [periodsState.data]);
   const selectedPeriodFromList = periodos.find((periodo) => periodo.id === selectedPeriodId) ?? null;
@@ -1038,8 +1046,8 @@ export default function NominaPage() {
   }, [loadDashboard, loadEmployees, loadNovedades, loadPeriod]);
 
   useEffect(() => {
-    void loadPeriods();
-  }, [loadPeriods]);
+    void loadPeriods(searchParams.get("period_id") ?? (typeof window !== "undefined" ? window.sessionStorage.getItem("nomina.periodo_id") ?? undefined : undefined));
+  }, [loadPeriods, searchParams]);
 
   useEffect(() => {
     void loadTiposNovedad();

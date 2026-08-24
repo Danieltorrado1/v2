@@ -18,3 +18,5 @@ export const movimientosOnDate=(items:NominaMovimientoApi[],date:string)=>items.
 export const novedadCode=(n:NominaNovedadApi)=>n.tipo_novedad.codigo_operativo??n.tipo_novedad.nombre??"NOV";
 export const novedadState=(n:NominaNovedadApi)=>n.revisado?"VALIDADA":n.tipo_novedad.requiere_revision?"REQUIERE_REVISION":"REGISTRADA";
 export const isOutsideEmployment=(e:NominaEmpleadoApi,date:string)=>(e.vinculacion.fecha_inicio!==null&&date<e.vinculacion.fecha_inicio)||(e.vinculacion.fecha_fin!==null&&date>e.vinculacion.fecha_fin);
+export interface PlanillaAsistencia { vinculacion_id:string; fecha:string; estado_dia:string; activo:boolean }
+export function mergeAttendance(items:PlanillaAsistencia[], next:PlanillaAsistencia, remove=false):PlanillaAsistencia[]{const key=(item:PlanillaAsistencia)=>`${item.vinculacion_id}|${item.fecha}`;const target=key(next);const without=items.filter(item=>key(item)!==target);return remove?without:[...without,next];}

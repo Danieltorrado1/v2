@@ -34,6 +34,10 @@ export default function AppRouter() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="personal" element={<OperationalPersonalPage />} />
             <Route path="nomina" element={<PlanillaOperativaPage />} />
+            <Route path="nomina/novedades" element={<NominaPage />} />
+            <Route path="nomina/validacion" element={<PersonalOpsPage />} />
+            <Route path="nomina/pago" element={<NominaPage />} />
+            <Route path="nomina/documentos" element={<NominaPage />} />
             <Route path="nomina/liquidacion" element={<LiquidacionPage />} />
             <Route path="nomina/turnos" element={<TurnosPage />} />
             <Route path="nomina/personal-ops" element={<PersonalOpsPage />} />
