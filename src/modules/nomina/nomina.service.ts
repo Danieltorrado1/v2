@@ -154,6 +154,11 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   metodo_liquidacion: string | null;
   motivo_caso_especial: string | null;
   municipio_nombre: string | null;
+  contexto_institucion_nombre: string | null;
+  contexto_modalidad_nombre: string | null;
+  contexto_municipio_nombre: string | null;
+  contexto_sede_id: string | null;
+  contexto_sede_nombre: string | null;
   neto_pagar: number | string | null;
   otros_devengos: number | string | null;
   pension: number | string | null;
@@ -668,6 +673,7 @@ export interface NominaEmpleado {
   metodo_liquidacion: string | null;
   motivo_caso_especial: string | null;
   municipio: string | null;
+  institucion: string | null;
   neto_pagar: number;
   otros_devengos: number;
   pension: number;
@@ -1692,7 +1698,12 @@ const getNominaEmpleadosRealSelect = (): string => {
       p.segundo_nombre,
       p.primer_apellido,
       p.segundo_apellido,
-      mu.nombre_municipio AS municipio_nombre,
+      COALESCE(mu_op.nombre_municipio, mu.nombre_municipio) AS municipio_nombre,
+      mu_op.nombre_municipio AS contexto_municipio_nombre,
+      ins_op.nombre_institucion AS contexto_institucion_nombre,
+      se_op.id::text AS contexto_sede_id,
+      se_op.nombre_sede AS contexto_sede_nombre,
+      mo_op.nombre_modalidad AS contexto_modalidad_nombre,
       c.numero_contrato AS contrato_numero,
       cc.nombre_cargo AS cargo_nombre,
       co.nombre_cargo AS cargo_operativo_nombre,
@@ -1713,7 +1724,21 @@ const getNominaEmpleadosRealSelect = (): string => {
     FROM nomina_empleados ne
     INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
     INNER JOIN personas p ON p.id = v.persona_id
+    INNER JOIN nomina_periodos np_context ON np_context.id = ne.periodo_id
     LEFT JOIN municipios mu ON mu.id = p.municipio_residencia_id
+    LEFT JOIN LATERAL (
+      SELECT ca1.focalizacion_final_id
+      FROM cobertura_asignaciones ca1
+      WHERE ca1.vinculacion_id = v.id AND ca1.activo = TRUE
+        AND ca1.fecha_inicio <= np_context.fecha_fin
+        AND (ca1.fecha_fin IS NULL OR ca1.fecha_fin >= np_context.fecha_inicio)
+      ORDER BY ca1.fecha_inicio DESC, ca1.id DESC LIMIT 1
+    ) ca_op ON TRUE
+    LEFT JOIN focalizacion_final ff_op ON ff_op.id = ca_op.focalizacion_final_id
+    LEFT JOIN municipios mu_op ON mu_op.id = ff_op.municipio_id
+    LEFT JOIN instituciones ins_op ON ins_op.id = ff_op.institucion_id
+    LEFT JOIN sedes se_op ON se_op.id = ff_op.sede_id
+    LEFT JOIN modalidades mo_op ON mo_op.id = ff_op.modalidad_id
     LEFT JOIN contratos c ON c.id = v.contrato_id
     LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
     LEFT JOIN cargos_operativos co ON co.id = v.cargo_operativo_id
@@ -2136,7 +2161,8 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
     created_at: toIsoString(row.created_at) ?? '',
     motivo_caso_especial: row.motivo_caso_especial,
     municipio: row.municipio_nombre,
-    modalidad: null,
+    institucion: row.contexto_institucion_nombre,
+    modalidad: row.contexto_modalidad_nombre,
     clasificacion: resolveNominaEmpleadoClasificacion(row),
     total_novedades: row.total_novedades,
     estado_documental:
@@ -2151,7 +2177,14 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
             total_cargados: totalDocumentalCargados ?? 0,
             porcentaje_cumplimiento: porcentajeCumplimientoDocumental
           },
-    sede: null,
+    sede:
+      row.contexto_sede_id || row.contexto_sede_nombre || row.contexto_municipio_nombre
+        ? {
+            id: row.contexto_sede_id,
+            municipio: row.contexto_municipio_nombre,
+            nombre_sede: row.contexto_sede_nombre
+          }
+        : null,
     persona: {
       id: row.persona_id,
       numero_documento: row.persona_numero_documento,

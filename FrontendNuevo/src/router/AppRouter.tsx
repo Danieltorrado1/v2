@@ -14,6 +14,8 @@ import LiquidacionPage from "../pages/nomina/LiquidacionPage";
 import TurnosPage from "../pages/nomina/TurnosPage";
 import PersonalOpsPage from "../pages/nomina/PersonalOpsPage";
 import CorreccionNominaPage from "../pages/nomina/CorreccionNominaPage";
+import CambiosOperativosPage from "../pages/nomina/CambiosOperativosPage";
+import PlanillaOperativaPage from "../pages/nomina/PlanillaOperativaPage";
 import SstPage from "../pages/sst/SstPage";
 import PortalPage from "../pages/portal/PortalPage";
 import AdminPage from "../pages/admin/AdminPage";
@@ -36,6 +38,8 @@ export default function AppRouter() {
             <Route path="nomina/turnos" element={<TurnosPage />} />
             <Route path="nomina/personal-ops" element={<PersonalOpsPage />} />
             <Route path="nomina/correccion" element={<CorreccionNominaPage />} />
+            <Route path="nomina/cambios-operativos" element={<CambiosOperativosPage />} />
+            <Route path="nomina/planilla-operativa" element={<PlanillaOperativaPage />} />
             <Route path="herramientas/calculadora-salario" element={<CalculadoraSalarioPage />} />
             <Route path="herramientas/calculadora-cobertura" element={<CalculadoraCoberturaPage />} />
             <Route path="herramientas/cobertura" element={<CoberturaDashboardPage />} />

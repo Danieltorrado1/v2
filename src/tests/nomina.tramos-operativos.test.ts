@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { intersectarRangoConTramos, resolverTramosOperativos } from '../modules/nomina/nomina.tramos';
+const A={modalidad_id:'1',modalidad:'A'},B={modalidad_id:'2',modalidad:'B'},C={modalidad_id:'3',modalidad:'C'};
+const base={periodo_inicio:'2026-08-01',periodo_fin:'2026-08-31',vinculacion_inicio:'2026-01-01',contexto_base:A};
+test('sin cambios produce un tramo inclusivo',()=>{const r=resolverTramosOperativos({...base,cambios:[]});assert.equal(r.length,1);assert.equal(r[0]?.dias,31);});
+test('misma persona/vinculacion admite tres tramos sin duplicar filas',()=>{const r=resolverTramosOperativos({...base,cambios:[{id:'1',fecha_inicio_efectiva:'2026-08-11',contexto_anterior:A,contexto_nuevo:B},{id:'2',fecha_inicio_efectiva:'2026-08-21',contexto_anterior:B,contexto_nuevo:C}]});assert.deepEqual(r.map(x=>[x.fecha_inicio,x.fecha_fin,x.dias]),[['2026-08-01','2026-08-10',10],['2026-08-11','2026-08-20',10],['2026-08-21','2026-08-31',11]]);});
+test('cambio dia 1 y dia 31',()=>{const r=resolverTramosOperativos({...base,cambios:[{id:'1',fecha_inicio_efectiva:'2026-08-01',contexto_anterior:A,contexto_nuevo:B},{id:'2',fecha_inicio_efectiva:'2026-08-31',contexto_anterior:B,contexto_nuevo:C}]});assert.deepEqual(r.map(x=>x.dias),[30,1]);});
+test('ingreso y retiro parciales limitan tramos',()=>{const r=resolverTramosOperativos({...base,vinculacion_inicio:'2026-08-10',vinculacion_fin:'2026-08-22',cambios:[]});assert.deepEqual([r[0]?.fecha_inicio,r[0]?.fecha_fin,r[0]?.dias],['2026-08-10','2026-08-22',13]);});
+test('PNR 09-12 cruza dos tramos y suma cuatro sin duplicar novedad',()=>{const tramos=resolverTramosOperativos({...base,cambios:[{id:'1',fecha_inicio_efectiva:'2026-08-11',contexto_anterior:A,contexto_nuevo:B}]});const partes=intersectarRangoConTramos('2026-08-09','2026-08-12',tramos);assert.deepEqual(partes.map(x=>x.dias_interseccion),[2,2]);assert.equal(partes.reduce((a,b)=>a+b.dias_interseccion,0),4);});
+test('rechaza cambio redundante',()=>assert.throws(()=>resolverTramosOperativos({...base,cambios:[{id:'1',fecha_inicio_efectiva:'2026-08-11',contexto_anterior:A,contexto_nuevo:A}]}),/sin diferencia/));
+test('detecta hueco logico por contexto anterior inconsistente',()=>assert.throws(()=>resolverTramosOperativos({...base,cambios:[{id:'1',fecha_inicio_efectiva:'2026-08-11',contexto_anterior:B,contexto_nuevo:C}]}),/hueco logico/));
+test('TA no participa en cambios ordinarios',()=>{const r=resolverTramosOperativos({...base,cambios:[]});assert.equal(r[0]?.contexto.modalidad,'A');});

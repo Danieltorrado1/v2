@@ -123,6 +123,15 @@ import {
   updateNominaNovedadHandler,
   updateNominaPeriodoHandler
 } from './nomina.controller';
+import {
+  createCambioOperativoHandler,
+  deactivateCambioOperativoHandler,
+  getCambioOperativoHandler,
+  listCambiosOperativosHandler,
+  resolverContextoFechaHandler,
+  resolverTramosHandler,
+  updateCambioOperativoHandler
+} from './cambios-operativos.controller';
 
 const nominaRoutes = Router();
 
@@ -267,6 +276,14 @@ nominaRoutes.patch(
   requirePermissions('nomina.movimientos.deactivate'),
   deactivateNominaMovimientoHandler
 );
+
+nominaRoutes.get('/cambios-operativos', requirePermissions('nomina.movimientos.read'), listCambiosOperativosHandler);
+nominaRoutes.get('/cambios-operativos/:id', requirePermissions('nomina.movimientos.read'), getCambioOperativoHandler);
+nominaRoutes.post('/cambios-operativos', requirePermissions('nomina.movimientos.create'), createCambioOperativoHandler);
+nominaRoutes.patch('/cambios-operativos/:id', requirePermissions('nomina.movimientos.update'), updateCambioOperativoHandler);
+nominaRoutes.patch('/cambios-operativos/:id/deactivate', requirePermissions('nomina.movimientos.deactivate'), deactivateCambioOperativoHandler);
+nominaRoutes.get('/periodos/:periodo_id/vinculaciones/:vinculacion_id/tramos-operativos', requirePermissions('nomina.movimientos.read'), resolverTramosHandler);
+nominaRoutes.get('/periodos/:periodo_id/vinculaciones/:vinculacion_id/contexto-operativo/:fecha', requirePermissions('nomina.movimientos.read'), resolverContextoFechaHandler);
 
 nominaRoutes.get(
   '/liquidaciones/:periodo_id/:vinculacion_id',

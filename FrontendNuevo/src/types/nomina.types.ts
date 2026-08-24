@@ -534,6 +534,7 @@ export interface NominaEmpleadoApi {
   created_at: string;
   motivo_caso_especial: string | null;
   municipio?: string | null;
+  institucion?: string | null;
   contrato_id?: string | number | null;
   numero_contrato?: string | null;
   sede?: {
