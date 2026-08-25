@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { getTenantContext } from "../services/tenantApi";
 import type { Organizacion, TenantContextEmpresa } from "../types/configuracion.types";
 import { useAuth } from "./AuthContext";
+import { pickAuthorizedCompanyId } from "./companyScope";
 
 type CompanyContextValue = {
   empresasDisponibles: TenantContextEmpresa[];
@@ -48,15 +49,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
         const nextCompanies = context.empresas ?? [];
         const stored = Number(window.localStorage.getItem(STORAGE_KEY));
-        const validStored =
-          Number.isInteger(stored) &&
-          nextCompanies.some((empresa) => empresa.id === stored);
-        const defaultEmpresaId =
-          validStored
-            ? stored
-            : context.empresa_default_id && nextCompanies.some((empresa) => empresa.id === context.empresa_default_id)
-              ? context.empresa_default_id
-              : nextCompanies[0]?.id ?? null;
+        const defaultEmpresaId = pickAuthorizedCompanyId(
+          nextCompanies,
+          Number.isInteger(stored) ? stored : null,
+          context.empresa_default_id,
+        );
 
         setEmpresasDisponibles(nextCompanies);
         setEmpresaIdState(defaultEmpresaId);

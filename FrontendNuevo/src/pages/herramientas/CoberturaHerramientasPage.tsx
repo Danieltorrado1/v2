@@ -105,9 +105,13 @@ export default function CoberturaHerramientasPage() {
   };
 
   useEffect(() => {
+    setContratos([]);
+    setContratoId(null);
+    setHistory([]);
+    setSelectedDetail(null);
+    setPageError('');
+
     if (!canReadContext || !empresaId) {
-      setContratos([]);
-      setContratoId(null);
       return;
     }
 

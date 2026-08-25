@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildCompanyScopedStorageKey,
   pickAvailableScopedId,
+  pickAuthorizedCompanyId,
   readCompanyScopedStorage,
   writeCompanyScopedStorage,
 } from "./companyScope";
@@ -62,6 +63,13 @@ function run() {
     "10",
   );
   assert.equal(pickAvailableScopedId([], "999", "888"), null);
+
+  const companies = [{ id: 10 }, { id: 20 }];
+  assert.equal(pickAuthorizedCompanyId(companies, 20, 10), 20);
+  assert.equal(pickAuthorizedCompanyId(companies, 999, 20), 20);
+  assert.equal(pickAuthorizedCompanyId(companies, 999, 888), 10);
+  assert.equal(pickAuthorizedCompanyId([{ id: 10 }], 999, 888), 10);
+  assert.equal(pickAuthorizedCompanyId([], 999, 888), null);
 
   console.log("companyScope helper checks passed");
 }

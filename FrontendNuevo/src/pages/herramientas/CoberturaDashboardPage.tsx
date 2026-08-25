@@ -33,10 +33,77 @@ export default function CoberturaDashboardPage() {
 
   const { empresasDisponibles, empresaId, setEmpresaActual } = useCompanyContext();
 
-  useEffect(() => { if (!empresaId) return; void configuracionApi.listarContratos({ page: 1, limit: 100, activo: true, empresa_id: empresaId }).then((r) => { setContratos(r.items); setContratoId(r.items[0]?.id ?? null); }); }, [empresaId]);
-  useEffect(() => { if (!contratoId) return; void listFocalizacionImportaciones(contratoId).then((response) => { const items = response.items; setHistory(items); setVigenciaA(items.at(-2)?.id ?? items[0]?.id ?? null); setVigenciaB(items.at(-1)?.id ?? items[0]?.id ?? null); }).catch(() => setHistory([])); }, [contratoId]);
-  useEffect(() => { if (!vigenciaA || !vigenciaB) return; void compareFocalizacionImports({ carga_a_id: vigenciaA, carga_b_id: vigenciaB, municipio: comparisonMunicipio || undefined, modalidad: comparisonModalidad || undefined, tipo_cambio: comparisonTipo || undefined, solo_cambios: soloCambios, fecha }).then(setComparison).catch(() => setComparison(null)); }, [vigenciaA, vigenciaB, comparisonMunicipio, comparisonModalidad, comparisonTipo, soloCambios, fecha]);
-  useEffect(() => { if (!contratoId) return; setLoading(true); setError(''); void getCoberturaDashboard(contratoId, fecha).then(setDashboard).catch((e: unknown) => setError(e instanceof Error ? e.message : 'No fue posible cargar el dashboard.')).finally(() => setLoading(false)); }, [contratoId, fecha]);
+  useEffect(() => {
+    setContratos([]);
+    setContratoId(null);
+    setDashboard(null);
+    setHistory([]);
+    setVigenciaA(null);
+    setVigenciaB(null);
+    setComparison(null);
+    setComparisonSelected(null);
+    setEstado('TODOS');
+    setModalidad('TODAS');
+    setError('');
+    if (!empresaId) return;
+    let cancelled = false;
+    void configuracionApi.listarContratos({ page: 1, limit: 100, activo: true, empresa_id: empresaId })
+      .then((response) => {
+        if (!cancelled) {
+          setContratos(response.items);
+          setContratoId(response.items[0]?.id ?? null);
+        }
+      })
+      .catch((value: unknown) => {
+        if (!cancelled) setError(value instanceof Error ? value.message : 'No fue posible cargar contratos.');
+      });
+    return () => { cancelled = true; };
+  }, [empresaId]);
+
+  useEffect(() => {
+    setHistory([]);
+    setVigenciaA(null);
+    setVigenciaB(null);
+    setComparison(null);
+    setComparisonSelected(null);
+    if (!contratoId) return;
+    let cancelled = false;
+    void listFocalizacionImportaciones(contratoId).then((response) => {
+      if (cancelled) return;
+      const items = response.items;
+      setHistory(items);
+      setVigenciaA(items.at(-2)?.id ?? items[0]?.id ?? null);
+      setVigenciaB(items.at(-1)?.id ?? items[0]?.id ?? null);
+    }).catch(() => { if (!cancelled) setHistory([]); });
+    return () => { cancelled = true; };
+  }, [contratoId]);
+
+  useEffect(() => {
+    setComparison(null);
+    setComparisonSelected(null);
+    if (!vigenciaA || !vigenciaB) return;
+    let cancelled = false;
+    void compareFocalizacionImports({ carga_a_id: vigenciaA, carga_b_id: vigenciaB, municipio: comparisonMunicipio || undefined, modalidad: comparisonModalidad || undefined, tipo_cambio: comparisonTipo || undefined, solo_cambios: soloCambios, fecha })
+      .then((value) => { if (!cancelled) setComparison(value); })
+      .catch(() => { if (!cancelled) setComparison(null); });
+    return () => { cancelled = true; };
+  }, [vigenciaA, vigenciaB, comparisonMunicipio, comparisonModalidad, comparisonTipo, soloCambios, fecha]);
+
+  useEffect(() => {
+    setDashboard(null);
+    if (!contratoId) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    void getCoberturaDashboard(contratoId, fecha)
+      .then((value) => { if (!cancelled) setDashboard(value); })
+      .catch((value: unknown) => { if (!cancelled) setError(value instanceof Error ? value.message : 'No fue posible cargar el dashboard.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [contratoId, fecha]);
 
   const detail = useMemo(() => (dashboard?.detalle ?? []).filter((item) => (estado === 'TODOS' || item.estado === estado) && (modalidad === 'TODAS' || item.modalidad === modalidad)), [dashboard, estado, modalidad]);
   const selectedContract = contratos.find((item) => item.id === contratoId);

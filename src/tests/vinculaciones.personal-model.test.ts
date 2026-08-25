@@ -147,9 +147,10 @@ test('frontend diferencia manipuladoras y otros cargos en listado y expediente',
     'utf8'
   );
 
-  assert.match(drawerSource, /Asignación operativa/);
-  assert.match(drawerSource, /Asignación laboral/);
-  assert.match(drawerSource, /Presentada en licitación/);
-  assert.match(listSource, /Asignación actual/);
-  assert.match(listSource, /Licitación/);
+  assert.match(drawerSource, /personalContext\.es_manipuladora/);
+  assert.match(drawerSource, /asignacion_operativa_actual/);
+  assert.match(drawerSource, /asignacion_laboral_actual/);
+  assert.match(drawerSource, /label="Licitación"/);
+  assert.match(listSource, /item\.es_manipuladora/);
+  assert.match(listSource, /item\.presentada_licitacion_actual/);
 });

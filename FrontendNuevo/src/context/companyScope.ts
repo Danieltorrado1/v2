@@ -60,3 +60,21 @@ export function pickAvailableScopedId<T extends { id: string | number }>(
 
   return items[0] ? String(items[0].id) : null;
 }
+
+export function pickAuthorizedCompanyId<T extends { id: number }>(
+  companies: T[],
+  storedId: number | null | undefined,
+  defaultId: number | null | undefined,
+) {
+  const availableIds = new Set(companies.map((company) => company.id));
+
+  if (storedId !== null && storedId !== undefined && availableIds.has(storedId)) {
+    return storedId;
+  }
+
+  if (defaultId !== null && defaultId !== undefined && availableIds.has(defaultId)) {
+    return defaultId;
+  }
+
+  return companies[0]?.id ?? null;
+}

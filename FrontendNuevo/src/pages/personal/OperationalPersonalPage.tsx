@@ -226,9 +226,27 @@ export default function OperationalPersonalPage() {
     : null;
 
   useEffect(() => {
+    setContratos([]);
+    setContratoId(null);
+    setCargos([]);
+    setGestorId("");
+    setSinGestorOnly(false);
+    setSearch("");
+    setMunicipioId("");
+    setInstitucionId("");
+    setSedeId("");
+    setModalidadId("");
+    setUbicacionId("");
+    setCargoId("");
+    setEstadoFiltro("");
+    setCoberturaFiltro("");
+    setLicitacionFiltro("");
+    setTableData(null);
+    setPersonalResumen(null);
+    setSelectedVinculacionId(null);
+    setSelectedExpediente(null);
+
     if (!canReadContext || !empresaId) {
-      setContratos([]);
-      setContratoId(null);
       return;
     }
 

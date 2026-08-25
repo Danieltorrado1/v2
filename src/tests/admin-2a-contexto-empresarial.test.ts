@@ -80,7 +80,18 @@ test('CompanyContext centraliza empresa y organizacion con persistencia por loca
   assert.match(source, /empresasDisponibles/);
   assert.match(source, /setEmpresaActual/);
   assert.match(source, /window\.localStorage\.setItem/);
-  assert.match(source, /nextCompanies\[0\]\?\.id \?\? null/);
+  assert.match(source, /pickAuthorizedCompanyId/);
+});
+
+test('CompanyContext ignora preferencia no autorizada y conserva fallback seguro', () => {
+  const source = readFileSync(
+    path.join(root, 'FrontendNuevo/src/context/companyScope.ts'),
+    'utf8'
+  );
+
+  assert.match(source, /availableIds\.has\(storedId\)/);
+  assert.match(source, /availableIds\.has\(defaultId\)/);
+  assert.match(source, /companies\[0\]\?\.id \?\? null/);
 });
 
 test('topbar solo muestra selector cuando hay multiples empresas y etiqueta discreta con una', () => {
@@ -107,4 +118,21 @@ test('cobertura reutiliza el contexto central de empresa y evita selects locales
   assert.doesNotMatch(herramientasSource, /window\.location\.reload/);
   assert.match(dashboardSource, /useCompanyContext/);
   assert.match(dashboardSource, /setEmpresaActual/);
+  assert.match(dashboardSource, /setDashboard\(null\)/);
+  assert.match(dashboardSource, /setHistory\(\[\]\)/);
+  assert.match(dashboardSource, /cancelled = true/);
+});
+
+test('Personal limpia contrato, filtros y datos al cambiar empresa', () => {
+  const source = readFileSync(
+    path.join(root, 'FrontendNuevo/src/pages/personal/OperationalPersonalPage.tsx'),
+    'utf8'
+  );
+
+  assert.match(source, /setContratoId\(null\)/);
+  assert.match(source, /setGestorId\(""\)/);
+  assert.match(source, /setMunicipioId\(""\)/);
+  assert.match(source, /setInstitucionId\(""\)/);
+  assert.match(source, /setSedeId\(""\)/);
+  assert.match(source, /setTableData\(null\)/);
 });
