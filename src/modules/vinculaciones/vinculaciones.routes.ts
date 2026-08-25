@@ -4,7 +4,14 @@ import { authMiddleware } from '../../middlewares/authMiddleware';
 import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
 import { requireAnyPermissions, requirePermissions } from '../../middlewares/roleMiddleware';
 import {
+  closeGestorMunicipioAssignmentHandler,
+  closeGestorPersonalAssignmentHandler,
+  createGestorMunicipioAssignmentHandler,
   createVinculacionHandler,
+  getGestorAssignmentWorkspaceHandler,
+  getGestorPersonalHistoryHandler,
+  listGestoresHandler,
+  listGestorMunicipiosHandler,
   getContractPersonalHandler,
   getPersonalResumenHandler,
   getContractPersonalFilterOptionsHandler,
@@ -16,6 +23,7 @@ import {
   getVinculacionesByPersona,
   reactivarVinculacionHandler,
   retirarVinculacionHandler,
+  saveGestorAssignmentsHandler,
   suspenderVinculacionHandler,
   updateVinculacionHandler
 } from './vinculaciones.controller';
@@ -39,6 +47,15 @@ vinculacionesRoutes.use(tenantMiddleware);
 vinculacionesRoutes.get('/ops/catalogos', requirePermissions('vinculaciones.read'), getOpsCatalogosHandler);
 vinculacionesRoutes.get('/ops', requirePermissions('vinculaciones.read'), getOpsVinculacionesHandler);
 vinculacionesRoutes.get('/personal/resumen', requirePermissions('vinculaciones.read'), getPersonalResumenHandler);
+
+vinculacionesRoutes.get('/gestores', requirePermissions('vinculaciones.read'), listGestoresHandler);
+vinculacionesRoutes.get('/gestores/municipios', requirePermissions('vinculaciones.read'), listGestorMunicipiosHandler);
+vinculacionesRoutes.get('/gestores/workspace', requirePermissions('vinculaciones.read'), getGestorAssignmentWorkspaceHandler);
+vinculacionesRoutes.get('/gestores/personal/historial', requirePermissions('vinculaciones.read'), getGestorPersonalHistoryHandler);
+vinculacionesRoutes.post('/gestores/municipios', requirePermissions('vinculaciones.update'), createGestorMunicipioAssignmentHandler);
+vinculacionesRoutes.patch('/gestores/municipios/:id/cerrar', requirePermissions('vinculaciones.update'), closeGestorMunicipioAssignmentHandler);
+vinculacionesRoutes.post('/gestores/personal', requirePermissions('vinculaciones.update'), saveGestorAssignmentsHandler);
+vinculacionesRoutes.patch('/gestores/personal/:id/cerrar', requirePermissions('vinculaciones.update'), closeGestorPersonalAssignmentHandler);
 
 vinculacionesRoutes.get('/personal/opciones', requirePermissions('vinculaciones.read'), getContractPersonalFilterOptionsHandler);
 vinculacionesRoutes.get('/personal', requirePermissions('vinculaciones.read'), getContractPersonalHandler);

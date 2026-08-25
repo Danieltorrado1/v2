@@ -53,3 +53,48 @@ test('updateNominaNovedadSchema permite editar documento_persona_id y codigo', (
   assert.equal(parsed.tipo_novedad_codigo, 'PR4');
   assert.equal(parsed.documento_persona_id, '99');
 });
+
+test('createNominaNovedadSchema acepta cobertura sin reemplazo', () => {
+  const parsed = createNominaNovedadSchema.parse({
+    periodo_id: '1',
+    nomina_empleado_id: '2',
+    vinculacion_id: '3',
+    tipo_novedad_codigo: 'PR1',
+    cobertura: {
+      tipo_cobertura: 'SIN_REEMPLAZO',
+      observacion_interna: 'No aplica reemplazo'
+    }
+  });
+
+  assert.equal(parsed.cobertura?.tipo_cobertura, 'SIN_REEMPLAZO');
+});
+
+test('createNominaNovedadSchema exige persona y vinculacion para cobertura vinculada', () => {
+  assert.throws(
+    () =>
+      createNominaNovedadSchema.parse({
+        periodo_id: '1',
+        nomina_empleado_id: '2',
+        vinculacion_id: '3',
+        tipo_novedad_codigo: 'PR2',
+        cobertura: {
+          tipo_cobertura: 'PERSONAL_VINCULADO',
+          persona_cubre_id: '88'
+        }
+      }),
+    /vinculacion_cubre_id is required/
+  );
+});
+
+test('updateNominaNovedadSchema exige nombre y documento para cobertura externa', () => {
+  assert.throws(
+    () =>
+      updateNominaNovedadSchema.parse({
+        cobertura: {
+          tipo_cobertura: 'PERSONA_EXTERNA',
+          nombre_externo: 'Apoyo temporal'
+        }
+      }),
+    /documento_externo is required/
+  );
+});

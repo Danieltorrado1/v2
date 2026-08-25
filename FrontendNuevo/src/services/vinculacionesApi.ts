@@ -5,7 +5,13 @@ import type {
   ContractPersonalFilters,
   ContractPersonalListResponse,
   ContractPersonalFilterOptions,
+  GestorAssignmentUser,
+  GestorAssignmentWorkspace,
+  GestorMunicipioAssignment,
+  GestorPersonalAssignment,
   PersonalResumen,
+  SaveGestorAssignmentsPayload,
+  SaveGestorAssignmentsResult,
   VinculacionFilters,
   VinculacionListResponse,
   CreateVinculacionPayload,
@@ -56,6 +62,8 @@ export async function getContractPersonal(
     ubicacion_laboral_id: filters.ubicacion_laboral_id,
     cobertura: filters.cobertura,
     licitacion: filters.licitacion,
+    gestor_usuario_id: filters.gestor_usuario_id,
+    sin_gestor: filters.sin_gestor,
   };
   const res = await apiClient.get<ApiResponse<ContractPersonalListResponse>>('/vinculaciones/personal', {
     params,
@@ -69,6 +77,117 @@ export async function getPersonalResumen(filters: { contrato_id: number; fecha?:
 }
 export async function getContractPersonalFilterOptions(filters: { contrato_id: number; municipio_id?: number; institucion_id?: number; sede_id?: number; fecha?: string }): Promise<ContractPersonalFilterOptions> {
   const res = await apiClient.get<ApiResponse<ContractPersonalFilterOptions>>('/vinculaciones/personal/opciones', { params: filters });
+  return res.data;
+}
+
+export async function listGestores(filters: {
+  contrato_id: number;
+  gestor_usuario_id?: number;
+  fecha?: string;
+}): Promise<GestorAssignmentUser[]> {
+  const res = await apiClient.get<ApiResponse<GestorAssignmentUser[]>>('/vinculaciones/gestores', {
+    params: filters,
+  });
+  return res.data;
+}
+
+export async function getGestorMunicipios(filters: {
+  contrato_id: number;
+  gestor_usuario_id?: number;
+  fecha?: string;
+}): Promise<{
+  fecha_consulta: string;
+  gestor_usuario_id: number | null;
+  gestores: GestorAssignmentUser[];
+  items: GestorMunicipioAssignment[];
+}> {
+  const res = await apiClient.get<
+    ApiResponse<{
+      fecha_consulta: string;
+      gestor_usuario_id: number | null;
+      gestores: GestorAssignmentUser[];
+      items: GestorMunicipioAssignment[];
+    }>
+  >('/vinculaciones/gestores/municipios', {
+    params: filters,
+  });
+  return res.data;
+}
+
+export async function getGestorAssignmentWorkspace(filters: {
+  contrato_id: number;
+  gestor_usuario_id?: number;
+  municipio_id?: number;
+  search?: string;
+  fecha?: string;
+}): Promise<GestorAssignmentWorkspace> {
+  const res = await apiClient.get<ApiResponse<GestorAssignmentWorkspace>>('/vinculaciones/gestores/workspace', {
+    params: filters,
+  });
+  return res.data;
+}
+
+export async function createGestorMunicipioAssignment(payload: {
+  contrato_id: number;
+  gestor_usuario_id: number;
+  municipio_id: number;
+  vigencia_desde?: string;
+  observacion?: string | null;
+}): Promise<GestorMunicipioAssignment> {
+  const res = await apiClient.post<ApiResponse<GestorMunicipioAssignment>>('/vinculaciones/gestores/municipios', payload);
+  return res.data;
+}
+
+export async function closeGestorMunicipioAssignment(
+  id: number,
+  payload: { vigencia_hasta: string; observacion?: string | null }
+): Promise<GestorMunicipioAssignment> {
+  const res = await apiClient.patch<ApiResponse<GestorMunicipioAssignment>>(
+    `/vinculaciones/gestores/municipios/${id}/cerrar`,
+    payload
+  );
+  return res.data;
+}
+
+export async function saveGestorAssignments(
+  payload: SaveGestorAssignmentsPayload
+): Promise<SaveGestorAssignmentsResult> {
+  const res = await apiClient.post<ApiResponse<SaveGestorAssignmentsResult>>(
+    '/vinculaciones/gestores/personal',
+    payload
+  );
+  return res.data;
+}
+
+export async function closeGestorPersonalAssignment(
+  id: number,
+  payload: { vigencia_hasta: string; observacion?: string | null }
+): Promise<GestorPersonalAssignment> {
+  const res = await apiClient.patch<ApiResponse<GestorPersonalAssignment>>(
+    `/vinculaciones/gestores/personal/${id}/cerrar`,
+    payload
+  );
+  return res.data;
+}
+
+export async function getGestorPersonalHistory(filters: {
+  contrato_id: number;
+  vinculacion_id: number;
+  fecha?: string;
+}): Promise<{
+  fecha_consulta: string;
+  historial: GestorPersonalAssignment[];
+  vinculacion_id: number;
+}> {
+  const res = await apiClient.get<
+    ApiResponse<{
+      fecha_consulta: string;
+      historial: GestorPersonalAssignment[];
+      vinculacion_id: number;
+    }>
+  >('/vinculaciones/gestores/personal/historial', {
+    params: filters,
+  });
   return res.data;
 }
 

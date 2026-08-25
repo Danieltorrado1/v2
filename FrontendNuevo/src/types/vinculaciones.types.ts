@@ -39,6 +39,8 @@ export interface ContractPersonalFilters {
   contrato_id: number;
   contrato_cargo_id?: number;
   estado_vinculacion?: VinculacionEstado;
+  gestor_usuario_id?: number;
+  sin_gestor?: boolean;
   search?: string;
   page?: number;
   limit?: number;
@@ -59,6 +61,10 @@ export interface ContractPersonalListItem {
   numero_documento: string;
   nombre_completo: string;
   es_manipuladora: boolean;
+  gestor_actual: {
+    nombre: string | null;
+    usuario_id: number | null;
+  } | null;
   cargo: {
     nombre_cargo: string | null;
   };
@@ -133,9 +139,95 @@ export interface ReactivarVinculacionPayload {
 }
 
 export interface ContractPersonalFilterOptions {
+  gestores: Array<{ id: number; nombre: string; roles: string[] }>;
   municipios: Array<{ id: number; nombre: string }>;
   instituciones: Array<{ id: number; nombre: string; municipio_id: number | null }>;
   sedes: Array<{ id: number; nombre: string; institucion_id: number | null }>;
   modalidades: Array<{ id: number; codigo: string | null; nombre: string }>;
   ubicaciones_laborales: Array<{ id: number; nombre: string }>;
+}
+
+export interface GestorAssignmentUser {
+  activo: boolean;
+  id: number;
+  nombre: string;
+  roles: string[];
+}
+
+export interface GestorMunicipioAssignment {
+  activo: boolean;
+  contrato_id: number;
+  created_at: string;
+  created_by_user_id: number | null;
+  gestor: {
+    id: number;
+    nombre: string | null;
+  };
+  id: number;
+  municipio: {
+    id: number;
+    nombre: string | null;
+  };
+  observacion: string | null;
+  updated_at: string;
+  updated_by_user_id: number | null;
+  vigencia_desde: string;
+  vigencia_hasta: string | null;
+}
+
+export interface GestorPersonalAssignment {
+  activo: boolean;
+  contrato_id: number;
+  created_at: string;
+  created_by_user_id: number | null;
+  gestor: {
+    id: number;
+    nombre: string | null;
+  };
+  id: number;
+  municipio: {
+    id: number | null;
+    nombre: string | null;
+  } | null;
+  observacion: string | null;
+  trabajador: {
+    documento: string | null;
+    nombre_completo: string | null;
+    vinculacion_id: number;
+  };
+  updated_at: string;
+  updated_by_user_id: number | null;
+  vigencia_desde: string;
+  vigencia_hasta: string | null;
+}
+
+export interface GestorAssignmentWorkspace {
+  fecha_consulta: string;
+  gestor_seleccionado_id: number | null;
+  gestores: GestorAssignmentUser[];
+  items: ContractPersonalListItem[];
+  municipio_seleccionado_id: number | null;
+  municipios: Array<{ id: number; nombre: string }>;
+  resumen: {
+    asignados_a_gestor: number;
+    sin_gestor: number;
+    total_trabajadores: number;
+  };
+}
+
+export interface SaveGestorAssignmentsPayload {
+  contrato_id: number;
+  gestor_usuario_id: number;
+  municipio_id: number;
+  fecha?: string;
+  vinculacion_ids: number[];
+  observacion?: string | null;
+}
+
+export interface SaveGestorAssignmentsResult {
+  asignados: number;
+  desasignados: number;
+  fecha_efectiva: string;
+  gestor_usuario_id: number;
+  municipio_id: number;
 }

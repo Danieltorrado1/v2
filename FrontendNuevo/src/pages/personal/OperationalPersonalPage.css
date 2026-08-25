@@ -319,7 +319,7 @@
 
 .op-primary-filters {
   display: grid;
-  grid-template-columns: 1.05fr 1.45fr 1.15fr 0.9fr 1.3fr 0.85fr;
+  grid-template-columns: 1fr 1.05fr 1.45fr 1.15fr 0.9fr 1.3fr 0.85fr;
   gap: 8px;
   margin-top: 9px;
 }
@@ -412,6 +412,51 @@
   gap: 7px;
   padding: 12px 14px;
   border-radius: 18px;
+}
+
+.op-management-card {
+  gap: 14px;
+}
+
+.op-management-copy {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.op-management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.op-management-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.op-management-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+}
+
+.op-management-item strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+}
+
+.op-management-item small {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
 }
 
 .op-table-meta {
@@ -686,6 +731,11 @@
   color: var(--success-text, var(--color-accent));
   font-size: 0.68rem;
   font-weight: 700;
+}
+
+.op-button.ghost {
+  background: transparent;
+  border-color: var(--border-color);
 }
 
 .op-offer-cell .op-badge {

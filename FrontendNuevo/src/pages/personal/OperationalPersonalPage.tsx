@@ -14,9 +14,13 @@ import { useAuth } from "../../context/AuthContext";
 import { ApiClientError } from "../../services/apiClient";
 import { configuracionApi } from "../../services/configuracionApi";
 import {
+  closeGestorMunicipioAssignment,
+  createGestorMunicipioAssignment,
   getContractPersonal,
   getContractPersonalFilterOptions,
+  getGestorMunicipios,
   getPersonalResumen,
+  saveGestorAssignments,
   getVinculacionExpediente,
 } from "../../services/vinculacionesApi";
 import type { CatalogoItem, Contrato } from "../../types/configuracion.types";
@@ -37,6 +41,15 @@ import PersonalExportModal from "./PersonalExportModal";
 import OperationalImportModal from "./OperationalImportModal";
 import "./OperationalPersonalPage.css";
 
+const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
+  gestores: [],
+  municipios: [],
+  instituciones: [],
+  sedes: [],
+  modalidades: [],
+  ubicaciones_laborales: [],
+};
+
 const DEFAULT_PAGE_SIZE = 50;
 const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
@@ -44,6 +57,10 @@ type PersonalRow = {
   vinculacion_id: number;
   numero_documento: string;
   nombre_completo: string;
+  gestor_actual: {
+    nombre: string | null;
+    usuario_id: number | null;
+  } | null;
   cargo_nombre: string | null;
   estado_vinculacion: VinculacionEstado;
   fecha_ingreso: string;
@@ -123,6 +140,7 @@ export default function OperationalPersonalPage() {
   ]);
   const canReadPersonal = permissions.includes("vinculaciones.read");
   const canCreateVinculacion = permissions.includes("vinculaciones.create");
+  const canManageGestores = permissions.includes("vinculaciones.update");
   const canPrepareImport = permissions.includes("importaciones.preparar");
   const canApplyImport = permissions.includes("importaciones.aplicar");
   const canExportPersonal = permissions.includes("exportaciones.generar");
@@ -138,6 +156,8 @@ export default function OperationalPersonalPage() {
   const [estadoFiltro, setEstadoFiltro] = useState<"" | VinculacionEstado>("");
   const [search, setSearch] = useState("");
   const [fechaConsulta, setFechaConsulta] = useState(() => new Date().toISOString().slice(0, 10));
+  const [gestorId, setGestorId] = useState("");
+  const [sinGestorOnly, setSinGestorOnly] = useState(false);
   const [municipioId, setMunicipioId] = useState("");
   const [institucionId, setInstitucionId] = useState("");
   const [sedeId, setSedeId] = useState("");
@@ -146,17 +166,22 @@ export default function OperationalPersonalPage() {
   const [coberturaFiltro, setCoberturaFiltro] = useState<"" | "SI" | "NO" | "RETIRADA">("");
   const [licitacionFiltro, setLicitacionFiltro] = useState<"" | "PRESENTADA" | "NO_PRESENTADA">("");
   const [filterOptions, setFilterOptions] = useState<ContractPersonalFilterOptions>({
-    municipios: [],
-    instituciones: [],
-    sedes: [],
-    modalidades: [],
-    ubicaciones_laborales: [],
+    ...EMPTY_FILTER_OPTIONS,
   });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [personalResumen, setPersonalResumen] = useState<PersonalResumen | null>(null);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [assignmentGestorId, setAssignmentGestorId] = useState("");
+  const [assignmentMunicipioId, setAssignmentMunicipioId] = useState("");
+  const [assignmentObservacion, setAssignmentObservacion] = useState("");
+  const [managementLoading, setManagementLoading] = useState(false);
+  const [managementError, setManagementError] = useState("");
+  const [managementFeedback, setManagementFeedback] = useState("");
+  const [gestorMunicipioItems, setGestorMunicipioItems] = useState<
+    Awaited<ReturnType<typeof getGestorMunicipios>>["items"]
+  >([]);
 
   const [tableData, setTableData] = useState<PersonalTableData | null>(null);
   const [tableLoading, setTableLoading] = useState(false);
@@ -174,10 +199,12 @@ export default function OperationalPersonalPage() {
   const contratoSeleccionado =
     contratos.find((contrato) => contrato.id === contratoId) ?? null;
   const currentFilters: ContractPersonalFilters | null = contratoId
-    ? {
+      ? {
         contrato_id: contratoId,
         contrato_cargo_id: cargoId ? Number(cargoId) : undefined,
         estado_vinculacion: estadoFiltro || undefined,
+        gestor_usuario_id: gestorId ? Number(gestorId) : undefined,
+        sin_gestor: sinGestorOnly || undefined,
         search: searchValue || undefined,
         fecha: fechaConsulta,
         municipio_id: municipioId ? Number(municipioId) : undefined,
@@ -310,13 +337,7 @@ export default function OperationalPersonalPage() {
 
   useEffect(() => {
     if (!contratoId) {
-      setFilterOptions({
-        municipios: [],
-        instituciones: [],
-        sedes: [],
-        modalidades: [],
-        ubicaciones_laborales: [],
-      });
+      setFilterOptions(EMPTY_FILTER_OPTIONS);
       return;
     }
 
@@ -353,13 +374,7 @@ export default function OperationalPersonalPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          setFilterOptions({
-            municipios: [],
-            instituciones: [],
-            sedes: [],
-            modalidades: [],
-            ubicaciones_laborales: [],
-          });
+          setFilterOptions(EMPTY_FILTER_OPTIONS);
         }
       });
     return () => {
@@ -406,6 +421,8 @@ export default function OperationalPersonalPage() {
           contrato_id: currentContratoId,
           contrato_cargo_id: cargoId ? Number(cargoId) : undefined,
           estado_vinculacion: estadoFiltro || undefined,
+          gestor_usuario_id: gestorId ? Number(gestorId) : undefined,
+          sin_gestor: sinGestorOnly || undefined,
           search: searchValue || undefined,
           fecha: fechaConsulta,
           municipio_id: municipioId ? Number(municipioId) : undefined,
@@ -426,6 +443,7 @@ export default function OperationalPersonalPage() {
             vinculacion_id: item.vinculacion_id,
             numero_documento: item.numero_documento,
             nombre_completo: item.nombre_completo,
+            gestor_actual: item.gestor_actual,
             cargo_nombre: item.cargo.nombre_cargo,
             estado_vinculacion: item.estado_vinculacion,
             fecha_ingreso: item.fecha_ingreso,
@@ -468,6 +486,8 @@ export default function OperationalPersonalPage() {
     cargoId,
     contratoId,
     estadoFiltro,
+    gestorId,
+    sinGestorOnly,
     page,
     pageSize,
     refreshIndex,
@@ -529,6 +549,8 @@ export default function OperationalPersonalPage() {
     contratoId,
     empresaId,
     estadoFiltro,
+    gestorId,
+    sinGestorOnly,
     fechaConsulta,
     pageSize,
     searchValue,
@@ -544,6 +566,37 @@ export default function OperationalPersonalPage() {
   useEffect(() => {
     setSelectedVinculacionIds([]);
   }, [contratoId]);
+
+  useEffect(() => {
+    if (!contratoId || !assignmentGestorId) {
+      setGestorMunicipioItems([]);
+      return;
+    }
+
+    let cancelled = false;
+    void getGestorMunicipios({
+      contrato_id: contratoId,
+      gestor_usuario_id: Number(assignmentGestorId),
+      fecha: fechaConsulta,
+    })
+      .then((response) => {
+        if (!cancelled) {
+          setGestorMunicipioItems(response.items);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setManagementError(
+            getErrorMessage(error, "No fue posible cargar los municipios asignados al gestor."),
+          );
+          setGestorMunicipioItems([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [assignmentGestorId, contratoId, fechaConsulta, refreshIndex]);
 
   function buildManagementUrl(openAdd = false): string {
     const params = new URLSearchParams();
@@ -591,10 +644,12 @@ export default function OperationalPersonalPage() {
     });
   }
 
-  const activeFilterCount = [ubicacionId, coberturaFiltro, licitacionFiltro].filter(Boolean).length;
+  const activeFilterCount = [gestorId || sinGestorOnly, ubicacionId, coberturaFiltro, licitacionFiltro].filter(Boolean).length;
 
   const clearFilters = () => {
     setSearch("");
+    setGestorId("");
+    setSinGestorOnly(false);
     setMunicipioId("");
     setInstitucionId("");
     setSedeId("");
@@ -606,6 +661,82 @@ export default function OperationalPersonalPage() {
     setEstadoFiltro("");
     setPage(1);
   };
+
+  async function handleAssignMunicipioToGestor() {
+    if (!contratoId || !assignmentGestorId || !assignmentMunicipioId) {
+      setManagementError("Debes seleccionar gestor y municipio.");
+      return;
+    }
+
+    setManagementLoading(true);
+    setManagementError("");
+    setManagementFeedback("");
+
+    try {
+      await createGestorMunicipioAssignment({
+        contrato_id: contratoId,
+        gestor_usuario_id: Number(assignmentGestorId),
+        municipio_id: Number(assignmentMunicipioId),
+        vigencia_desde: fechaConsulta,
+        observacion: assignmentObservacion.trim() || null,
+      });
+      setManagementFeedback("Municipio asignado al gestor.");
+      setRefreshIndex((current) => current + 1);
+    } catch (error) {
+      setManagementError(getErrorMessage(error, "No fue posible registrar la asignación municipal."));
+    } finally {
+      setManagementLoading(false);
+    }
+  }
+
+  async function handleAssignSelectedWorkers() {
+    if (!contratoId || !assignmentGestorId || !assignmentMunicipioId || selectedVinculacionIds.length === 0) {
+      setManagementError("Debes seleccionar gestor, municipio y al menos un trabajador.");
+      return;
+    }
+
+    setManagementLoading(true);
+    setManagementError("");
+    setManagementFeedback("");
+
+    try {
+      const result = await saveGestorAssignments({
+        contrato_id: contratoId,
+        gestor_usuario_id: Number(assignmentGestorId),
+        municipio_id: Number(assignmentMunicipioId),
+        fecha: fechaConsulta,
+        vinculacion_ids: selectedVinculacionIds,
+        observacion: assignmentObservacion.trim() || null,
+      });
+      setManagementFeedback(
+        `Asignados ${result.asignados} trabajadores. Reasignados desde historial vigente: ${result.desasignados}.`,
+      );
+      setRefreshIndex((current) => current + 1);
+    } catch (error) {
+      setManagementError(getErrorMessage(error, "No fue posible asignar los trabajadores al gestor."));
+    } finally {
+      setManagementLoading(false);
+    }
+  }
+
+  async function handleCloseMunicipioAssignment(assignmentId: number) {
+    setManagementLoading(true);
+    setManagementError("");
+    setManagementFeedback("");
+
+    try {
+      await closeGestorMunicipioAssignment(assignmentId, {
+        vigencia_hasta: fechaConsulta,
+        observacion: assignmentObservacion.trim() || null,
+      });
+      setManagementFeedback("Asignación municipal cerrada.");
+      setRefreshIndex((current) => current + 1);
+    } catch (error) {
+      setManagementError(getErrorMessage(error, "No fue posible cerrar la asignación municipal."));
+    } finally {
+      setManagementLoading(false);
+    }
+  }
 
   if (!canReadContext || !canReadPersonal) {
     return (
@@ -750,6 +881,32 @@ export default function OperationalPersonalPage() {
         </div>
 
         <div className="op-primary-filters">
+          <label className="op-filter">
+            <span><EmpiriaIcon name="personal" size={13} /> Gestor</span>
+            <select
+              value={sinGestorOnly ? "sin_gestor" : gestorId}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                if (nextValue === "sin_gestor") {
+                  setSinGestorOnly(true);
+                  setGestorId("");
+                  return;
+                }
+
+                setSinGestorOnly(false);
+                setGestorId(nextValue);
+              }}
+              disabled={!contratoId}
+            >
+              <option value="">Todos</option>
+              <option value="sin_gestor">Sin gestor</option>
+              {filterOptions.gestores.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="op-filter">
             <span><EmpiriaIcon name="municipio" size={13} /> Municipio</span>
             <select
@@ -913,6 +1070,8 @@ export default function OperationalPersonalPage() {
         )}
 
         {(searchValue ||
+          gestorId ||
+          sinGestorOnly ||
           municipioId ||
           institucionId ||
           sedeId ||
@@ -927,6 +1086,17 @@ export default function OperationalPersonalPage() {
             {searchValue && (
               <button type="button" onClick={() => setSearch("")}>
                 Busqueda: {searchValue} ×
+              </button>
+            )}
+            {(gestorId || sinGestorOnly) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setGestorId("");
+                  setSinGestorOnly(false);
+                }}
+              >
+                {sinGestorOnly ? "Sin gestor" : "Gestor"} Ã—
               </button>
             )}
             {municipioId && (
@@ -986,6 +1156,104 @@ export default function OperationalPersonalPage() {
           </div>
         )}
       </section>
+
+      {canManageGestores && contratoId && (
+        <section className="op-table-card op-management-card">
+          <div className="op-table-meta">
+            <div>
+              <span className="op-count-inline">Asignacion de gestores</span>
+              <p className="op-management-copy">
+                La asignación municipal delimita alcance. La asignación individual resuelve municipios compartidos y preserva histórico por vigencia.
+              </p>
+            </div>
+            <span className="op-selected-pill">{selectedVinculacionIds.length} seleccionados</span>
+          </div>
+
+          <div className="op-primary-filters">
+            <label className="op-filter">
+              <span>Gestor destino</span>
+              <select
+                value={assignmentGestorId}
+                onChange={(event) => setAssignmentGestorId(event.target.value)}
+              >
+                <option value="">Seleccionar</option>
+                {filterOptions.gestores.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="op-filter">
+              <span>Municipio</span>
+              <select
+                value={assignmentMunicipioId}
+                onChange={(event) => setAssignmentMunicipioId(event.target.value)}
+              >
+                <option value="">Seleccionar</option>
+                {filterOptions.municipios.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="op-filter">
+              <span>Observacion</span>
+              <input
+                value={assignmentObservacion}
+                onChange={(event) => setAssignmentObservacion(event.target.value)}
+                placeholder="Motivo o contexto"
+              />
+            </label>
+          </div>
+
+          <div className="op-management-actions">
+            <button
+              type="button"
+              className="op-button secondary"
+              onClick={() => void handleAssignMunicipioToGestor()}
+              disabled={managementLoading || !assignmentGestorId || !assignmentMunicipioId}
+            >
+              Registrar municipio
+            </button>
+            <button
+              type="button"
+              className="op-button primary"
+              onClick={() => void handleAssignSelectedWorkers()}
+              disabled={managementLoading || !assignmentGestorId || !assignmentMunicipioId || selectedVinculacionIds.length === 0}
+            >
+              {managementLoading ? "Guardando..." : "Asignar seleccionados"}
+            </button>
+          </div>
+
+          {managementError ? <div className="op-state error">{managementError}</div> : null}
+          {managementFeedback ? <div className="op-state success">{managementFeedback}</div> : null}
+
+          {gestorMunicipioItems.length > 0 ? (
+            <div className="op-management-list">
+              {gestorMunicipioItems.map((item) => (
+                <div key={item.id} className="op-management-item">
+                  <div>
+                    <strong>{item.municipio.nombre ?? `Municipio ${item.municipio.id}`}</strong>
+                    <small>
+                      {item.vigencia_desde} · {item.vigencia_hasta ?? "vigente"}
+                    </small>
+                  </div>
+                  <button
+                    type="button"
+                    className="op-button ghost"
+                    onClick={() => void handleCloseMunicipioAssignment(item.id)}
+                    disabled={managementLoading}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      )}
 
       <section className="op-table-card">
         <div className="op-table-meta">
@@ -1104,6 +1372,7 @@ export default function OperationalPersonalPage() {
                               {item.asignacion_actual.modalidad && (
                                 <span className="op-assignment-status">Cobertura si</span>
                               )}
+                              <small>Gestor: {item.gestor_actual?.nombre ?? "Sin gestor"}</small>
                             </>
                           ) : (
                             <>
@@ -1111,6 +1380,7 @@ export default function OperationalPersonalPage() {
                                 {item.asignacion_actual.nombre ?? "Sin ubicacion laboral"}
                               </strong>
                               <small>Personal administrativo</small>
+                              <small>Gestor: {item.gestor_actual?.nombre ?? "Sin gestor"}</small>
                             </>
                           )}
                         </div>

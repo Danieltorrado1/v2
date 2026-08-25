@@ -135,6 +135,8 @@ export const listContractPersonalQuerySchema = z.object({
   cobertura: z.enum(["SI", "NO", "RETIRADA"]).optional(),
   licitacion: z.enum(["PRESENTADA", "NO_PRESENTADA"]).optional(),
   estado_vinculacion: vinculacionEstadoSchema.optional(),
+  gestor_usuario_id: nullableNumericIdSchema.optional(),
+  sin_gestor: nullableBooleanSchema.optional(),
   search: nullableTrimmedString.optional(),
   fecha: z.string().date().optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -143,6 +145,55 @@ export const listContractPersonalQuerySchema = z.object({
 
 export const personalResumenQuerySchema = z.object({
   contrato_id: numericIdSchema.transform((value) => Number(value)),
+  fecha: z.string().date().optional()
+});
+
+export const gestorAssignmentWorkspaceQuerySchema = z.object({
+  contrato_id: numericIdSchema.transform((value) => Number(value)),
+  gestor_usuario_id: nullableNumericIdSchema.optional(),
+  municipio_id: nullableNumericIdSchema.optional(),
+  search: nullableTrimmedString.optional(),
+  fecha: z.string().date().optional()
+});
+
+export const listGestorMunicipiosQuerySchema = z.object({
+  contrato_id: numericIdSchema.transform((value) => Number(value)),
+  gestor_usuario_id: nullableNumericIdSchema.optional(),
+  fecha: z.string().date().optional()
+});
+
+export const saveGestorAssignmentsSchema = z.object({
+  contrato_id: numericIdSchema.transform((value) => Number(value)),
+  gestor_usuario_id: numericIdSchema.transform((value) => Number(value)),
+  municipio_id: numericIdSchema.transform((value) => Number(value)),
+  fecha: z.string().date().optional(),
+  vinculacion_ids: z
+    .array(numericIdSchema.transform((value) => Number(value)))
+    .max(5000)
+    .default([]),
+  observacion: nullableTrimmedString.optional().default(null)
+});
+
+export const createGestorMunicipioAssignmentSchema = z.object({
+  contrato_id: numericIdSchema.transform((value) => Number(value)),
+  gestor_usuario_id: numericIdSchema.transform((value) => Number(value)),
+  municipio_id: numericIdSchema.transform((value) => Number(value)),
+  vigencia_desde: z.string().date().optional(),
+  observacion: nullableTrimmedString.optional().default(null)
+});
+
+export const closeGestorAssignmentSchema = z.object({
+  vigencia_hasta: z.string().date(),
+  observacion: nullableTrimmedString.optional().default(null)
+});
+
+export const gestorAssignmentIdParamSchema = z.object({
+  id: z.coerce.number().int()
+});
+
+export const gestorPersonalHistoryQuerySchema = z.object({
+  contrato_id: numericIdSchema.transform((value) => Number(value)),
+  vinculacion_id: numericIdSchema.transform((value) => Number(value)),
   fecha: z.string().date().optional()
 });
 
@@ -202,6 +253,13 @@ export type ListVinculacionesQuery = z.infer<typeof listVinculacionesQuerySchema
 export type ListOpsVinculacionesQuery = z.infer<typeof listOpsVinculacionesQuerySchema>;
 export type ListContractPersonalQuery = z.infer<typeof listContractPersonalQuerySchema>;
 export type PersonalResumenQuery = z.infer<typeof personalResumenQuerySchema>;
+export type GestorAssignmentWorkspaceQuery = z.infer<typeof gestorAssignmentWorkspaceQuerySchema>;
+export type ListGestorMunicipiosQuery = z.infer<typeof listGestorMunicipiosQuerySchema>;
+export type SaveGestorAssignmentsInput = z.infer<typeof saveGestorAssignmentsSchema>;
+export type CreateGestorMunicipioAssignmentInput = z.infer<typeof createGestorMunicipioAssignmentSchema>;
+export type CloseGestorAssignmentInput = z.infer<typeof closeGestorAssignmentSchema>;
+export type GestorAssignmentIdParams = z.infer<typeof gestorAssignmentIdParamSchema>;
+export type GestorPersonalHistoryQuery = z.infer<typeof gestorPersonalHistoryQuerySchema>;
 export type CreateVinculacionInput = z.infer<typeof createVinculacionSchema>;
 export type UpdateVinculacionInput = z.infer<typeof updateVinculacionSchema>;
 export type RetirarVinculacionInput = z.infer<typeof retirarVinculacionSchema>;

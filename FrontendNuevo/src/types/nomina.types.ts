@@ -456,6 +456,8 @@ export interface CreateNominaPeriodoApi {
 export interface NominaPeriodoEmpleadosQuery {
   contrato_id?: string;
   empresa_id?: string;
+  gestor_usuario_id?: string;
+  sin_gestor?: boolean;
   vinculacion_id?: string;
   persona_id?: string;
   estado?: string;
@@ -510,6 +512,18 @@ export interface NominaEmpleadoApi {
   id: string;
   periodo_id: string;
   vinculacion_id: string;
+  gestor?: {
+    id: string;
+    nombre_completo: string;
+  } | null;
+  contexto_operativo?: {
+    municipio: string | null;
+    institucion: string | null;
+    sede: string | null;
+    modalidad_id: string | null;
+    modalidad_codigo: string | null;
+    modalidad_descripcion: string | null;
+  } | null;
   metodo_liquidacion: string | null;
   salario_base: number;
   auxilio_transporte: number;
@@ -656,6 +670,23 @@ export interface NominaNovedadApi {
   created_at: string;
   requiere_cobertura: boolean;
   cubierta: boolean;
+  cobertura: {
+    documento_externo: string | null;
+    id: string;
+    nombre_externo: string | null;
+    observacion_externa: string | null;
+    observacion_interna: string | null;
+    persona_cubre: {
+      id: string | null;
+      nombre_completo: string | null;
+      numero_documento: string | null;
+      vinculacion_id: string | null;
+    } | null;
+    persona_cubre_id: string | null;
+    snapshot_cobertura: unknown;
+    tipo_cobertura: 'SIN_REEMPLAZO' | 'PERSONAL_VINCULADO' | 'PERSONA_EXTERNA';
+    vinculacion_cubre_id: string | null;
+  } | null;
   registro_tipo: 'ORDINARIA' | 'CANONICA_PROYECTADA';
   evento_canonico_id: string | null;
   tipo_novedad: NominaNovedadTipoApi;
@@ -686,6 +717,15 @@ export interface CreateNominaNovedadApi {
   revisado?: boolean;
   requiere_cobertura?: boolean;
   cubierta?: boolean;
+  cobertura?: {
+    tipo_cobertura: 'SIN_REEMPLAZO' | 'PERSONAL_VINCULADO' | 'PERSONA_EXTERNA';
+    persona_cubre_id?: string | null;
+    vinculacion_cubre_id?: string | null;
+    nombre_externo?: string | null;
+    documento_externo?: string | null;
+    observacion_externa?: string | null;
+    observacion_interna?: string | null;
+  } | null;
   activo?: boolean;
 }
 export interface CreateNominaNovedadConTurnoApi extends CreateNominaNovedadApi { turno: { tipo: 'INTERNO'|'EXTERNO'; contexto_operativo?: Record<string, unknown>; persona_reemplazada_id?: string|null; observacion?: string|null } }
@@ -707,6 +747,15 @@ export interface UpdateNominaNovedadApi {
   revisado?: boolean;
   requiere_cobertura?: boolean;
   cubierta?: boolean;
+  cobertura?: {
+    tipo_cobertura: 'SIN_REEMPLAZO' | 'PERSONAL_VINCULADO' | 'PERSONA_EXTERNA';
+    persona_cubre_id?: string | null;
+    vinculacion_cubre_id?: string | null;
+    nombre_externo?: string | null;
+    documento_externo?: string | null;
+    observacion_externa?: string | null;
+    observacion_interna?: string | null;
+  } | null;
   activo?: boolean;
 }
 

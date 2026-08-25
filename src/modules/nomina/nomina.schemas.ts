@@ -52,6 +52,11 @@ const paginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(10)
 });
 
+const payrollDatasetPaginationSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50000).default(5000)
+});
+
 export const tipoPeriodoSchema = z.enum(['PRIMERA_QUINCENA', 'SEGUNDA_QUINCENA', 'MENSUAL']);
 export const estadoPeriodoSchema = z.enum([
   'ABIERTO',
@@ -110,6 +115,11 @@ export const nominaMovimientoFamiliaSchema = z.enum([
   'GENERAL',
   'ADICION_DEVENGO',
   'CAMBIO_OPERATIVO'
+]);
+export const nominaNovedadCoberturaTipoSchema = z.enum([
+  'SIN_REEMPLAZO',
+  'PERSONAL_VINCULADO',
+  'PERSONA_EXTERNA'
 ]);
 export const nominaRecargoTipoSchema = z.enum([
   'HORA_EXTRA_DIURNA',
@@ -211,12 +221,14 @@ export const updateNominaPeriodoSchema = updateNominaPeriodoBaseSchema.superRefi
   }
 });
 
-export const listNominaEmpleadosQuerySchema = paginationSchema.extend({
+export const listNominaEmpleadosQuerySchema = payrollDatasetPaginationSchema.extend({
   contrato_id: nullableTrimmedStringSchema.optional(),
   empresa_id: nullableTrimmedStringSchema.optional(),
   vinculacion_id: nullableTrimmedStringSchema.optional(),
   persona_id: nullableTrimmedStringSchema.optional(),
   estado: nullableTrimmedStringSchema.optional(),
+  gestor_usuario_id: nullableTrimmedStringSchema.optional(),
+  sin_gestor: z.coerce.boolean().optional(),
   revisado: z.coerce.boolean().optional()
 });
 
@@ -259,7 +271,7 @@ export const listNominaLiquidacionesQuerySchema = paginationSchema.extend({
   estado: estadoLiquidacionSchema.optional()
 });
 
-export const listNominaNovedadesQuerySchema = paginationSchema.extend({
+export const listNominaNovedadesQuerySchema = payrollDatasetPaginationSchema.extend({
   periodo_id: identifierSchema.nullable().optional(),
   nomina_empleado_id: identifierSchema.nullable().optional(),
   vinculacion_id: identifierSchema.nullable().optional(),
@@ -292,12 +304,60 @@ export const listNominaMovimientosQuerySchema = paginationSchema.extend({
   activo: z.coerce.boolean().optional()
 });
 
-export const listNominaAsistenciaQuerySchema = paginationSchema.extend({
+export const listNominaAsistenciaQuerySchema = payrollDatasetPaginationSchema.extend({
   vinculacion_id: identifierSchema.nullable().optional(),
   fecha: nullableDateSchema.optional(),
   estado_dia: nominaAsistenciaEstadoSchema.optional(),
   activo: z.coerce.boolean().optional()
 });
+
+const nominaNovedadCoberturaSchema = z
+  .object({
+    tipo_cobertura: nominaNovedadCoberturaTipoSchema,
+    persona_cubre_id: identifierSchema.nullable().optional().default(null),
+    vinculacion_cubre_id: identifierSchema.nullable().optional().default(null),
+    nombre_externo: nullableTrimmedStringSchema.optional().default(null),
+    documento_externo: nullableTrimmedStringSchema.optional().default(null),
+    observacion_externa: nullableTrimmedStringSchema.optional().default(null),
+    observacion_interna: nullableTrimmedStringSchema.optional().default(null)
+  })
+  .superRefine((data, ctx) => {
+    if (data.tipo_cobertura === 'PERSONAL_VINCULADO') {
+      if (!data.persona_cubre_id) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'persona_cubre_id is required for PERSONAL_VINCULADO',
+          path: ['persona_cubre_id']
+        });
+      }
+
+      if (!data.vinculacion_cubre_id) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'vinculacion_cubre_id is required for PERSONAL_VINCULADO',
+          path: ['vinculacion_cubre_id']
+        });
+      }
+    }
+
+    if (data.tipo_cobertura === 'PERSONA_EXTERNA') {
+      if (!data.nombre_externo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'nombre_externo is required for PERSONA_EXTERNA',
+          path: ['nombre_externo']
+        });
+      }
+
+      if (!data.documento_externo) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'documento_externo is required for PERSONA_EXTERNA',
+          path: ['documento_externo']
+        });
+      }
+    }
+  });
 
 export const updateNominaAsistenciaSchema = z.object({
   hora_ingreso: nullableTimeSchema.optional(),
@@ -502,6 +562,7 @@ export const createNominaNovedadSchema = z.object({
   revisado: z.coerce.boolean().optional().default(false),
   requiere_cobertura: z.coerce.boolean().optional().default(false),
   cubierta: z.coerce.boolean().optional().default(false),
+  cobertura: nominaNovedadCoberturaSchema.nullable().optional().default(null),
   activo: z.boolean().optional().default(true)
 }).superRefine((data, ctx) => {
   if (!data.tipo_novedad_id && !data.tipo_novedad_codigo && !data.tipo_novedad_nombre) {
@@ -546,6 +607,7 @@ export const updateNominaNovedadSchema = z.object({
   revisado: z.coerce.boolean().optional(),
   requiere_cobertura: z.coerce.boolean().optional(),
   cubierta: z.coerce.boolean().optional(),
+  cobertura: nominaNovedadCoberturaSchema.nullable().optional(),
   activo: z.boolean().optional()
 }).superRefine((data, ctx) => {
   if (Object.keys(data).length === 0) {
@@ -573,6 +635,7 @@ export type NominaExportTipo = z.infer<typeof nominaExportTipoSchema>;
 export type NominaAsistenciaEstado = z.infer<typeof nominaAsistenciaEstadoSchema>;
 export type NominaMovimientoTipo = z.infer<typeof nominaMovimientoTipoSchema>;
 export type NominaRecargoTipo = z.infer<typeof nominaRecargoTipoSchema>;
+export type NominaNovedadCoberturaTipo = z.infer<typeof nominaNovedadCoberturaTipoSchema>;
 export type CreateNominaPeriodoInput = z.infer<typeof createNominaPeriodoSchema>;
 export type UpdateNominaPeriodoInput = z.infer<typeof updateNominaPeriodoSchema>;
 export type ListNominaPeriodosQuery = z.infer<typeof listNominaPeriodosQuerySchema>;
@@ -589,6 +652,7 @@ export type UpdateNominaAsistenciaInput = z.infer<typeof updateNominaAsistenciaS
 export type CreateNominaMovimientoInput = z.infer<typeof createNominaMovimientoSchema>;
 export type CreateNominaRecargoInput = z.infer<typeof createNominaRecargoSchema>;
 export type UpdateNominaMovimientoInput = z.infer<typeof updateNominaMovimientoSchema>;
+export type NominaNovedadCoberturaInput = z.infer<typeof nominaNovedadCoberturaSchema>;
 export type CreateNominaNovedadInput = z.infer<typeof createNominaNovedadSchema>;
 export type CreateNominaNovedadConTurnoInput = z.infer<typeof createNominaNovedadConTurnoSchema>;
 export type UpdateNominaNovedadInput = z.infer<typeof updateNominaNovedadSchema>;

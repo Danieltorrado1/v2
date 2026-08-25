@@ -43,6 +43,15 @@ import type { ContractPersonalFilterOptions, ContractPersonalListResponse, Perso
 import ExpedienteDocumentosPanel from "./ExpedienteDocumentosPanel";
 import "./ContractPersonalPage.css";
 
+const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
+  gestores: [],
+  municipios: [],
+  instituciones: [],
+  sedes: [],
+  modalidades: [],
+  ubicaciones_laborales: [],
+};
+
 type PersonaNuevaForm = {
   tipo_documento_id: string;
   numero_documento: string;
@@ -168,6 +177,8 @@ export default function ContractPersonalPage() {
   const [personalSearch, setPersonalSearch] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<"" | VinculacionEstado>("");
   const [cargoFiltro, setCargoFiltro] = useState<number | null>(null);
+  const [gestorFiltro, setGestorFiltro] = useState<number | null>(null);
+  const [sinGestorFiltro, setSinGestorFiltro] = useState(false);
   const [municipioFiltro, setMunicipioFiltro] = useState<number | null>(null);
   const [institucionFiltro, setInstitucionFiltro] = useState<number | null>(null);
   const [sedeFiltro, setSedeFiltro] = useState<number | null>(null);
@@ -184,7 +195,7 @@ export default function ContractPersonalPage() {
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([]);
   const [tiposIdentificacion, setTiposIdentificacion] = useState<CatalogoItem[]>([]);
   const [metodosPago, setMetodosPago] = useState<MetodoPagoPermitido[]>([]);
-  const [filterOptions, setFilterOptions] = useState<ContractPersonalFilterOptions>({ municipios: [], instituciones: [], sedes: [], modalidades: [], ubicaciones_laborales: [] });
+  const [filterOptions, setFilterOptions] = useState<ContractPersonalFilterOptions>(EMPTY_FILTER_OPTIONS);
 
   const [contratoId, setContratoId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
@@ -380,7 +391,7 @@ export default function ContractPersonalPage() {
   }, [canReadPersonal, contratoId, fechaConsulta, refreshIndex]);
   useEffect(() => {
     if (!canReadPersonal || !contratoId) {
-      setFilterOptions({ municipios: [], instituciones: [], sedes: [], modalidades: [], ubicaciones_laborales: [] });
+      setFilterOptions(EMPTY_FILTER_OPTIONS);
       return;
     }
     let cancelled = false;
@@ -393,7 +404,7 @@ export default function ContractPersonalPage() {
     }).then((response) => {
       if (!cancelled) setFilterOptions(response);
     }).catch(() => {
-      if (!cancelled) setFilterOptions({ municipios: [], instituciones: [], sedes: [], modalidades: [], ubicaciones_laborales: [] });
+      if (!cancelled) setFilterOptions(EMPTY_FILTER_OPTIONS);
     });
     return () => { cancelled = true; };
   }, [canReadPersonal, contratoId, fechaConsulta, municipioFiltro, institucionFiltro, sedeFiltro]);
@@ -420,6 +431,8 @@ export default function ContractPersonalPage() {
           search: personalSearch.trim() || undefined,
           estado_vinculacion: estadoFiltro || undefined,
           contrato_cargo_id: cargoFiltro ?? undefined,
+          gestor_usuario_id: gestorFiltro ?? undefined,
+          sin_gestor: sinGestorFiltro || undefined,
           municipio_id: municipioFiltro ?? undefined,
           institucion_id: institucionFiltro ?? undefined,
           sede_id: sedeFiltro ?? undefined,
@@ -460,7 +473,7 @@ export default function ContractPersonalPage() {
     return () => {
       cancelled = true;
     };
-  }, [canReadPersonal, contratoId, estadoFiltro, cargoFiltro, page, personalSearch, municipioFiltro, institucionFiltro, sedeFiltro, modalidadFiltro, ubicacionFiltro, coberturaFiltro, licitacionFiltro, fechaConsulta, refreshIndex]);
+  }, [canReadPersonal, contratoId, estadoFiltro, cargoFiltro, gestorFiltro, sinGestorFiltro, page, personalSearch, municipioFiltro, institucionFiltro, sedeFiltro, modalidadFiltro, ubicacionFiltro, coberturaFiltro, licitacionFiltro, fechaConsulta, refreshIndex]);
 
   useEffect(() => {
     if (!selectedVinculacionId) {
@@ -502,7 +515,7 @@ export default function ContractPersonalPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [contratoId, estadoFiltro, cargoFiltro, personalSearch, municipioFiltro, institucionFiltro, sedeFiltro, modalidadFiltro, ubicacionFiltro, coberturaFiltro, licitacionFiltro, fechaConsulta]);
+  }, [contratoId, estadoFiltro, cargoFiltro, gestorFiltro, sinGestorFiltro, personalSearch, municipioFiltro, institucionFiltro, sedeFiltro, modalidadFiltro, ubicacionFiltro, coberturaFiltro, licitacionFiltro, fechaConsulta]);
 
   useEffect(() => {
     if (!showModal) {
@@ -779,6 +792,30 @@ export default function ContractPersonalPage() {
               </button>
             </div>
             <div className="cp-primary-filters">
+              <select
+                className="cp-select"
+                value={sinGestorFiltro ? "sin_gestor" : gestorFiltro ?? ""}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  if (nextValue === "sin_gestor") {
+                    setSinGestorFiltro(true);
+                    setGestorFiltro(null);
+                    return;
+                  }
+
+                  setSinGestorFiltro(false);
+                  setGestorFiltro(Number(nextValue) || null);
+                }}
+                disabled={!selectedContrato}
+              >
+                <option value="">Gestor</option>
+                <option value="sin_gestor">Sin gestor</option>
+                {filterOptions.gestores.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+              </select>
               <select className="cp-select" value={municipioFiltro ?? ""} onChange={(event) => { setMunicipioFiltro(Number(event.target.value) || null); setInstitucionFiltro(null); setSedeFiltro(null); setModalidadFiltro(null); }} disabled={!selectedContrato}>
                 <option value="">Municipio</option>{filterOptions.municipios.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
               </select>
@@ -810,9 +847,10 @@ export default function ContractPersonalPage() {
               </select>
               <label className="cp-date-filter">Fecha <input className="cp-input-solid" type="date" value={fechaConsulta} onChange={(event) => setFechaConsulta(event.target.value)} disabled={!selectedContrato} /></label>
             </div>}
-            {(municipioFiltro || institucionFiltro || sedeFiltro || modalidadFiltro || cargoFiltro || ubicacionFiltro || coberturaFiltro || licitacionFiltro || estadoFiltro) && (
+            {(gestorFiltro || sinGestorFiltro || municipioFiltro || institucionFiltro || sedeFiltro || modalidadFiltro || cargoFiltro || ubicacionFiltro || coberturaFiltro || licitacionFiltro || estadoFiltro) && (
               <div className="cp-active-filters">
                 <span>Filtros activos:</span>
+                {(gestorFiltro || sinGestorFiltro) && <span className="cp-filter-chip">Gestor <button type="button" onClick={() => { setGestorFiltro(null); setSinGestorFiltro(false); }}>x</button></span>}
                 {municipioFiltro && <span className="cp-filter-chip">Municipio <button type="button" onClick={() => { setMunicipioFiltro(null); setInstitucionFiltro(null); setSedeFiltro(null); setModalidadFiltro(null); }}>x</button></span>}
                 {institucionFiltro && <span className="cp-filter-chip">Institucion <button type="button" onClick={() => { setInstitucionFiltro(null); setSedeFiltro(null); setModalidadFiltro(null); }}>x</button></span>}
                 {sedeFiltro && <span className="cp-filter-chip">Sede <button type="button" onClick={() => { setSedeFiltro(null); setModalidadFiltro(null); }}>x</button></span>}
@@ -822,7 +860,7 @@ export default function ContractPersonalPage() {
                 {coberturaFiltro && <span className="cp-filter-chip">Cobertura <button type="button" onClick={() => setCoberturaFiltro("")}>x</button></span>}
                 {licitacionFiltro && <span className="cp-filter-chip">Oferta <button type="button" onClick={() => setLicitacionFiltro("")}>x</button></span>}
                 {ubicacionFiltro && <span className="cp-filter-chip">Ubicacion <button type="button" onClick={() => setUbicacionFiltro(null)}>x</button></span>}
-                <button type="button" className="cp-clear-filters" onClick={() => { setPersonalSearch(""); setMunicipioFiltro(null); setInstitucionFiltro(null); setSedeFiltro(null); setModalidadFiltro(null); setCargoFiltro(null); setUbicacionFiltro(null); setCoberturaFiltro(""); setLicitacionFiltro(""); setEstadoFiltro(""); setFechaConsulta(todayIso()); setPage(1); }}>Limpiar todo</button>
+                <button type="button" className="cp-clear-filters" onClick={() => { setPersonalSearch(""); setGestorFiltro(null); setSinGestorFiltro(false); setMunicipioFiltro(null); setInstitucionFiltro(null); setSedeFiltro(null); setModalidadFiltro(null); setCargoFiltro(null); setUbicacionFiltro(null); setCoberturaFiltro(""); setLicitacionFiltro(""); setEstadoFiltro(""); setFechaConsulta(todayIso()); setPage(1); }}>Limpiar todo</button>
               </div>
             )}
           </div>
@@ -873,7 +911,7 @@ export default function ContractPersonalPage() {
                          </td>
                          <td className="cp-cargo-cell">{item.cargo.nombre_cargo ?? "Sin cargo"}</td>
                          <td className="cp-assignment-cell">
-                           {item.es_manipuladora ? <><strong>{item.asignacion_actual.institucion ?? "Institucion no informada"}</strong><span>{item.asignacion_actual.sede ?? "Sede no informada"}</span><small>{item.asignacion_actual.municipio ?? "Municipio no informado"}</small><span className="cp-assignment-status">Cobertura {item.asignacion_actual.municipio ? "si" : "no"}</span></> : <><strong>Administrativo</strong><span>{item.asignacion_actual.nombre ?? "Sin ubicacion laboral"}</span></>}
+                           {item.es_manipuladora ? <><strong>{item.asignacion_actual.institucion ?? "Institucion no informada"}</strong><span>{item.asignacion_actual.sede ?? "Sede no informada"}</span><small>{item.asignacion_actual.municipio ?? "Municipio no informado"}</small><span className="cp-assignment-status">Gestor {item.gestor_actual?.nombre ?? "Sin gestor"}</span></> : <><strong>Administrativo</strong><span>{item.asignacion_actual.nombre ?? "Sin ubicacion laboral"}</span><small>Gestor {item.gestor_actual?.nombre ?? "Sin gestor"}</small></>}
                          </td>
                          <td className="cp-modality-cell">{item.es_manipuladora ? <span className="cp-badge modality-badge">{item.asignacion_actual.modalidad ?? "—"}</span> : <span className="cp-muted">—</span>}</td>
                          <td className="cp-offer-cell"><span className={item.presentada_licitacion_actual ? "cp-badge offer-presented" : "cp-badge offer-none"}>{item.presentada_licitacion_actual ? "Presentada" : "No presentada"}</span>{item.presentada_licitacion_actual && item.perfil_licitacion_actual && <small title={item.perfil_licitacion_actual}>{item.perfil_licitacion_actual}</small>}</td>

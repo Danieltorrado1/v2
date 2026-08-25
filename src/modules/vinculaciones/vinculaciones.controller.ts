@@ -4,10 +4,17 @@ import { AppError } from '../../utils/AppError';
 import { successResponse } from '../../utils/apiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
 import {
+  closeGestorAssignmentSchema,
+  createGestorMunicipioAssignmentSchema,
   createVinculacionSchema,
+  gestorAssignmentIdParamSchema,
+  gestorAssignmentWorkspaceQuerySchema,
+  gestorPersonalHistoryQuerySchema,
+  listGestorMunicipiosQuerySchema,
   listContractPersonalQuerySchema,
   personalResumenQuerySchema,
   listOpsVinculacionesQuerySchema,
+  saveGestorAssignmentsSchema,
   listVinculacionesQuerySchema,
   reactivarVinculacionSchema,
   retirarVinculacionSchema,
@@ -17,7 +24,14 @@ import {
   vinculacionPersonaParamSchema
 } from './vinculaciones.schemas';
 import {
+  closeGestorMunicipioAssignment,
+  closeGestorPersonalAssignment,
+  createGestorMunicipioAssignment,
   createVinculacion,
+  getGestorAssignmentWorkspace,
+  getGestorPersonalHistory,
+  listGestorMunicipios,
+  listGestores,
   getVinculacionExpediente,
   getVinculacionById,
   getVinculacionesByPersonaId,
@@ -27,6 +41,7 @@ import {
   listVinculaciones,
   reactivarVinculacion,
   retirarVinculacion,
+  saveGestorAssignments,
   suspenderVinculacion,
   updateVinculacion
 } from './vinculaciones.service';
@@ -163,6 +178,89 @@ export const getContractPersonalHandler = asyncHandler(async (req: Request, res:
 
   return successResponse(res, {
     message: 'Contract personal retrieved successfully',
+    data: result
+  });
+});
+
+export const listGestoresHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = listGestorMunicipiosQuerySchema.parse(req.query);
+  const result = await listGestores(query, req.tenant);
+
+  return successResponse(res, {
+    message: 'Gestores retrieved successfully',
+    data: result
+  });
+});
+
+export const listGestorMunicipiosHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = listGestorMunicipiosQuerySchema.parse(req.query);
+  const result = await listGestorMunicipios(query, req.tenant);
+
+  return successResponse(res, {
+    message: 'Gestor municipios retrieved successfully',
+    data: result
+  });
+});
+
+export const getGestorAssignmentWorkspaceHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = gestorAssignmentWorkspaceQuerySchema.parse(req.query);
+  const result = await getGestorAssignmentWorkspace(query, req.tenant);
+
+  return successResponse(res, {
+    message: 'Gestor assignment workspace retrieved successfully',
+    data: result
+  });
+});
+
+export const createGestorMunicipioAssignmentHandler = asyncHandler(async (req: Request, res: Response) => {
+  const input = createGestorMunicipioAssignmentSchema.parse(req.body);
+  const result = await createGestorMunicipioAssignment(input, getActorUserId(req), req.tenant);
+
+  return successResponse(res, {
+    message: 'Gestor municipio assignment created successfully',
+    statusCode: 201,
+    data: result
+  });
+});
+
+export const closeGestorMunicipioAssignmentHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = gestorAssignmentIdParamSchema.parse(req.params);
+  const input = closeGestorAssignmentSchema.parse(req.body);
+  const result = await closeGestorMunicipioAssignment(id, input, getActorUserId(req), req.tenant);
+
+  return successResponse(res, {
+    message: 'Gestor municipio assignment closed successfully',
+    data: result
+  });
+});
+
+export const saveGestorAssignmentsHandler = asyncHandler(async (req: Request, res: Response) => {
+  const input = saveGestorAssignmentsSchema.parse(req.body);
+  const result = await saveGestorAssignments(input, getActorUserId(req), req.tenant);
+
+  return successResponse(res, {
+    message: 'Gestor personal assignments saved successfully',
+    data: result
+  });
+});
+
+export const closeGestorPersonalAssignmentHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = gestorAssignmentIdParamSchema.parse(req.params);
+  const input = closeGestorAssignmentSchema.parse(req.body);
+  const result = await closeGestorPersonalAssignment(id, input, getActorUserId(req), req.tenant);
+
+  return successResponse(res, {
+    message: 'Gestor personal assignment closed successfully',
+    data: result
+  });
+});
+
+export const getGestorPersonalHistoryHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = gestorPersonalHistoryQuerySchema.parse(req.query);
+  const result = await getGestorPersonalHistory(query, req.tenant);
+
+  return successResponse(res, {
+    message: 'Gestor personal history retrieved successfully',
     data: result
   });
 });

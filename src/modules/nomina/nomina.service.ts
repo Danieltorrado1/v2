@@ -70,6 +70,8 @@ import {
   NominaExportTipo,
   NominaRecargoTipo,
   ListNominaMovimientosQuery,
+  NominaNovedadCoberturaInput,
+  NominaNovedadCoberturaTipo,
   UpdateNominaAsistenciaInput,
   ListNominaEmpleadosQuery,
   ListNominaLiquidacionesQuery,
@@ -89,6 +91,15 @@ import {
 
 interface CountRow extends QueryResultRow {
   total: number;
+}
+
+interface PersonaIdentityRow extends QueryResultRow {
+  id: string;
+  numero_documento: string | null;
+  primer_apellido: string | null;
+  primer_nombre: string | null;
+  segundo_apellido: string | null;
+  segundo_nombre: string | null;
 }
 
 interface NominaPeriodoEmployeesSummaryRow extends QueryResultRow {
@@ -160,6 +171,7 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   contexto_municipio_nombre: string | null;
   contexto_sede_id: string | null;
   contexto_sede_nombre: string | null;
+  municipio_operativo_nombre: string | null;
   neto_pagar: number | string | null;
   otros_devengos: number | string | null;
   pension: number | string | null;
@@ -179,6 +191,13 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   total_documental_faltantes: number | string | null;
   total_documental_requeridos: number | string | null;
   total_novedades: number;
+  gestor_usuario_id: string | null;
+  gestor_nombre_completo: string | null;
+  institucion_nombre: string | null;
+  modalidad_codigo: string | null;
+  modalidad_id: string | null;
+  modalidad_nombre: string | null;
+  sede_nombre: string | null;
   tipo_jornada_id: string | null;
   tipo_jornada_nombre: string | null;
   tipo_vinculacion_codigo: string | null;
@@ -264,6 +283,20 @@ interface NominaNovedadRealRow extends QueryResultRow {
   activo: boolean | null;
   categoria_anterior_id: string | null;
   categoria_nueva_id: string | null;
+  cobertura_documento_externo: string | null;
+  cobertura_id: string | null;
+  cobertura_nombre_externo: string | null;
+  cobertura_observacion_externa: string | null;
+  cobertura_observacion_interna: string | null;
+  cobertura_persona_cubre_id: string | null;
+  cobertura_persona_numero_documento: string | null;
+  cobertura_primer_apellido: string | null;
+  cobertura_primer_nombre: string | null;
+  cobertura_segundo_apellido: string | null;
+  cobertura_segundo_nombre: string | null;
+  cobertura_snapshot: unknown;
+  cobertura_tipo_cobertura: string | null;
+  cobertura_vinculacion_cubre_id: string | null;
   cubierta: boolean | null;
   created_at: Date | string;
   documento_persona_id: string | null;
@@ -671,6 +704,18 @@ export interface NominaEmpleado {
   horas_extra_total: number;
   horas_trabajadas: number;
   id: string;
+  gestor: {
+    id: string;
+    nombre_completo: string;
+  } | null;
+  contexto_operativo: {
+    institucion: string | null;
+    modalidad_codigo: string | null;
+    modalidad_descripcion: string | null;
+    modalidad_id: string | null;
+    municipio: string | null;
+    sede: string | null;
+  } | null;
   metodo_liquidacion: string | null;
   motivo_caso_especial: string | null;
   municipio: string | null;
@@ -797,6 +842,23 @@ export interface NominaNovedad {
   nomina_empleado_id: string;
   observacion: string | null;
   periodo_id: string;
+  cobertura: {
+    documento_externo: string | null;
+    id: string;
+    nombre_externo: string | null;
+    observacion_externa: string | null;
+    observacion_interna: string | null;
+    persona_cubre: {
+      id: string | null;
+      nombre_completo: string | null;
+      numero_documento: string | null;
+      vinculacion_id: string | null;
+    } | null;
+    persona_cubre_id: string | null;
+    snapshot_cobertura: unknown;
+    tipo_cobertura: NominaNovedadCoberturaTipo;
+    vinculacion_cubre_id: string | null;
+  } | null;
   persona: {
     nombre_completo: string;
     numero_documento: string | null;
@@ -1705,6 +1767,14 @@ const getNominaEmpleadosRealSelect = (): string => {
       se_op.id::text AS contexto_sede_id,
       se_op.nombre_sede AS contexto_sede_nombre,
       mo_op.nombre_modalidad AS contexto_modalidad_nombre,
+      contexto_operativo.municipio_operativo_nombre,
+      contexto_operativo.institucion_nombre,
+      contexto_operativo.sede_nombre,
+      contexto_operativo.modalidad_id,
+      contexto_operativo.modalidad_codigo,
+      contexto_operativo.modalidad_nombre,
+      gestor_actual.gestor_usuario_id,
+      gestor_actual.gestor_nombre_completo,
       c.numero_contrato AS contrato_numero,
       cc.nombre_cargo AS cargo_nombre,
       co.nombre_cargo AS cargo_operativo_nombre,
@@ -1723,6 +1793,7 @@ const getNominaEmpleadosRealSelect = (): string => {
       red.total_cargados AS total_documental_cargados,
       red.porcentaje_cumplimiento AS porcentaje_cumplimiento_documental
     FROM nomina_empleados ne
+    INNER JOIN nomina_periodos np ON np.id = ne.periodo_id
     INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
     INNER JOIN personas p ON p.id = v.persona_id
     INNER JOIN nomina_periodos np_context ON np_context.id = ne.periodo_id
@@ -1747,6 +1818,39 @@ const getNominaEmpleadosRealSelect = (): string => {
     LEFT JOIN tipos_jornada tj ON tj.id = v.tipo_jornada_id
     LEFT JOIN nomina_categorias_salariales ncs ON ncs.id = ne.categoria_salarial_id
     LEFT JOIN vw_resumen_expediente_documental red ON red.vinculacion_id = v.id
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(ff.municipio_texto, muo.nombre_municipio) AS municipio_operativo_nombre,
+        ca.institucion AS institucion_nombre,
+        ca.sede AS sede_nombre,
+        ff.modalidad_id::text AS modalidad_id,
+        COALESCE(mo.codigo_base, mo.codigo_original) AS modalidad_codigo,
+        mo.nombre_modalidad AS modalidad_nombre
+      FROM cobertura_asignaciones ca
+      INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+      LEFT JOIN municipios muo ON muo.id = ff.municipio_id
+      LEFT JOIN modalidades mo ON mo.id = ff.modalidad_id
+      WHERE ca.vinculacion_id = v.id
+        AND COALESCE(ca.activo, TRUE) = TRUE
+        AND ca.fecha_inicio <= np.fecha_fin
+        AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= np.fecha_inicio)
+      ORDER BY ca.fecha_inicio DESC, ca.id DESC
+      LIMIT 1
+    ) contexto_operativo ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        gpa.usuario_id::text AS gestor_usuario_id,
+        u.nombre_completo AS gestor_nombre_completo
+      FROM gestor_personal_asignaciones gpa
+      INNER JOIN usuarios u ON u.id = gpa.usuario_id
+      WHERE gpa.vinculacion_id = v.id
+        AND gpa.contrato_id = v.contrato_id
+        AND COALESCE(gpa.activo, TRUE) = TRUE
+        AND gpa.vigencia_desde <= np.fecha_fin
+        AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= np.fecha_inicio)
+      ORDER BY gpa.vigencia_desde DESC, gpa.id DESC
+      LIMIT 1
+    ) gestor_actual ON TRUE
     LEFT JOIN LATERAL (
       SELECT COUNT(*)::int AS total_novedades
       FROM nomina_novedades nn
@@ -1824,6 +1928,15 @@ const getNominaNovedadesRealSelect = (): string => {
       nn.created_at,
       COALESCE(nn.requiere_cobertura, FALSE) AS requiere_cobertura,
       COALESCE(nn.cubierta, FALSE) AS cubierta,
+      nnc.id::text AS cobertura_id,
+      nnc.tipo_cobertura AS cobertura_tipo_cobertura,
+      nnc.persona_cubre_id::text AS cobertura_persona_cubre_id,
+      nnc.vinculacion_cubre_id::text AS cobertura_vinculacion_cubre_id,
+      nnc.nombre_externo AS cobertura_nombre_externo,
+      nnc.documento_externo AS cobertura_documento_externo,
+      nnc.observacion_externa AS cobertura_observacion_externa,
+      nnc.observacion_interna AS cobertura_observacion_interna,
+      nnc.snapshot_cobertura AS cobertura_snapshot,
       nn.tipo_novedad_codigo_operativo AS tipo_novedad_codigo_snapshot,
       ntn.codigo_operativo AS tipo_novedad_codigo_operativo,
       ntn.nombre AS tipo_novedad_nombre,
@@ -1866,7 +1979,12 @@ const getNominaNovedadesRealSelect = (): string => {
       p.primer_nombre,
       p.segundo_nombre,
       p.primer_apellido,
-      p.segundo_apellido
+      p.segundo_apellido,
+      pc.numero_documento AS cobertura_persona_numero_documento,
+      pc.primer_nombre AS cobertura_primer_nombre,
+      pc.segundo_nombre AS cobertura_segundo_nombre,
+      pc.primer_apellido AS cobertura_primer_apellido,
+      pc.segundo_apellido AS cobertura_segundo_apellido
     FROM nomina_novedades nn
     INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nn.tipo_novedad_id
     INNER JOIN nomina_empleados ne ON ne.id = nn.nomina_empleado_id
@@ -1874,6 +1992,10 @@ const getNominaNovedadesRealSelect = (): string => {
     INNER JOIN personas p ON p.id = v.persona_id
     INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
     INNER JOIN contratos c ON c.id = np.contrato_id
+    LEFT JOIN nomina_novedad_coberturas nnc
+      ON nnc.nomina_novedad_id = nn.id
+     AND COALESCE(nnc.activo, TRUE) = TRUE
+    LEFT JOIN personas pc ON pc.id = nnc.persona_cubre_id
   `;
 };
 
@@ -2131,6 +2253,28 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
   const totalDocumentalFaltantes = toOptionalNumberValue(row.total_documental_faltantes);
   const totalDocumentalCargados = toOptionalNumberValue(row.total_documental_cargados);
   const porcentajeCumplimientoDocumental = toOptionalNumberValue(row.porcentaje_cumplimiento_documental);
+  const municipioOperativo =
+    row.municipio_operativo_nombre ?? row.contexto_municipio_nombre ?? row.municipio_nombre;
+  const institucionOperativa = row.institucion_nombre ?? row.contexto_institucion_nombre;
+  const sedeOperativa = row.sede_nombre ?? row.contexto_sede_nombre;
+  const modalidadDescripcion = row.modalidad_nombre ?? row.contexto_modalidad_nombre;
+  const modalidadEtiqueta = row.modalidad_codigo ?? modalidadDescripcion;
+  const contextoOperativo =
+    municipioOperativo ||
+    institucionOperativa ||
+    sedeOperativa ||
+    row.modalidad_id ||
+    row.modalidad_codigo ||
+    modalidadDescripcion
+      ? {
+          municipio: municipioOperativo,
+          institucion: institucionOperativa,
+          sede: sedeOperativa,
+          modalidad_id: row.modalidad_id,
+          modalidad_codigo: row.modalidad_codigo,
+          modalidad_descripcion: modalidadDescripcion
+        }
+      : null;
 
   return {
     id: row.id,
@@ -2160,10 +2304,17 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
     estado: row.estado,
     activo: toBooleanValue(row.activo),
     created_at: toIsoString(row.created_at) ?? '',
+    institucion: institucionOperativa,
+    gestor: row.gestor_usuario_id
+      ? {
+          id: row.gestor_usuario_id,
+          nombre_completo: row.gestor_nombre_completo ?? ''
+        }
+      : null,
+    contexto_operativo: contextoOperativo,
     motivo_caso_especial: row.motivo_caso_especial,
-    municipio: row.municipio_nombre,
-    institucion: row.contexto_institucion_nombre,
-    modalidad: row.contexto_modalidad_nombre,
+    municipio: municipioOperativo,
+    modalidad: modalidadEtiqueta,
     clasificacion: resolveNominaEmpleadoClasificacion(row),
     total_novedades: row.total_novedades,
     estado_documental:
@@ -2179,11 +2330,11 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
             porcentaje_cumplimiento: porcentajeCumplimientoDocumental
           },
     sede:
-      row.contexto_sede_id || row.contexto_sede_nombre || row.contexto_municipio_nombre
+      row.contexto_sede_id || sedeOperativa || municipioOperativo
         ? {
             id: row.contexto_sede_id,
-            municipio: row.contexto_municipio_nombre,
-            nombre_sede: row.contexto_sede_nombre
+            municipio: municipioOperativo,
+            nombre_sede: sedeOperativa
           }
         : null,
     persona: {
@@ -2231,6 +2382,13 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
 };
 
 const mapRealNovedad = (row: NominaNovedadRealRow): NominaNovedad => {
+  const personaCubreNombre = normalizeFullName(
+    row.cobertura_primer_nombre,
+    row.cobertura_segundo_nombre,
+    row.cobertura_primer_apellido,
+    row.cobertura_segundo_apellido
+  );
+
   return {
     id: row.id,
     periodo_id: row.periodo_id,
@@ -2254,6 +2412,31 @@ const mapRealNovedad = (row: NominaNovedadRealRow): NominaNovedad => {
     created_at: toIsoString(row.created_at) ?? '',
     requiere_cobertura: toBooleanValue(row.requiere_cobertura),
     cubierta: toBooleanValue(row.cubierta),
+    cobertura: row.cobertura_id && row.cobertura_tipo_cobertura
+      ? {
+          id: row.cobertura_id,
+          tipo_cobertura: row.cobertura_tipo_cobertura as NominaNovedadCoberturaTipo,
+          persona_cubre_id: row.cobertura_persona_cubre_id,
+          vinculacion_cubre_id: row.cobertura_vinculacion_cubre_id,
+          nombre_externo: row.cobertura_nombre_externo,
+          documento_externo: row.cobertura_documento_externo,
+          observacion_externa: row.cobertura_observacion_externa,
+          observacion_interna: row.cobertura_observacion_interna,
+          snapshot_cobertura: row.cobertura_snapshot ?? null,
+          persona_cubre:
+            row.cobertura_persona_cubre_id ||
+            row.cobertura_vinculacion_cubre_id ||
+            personaCubreNombre ||
+            row.cobertura_persona_numero_documento
+              ? {
+                  id: row.cobertura_persona_cubre_id,
+                  vinculacion_id: row.cobertura_vinculacion_cubre_id,
+                  numero_documento: row.cobertura_persona_numero_documento,
+                  nombre_completo: personaCubreNombre || null
+                }
+              : null
+        }
+      : null,
     tipo_novedad: {
       id: row.tipo_novedad_id,
       codigo_operativo: row.tipo_novedad_codigo_operativo,
@@ -3852,6 +4035,205 @@ const assertNominaNovedadRangeIntersectsVinculacion = (
   }
 };
 
+const loadPersonaIdentityByIdOrThrow = async (
+  personaId: string,
+  client: PoolClient
+): Promise<PersonaIdentityRow> => {
+  const result = await client.query<PersonaIdentityRow>(
+    `
+      SELECT
+        id::text AS id,
+        numero_documento,
+        primer_nombre,
+        segundo_nombre,
+        primer_apellido,
+        segundo_apellido
+      FROM personas
+      WHERE id = $1::bigint
+      LIMIT 1
+    `,
+    [personaId]
+  );
+
+  const persona = result.rows[0];
+
+  if (!persona) {
+    throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');
+  }
+
+  return persona;
+};
+
+const resolveNominaNovedadCoberturaFlags = (
+  cobertura: NominaNovedadCoberturaInput | null | undefined,
+  fallback: {
+    cubierta: boolean;
+    requiere_cobertura: boolean;
+  }
+): {
+  cubierta: boolean;
+  requiere_cobertura: boolean;
+} => {
+  if (!cobertura) {
+    return fallback;
+  }
+
+  if (cobertura.tipo_cobertura === 'SIN_REEMPLAZO') {
+    return {
+      requiere_cobertura: true,
+      cubierta: false
+    };
+  }
+
+  return {
+    requiere_cobertura: true,
+    cubierta: true
+  };
+};
+
+const syncNominaNovedadCobertura = async (
+  client: PoolClient,
+  input: {
+    cobertura: NominaNovedadCoberturaInput | null | undefined;
+    empleado: NominaEmpleado;
+    novedadId: string;
+  }
+): Promise<void> => {
+  if (input.cobertura === undefined) {
+    return;
+  }
+
+  await client.query(
+    `
+      UPDATE nomina_novedad_coberturas
+      SET
+        activo = FALSE,
+        updated_at = NOW()
+      WHERE nomina_novedad_id = $1::bigint
+        AND COALESCE(activo, TRUE) = TRUE
+    `,
+    [input.novedadId]
+  );
+
+  if (input.cobertura === null) {
+    return;
+  }
+
+  let personaCubreId: string | null = null;
+  let vinculacionCubreId: string | null = null;
+  let nombreExterno: string | null = null;
+  let documentoExterno: string | null = null;
+  let observacionExterna: string | null = null;
+  let snapshotCobertura: Record<string, unknown> | null = null;
+
+  if (input.cobertura.tipo_cobertura === 'PERSONAL_VINCULADO') {
+    personaCubreId = input.cobertura.persona_cubre_id ?? null;
+    vinculacionCubreId = input.cobertura.vinculacion_cubre_id ?? null;
+
+    if (!personaCubreId || !vinculacionCubreId) {
+      throw new AppError(
+        'Linked coverage requires persona_cubre_id and vinculacion_cubre_id',
+        400,
+        'NOMINA_NOVEDAD_COBERTURA_VINCULADA_INVALIDA'
+      );
+    }
+
+    const [personaCubre, vinculacionCubre] = await Promise.all([
+      loadPersonaIdentityByIdOrThrow(personaCubreId, client),
+      ensureVinculacionExists(vinculacionCubreId, client)
+    ]);
+
+    if (vinculacionCubre.persona_id !== personaCubreId) {
+      throw new AppError(
+        'Linked coverage persona does not match vinculacion_cubre_id',
+        400,
+        'NOMINA_NOVEDAD_COBERTURA_PERSONA_VINCULACION_MISMATCH'
+      );
+    }
+
+    if (vinculacionCubre.contrato_id !== input.empleado.contrato_id) {
+      throw new AppError(
+        'Linked coverage must belong to the same contract as the payroll employee',
+        409,
+        'NOMINA_NOVEDAD_COBERTURA_CONTRATO_INVALIDO'
+      );
+    }
+
+    snapshotCobertura = {
+      tipo_cobertura: input.cobertura.tipo_cobertura,
+      persona_cubre: {
+        id: personaCubre.id,
+        numero_documento: personaCubre.numero_documento,
+        nombre_completo: normalizeFullName(
+          personaCubre.primer_nombre,
+          personaCubre.segundo_nombre,
+          personaCubre.primer_apellido,
+          personaCubre.segundo_apellido
+        )
+      },
+      vinculacion_cubre_id: vinculacionCubre.id
+    };
+  }
+
+  if (input.cobertura.tipo_cobertura === 'PERSONA_EXTERNA') {
+    nombreExterno = input.cobertura.nombre_externo ?? null;
+    documentoExterno = input.cobertura.documento_externo ?? null;
+    observacionExterna = input.cobertura.observacion_externa ?? null;
+    snapshotCobertura = {
+      tipo_cobertura: input.cobertura.tipo_cobertura,
+      nombre_externo: nombreExterno,
+      documento_externo: documentoExterno,
+      observacion_externa: observacionExterna
+    };
+  }
+
+  if (input.cobertura.tipo_cobertura === 'SIN_REEMPLAZO') {
+    snapshotCobertura = {
+      tipo_cobertura: input.cobertura.tipo_cobertura
+    };
+  }
+
+  await client.query(
+    `
+      INSERT INTO nomina_novedad_coberturas (
+        nomina_novedad_id,
+        tipo_cobertura,
+        persona_cubre_id,
+        vinculacion_cubre_id,
+        nombre_externo,
+        documento_externo,
+        observacion_externa,
+        observacion_interna,
+        snapshot_cobertura,
+        activo
+      )
+      VALUES (
+        $1::bigint,
+        $2,
+        $3::bigint,
+        $4::bigint,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9::jsonb,
+        TRUE
+      )
+    `,
+    [
+      input.novedadId,
+      input.cobertura.tipo_cobertura,
+      personaCubreId,
+      vinculacionCubreId,
+      nombreExterno,
+      documentoExterno,
+      observacionExterna,
+      input.cobertura.observacion_interna ?? null,
+      snapshotCobertura ? JSON.stringify(snapshotCobertura) : null
+    ]
+  );
+};
+
 const loadNominaNovedadCanonicaByIdOrThrow = async (
   novedadCanonicaId: string,
   client?: PoolClient
@@ -3985,6 +4367,7 @@ const buildProjectedNominaNovedadFromCanonica = (input: {
     created_at: toIsoString(input.canonical.created_at) ?? '',
     requiere_cobertura: false,
     cubierta: false,
+    cobertura: null,
     registro_tipo: 'CANONICA_PROYECTADA',
     evento_canonico_id: input.canonical.id,
     tipo_novedad: {
@@ -5198,6 +5581,34 @@ export const listNominaEmpleados = async (
   if (query.revisado !== undefined) {
     params.push(query.revisado);
     conditions.push(`COALESCE(ne.revisado, FALSE) = $${params.length}`);
+  }
+
+  if (query.gestor_usuario_id) {
+    params.push(query.gestor_usuario_id);
+    conditions.push(`EXISTS (
+      SELECT 1
+      FROM gestor_personal_asignaciones gpa_f
+      INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
+      WHERE gpa_f.vinculacion_id = ne.vinculacion_id
+        AND gpa_f.contrato_id = v.contrato_id
+        AND gpa_f.usuario_id = $${params.length}::bigint
+        AND COALESCE(gpa_f.activo, TRUE) = TRUE
+        AND gpa_f.vigencia_desde <= np_f.fecha_fin
+        AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= np_f.fecha_inicio)
+    )`);
+  }
+
+  if (query.sin_gestor === true) {
+    conditions.push(`NOT EXISTS (
+      SELECT 1
+      FROM gestor_personal_asignaciones gpa_f
+      INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
+      WHERE gpa_f.vinculacion_id = ne.vinculacion_id
+        AND gpa_f.contrato_id = v.contrato_id
+        AND COALESCE(gpa_f.activo, TRUE) = TRUE
+        AND gpa_f.vigencia_desde <= np_f.fecha_fin
+        AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= np_f.fecha_inicio)
+    )`);
   }
 
   const whereSql = buildSqlWhere(conditions);
@@ -7906,6 +8317,7 @@ export const createNominaNovedad = async (
 
     const empleadoContext = await loadNominaEmpleadoContextOrThrow(input.nomina_empleado_id, tenant, client);
     const empleado = await loadNominaEmpleadoByIdOrThrow(input.nomina_empleado_id, undefined, client);
+    const empleadoMapped = mapRealEmpleado(empleado);
 
     if (empleadoContext.periodo_id !== input.periodo_id) {
       throw new AppError(
@@ -7947,10 +8359,18 @@ export const createNominaNovedad = async (
     assertNominaNovedadRangeIntersectsVinculacion(nextRange, empleado);
 
     if (input.documento_persona_id) {
-      await ensureDocumentoPersonaScope(input.documento_persona_id, empleado.persona.id, client);
+      await ensureDocumentoPersonaScope(input.documento_persona_id, empleado.persona_id, client);
     }
 
     if (toNominaModeloRegistro(tipoNovedad.modelo_registro) === 'EVENTO_CANONICO_RANGO') {
+      if (input.cobertura !== null && input.cobertura !== undefined) {
+        throw new AppError(
+          'Canonical payroll novelties do not support coverage capture',
+          409,
+          'NOMINA_NOVEDAD_CANONICA_COBERTURA_NO_PERMITIDA'
+        );
+      }
+
       if (!nextRange) {
         throw new AppError(
           'Canonical payroll novelties require fecha_inicio and fecha_fin',
@@ -8084,6 +8504,11 @@ export const createNominaNovedad = async (
       });
     }
 
+    const coverageFlags = resolveNominaNovedadCoberturaFlags(input.cobertura, {
+      requiere_cobertura: input.requiere_cobertura,
+      cubierta: input.cubierta
+    });
+
     const result = await client.query<{ id: string }>(
       `
         INSERT INTO nomina_novedades (
@@ -8145,8 +8570,8 @@ export const createNominaNovedad = async (
         input.observacion,
         input.revisado,
         input.activo,
-        input.requiere_cobertura,
-        input.cubierta
+        coverageFlags.requiere_cobertura,
+        coverageFlags.cubierta
       ]
     );
 
@@ -8155,6 +8580,12 @@ export const createNominaNovedad = async (
     if (!createdRow) {
       throw new AppError('Failed to create payroll novelty', 500, 'NOMINA_NOVEDAD_CREATE_FAILED');
     }
+
+    await syncNominaNovedadCobertura(client, {
+      novedadId: createdRow.id,
+      empleado: empleadoMapped,
+      cobertura: input.cobertura
+    });
 
     const created = mapRealNovedad(await loadNominaNovedadByIdOrThrow(createdRow.id, tenant, client));
 
@@ -8346,7 +8777,7 @@ export const updateNominaNovedad = async (
         input.documento_persona_id !== undefined ? input.documento_persona_id : current.documento_persona_id;
 
       if (nextDocumentoPersonaId) {
-        await ensureDocumentoPersonaScope(nextDocumentoPersonaId, empleado.persona.id, client);
+        await ensureDocumentoPersonaScope(nextDocumentoPersonaId, empleado.persona_id, client);
       }
 
       await ensureNoExactCanonicalDuplicate(client, {
@@ -8455,6 +8886,7 @@ export const updateNominaNovedad = async (
         created_at: toIsoString(updatedCanonical.created_at) ?? '',
         requiere_cobertura: false,
         cubierta: false,
+        cobertura: null,
         registro_tipo: 'CANONICA_PROYECTADA',
         evento_canonico_id: updatedCanonical.id,
         tipo_novedad: {
@@ -8476,6 +8908,7 @@ export const updateNominaNovedad = async (
     const current = await loadNominaNovedadByIdOrThrow(parsedId.entidad_id, tenant, client);
     const periodo = await loadRealPeriodoOrThrow(current.periodo_id, tenant, client);
     const empleado = await loadNominaEmpleadoByIdOrThrow(current.nomina_empleado_id, tenant, client);
+    const empleadoMapped = mapRealEmpleado(empleado);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'updating payroll novelties');
 
     const tipoNovedad = await resolveNominaTipoNovedadOrThrow(
@@ -8524,7 +8957,7 @@ export const updateNominaNovedad = async (
       input.documento_persona_id !== undefined ? input.documento_persona_id : current.documento_persona_id;
 
     if (nextDocumentoPersonaId) {
-      await ensureDocumentoPersonaScope(nextDocumentoPersonaId, empleado.persona.id, client);
+      await ensureDocumentoPersonaScope(nextDocumentoPersonaId, empleado.persona_id, client);
     }
 
     if (nextRange) {
@@ -8534,6 +8967,17 @@ export const updateNominaNovedad = async (
         fecha_fin: nextRange.fecha_fin
       });
     }
+
+    const coverageInput =
+      input.cobertura !== undefined ? input.cobertura : current.cobertura;
+    const coverageFlags = resolveNominaNovedadCoberturaFlags(coverageInput, {
+      requiere_cobertura:
+        input.requiere_cobertura !== undefined
+          ? input.requiere_cobertura
+          : toBooleanValue(current.requiere_cobertura),
+      cubierta:
+        input.cubierta !== undefined ? input.cubierta : toBooleanValue(current.cubierta)
+    });
 
     await client.query(
       `
@@ -8574,11 +9018,17 @@ export const updateNominaNovedad = async (
           : current.categoria_nueva_id,
         input.observacion !== undefined ? input.observacion : current.observacion,
         input.revisado ?? current.revisado,
-        input.requiere_cobertura ?? current.requiere_cobertura,
-        input.cubierta ?? current.cubierta,
+        coverageFlags.requiere_cobertura,
+        coverageFlags.cubierta,
         input.activo ?? current.activo
       ]
     );
+
+    await syncNominaNovedadCobertura(client, {
+      novedadId: parsedId.entidad_id,
+      empleado: empleadoMapped,
+      cobertura: input.cobertura
+    });
 
     const updated = mapRealNovedad(await loadNominaNovedadByIdOrThrow(parsedId.entidad_id, tenant, client));
     const before = mapRealNovedad(current);
@@ -8722,6 +9172,7 @@ export const deactivateNominaNovedad = async (
         created_at: toIsoString(current.created_at) ?? '',
         requiere_cobertura: false,
         cubierta: false,
+        cobertura: null,
         registro_tipo: 'CANONICA_PROYECTADA',
         evento_canonico_id: current.id,
         tipo_novedad: {

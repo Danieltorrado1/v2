@@ -10,12 +10,18 @@ import {
   type VinculacionPersonalContext
 } from './vinculaciones.personal.service';
 import {
+  CloseGestorAssignmentInput,
+  CreateGestorMunicipioAssignmentInput,
   CreateVinculacionInput,
+  GestorAssignmentWorkspaceQuery,
+  GestorPersonalHistoryQuery,
+  ListGestorMunicipiosQuery,
   ListContractPersonalQuery,
   PersonalResumenQuery,
   ListVinculacionesQuery,
   ReactivarVinculacionInput,
   RetirarVinculacionInput,
+  SaveGestorAssignmentsInput,
   SuspenderVinculacionInput,
   UpdateVinculacionInput,
   VinculacionEstado
@@ -39,6 +45,11 @@ interface VinculacionRow extends QueryResultRow {
 
 interface CountRow extends QueryResultRow {
   total: number;
+  personas_total?: number;
+}
+
+interface AssignmentMutationRow extends QueryResultRow {
+  id: number | string;
 }
 
 interface ExistsRow extends QueryResultRow {
@@ -73,6 +84,8 @@ export interface PaginatedVinculaciones {
 
 interface ContractPersonalRow extends QueryResultRow {
   asignacion_laboral_actual: string | null;
+  gestor_actual_nombre: string | null;
+  gestor_actual_usuario_id: number | string | null;
   institucion_actual: string | null;
   municipio_actual: string | null;
   modalidad_actual: string | null;
@@ -108,6 +121,10 @@ export interface ContractPersonalListItem {
     nombre_cargo: string | null;
   };
   es_manipuladora: boolean;
+  gestor_actual: {
+    nombre: string | null;
+    usuario_id: number | null;
+  } | null;
   estado_vinculacion: VinculacionEstado;
   fecha_fin: string | null;
   fecha_ingreso: string;
@@ -383,6 +400,16 @@ const toNumber = (value: number | string): number => {
   return parsed;
 };
 
+const toIsoDate = (value?: string | null): string => {
+  return value ?? new Date().toISOString().slice(0, 10);
+};
+
+const shiftIsoDate = (value: string, days: number): string => {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
 const toNullableBoolean = (value: boolean | null | undefined): boolean => {
   return value ?? false;
 };
@@ -436,6 +463,14 @@ const mapContractPersonal = (row: ContractPersonalRow): ContractPersonalListItem
       nombre_cargo: row.cargo_nombre
     },
     es_manipuladora: row.es_manipuladora,
+    gestor_actual:
+      row.gestor_actual_usuario_id !== null || row.gestor_actual_nombre
+        ? {
+            usuario_id:
+              row.gestor_actual_usuario_id === null ? null : toNumber(row.gestor_actual_usuario_id),
+            nombre: row.gestor_actual_nombre
+          }
+        : null,
     estado_vinculacion: normalizeEstado(row.estado_vinculacion),
     fecha_ingreso: toDateString(row.fecha_inicio) ?? '',
     fecha_fin: toDateString(row.fecha_fin),
@@ -450,6 +485,75 @@ const mapContractPersonal = (row: ContractPersonalRow): ContractPersonalListItem
     perfil_licitacion_actual: row.perfil_licitacion_actual
   };
 };
+
+const mapGestorAssignmentUser = (row: GestorUserRow): GestorAssignmentUser => {
+  return {
+    id: toNumber(row.id),
+    nombre: row.name ?? '',
+    activo: row.active ?? true,
+    roles: Array.isArray(row.roles)
+      ? row.roles.filter((role): role is string => typeof role === 'string')
+      : []
+  };
+};
+
+const mapGestorMunicipioAssignment = (
+  row: GestorMunicipioAssignmentRow
+): GestorMunicipioAssignment => ({
+  id: toNumber(row.id),
+  contrato_id: toNumber(row.contrato_id),
+  gestor: {
+    id: toNumber(row.usuario_id),
+    nombre: row.gestor_nombre
+  },
+  municipio: {
+    id: toNumber(row.municipio_id),
+    nombre: row.municipio_nombre
+  },
+  vigencia_desde: toDateString(row.vigencia_desde) ?? '',
+  vigencia_hasta: toDateString(row.vigencia_hasta),
+  activo: row.activo,
+  observacion: row.observacion,
+  created_by_user_id: row.created_by_user_id === null ? null : toNumber(row.created_by_user_id),
+  created_at:
+    row.created_at instanceof Date ? row.created_at.toISOString() : new Date(String(row.created_at)).toISOString(),
+  updated_by_user_id: row.updated_by_user_id === null ? null : toNumber(row.updated_by_user_id),
+  updated_at:
+    row.updated_at instanceof Date ? row.updated_at.toISOString() : new Date(String(row.updated_at)).toISOString()
+});
+
+const mapGestorPersonalAssignment = (
+  row: GestorPersonalAssignmentRow
+): GestorPersonalAssignment => ({
+  id: toNumber(row.id),
+  contrato_id: toNumber(row.contrato_id),
+  gestor: {
+    id: toNumber(row.usuario_id),
+    nombre: row.gestor_nombre
+  },
+  municipio:
+    row.municipio_id === null && row.municipio_nombre === null
+      ? null
+      : {
+          id: row.municipio_id === null ? null : toNumber(row.municipio_id),
+          nombre: row.municipio_nombre
+        },
+  trabajador: {
+    vinculacion_id: toNumber(row.vinculacion_id),
+    documento: row.trabajador_documento,
+    nombre_completo: row.trabajador_nombre
+  },
+  vigencia_desde: toDateString(row.vigencia_desde) ?? '',
+  vigencia_hasta: toDateString(row.vigencia_hasta),
+  activo: row.activo,
+  observacion: row.observacion,
+  created_by_user_id: row.created_by_user_id === null ? null : toNumber(row.created_by_user_id),
+  created_at:
+    row.created_at instanceof Date ? row.created_at.toISOString() : new Date(String(row.created_at)).toISOString(),
+  updated_by_user_id: row.updated_by_user_id === null ? null : toNumber(row.updated_by_user_id),
+  updated_at:
+    row.updated_at instanceof Date ? row.updated_at.toISOString() : new Date(String(row.updated_at)).toISOString()
+});
 
 const mapPersonaExpediente = (row: PersonaExpedienteRow): VinculacionExpediente['persona'] => {
   return {
@@ -560,6 +664,194 @@ const getVinculacionSelect = (): string => {
     FROM vinculaciones v
     INNER JOIN contratos c ON c.id = v.contrato_id
   `;
+};
+
+const listGestorAssignableUsers = async (client: PoolClient): Promise<GestorAssignmentUser[]> => {
+  const result = await client.query<GestorUserRow>(
+    `
+      SELECT
+        u.id,
+        u.nombre_completo AS name,
+        COALESCE(u.activo, TRUE) AS active,
+        COALESCE(
+          ARRAY(
+            SELECT DISTINCT r.nombre_rol
+            FROM usuario_roles ur
+            INNER JOIN roles r ON r.id = ur.rol_id
+            WHERE ur.usuario_id = u.id
+              AND COALESCE(ur.activo, TRUE) = TRUE
+              AND COALESCE(r.activo, TRUE) = TRUE
+            ORDER BY r.nombre_rol
+          ),
+          ARRAY[]::text[]
+        ) AS roles
+      FROM usuarios u
+      WHERE COALESCE(u.activo, TRUE) = TRUE
+      ORDER BY u.nombre_completo ASC, u.id ASC
+    `
+  );
+
+  return result.rows.map(mapGestorAssignmentUser);
+};
+
+const getGestorMunicipioAssignments = async (
+  client: PoolClient,
+  input: {
+    contrato_id: number;
+    fecha?: string;
+    gestor_usuario_id?: number | null;
+    onlyActive?: boolean;
+  }
+): Promise<GestorMunicipioAssignment[]> => {
+  const params: unknown[] = [input.contrato_id];
+  const conditions = ['gma.contrato_id = $1::bigint'];
+
+  if (input.gestor_usuario_id !== undefined && input.gestor_usuario_id !== null) {
+    params.push(input.gestor_usuario_id);
+    conditions.push(`gma.usuario_id = $${params.length}::bigint`);
+  }
+
+  if (input.onlyActive) {
+    conditions.push('COALESCE(gma.activo, TRUE) = TRUE');
+  }
+
+  if (input.fecha) {
+    params.push(input.fecha);
+    conditions.push(`gma.vigencia_desde <= $${params.length}::date`);
+    conditions.push(`(gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= $${params.length}::date)`);
+  }
+
+  const result = await client.query<GestorMunicipioAssignmentRow>(
+    `
+      SELECT
+        gma.id,
+        gma.usuario_id,
+        u.nombre_completo AS gestor_nombre,
+        gma.contrato_id,
+        gma.municipio_id,
+        mu.nombre_municipio AS municipio_nombre,
+        gma.vigencia_desde,
+        gma.vigencia_hasta,
+        COALESCE(gma.activo, TRUE) AS activo,
+        gma.observacion,
+        gma.created_by_user_id,
+        gma.created_at,
+        gma.updated_by_user_id,
+        gma.updated_at
+      FROM gestor_municipio_asignaciones gma
+      INNER JOIN usuarios u ON u.id = gma.usuario_id
+      INNER JOIN municipios mu ON mu.id = gma.municipio_id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY mu.nombre_municipio ASC, gma.vigencia_desde DESC, gma.id DESC
+    `,
+    params
+  );
+
+  return result.rows.map(mapGestorMunicipioAssignment);
+};
+
+const getGestorPersonalAssignments = async (
+  client: PoolClient,
+  input: {
+    contrato_id: number;
+    fecha?: string;
+    gestor_usuario_id?: number | null;
+    municipio_id?: number | null;
+    vinculacion_id?: number | null;
+    onlyActive?: boolean;
+  }
+): Promise<GestorPersonalAssignment[]> => {
+  const params: unknown[] = [input.contrato_id];
+  const conditions = ['gpa.contrato_id = $1::bigint'];
+
+  if (input.gestor_usuario_id !== undefined && input.gestor_usuario_id !== null) {
+    params.push(input.gestor_usuario_id);
+    conditions.push(`gpa.usuario_id = $${params.length}::bigint`);
+  }
+
+  if (input.municipio_id !== undefined && input.municipio_id !== null) {
+    params.push(input.municipio_id);
+    conditions.push(`gpa.municipio_id = $${params.length}::bigint`);
+  }
+
+  if (input.vinculacion_id !== undefined && input.vinculacion_id !== null) {
+    params.push(input.vinculacion_id);
+    conditions.push(`gpa.vinculacion_id = $${params.length}::bigint`);
+  }
+
+  if (input.onlyActive) {
+    conditions.push('COALESCE(gpa.activo, TRUE) = TRUE');
+  }
+
+  if (input.fecha) {
+    params.push(input.fecha);
+    conditions.push(`gpa.vigencia_desde <= $${params.length}::date`);
+    conditions.push(`(gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= $${params.length}::date)`);
+  }
+
+  const result = await client.query<GestorPersonalAssignmentRow>(
+    `
+      SELECT
+        gpa.id,
+        gpa.usuario_id,
+        u.nombre_completo AS gestor_nombre,
+        gpa.contrato_id,
+        gpa.vinculacion_id,
+        gpa.municipio_id,
+        mu.nombre_municipio AS municipio_nombre,
+        gpa.vigencia_desde,
+        gpa.vigencia_hasta,
+        COALESCE(gpa.activo, TRUE) AS activo,
+        gpa.observacion,
+        gpa.created_by_user_id,
+        gpa.created_at,
+        gpa.updated_by_user_id,
+        gpa.updated_at,
+        p.numero_documento AS trabajador_documento,
+        CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido) AS trabajador_nombre
+      FROM gestor_personal_asignaciones gpa
+      INNER JOIN usuarios u ON u.id = gpa.usuario_id
+      INNER JOIN vinculaciones v ON v.id = gpa.vinculacion_id
+      INNER JOIN personas p ON p.id = v.persona_id
+      LEFT JOIN municipios mu ON mu.id = gpa.municipio_id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY trabajador_nombre ASC NULLS LAST, gpa.vigencia_desde DESC, gpa.id DESC
+    `,
+    params
+  );
+
+  return result.rows.map(mapGestorPersonalAssignment);
+};
+
+const ensureGestorAssignmentUserExists = async (
+  client: PoolClient,
+  usuarioId: number
+): Promise<GestorAssignmentUser> => {
+  const users = await listGestorAssignableUsers(client);
+  const user = users.find((item) => item.id === usuarioId);
+
+  if (!user) {
+    throw new AppError('Gestor user not found', 404, 'GESTOR_USER_NOT_FOUND');
+  }
+
+  return user;
+};
+
+const ensureMunicipioExists = async (client: PoolClient, municipioId: number): Promise<void> => {
+  const result = await client.query<ExistsRow>(
+    `
+      SELECT EXISTS(
+        SELECT 1
+        FROM municipios
+        WHERE id = $1::bigint
+      ) AS exists
+    `,
+    [municipioId]
+  );
+
+  if (!result.rows[0]?.exists) {
+    throw new AppError('Municipio not found', 404, 'MUNICIPIO_NOT_FOUND');
+  }
 };
 
 const isTenantGlobalAdmin = (tenant?: TenantAccessContext): boolean => {
@@ -934,6 +1226,33 @@ export const listContractPersonal = async (
       }
     }
 
+    if (filters.gestor_usuario_id !== undefined && filters.gestor_usuario_id !== null) {
+      params.push(filters.gestor_usuario_id);
+      conditions.push(`EXISTS (
+        SELECT 1
+        FROM gestor_personal_asignaciones gpa_f
+        WHERE gpa_f.vinculacion_id = v.id
+          AND gpa_f.contrato_id = v.contrato_id
+          AND gpa_f.usuario_id = $${paramIndex}::bigint
+          AND COALESCE(gpa_f.activo, TRUE) = TRUE
+          AND gpa_f.vigencia_desde <= $2::date
+          AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= $2::date)
+      )`);
+      paramIndex += 1;
+    }
+
+    if (filters.sin_gestor === true) {
+      conditions.push(`NOT EXISTS (
+        SELECT 1
+        FROM gestor_personal_asignaciones gpa_f
+        WHERE gpa_f.vinculacion_id = v.id
+          AND gpa_f.contrato_id = v.contrato_id
+          AND COALESCE(gpa_f.activo, TRUE) = TRUE
+          AND gpa_f.vigencia_desde <= $2::date
+          AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= $2::date)
+      )`);
+    }
+
     if (filters.search) {
       params.push(`%${filters.search}%`);
       conditions.push(`(
@@ -1006,6 +1325,19 @@ export const listContractPersonal = async (
             AND ppl.vigencia_desde <= DATE '${consultaFecha}'
             AND (ppl.vigencia_hasta IS NULL OR ppl.vigencia_hasta >= DATE '${consultaFecha}')
           ORDER BY ppl.vinculacion_id, ppl.vigencia_desde DESC, ppl.id DESC
+        ),
+        gestor_actual AS (
+          SELECT DISTINCT ON (gpa.vinculacion_id)
+            gpa.vinculacion_id,
+            gpa.usuario_id AS gestor_actual_usuario_id,
+            u.nombre_completo AS gestor_actual_nombre
+          FROM gestor_personal_asignaciones gpa
+          INNER JOIN usuarios u ON u.id = gpa.usuario_id
+          WHERE COALESCE(gpa.activo, TRUE) = TRUE
+            AND gpa.contrato_id = $1::bigint
+            AND gpa.vigencia_desde <= DATE '${consultaFecha}'
+            AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= DATE '${consultaFecha}')
+          ORDER BY gpa.vinculacion_id, gpa.vigencia_desde DESC, gpa.id DESC
         )
         SELECT
           v.id AS vinculacion_id,
@@ -1031,6 +1363,8 @@ export const listContractPersonal = async (
           caa.municipio_actual,
           caa.sede AS sede_actual,
           caa.modalidad AS modalidad_actual,
+          ga.gestor_actual_usuario_id,
+          ga.gestor_actual_nombre,
           COALESCE(pla.presentada_licitacion_actual, FALSE) AS presentada_licitacion_actual,
           pla.perfil_licitacion_actual
         FROM vinculaciones v
@@ -1039,6 +1373,7 @@ export const listContractPersonal = async (
         LEFT JOIN cobertura_actual caa ON caa.vinculacion_id = v.id
         LEFT JOIN asignacion_laboral_actual ala ON ala.vinculacion_id = v.id
         LEFT JOIN presentacion_licitacion_actual pla ON pla.vinculacion_id = v.id
+        LEFT JOIN gestor_actual ga ON ga.vinculacion_id = v.id
         ${whereClause}
         ORDER BY v.fecha_inicio DESC, p.primer_apellido ASC, p.primer_nombre ASC, v.id DESC
         LIMIT $${listParams.length - 1}::int
@@ -1063,11 +1398,145 @@ export const listContractPersonal = async (
 };
 
 export interface ContractPersonalFilterOptions {
+  gestores: Array<{ id: number; nombre: string; roles: string[] }>;
   municipios: Array<{ id: number; nombre: string }>;
   instituciones: Array<{ id: number; nombre: string; municipio_id: number | null }>;
   sedes: Array<{ id: number; nombre: string; institucion_id: number | null }>;
   modalidades: Array<{ id: number; codigo: string | null; nombre: string }>;
   ubicaciones_laborales: Array<{ id: number; nombre: string }>;
+}
+
+interface GestorUserRow extends QueryResultRow {
+  active: boolean;
+  id: number | string;
+  name: string | null;
+  roles: string[] | null;
+}
+
+interface GestorMunicipioAssignmentRow extends QueryResultRow {
+  activo: boolean;
+  contrato_id: number | string;
+  created_at: Date | string;
+  created_by_user_id: number | string | null;
+  gestor_nombre: string | null;
+  id: number | string;
+  municipio_id: number | string;
+  municipio_nombre: string | null;
+  observacion: string | null;
+  updated_at: Date | string;
+  updated_by_user_id: number | string | null;
+  usuario_id: number | string;
+  vigencia_desde: Date | string;
+  vigencia_hasta: Date | string | null;
+}
+
+interface GestorPersonalAssignmentRow extends QueryResultRow {
+  activo: boolean;
+  contrato_id: number | string;
+  created_at: Date | string;
+  created_by_user_id: number | string | null;
+  gestor_nombre: string | null;
+  id: number | string;
+  municipio_id: number | string | null;
+  municipio_nombre: string | null;
+  observacion: string | null;
+  updated_at: Date | string;
+  updated_by_user_id: number | string | null;
+  usuario_id: number | string;
+  vinculacion_id: number | string;
+  vigencia_desde: Date | string;
+  vigencia_hasta: Date | string | null;
+  trabajador_documento: string | null;
+  trabajador_nombre: string | null;
+}
+
+export interface GestorAssignmentUser {
+  activo: boolean;
+  id: number;
+  nombre: string;
+  roles: string[];
+}
+
+export interface GestorMunicipioAssignment {
+  activo: boolean;
+  contrato_id: number;
+  created_at: string;
+  created_by_user_id: number | null;
+  gestor: {
+    id: number;
+    nombre: string | null;
+  };
+  id: number;
+  municipio: {
+    id: number;
+    nombre: string | null;
+  };
+  observacion: string | null;
+  updated_at: string;
+  updated_by_user_id: number | null;
+  vigencia_desde: string;
+  vigencia_hasta: string | null;
+}
+
+export interface GestorPersonalAssignment {
+  activo: boolean;
+  contrato_id: number;
+  created_at: string;
+  created_by_user_id: number | null;
+  gestor: {
+    id: number;
+    nombre: string | null;
+  };
+  id: number;
+  municipio: {
+    id: number | null;
+    nombre: string | null;
+  } | null;
+  observacion: string | null;
+  trabajador: {
+    documento: string | null;
+    nombre_completo: string | null;
+    vinculacion_id: number;
+  };
+  updated_at: string;
+  updated_by_user_id: number | null;
+  vigencia_desde: string;
+  vigencia_hasta: string | null;
+}
+
+export interface GestorAssignmentWorkspace {
+  fecha_consulta: string;
+  gestor_seleccionado_id: number | null;
+  gestores: GestorAssignmentUser[];
+  items: ContractPersonalListItem[];
+  municipio_seleccionado_id: number | null;
+  municipios: Array<{ id: number; nombre: string }>;
+  resumen: {
+    asignados_a_gestor: number;
+    sin_gestor: number;
+    total_trabajadores: number;
+  };
+}
+
+export interface SaveGestorAssignmentsResult {
+  asignados: number;
+  desasignados: number;
+  fecha_efectiva: string;
+  gestor_usuario_id: number;
+  municipio_id: number;
+}
+
+export interface GestorMunicipiosResponse {
+  fecha_consulta: string;
+  gestor_usuario_id: number | null;
+  gestores: GestorAssignmentUser[];
+  items: GestorMunicipioAssignment[];
+}
+
+export interface GestorPersonalHistoryResponse {
+  fecha_consulta: string;
+  historial: GestorPersonalAssignment[];
+  vinculacion_id: number;
 }
 
 export const getPersonalResumen = async (
@@ -1094,6 +1563,213 @@ export const getPersonalResumen = async (
     client.release();
   }
 };
+
+const ensureVinculacionBelongsContrato = async (
+  client: PoolClient,
+  contratoId: number,
+  vinculacionId: number
+): Promise<void> => {
+  const result = await client.query<ExistsRow>(
+    `
+      SELECT EXISTS(
+        SELECT 1
+        FROM vinculaciones
+        WHERE id = $1::bigint
+          AND contrato_id = $2::bigint
+      ) AS exists
+    `,
+    [vinculacionId, contratoId]
+  );
+
+  if (!result.rows[0]?.exists) {
+    throw new AppError(
+      'Vinculacion not found for contrato',
+      404,
+      'VINCULACION_CONTRATO_NOT_FOUND'
+    );
+  }
+};
+
+const closeOpenGestorMunicipioAssignments = async (
+  client: PoolClient,
+  input: {
+    actorUserId: number;
+    contrato_id: number;
+    gestor_usuario_id: number;
+    municipio_id: number;
+    observacion: string | null;
+    vigencia_hasta: string;
+  }
+): Promise<number> => {
+  const result = await client.query<AssignmentMutationRow>(
+    `
+      UPDATE gestor_municipio_asignaciones
+      SET
+        vigencia_hasta = CASE
+          WHEN vigencia_desde > $5::date THEN vigencia_desde
+          ELSE $5::date
+        END,
+        activo = FALSE,
+        observacion = COALESCE($6, observacion),
+        updated_by_user_id = $1::bigint,
+        updated_at = NOW()
+      WHERE contrato_id = $2::bigint
+        AND usuario_id = $3::bigint
+        AND municipio_id = $4::bigint
+        AND COALESCE(activo, TRUE) = TRUE
+        AND (vigencia_hasta IS NULL OR vigencia_hasta > $5::date)
+      RETURNING id
+    `,
+    [
+      input.actorUserId,
+      input.contrato_id,
+      input.gestor_usuario_id,
+      input.municipio_id,
+      input.vigencia_hasta,
+      input.observacion
+    ]
+  );
+
+  return result.rowCount ?? 0;
+};
+
+const closeOpenGestorPersonalAssignments = async (
+  client: PoolClient,
+  input: {
+    actorUserId: number;
+    contrato_id: number;
+    vinculacion_id: number;
+    observacion: string | null;
+    vigencia_hasta: string;
+  }
+): Promise<number> => {
+  const result = await client.query<AssignmentMutationRow>(
+    `
+      UPDATE gestor_personal_asignaciones
+      SET
+        vigencia_hasta = CASE
+          WHEN vigencia_desde > $4::date THEN vigencia_desde
+          ELSE $4::date
+        END,
+        activo = FALSE,
+        observacion = COALESCE($5, observacion),
+        updated_by_user_id = $1::bigint,
+        updated_at = NOW()
+      WHERE contrato_id = $2::bigint
+        AND vinculacion_id = $3::bigint
+        AND COALESCE(activo, TRUE) = TRUE
+        AND (vigencia_hasta IS NULL OR vigencia_hasta > $4::date)
+      RETURNING id
+    `,
+    [
+      input.actorUserId,
+      input.contrato_id,
+      input.vinculacion_id,
+      input.vigencia_hasta,
+      input.observacion
+    ]
+  );
+
+  return result.rowCount ?? 0;
+};
+
+const createGestorMunicipioAssignmentRecord = async (
+  client: PoolClient,
+  input: {
+    actorUserId: number;
+    contrato_id: number;
+    gestor_usuario_id: number;
+    municipio_id: number;
+    observacion: string | null;
+    vigencia_desde: string;
+  }
+): Promise<void> => {
+  await client.query(
+    `
+      INSERT INTO gestor_municipio_asignaciones (
+        usuario_id,
+        contrato_id,
+        municipio_id,
+        vigencia_desde,
+        vigencia_hasta,
+        activo,
+        observacion,
+        created_by_user_id,
+        updated_by_user_id
+      )
+      VALUES (
+        $1::bigint,
+        $2::bigint,
+        $3::bigint,
+        $4::date,
+        NULL,
+        TRUE,
+        $5,
+        $6::bigint,
+        $6::bigint
+      )
+    `,
+    [
+      input.gestor_usuario_id,
+      input.contrato_id,
+      input.municipio_id,
+      input.vigencia_desde,
+      input.observacion,
+      input.actorUserId
+    ]
+  );
+};
+
+const createGestorPersonalAssignmentRecord = async (
+  client: PoolClient,
+  input: {
+    actorUserId: number;
+    contrato_id: number;
+    gestor_usuario_id: number;
+    municipio_id: number;
+    observacion: string | null;
+    vigencia_desde: string;
+    vinculacion_id: number;
+  }
+): Promise<void> => {
+  await client.query(
+    `
+      INSERT INTO gestor_personal_asignaciones (
+        usuario_id,
+        contrato_id,
+        vinculacion_id,
+        municipio_id,
+        vigencia_desde,
+        vigencia_hasta,
+        activo,
+        observacion,
+        created_by_user_id,
+        updated_by_user_id
+      )
+      VALUES (
+        $1::bigint,
+        $2::bigint,
+        $3::bigint,
+        $4::bigint,
+        $5::date,
+        NULL,
+        TRUE,
+        $6,
+        $7::bigint,
+        $7::bigint
+      )
+    `,
+    [
+      input.gestor_usuario_id,
+      input.contrato_id,
+      input.vinculacion_id,
+      input.municipio_id,
+      input.vigencia_desde,
+      input.observacion,
+      input.actorUserId
+    ]
+  );
+};
 export const getContractPersonalFilterOptions = async (
   contratoId: number,
   filters: { municipio_id?: number | null; institucion_id?: number | null; sede_id?: number | null; fecha?: string },
@@ -1115,18 +1791,574 @@ export const getContractPersonalFilterOptions = async (
         AND ($4::bigint IS NULL OR ff.sede_id = $4::bigint)
     `;
     const params = [contratoId, filters.municipio_id ?? null, filters.institucion_id ?? null, filters.sede_id ?? null];
-    const [municipios, instituciones, sedes, modalidades, ubicaciones] = await Promise.all([
+    const [gestores, municipios, instituciones, sedes, modalidades, ubicaciones] = await Promise.all([
+      listGestorAssignableUsers(client),
       client.query<{ id: number; nombre: string }>(`SELECT DISTINCT mu.id::int AS id, mu.nombre_municipio AS nombre ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string; municipio_id: number | null }>(`SELECT DISTINCT ins.id::int AS id, ins.nombre_institucion AS nombre, ins.municipio_id::int AS municipio_id ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string; institucion_id: number | null }>(`SELECT DISTINCT se.id::int AS id, se.nombre_sede AS nombre, se.institucion_id::int AS institucion_id ${base} ORDER BY nombre`, params),
       client.query<{ id: number; codigo: string | null; nombre: string }>(`SELECT DISTINCT mo.id::int AS id, COALESCE(mo.codigo_base, mo.codigo_original) AS codigo, mo.nombre_modalidad AS nombre ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string }>(`SELECT id::int AS id, nombre_ubicacion AS nombre FROM contrato_ubicaciones_laborales WHERE contrato_id = $1::bigint AND activo = TRUE ORDER BY nombre`, [contratoId])
     ]);
-    return { municipios: municipios.rows, instituciones: instituciones.rows, sedes: sedes.rows, modalidades: modalidades.rows, ubicaciones_laborales: ubicaciones.rows };
+    return {
+      gestores: gestores
+        .map((item) => ({
+          id: item.id,
+          nombre: item.nombre,
+          roles: item.roles
+        }))
+        .sort((left, right) => left.nombre.localeCompare(right.nombre, 'es')),
+      municipios: municipios.rows,
+      instituciones: instituciones.rows,
+      sedes: sedes.rows,
+      modalidades: modalidades.rows,
+      ubicaciones_laborales: ubicaciones.rows
+    };
   } finally {
     client.release();
   }
 };
+
+export const listGestores = async (
+  query: ListGestorMunicipiosQuery,
+  tenant?: TenantAccessContext
+): Promise<GestorAssignmentUser[]> => {
+  const client = await dbPool.connect();
+  try {
+    await ensureContractTenantAccess(client, tenant, query.contrato_id);
+    return await listGestorAssignableUsers(client);
+  } finally {
+    client.release();
+  }
+};
+
+export const listGestorMunicipios = async (
+  query: ListGestorMunicipiosQuery,
+  tenant?: TenantAccessContext
+): Promise<GestorMunicipiosResponse> => {
+  const client = await dbPool.connect();
+  try {
+    await ensureContractTenantAccess(client, tenant, query.contrato_id);
+    const fechaConsulta = toIsoDate(query.fecha);
+
+    const [gestores, items] = await Promise.all([
+      listGestorAssignableUsers(client),
+      getGestorMunicipioAssignments(client, {
+        contrato_id: query.contrato_id,
+        gestor_usuario_id: query.gestor_usuario_id,
+        fecha: fechaConsulta,
+        onlyActive: true
+      })
+    ]);
+
+    return {
+      fecha_consulta: fechaConsulta,
+      gestor_usuario_id: query.gestor_usuario_id ?? null,
+      gestores,
+      items
+    };
+  } finally {
+    client.release();
+  }
+};
+
+export const getGestorAssignmentWorkspace = async (
+  query: GestorAssignmentWorkspaceQuery,
+  tenant?: TenantAccessContext
+): Promise<GestorAssignmentWorkspace> => {
+  const fechaConsulta = toIsoDate(query.fecha);
+  const [gestores, municipios, items, sinGestorItems, asignados] = await Promise.all([
+    listGestores({ contrato_id: query.contrato_id, fecha: fechaConsulta }, tenant),
+    getContractPersonalFilterOptions(
+      query.contrato_id,
+      { municipio_id: query.municipio_id ?? null, fecha: fechaConsulta },
+      tenant
+    ),
+    listContractPersonal(
+      {
+        contrato_id: query.contrato_id,
+        municipio_id: query.municipio_id,
+        gestor_usuario_id: query.gestor_usuario_id,
+        search: query.search,
+        fecha: fechaConsulta,
+        page: 1,
+        limit: 5000
+      },
+      tenant
+    ),
+    listContractPersonal(
+      {
+        contrato_id: query.contrato_id,
+        municipio_id: query.municipio_id,
+        search: query.search,
+        fecha: fechaConsulta,
+        sin_gestor: true,
+        page: 1,
+        limit: 5000
+      },
+      tenant
+    ),
+    query.gestor_usuario_id
+      ? listContractPersonal(
+          {
+            contrato_id: query.contrato_id,
+            municipio_id: query.municipio_id,
+            gestor_usuario_id: query.gestor_usuario_id,
+            fecha: fechaConsulta,
+            page: 1,
+            limit: 5000
+          },
+          tenant
+        )
+      : Promise.resolve({
+          items: [],
+          pagination: { page: 1, limit: 0, total: 0, total_pages: 0, personas_total: 0 }
+        } satisfies PaginatedContractPersonal)
+  ]);
+
+  return {
+    fecha_consulta: fechaConsulta,
+    gestor_seleccionado_id: query.gestor_usuario_id ?? null,
+    gestores,
+    municipio_seleccionado_id: query.municipio_id ?? null,
+    municipios: municipios.municipios,
+    items: items.items,
+    resumen: {
+      total_trabajadores: items.pagination.personas_total ?? items.pagination.total,
+      sin_gestor: sinGestorItems.pagination.personas_total ?? sinGestorItems.pagination.total,
+      asignados_a_gestor: asignados.pagination.personas_total ?? asignados.pagination.total
+    }
+  };
+};
+
+export const createGestorMunicipioAssignment = async (
+  input: CreateGestorMunicipioAssignmentInput,
+  actorUserId: number,
+  tenant?: TenantAccessContext
+): Promise<GestorMunicipioAssignment> => {
+  const client = await dbPool.connect();
+  try {
+    await client.query('BEGIN');
+    await ensureContractTenantAccess(client, tenant, input.contrato_id);
+    await ensureGestorAssignmentUserExists(client, input.gestor_usuario_id);
+    await ensureMunicipioExists(client, input.municipio_id);
+
+    const vigenciaDesde = toIsoDate(input.vigencia_desde);
+
+    await closeOpenGestorMunicipioAssignments(client, {
+      actorUserId,
+      contrato_id: input.contrato_id,
+      gestor_usuario_id: input.gestor_usuario_id,
+      municipio_id: input.municipio_id,
+      vigencia_hasta: shiftIsoDate(vigenciaDesde, -1),
+      observacion: input.observacion
+    });
+
+    await createGestorMunicipioAssignmentRecord(client, {
+      actorUserId,
+      contrato_id: input.contrato_id,
+      gestor_usuario_id: input.gestor_usuario_id,
+      municipio_id: input.municipio_id,
+      vigencia_desde: vigenciaDesde,
+      observacion: input.observacion
+    });
+
+    const created = (
+      await getGestorMunicipioAssignments(client, {
+        contrato_id: input.contrato_id,
+        gestor_usuario_id: input.gestor_usuario_id,
+        fecha: vigenciaDesde,
+        onlyActive: true
+      })
+    ).find((item) => item.municipio.id === input.municipio_id);
+
+    await registerAuditEntry({
+      client,
+      usuario_id: String(actorUserId),
+      accion: 'GESTOR_MUNICIPIO_ASSIGN',
+      tabla: 'gestor_municipio_asignaciones',
+      registro_id: created ? String(created.id) : `${input.gestor_usuario_id}:${input.municipio_id}`,
+      descripcion: `Asignacion de municipio ${input.municipio_id} al gestor ${input.gestor_usuario_id}`,
+      before: null,
+      after: created ?? input,
+      ip: null,
+      user_agent: null
+    });
+
+    await client.query('COMMIT');
+
+    if (!created) {
+      throw new AppError(
+        'Failed to load created gestor municipio assignment',
+        500,
+        'GESTOR_MUNICIPIO_ASSIGNMENT_CREATE_FAILED'
+      );
+    }
+
+    return created;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const closeGestorMunicipioAssignment = async (
+  assignmentId: number,
+  input: CloseGestorAssignmentInput,
+  actorUserId: number,
+  tenant?: TenantAccessContext
+): Promise<GestorMunicipioAssignment> => {
+  const client = await dbPool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query<GestorMunicipioAssignmentRow>(
+      `
+        SELECT
+          gma.id,
+          gma.usuario_id,
+          u.nombre_completo AS gestor_nombre,
+          gma.contrato_id,
+          gma.municipio_id,
+          mu.nombre_municipio AS municipio_nombre,
+          gma.vigencia_desde,
+          gma.vigencia_hasta,
+          COALESCE(gma.activo, TRUE) AS activo,
+          gma.observacion,
+          gma.created_by_user_id,
+          gma.created_at,
+          gma.updated_by_user_id,
+          gma.updated_at
+        FROM gestor_municipio_asignaciones gma
+        INNER JOIN usuarios u ON u.id = gma.usuario_id
+        INNER JOIN municipios mu ON mu.id = gma.municipio_id
+        WHERE gma.id = $1::bigint
+        LIMIT 1
+        FOR UPDATE
+      `,
+      [assignmentId]
+    );
+
+    const current = result.rows[0];
+
+    if (!current) {
+      throw new AppError('Gestor municipio assignment not found', 404, 'GESTOR_MUNICIPIO_ASSIGNMENT_NOT_FOUND');
+    }
+
+    await ensureContractTenantAccess(client, tenant, toNumber(current.contrato_id));
+
+    await client.query(
+      `
+        UPDATE gestor_municipio_asignaciones
+        SET
+          vigencia_hasta = CASE
+            WHEN vigencia_desde > $2::date THEN vigencia_desde
+            ELSE $2::date
+          END,
+          activo = FALSE,
+          observacion = COALESCE($3, observacion),
+          updated_by_user_id = $4::bigint,
+          updated_at = NOW()
+        WHERE id = $1::bigint
+      `,
+      [assignmentId, input.vigencia_hasta, input.observacion, actorUserId]
+    );
+
+    const updated = (
+      await getGestorMunicipioAssignments(client, {
+        contrato_id: toNumber(current.contrato_id),
+        gestor_usuario_id: toNumber(current.usuario_id)
+      })
+    ).find((item) => item.id === assignmentId);
+
+    await registerAuditEntry({
+      client,
+      usuario_id: String(actorUserId),
+      accion: 'GESTOR_MUNICIPIO_CLOSE',
+      tabla: 'gestor_municipio_asignaciones',
+      registro_id: String(assignmentId),
+      descripcion: `Cierre de asignacion municipal ${assignmentId}`,
+      before: mapGestorMunicipioAssignment(current),
+      after: updated ?? null,
+      ip: null,
+      user_agent: null
+    });
+
+    await client.query('COMMIT');
+
+    if (!updated) {
+      throw new AppError(
+        'Failed to load closed gestor municipio assignment',
+        500,
+        'GESTOR_MUNICIPIO_ASSIGNMENT_CLOSE_FAILED'
+      );
+    }
+
+    return updated;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const saveGestorAssignments = async (
+  input: SaveGestorAssignmentsInput,
+  actorUserId: number,
+  tenant?: TenantAccessContext
+): Promise<SaveGestorAssignmentsResult> => {
+  const client = await dbPool.connect();
+  try {
+    await client.query('BEGIN');
+    await ensureContractTenantAccess(client, tenant, input.contrato_id);
+    await ensureGestorAssignmentUserExists(client, input.gestor_usuario_id);
+    await ensureMunicipioExists(client, input.municipio_id);
+
+    const fechaEfectiva = toIsoDate(input.fecha);
+    const cierreAnterior = shiftIsoDate(fechaEfectiva, -1);
+
+    for (const vinculacionId of input.vinculacion_ids) {
+      await ensureVinculacionBelongsContrato(client, input.contrato_id, vinculacionId);
+    }
+
+    const actuales = await getGestorPersonalAssignments(client, {
+      contrato_id: input.contrato_id,
+      municipio_id: input.municipio_id,
+      fecha: fechaEfectiva,
+      onlyActive: true
+    });
+
+    const actualesEnMunicipio = actuales.filter(
+      (item) => item.municipio?.id === input.municipio_id
+    );
+    const actualesIds = new Set(actualesEnMunicipio.map((item) => item.trabajador.vinculacion_id));
+    const nuevosIds = new Set(input.vinculacion_ids);
+
+    let asignados = 0;
+    let desasignados = 0;
+
+    for (const current of actualesEnMunicipio) {
+      if (!nuevosIds.has(current.trabajador.vinculacion_id)) {
+        desasignados += await closeOpenGestorPersonalAssignments(client, {
+          actorUserId,
+          contrato_id: input.contrato_id,
+          vinculacion_id: current.trabajador.vinculacion_id,
+          vigencia_hasta: cierreAnterior,
+          observacion: input.observacion
+        });
+      }
+    }
+
+    for (const vinculacionId of input.vinculacion_ids) {
+      const activoActual = actuales.find((item) => item.trabajador.vinculacion_id === vinculacionId);
+
+      if (
+        activoActual &&
+        activoActual.gestor.id === input.gestor_usuario_id &&
+        activoActual.municipio?.id === input.municipio_id
+      ) {
+        continue;
+      }
+
+      if (actualesIds.has(vinculacionId)) {
+        desasignados += await closeOpenGestorPersonalAssignments(client, {
+          actorUserId,
+          contrato_id: input.contrato_id,
+          vinculacion_id: vinculacionId,
+          vigencia_hasta: cierreAnterior,
+          observacion: input.observacion
+        });
+      }
+
+      if (activoActual && activoActual.gestor.id !== input.gestor_usuario_id) {
+        desasignados += await closeOpenGestorPersonalAssignments(client, {
+          actorUserId,
+          contrato_id: input.contrato_id,
+          vinculacion_id: vinculacionId,
+          vigencia_hasta: cierreAnterior,
+          observacion: input.observacion
+        });
+      }
+
+      await createGestorPersonalAssignmentRecord(client, {
+        actorUserId,
+        contrato_id: input.contrato_id,
+        gestor_usuario_id: input.gestor_usuario_id,
+        municipio_id: input.municipio_id,
+        vigencia_desde: fechaEfectiva,
+        observacion: input.observacion,
+        vinculacion_id: vinculacionId
+      });
+      asignados += 1;
+    }
+
+    await registerAuditEntry({
+      client,
+      usuario_id: String(actorUserId),
+      accion: 'GESTOR_PERSONAL_SAVE_BULK',
+      tabla: 'gestor_personal_asignaciones',
+      registro_id: `${input.contrato_id}:${input.gestor_usuario_id}:${input.municipio_id}`,
+      descripcion: `Asignacion masiva de personal al gestor ${input.gestor_usuario_id}`,
+      before: null,
+      after: {
+        gestor_usuario_id: input.gestor_usuario_id,
+        municipio_id: input.municipio_id,
+        vinculacion_ids: input.vinculacion_ids,
+        fecha_efectiva: fechaEfectiva,
+        observacion: input.observacion
+      },
+      ip: null,
+      user_agent: null
+    });
+
+    await client.query('COMMIT');
+
+    return {
+      asignados,
+      desasignados,
+      fecha_efectiva: fechaEfectiva,
+      gestor_usuario_id: input.gestor_usuario_id,
+      municipio_id: input.municipio_id
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const closeGestorPersonalAssignment = async (
+  assignmentId: number,
+  input: CloseGestorAssignmentInput,
+  actorUserId: number,
+  tenant?: TenantAccessContext
+): Promise<GestorPersonalAssignment> => {
+  const client = await dbPool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query<GestorPersonalAssignmentRow>(
+      `
+        SELECT
+          gpa.id,
+          gpa.usuario_id,
+          u.nombre_completo AS gestor_nombre,
+          gpa.contrato_id,
+          gpa.vinculacion_id,
+          gpa.municipio_id,
+          mu.nombre_municipio AS municipio_nombre,
+          gpa.vigencia_desde,
+          gpa.vigencia_hasta,
+          COALESCE(gpa.activo, TRUE) AS activo,
+          gpa.observacion,
+          gpa.created_by_user_id,
+          gpa.created_at,
+          gpa.updated_by_user_id,
+          gpa.updated_at,
+          p.numero_documento AS trabajador_documento,
+          CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido) AS trabajador_nombre
+        FROM gestor_personal_asignaciones gpa
+        INNER JOIN usuarios u ON u.id = gpa.usuario_id
+        INNER JOIN vinculaciones v ON v.id = gpa.vinculacion_id
+        INNER JOIN personas p ON p.id = v.persona_id
+        LEFT JOIN municipios mu ON mu.id = gpa.municipio_id
+        WHERE gpa.id = $1::bigint
+        LIMIT 1
+        FOR UPDATE
+      `,
+      [assignmentId]
+    );
+
+    const current = result.rows[0];
+
+    if (!current) {
+      throw new AppError('Gestor personal assignment not found', 404, 'GESTOR_PERSONAL_ASSIGNMENT_NOT_FOUND');
+    }
+
+    await ensureContractTenantAccess(client, tenant, toNumber(current.contrato_id));
+
+    await client.query(
+      `
+        UPDATE gestor_personal_asignaciones
+        SET
+          vigencia_hasta = CASE
+            WHEN vigencia_desde > $2::date THEN vigencia_desde
+            ELSE $2::date
+          END,
+          activo = FALSE,
+          observacion = COALESCE($3, observacion),
+          updated_by_user_id = $4::bigint,
+          updated_at = NOW()
+        WHERE id = $1::bigint
+      `,
+      [assignmentId, input.vigencia_hasta, input.observacion, actorUserId]
+    );
+
+    const updated = (
+      await getGestorPersonalAssignments(client, {
+        contrato_id: toNumber(current.contrato_id),
+        vinculacion_id: toNumber(current.vinculacion_id)
+      })
+    ).find((item) => item.id === assignmentId);
+
+    await registerAuditEntry({
+      client,
+      usuario_id: String(actorUserId),
+      accion: 'GESTOR_PERSONAL_CLOSE',
+      tabla: 'gestor_personal_asignaciones',
+      registro_id: String(assignmentId),
+      descripcion: `Cierre de asignacion individual ${assignmentId}`,
+      before: mapGestorPersonalAssignment(current),
+      after: updated ?? null,
+      ip: null,
+      user_agent: null
+    });
+
+    await client.query('COMMIT');
+
+    if (!updated) {
+      throw new AppError(
+        'Failed to load closed gestor personal assignment',
+        500,
+        'GESTOR_PERSONAL_ASSIGNMENT_CLOSE_FAILED'
+      );
+    }
+
+    return updated;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+export const getGestorPersonalHistory = async (
+  query: GestorPersonalHistoryQuery,
+  tenant?: TenantAccessContext
+): Promise<GestorPersonalHistoryResponse> => {
+  const client = await dbPool.connect();
+  try {
+    await ensureContractTenantAccess(client, tenant, query.contrato_id);
+    const fechaConsulta = toIsoDate(query.fecha);
+    await ensureVinculacionBelongsContrato(client, query.contrato_id, query.vinculacion_id);
+
+    const historial = await getGestorPersonalAssignments(client, {
+      contrato_id: query.contrato_id,
+      vinculacion_id: query.vinculacion_id
+    });
+
+    return {
+      fecha_consulta: fechaConsulta,
+      vinculacion_id: query.vinculacion_id,
+      historial
+    };
+  } finally {
+    client.release();
+  }
+};
+
 export const getVinculacionById = async (
   vinculacionId: number,
   tenant?: TenantAccessContext

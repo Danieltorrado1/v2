@@ -14,6 +14,8 @@ test('filtro ubicacion laboral server-side', () => assert.equal(listContractPers
 test('filtro cobertura temporal', () => assert.equal(listContractPersonalQuerySchema.parse({ ...base, cobertura: 'SI' }).cobertura, 'SI'));
 test('filtro licitacion independiente', () => assert.equal(listContractPersonalQuerySchema.parse({ ...base, licitacion: 'PRESENTADA' }).licitacion, 'PRESENTADA'));
 test('filtro estado', () => assert.equal(listContractPersonalQuerySchema.parse({ ...base, estado_vinculacion: 'RETIRADA' }).estado_vinculacion, 'RETIRADA'));
+test('filtro gestor server-side', () => assert.equal(listContractPersonalQuerySchema.parse({ ...base, gestor_usuario_id: '77' }).gestor_usuario_id, 77));
+test('filtro sin gestor server-side', () => assert.equal(listContractPersonalQuerySchema.parse({ ...base, sin_gestor: 'true' }).sin_gestor, true));
 test('filtros combinados conservan todos los criterios', () => { const result = listContractPersonalQuerySchema.parse({ ...base, municipio_id: '1', institucion_id: '2', sede_id: '3', modalidad_id: '4', ubicacion_laboral_id: '5', cobertura: 'NO', licitacion: 'NO_PRESENTADA' }); assert.deepEqual([result.municipio_id, result.institucion_id, result.sede_id, result.modalidad_id], [1, 2, 3, 4]); assert.equal(result.cobertura, 'NO'); });
 test('paginacion server-side valida page y limit', () => { const result = listContractPersonalQuerySchema.parse(base); assert.deepEqual([result.page, result.limit], [2, 50]); });
 test('fecha es obligatoria solo para temporalidad enviada', () => assert.equal(listContractPersonalQuerySchema.parse({ contrato_id: '24' }).fecha, undefined));
