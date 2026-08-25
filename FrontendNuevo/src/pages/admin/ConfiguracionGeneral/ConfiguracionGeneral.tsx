@@ -6,18 +6,21 @@ import {
   FileText,
   Settings,
   Users,
+  Boxes,
 } from 'lucide-react';
 import { EmpresasTab } from './tabs/EmpresasTab';
 import { ContratosTab } from './tabs/ContratosTab';
 import { UsuariosTab } from './tabs/UsuariosTab';
 import { CatalogosTab } from './tabs/CatalogosTab';
 import { CargosTab } from './tabs/CargosTab';
+import { PlanesModulosTab } from './tabs/PlanesModulosTab';
 import './ConfiguracionGeneral.css';
 
-type TabId = 'empresas' | 'contratos' | 'cargos' | 'catalogos' | 'usuarios';
+type TabId = 'empresas' | 'planes' | 'contratos' | 'cargos' | 'catalogos' | 'usuarios';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'empresas', label: 'Empresas', icon: <Building2 size={14} /> },
+  { id: 'planes', label: 'Planes y módulos', icon: <Boxes size={14} /> },
   { id: 'contratos', label: 'Contratos', icon: <FileText size={14} /> },
   { id: 'cargos', label: 'Cargos', icon: <Briefcase size={14} /> },
   { id: 'catalogos', label: 'Catalogos', icon: <BookOpen size={14} /> },
@@ -26,6 +29,12 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 
 export default function ConfiguracionGeneral() {
   const [activeTab, setActiveTab] = useState<TabId>('empresas');
+  const [saasEmpresaId, setSaasEmpresaId] = useState<number | null>(null);
+
+  const openSaasCompany = (empresaId: number) => {
+    setSaasEmpresaId(empresaId);
+    setActiveTab('planes');
+  };
 
   return (
     <div className="adm-page">
@@ -59,7 +68,8 @@ export default function ConfiguracionGeneral() {
       </nav>
 
       <div className="adm-content">
-        {activeTab === 'empresas' && <EmpresasTab />}
+        {activeTab === 'empresas' && <EmpresasTab onConfigureSaas={openSaasCompany} />}
+        {activeTab === 'planes' && <PlanesModulosTab initialCompanyId={saasEmpresaId} />}
         {activeTab === 'contratos' && <ContratosTab />}
         {activeTab === 'cargos' && <CargosTab />}
         {activeTab === 'catalogos' && <CatalogosTab />}

@@ -44,7 +44,7 @@ const repositorioLinks = [
 export default function MainLayout() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
-  const { empresasDisponibles, empresaId, empresaActual, organizacionActual, isLoading, setEmpresaActual } = useCompanyContext();
+  const { empresasDisponibles, empresaId, empresaActual, organizacionActual, isLoading, setEmpresaActual, hasModule } = useCompanyContext();
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(INITIAL_UNREAD_COUNT);
   const [logoFallback, setLogoFallback] = useState(false);
@@ -101,28 +101,28 @@ export default function MainLayout() {
         </Link>
 
         <nav className="menu">
-          <NavLink
+          {hasModule("DASHBOARD") && <NavLink
             to="/dashboard"
             className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
           >
             Dashboard
-          </NavLink>
-          <NavLink
+          </NavLink>}
+          {hasModule("PERSONAL") && <NavLink
             to="/personal"
             className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
           >
             Personal
-          </NavLink>
-          <NavDropdown label={"N\u00f3mina"} links={nominaLinks} />
-          <NavDropdown label="Herramientas" links={herramientasLinks} />
-          <NavDropdown label="SST" links={sstLinks} />
-          <NavLink
+          </NavLink>}
+          {hasModule("NOMINA") && <NavDropdown label={"N\u00f3mina"} links={nominaLinks} />}
+          {hasModule("COBERTURA") && <NavDropdown label="Herramientas" links={herramientasLinks} />}
+          {hasModule("SST") && <NavDropdown label="SST" links={sstLinks} />}
+          {hasModule("PORTAL_COLABORADOR") && <NavLink
             to="/portal"
             className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
           >
             Portal
-          </NavLink>
-          <NavDropdown label="Repositorio" links={repositorioLinks} />
+          </NavLink>}
+          {hasModule("REPOSITORIO") && <NavDropdown label="Repositorio" links={repositorioLinks} />}
           {canAccessAdmin && (
             <NavLink
               to="/admin"

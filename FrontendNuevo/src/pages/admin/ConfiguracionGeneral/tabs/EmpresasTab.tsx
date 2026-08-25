@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Building2, Edit2, Eye, Plus, Power, Search } from 'lucide-react';
+import { AlertTriangle, Building2, Edit2, Eye, Plus, Power, Search, Settings } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { configuracionApi } from '../../../../services/configuracionApi';
+import { saasApi, type CompanySaasSummary } from '../../../../services/saasApi';
 import type {
   CreateEmpresaPayload,
   Empresa,
@@ -90,7 +91,7 @@ function getEstadoLabel(activo: boolean): string {
   return activo ? 'Activa' : 'Inactiva';
 }
 
-export function EmpresasTab() {
+export function EmpresasTab({onConfigureSaas}:{onConfigureSaas:(empresaId:number)=>void}) {
   const { user } = useAuth();
   const permissions = user?.permissions ?? [];
   const canRead = hasAnyPermission(permissions, ['configuracion.read', 'empresas.read']);
@@ -114,6 +115,7 @@ export function EmpresasTab() {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
   const [toggleLoadingId, setToggleLoadingId] = useState<number | null>(null);
+  const [saasSummaries,setSaasSummaries]=useState<Record<number,CompanySaasSummary>>({});
 
   useEffect(() => {
     if (!feedback) {
@@ -150,10 +152,10 @@ export function EmpresasTab() {
           search: search.trim() || undefined,
           activo: estado === 'all' ? undefined : estado === 'active',
         });
-        const allResponse = await configuracionApi.listarEmpresas({
+        const [allResponse,saasRows] = await Promise.all([configuracionApi.listarEmpresas({
           page: 1,
           limit: 500,
-        });
+        }),saasApi.companySummaries()]);
 
         if (cancelled) {
           return;
@@ -162,6 +164,7 @@ export function EmpresasTab() {
         setItems(response.items);
         setAllEmpresas(allResponse.items);
         setPagination(response.pagination);
+        setSaasSummaries(Object.fromEntries(saasRows.map((row)=>[Number(row.empresa_id),row])));
 
         if (selectedId && response.items.some((item) => item.id === selectedId)) {
           void loadDetail(selectedId, cancelled);
@@ -461,8 +464,8 @@ export function EmpresasTab() {
               <tr>
                 <th>Empresa</th>
                 <th>NIT</th>
-                <th>Tipo</th>
-                <th>Ubicacion</th>
+                <th>Plan / suscripción</th>
+                <th>Módulos</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
@@ -486,11 +489,11 @@ export function EmpresasTab() {
                     </div>
                   </td>
                   <td className="cg-mono-cell">{empresa.nit}</td>
-                  <td>{empresa.tipo_empresa}</td>
                   <td>
-                    <div className="cg-primary-cell">{empresa.ciudad ?? 'No disponible'}</div>
-                    <div className="cg-secondary-cell">{empresa.departamento ?? 'No disponible'}</div>
+                    <div className="cg-primary-cell">{saasSummaries[empresa.id]?.plan_nombre??'LEGACY / SIN PLAN CONFIGURADO'}</div>
+                    <div className="cg-secondary-cell">{saasSummaries[empresa.id]?.estado_suscripcion??'LEGACY'}</div>
                   </td>
+                  <td><span className="adm-badge active">{saasSummaries[empresa.id]?.modulos_activos??'—'} activos</span></td>
                   <td>
                     <span className={`adm-badge ${empresa.activo ? 'active' : 'inactive'}`}>
                       {getEstadoLabel(empresa.activo)}
@@ -509,6 +512,9 @@ export function EmpresasTab() {
                       >
                         <Eye size={13} />
                       </button>
+                      {canUpdate && (
+                        <button className="adm-btn ghost sm" onClick={(event)=>{event.stopPropagation();onConfigureSaas(empresa.id);}} title="Configurar plan, módulos e histórico" type="button"><Settings size={13}/></button>
+                      )}
                       {canUpdate && (
                         <button
                           className="adm-btn ghost sm"

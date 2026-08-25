@@ -4,6 +4,7 @@ import { getTenantContext } from "../services/tenantApi";
 import type { Organizacion, TenantContextEmpresa } from "../types/configuracion.types";
 import { useAuth } from "./AuthContext";
 import { pickAuthorizedCompanyId } from "./companyScope";
+import { saasApi, type EmpresaCapabilities } from "../services/saasApi";
 
 type CompanyContextValue = {
   empresasDisponibles: TenantContextEmpresa[];
@@ -17,6 +18,9 @@ type CompanyContextValue = {
   empresaActiva: TenantContextEmpresa | null;
   isLoading: boolean;
   setEmpresaId: (empresaId: number | null) => void;
+  capabilities: EmpresaCapabilities | null;
+  capabilitiesLoading: boolean;
+  hasModule: (code: string) => boolean;
 };
 
 const CompanyContext = createContext<CompanyContextValue | null>(null);
@@ -28,11 +32,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [empresaId, setEmpresaIdState] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [capabilities, setCapabilities] = useState<EmpresaCapabilities | null>(null);
+  const [capabilitiesLoading, setCapabilitiesLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
       setEmpresasDisponibles([]);
       setEmpresaIdState(null);
+      setCapabilities(null);
       setError(null);
       return;
     }
@@ -85,6 +92,18 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, String(empresaId));
   }, [empresaId]);
 
+  useEffect(() => {
+    setCapabilities(null);
+    if (empresaId === null) return;
+    let cancelled = false;
+    setCapabilitiesLoading(true);
+    void saasApi.capabilities(empresaId)
+      .then((value) => { if (!cancelled) setCapabilities(value); })
+      .catch((value: unknown) => { if (!cancelled) setError(value instanceof Error ? value.message : "No fue posible cargar módulos."); })
+      .finally(() => { if (!cancelled) setCapabilitiesLoading(false); });
+    return () => { cancelled = true; };
+  }, [empresaId]);
+
   const empresaActual = useMemo(
     () => empresasDisponibles.find((empresa) => empresa.id === empresaId) ?? null,
     [empresaId, empresasDisponibles]
@@ -100,11 +119,13 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     error,
     setEmpresaActual: (nextEmpresaId: number | null) => {
       if (nextEmpresaId === null) {
+        setCapabilities(null);
         setEmpresaIdState(null);
         return;
       }
 
       if (empresasDisponibles.some((empresa) => empresa.id === nextEmpresaId)) {
+        setCapabilities(null);
         setEmpresaIdState(nextEmpresaId);
       }
     },
@@ -114,15 +135,20 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     isLoading: loading,
     setEmpresaId: (nextEmpresaId: number | null) => {
       if (nextEmpresaId === null) {
+        setCapabilities(null);
         setEmpresaIdState(null);
         return;
       }
 
       if (empresasDisponibles.some((empresa) => empresa.id === nextEmpresaId)) {
+        setCapabilities(null);
         setEmpresaIdState(nextEmpresaId);
       }
-    }
-  }), [empresasDisponibles, empresaActual, organizacionActual, loading, error, empresaId]);
+    },
+    capabilities,
+    capabilitiesLoading,
+    hasModule: (code: string) => capabilities?.modulos[code] === true,
+  }), [empresasDisponibles, empresaActual, organizacionActual, loading, error, empresaId, capabilities, capabilitiesLoading]);
 
   return <CompanyContext.Provider value={value}>{children}</CompanyContext.Provider>;
 }

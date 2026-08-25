@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { requirePermissions } from '../../middlewares/roleMiddleware';
 import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
+import { requireModule } from '../saas/saas.middleware';
 import {
   aprobarVacacionesSolicitudHandler,
   createVacacionesSolicitudHandler,
@@ -142,6 +143,7 @@ const nominaRoutes = Router();
 
 nominaRoutes.use(authMiddleware);
 nominaRoutes.use(tenantMiddleware);
+nominaRoutes.use(requireModule('NOMINA'));
 
 nominaRoutes.get('/periodos', requirePermissions('nomina.read'), getNominaPeriodosHandler);
 nominaRoutes.get('/periodos/:id', requirePermissions('nomina.read'), getNominaPeriodoHandler);

@@ -1,5 +1,6 @@
 import multer from 'multer';
 import { Router } from 'express';
+import { requireModule } from '../saas/saas.middleware';
 
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { requirePermissions } from '../../middlewares/roleMiddleware';
@@ -33,6 +34,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 
 
 coberturaRoutes.use(authMiddleware);
 coberturaRoutes.use(tenantMiddleware);
+coberturaRoutes.use(requireModule('COBERTURA'));
 
 coberturaRoutes.get('/resumen', requirePermissions('cobertura.read'), getCoberturaResumenHandler);
 coberturaRoutes.get('/dashboard', requirePermissions('cobertura.read'), getCoberturaDashboardHandler);

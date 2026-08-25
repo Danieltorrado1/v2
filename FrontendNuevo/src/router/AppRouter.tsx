@@ -1,5 +1,6 @@
 ﻿import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
+import ModuleRoute from "./ModuleRoute";
 import LoginPage from "../pages/auth/LoginPage";
 import MainLayout from "../layouts/MainLayout";
 import DashboardPage from "../pages/dashboard/DashboardPage";
@@ -32,35 +33,35 @@ export default function AppRouter() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="personal" element={<OperationalPersonalPage />} />
-            <Route path="nomina" element={<PlanillaOperativaPage />} />
-            <Route path="nomina/novedades" element={<NominaPage />} />
-            <Route path="nomina/validacion" element={<PersonalOpsPage />} />
-            <Route path="nomina/pago" element={<NominaPage />} />
-            <Route path="nomina/documentos" element={<NominaPage />} />
-            <Route path="nomina/liquidacion" element={<LiquidacionPage />} />
-            <Route path="nomina/turnos" element={<TurnosPage />} />
-            <Route path="nomina/personal-ops" element={<PersonalOpsPage />} />
-            <Route path="nomina/correccion" element={<CorreccionNominaPage />} />
-            <Route path="nomina/cambios-operativos" element={<CambiosOperativosPage />} />
-            <Route path="nomina/planilla-operativa" element={<PlanillaOperativaPage />} />
-            <Route path="nomina/gestion" element={<NominaPage />} />
+            <Route path="personal" element={<ModuleRoute code="PERSONAL"><OperationalPersonalPage /></ModuleRoute>} />
+            <Route path="nomina" element={<ModuleRoute code="NOMINA"><PlanillaOperativaPage /></ModuleRoute>} />
+            <Route path="nomina/novedades" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
+            <Route path="nomina/validacion" element={<ModuleRoute code="NOMINA"><PersonalOpsPage /></ModuleRoute>} />
+            <Route path="nomina/pago" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
+            <Route path="nomina/documentos" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
+            <Route path="nomina/liquidacion" element={<ModuleRoute code="NOMINA"><LiquidacionPage /></ModuleRoute>} />
+            <Route path="nomina/turnos" element={<ModuleRoute code="NOMINA"><TurnosPage /></ModuleRoute>} />
+            <Route path="nomina/personal-ops" element={<ModuleRoute code="NOMINA"><PersonalOpsPage /></ModuleRoute>} />
+            <Route path="nomina/correccion" element={<ModuleRoute code="NOMINA"><CorreccionNominaPage /></ModuleRoute>} />
+            <Route path="nomina/cambios-operativos" element={<ModuleRoute code="NOMINA"><CambiosOperativosPage /></ModuleRoute>} />
+            <Route path="nomina/planilla-operativa" element={<ModuleRoute code="NOMINA"><PlanillaOperativaPage /></ModuleRoute>} />
+            <Route path="nomina/gestion" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
             <Route path="herramientas/calculadora-salario" element={<CalculadoraSalarioPage />} />
             <Route path="herramientas/calculadora-cobertura" element={<CalculadoraCoberturaPage />} />
-            <Route path="herramientas/cobertura" element={<CoberturaDashboardPage />} />
-            <Route path="herramientas/cobertura/importaciones" element={<CoberturaHerramientasPage />} />
-            <Route path="sst" element={<SstPage />} />
+            <Route path="herramientas/cobertura" element={<ModuleRoute code="COBERTURA"><CoberturaDashboardPage /></ModuleRoute>} />
+            <Route path="herramientas/cobertura/importaciones" element={<ModuleRoute code="COBERTURA"><CoberturaHerramientasPage /></ModuleRoute>} />
+            <Route path="sst" element={<ModuleRoute code="SST"><SstPage /></ModuleRoute>} />
             <Route path="sst/incidentes" element={<Navigate to="/sst?tab=eventos" replace />} />
             <Route path="sst/riesgos" element={<Navigate to="/sst?tab=inspecciones" replace />} />
             <Route path="sst/capacitaciones" element={<Navigate to="/sst?tab=planes" replace />} />
             <Route path="sst/examenes-medicos" element={<Navigate to="/sst?tab=accidentes" replace />} />
             <Route path="sst/epp" element={<Navigate to="/sst?tab=hallazgos" replace />} />
             <Route path="sst/indicadores" element={<Navigate to="/sst?tab=indicadores" replace />} />
-            <Route path="portal" element={<PortalPage />} />
+            <Route path="portal" element={<ModuleRoute code="PORTAL_COLABORADOR"><PortalPage /></ModuleRoute>} />
             <Route path="administracion/vinculaciones" element={<ContractPersonalPage />} />
             <Route path="vinculaciones" element={<Navigate to="/administracion/vinculaciones" replace />} />
-            <Route path="repositorio" element={<VerDocumentosPage />} />
-            <Route path="repositorio/subir" element={<SubirDocumentosPage />} />
+            <Route path="repositorio" element={<ModuleRoute code="REPOSITORIO"><VerDocumentosPage /></ModuleRoute>} />
+            <Route path="repositorio/subir" element={<ModuleRoute code="REPOSITORIO"><SubirDocumentosPage /></ModuleRoute>} />
             <Route path="admin" element={<AdminPage />} />
           </Route>
         </Route>
