@@ -1,0 +1,17 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { authMiddleware } from '../../middlewares/authMiddleware';
+import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { getAuditRequestMeta } from '../auditoria/auditoria.helper';
+import { createPayrollParameter,getCompanyConfiguration,listPayrollParameters,saveGeneralConfiguration,saveModuleConfiguration } from './empresa-configuracion.service';
+const router=Router();router.use(authMiddleware,tenantMiddleware);const id=z.coerce.number().int().positive();
+const general=z.object({nombre_comercial:z.string().trim().max(180).nullable().optional(),dv:z.string().regex(/^\d{1,2}$/).nullable().optional(),pais:z.string().min(2).max(80),zona_horaria:z.string().min(3).max(80),moneda:z.string().length(3).transform(v=>v.toUpperCase()),locale:z.string().min(2).max(20),logo_url:z.string().url().nullable().optional(),encabezado_documentos:z.string().max(2000).nullable().optional(),direccion:z.string().max(250).nullable().optional(),telefono:z.string().max(50).nullable().optional(),correo:z.string().email().nullable().optional(),ciudad:z.string().max(120).nullable().optional(),departamento:z.string().max(120).nullable().optional()});
+const moduleConfig=z.object({estado:z.enum(['PENDIENTE','INCOMPLETA','CONFIGURADA']),observaciones:z.string().max(1000).nullable().optional()});const money=z.number().nonnegative().nullable().optional();
+const payroll=z.object({vigente_desde:z.iso.date(),vigente_hasta:z.iso.date().nullable().optional(),salario_minimo:money,auxilio_transporte:money,uvt:money,porcentaje_salud_empleado:money,porcentaje_pension_empleado:money,porcentaje_fondo_solidaridad:money,porcentaje_hora_extra_diurna:money,porcentaje_hora_extra_nocturna:money,porcentaje_recargo_nocturno:money,regla_redondeo:z.enum(['NEAREST','FLOOR','CEIL','NONE']).optional(),observaciones:z.string().max(1000).nullable().optional()}).refine(v=>!v.vigente_hasta||v.vigente_hasta>=v.vigente_desde,{message:'Invalid validity range'});
+router.get('/:empresaId',asyncHandler(async(req,res)=>res.json({data:await getCompanyConfiguration(id.parse(req.params.empresaId),req.tenant)})));
+router.put('/:empresaId/general',asyncHandler(async(req,res)=>res.json({data:await saveGeneralConfiguration(id.parse(req.params.empresaId),general.parse(req.body),req.user!.userId,req.tenant,getAuditRequestMeta(req))})));
+router.put('/:empresaId/modules/:codigo',asyncHandler(async(req,res)=>res.json({data:await saveModuleConfiguration(id.parse(req.params.empresaId),String(req.params.codigo).toUpperCase(),moduleConfig.parse(req.body),req.user!.userId,req.tenant,getAuditRequestMeta(req))})));
+router.get('/:empresaId/payroll-parameters',asyncHandler(async(req,res)=>res.json({data:await listPayrollParameters(id.parse(req.params.empresaId),z.iso.date().optional().parse(req.query.fecha),req.tenant)})));
+router.post('/:empresaId/payroll-parameters',asyncHandler(async(req,res)=>res.status(201).json({data:await createPayrollParameter(id.parse(req.params.empresaId),payroll.parse(req.body),req.user!.userId,req.tenant,getAuditRequestMeta(req))})));
+export {router as empresaConfiguracionRoutes};

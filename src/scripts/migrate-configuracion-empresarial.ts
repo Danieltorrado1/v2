@@ -1,0 +1,2 @@
+import { readFile } from 'node:fs/promises';import path from 'node:path';import { dbPool } from '../config/db';
+const run=async()=>{const sql=await readFile(path.resolve('sql/phase-35-1-configuracion-empresarial-modular.sql'),'utf8');const client=await dbPool.connect();try{await client.query('BEGIN');await client.query(sql);await client.query('COMMIT');console.log('phase-35-1 applied');}catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();await dbPool.end();}};void run();

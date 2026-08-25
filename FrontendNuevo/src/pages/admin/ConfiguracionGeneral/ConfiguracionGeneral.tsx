@@ -7,6 +7,7 @@ import {
   Settings,
   Users,
   Boxes,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { EmpresasTab } from './tabs/EmpresasTab';
 import { ContratosTab } from './tabs/ContratosTab';
@@ -14,12 +15,14 @@ import { UsuariosTab } from './tabs/UsuariosTab';
 import { CatalogosTab } from './tabs/CatalogosTab';
 import { CargosTab } from './tabs/CargosTab';
 import { PlanesModulosTab } from './tabs/PlanesModulosTab';
+import { EmpresaConfiguracionTab } from './tabs/EmpresaConfiguracionTab';
 import './ConfiguracionGeneral.css';
 
-type TabId = 'empresas' | 'planes' | 'contratos' | 'cargos' | 'catalogos' | 'usuarios';
+type TabId = 'empresas' | 'empresa-config' | 'planes' | 'contratos' | 'cargos' | 'catalogos' | 'usuarios';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'empresas', label: 'Empresas', icon: <Building2 size={14} /> },
+  { id: 'empresa-config', label: 'Configuración de empresa', icon: <SlidersHorizontal size={14} /> },
   { id: 'planes', label: 'Planes y módulos', icon: <Boxes size={14} /> },
   { id: 'contratos', label: 'Contratos', icon: <FileText size={14} /> },
   { id: 'cargos', label: 'Cargos', icon: <Briefcase size={14} /> },
@@ -69,6 +72,7 @@ export default function ConfiguracionGeneral() {
 
       <div className="adm-content">
         {activeTab === 'empresas' && <EmpresasTab onConfigureSaas={openSaasCompany} />}
+        {activeTab === 'empresa-config' && <EmpresaConfiguracionTab />}
         {activeTab === 'planes' && <PlanesModulosTab initialCompanyId={saasEmpresaId} />}
         {activeTab === 'contratos' && <ContratosTab />}
         {activeTab === 'cargos' && <CargosTab />}

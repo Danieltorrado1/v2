@@ -24,6 +24,7 @@ import { usersRouter } from '../modules/users/users.routes';
 import { configuracionRoutes } from '../modules/configuracion/configuracion.routes';
 import { vinculacionesRoutes } from '../modules/vinculaciones/vinculaciones.routes';
 import { saasRoutes } from '../modules/saas/saas.routes';
+import { empresaConfiguracionRoutes } from '../modules/empresa-configuracion/empresa-configuracion.routes';
 
 const apiRouter = Router();
 
@@ -52,5 +53,6 @@ apiRouter.use('/users', usersRouter);
 apiRouter.use('/configuracion', configuracionRoutes);
 apiRouter.use('/vinculaciones', vinculacionesRoutes);
 apiRouter.use('/saas', saasRoutes);
+apiRouter.use('/company-settings', empresaConfiguracionRoutes);
 
 export { apiRouter };
