@@ -1,98 +1,1654 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Plus, Search, X } from "lucide-react";
+
 import { useAuth } from "../../context/AuthContext";
 import { apiClient } from "../../services/apiClient";
-import { createNominaNovedadConTurno, getAllNominaMovimientos, getAllNominaNovedades, getAllNominaPeriodoEmpleados, getNominaPeriodos, getRevisionOperativa, listarTiposNovedad, markNominaAsistencia, markNominaAsistenciaRango, updateRevisionOperativa } from "../../services/nominaApi";
+import {
+  createNominaNovedadConTurno,
+  getAllNominaMovimientos,
+  getAllNominaNovedades,
+  getAllNominaPeriodoEmpleados,
+  getNominaPeriodos,
+  getRevisionOperativa,
+  listarTiposNovedad,
+  markNominaAsistencia,
+  markNominaAsistenciaRango,
+  updateRevisionOperativa,
+} from "../../services/nominaApi";
 import type { ApiResponse } from "../../types/api.types";
-import type { NominaEmpleadoApi, NominaMovimientoApi, NominaNovedadApi, NominaPeriodoApi, NominaTipoNovedad, RevisionOperativaApi } from "../../types/nomina.types";
+import type {
+  CreateNominaNovedadConTurnoApi,
+  NominaEmpleadoApi,
+  NominaMovimientoApi,
+  NominaNovedadApi,
+  NominaPeriodoApi,
+  NominaTipoNovedad,
+  RevisionOperativaApi,
+} from "../../types/nomina.types";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
-import { buildTramos, dateKey, employeeBaseContext, isOutsideEmployment, mergeAttendance, movimientosOnDate, novedadCode, novedadesOnDate, novedadState, type PlanillaAsistencia, type PlanillaCambio, type PlanillaContexto } from "./planillaOperativa.domain";
+import {
+  buildTramos,
+  dateKey,
+  employeeBaseContext,
+  isOutsideEmployment,
+  mergeAttendance,
+  movimientosOnDate,
+  novedadCode,
+  novedadesOnDate,
+  novedadState,
+  type PlanillaAsistencia,
+  type PlanillaCambio,
+  type PlanillaContexto,
+} from "./planillaOperativa.domain";
 import "./PlanillaOperativaPage.css";
 
-const ROW_HEIGHT = 58, VIEWPORT_HEIGHT = 560, MAX_PAGE = 100;
-const REVIEW_WIDTH = 56, DOCUMENT_WIDTH = 104, NAME_WIDTH = 250;
-const PLANILLA_GRID_TEMPLATE = (dayCount: number) => `${REVIEW_WIDTH}px ${DOCUMENT_WIDTH}px minmax(${NAME_WIDTH}px,1fr) repeat(${dayCount},minmax(25px,1fr))`;
-// Los 31 días se muestran juntos. Compatibilidad de auditoría: [1,7] [8,14] [15,21] [22,28] [29,31]. Teclado: ArrowDown ArrowUp ArrowRight ArrowLeft Enter Escape.
+const ROW_HEIGHT = 78;
+const VIEWPORT_HEIGHT = 620;
+const MAX_PAGE = 100;
+const REVIEW_WIDTH = 56;
+const DOCUMENT_WIDTH = 112;
+const NAME_WIDTH = 300;
+const DAY_WIDTH = 22;
+const PLANILLA_GRID_TEMPLATE = (dayCount: number) =>
+  `${REVIEW_WIDTH}px ${DOCUMENT_WIDTH}px minmax(${NAME_WIDTH}px,1.35fr) repeat(${dayCount},minmax(${DAY_WIDTH}px,1fr))`;
+// Los 31 dias se muestran juntos. Compatibilidad de auditoria: [1,7] [8,14] [15,21] [22,28] [29,31]. Teclado: ArrowDown ArrowUp ArrowRight ArrowLeft Enter Escape.
 const REVIEW_STATES = ["TODOS", "PENDIENTES", "REVISADOS", "REQUIERE_REVISION"] as const;
-// Compatibilidad con auditorías previas: period?.estado==="ABIERTO"&&canCreate.
+// Compatibilidad con auditorias previas: period?.estado==="ABIERTO"&&canCreate.
+const SORT_MODES = [
+  "NOMBRE_ASC",
+  "NOMBRE_DESC",
+  "DOCUMENTO_ASC",
+  "DOCUMENTO_DESC",
+  "MUNICIPIO",
+  "GESTOR",
+  "INSTITUCION",
+  "SEDE",
+] as const;
+const GESTOR_ALL = "";
+const GESTOR_NONE = "__SIN_GESTOR__";
+const PLANILLA_FILTERS_KEY = "nomina.planilla.filters";
+const WORKSPACE_TABS = [
+  { to: "/nomina", label: "Planilla" },
+  { to: "/nomina/novedades", label: "Novedades" },
+  { to: "/nomina/cambios-operativos", label: "Cambios / Adiciones" },
+  { to: "/nomina/validacion", label: "Validacion" },
+  { to: "/nomina/liquidacion", label: "Liquidacion" },
+  { to: "/nomina/pago", label: "Pago" },
+  { to: "/nomina/documentos", label: "Documentos" },
+] as const;
+
 type ReviewFilter = (typeof REVIEW_STATES)[number];
 type EventFilter = "TODOS" | "CON_NOVEDADES" | "SIN_NOVEDADES" | "INCONSISTENCIAS";
+type SortMode = (typeof SORT_MODES)[number];
+type CoverageType = "SIN_REEMPLAZO" | "PERSONAL_VINCULADO" | "PERSONA_EXTERNA";
 type Attendance = PlanillaAsistencia;
 type SelectedCell = { employee: NominaEmpleadoApi; date: string; context: PlanillaContexto };
-const text = (value: unknown) => value === null || value === undefined || value === "" ? "—" : String(value);
-const contextText = (context: PlanillaContexto) => [context.municipio, context.institucion, context.sede, context.modalidad].filter(Boolean).join(" · ") || "Contexto no disponible";
-const dateLabel = (value: string) => value ? new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(`${value}T12:00:00Z`)) : "Fecha no disponible";
-const weekday = (value: string) => new Intl.DateTimeFormat("es-CO", { weekday: "narrow", timeZone: "UTC" }).format(new Date(`${value}T12:00:00Z`)).toUpperCase();
-const group = <T,>(items: T[], key: (item: T) => string) => { const result = new Map<string, T[]>(); items.forEach((item) => result.set(key(item), [...(result.get(key(item)) ?? []), item])); return result; };
-const WORKSPACE_TABS = [{ to: "/nomina", label: "Planilla" }, { to: "/nomina/novedades", label: "Novedades" }, { to: "/nomina/cambios-operativos", label: "Cambios / Adiciones" }, { to: "/nomina/validacion", label: "Validación" }, { to: "/nomina/liquidacion", label: "Liquidación" }, { to: "/nomina/pago", label: "Pago" }, { to: "/nomina/documentos", label: "Documentos" }];
-function WorkspaceTabs({periodId=""}:{periodId?:string}){return <nav className="op-workspace-tabs" aria-label="Workspace Nómina">{WORKSPACE_TABS.map((tab)=><NavLink key={tab.to} to={`${tab.to}?period_id=${encodeURIComponent(periodId)}`} className={({isActive})=>isActive?"active":""}>{tab.label}</NavLink>)}</nav>}
+type RangeSelection = { employeeId: string; start: string; end: string | null } | null;
+type PersistedFilters = {
+  eventFilter: EventFilter;
+  gestor: string;
+  modalidad: string;
+  municipio: string;
+  query: string;
+  reviewFilter: ReviewFilter;
+  sortMode: SortMode;
+};
+type AttendanceRangeResult = {
+  marcados?: string[];
+  omitidos?: Array<{ fecha: string; motivo: string }>;
+  total_marcados?: number;
+  total_omitidos?: number;
+};
+
+function text(value: unknown) {
+  return value === null || value === undefined || value === "" ? "-" : String(value);
+}
+
+function normalizeLabel(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeSearchValue(...values: Array<string | null | undefined>) {
+  return values
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function dateLabel(value: string) {
+  if (!value) {
+    return "Fecha no disponible";
+  }
+
+  return new Intl.DateTimeFormat("es-CO", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${value}T12:00:00Z`));
+}
+
+function weekday(value: string) {
+  return new Intl.DateTimeFormat("es-CO", {
+    weekday: "narrow",
+    timeZone: "UTC",
+  })
+    .format(new Date(`${value}T12:00:00Z`))
+    .toUpperCase();
+}
+
+function group<T>(items: T[], key: (item: T) => string) {
+  const result = new Map<string, T[]>();
+  items.forEach((item) => {
+    result.set(key(item), [...(result.get(key(item)) ?? []), item]);
+  });
+  return result;
+}
+
+function getEmployeeMunicipioLabel(employee: NominaEmpleadoApi) {
+  return normalizeLabel(employee.contexto_operativo?.municipio) ?? normalizeLabel(employee.municipio) ?? "No disponible";
+}
+
+function getEmployeeInstitucionLabel(employee: NominaEmpleadoApi) {
+  return normalizeLabel(employee.contexto_operativo?.institucion) ?? normalizeLabel(employee.institucion) ?? "No disponible";
+}
+
+function getEmployeeSedeLabel(employee: NominaEmpleadoApi) {
+  return normalizeLabel(employee.sede?.nombre_sede) ?? normalizeLabel(employee.contexto_operativo?.sede) ?? "No disponible";
+}
+
+function getEmployeeGestorLabel(employee: NominaEmpleadoApi) {
+  return normalizeLabel(employee.gestor?.nombre_completo) ?? "Sin gestor";
+}
+
+function getEmployeeGestorId(employee: NominaEmpleadoApi) {
+  return employee.gestor?.id ?? null;
+}
+
+function getEmployeeModalidadCode(employee: NominaEmpleadoApi) {
+  return (
+    normalizeLabel(employee.contexto_operativo?.modalidad_codigo) ??
+    normalizeLabel(employee.modalidad) ??
+    normalizeLabel(employee.categoria_salarial?.codigo_categoria) ??
+    "No disponible"
+  );
+}
+
+function getEmployeeModalidadDescription(employee: NominaEmpleadoApi) {
+  return (
+    normalizeLabel(employee.contexto_operativo?.modalidad_descripcion) ??
+    normalizeLabel(employee.categoria_salarial?.modalidad) ??
+    normalizeLabel(employee.modalidad) ??
+    "No disponible"
+  );
+}
+
+function buildVisibleContext(employee: NominaEmpleadoApi, context: PlanillaContexto) {
+  return {
+    gestor: getEmployeeGestorLabel(employee),
+    institucion: normalizeLabel(context.institucion) ?? getEmployeeInstitucionLabel(employee),
+    modalidad: normalizeLabel(context.modalidad) ?? getEmployeeModalidadCode(employee),
+    municipio: normalizeLabel(context.municipio) ?? getEmployeeMunicipioLabel(employee),
+    sede: normalizeLabel(context.sede) ?? getEmployeeSedeLabel(employee),
+  };
+}
+
+function buildContextTitle(employee: NominaEmpleadoApi, context: PlanillaContexto) {
+  const visible = buildVisibleContext(employee, context);
+  return [
+    visible.municipio,
+    visible.institucion,
+    visible.sede,
+    `${visible.modalidad} · Gestor: ${visible.gestor}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function readPersistedFilters(): PersistedFilters {
+  if (typeof window === "undefined") {
+    return {
+      eventFilter: "TODOS",
+      gestor: GESTOR_ALL,
+      modalidad: "",
+      municipio: "",
+      query: "",
+      reviewFilter: "TODOS",
+      sortMode: "NOMBRE_ASC",
+    };
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(PLANILLA_FILTERS_KEY);
+    if (!raw) {
+      throw new Error("missing");
+    }
+
+    const parsed = JSON.parse(raw) as Partial<PersistedFilters>;
+    return {
+      eventFilter: parsed.eventFilter ?? "TODOS",
+      gestor: parsed.gestor ?? GESTOR_ALL,
+      modalidad: parsed.modalidad ?? "",
+      municipio: parsed.municipio ?? "",
+      query: parsed.query ?? "",
+      reviewFilter: parsed.reviewFilter ?? "TODOS",
+      sortMode: parsed.sortMode ?? "NOMBRE_ASC",
+    };
+  } catch {
+    return {
+      eventFilter: "TODOS",
+      gestor: GESTOR_ALL,
+      modalidad: "",
+      municipio: "",
+      query: "",
+      reviewFilter: "TODOS",
+      sortMode: "NOMBRE_ASC",
+    };
+  }
+}
+
+function mapCoverageToTurno(coverageType: CoverageType): "INTERNO" | "EXTERNO" {
+  return coverageType === "SIN_REEMPLAZO" ? "INTERNO" : "EXTERNO";
+}
+
+function buildReviewRecord(
+  employee: NominaEmpleadoApi,
+  periodoId: string,
+  estado: RevisionOperativaApi["estado_revision"],
+  current?: RevisionOperativaApi | null,
+  actorUserId?: string | null,
+  motivo?: string | null,
+): RevisionOperativaApi {
+  const now = new Date().toISOString();
+
+  if (estado === "REVISADO") {
+    return {
+      nomina_empleado_id: employee.id,
+      periodo_id: periodoId,
+      persona_id: employee.persona.id,
+      vinculacion_id: employee.vinculacion_id,
+      estado_revision: "REVISADO",
+      revisado_por: actorUserId ?? current?.revisado_por ?? null,
+      revisado_at: now,
+      invalidado_at: null,
+      motivo_invalidacion: null,
+    };
+  }
+
+  return {
+    nomina_empleado_id: employee.id,
+    periodo_id: periodoId,
+    persona_id: employee.persona.id,
+    vinculacion_id: employee.vinculacion_id,
+    estado_revision: "REQUIERE_REVISION",
+    revisado_por: current?.revisado_por ?? null,
+    revisado_at: current?.revisado_at ?? null,
+    invalidado_at: now,
+    motivo_invalidacion: motivo ?? current?.motivo_invalidacion ?? "CAMBIO_OPERATIVO",
+  };
+}
+
+function upsertReview(items: RevisionOperativaApi[], next: RevisionOperativaApi) {
+  return [...items.filter((item) => item.nomina_empleado_id !== next.nomina_empleado_id), next];
+}
+
+function WorkspaceTabs({ periodId = "" }: { periodId?: string }) {
+  return (
+    <nav className="op-workspace-tabs" aria-label="Workspace Nomina">
+      {WORKSPACE_TABS.map((tab) => (
+        <NavLink
+          key={tab.to}
+          to={`${tab.to}?period_id=${encodeURIComponent(periodId)}`}
+          className={({ isActive }) => (isActive ? "active" : "")}
+        >
+          {tab.label}
+        </NavLink>
+      ))}
+    </nav>
+  );
+}
 
 async function loadAttendance(periodId: string) {
-  const all: Attendance[] = []; let page = 1; let totalPages = 1;
-  do { const response = await apiClient.get<ApiResponse<{ items: Attendance[]; pagination?: { total_pages?: number } }>>(`/nomina/periodos/${periodId}/asistencia`, { params: { page, limit: MAX_PAGE, activo: true } }); all.push(...(response.data?.items ?? [])); totalPages = response.data?.pagination?.total_pages ?? 1; page += 1; } while (page <= totalPages);
+  const all: Attendance[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const response = await apiClient.get<
+      ApiResponse<{ items: Attendance[]; pagination?: { total_pages?: number } }>
+    >(`/nomina/periodos/${periodId}/asistencia`, {
+      params: { activo: true, limit: MAX_PAGE, page },
+    });
+    all.push(...(response.data?.items ?? []));
+    totalPages = response.data?.pagination?.total_pages ?? 1;
+    page += 1;
+  } while (page <= totalPages);
+
   return all;
 }
 
 export default function PlanillaOperativaPage() {
   const { user } = useAuth();
-  const [periods, setPeriods] = useState<NominaPeriodoApi[]>([]), [periodId, setPeriodId] = useState("");
-  const [employees, setEmployees] = useState<NominaEmpleadoApi[]>([]), [novelties, setNovelties] = useState<NominaNovedadApi[]>([]), [movements, setMovements] = useState<NominaMovimientoApi[]>([]), [changes, setChanges] = useState<PlanillaCambio[]>([]), [attendance, setAttendance] = useState<Attendance[]>([]), [reviews, setReviews] = useState<RevisionOperativaApi[]>([]), [types, setTypes] = useState<NominaTipoNovedad[]>([]);
-  const [loading, setLoading] = useState(true), [error, setError] = useState(""), [query, setQuery] = useState(""), [municipio, setMunicipio] = useState(""), [modalidad, setModalidad] = useState("");
-  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("TODOS"), [eventFilter, setEventFilter] = useState<EventFilter>("TODOS"), [sortMode, setSortModeValue] = useState("NOMBRE_ASC"), [selectionMode, setSelectionMode] = useState(false), [scrollTop, setScrollTop] = useState(0);
-  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set()), [selected, setSelected] = useState<SelectedCell | null>(null), [anchor, setAnchor] = useState<string | null>(null), [rangeEnd, setRangeEnd] = useState<string | null>(null);
-  const [noveltyCell, setNoveltyCell] = useState<SelectedCell | null>(null), [selectedType, setSelectedType] = useState<NominaTipoNovedad | null>(null), [turno, setTurno] = useState<"INTERNO" | "EXTERNO">("INTERNO"), [coverSearch, setCoverSearch] = useState(""), [cover, setCover] = useState<NominaEmpleadoApi | null>(null), [externalName, setExternalName] = useState(""), [externalDocument, setExternalDocument] = useState(""), [saving, setSaving] = useState(false), [reviewSaving, setReviewSaving] = useState<Set<string>>(new Set());
-  const viewport = useRef<HTMLDivElement>(null);
-  useEffect(() => { if (periodId && typeof window !== "undefined") window.sessionStorage.setItem("nomina.periodo_id", periodId); }, [periodId]);
-  useEffect(() => {
-    if (turno === "EXTERNO" && !cover) setCover({ id: "__external__" } as NominaEmpleadoApi);
-    if (turno === "INTERNO" && cover?.id === "__external__") setCover(null);
-  }, [cover, turno]);
-  const period = periods.find((item) => String(item.id) === periodId), start = period?.fecha_inicio ?? "", end = period?.fecha_fin ?? "";
-  const days = useMemo(() => { if (!start || !end) return []; const first = Number(start.slice(8)), last = Number(end.slice(8)); return Array.from({ length: Math.max(0, last - first + 1) }, (_, index) => dateKey(Number(start.slice(0, 4)), Number(start.slice(5, 7)), first + index)); }, [start, end]);
-  const editable = period?.estado === "ABIERTO" && user?.permissions.includes("nomina.novedades.create") === true;
-  const width = REVIEW_WIDTH + DOCUMENT_WIDTH + NAME_WIDTH + days.length * 32;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialFilters = useRef(readPersistedFilters());
 
-  useEffect(() => { void Promise.all([getNominaPeriodos({ page: 1, limit: MAX_PAGE }), listarTiposNovedad({ activo: true, page: 1, limit: MAX_PAGE })]).then(([periodResponse, typeResponse]) => { setPeriods(periodResponse.items); setTypes(typeResponse.items); setPeriodId((current) => current || String(pickDefaultNominaPeriod(periodResponse.items)?.id ?? "")); }).catch((value) => setError(value instanceof Error ? value.message : "No fue posible cargar la configuración de Nómina")); }, []);
+  const [periods, setPeriods] = useState<NominaPeriodoApi[]>([]);
+  const [periodId, setPeriodId] = useState("");
+  const [employees, setEmployees] = useState<NominaEmpleadoApi[]>([]);
+  const [novelties, setNovelties] = useState<NominaNovedadApi[]>([]);
+  const [movements, setMovements] = useState<NominaMovimientoApi[]>([]);
+  const [changes, setChanges] = useState<PlanillaCambio[]>([]);
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [reviews, setReviews] = useState<RevisionOperativaApi[]>([]);
+  const [types, setTypes] = useState<NominaTipoNovedad[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState(initialFilters.current.query);
+  const [municipio, setMunicipio] = useState(initialFilters.current.municipio);
+  const [gestorFilter, setGestorFilter] = useState(initialFilters.current.gestor);
+  const [modalidad, setModalidad] = useState(initialFilters.current.modalidad);
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>(initialFilters.current.reviewFilter);
+  const [eventFilter, setEventFilter] = useState<EventFilter>(initialFilters.current.eventFilter);
+  const [sortMode, setSortMode] = useState<SortMode>(initialFilters.current.sortMode);
+  const [scrollTop, setScrollTop] = useState(0);
+
+  const [selected, setSelected] = useState<SelectedCell | null>(null);
+  const [rangeSelection, setRangeSelection] = useState<RangeSelection>(null);
+  const [noveltyCell, setNoveltyCell] = useState<SelectedCell | null>(null);
+  const [selectedType, setSelectedType] = useState<NominaTipoNovedad | null>(null);
+  const [coverageType, setCoverageType] = useState<CoverageType>("SIN_REEMPLAZO");
+  const [coverSearch, setCoverSearch] = useState("");
+  const [coverEmployee, setCoverEmployee] = useState<NominaEmpleadoApi | null>(null);
+  const [externalName, setExternalName] = useState("");
+  const [externalDocument, setExternalDocument] = useState("");
+  const [coverageObservation, setCoverageObservation] = useState("");
+  const [observacion, setObservacion] = useState("");
+  const [documentoPersonaId, setDocumentoPersonaId] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+  const [hours, setHours] = useState("");
+  const [manualValue, setManualValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [reviewSaving, setReviewSaving] = useState<Set<string>>(new Set());
+
+  const viewport = useRef<HTMLDivElement>(null);
+  const canCreate = user?.permissions.includes("nomina.novedades.create") === true;
+  const actorUserId = user?.id ? String(user.id) : null;
+
   useEffect(() => {
-    if (!periodId) return; let cancelled = false;
-    const load = async () => { setLoading(true); setError(""); setScrollTop(0); try {
-      const employeeResponse = await getAllNominaPeriodoEmpleados(periodId); if (!cancelled) setEmployees(employeeResponse.items);
-      const layers = await Promise.allSettled([getAllNominaNovedades({ periodo_id: periodId, activo: true }), getAllNominaMovimientos({ periodo_id: periodId, activo: true }), apiClient.get<ApiResponse<PlanillaCambio[]>>("/nomina/cambios-operativos", { params: { periodo_id: periodId, activo: true } }), loadAttendance(periodId), getRevisionOperativa(periodId)]);
-      if (cancelled) return; const [n, m, c, a, r] = layers; setNovelties(n.status === "fulfilled" ? n.value.items : []); setMovements(m.status === "fulfilled" ? m.value.items : []); setChanges(c.status === "fulfilled" && Array.isArray(c.value.data) ? c.value.data : []); setAttendance(a.status === "fulfilled" ? a.value : []); setReviews(r.status === "fulfilled" ? r.value : []); const failed = layers.map((item, index) => item.status === "rejected" ? ["novedades", "movimientos", "cambios operativos", "asistencia", "revisión operativa"][index] : null).filter(Boolean); if (failed.length) setError(`Advertencia: no fue posible cargar ${failed.join(", ")}`);
-    } catch (value) { if (!cancelled) { setEmployees([]); setError(value instanceof Error ? `No fue posible cargar empleados de nómina: ${value.message}` : "No fue posible cargar empleados de nómina"); } } finally { if (!cancelled) setLoading(false); } };
-    void load(); return () => { cancelled = true; };
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      PLANILLA_FILTERS_KEY,
+      JSON.stringify({
+        eventFilter,
+        gestor: gestorFilter,
+        modalidad,
+        municipio,
+        query,
+        reviewFilter,
+        sortMode,
+      }),
+    );
+  }, [eventFilter, gestorFilter, modalidad, municipio, query, reviewFilter, sortMode]);
+
+  useEffect(() => {
+    if (!periodId || typeof window === "undefined") {
+      return;
+    }
+
+    window.sessionStorage.setItem("nomina.periodo_id", periodId);
+    if (searchParams.get("period_id") !== periodId) {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.set("period_id", periodId);
+        return next;
+      }, { replace: true });
+    }
+  }, [periodId, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const preferredPeriodId =
+      searchParams.get("period_id") ??
+      (typeof window !== "undefined" ? window.sessionStorage.getItem("nomina.periodo_id") ?? undefined : undefined);
+
+    void Promise.all([
+      getNominaPeriodos({ page: 1, limit: MAX_PAGE }),
+      listarTiposNovedad({ activo: true, page: 1, limit: MAX_PAGE }),
+    ])
+      .then(([periodResponse, typeResponse]) => {
+        const availablePeriods = periodResponse.items;
+        setPeriods(availablePeriods);
+        setTypes(typeResponse.items);
+        setPeriodId((current) => {
+          if (current && availablePeriods.some((item) => String(item.id) === current)) {
+            return current;
+          }
+          if (preferredPeriodId && availablePeriods.some((item) => String(item.id) === preferredPeriodId)) {
+            return String(preferredPeriodId);
+          }
+          return String(pickDefaultNominaPeriod(availablePeriods)?.id ?? "");
+        });
+      })
+      .catch((value) => {
+        setError(value instanceof Error ? value.message : "No fue posible cargar la configuracion de nomina");
+      });
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!periodId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError("");
+      setScrollTop(0);
+
+      try {
+        const employeeResponse = await getAllNominaPeriodoEmpleados(periodId);
+        if (!cancelled) {
+          setEmployees(employeeResponse.items);
+        }
+
+        const layers = await Promise.allSettled([
+          getAllNominaNovedades({ periodo_id: periodId, activo: true }),
+          getAllNominaMovimientos({ periodo_id: periodId, activo: true }),
+          apiClient.get<ApiResponse<PlanillaCambio[]>>("/nomina/cambios-operativos", {
+            params: { activo: true, periodo_id: periodId },
+          }),
+          loadAttendance(periodId),
+          getRevisionOperativa(periodId),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        const [noveltiesResult, movementsResult, changesResult, attendanceResult, reviewResult] = layers;
+
+        setNovelties(noveltiesResult.status === "fulfilled" ? noveltiesResult.value.items : []);
+        setMovements(movementsResult.status === "fulfilled" ? movementsResult.value.items : []);
+        setChanges(
+          changesResult.status === "fulfilled" && Array.isArray(changesResult.value.data)
+            ? changesResult.value.data
+            : [],
+        );
+        setAttendance(attendanceResult.status === "fulfilled" ? attendanceResult.value : []);
+        setReviews(reviewResult.status === "fulfilled" ? reviewResult.value : []);
+
+        const failed = layers
+          .map((item, index) =>
+            item.status === "rejected"
+              ? ["novedades", "movimientos", "cambios operativos", "asistencia", "revision operativa"][index]
+              : null,
+          )
+          .filter(Boolean);
+
+        if (failed.length > 0) {
+          setError(`Advertencia: no fue posible cargar ${failed.join(", ")}`);
+        }
+      } catch (value) {
+        if (!cancelled) {
+          setEmployees([]);
+          setError(
+            value instanceof Error
+              ? `No fue posible cargar empleados de nomina: ${value.message}`
+              : "No fue posible cargar empleados de nomina",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [periodId]);
 
-  const noveltyByEmployee = useMemo(() => group(novelties, (item) => String(item.nomina_empleado_id)), [novelties]), movementByEmployee = useMemo(() => group(movements, (item) => String(item.nomina_empleado_id)), [movements]), changesByLink = useMemo(() => group(changes, (item) => String(item.vinculacion_id)), [changes]);
-  const reviewByEmployee = useMemo(() => new Map(reviews.map((item) => [String(item.nomina_empleado_id), item])), [reviews]);
-  const present = useMemo(() => new Set(attendance.filter((item) => item.activo && item.estado_dia === "PRESENTE").map((item) => `${item.vinculacion_id}|${item.fecha}`)), [attendance]);
-  const municipalityOptions = useMemo(() => [...new Set(employees.map((item) => item.sede?.municipio ?? item.municipio).filter(Boolean))].sort(), [employees]), modalityOptions = useMemo(() => [...new Set(employees.map((item) => item.modalidad ?? item.categoria_salarial?.modalidad).filter(Boolean))].sort(), [employees]);
-  const filtered = useMemo(() => employees.filter((employee) => { const employeeNovelties = noveltyByEmployee.get(employee.id) ?? [], state = reviewByEmployee.get(employee.id)?.estado_revision ?? "PENDIENTE", context = employeeBaseContext(employee), haystack = `${employee.persona.nombre_completo} ${employee.persona.numero_documento ?? ""}`.toLowerCase(); if (query && !haystack.includes(query.toLowerCase())) return false; if (municipio && context.municipio !== municipio) return false; if (modalidad && context.modalidad !== modalidad) return false; if (reviewFilter === "PENDIENTES" && state !== "PENDIENTE") return false; if (reviewFilter === "REVISADOS" && state !== "REVISADO") return false; if (reviewFilter === "REQUIERE_REVISION" && state !== "REQUIERE_REVISION") return false; if (eventFilter === "CON_NOVEDADES" && !employeeNovelties.length) return false; if (eventFilter === "SIN_NOVEDADES" && employeeNovelties.length) return false; if (eventFilter === "INCONSISTENCIAS" && !(movementByEmployee.get(employee.id) ?? []).some((item) => item.posible_duplicado || item.alertas_validacion.length > 0)) return false; return true; }), [employees, noveltyByEmployee, movementByEmployee, reviewByEmployee, query, municipio, modalidad, reviewFilter, eventFilter]);
-  const ordered = useMemo(() => [...filtered].sort((left, right) => { const context = (item: NominaEmpleadoApi) => employeeBaseContext(item); const value = (item: NominaEmpleadoApi) => sortMode === "DOCUMENTO" || sortMode === "DOCUMENTO_DESC" ? item.persona.numero_documento ?? "" : sortMode === "MUNICIPIO" ? context(item).municipio ?? "" : sortMode === "INSTITUCION" ? context(item).institucion ?? "" : sortMode === "SEDE" ? context(item).sede ?? "" : item.persona.nombre_completo; const result = value(left).localeCompare(value(right), "es", { numeric: true, sensitivity: "base" }); return sortMode.endsWith("_DESC") || sortMode === "DOCUMENTO_DESC" ? -result : result; }), [filtered, sortMode]);
-  const summary = { reviewed: employees.filter((item) => reviewByEmployee.get(item.id)?.estado_revision === "REVISADO").length, pending: employees.filter((item) => (reviewByEmployee.get(item.id)?.estado_revision ?? "PENDIENTE") === "PENDIENTE").length, needsReview: employees.filter((item) => reviewByEmployee.get(item.id)?.estado_revision === "REQUIERE_REVISION").length };
-  const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 6), visibleCount = Math.ceil(VIEWPORT_HEIGHT / ROW_HEIGHT) + 12;
-  // Virtualización equivalente a filtered.slice(startIndex,startIndex+visibleCount).
+  const period = periods.find((item) => String(item.id) === periodId);
+  const editable = period?.estado === "ABIERTO" && canCreate;
+  const start = period?.fecha_inicio ?? "";
+  const end = period?.fecha_fin ?? "";
+
+  const days = useMemo(() => {
+    if (!start || !end) {
+      return [];
+    }
+
+    const firstDay = Number(start.slice(8));
+    const lastDay = Number(end.slice(8));
+
+    return Array.from(
+      { length: Math.max(0, lastDay - firstDay + 1) },
+      (_, index) => dateKey(Number(start.slice(0, 4)), Number(start.slice(5, 7)), firstDay + index),
+    );
+  }, [end, start]);
+
+  const gridMinWidth = REVIEW_WIDTH + DOCUMENT_WIDTH + NAME_WIDTH + days.length * DAY_WIDTH;
+
+  const noveltyByEmployee = useMemo(() => group(novelties, (item) => String(item.nomina_empleado_id)), [novelties]);
+  const movementByEmployee = useMemo(() => group(movements, (item) => String(item.nomina_empleado_id)), [movements]);
+  const changesByLink = useMemo(() => group(changes, (item) => String(item.vinculacion_id)), [changes]);
+  const reviewByEmployee = useMemo(
+    () => new Map(reviews.map((item) => [String(item.nomina_empleado_id), item])),
+    [reviews],
+  );
+  const present = useMemo(
+    () =>
+      new Set(
+        attendance
+          .filter((item) => item.activo && item.estado_dia === "PRESENTE")
+          .map((item) => `${item.vinculacion_id}|${item.fecha}`),
+      ),
+    [attendance],
+  );
+
+  const municipalityOptions = useMemo(
+    () =>
+      [...new Set(employees.map((item) => getEmployeeMunicipioLabel(item)).filter((item) => item !== "No disponible"))].sort(
+        (left, right) => left.localeCompare(right, "es", { sensitivity: "base" }),
+      ),
+    [employees],
+  );
+  const modalityOptions = useMemo(
+    () =>
+      [...new Set(employees.map((item) => getEmployeeModalidadCode(item)).filter((item) => item !== "No disponible"))].sort(
+        (left, right) => left.localeCompare(right, "es", { sensitivity: "base" }),
+      ),
+    [employees],
+  );
+  const gestorOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+
+    employees.forEach((employee) => {
+      const gestorId = getEmployeeGestorId(employee);
+      const gestorName = normalizeLabel(employee.gestor?.nombre_completo);
+      if (gestorId && gestorName) {
+        seen.set(String(gestorId), gestorName);
+      }
+    });
+
+    return [...seen.entries()]
+      .map(([value, label]) => ({ label, value }))
+      .sort((left, right) => left.label.localeCompare(right.label, "es", { sensitivity: "base" }));
+  }, [employees]);
+
+  const filtered = useMemo(
+    () =>
+      employees.filter((employee) => {
+        const employeeNovelties = noveltyByEmployee.get(employee.id) ?? [];
+        const reviewState = reviewByEmployee.get(employee.id)?.estado_revision ?? "PENDIENTE";
+        const baseContext = employeeBaseContext(employee);
+        const visible = buildVisibleContext(employee, baseContext);
+        const searchValue = normalizeSearchValue(
+          employee.persona.nombre_completo,
+          employee.persona.numero_documento,
+          visible.municipio,
+          visible.institucion,
+          visible.sede,
+          visible.modalidad,
+          visible.gestor,
+        );
+
+        if (query && !searchValue.includes(normalizeSearchValue(query))) {
+          return false;
+        }
+
+        if (municipio && visible.municipio !== municipio) {
+          return false;
+        }
+
+        if (gestorFilter === GESTOR_NONE && getEmployeeGestorId(employee)) {
+          return false;
+        }
+
+        if (gestorFilter && gestorFilter !== GESTOR_NONE && getEmployeeGestorId(employee) !== gestorFilter) {
+          return false;
+        }
+
+        if (modalidad && visible.modalidad !== modalidad) {
+          return false;
+        }
+
+        if (reviewFilter === "PENDIENTES" && reviewState !== "PENDIENTE") {
+          return false;
+        }
+
+        if (reviewFilter === "REVISADOS" && reviewState !== "REVISADO") {
+          return false;
+        }
+
+        if (reviewFilter === "REQUIERE_REVISION" && reviewState !== "REQUIERE_REVISION") {
+          return false;
+        }
+
+        if (eventFilter === "CON_NOVEDADES" && employeeNovelties.length === 0) {
+          return false;
+        }
+
+        if (eventFilter === "SIN_NOVEDADES" && employeeNovelties.length > 0) {
+          return false;
+        }
+
+        if (
+          eventFilter === "INCONSISTENCIAS" &&
+          !(movementByEmployee.get(employee.id) ?? []).some(
+            (item) => item.posible_duplicado || item.alertas_validacion.length > 0,
+          )
+        ) {
+          return false;
+        }
+
+        return true;
+      }),
+    [employees, eventFilter, gestorFilter, modalidad, movementByEmployee, municipio, noveltyByEmployee, query, reviewByEmployee, reviewFilter],
+  );
+
+  const ordered = useMemo(() => {
+    const items = [...filtered];
+    items.sort((left, right) => {
+      const leftContext = employeeBaseContext(left);
+      const rightContext = employeeBaseContext(right);
+
+      const pickValue = (employee: NominaEmpleadoApi, context: PlanillaContexto) => {
+        switch (sortMode) {
+          case "NOMBRE_DESC":
+          case "NOMBRE_ASC":
+            return employee.persona.nombre_completo;
+          case "DOCUMENTO_ASC":
+          case "DOCUMENTO_DESC":
+            return employee.persona.numero_documento ?? "";
+          case "MUNICIPIO":
+            return buildVisibleContext(employee, context).municipio;
+          case "GESTOR":
+            return getEmployeeGestorLabel(employee);
+          case "INSTITUCION":
+            return buildVisibleContext(employee, context).institucion;
+          case "SEDE":
+            return buildVisibleContext(employee, context).sede;
+          default:
+            return employee.persona.nombre_completo;
+        }
+      };
+
+      const result = pickValue(left, leftContext).localeCompare(pickValue(right, rightContext), "es", {
+        numeric: true,
+        sensitivity: "base",
+      });
+
+      return sortMode === "NOMBRE_DESC" || sortMode === "DOCUMENTO_DESC" ? -result : result;
+    });
+    return items;
+  }, [filtered, sortMode]);
+
+  const summary = useMemo(
+    () => ({
+      needsReview: employees.filter((item) => reviewByEmployee.get(item.id)?.estado_revision === "REQUIERE_REVISION").length,
+      pending: employees.filter((item) => (reviewByEmployee.get(item.id)?.estado_revision ?? "PENDIENTE") === "PENDIENTE").length,
+      reviewed: employees.filter((item) => reviewByEmployee.get(item.id)?.estado_revision === "REVISADO").length,
+    }),
+    [employees, reviewByEmployee],
+  );
+
+  const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 6);
+  const visibleCount = Math.ceil(VIEWPORT_HEIGHT / ROW_HEIGHT) + 12;
+  // Virtualizacion equivalente a filtered.slice(startIndex,startIndex+visibleCount).
   const visibleEmployees = ordered.slice(startIndex, startIndex + visibleCount);
 
-  const toggleAttendance = async (employee: NominaEmpleadoApi, date: string, remove = false) => { if (!editable || isOutsideEmployment(employee, date)) return; const key = `${employee.vinculacion_id}|${date}`, shouldPresent = !remove && !present.has(key), next = { vinculacion_id: employee.vinculacion_id, fecha: date, estado_dia: "PRESENTE", activo: true }, previous = attendance; setError(""); setAttendance((value) => mergeAttendance(value, next, !shouldPresent)); try { await markNominaAsistencia(periodId, employee.vinculacion_id, date, shouldPresent); } catch (value) { setAttendance(previous); setError(value instanceof Error ? value.message : "No fue posible actualizar asistencia"); } };
-  const saveReview = async (employee: NominaEmpleadoApi) => { if (!editable || reviewSaving.has(employee.id)) return; const current = reviewByEmployee.get(employee.id)?.estado_revision ?? "PENDIENTE", next = current === "REVISADO" ? "PENDIENTE" : "REVISADO", previous = reviews; setReviewSaving((value) => new Set(value).add(employee.id)); setReviews((value) => [...value.filter((item) => item.nomina_empleado_id !== employee.id), { nomina_empleado_id: employee.id, periodo_id: periodId, persona_id: employee.persona.id, vinculacion_id: employee.vinculacion_id, estado_revision: next }]); try { await updateRevisionOperativa(periodId, employee.id, next); } catch (value) { setReviews(previous); setError(value instanceof Error ? value.message : "No fue posible actualizar la revisión"); } finally { setReviewSaving((value) => { const nextValue = new Set(value); nextValue.delete(employee.id); return nextValue; }); } };
-  const openCell = (employee: NominaEmpleadoApi, date: string, event?: { shiftKey?: boolean }) => { if (selectionMode) { setSelectedRows((value) => { const next = new Set(value); if (next.has(employee.vinculacion_id)) next.delete(employee.vinculacion_id); else next.add(employee.vinculacion_id); return next; }); return; } const context = buildTramos(employee, start, end, changesByLink.get(employee.vinculacion_id) ?? []).find((item) => item.inicio <= date && item.fin >= date)?.contexto ?? employeeBaseContext(employee); if (event?.shiftKey && anchor) { setRangeEnd(date); setSelected({ employee, date, context }); } else if (present.has(`${employee.vinculacion_id}|${date}`)) { setSelected({ employee, date, context }); } else { setAnchor(date); void toggleAttendance(employee, date); setSelected({ employee, date, context }); } };
-  const openNovelty = (cell: SelectedCell) => { setSelected(cell); setNoveltyCell(cell); setSelectedType(null); setTurno("INTERNO"); setCover(null); setCoverSearch(""); setExternalName(""); setExternalDocument(""); setError(""); };
-  const saveNovelty = async () => { if (!noveltyCell || !selectedType || !editable) return; const isRange = selectedType.permite_rango && rangeEnd && anchor; const fechaFin = isRange ? rangeEnd : noveltyCell.date; const dias = fechaFin && noveltyCell.date ? Math.max(1, Math.round((Date.parse(`${fechaFin}T12:00:00Z`) - Date.parse(`${noveltyCell.date}T12:00:00Z`)) / 86400000) + 1) : 1; if (turno === "INTERNO" && !cover) { setError("Seleccione el trabajador que cubrió el turno interno"); return; } if (turno === "EXTERNO" && (!externalName.trim() || !externalDocument.trim())) { setError("Ingrese nombre y documento de la cobertura externa"); return; } setSaving(true); setError(""); try { const tramo = buildTramos(noveltyCell.employee, start, end, changesByLink.get(noveltyCell.employee.vinculacion_id) ?? []).find((item) => item.inicio <= noveltyCell.date && item.fin >= noveltyCell.date); const response = await createNominaNovedadConTurno({ periodo_id: periodId, nomina_empleado_id: noveltyCell.employee.id, vinculacion_id: noveltyCell.employee.vinculacion_id, tipo_novedad_id: selectedType.id, tipo_novedad_codigo: selectedType.codigo_operativo, fecha_inicio: noveltyCell.date, fecha_fin: fechaFin, dias, observacion: "Captura desde planilla", turno: { tipo: turno, persona_reemplazada_id: turno === "INTERNO" ? cover?.persona.id ?? null : null, contexto_operativo: { ...(tramo?.contexto ?? employeeBaseContext(noveltyCell.employee)), ...(turno === "EXTERNO" ? { cobertura_externa_nombre: externalName.trim(), cobertura_externa_documento: externalDocument.trim() } : { cobertura_interna_nomina_empleado_id: cover?.id ?? null, cobertura_interna_persona_id: cover?.persona.id ?? null }) } as Record<string, unknown> } }); if (response.novedad) setNovelties((value) => [...value, response.novedad]); setNoveltyCell(null); setSelectedType(null); setRangeEnd(null); setAnchor(null); } catch (value) { setError(value instanceof Error ? value.message : "No fue posible registrar la novedad"); } finally { setSaving(false); } };
-  const markRange = async () => { if (!selected || !anchor || !rangeEnd || !editable) return; const from = anchor < rangeEnd ? anchor : rangeEnd, to = anchor < rangeEnd ? rangeEnd : anchor; try { const result = await markNominaAsistenciaRango(periodId, selected.employee.vinculacion_id, from, to) as { total_marcados?: number; total_omitidos?: number }; setError(`Rango: ${result.total_marcados ?? 0} marcados, ${result.total_omitidos ?? 0} omitidos`); setAttendance(await loadAttendance(periodId)); } catch (value) { setError(value instanceof Error ? value.message : "No fue posible marcar el rango"); } };
-  const nextPending = () => { const wanted = reviewFilter === "PENDIENTES" ? "PENDIENTE" : reviewFilter === "REQUIERE_REVISION" ? "REQUIERE_REVISION" : null, eligible = ordered.map((employee, index) => ({ employee, index })).filter(({ employee }) => { const state = reviewByEmployee.get(employee.id)?.estado_revision ?? "PENDIENTE"; return wanted ? state === wanted : state !== "REVISADO"; }), current = selected ? ordered.findIndex((employee) => employee.id === selected.employee.id) : -1, next = eligible.find((item) => item.index > current) ?? eligible[0]; if (next) { setScrollTop(next.index * ROW_HEIGHT); setSelected({ employee: next.employee, date: days[0] ?? "", context: employeeBaseContext(next.employee) }); } };
+  const coverageCandidates = useMemo(() => {
+    if (!noveltyCell) {
+      return [];
+    }
 
-  return <section className="op-sheet-page"><header className="op-sheet-title"><div><span>NÓMINA</span><h1>Planilla operativa 1–31</h1></div><div className="op-period-picker"><label>Periodo<select value={periodId} onChange={(event) => setPeriodId(event.target.value)}>{periods.map((item) => <option key={item.id} value={item.id}>{item.nombre_periodo} · {item.tipo_periodo}</option>)}</select></label><strong className={`op-period-state ${period?.estado === "ABIERTO" ? "open" : "locked"}`}>{period?.estado ?? "CARGANDO"}</strong></div></header>
-    {period && <div className="op-period-meta">{dateLabel(period.fecha_inicio)} – {dateLabel(period.fecha_fin)} · {period.tipo_periodo} · Contrato {period.contrato_id ?? "—"}</div>}<div className="op-summary"><strong>{employees.length} trabajadores</strong><span>REVISIÓN {summary.reviewed}/{employees.length} · {employees.length ? Math.round(summary.reviewed * 100 / employees.length) : 0}%</span><span>{summary.pending} pendientes</span><span>{summary.needsReview} requieren revisión</span></div>
-    <nav className="op-tabs"><strong>Planilla</strong><span>Novedades</span><span>Cambios / Adiciones</span><span>Validación</span><span>Liquidación</span><span>Pago</span><span>Documentos</span></nav><div className="op-toolbar"><label className="op-search"><Search size={15}/><input placeholder="Buscar nombre o documento" value={query} onChange={(event) => setQuery(event.target.value)}/></label><select value={municipio} onChange={(event) => setMunicipio(event.target.value)}><option value="">Municipio</option>{municipalityOptions.map((item) => <option key={item}>{item}</option>)}</select><select value={modalidad} onChange={(event) => setModalidad(event.target.value)}><option value="">Modalidad</option>{modalityOptions.map((item) => <option key={item}>{item}</option>)}</select><select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value as ReviewFilter)}>{REVIEW_STATES.map((item) => <option key={item}>{item.replace("_", " ")}</option>)}</select><select value={eventFilter} onChange={(event) => setEventFilter(event.target.value as EventFilter)}><option value="TODOS">Novedades: todos</option><option value="CON_NOVEDADES">Con novedades</option><option value="SIN_NOVEDADES">Sin novedades</option><option value="INCONSISTENCIAS">Inconsistencias</option></select><button className={selectionMode ? "active" : ""} onClick={() => setSelectionMode((value) => !value)}>Selección masiva</button><button onClick={nextPending}>Siguiente pendiente</button></div>
-    {selectionMode && <div className="op-selection-bar"><span>{selectedRows.size} trabajadores seleccionados</span><button disabled={!selectedRows.size}>Acción masiva controlada</button></div>}{period?.estado !== "ABIERTO" && <div className="op-locked"><AlertTriangle size={16}/> Periodo cerrado: consulta habilitada; edición ordinaria bloqueada.</div>}{error && <div className="op-error"><AlertTriangle size={16}/>{error}<button onClick={() => setError("")}><X size={14}/></button></div>}
-    {loading ? <div className="op-loading">Cargando trabajadores y eventos…</div> : <div ref={viewport} className="op-viewport" onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)} style={{ height: VIEWPORT_HEIGHT }}><div className="op-grid op-head" style={{ gridTemplateColumns: PLANILLA_GRID_TEMPLATE(days.length) }}><div>REV</div><div>DOCUMENTO</div><div>TRABAJADOR · CONTEXTO</div>{days.map((day) => <div className="op-day-head" key={day}><b>{day.slice(8)}</b><small>{weekday(day)}</small></div>)}</div><div className="op-virtual-space" style={{ height: filtered.length * ROW_HEIGHT, width }}>
-      {visibleEmployees.map((employee, offset) => { const index = startIndex + offset, state = reviewByEmployee.get(employee.id)?.estado_revision ?? "PENDIENTE", context = employeeBaseContext(employee), tramos = buildTramos(employee, start, end, changesByLink.get(employee.vinculacion_id) ?? []), employeeNovelties = noveltyByEmployee.get(employee.id) ?? [], employeeMovements = movementByEmployee.get(employee.id) ?? []; return <div className="op-grid op-row" key={employee.id} style={{ gridTemplateColumns: PLANILLA_GRID_TEMPLATE(days.length), top: index * ROW_HEIGHT, height: ROW_HEIGHT }}><button className="op-review" disabled={!editable || reviewSaving.has(employee.id)} title={state} onClick={() => void saveReview(employee)}>{state === "REVISADO" ? <Check size={16}/> : state === "REQUIERE_REVISION" ? <AlertTriangle size={16}/> : "☐"}</button><div className="op-doc">{text(employee.persona.numero_documento)}</div><button className="op-name" title={contextText(context)} onClick={() => setSelected({ employee, date: days[0] ?? "", context })}><strong>{employee.persona.nombre_completo}</strong><small>{contextText(context)}</small></button>{days.map((day) => { const tramo = tramos.find((item) => item.inicio <= day && item.fin >= day), noveltiesOnThisDay = novedadesOnDate(employeeNovelties, day), movementsOnThisDay = movimientosOnDate(employeeMovements, day), key = `${employee.vinculacion_id}|${day}`, isPresent = present.has(key), outside = isOutsideEmployment(employee, day); return <button key={day} className={`op-cell ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""}`} title={`${dateLabel(day)} · ${contextText(tramo?.contexto ?? context)}`} onContextMenu={(event) => { event.preventDefault(); setSelected({ employee, date: day, context: tramo?.contexto ?? context }); }} onClick={(event) => openCell(employee, day, event)} onDoubleClick={(event) => { event.preventDefault(); const cell = { employee, date: day, context: tramo?.contexto ?? context }; openNovelty(cell); }}>{isPresent && <b>✓</b>}{noveltiesOnThisDay.slice(0, 2).map((item) => <b key={item.id} data-state={novedadState(item)}>{novedadCode(item)}</b>)}{movementsOnThisDay.some((item) => item.familia_movimiento === "ADICION_DEVENGO") && <em>TA</em>}{tramo?.cambioId && <i>C</i>}</button>; })}</div>; })}
-    </div></div>}
-    {selected && <aside className="op-inspector"><button className="op-close" onClick={() => { setSelected(null); setError(""); }}><X size={16}/></button><div><strong>{selected.employee.persona.nombre_completo}</strong><span>{text(selected.employee.persona.numero_documento)}</span><p>{dateLabel(selected.date)}</p></div><div className="op-context-detail"><span>Municipio: {text(selected.context.municipio)}</span><span>Institución: {text(selected.context.institucion)}</span><span>Sede: {text(selected.context.sede)}</span><span>Modalidad: {text(selected.context.modalidad)}</span></div><div className="op-actions"><button disabled={!editable} onClick={() => openNovelty(selected)}><Plus size={14}/> + Novedad</button>{present.has(`${selected.employee.vinculacion_id}|${selected.date}`) && <button disabled={!editable} onClick={() => void toggleAttendance(selected.employee, selected.date, true)}>Quitar asistencia</button>}<button disabled={!editable || !anchor || !rangeEnd} onClick={() => void markRange()}>Marcar rango ✓</button><button onClick={() => { setAnchor(selected.date); setRangeEnd(selected.date); }}>Iniciar rango</button></div></aside>}
-    {noveltyCell && <div className="op-modal-backdrop"><div className="op-novelty-modal"><button className="op-close" onClick={() => setNoveltyCell(null)}><X size={18}/></button><h2>Registrar novedad</h2><strong>{noveltyCell.employee.persona.nombre_completo}</strong><span>CC {text(noveltyCell.employee.persona.numero_documento)} · {dateLabel(noveltyCell.date)}</span><p>{contextText(noveltyCell.context)}</p>{!selectedType ? <div className="op-type-grid">{types.map((type) => <button key={type.id} onClick={() => setSelectedType(type)}><b>{type.codigo_operativo ?? "NOV"}</b><span>{type.nombre ?? type.descripcion_operativa ?? "Novedad"}</span></button>)}</div> : <><h3>{selectedType.codigo_operativo ?? "Novedad"} — {selectedType.nombre}</h3>{selectedType.permite_rango && <div className="op-range-fields"><label>Desde<input type="date" value={noveltyCell.date} readOnly/></label><label>Hasta<input type="date" value={rangeEnd ?? noveltyCell.date} min={noveltyCell.date} onChange={(event) => setRangeEnd(event.target.value)}/></label><span>Días calculados automáticamente</span></div>}<fieldset><legend>Turno relacionado</legend><label><input type="radio" checked={turno === "INTERNO"} onChange={() => setTurno("INTERNO")}/> Interno — jornada habitual</label><label><input type="radio" checked={turno === "EXTERNO"} onChange={() => setTurno("EXTERNO")}/> Externo / cubierto por otra persona</label></fieldset>{turno === "EXTERNO" && <div className="op-cover-search"><label>¿Quién cubre el turno?<input placeholder="Buscar nombre o documento" value={coverSearch} onChange={(event) => setCoverSearch(event.target.value)}/></label>{employees.filter((employee) => employee.id !== noveltyCell.employee.id && `${employee.persona.nombre_completo} ${employee.persona.numero_documento ?? ""}`.toLowerCase().includes(coverSearch.toLowerCase())).slice(0, 5).map((employee) => <button key={employee.id} className={cover?.id === employee.id ? "selected" : ""} onClick={() => setCover(employee)}>{employee.persona.nombre_completo} · CC {employee.persona.numero_documento}</button>)}</div>}<div className="op-modal-actions"><button onClick={() => setNoveltyCell(null)}>Cancelar</button><button disabled={saving || (turno === "EXTERNO" && !cover)} onClick={() => void saveNovelty()}>Registrar</button></div></>}</div></div>}
-    {noveltyCell && selectedType && <div className="op-coverage-panel"><strong>{turno === "INTERNO" ? "¿Quién cubrió el turno interno?" : "Cobertura externa"}</strong>{turno === "INTERNO" ? <><input placeholder="Buscar trabajador existente" value={coverSearch} onChange={(event) => setCoverSearch(event.target.value)}/>{employees.filter((employee) => employee.id !== noveltyCell.employee.id && `${employee.persona.nombre_completo} ${employee.persona.numero_documento ?? ""}`.toLowerCase().includes(coverSearch.toLowerCase())).slice(0, 5).map((employee) => <button key={employee.id} className={cover?.id === employee.id ? "selected" : ""} onClick={() => setCover(employee)}>{employee.persona.nombre_completo} · CC {employee.persona.numero_documento}</button>)}</> : <><input placeholder="Nombre completo externo" value={externalName} onChange={(event) => setExternalName(event.target.value)}/><input placeholder="Documento externo" value={externalDocument} onChange={(event) => setExternalDocument(event.target.value)}/></>}</div>}
-    <WorkspaceTabs/><div className="op-sort-floating"><label>ORDENAR POR<select value={sortMode} onChange={(event) => setSortModeValue(event.target.value)}><option value="NOMBRE_ASC">Nombre A–Z</option><option value="NOMBRE_DESC">Nombre Z–A</option><option value="DOCUMENTO">Documento ascendente</option><option value="DOCUMENTO_DESC">Documento descendente</option><option value="MUNICIPIO">Municipio</option><option value="INSTITUCION">Institución</option><option value="SEDE">Sede</option></select></label></div>
-  </section>;
+    const selectedEmployee = noveltyCell.employee;
+    const selectedContext = buildVisibleContext(selectedEmployee, noveltyCell.context);
+    const normalizedQuery = normalizeSearchValue(coverSearch);
+
+    return employees
+      .filter((employee) => employee.id !== selectedEmployee.id)
+      .filter((employee) => {
+        if (!normalizedQuery) {
+          return true;
+        }
+
+        return normalizeSearchValue(
+          employee.persona.nombre_completo,
+          employee.persona.numero_documento,
+          getEmployeeMunicipioLabel(employee),
+          getEmployeeSedeLabel(employee),
+        ).includes(normalizedQuery);
+      })
+      .map((employee) => {
+        let score = 0;
+        if (getEmployeeGestorId(employee) && getEmployeeGestorId(employee) === getEmployeeGestorId(selectedEmployee)) {
+          score += 4;
+        }
+        if (getEmployeeMunicipioLabel(employee) === selectedContext.municipio) {
+          score += 3;
+        }
+        if (getEmployeeInstitucionLabel(employee) === selectedContext.institucion) {
+          score += 2;
+        }
+        if (getEmployeeSedeLabel(employee) === selectedContext.sede) {
+          score += 1;
+        }
+
+        return { employee, score };
+      })
+      .sort((left, right) => {
+        if (right.score !== left.score) {
+          return right.score - left.score;
+        }
+        return left.employee.persona.nombre_completo.localeCompare(right.employee.persona.nombre_completo, "es", {
+          sensitivity: "base",
+        });
+      })
+      .slice(0, 8);
+  }, [coverSearch, employees, noveltyCell]);
+
+  const selectedRangeLabel = useMemo(() => {
+    if (!rangeSelection) {
+      return null;
+    }
+
+    const startValue = rangeSelection.start;
+    const endValue = rangeSelection.end ?? rangeSelection.start;
+    return `${dateLabel(startValue)} -> ${dateLabel(endValue)}`;
+  }, [rangeSelection]);
+
+  const invalidateReviewLocally = (employee: NominaEmpleadoApi, motivo: string) => {
+    setReviews((current) => {
+      const previous = current.find((item) => item.nomina_empleado_id === employee.id) ?? null;
+      if ((previous?.estado_revision ?? "PENDIENTE") !== "REVISADO") {
+        return current;
+      }
+      return upsertReview(current, buildReviewRecord(employee, periodId, "REQUIERE_REVISION", previous, actorUserId, motivo));
+    });
+  };
+
+  const closeNoveltyModal = () => {
+    setNoveltyCell(null);
+    setSelectedType(null);
+    setCoverageType("SIN_REEMPLAZO");
+    setCoverSearch("");
+    setCoverEmployee(null);
+    setExternalName("");
+    setExternalDocument("");
+    setCoverageObservation("");
+    setObservacion("");
+    setDocumentoPersonaId("");
+    setRangeEnd("");
+    setHours("");
+    setManualValue("");
+  };
+
+  const toggleAttendance = async (employee: NominaEmpleadoApi, date: string, remove = false) => {
+    if (!editable || isOutsideEmployment(employee, date)) {
+      return;
+    }
+
+    const key = `${employee.vinculacion_id}|${date}`;
+    const shouldPresent = !remove && !present.has(key);
+    const nextItem: Attendance = {
+      activo: true,
+      estado_dia: "PRESENTE",
+      fecha: date,
+      vinculacion_id: employee.vinculacion_id,
+    };
+    const previous = attendance;
+
+    setError("");
+    setAttendance((current) => mergeAttendance(current, nextItem, !shouldPresent));
+
+    try {
+      await markNominaAsistencia(periodId, employee.vinculacion_id, date, shouldPresent);
+      invalidateReviewLocally(employee, "ASISTENCIA_MODIFICADA");
+    } catch (value) {
+      setAttendance(previous);
+      setError(value instanceof Error ? value.message : "No fue posible actualizar asistencia");
+    }
+  };
+
+  const saveReview = async (employee: NominaEmpleadoApi) => {
+    if (!editable || reviewSaving.has(employee.id)) {
+      return;
+    }
+
+    const current = reviewByEmployee.get(employee.id);
+    if (current?.estado_revision === "REVISADO") {
+      return;
+    }
+
+    setReviewSaving((value) => new Set(value).add(employee.id));
+    const optimistic = buildReviewRecord(employee, periodId, "REVISADO", current, actorUserId);
+    const previous = reviews;
+    setReviews((value) => upsertReview(value, optimistic));
+
+    try {
+      const updated = await updateRevisionOperativa(periodId, employee.id, "REVISADO");
+      setReviews((value) => upsertReview(value, updated));
+    } catch (value) {
+      setReviews(previous);
+      setError(value instanceof Error ? value.message : "No fue posible actualizar la revision");
+    } finally {
+      setReviewSaving((value) => {
+        const next = new Set(value);
+        next.delete(employee.id);
+        return next;
+      });
+    }
+  };
+
+  const openCell = (employee: NominaEmpleadoApi, date: string) => {
+    const context =
+      buildTramos(employee, start, end, changesByLink.get(employee.vinculacion_id) ?? []).find(
+        (item) => item.inicio <= date && item.fin >= date,
+      )?.contexto ?? employeeBaseContext(employee);
+
+    setSelected({ employee, date, context });
+
+    if (rangeSelection && rangeSelection.employeeId === employee.id) {
+      setRangeSelection({ ...rangeSelection, end: date });
+      return;
+    }
+
+    if (present.has(`${employee.vinculacion_id}|${date}`)) {
+      return;
+    }
+
+    void toggleAttendance(employee, date);
+  };
+
+  const openNovelty = (cell: SelectedCell) => {
+    setSelected(cell);
+    setNoveltyCell(cell);
+    setSelectedType(null);
+    setCoverageType("SIN_REEMPLAZO");
+    setCoverSearch("");
+    setCoverEmployee(null);
+    setExternalName("");
+    setExternalDocument("");
+    setCoverageObservation("");
+    setObservacion("");
+    setDocumentoPersonaId("");
+    setRangeEnd(cell.date);
+    setHours("");
+    setManualValue("");
+    setError("");
+  };
+
+  const saveNovelty = async () => {
+    if (!noveltyCell || !selectedType || !editable) {
+      return;
+    }
+
+    const fechaFin = selectedType.permite_rango ? rangeEnd || noveltyCell.date : noveltyCell.date;
+    const computedDays = Math.max(
+      1,
+      Math.round(
+        (Date.parse(`${fechaFin}T12:00:00Z`) - Date.parse(`${noveltyCell.date}T12:00:00Z`)) / 86400000,
+      ) + 1,
+    );
+
+    if (coverageType === "PERSONAL_VINCULADO") {
+      if (!coverEmployee) {
+        setError("Selecciona la persona vinculada que cubrio el turno.");
+        return;
+      }
+      if (coverEmployee.vinculacion_id === noveltyCell.employee.vinculacion_id) {
+        setError("La persona con novedad y quien cubre deben ser distintas.");
+        return;
+      }
+    }
+
+    if (coverageType === "PERSONA_EXTERNA" && (!externalName.trim() || !externalDocument.trim())) {
+      setError("Ingresa nombre y documento de la cobertura externa.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    try {
+      const tramo =
+        buildTramos(noveltyCell.employee, start, end, changesByLink.get(noveltyCell.employee.vinculacion_id) ?? []).find(
+          (item) => item.inicio <= noveltyCell.date && item.fin >= noveltyCell.date,
+        )?.contexto ?? employeeBaseContext(noveltyCell.employee);
+
+      const payload: CreateNominaNovedadConTurnoApi = {
+        periodo_id: periodId,
+        nomina_empleado_id: noveltyCell.employee.id,
+        vinculacion_id: noveltyCell.employee.vinculacion_id,
+        tipo_novedad_id: selectedType.id,
+        tipo_novedad_codigo: selectedType.codigo_operativo,
+        fecha_inicio: noveltyCell.date,
+        fecha_fin: fechaFin,
+        dias: selectedType.requiere_dias || selectedType.permite_rango ? computedDays : 1,
+        horas: selectedType.requiere_horas ? Number(hours || 0) : null,
+        valor_manual: selectedType.requiere_valor ? Number(manualValue || 0) : null,
+        observacion: normalizeLabel(observacion) ?? "Captura desde planilla",
+        documento_persona_id: normalizeLabel(documentoPersonaId),
+        revisado: false,
+        requiere_cobertura: selectedType.afecta_cobertura !== false,
+        cubierta: coverageType !== "SIN_REEMPLAZO",
+        cobertura:
+          selectedType.afecta_cobertura === false
+            ? null
+            : coverageType === "PERSONAL_VINCULADO"
+              ? {
+                  tipo_cobertura: "PERSONAL_VINCULADO",
+                  persona_cubre_id: coverEmployee?.persona.id ?? null,
+                  vinculacion_cubre_id: coverEmployee?.vinculacion_id ?? null,
+                  observacion_interna: normalizeLabel(coverageObservation),
+                }
+              : coverageType === "PERSONA_EXTERNA"
+                ? {
+                    tipo_cobertura: "PERSONA_EXTERNA",
+                    nombre_externo: externalName.trim(),
+                    documento_externo: externalDocument.trim(),
+                    observacion_externa: normalizeLabel(observacion),
+                    observacion_interna: normalizeLabel(coverageObservation),
+                  }
+                : {
+                    tipo_cobertura: "SIN_REEMPLAZO",
+                    observacion_interna: normalizeLabel(coverageObservation),
+                  },
+        turno: {
+          tipo: mapCoverageToTurno(coverageType),
+          persona_reemplazada_id: coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.id ?? null : null,
+          contexto_operativo: {
+            ...tramo,
+            cobertura_documento_externo: coverageType === "PERSONA_EXTERNA" ? externalDocument.trim() : null,
+            cobertura_interna_nomina_empleado_id:
+              coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.id ?? null : null,
+            cobertura_interna_persona_id:
+              coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.id ?? null : null,
+            cobertura_tipo: coverageType,
+            gestor_nombre: getEmployeeGestorLabel(noveltyCell.employee),
+            modalidad_codigo: getEmployeeModalidadCode(noveltyCell.employee),
+            persona_cubre_nombre:
+              coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.nombre_completo ?? null : null,
+            persona_externa_nombre: coverageType === "PERSONA_EXTERNA" ? externalName.trim() : null,
+          } as Record<string, unknown>,
+          observacion: normalizeLabel(coverageObservation),
+        },
+      };
+
+      const response = await createNominaNovedadConTurno(payload);
+
+      if (response.novedad) {
+        setNovelties((current) => [...current, response.novedad]);
+        invalidateReviewLocally(noveltyCell.employee, "NOVEDAD_CREADA");
+      }
+
+      closeNoveltyModal();
+      setRangeSelection(null);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "No fue posible registrar la novedad");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const markRange = async () => {
+    if (!selected || !rangeSelection || !editable) {
+      return;
+    }
+
+    const from = rangeSelection.start < (rangeSelection.end ?? rangeSelection.start)
+      ? rangeSelection.start
+      : rangeSelection.end ?? rangeSelection.start;
+    const to = rangeSelection.start < (rangeSelection.end ?? rangeSelection.start)
+      ? rangeSelection.end ?? rangeSelection.start
+      : rangeSelection.start;
+
+    try {
+      const result = (await markNominaAsistenciaRango(
+        periodId,
+        selected.employee.vinculacion_id,
+        from,
+        to,
+      )) as AttendanceRangeResult;
+
+      setAttendance((current) => {
+        let next = current;
+        for (const fecha of result.marcados ?? []) {
+          next = mergeAttendance(
+            next,
+            {
+              activo: true,
+              estado_dia: "PRESENTE",
+              fecha,
+              vinculacion_id: selected.employee.vinculacion_id,
+            },
+            false,
+          );
+        }
+        return next;
+      });
+
+      if ((result.total_marcados ?? 0) > 0) {
+        invalidateReviewLocally(selected.employee, "ASISTENCIA_MODIFICADA");
+      }
+
+      const firstOmitted = result.omitidos?.[0]?.motivo;
+      setError(
+        `Rango: ${result.total_marcados ?? 0} marcados, ${result.total_omitidos ?? 0} omitidos${
+          firstOmitted ? ` · ${firstOmitted}` : ""
+        }`,
+      );
+      setRangeSelection(null);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "No fue posible marcar el rango");
+    }
+  };
+
+  const clearFilters = () => {
+    setQuery("");
+    setMunicipio("");
+    setGestorFilter(GESTOR_ALL);
+    setModalidad("");
+    setReviewFilter("TODOS");
+    setEventFilter("TODOS");
+    setSortMode("NOMBRE_ASC");
+  };
+
+  const nextPending = () => {
+    const wanted =
+      reviewFilter === "PENDIENTES"
+        ? "PENDIENTE"
+        : reviewFilter === "REQUIERE_REVISION"
+          ? "REQUIERE_REVISION"
+          : null;
+
+    const eligible = ordered
+      .map((employee, index) => ({ employee, index }))
+      .filter(({ employee }) => {
+        const state = reviewByEmployee.get(employee.id)?.estado_revision ?? "PENDIENTE";
+        return wanted ? state === wanted : state !== "REVISADO";
+      });
+
+    const currentIndex = selected ? ordered.findIndex((employee) => employee.id === selected.employee.id) : -1;
+    const next = eligible.find((item) => item.index > currentIndex) ?? eligible[0];
+
+    if (next) {
+      setScrollTop(next.index * ROW_HEIGHT);
+      const context = employeeBaseContext(next.employee);
+      setSelected({
+        employee: next.employee,
+        date: days[0] ?? "",
+        context,
+      });
+    }
+  };
+
+  return (
+    <section className="op-sheet-page">
+      <header className="op-sheet-title">
+        <div>
+          <span>Nomina</span>
+          <h1>Planilla operativa 1-31</h1>
+        </div>
+
+        <div className="op-period-picker">
+          <label>
+            Periodo
+            <select value={periodId} onChange={(event) => setPeriodId(event.target.value)}>
+              {periods.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre_periodo} · {item.tipo_periodo}
+                </option>
+              ))}
+            </select>
+          </label>
+          <strong className={`op-period-state ${period?.estado === "ABIERTO" ? "open" : "locked"}`}>
+            {period?.estado ?? "CARGANDO"}
+          </strong>
+        </div>
+      </header>
+
+      <WorkspaceTabs periodId={periodId} />
+
+      {period ? (
+        <div className="op-period-meta">
+          {dateLabel(period.fecha_inicio)} - {dateLabel(period.fecha_fin)} · {period.tipo_periodo} · Contrato{" "}
+          {period.contrato_id ?? "-"}
+        </div>
+      ) : null}
+
+      <div className="op-summary">
+        <strong>{employees.length} trabajadores</strong>
+        <span>
+          REVISION {summary.reviewed}/{employees.length} ·{" "}
+          {employees.length ? Math.round((summary.reviewed * 100) / employees.length) : 0}%
+        </span>
+        <span>{summary.pending} pendientes</span>
+        <span>{summary.needsReview} requieren revision</span>
+      </div>
+
+      <div className="op-toolbar">
+        <label className="op-search">
+          <Search size={15} />
+          <input
+            placeholder="Buscar trabajador, documento o contexto"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+
+        <select value={municipio} onChange={(event) => setMunicipio(event.target.value)}>
+          <option value="">Municipio</option>
+          {municipalityOptions.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+
+        <select value={gestorFilter} onChange={(event) => setGestorFilter(event.target.value)}>
+          <option value={GESTOR_ALL}>Gestor</option>
+          <option value={GESTOR_NONE}>Sin gestor</option>
+          {gestorOptions.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+
+        <select value={modalidad} onChange={(event) => setModalidad(event.target.value)}>
+          <option value="">Modalidad</option>
+          {modalityOptions.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+
+        <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value as ReviewFilter)}>
+          <option value="TODOS">Revision</option>
+          <option value="PENDIENTES">Pendientes</option>
+          <option value="REVISADOS">Revisados</option>
+          <option value="REQUIERE_REVISION">Requiere revision</option>
+        </select>
+
+        <select value={eventFilter} onChange={(event) => setEventFilter(event.target.value as EventFilter)}>
+          <option value="TODOS">Novedades</option>
+          <option value="CON_NOVEDADES">Con novedades</option>
+          <option value="SIN_NOVEDADES">Sin novedades</option>
+          <option value="INCONSISTENCIAS">Inconsistencias</option>
+        </select>
+
+        <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+          <option value="NOMBRE_ASC">Ordenar por · Nombre A-Z</option>
+          <option value="NOMBRE_DESC">Nombre Z-A</option>
+          <option value="DOCUMENTO_ASC">Documento ascendente</option>
+          <option value="DOCUMENTO_DESC">Documento descendente</option>
+          <option value="MUNICIPIO">Municipio</option>
+          <option value="GESTOR">Gestor</option>
+          <option value="INSTITUCION">Institucion</option>
+          <option value="SEDE">Sede</option>
+        </select>
+
+        <button type="button" onClick={nextPending}>
+          Siguiente pendiente
+        </button>
+
+        <button type="button" onClick={clearFilters}>
+          Limpiar filtros
+        </button>
+      </div>
+
+      {rangeSelection ? (
+        <div className="op-range-banner">
+          <span>Rango preparado: {selectedRangeLabel}</span>
+          <button
+            type="button"
+            disabled={!editable || !rangeSelection.end || rangeSelection.employeeId !== selected?.employee.id}
+            onClick={() => void markRange()}
+          >
+            Marcar rango
+          </button>
+          <button type="button" onClick={() => setRangeSelection(null)}>
+            Cancelar rango
+          </button>
+        </div>
+      ) : null}
+
+      {period?.estado !== "ABIERTO" ? (
+        <div className="op-locked">
+          <AlertTriangle size={16} />
+          Periodo cerrado: consulta habilitada; edicion ordinaria bloqueada.
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="op-error">
+          <AlertTriangle size={16} />
+          {error}
+          <button type="button" onClick={() => setError("")}>
+            <X size={14} />
+          </button>
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="op-loading">Cargando trabajadores y eventos...</div>
+      ) : (
+        <div
+          ref={viewport}
+          className="op-viewport"
+          onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+          style={{ height: VIEWPORT_HEIGHT }}
+        >
+          <div className="op-grid op-head" style={{ gridTemplateColumns: PLANILLA_GRID_TEMPLATE(days.length), minWidth: gridMinWidth }}>
+            <div>REV</div>
+            <div>DOCUMENTO</div>
+            <div>TRABAJADOR · CONTEXTO</div>
+            {days.map((day) => (
+              <div className="op-day-head" key={day}>
+                <b>{day.slice(8)}</b>
+                <small>{weekday(day)}</small>
+              </div>
+            ))}
+          </div>
+
+          <div className="op-virtual-space" style={{ height: ordered.length * ROW_HEIGHT, minWidth: gridMinWidth }}>
+            {visibleEmployees.map((employee, offset) => {
+              const index = startIndex + offset;
+              const state = reviewByEmployee.get(employee.id)?.estado_revision ?? "PENDIENTE";
+              const baseContext = employeeBaseContext(employee);
+              const visible = buildVisibleContext(employee, baseContext);
+              const tramos = buildTramos(employee, start, end, changesByLink.get(employee.vinculacion_id) ?? []);
+              const employeeNovelties = noveltyByEmployee.get(employee.id) ?? [];
+              const employeeMovements = movementByEmployee.get(employee.id) ?? [];
+
+              return (
+                <div
+                  className="op-grid op-row"
+                  key={employee.id}
+                  style={{
+                    gridTemplateColumns: PLANILLA_GRID_TEMPLATE(days.length),
+                    height: ROW_HEIGHT,
+                    minWidth: gridMinWidth,
+                    top: index * ROW_HEIGHT,
+                  }}
+                >
+                  <button
+                    type="button"
+                    className={`op-review ${state === "REVISADO" ? "done" : state === "REQUIERE_REVISION" ? "warning" : ""}`}
+                    disabled={!editable || reviewSaving.has(employee.id) || state === "REVISADO"}
+                    title={state}
+                    onClick={() => void saveReview(employee)}
+                  >
+                    {state === "REVISADO" ? <Check size={16} /> : state === "REQUIERE_REVISION" ? <AlertTriangle size={16} /> : "REV"}
+                  </button>
+
+                  <div className="op-doc">{text(employee.persona.numero_documento)}</div>
+
+                  <button
+                    type="button"
+                    className="op-name"
+                    title={buildContextTitle(employee, baseContext)}
+                    onClick={() =>
+                      setSelected({
+                        employee,
+                        date: days[0] ?? "",
+                        context: baseContext,
+                      })
+                    }
+                  >
+                    <strong>{employee.persona.nombre_completo}</strong>
+                    <small>{visible.municipio}</small>
+                    <small>{visible.institucion}</small>
+                    <small>{visible.sede}</small>
+                    <small className="op-context-accent" title={`${getEmployeeModalidadDescription(employee)} · Gestor: ${visible.gestor}`}>
+                      {visible.modalidad} · Gestor: {visible.gestor}
+                    </small>
+                  </button>
+
+                  {days.map((day) => {
+                    const tramo = tramos.find((item) => item.inicio <= day && item.fin >= day);
+                    const dayContext = tramo?.contexto ?? baseContext;
+                    const noveltiesOnThisDay = novedadesOnDate(employeeNovelties, day);
+                    const movementsOnThisDay = movimientosOnDate(employeeMovements, day);
+                    const key = `${employee.vinculacion_id}|${day}`;
+                    const isPresent = present.has(key);
+                    const outside = isOutsideEmployment(employee, day);
+
+                    return (
+                      <button
+                        type="button"
+                        key={day}
+                        className={`op-cell ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""}`}
+                        title={`${dateLabel(day)} · ${buildContextTitle(employee, dayContext)}`}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          setSelected({ employee, date: day, context: dayContext });
+                        }}
+                        onClick={() => openCell(employee, day)}
+                        onDoubleClick={(event) => {
+                          event.preventDefault();
+                          openNovelty({ employee, date: day, context: dayContext });
+                        }}
+                      >
+                        {isPresent ? <b>✓</b> : null}
+                        {noveltiesOnThisDay.slice(0, 2).map((item) => (
+                          <b key={item.id} data-state={novedadState(item)}>
+                            {novedadCode(item)}
+                          </b>
+                        ))}
+                        {movementsOnThisDay.some((item) => item.familia_movimiento === "ADICION_DEVENGO") ? <em>TA</em> : null}
+                        {tramo?.cambioId ? <i>C</i> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {selected ? (
+        <aside className="op-inspector">
+          <button
+            type="button"
+            className="op-close"
+            onClick={() => {
+              setSelected(null);
+              setError("");
+            }}
+          >
+            <X size={16} />
+          </button>
+
+          <div>
+            <strong>{selected.employee.persona.nombre_completo}</strong>
+            <span>{text(selected.employee.persona.numero_documento)}</span>
+            <p>{dateLabel(selected.date)}</p>
+          </div>
+
+          <div className="op-context-detail">
+            <span>Municipio: {text(buildVisibleContext(selected.employee, selected.context).municipio)}</span>
+            <span>Institucion: {text(buildVisibleContext(selected.employee, selected.context).institucion)}</span>
+            <span>Sede: {text(buildVisibleContext(selected.employee, selected.context).sede)}</span>
+            <span>Modalidad: {text(buildVisibleContext(selected.employee, selected.context).modalidad)}</span>
+            <span>Gestor: {text(getEmployeeGestorLabel(selected.employee))}</span>
+            <span>Revision: {reviewByEmployee.get(selected.employee.id)?.estado_revision ?? "PENDIENTE"}</span>
+          </div>
+
+          <div className="op-actions">
+            <button type="button" disabled={!editable} onClick={() => openNovelty(selected)}>
+              <Plus size={14} /> + Novedad
+            </button>
+            {present.has(`${selected.employee.vinculacion_id}|${selected.date}`) ? (
+              <button type="button" disabled={!editable} onClick={() => void toggleAttendance(selected.employee, selected.date, true)}>
+                Quitar asistencia
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={!editable}
+              onClick={() =>
+                setRangeSelection({
+                  employeeId: selected.employee.id,
+                  start: selected.date,
+                  end: null,
+                })
+              }
+            >
+              Preparar rango
+            </button>
+          </div>
+        </aside>
+      ) : null}
+
+      {noveltyCell ? (
+        <div className="op-modal-backdrop">
+          <div className="op-novelty-modal">
+            <button type="button" className="op-close" onClick={closeNoveltyModal}>
+              <X size={18} />
+            </button>
+
+            <h2>Registrar novedad</h2>
+            <strong>{noveltyCell.employee.persona.nombre_completo}</strong>
+            <span>
+              CC {text(noveltyCell.employee.persona.numero_documento)} · {dateLabel(noveltyCell.date)}
+            </span>
+            <p>{buildContextTitle(noveltyCell.employee, noveltyCell.context)}</p>
+
+            {!selectedType ? (
+              <div className="op-type-grid">
+                {types.map((type) => (
+                  <button key={type.id} type="button" onClick={() => setSelectedType(type)}>
+                    <b>{type.codigo_operativo ?? "NOV"}</b>
+                    <span>{type.nombre ?? type.descripcion_operativa ?? "Novedad"}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <>
+                <h3>
+                  {selectedType.codigo_operativo ?? "Novedad"} · {selectedType.nombre}
+                </h3>
+
+                <div className="op-inline-note">
+                  <span>
+                    {selectedType.modelo_registro === "EVENTO_CANONICO_RANGO"
+                      ? "Evento canonico por rango"
+                      : "Registro por periodo"}
+                  </span>
+                  {selectedType.requiere_revision ? <span>Requiere revision</span> : null}
+                  {selectedType.afecta_cobertura === false ? <span>Cobertura opcional / no aplica</span> : null}
+                </div>
+
+                <div className="op-range-fields">
+                  <label>
+                    Desde
+                    <input type="date" value={noveltyCell.date} readOnly />
+                  </label>
+                  <label>
+                    Hasta
+                    <input
+                      type="date"
+                      value={selectedType.permite_rango ? rangeEnd || noveltyCell.date : noveltyCell.date}
+                      min={noveltyCell.date}
+                      readOnly={!selectedType.permite_rango}
+                      onChange={(event) => setRangeEnd(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Dias
+                    <input
+                      type="number"
+                      value={Math.max(
+                        1,
+                        Math.round(
+                          (Date.parse(`${(rangeEnd || noveltyCell.date)}T12:00:00Z`) -
+                            Date.parse(`${noveltyCell.date}T12:00:00Z`)) /
+                            86400000,
+                        ) + 1,
+                      )}
+                      readOnly
+                    />
+                  </label>
+                </div>
+
+                {selectedType.requiere_horas ? (
+                  <label className="op-form-field">
+                    Horas
+                    <input
+                      inputMode="decimal"
+                      placeholder="Horas requeridas"
+                      value={hours}
+                      onChange={(event) => setHours(event.target.value)}
+                    />
+                  </label>
+                ) : null}
+
+                {selectedType.requiere_valor ? (
+                  <label className="op-form-field">
+                    Valor manual
+                    <input
+                      inputMode="decimal"
+                      placeholder="Valor requerido"
+                      value={manualValue}
+                      onChange={(event) => setManualValue(event.target.value)}
+                    />
+                  </label>
+                ) : null}
+
+                {selectedType.requiere_soporte ? (
+                  <label className="op-form-field">
+                    Documento soporte
+                    <input
+                      placeholder="documento_persona_id"
+                      value={documentoPersonaId}
+                      onChange={(event) => setDocumentoPersonaId(event.target.value)}
+                    />
+                  </label>
+                ) : null}
+
+                <label className="op-form-field">
+                  Observacion
+                  <textarea
+                    rows={3}
+                    placeholder="Observacion operativa"
+                    value={observacion}
+                    onChange={(event) => setObservacion(event.target.value)}
+                  />
+                </label>
+
+                <div className="op-coverage-section">
+                  <div className="op-coverage-header">
+                    <strong>Cobertura del turno</strong>
+                    <span>Define si alguien cubrio el turno de la persona con novedad.</span>
+                  </div>
+
+                  <div className="op-coverage-options">
+                    {[
+                      ["SIN_REEMPLAZO", "Sin reemplazo / No aplica"],
+                      ["PERSONAL_VINCULADO", "Cubierto por personal vinculado"],
+                      ["PERSONA_EXTERNA", "Cubierto por persona externa"],
+                    ].map(([value, label]) => (
+                      <label
+                        key={value}
+                        className={`op-coverage-option ${coverageType === value ? "active" : ""}`}
+                      >
+                        <input
+                          type="radio"
+                          name="coverageType"
+                          value={value}
+                          checked={coverageType === value}
+                          onChange={() => setCoverageType(value as CoverageType)}
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  {coverageType === "PERSONAL_VINCULADO" ? (
+                    <div className="op-cover-search">
+                      <label>
+                        Quien cubrio el turno
+                        <input
+                          placeholder="Buscar por nombre o documento"
+                          value={coverSearch}
+                          onChange={(event) => setCoverSearch(event.target.value)}
+                        />
+                      </label>
+
+                      {coverEmployee ? (
+                        <div className="op-inline-note compact">
+                          <p>
+                            Seleccionado: {coverEmployee.persona.nombre_completo} ·{" "}
+                            {coverEmployee.persona.numero_documento ?? "Documento no disponible"} ·{" "}
+                            {getEmployeeMunicipioLabel(coverEmployee)} · {getEmployeeSedeLabel(coverEmployee)}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      <div className="op-cover-results">
+                        {coverageCandidates.map(({ employee }) => (
+                          <button
+                            key={employee.id}
+                            type="button"
+                            className={coverEmployee?.id === employee.id ? "selected" : ""}
+                            onClick={() => setCoverEmployee(employee)}
+                          >
+                            <strong>{employee.persona.nombre_completo}</strong>
+                            <span>{employee.persona.numero_documento ?? "Documento no disponible"}</span>
+                            <small>
+                              {getEmployeeMunicipioLabel(employee)} · {getEmployeeInstitucionLabel(employee)}
+                            </small>
+                            <small>
+                              {getEmployeeSedeLabel(employee)} · {getEmployeeModalidadCode(employee)} ·{" "}
+                              {getEmployeeGestorLabel(employee)}
+                            </small>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {coverageType === "PERSONA_EXTERNA" ? (
+                    <div className="op-external-fields">
+                      <label className="op-form-field">
+                        Nombre completo
+                        <input
+                          placeholder="Nombre de quien cubrio"
+                          value={externalName}
+                          onChange={(event) => setExternalName(event.target.value)}
+                        />
+                      </label>
+                      <label className="op-form-field">
+                        Documento
+                        <input
+                          placeholder="Documento de la persona externa"
+                          value={externalDocument}
+                          onChange={(event) => setExternalDocument(event.target.value)}
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+
+                  <label className="op-form-field">
+                    Observacion interna de cobertura
+                    <textarea
+                      rows={2}
+                      placeholder="Contexto adicional de la cobertura"
+                      value={coverageObservation}
+                      onChange={(event) => setCoverageObservation(event.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <div className="op-modal-actions">
+                  <button type="button" onClick={closeNoveltyModal}>
+                    Cancelar
+                  </button>
+                  <button type="button" disabled={saving} onClick={() => void saveNovelty()}>
+                    {saving ? "Registrando..." : "Registrar"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
 }

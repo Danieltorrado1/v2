@@ -67,6 +67,7 @@ type PersonalRow = {
   asignacion_actual: {
     nombre: string | null;
     institucion: string | null;
+    municipio_id: number | null;
     municipio: string | null;
     sede: string | null;
     modalidad: string | null;
@@ -173,15 +174,20 @@ export default function OperationalPersonalPage() {
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [personalResumen, setPersonalResumen] = useState<PersonalResumen | null>(null);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [showAssignGestorModal, setShowAssignGestorModal] = useState(false);
   const [assignmentGestorId, setAssignmentGestorId] = useState("");
   const [assignmentMunicipioId, setAssignmentMunicipioId] = useState("");
   const [assignmentObservacion, setAssignmentObservacion] = useState("");
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assignmentError, setAssignmentError] = useState("");
+  const [assignmentFeedback, setAssignmentFeedback] = useState("");
   const [managementLoading, setManagementLoading] = useState(false);
   const [managementError, setManagementError] = useState("");
   const [managementFeedback, setManagementFeedback] = useState("");
-  const [gestorMunicipioItems, setGestorMunicipioItems] = useState<
+  const [gestorMunicipioItems] = useState<
     Awaited<ReturnType<typeof getGestorMunicipios>>["items"]
   >([]);
+  const [showGestorManagementPanel] = useState(false);
 
   const [tableData, setTableData] = useState<PersonalTableData | null>(null);
   const [tableLoading, setTableLoading] = useState(false);
@@ -447,7 +453,10 @@ export default function OperationalPersonalPage() {
             cargo_nombre: item.cargo.nombre_cargo,
             estado_vinculacion: item.estado_vinculacion,
             fecha_ingreso: item.fecha_ingreso,
-            asignacion_actual: item.asignacion_actual,
+            asignacion_actual: {
+              ...item.asignacion_actual,
+              municipio_id: item.asignacion_actual.municipio_id,
+            },
             presentada_licitacion_actual: item.presentada_licitacion_actual,
             perfil_licitacion_actual: item.perfil_licitacion_actual,
           })),
@@ -567,36 +576,36 @@ export default function OperationalPersonalPage() {
     setSelectedVinculacionIds([]);
   }, [contratoId]);
 
-  useEffect(() => {
-    if (!contratoId || !assignmentGestorId) {
-      setGestorMunicipioItems([]);
-      return;
-    }
-
-    let cancelled = false;
-    void getGestorMunicipios({
-      contrato_id: contratoId,
-      gestor_usuario_id: Number(assignmentGestorId),
-      fecha: fechaConsulta,
-    })
-      .then((response) => {
-        if (!cancelled) {
-          setGestorMunicipioItems(response.items);
+  const selectedRows = (tableData?.items ?? []).filter((item) =>
+    selectedVinculacionIds.includes(item.vinculacion_id)
+  );
+  const selectedRowsWithoutMunicipio = selectedRows.filter(
+    (item) => item.asignacion_actual.municipio_id === null
+  );
+  const selectedMunicipioGroups = Array.from(
+    selectedRows.reduce(
+      (groups, item) => {
+        const municipioId = item.asignacion_actual.municipio_id;
+        if (municipioId === null) {
+          return groups;
         }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setManagementError(
-            getErrorMessage(error, "No fue posible cargar los municipios asignados al gestor."),
-          );
-          setGestorMunicipioItems([]);
-        }
-      });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [assignmentGestorId, contratoId, fechaConsulta, refreshIndex]);
+        const current = groups.get(municipioId);
+        if (current) {
+          current.vinculacionIds.push(item.vinculacion_id);
+          return groups;
+        }
+
+        groups.set(municipioId, {
+          municipioId,
+          municipioNombre: item.asignacion_actual.municipio ?? `Municipio ${municipioId}`,
+          vinculacionIds: [item.vinculacion_id],
+        });
+        return groups;
+      },
+      new Map<number, { municipioId: number; municipioNombre: string; vinculacionIds: number[] }>()
+    ).values()
+  );
 
   function buildManagementUrl(openAdd = false): string {
     const params = new URLSearchParams();
@@ -623,6 +632,22 @@ export default function OperationalPersonalPage() {
     setSelectedVinculacionId(null);
     setSelectedExpediente(null);
     setSelectedError("");
+  }
+
+  function closeAssignGestorModal() {
+    setShowAssignGestorModal(false);
+    setAssignmentError("");
+    setAssignmentObservacion("");
+  }
+
+  function openAssignGestorModal() {
+    if (selectedVinculacionIds.length === 0) {
+      return;
+    }
+
+    setAssignmentError("");
+    setAssignmentFeedback("");
+    setShowAssignGestorModal(true);
   }
 
   function toggleSelectedVinculacion(vinculacionId: number): void {
@@ -664,7 +689,6 @@ export default function OperationalPersonalPage() {
 
   async function handleAssignMunicipioToGestor() {
     if (!contratoId || !assignmentGestorId || !assignmentMunicipioId) {
-      setManagementError("Debes seleccionar gestor y municipio.");
       return;
     }
 
@@ -738,6 +762,121 @@ export default function OperationalPersonalPage() {
     }
   }
 
+  async function handleAssignSelectedWorkersContextual() {
+    if (!contratoId || !assignmentGestorId || selectedRows.length === 0) {
+      setAssignmentError("Debes seleccionar un gestor y al menos un trabajador.");
+      return;
+    }
+
+    if (selectedRowsWithoutMunicipio.length > 0) {
+      setAssignmentError(
+        "Hay trabajadores seleccionados sin municipio operativo. Ajusta la selección o completa primero el contexto operativo."
+      );
+      return;
+    }
+
+    if (selectedMunicipioGroups.length === 0) {
+      setAssignmentError("No fue posible resolver el municipio de los trabajadores seleccionados.");
+      return;
+    }
+
+    setAssignmentLoading(true);
+    setAssignmentError("");
+    setAssignmentFeedback("");
+
+    try {
+      const gestorUsuarioId = Number(assignmentGestorId);
+      const gestorNombre =
+        filterOptions.gestores.find((item) => item.id === gestorUsuarioId)?.nombre ?? null;
+      const selectedIds = new Set(selectedRows.map((item) => item.vinculacion_id));
+      let totalAsignados = 0;
+      let totalDesasignados = 0;
+
+      for (const group of selectedMunicipioGroups) {
+        const result = await saveGestorAssignments({
+          contrato_id: contratoId,
+          gestor_usuario_id: gestorUsuarioId,
+          municipio_id: group.municipioId,
+          fecha: fechaConsulta,
+          modo: "SELECCION",
+          vinculacion_ids: group.vinculacionIds,
+          observacion: assignmentObservacion.trim() || null,
+        });
+        totalAsignados += result.asignados;
+        totalDesasignados += result.desasignados;
+      }
+
+      setTableData((current) => {
+        if (!current) {
+          return current;
+        }
+
+        let nextItems = current.items.map((item) =>
+          selectedIds.has(item.vinculacion_id)
+            ? {
+                ...item,
+                gestor_actual: {
+                  usuario_id: gestorUsuarioId,
+                  nombre: gestorNombre,
+                },
+              }
+            : item
+        );
+
+        const shouldRemoveSelected =
+          sinGestorOnly || (gestorId !== "" && Number(gestorId) !== gestorUsuarioId);
+
+        if (shouldRemoveSelected) {
+          nextItems = nextItems.filter((item) => !selectedIds.has(item.vinculacion_id));
+        }
+
+        const removedCount = current.items.length - nextItems.length;
+        const nextTotal = Math.max(0, current.pagination.total - removedCount);
+        const nextPersonasTotal =
+          current.pagination.personas_total === undefined
+            ? undefined
+            : Math.max(0, current.pagination.personas_total - removedCount);
+
+        return {
+          items: nextItems,
+          pagination: {
+            ...current.pagination,
+            total: nextTotal,
+            personas_total: nextPersonasTotal,
+            total_pages: nextTotal === 0 ? 0 : Math.ceil(nextTotal / current.pagination.limit),
+          },
+        };
+      });
+
+      setSelectedVinculacionId((current) =>
+        current !== null &&
+        selectedIds.has(current) &&
+        (sinGestorOnly || (gestorId !== "" && Number(gestorId) !== gestorUsuarioId))
+          ? null
+          : current
+      );
+      setSelectedExpediente((current) =>
+        current &&
+        selectedIds.has(current.vinculacion.id) &&
+        (sinGestorOnly || (gestorId !== "" && Number(gestorId) !== gestorUsuarioId))
+          ? null
+          : current
+      );
+      setSelectedVinculacionIds([]);
+      setAssignmentFeedback(
+        `Gestor actualizado en ${totalAsignados} trabajadores. Cierres historicos aplicados: ${totalDesasignados}.`
+      );
+      setShowAssignGestorModal(false);
+      setAssignmentObservacion("");
+    } catch (error) {
+      setAssignmentError(
+        getErrorMessage(error, "No fue posible asignar los trabajadores al gestor.")
+      );
+    } finally {
+      setAssignmentLoading(false);
+    }
+  }
+
   if (!canReadContext || !canReadPersonal) {
     return (
       <div className="op-personal-page">
@@ -789,6 +928,14 @@ export default function OperationalPersonalPage() {
           <p>Gestiona, importa y exporta la informacion maestra de todos los trabajadores.</p>
         </div>
         <div className="op-header-actions">
+          <button
+            type="button"
+            className="op-button secondary"
+            onClick={() => navigate(buildManagementUrl(false))}
+            disabled={!contratoId || !canManageGestores}
+          >
+            Gestionar gestores
+          </button>
           <button
             type="button"
             className="op-button secondary"
@@ -1157,7 +1304,7 @@ export default function OperationalPersonalPage() {
         )}
       </section>
 
-      {canManageGestores && contratoId && (
+      {showGestorManagementPanel && canManageGestores && contratoId && (
         <section className="op-table-card op-management-card">
           <div className="op-table-meta">
             <div>
@@ -1266,6 +1413,16 @@ export default function OperationalPersonalPage() {
             <span className="op-selected-pill">
               {selectedVinculacionIds.length} seleccionados
             </span>
+            {canManageGestores && selectedVinculacionIds.length > 0 && (
+              <button
+                type="button"
+                className="op-button primary"
+                onClick={openAssignGestorModal}
+                disabled={!contratoId}
+              >
+                Asignar gestor
+              </button>
+            )}
             <label className="op-page-size">
               <span>Filas</span>
               <select
@@ -1282,6 +1439,10 @@ export default function OperationalPersonalPage() {
             </label>
           </div>
         </div>
+
+        {assignmentFeedback ? (
+          <div className="op-inline-feedback success">{assignmentFeedback}</div>
+        ) : null}
 
         {!contratoId ? (
           <div className="op-empty">
@@ -1372,7 +1533,9 @@ export default function OperationalPersonalPage() {
                               {item.asignacion_actual.modalidad && (
                                 <span className="op-assignment-status">Cobertura si</span>
                               )}
-                              <small>Gestor: {item.gestor_actual?.nombre ?? "Sin gestor"}</small>
+                              <span className="op-gestor-chip">
+                                {item.gestor_actual?.nombre ?? "Sin gestor"}
+                              </span>
                             </>
                           ) : (
                             <>
@@ -1380,7 +1543,9 @@ export default function OperationalPersonalPage() {
                                 {item.asignacion_actual.nombre ?? "Sin ubicacion laboral"}
                               </strong>
                               <small>Personal administrativo</small>
-                              <small>Gestor: {item.gestor_actual?.nombre ?? "Sin gestor"}</small>
+                              <span className="op-gestor-chip">
+                                {item.gestor_actual?.nombre ?? "Sin gestor"}
+                              </span>
                             </>
                           )}
                         </div>
@@ -1475,6 +1640,94 @@ export default function OperationalPersonalPage() {
           </>
         )}
       </section>
+
+      {showAssignGestorModal && (
+        <div className="op-modal-layer" onClick={closeAssignGestorModal}>
+          <div className="op-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="op-modal-header">
+              <div>
+                <span className="op-count-inline">Asignar gestor</span>
+                <p className="op-management-copy">
+                  {selectedRows.length} trabajadores seleccionados. La asignacion se guarda por vigencia y conserva historico.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="op-close-button"
+                onClick={closeAssignGestorModal}
+                aria-label="Cerrar asignacion de gestor"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="op-modal-body">
+              <div className="op-modal-summary">
+                <strong>Municipios detectados</strong>
+                <div className="op-modal-tags">
+                  {selectedMunicipioGroups.map((group) => (
+                    <span key={group.municipioId} className="op-badge status-info">
+                      {group.municipioNombre} · {group.vinculacionIds.length}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {selectedRowsWithoutMunicipio.length > 0 ? (
+                <div className="op-state error">
+                  <AlertTriangle size={16} />
+                  Hay trabajadores sin municipio operativo y no se pueden reasignar desde esta accion.
+                </div>
+              ) : null}
+
+              <label className="op-filter">
+                <span>Gestor</span>
+                <select
+                  value={assignmentGestorId}
+                  onChange={(event) => setAssignmentGestorId(event.target.value)}
+                >
+                  <option value="">Seleccionar</option>
+                  {filterOptions.gestores.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="op-filter">
+                <span>Observacion</span>
+                <input
+                  value={assignmentObservacion}
+                  onChange={(event) => setAssignmentObservacion(event.target.value)}
+                  placeholder="Motivo o contexto de la reasignacion"
+                />
+              </label>
+
+              {assignmentError ? <div className="op-state error">{assignmentError}</div> : null}
+            </div>
+
+            <div className="op-modal-actions">
+              <button
+                type="button"
+                className="op-button secondary"
+                onClick={closeAssignGestorModal}
+                disabled={assignmentLoading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="op-button primary"
+                onClick={() => void handleAssignSelectedWorkersContextual()}
+                disabled={assignmentLoading || !assignmentGestorId || selectedRows.length === 0}
+              >
+                {assignmentLoading ? "Asignando..." : "Asignar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showImportModal && contratoId && empresaActiva && contratoSeleccionado && (
         <OperationalImportModal

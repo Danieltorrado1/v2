@@ -86,6 +86,7 @@ interface ContractPersonalRow extends QueryResultRow {
   asignacion_laboral_actual: string | null;
   gestor_actual_nombre: string | null;
   gestor_actual_usuario_id: number | string | null;
+  municipio_actual_id: number | string | null;
   institucion_actual: string | null;
   municipio_actual: string | null;
   modalidad_actual: string | null;
@@ -112,6 +113,7 @@ interface ContractPersonalRow extends QueryResultRow {
 export interface ContractPersonalListItem {
   asignacion_actual: {
     institucion: string | null;
+    municipio_id: number | null;
     municipio: string | null;
     modalidad: string | null;
     nombre: string | null;
@@ -477,7 +479,8 @@ const mapContractPersonal = (row: ContractPersonalRow): ContractPersonalListItem
     asignacion_actual: {
       nombre: row.asignacion_laboral_actual,
       institucion: row.institucion_actual,
-    municipio: row.municipio_actual,
+      municipio_id: row.municipio_actual_id === null ? null : toNumber(row.municipio_actual_id),
+      municipio: row.municipio_actual,
       sede: row.sede_actual,
       modalidad: row.modalidad_actual
     },
@@ -851,6 +854,31 @@ const ensureMunicipioExists = async (client: PoolClient, municipioId: number): P
 
   if (!result.rows[0]?.exists) {
     throw new AppError('Municipio not found', 404, 'MUNICIPIO_NOT_FOUND');
+  }
+};
+
+const ensureGestorMunicipioScope = async (
+  client: PoolClient,
+  input: {
+    contrato_id: number;
+    fecha: string;
+    gestor_usuario_id: number;
+    municipio_id: number;
+  }
+): Promise<void> => {
+  const assignments = await getGestorMunicipioAssignments(client, {
+    contrato_id: input.contrato_id,
+    gestor_usuario_id: input.gestor_usuario_id,
+    fecha: input.fecha,
+    onlyActive: true
+  });
+
+  if (!assignments.some((item: GestorMunicipioAssignment) => item.municipio.id === input.municipio_id)) {
+    throw new AppError(
+      'Gestor municipio scope is required before assigning workers',
+      400,
+      'GESTOR_MUNICIPIO_SCOPE_REQUIRED'
+    );
   }
 };
 
@@ -1294,6 +1322,7 @@ export const listContractPersonal = async (
             ca.institucion,
             ca.sede,
             ca.modalidad,
+            ff.municipio_id AS municipio_actual_id,
             COALESCE(ff.municipio_texto, mu.nombre_municipio) AS municipio_actual
           FROM cobertura_asignaciones ca
           INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
@@ -1360,6 +1389,7 @@ export const listContractPersonal = async (
           ) AS es_manipuladora,
           ala.nombre_ubicacion AS asignacion_laboral_actual,
           caa.institucion AS institucion_actual,
+          caa.municipio_actual_id,
           caa.municipio_actual,
           caa.sede AS sede_actual,
           caa.modalidad AS modalidad_actual,
@@ -2117,80 +2147,131 @@ export const saveGestorAssignments = async (
 
     const fechaEfectiva = toIsoDate(input.fecha);
     const cierreAnterior = shiftIsoDate(fechaEfectiva, -1);
+    await ensureGestorMunicipioScope(client, {
+      contrato_id: input.contrato_id,
+      fecha: fechaEfectiva,
+      gestor_usuario_id: input.gestor_usuario_id,
+      municipio_id: input.municipio_id
+    });
 
     for (const vinculacionId of input.vinculacion_ids) {
       await ensureVinculacionBelongsContrato(client, input.contrato_id, vinculacionId);
     }
 
-    const actuales = await getGestorPersonalAssignments(client, {
-      contrato_id: input.contrato_id,
-      municipio_id: input.municipio_id,
-      fecha: fechaEfectiva,
-      onlyActive: true
-    });
-
-    const actualesEnMunicipio = actuales.filter(
-      (item) => item.municipio?.id === input.municipio_id
-    );
-    const actualesIds = new Set(actualesEnMunicipio.map((item) => item.trabajador.vinculacion_id));
-    const nuevosIds = new Set(input.vinculacion_ids);
-
     let asignados = 0;
     let desasignados = 0;
 
-    for (const current of actualesEnMunicipio) {
-      if (!nuevosIds.has(current.trabajador.vinculacion_id)) {
-        desasignados += await closeOpenGestorPersonalAssignments(client, {
-          actorUserId,
-          contrato_id: input.contrato_id,
-          vinculacion_id: current.trabajador.vinculacion_id,
-          vigencia_hasta: cierreAnterior,
-          observacion: input.observacion
-        });
-      }
-    }
-
-    for (const vinculacionId of input.vinculacion_ids) {
-      const activoActual = actuales.find((item) => item.trabajador.vinculacion_id === vinculacionId);
-
-      if (
-        activoActual &&
-        activoActual.gestor.id === input.gestor_usuario_id &&
-        activoActual.municipio?.id === input.municipio_id
-      ) {
-        continue;
-      }
-
-      if (actualesIds.has(vinculacionId)) {
-        desasignados += await closeOpenGestorPersonalAssignments(client, {
-          actorUserId,
-          contrato_id: input.contrato_id,
-          vinculacion_id: vinculacionId,
-          vigencia_hasta: cierreAnterior,
-          observacion: input.observacion
-        });
-      }
-
-      if (activoActual && activoActual.gestor.id !== input.gestor_usuario_id) {
-        desasignados += await closeOpenGestorPersonalAssignments(client, {
-          actorUserId,
-          contrato_id: input.contrato_id,
-          vinculacion_id: vinculacionId,
-          vigencia_hasta: cierreAnterior,
-          observacion: input.observacion
-        });
-      }
-
-      await createGestorPersonalAssignmentRecord(client, {
-        actorUserId,
+    if (input.modo === 'REEMPLAZAR_MUNICIPIO') {
+      const actuales = await getGestorPersonalAssignments(client, {
         contrato_id: input.contrato_id,
-        gestor_usuario_id: input.gestor_usuario_id,
         municipio_id: input.municipio_id,
-        vigencia_desde: fechaEfectiva,
-        observacion: input.observacion,
-        vinculacion_id: vinculacionId
+        fecha: fechaEfectiva,
+        onlyActive: true
       });
-      asignados += 1;
+
+      const actualesEnMunicipio = actuales.filter(
+        (item) => item.municipio?.id === input.municipio_id
+      );
+      const actualesIds = new Set(
+        actualesEnMunicipio.map((item) => item.trabajador.vinculacion_id)
+      );
+      const nuevosIds = new Set(input.vinculacion_ids);
+
+      for (const current of actualesEnMunicipio) {
+        if (!nuevosIds.has(current.trabajador.vinculacion_id)) {
+          desasignados += await closeOpenGestorPersonalAssignments(client, {
+            actorUserId,
+            contrato_id: input.contrato_id,
+            vinculacion_id: current.trabajador.vinculacion_id,
+            vigencia_hasta: cierreAnterior,
+            observacion: input.observacion
+          });
+        }
+      }
+
+      for (const vinculacionId of input.vinculacion_ids) {
+        const activoActual = actuales.find(
+          (item) => item.trabajador.vinculacion_id === vinculacionId
+        );
+
+        if (
+          activoActual &&
+          activoActual.gestor.id === input.gestor_usuario_id &&
+          activoActual.municipio?.id === input.municipio_id
+        ) {
+          continue;
+        }
+
+        if (actualesIds.has(vinculacionId)) {
+          desasignados += await closeOpenGestorPersonalAssignments(client, {
+            actorUserId,
+            contrato_id: input.contrato_id,
+            vinculacion_id: vinculacionId,
+            vigencia_hasta: cierreAnterior,
+            observacion: input.observacion
+          });
+        }
+
+        if (activoActual && activoActual.gestor.id !== input.gestor_usuario_id) {
+          desasignados += await closeOpenGestorPersonalAssignments(client, {
+            actorUserId,
+            contrato_id: input.contrato_id,
+            vinculacion_id: vinculacionId,
+            vigencia_hasta: cierreAnterior,
+            observacion: input.observacion
+          });
+        }
+
+        await createGestorPersonalAssignmentRecord(client, {
+          actorUserId,
+          contrato_id: input.contrato_id,
+          gestor_usuario_id: input.gestor_usuario_id,
+          municipio_id: input.municipio_id,
+          vigencia_desde: fechaEfectiva,
+          observacion: input.observacion,
+          vinculacion_id: vinculacionId
+        });
+        asignados += 1;
+      }
+    } else {
+      for (const vinculacionId of input.vinculacion_ids) {
+        const actuales = await getGestorPersonalAssignments(client, {
+          contrato_id: input.contrato_id,
+          fecha: fechaEfectiva,
+          vinculacion_id: vinculacionId,
+          onlyActive: true
+        });
+        const activoActual = actuales[0] ?? null;
+
+        if (
+          activoActual &&
+          activoActual.gestor.id === input.gestor_usuario_id &&
+          activoActual.municipio?.id === input.municipio_id
+        ) {
+          continue;
+        }
+
+        if (activoActual) {
+          desasignados += await closeOpenGestorPersonalAssignments(client, {
+            actorUserId,
+            contrato_id: input.contrato_id,
+            vinculacion_id: vinculacionId,
+            vigencia_hasta: cierreAnterior,
+            observacion: input.observacion
+          });
+        }
+
+        await createGestorPersonalAssignmentRecord(client, {
+          actorUserId,
+          contrato_id: input.contrato_id,
+          gestor_usuario_id: input.gestor_usuario_id,
+          municipio_id: input.municipio_id,
+          vigencia_desde: fechaEfectiva,
+          observacion: input.observacion,
+          vinculacion_id: vinculacionId
+        });
+        asignados += 1;
+      }
     }
 
     await registerAuditEntry({
@@ -2204,6 +2285,7 @@ export const saveGestorAssignments = async (
       after: {
         gestor_usuario_id: input.gestor_usuario_id,
         municipio_id: input.municipio_id,
+        modo: input.modo,
         vinculacion_ids: input.vinculacion_ids,
         fecha_efectiva: fechaEfectiva,
         observacion: input.observacion

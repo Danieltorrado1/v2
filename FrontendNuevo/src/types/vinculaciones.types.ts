@@ -71,6 +71,7 @@ export interface ContractPersonalListItem {
   asignacion_actual: {
     nombre: string | null;
     institucion: string | null;
+    municipio_id: number | null;
     municipio: string | null;
     sede: string | null;
     modalidad: string | null;
@@ -220,6 +221,7 @@ export interface SaveGestorAssignmentsPayload {
   gestor_usuario_id: number;
   municipio_id: number;
   fecha?: string;
+  modo?: "SELECCION" | "REEMPLAZAR_MUNICIPIO";
   vinculacion_ids: number[];
   observacion?: string | null;
 }

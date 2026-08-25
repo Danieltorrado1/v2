@@ -4159,6 +4159,17 @@ const syncNominaNovedadCobertura = async (
       );
     }
 
+    if (
+      personaCubreId === input.empleado.persona.id ||
+      vinculacionCubreId === input.empleado.vinculacion_id
+    ) {
+      throw new AppError(
+        'Coverage employee must be different from the employee with novelty',
+        409,
+        'NOMINA_NOVEDAD_COBERTURA_PERSONA_DUPLICADA'
+      );
+    }
+
     snapshotCobertura = {
       tipo_cobertura: input.cobertura.tipo_cobertura,
       persona_cubre: {
@@ -6981,19 +6992,21 @@ export const createNominaMovimiento = async (
           $22,
           $23,
           $24,
-          $25::jsonb,
+          $25,
           $26,
-          $27::bigint,
-          $28::timestamptz,
+          $27::jsonb,
+          $28,
           $29::bigint,
           $30::timestamptz,
           $31::bigint,
           $32::timestamptz,
-          $33,
-          $34,
+          $33::bigint,
+          $34::timestamptz,
           $35,
           $36,
-          $37::bigint
+          $37,
+          $38,
+          $39::bigint
         )
         RETURNING id::text AS id
       `,

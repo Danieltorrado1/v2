@@ -156,6 +156,8 @@ export const gestorAssignmentWorkspaceQuerySchema = z.object({
   fecha: z.string().date().optional()
 });
 
+export const gestorAssignmentModeSchema = z.enum(['SELECCION', 'REEMPLAZAR_MUNICIPIO']);
+
 export const listGestorMunicipiosQuerySchema = z.object({
   contrato_id: numericIdSchema.transform((value) => Number(value)),
   gestor_usuario_id: nullableNumericIdSchema.optional(),
@@ -167,6 +169,7 @@ export const saveGestorAssignmentsSchema = z.object({
   gestor_usuario_id: numericIdSchema.transform((value) => Number(value)),
   municipio_id: numericIdSchema.transform((value) => Number(value)),
   fecha: z.string().date().optional(),
+  modo: gestorAssignmentModeSchema.optional().default('SELECCION'),
   vinculacion_ids: z
     .array(numericIdSchema.transform((value) => Number(value)))
     .max(5000)
