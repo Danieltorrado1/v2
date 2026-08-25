@@ -647,7 +647,7 @@ export const listSstEventos = async (
 
 export const getSstEventoById = async (
   eventoId: string,
-  _tenant?: TenantAccessContext,
+  tenant?: TenantAccessContext,
   client?: PoolClient
 ): Promise<SstEvento | null> => {
   const result = client
@@ -669,7 +669,17 @@ export const getSstEventoById = async (
       );
 
   const row = result.rows[0];
-  return row ? mapSstEvento(row) : null;
+  const evento = row ? mapSstEvento(row) : null;
+
+  if (evento) {
+    ensureTenantScopeForEntity(
+      tenant,
+      toNullableBigintNumber(evento.vinculacion?.contrato_id),
+      toNullableBigintNumber(evento.vinculacion?.empresa_id)
+    );
+  }
+
+  return evento;
 };
 
 export const createSstEvento = async (
@@ -945,7 +955,7 @@ export const listSstPlanesAccion = async (
 
 export const getSstPlanAccionById = async (
   planId: string,
-  _tenant?: TenantAccessContext,
+  tenant?: TenantAccessContext,
   client?: PoolClient
 ): Promise<SstPlanAccion | null> => {
   const result = client
@@ -967,7 +977,17 @@ export const getSstPlanAccionById = async (
       );
 
   const row = result.rows[0];
-  return row ? mapSstPlanAccion(row) : null;
+  const plan = row ? mapSstPlanAccion(row) : null;
+
+  if (plan) {
+    ensureTenantScopeForEntity(
+      tenant,
+      toNullableBigintNumber(plan.origen_relacionado.contrato_id),
+      toNullableBigintNumber(plan.origen_relacionado.empresa_id)
+    );
+  }
+
+  return plan;
 };
 
 export const createSstPlanAccion = async (

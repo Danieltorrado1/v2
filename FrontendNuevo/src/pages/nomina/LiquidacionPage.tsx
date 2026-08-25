@@ -18,6 +18,8 @@ import {
   getAllNominaLiquidaciones,
   getNominaPeriodos,
 } from "../../services/nominaApi";
+import { useCompanyContext } from "../../context/CompanyContext";
+import { pickAvailableScopedId } from "../../context/companyScope";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
 import type {
   GenerateNominaLiquidacionesResponse,
@@ -216,6 +218,7 @@ function StateCard({
 }
 
 export default function LiquidacionPage() {
+  const { empresaId } = useCompanyContext();
   const [periodsState, setPeriodsState] = useState<AsyncState<PaginatedNominaPeriodosApi>>({
     ...EMPTY_ASYNC_STATE,
   });
@@ -367,7 +370,11 @@ export default function LiquidacionPage() {
     }));
 
     try {
-      const data = await getNominaPeriodos({ page: 1, limit: PERIODS_LIMIT });
+      const data = await getNominaPeriodos({
+        page: 1,
+        limit: PERIODS_LIMIT,
+        empresa_id: empresaId ? String(empresaId) : undefined,
+      });
 
       if (requestId !== periodsRequestRef.current) {
         return;
@@ -379,17 +386,11 @@ export default function LiquidacionPage() {
         error: null,
       });
 
-      setSelectedPeriodId((current) => {
-        if (preferredPeriodId && data.items.some((periodo) => periodo.id === preferredPeriodId)) {
-          return preferredPeriodId;
-        }
-
-        if (current && data.items.some((periodo) => periodo.id === current)) {
-          return current;
-        }
-
-        return pickDefaultNominaPeriod(data.items)?.id ?? null;
-      });
+      setSelectedPeriodId((current) =>
+        pickAvailableScopedId(data.items, preferredPeriodId, current) ??
+        pickDefaultNominaPeriod(data.items)?.id ??
+        null,
+      );
     } catch (error) {
       if (requestId !== periodsRequestRef.current) {
         return;
@@ -401,7 +402,7 @@ export default function LiquidacionPage() {
         error: toMessage(error),
       }));
     }
-  }, []);
+  }, [empresaId]);
 
   const loadLiquidaciones = useCallback(
     async (periodoId: string, estado?: NominaLiquidacionEstadoFilter) => {
@@ -460,6 +461,12 @@ export default function LiquidacionPage() {
 
     void loadLiquidaciones(selectedPeriodId, backendStatusFilter);
   }, [backendStatusFilter, loadLiquidaciones, selectedPeriodId]);
+
+  useEffect(() => {
+    setContractFilter((current) =>
+      current && liquidaciones.some((liquidacion) => liquidacion.contrato_id === current) ? current : "",
+    );
+  }, [liquidaciones]);
 
   const handleSelectPeriod = (periodId: string) => {
     setSelectedPeriodId(periodId || null);

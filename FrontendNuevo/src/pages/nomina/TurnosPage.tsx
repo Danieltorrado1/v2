@@ -27,6 +27,8 @@ import {
   reviewNominaTurno,
   updateNominaTurno,
 } from "../../services/nominaApi";
+import { useCompanyContext } from "../../context/CompanyContext";
+import { pickAvailableScopedId } from "../../context/companyScope";
 import { NOMINA_TURNO_MOVIMIENTO_TIPO } from "../../types/nomina.types";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
 import type {
@@ -315,6 +317,7 @@ function StateCard({
 }
 
 export default function TurnosPage() {
+  const { empresaId } = useCompanyContext();
   const [periodsState, setPeriodsState] = useState<AsyncState<PaginatedNominaPeriodosApi>>({
     ...EMPTY_ASYNC_STATE,
   });
@@ -566,7 +569,11 @@ export default function TurnosPage() {
     }));
 
     try {
-      const data = await getNominaPeriodos({ page: 1, limit: PERIODS_LIMIT });
+      const data = await getNominaPeriodos({
+        page: 1,
+        limit: PERIODS_LIMIT,
+        empresa_id: empresaId ? String(empresaId) : undefined,
+      });
 
       if (requestId !== periodsRequestRef.current) {
         return;
@@ -578,17 +585,11 @@ export default function TurnosPage() {
         error: null,
       });
 
-      setSelectedPeriodId((current) => {
-        if (preferredPeriodId && data.items.some((periodo) => periodo.id === preferredPeriodId)) {
-          return preferredPeriodId;
-        }
-
-        if (current && data.items.some((periodo) => periodo.id === current)) {
-          return current;
-        }
-
-        return pickDefaultNominaPeriod(data.items)?.id ?? null;
-      });
+      setSelectedPeriodId((current) =>
+        pickAvailableScopedId(data.items, preferredPeriodId, current) ??
+        pickDefaultNominaPeriod(data.items)?.id ??
+        null,
+      );
     } catch (error) {
       if (requestId !== periodsRequestRef.current) {
         return;
@@ -600,7 +601,7 @@ export default function TurnosPage() {
         error: toMessage(error),
       }));
     }
-  }, []);
+  }, [empresaId]);
 
   const loadMovimientos = useCallback(
     async (filters: Omit<NominaTurnoFilters, "page" | "limit">) => {
@@ -652,7 +653,9 @@ export default function TurnosPage() {
     }));
 
     try {
-      const data = await getAllNominaPeriodoEmpleados(periodoId);
+      const data = await getAllNominaPeriodoEmpleados(periodoId, {
+        empresa_id: empresaId ? String(empresaId) : undefined,
+      });
 
       if (requestId !== employeesRequestRef.current) {
         return;
@@ -674,7 +677,7 @@ export default function TurnosPage() {
         error: toMessage(error),
       });
     }
-  }, []);
+  }, [empresaId]);
 
   useEffect(() => {
     void loadPeriods();

@@ -118,6 +118,7 @@ import {
   toInputDate,
   toInputTime,
 } from "./sstPage.helpers";
+import { useCompanyContext } from "../../context/CompanyContext";
 import "./SstPages.css";
 
 type SstTab = "resumen" | "eventos" | "planes" | "inspecciones" | "hallazgos" | "accidentes" | "indicadores";
@@ -416,6 +417,7 @@ const EMPTY_ACCION_ACCIDENTE_FORM: AccionAccidenteFormState = {
 
 export default function SstPage() {
   const { user } = useAuth();
+  const { empresaActiva, empresaId } = useCompanyContext();
   const permissions = user?.permissions ?? [];
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = getSafeTab(searchParams.get("tab"));
@@ -566,6 +568,18 @@ const selectedPeriodo = periodosState.data?.items.find((item) => String(item.id)
   const indicadoresMediciones = indicadoresState.data?.mediciones ?? [];
   const indicadoresHistoricoItems = indicadoresHistoricoState.data?.items ?? [];
   const indicadoresAlertaItems = indicadoresAlertasState.data?.items ?? [];
+
+  useEffect(() => {
+    const nextEmpresaId = empresaId ? String(empresaId) : "";
+    setScopeEmpresaId((current) => (current === nextEmpresaId ? current : nextEmpresaId));
+    setScopeContratoId("");
+  }, [empresaId]);
+
+  useEffect(() => {
+    setScopeContratoId((current) =>
+      current && contratosFiltrados.some((item) => String(item.id) === current) ? current : "",
+    );
+  }, [contratosFiltrados]);
   const clearIndicadoresDerivedData = useCallback(() => {
     indicadoresDashboardRequestIdRef.current += 1;
     indicadoresHistoricoRequestIdRef.current += 1;
@@ -2460,15 +2474,10 @@ const selectedPeriodo = periodosState.data?.items.find((item) => String(item.id)
       <SstPageHeader icon={HardHat} title={pageTitle} subtitle={pageSubtitle} />
 
       <div className="sst-scope-bar sst-card">
-        <FormField label="Empresa">
-          <select className="sst-select" value={scopeEmpresaId} onChange={(event) => { setScopeEmpresaId(event.target.value); setScopeContratoId(""); }}>
-            <option value="">Todas</option>
-            {empresas.map((item) => (
-              <option key={item.id} value={String(item.id)}>
-                {buildEmpresaLabel(item)}
-              </option>
-            ))}
-          </select>
+        <FormField label="Empresa activa">
+          <div className="sst-readonly">
+            {empresaActiva?.nombre_empresa ?? "Sin empresa activa"}
+          </div>
         </FormField>
         <FormField label="Contrato">
           <select className="sst-select" value={scopeContratoId} onChange={(event) => setScopeContratoId(event.target.value)}>

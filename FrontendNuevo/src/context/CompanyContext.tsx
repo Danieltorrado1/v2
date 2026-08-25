@@ -1,13 +1,19 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { configuracionApi } from "../services/configuracionApi";
-import type { Empresa } from "../types/configuracion.types";
+import { getTenantContext } from "../services/tenantApi";
+import type { Organizacion, TenantContextEmpresa } from "../types/configuracion.types";
 import { useAuth } from "./AuthContext";
 
 type CompanyContextValue = {
-  empresas: Empresa[];
+  empresasDisponibles: TenantContextEmpresa[];
+  empresaActual: TenantContextEmpresa | null;
+  organizacionActual: Organizacion | null;
+  loading: boolean;
+  error: string | null;
+  setEmpresaActual: (empresaId: number | null) => void;
+  empresas: TenantContextEmpresa[];
   empresaId: number | null;
-  empresaActiva: Empresa | null;
+  empresaActiva: TenantContextEmpresa | null;
   isLoading: boolean;
   setEmpresaId: (empresaId: number | null) => void;
 };
@@ -16,77 +22,120 @@ const CompanyContext = createContext<CompanyContextValue | null>(null);
 const STORAGE_KEY = "empiria_empresa_id";
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
-  const { user, isAuthenticated } = useAuth();
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const { isAuthenticated } = useAuth();
+  const [empresasDisponibles, setEmpresasDisponibles] = useState<TenantContextEmpresa[]>([]);
   const [empresaId, setEmpresaIdState] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const permissions = user?.permissions ?? [];
-  const canReadCompanies = permissions.some((permission) =>
-    ["configuracion.read", "empresas.read", "contratos.read", "contracts.read"].includes(permission)
-  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated || !canReadCompanies) {
-      setEmpresas([]);
+    if (!isAuthenticated) {
+      setEmpresasDisponibles([]);
       setEmpresaIdState(null);
+      setError(null);
       return;
     }
 
     let cancelled = false;
-    setIsLoading(true);
+    setLoading(true);
+    setError(null);
 
-    void configuracionApi.listarEmpresas({ page: 1, limit: 100, activo: true })
-      .then((response) => {
-        if (cancelled) return;
-        const authorized = response.items;
+    void getTenantContext()
+      .then((context) => {
+        if (cancelled) {
+          return;
+        }
+
+        const nextCompanies = context.empresas ?? [];
         const stored = Number(window.localStorage.getItem(STORAGE_KEY));
-        const validStored = Number.isInteger(stored) && authorized.some((empresa) => empresa.id === stored);
-        setEmpresas(authorized);
-        setEmpresaIdState((current) => {
-          if (current && authorized.some((empresa) => empresa.id === current)) return current;
-          if (validStored) return stored;
-          return authorized[0]?.id ?? null;
-        });
+        const validStored =
+          Number.isInteger(stored) &&
+          nextCompanies.some((empresa) => empresa.id === stored);
+        const defaultEmpresaId =
+          validStored
+            ? stored
+            : context.empresa_default_id && nextCompanies.some((empresa) => empresa.id === context.empresa_default_id)
+              ? context.empresa_default_id
+              : nextCompanies[0]?.id ?? null;
+
+        setEmpresasDisponibles(nextCompanies);
+        setEmpresaIdState(defaultEmpresaId);
       })
-      .catch(() => {
+      .catch((loadError: unknown) => {
         if (!cancelled) {
-          setEmpresas([]);
+          setEmpresasDisponibles([]);
           setEmpresaIdState(null);
+          setError(loadError instanceof Error ? loadError.message : "No fue posible cargar el contexto empresarial.");
         }
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [canReadCompanies, isAuthenticated]);
+  }, [isAuthenticated]);
 
-  const setEmpresaId = useCallback((nextId: number | null) => {
-    const authorized = empresas.some((empresa) => empresa.id === nextId);
-    const validId = nextId !== null && authorized ? nextId : nextId === null ? null : empresaId;
-    setEmpresaIdState(validId);
-    if (validId === null) {
+  useEffect(() => {
+    if (empresaId === null) {
       window.localStorage.removeItem(STORAGE_KEY);
-    } else {
-      window.localStorage.setItem(STORAGE_KEY, String(validId));
+      return;
     }
-  }, [empresaId, empresas]);
 
-  const value = useMemo(() => ({
-    empresas,
+    window.localStorage.setItem(STORAGE_KEY, String(empresaId));
+  }, [empresaId]);
+
+  const empresaActual = useMemo(
+    () => empresasDisponibles.find((empresa) => empresa.id === empresaId) ?? null,
+    [empresaId, empresasDisponibles]
+  );
+
+  const organizacionActual = empresaActual?.organizacion ?? null;
+
+  const value = useMemo<CompanyContextValue>(() => ({
+    empresasDisponibles,
+    empresaActual,
+    organizacionActual,
+    loading,
+    error,
+    setEmpresaActual: (nextEmpresaId: number | null) => {
+      if (nextEmpresaId === null) {
+        setEmpresaIdState(null);
+        return;
+      }
+
+      if (empresasDisponibles.some((empresa) => empresa.id === nextEmpresaId)) {
+        setEmpresaIdState(nextEmpresaId);
+      }
+    },
+    empresas: empresasDisponibles,
     empresaId,
-    empresaActiva: empresas.find((empresa) => empresa.id === empresaId) ?? null,
-    isLoading,
-    setEmpresaId,
-  }), [empresas, empresaId, isLoading, setEmpresaId]);
+    empresaActiva: empresaActual,
+    isLoading: loading,
+    setEmpresaId: (nextEmpresaId: number | null) => {
+      if (nextEmpresaId === null) {
+        setEmpresaIdState(null);
+        return;
+      }
+
+      if (empresasDisponibles.some((empresa) => empresa.id === nextEmpresaId)) {
+        setEmpresaIdState(nextEmpresaId);
+      }
+    }
+  }), [empresasDisponibles, empresaActual, organizacionActual, loading, error, empresaId]);
 
   return <CompanyContext.Provider value={value}>{children}</CompanyContext.Provider>;
 }
 
 export function useCompanyContext(): CompanyContextValue {
   const context = useContext(CompanyContext);
-  if (!context) throw new Error("useCompanyContext debe usarse dentro de CompanyProvider");
+
+  if (!context) {
+    throw new Error("useCompanyContext debe usarse dentro de CompanyProvider");
+  }
+
   return context;
 }

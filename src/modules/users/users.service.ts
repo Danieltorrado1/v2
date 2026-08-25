@@ -444,9 +444,9 @@ const normalizeTenantSelection = async (
   const empresas = await loadEmpresaReferences(client, empresaIds);
   const contratos = await loadContratoReferences(client, contratoIds);
 
-  if (!isGlobalAdmin && empresaIds.length !== 1) {
+  if (!isGlobalAdmin && empresaIds.length < 1) {
     throw createHttpError(
-      'Non-admin users must have exactly one company assigned',
+      'Non-admin users must have at least one company assigned',
       400,
       'EMPRESA_REQUIRED'
     );

@@ -34,9 +34,20 @@ interface EmpresaRow extends QueryResultRow {
   id: string;
   nit: string;
   nombre_empresa: string;
+  organizacion_codigo: string | null;
+  organizacion_estado: string | null;
+  organizacion_id: string | null;
+  organizacion_nombre: string | null;
   representante_legal: string | null;
   telefono: string | null;
   tipo_empresa: string;
+}
+
+interface OrganizacionReferenceRow extends QueryResultRow {
+  codigo: string;
+  estado: string;
+  id: string;
+  nombre: string;
 }
 
 interface ContratoRow extends QueryResultRow {
@@ -126,6 +137,12 @@ export interface EmpresaAdminItem {
   id: number;
   nit: string;
   nombre_empresa: string;
+  organizacion: {
+    codigo: string;
+    estado: string;
+    id: number;
+    nombre: string;
+  };
   representante_legal: string | null;
   telefono: string | null;
   tipo_empresa: string;
@@ -338,6 +355,18 @@ const mapEmpresa = (row: EmpresaRow): EmpresaAdminItem => ({
   tipo_empresa: row.tipo_empresa,
   nombre_empresa: row.nombre_empresa,
   nit: row.nit,
+  organizacion: {
+    id: (() => {
+      if (row.organizacion_id === null) {
+        throw new AppError('Empresa organization context is missing', 500, 'EMPRESA_ORGANIZACION_MISSING');
+      }
+
+      return toNumber(row.organizacion_id);
+    })(),
+    codigo: row.organizacion_codigo ?? '',
+    nombre: row.organizacion_nombre ?? '',
+    estado: row.organizacion_estado ?? 'ACTIVA'
+  },
   representante_legal: row.representante_legal,
   documento_representante: row.documento_representante,
   telefono: row.telefono,
@@ -409,6 +438,71 @@ const recordAudit = async (
   });
 };
 
+const ensureOrganizacionExists = async (client: PoolClient, organizacionId: number): Promise<{
+  codigo: string;
+  estado: string;
+  id: number;
+  nombre: string;
+}> => {
+  const result = await client.query<OrganizacionReferenceRow>(
+    `
+      SELECT
+        id::text AS id,
+        codigo,
+        nombre,
+        estado
+      FROM organizaciones
+      WHERE id = $1::bigint
+      LIMIT 1
+    `,
+    [organizacionId]
+  );
+
+  const row = result.rows[0];
+
+  if (!row) {
+    throw new AppError('Organizacion not found', 404, 'ORGANIZACION_NOT_FOUND', { organizacionId });
+  }
+
+  return {
+    id: toNumber(row.id),
+    codigo: row.codigo,
+    nombre: row.nombre,
+    estado: row.estado
+  };
+};
+
+const createImplicitOrganizationForCompany = async (
+  client: PoolClient,
+  input: { active: boolean; companyName: string }
+): Promise<number> => {
+  const codeSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const result = await client.query<{ id: string }>(
+    `
+      INSERT INTO organizaciones (
+        codigo,
+        nombre,
+        estado
+      )
+      VALUES ($1, $2, $3)
+      RETURNING id::text AS id
+    `,
+    [
+      `ORG-AUTO-${codeSuffix}`.toUpperCase(),
+      input.companyName,
+      input.active ? 'ACTIVA' : 'INACTIVA'
+    ]
+  );
+
+  const row = result.rows[0];
+
+  if (!row) {
+    throw new AppError('Organizacion could not be created', 500, 'ORGANIZACION_CREATE_FAILED');
+  }
+
+  return toNumber(row.id);
+};
+
 const ensureEmpresaExists = async (
   client: PoolClient,
   empresaId: number,
@@ -421,6 +515,10 @@ const ensureEmpresaExists = async (
         e.tipo_empresa,
         e.nombre_empresa,
         e.nit,
+        e.organizacion_id::text AS organizacion_id,
+        o.codigo AS organizacion_codigo,
+        o.nombre AS organizacion_nombre,
+        o.estado AS organizacion_estado,
         e.representante_legal,
         e.documento_representante,
         e.telefono,
@@ -430,6 +528,7 @@ const ensureEmpresaExists = async (
         e.departamento,
         COALESCE(e.activo, TRUE) AS activo
       FROM empresas e
+      INNER JOIN organizaciones o ON o.id = e.organizacion_id
       WHERE e.id = $1::bigint
       LIMIT 1
     `,
@@ -859,6 +958,10 @@ export const listEmpresas = async (
         e.tipo_empresa,
         e.nombre_empresa,
         e.nit,
+        e.organizacion_id::text AS organizacion_id,
+        o.codigo AS organizacion_codigo,
+        o.nombre AS organizacion_nombre,
+        o.estado AS organizacion_estado,
         e.representante_legal,
         e.documento_representante,
         e.telefono,
@@ -868,6 +971,7 @@ export const listEmpresas = async (
         e.departamento,
         COALESCE(e.activo, TRUE) AS activo
       FROM empresas e
+      INNER JOIN organizaciones o ON o.id = e.organizacion_id
       ${whereClause}
       ORDER BY e.nombre_empresa ASC, e.id ASC
       LIMIT $${listParams.length - 1}::int OFFSET $${listParams.length}::int
@@ -894,6 +998,10 @@ export const getEmpresaById = async (
           e.tipo_empresa,
           e.nombre_empresa,
           e.nit,
+          e.organizacion_id::text AS organizacion_id,
+          o.codigo AS organizacion_codigo,
+          o.nombre AS organizacion_nombre,
+          o.estado AS organizacion_estado,
           e.representante_legal,
           e.documento_representante,
           e.telefono,
@@ -903,6 +1011,7 @@ export const getEmpresaById = async (
           e.departamento,
           COALESCE(e.activo, TRUE) AS activo
         FROM empresas e
+        INNER JOIN organizaciones o ON o.id = e.organizacion_id
         WHERE e.id = $1::bigint
         LIMIT 1
       `,
@@ -928,10 +1037,18 @@ export const createEmpresa = async (input: CreateEmpresaInput, actor: ActorMeta)
     await client.query('BEGIN');
     await ensureEmpresaNitAvailable(client, input.nit);
     await ensureEmpresaNombreAvailable(client, input.nombre_empresa);
+    const organizationId =
+      input.organizacion_id === null || input.organizacion_id === undefined
+        ? await createImplicitOrganizationForCompany(client, {
+            companyName: input.nombre_empresa,
+            active: true
+          })
+        : (await ensureOrganizacionExists(client, input.organizacion_id)).id;
 
     const result = await client.query<EmpresaRow>(
       `
         INSERT INTO empresas (
+          organizacion_id,
           tipo_empresa,
           nombre_empresa,
           nit,
@@ -944,9 +1061,13 @@ export const createEmpresa = async (input: CreateEmpresaInput, actor: ActorMeta)
           departamento,
           activo
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, TRUE)
         RETURNING
           id::text AS id,
+          organizacion_id::text AS organizacion_id,
+          (SELECT codigo FROM organizaciones WHERE id = empresas.organizacion_id) AS organizacion_codigo,
+          (SELECT nombre FROM organizaciones WHERE id = empresas.organizacion_id) AS organizacion_nombre,
+          (SELECT estado FROM organizaciones WHERE id = empresas.organizacion_id) AS organizacion_estado,
           tipo_empresa,
           nombre_empresa,
           nit,
@@ -960,6 +1081,7 @@ export const createEmpresa = async (input: CreateEmpresaInput, actor: ActorMeta)
           COALESCE(activo, TRUE) AS activo
       `,
       [
+        organizationId,
         input.tipo_empresa,
         input.nombre_empresa,
         input.nit,
@@ -1006,7 +1128,17 @@ export const updateEmpresa = async (
       await ensureEmpresaNombreAvailable(client, input.nombre_empresa, empresaId);
     }
 
+    const nextOrganizacionId: number = !Object.prototype.hasOwnProperty.call(input, 'organizacion_id')
+      ? current.organizacion.id
+      : input.organizacion_id === null
+        ? await createImplicitOrganizationForCompany(client, {
+            companyName: input.nombre_empresa ?? current.nombre_empresa,
+            active: current.activo
+          })
+        : input.organizacion_id ?? current.organizacion.id;
+
     const nextValues = {
+      organizacion_id: nextOrganizacionId,
       tipo_empresa: input.tipo_empresa ?? current.tipo_empresa,
       nombre_empresa: input.nombre_empresa ?? current.nombre_empresa,
       nit: input.nit ?? current.nit,
@@ -1019,23 +1151,32 @@ export const updateEmpresa = async (
       departamento: Object.prototype.hasOwnProperty.call(input, 'departamento') ? input.departamento ?? null : current.departamento
     };
 
+    if (nextValues.organizacion_id !== current.organizacion.id) {
+      await ensureOrganizacionExists(client, nextValues.organizacion_id);
+    }
+
     const result = await client.query<EmpresaRow>(
       `
         UPDATE empresas
         SET
-          tipo_empresa = $2,
-          nombre_empresa = $3,
-          nit = $4,
-          representante_legal = $5,
-          documento_representante = $6,
-          telefono = $7,
-          correo = $8,
-          direccion = $9,
-          ciudad = $10,
-          departamento = $11
+          organizacion_id = $2::bigint,
+          tipo_empresa = $3,
+          nombre_empresa = $4,
+          nit = $5,
+          representante_legal = $6,
+          documento_representante = $7,
+          telefono = $8,
+          correo = $9,
+          direccion = $10,
+          ciudad = $11,
+          departamento = $12
         WHERE id = $1::bigint
         RETURNING
           id::text AS id,
+          organizacion_id::text AS organizacion_id,
+          (SELECT codigo FROM organizaciones WHERE id = empresas.organizacion_id) AS organizacion_codigo,
+          (SELECT nombre FROM organizaciones WHERE id = empresas.organizacion_id) AS organizacion_nombre,
+          (SELECT estado FROM organizaciones WHERE id = empresas.organizacion_id) AS organizacion_estado,
           tipo_empresa,
           nombre_empresa,
           nit,
@@ -1048,7 +1189,7 @@ export const updateEmpresa = async (
           departamento,
           COALESCE(activo, TRUE) AS activo
       `,
-      [empresaId, nextValues.tipo_empresa, nextValues.nombre_empresa, nextValues.nit, nextValues.representante_legal, nextValues.documento_representante, nextValues.telefono, nextValues.correo, nextValues.direccion, nextValues.ciudad, nextValues.departamento]
+      [empresaId, nextValues.organizacion_id, nextValues.tipo_empresa, nextValues.nombre_empresa, nextValues.nit, nextValues.representante_legal, nextValues.documento_representante, nextValues.telefono, nextValues.correo, nextValues.direccion, nextValues.ciudad, nextValues.departamento]
     );
 
     const row = result.rows[0];
@@ -1088,6 +1229,10 @@ export const setEmpresaActiveState = async (
         WHERE id = $1::bigint
         RETURNING
           id::text AS id,
+          organizacion_id::text AS organizacion_id,
+          (SELECT codigo FROM organizaciones WHERE id = empresas.organizacion_id) AS organizacion_codigo,
+          (SELECT nombre FROM organizaciones WHERE id = empresas.organizacion_id) AS organizacion_nombre,
+          (SELECT estado FROM organizaciones WHERE id = empresas.organizacion_id) AS organizacion_estado,
           tipo_empresa,
           nombre_empresa,
           nit,

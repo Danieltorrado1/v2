@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BarChart3, MapPinned, RefreshCw, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useCompanyContext } from '../../context/CompanyContext';
 import { configuracionApi } from '../../services/configuracionApi';
 import { compareFocalizacionImports, getCoberturaDashboard, listFocalizacionImportaciones } from '../../services/coberturaApi';
-import type { Contrato, Empresa } from '../../types/configuracion.types';
+import type { Contrato } from '../../types/configuracion.types';
 import type { CoberturaDashboard, FocalizacionComparisonItem, FocalizacionComparisonResult, FocalizacionImportLote } from '../../types/cobertura.types';
 import './CoberturaDashboardPage.css';
 
@@ -11,9 +12,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const money = (value: number) => new Intl.NumberFormat('es-CO').format(Math.round(value));
 
 export default function CoberturaDashboardPage() {
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
-  const [empresaId, setEmpresaId] = useState<number | null>(null);
   const [contratoId, setContratoId] = useState<number | null>(null);
   const [fecha, setFecha] = useState(today);
   const [dashboard, setDashboard] = useState<CoberturaDashboard | null>(null);
@@ -32,7 +31,8 @@ export default function CoberturaDashboardPage() {
   const [soloCambios, setSoloCambios] = useState(false);
   const [comparisonSelected, setComparisonSelected] = useState<FocalizacionComparisonItem | null>(null);
 
-  useEffect(() => { void configuracionApi.listarEmpresas({ page: 1, limit: 100, activo: true }).then((r) => { setEmpresas(r.items); setEmpresaId(r.items[0]?.id ?? null); }); }, []);
+  const { empresasDisponibles, empresaId, setEmpresaActual } = useCompanyContext();
+
   useEffect(() => { if (!empresaId) return; void configuracionApi.listarContratos({ page: 1, limit: 100, activo: true, empresa_id: empresaId }).then((r) => { setContratos(r.items); setContratoId(r.items[0]?.id ?? null); }); }, [empresaId]);
   useEffect(() => { if (!contratoId) return; void listFocalizacionImportaciones(contratoId).then((response) => { const items = response.items; setHistory(items); setVigenciaA(items.at(-2)?.id ?? items[0]?.id ?? null); setVigenciaB(items.at(-1)?.id ?? items[0]?.id ?? null); }).catch(() => setHistory([])); }, [contratoId]);
   useEffect(() => { if (!vigenciaA || !vigenciaB) return; void compareFocalizacionImports({ carga_a_id: vigenciaA, carga_b_id: vigenciaB, municipio: comparisonMunicipio || undefined, modalidad: comparisonModalidad || undefined, tipo_cambio: comparisonTipo || undefined, solo_cambios: soloCambios, fecha }).then(setComparison).catch(() => setComparison(null)); }, [vigenciaA, vigenciaB, comparisonMunicipio, comparisonModalidad, comparisonTipo, soloCambios, fecha]);
@@ -45,7 +45,7 @@ export default function CoberturaDashboardPage() {
   return <div className="coverage-dashboard">
     <header className="coverage-dashboard__header">
       <div><span className="eyebrow">Operación / Cobertura</span><h1>Dashboard de cobertura</h1><p>{selectedContract?.numero_contrato ?? 'Selecciona un contrato'} · lectura temporal a {fecha}</p></div>
-      <div className="coverage-dashboard__actions"><label><span>Empresa</span><select value={empresaId ?? ''} onChange={(e) => setEmpresaId(Number(e.target.value))}>{empresas.map((item) => <option key={item.id} value={item.id}>{item.nombre_empresa}</option>)}</select></label><label><span>Contrato</span><select value={contratoId ?? ''} onChange={(e) => setContratoId(Number(e.target.value))}>{contratos.map((item) => <option key={item.id} value={item.id}>{item.numero_contrato}</option>)}</select></label><label><span>Fecha de consulta</span><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></label><Link className="coverage-dashboard__import" to="/herramientas/cobertura/importaciones"><Upload size={15} /> Importaciones</Link></div>
+      <div className="coverage-dashboard__actions"><label><span>Empresa</span><select value={empresaId ?? ''} onChange={(e) => setEmpresaActual(e.target.value ? Number(e.target.value) : null)}>{empresasDisponibles.map((item) => <option key={item.id} value={item.id}>{item.nombre_empresa}</option>)}</select></label><label><span>Contrato</span><select value={contratoId ?? ''} onChange={(e) => setContratoId(Number(e.target.value))}>{contratos.map((item) => <option key={item.id} value={item.id}>{item.numero_contrato}</option>)}</select></label><label><span>Fecha de consulta</span><input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></label><Link className="coverage-dashboard__import" to="/herramientas/cobertura/importaciones"><Upload size={15} /> Importaciones</Link></div>
     </header>
     <nav className="coverage-tabs" aria-label="Vistas de cobertura">{(['RESUMEN', 'DETALLE', 'COMPARACION'] as const).map((item) => <button key={item} className={tab === item ? 'is-active' : ''} onClick={() => setTab(item)}>{item === 'COMPARACION' ? 'Comparación' : item[0] + item.slice(1).toLowerCase()}</button>)}</nav>
     {error && <div className="coverage-error">{error}</div>}

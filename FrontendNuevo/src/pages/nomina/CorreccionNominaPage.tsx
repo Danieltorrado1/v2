@@ -20,6 +20,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useCompanyContext } from "../../context/CompanyContext";
+import { pickAvailableScopedId } from "../../context/companyScope";
 import {
   actualizarCorreccionNomina,
   anularCorreccionNomina,
@@ -428,6 +430,7 @@ function ObservationModal({
 
 export default function CorreccionNominaPage() {
   const { user } = useAuth();
+  const { empresaId } = useCompanyContext();
   const permissions = user?.permissions ?? [];
 
   const canRead = hasPermission(permissions, CORRECCION_PERMISSION.read);
@@ -666,6 +669,7 @@ export default function CorreccionNominaPage() {
         const data = await getNominaPeriodos({
           page: 1,
           limit: PERIODS_LIMIT,
+          empresa_id: empresaId ? String(empresaId) : undefined,
         });
 
         if (cancelled) {
@@ -679,7 +683,9 @@ export default function CorreccionNominaPage() {
         });
 
         const defaultPeriod = pickDefaultNominaPeriod(data.items);
-        setSelectedPeriodId((current) => current || toId(defaultPeriod?.id));
+        setSelectedPeriodId((current) =>
+          pickAvailableScopedId(data.items, current, current) ?? toId(defaultPeriod?.id),
+        );
       } catch (error) {
         if (cancelled) {
           return;
@@ -702,7 +708,7 @@ export default function CorreccionNominaPage() {
     return () => {
       cancelled = true;
     };
-  }, [canRead]);
+  }, [canRead, empresaId]);
 
   useEffect(() => {
     setSelectedCorrectionId("");
@@ -738,7 +744,9 @@ export default function CorreccionNominaPage() {
       try {
         const [employeesResponse, movimientosResponse, novedadesResponse, liquidacionesResponse, desprendibles] =
           await Promise.all([
-            getAllNominaPeriodoEmpleados(selectedPeriodId),
+            getAllNominaPeriodoEmpleados(selectedPeriodId, {
+              empresa_id: empresaId ? String(empresaId) : undefined,
+            }),
             getAllNominaMovimientos({
               periodo_id: selectedPeriodId,
               activo: true,
@@ -784,7 +792,7 @@ export default function CorreccionNominaPage() {
     return () => {
       cancelled = true;
     };
-  }, [canRead, selectedPeriodId]);
+  }, [canRead, empresaId, selectedPeriodId]);
 
   useEffect(() => {
     if (!selectedPeriodId || !canRead) {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useCompanyContext } from "../../context/CompanyContext";
 import { getAllNominaPeriodoEmpleados, getNominaPeriodos } from "../../services/nominaApi";
 import { apiClient } from "../../services/apiClient";
 import type { NominaEmpleadoApi, NominaPeriodoApi } from "../../types/nomina.types";
@@ -10,6 +11,7 @@ type Cambio = { id:string;vinculacion_id:string;fecha_inicio_efectiva:string;tip
 const emptyContext:Contexto={};
 const contextLabel=(c:Contexto)=>[c.municipio,c.institucion,c.sede,c.modalidad].filter(Boolean).join(" / ")||"Contexto por IDs";
 export default function CambiosOperativosPage(){
+  const { empresaId } = useCompanyContext();
   const [periodos,setPeriodos]=useState<NominaPeriodoApi[]>([]),[periodoId,setPeriodoId]=useState("");
   const [empleados,setEmpleados]=useState<NominaEmpleadoApi[]>([]),[empleadoId,setEmpleadoId]=useState("");
   const [cambios,setCambios]=useState<Cambio[]>([]),[tramos,setTramos]=useState<Tramo[]>([]);
@@ -17,8 +19,8 @@ export default function CambiosOperativosPage(){
   const [fecha,setFecha]=useState(""),[tipo,setTipo]=useState("CAMBIO_COMBINADO"),[motivo,setMotivo]=useState("");
   const [anterior,setAnterior]=useState<Contexto>(emptyContext),[nuevo,setNuevo]=useState<Contexto>(emptyContext),[message,setMessage]=useState("");
   const empleado=useMemo(()=>empleados.find(e=>String(e.id)===empleadoId),[empleados,empleadoId]);
-  useEffect(()=>{void getNominaPeriodos({page:1,limit:100}).then(r=>{setPeriodos(r.items);setPeriodoId(String(r.items.find(p=>p.estado==="ABIERTO")?.id??r.items[0]?.id??""));});},[]);
-  useEffect(()=>{if(!periodoId)return;void getAllNominaPeriodoEmpleados(periodoId).then(r=>{setEmpleados(r.items);setEmpleadoId(String(r.items[0]?.id??""));});},[periodoId]);
+  useEffect(()=>{if(!empresaId){setPeriodos([]);setPeriodoId("");return;}void getNominaPeriodos({page:1,limit:100,empresa_id:String(empresaId)}).then(r=>{setPeriodos(r.items);setPeriodoId(current=>current&&r.items.some(p=>String(p.id)===current)?current:String(r.items.find(p=>p.estado==="ABIERTO")?.id??r.items[0]?.id??""));});},[empresaId]);
+  useEffect(()=>{if(!periodoId)return;void getAllNominaPeriodoEmpleados(periodoId,{empresa_id:empresaId?String(empresaId):undefined}).then(r=>{setEmpleados(r.items);setEmpleadoId(current=>current&&r.items.some(item=>String(item.id)===current)?current:String(r.items[0]?.id??""));});},[empresaId,periodoId]);
   const reload=async()=>{if(!periodoId||!empleado)return;const [cs,ts]=await Promise.all([apiClient.get<Cambio[]>("/nomina/cambios-operativos",{params:{periodo_id:periodoId,vinculacion_id:String(empleado.vinculacion_id),activo:true}}),apiClient.get<Tramo[]>(`/nomina/periodos/${periodoId}/vinculaciones/${empleado.vinculacion_id}/tramos-operativos`)]);setCambios(cs);setTramos(ts);};
   // reload reads the current period/employee selection; recreating it is intentional here.
   // oxlint-disable-next-line react-hooks/exhaustive-deps

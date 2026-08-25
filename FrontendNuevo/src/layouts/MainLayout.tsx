@@ -44,7 +44,7 @@ const repositorioLinks = [
 export default function MainLayout() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
-  const { empresas, empresaId, empresaActiva, isLoading, setEmpresaId } = useCompanyContext();
+  const { empresasDisponibles, empresaId, empresaActual, organizacionActual, isLoading, setEmpresaActual } = useCompanyContext();
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(INITIAL_UNREAD_COUNT);
   const [logoFallback, setLogoFallback] = useState(false);
@@ -158,19 +158,30 @@ export default function MainLayout() {
             {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
           </button>
 
-          {empresas.length > 0 && (
-            <label className="company-context-control" title={empresaActiva?.nombre_empresa ?? "Empresa activa"}>
+          {empresasDisponibles.length > 1 && (
+            <label className="company-context-control" title={empresaActual?.nombre_empresa ?? "Empresa activa"}>
               <Building2 size={16} aria-hidden="true" />
               <select
                 value={empresaId ?? ""}
-                onChange={(event) => setEmpresaId(event.target.value ? Number(event.target.value) : null)}
-                disabled={isLoading || empresas.length === 1}
+                onChange={(event) => setEmpresaActual(event.target.value ? Number(event.target.value) : null)}
+                disabled={isLoading}
                 aria-label="Empresa activa"
               >
-                {empresas.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}
+                {empresasDisponibles.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}
               </select>
               <ChevronDown size={14} aria-hidden="true" />
             </label>
+          )}
+
+          {empresasDisponibles.length === 1 && empresaActual && (
+            <div
+              className="company-context-control"
+              title={organizacionActual?.nombre ?? empresaActual.nombre_empresa}
+              aria-label="Empresa activa"
+            >
+              <Building2 size={16} aria-hidden="true" />
+              <span>{empresaActual.nombre_empresa}</span>
+            </div>
           )}
 
           <div className="account-area" ref={accountRef}>

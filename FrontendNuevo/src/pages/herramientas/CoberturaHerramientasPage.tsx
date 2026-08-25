@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '../../context/AuthContext';
+import { useCompanyContext } from '../../context/CompanyContext';
 import { configuracionApi } from '../../services/configuracionApi';
 import {
   downloadFocalizacionReport,
@@ -23,7 +24,7 @@ import {
   uploadHistoricalFocalizacion,
 } from '../../services/coberturaApi';
 import { ApiClientError } from '../../services/apiClient';
-import type { Contrato, Empresa } from '../../types/configuracion.types';
+import type { Contrato } from '../../types/configuracion.types';
 import type {
   FocalizacionImportDetailResult,
   FocalizacionImportLote,
@@ -76,9 +77,7 @@ export default function CoberturaHerramientasPage() {
   const canReadCobertura = permissions.includes('cobertura.read');
   const canUpdateCobertura = permissions.includes('cobertura.update');
 
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
-  const [empresaId, setEmpresaId] = useState<number | null>(null);
   const [contratoId, setContratoId] = useState<number | null>(null);
   const [history, setHistory] = useState<FocalizacionImportLote[]>([]);
   const [selectedDetail, setSelectedDetail] = useState<FocalizacionImportDetailResult | null>(null);
@@ -91,7 +90,7 @@ export default function CoberturaHerramientasPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
 
-  const empresaSeleccionada = empresas.find((empresa) => empresa.id === empresaId) ?? null;
+  const { empresasDisponibles, empresaId, empresaActual, setEmpresaActual } = useCompanyContext();
   const contratoSeleccionado = contratos.find((contrato) => contrato.id === contratoId) ?? null;
 
   const summary = selectedDetail?.lote.resumen ?? {
@@ -104,29 +103,6 @@ export default function CoberturaHerramientasPage() {
     alertas: 0,
     errores: 0,
   };
-
-  useEffect(() => {
-    if (!canReadContext) return;
-    let cancelled = false;
-
-    async function loadEmpresas() {
-      try {
-        const response = await configuracionApi.listarEmpresas({ page: 1, limit: 100, activo: true });
-        if (cancelled) return;
-        setEmpresas(response.items);
-        setEmpresaId((current) => current && response.items.some((item) => item.id === current) ? current : response.items[0]?.id ?? null);
-      } catch (error) {
-        if (!cancelled) {
-          setEmpresas([]);
-          setEmpresaId(null);
-          setPageError(getErrorMessage(error, 'No fue posible cargar empresas.'));
-        }
-      }
-    }
-
-    void loadEmpresas();
-    return () => { cancelled = true; };
-  }, [canReadContext]);
 
   useEffect(() => {
     if (!canReadContext || !empresaId) {
@@ -329,9 +305,9 @@ export default function CoberturaHerramientasPage() {
       <div className="cobertura-toolbar">
         <div className="cobertura-filters">
           <div className="cobertura-select-wrap">
-            <select className="cobertura-select" value={empresaId ?? ''} onChange={(event) => setEmpresaId(event.target.value ? Number(event.target.value) : null)} disabled={!canReadContext}>
+            <select className="cobertura-select" value={empresaId ?? ''} onChange={(event) => setEmpresaActual(event.target.value ? Number(event.target.value) : null)} disabled={!canReadContext}>
               <option value="">Empresa</option>
-              {empresas.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}
+              {empresasDisponibles.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}
             </select>
             <ChevronDown size={14} />
           </div>
@@ -467,7 +443,7 @@ export default function CoberturaHerramientasPage() {
               <div>
                 <h3>Actualizar focalizacion</h3>
                 <p>
-                  Importando a: <strong>{empresaSeleccionada?.nombre_empresa ?? 'Sin empresa'}</strong>
+                  Importando a: <strong>{empresaActual?.nombre_empresa ?? 'Sin empresa'}</strong>
                   {' / '}<strong>{contratoSeleccionado?.numero_contrato ?? 'Sin contrato'}</strong>
                 </p>
               </div>

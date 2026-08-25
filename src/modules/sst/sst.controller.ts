@@ -1095,7 +1095,7 @@ export const getSstEventosHandler = asyncHandler(async (req: Request, res: Respo
 
 export const getSstEventoHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = sstIdParamSchema.parse(req.params);
-  const evento = await getSstEventoById(id);
+  const evento = await getSstEventoById(id, req.tenant);
 
   if (!evento) {
     throw new AppError('SST event not found', 404, 'SST_EVENTO_NOT_FOUND');
@@ -1151,7 +1151,7 @@ export const getSstPlanesAccionHandler = asyncHandler(async (req: Request, res: 
 
 export const getSstPlanAccionHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = sstIdParamSchema.parse(req.params);
-  const plan = await getSstPlanAccionById(id);
+  const plan = await getSstPlanAccionById(id, req.tenant);
 
   if (!plan) {
     throw new AppError('SST action plan not found', 404, 'SST_PLAN_ACCION_NOT_FOUND');

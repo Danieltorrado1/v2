@@ -258,10 +258,7 @@ export function UsuariosTab() {
       const roleIds = checked
         ? Array.from(new Set([...current.roleIds, roleId]))
         : current.roleIds.filter((currentRoleId) => currentRoleId !== roleId);
-      const nextIsGlobalAdmin = isAdminRoleSelected(roleIds, roles);
-      const nextEmpresaIds = !nextIsGlobalAdmin && current.empresaIds.length > 1
-        ? current.empresaIds.slice(0, 1)
-        : current.empresaIds;
+      const nextEmpresaIds = current.empresaIds;
       const allowedEmpresaIds = new Set(nextEmpresaIds);
       const nextContratoIds = current.contratoIds.filter((contratoId) => {
         const contrato = contratosById.get(contratoId);
@@ -278,16 +275,11 @@ export function UsuariosTab() {
   }
 
   function toggleEmpresa(empresaId: number, checked: boolean) {
-    if (isGlobalAdminTarget) {
-      updateCompanies(
-        checked
-          ? Array.from(new Set([...form.empresaIds, empresaId]))
-          : form.empresaIds.filter((currentEmpresaId) => currentEmpresaId !== empresaId)
-      );
-      return;
-    }
-
-    updateCompanies(checked ? [empresaId] : []);
+    updateCompanies(
+      checked
+        ? Array.from(new Set([...form.empresaIds, empresaId]))
+        : form.empresaIds.filter((currentEmpresaId) => currentEmpresaId !== empresaId)
+    );
   }
 
   function toggleContrato(contratoId: number, checked: boolean) {
@@ -316,8 +308,8 @@ export function UsuariosTab() {
       return 'Debes seleccionar al menos un rol.';
     }
 
-    if (!isGlobalAdminTarget && form.empresaIds.length !== 1) {
-      return 'Los usuarios que no son ADMINISTRADOR deben tener exactamente una empresa.';
+    if (!isGlobalAdminTarget && form.empresaIds.length < 1) {
+      return 'Los usuarios que no son ADMINISTRADOR deben tener al menos una empresa.';
     }
 
     if (form.contratoIds.some((contratoId) => {
@@ -385,14 +377,14 @@ export function UsuariosTab() {
         await reloadUsers(updated.id);
       }
     } catch (saveError) {
-      setFormError(
-        mapKnownError(saveError, 'No fue posible guardar el usuario.', {
+          setFormError(
+            mapKnownError(saveError, 'No fue posible guardar el usuario.', {
           EMAIL_ALREADY_IN_USE: 'Ya existe un usuario con ese correo.',
           ROLE_REQUIRED: 'Debes seleccionar al menos un rol.',
           INVALID_ROLE_IDS: 'Hay roles seleccionados que ya no son validos.',
           INVALID_EMPRESA_IDS: 'Hay empresas seleccionadas que ya no son validas.',
           INVALID_CONTRATO_IDS: 'Hay contratos seleccionados que ya no son validos.',
-          EMPRESA_REQUIRED: 'Los usuarios no administradores deben tener exactamente una empresa.',
+          EMPRESA_REQUIRED: 'Los usuarios no administradores deben tener al menos una empresa.',
           CONTRATOS_EMPRESA_MISMATCH: 'No puedes asignar contratos de otra empresa.'
         })
       );
@@ -695,7 +687,7 @@ export function UsuariosTab() {
             <div className="cg-role-selector-header">
               <span><Building2 size={14} /> Empresa</span>
               <span className="cg-secondary-cell">
-                {isGlobalAdminTarget ? 'Puedes seleccionar multiples empresas' : 'Solo una empresa'}
+                {isGlobalAdminTarget ? 'Puedes seleccionar multiples empresas' : 'Selecciona una o varias empresas'}
               </span>
             </div>
             <div className="cg-access-selector-grid">

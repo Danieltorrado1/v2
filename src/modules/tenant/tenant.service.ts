@@ -46,6 +46,10 @@ interface UserAccessResult {
 interface TenantMeEmpresaRow extends QueryResultRow {
   id: string;
   nombre_empresa: string;
+  organizacion_codigo: string | null;
+  organizacion_estado: string | null;
+  organizacion_id: string | null;
+  organizacion_nombre: string | null;
 }
 
 interface TenantMeContratoRow extends QueryResultRow {
@@ -58,6 +62,7 @@ interface TenantMeContratoRow extends QueryResultRow {
 export interface TenantMeEmpresa {
   id: number;
   nombre_empresa: string;
+  organizacion: TenantMeOrganizacion | null;
 }
 
 export interface TenantMeContrato {
@@ -65,6 +70,13 @@ export interface TenantMeContrato {
   entidad_contratante: string | null;
   id: number;
   numero_contrato: string | null;
+}
+
+export interface TenantMeOrganizacion {
+  codigo: string;
+  estado: string;
+  id: number;
+  nombre: string;
 }
 
 export interface TenantMeContext {
@@ -75,6 +87,9 @@ export interface TenantMeContext {
   empresas: TenantMeEmpresa[];
   empresa_default_id: number | null;
   isGlobalAdmin: boolean;
+  organizacionIds: number[];
+  organizaciones: TenantMeOrganizacion[];
+  organizacion_default_id: number | null;
 }
 
 export interface TenantMutationActor {
@@ -108,12 +123,35 @@ const toNullableNumber = (value: number | string | null): number | null => {
 export const getTenantMeContext = async (tenant: TenantAccessContext): Promise<TenantMeContext> => {
   const empresasResult = tenant.isGlobalAdmin
     ? await dbQuery<TenantMeEmpresaRow>(
-        `SELECT id::text AS id, nombre_empresa FROM empresas ORDER BY nombre_empresa ASC`
+        `
+          SELECT
+            e.id::text AS id,
+            e.nombre_empresa,
+            o.id::text AS organizacion_id,
+            o.codigo AS organizacion_codigo,
+            o.nombre AS organizacion_nombre,
+            o.estado AS organizacion_estado
+          FROM empresas e
+          LEFT JOIN organizaciones o ON o.id = e.organizacion_id
+          ORDER BY e.nombre_empresa ASC
+        `
       )
     : tenant.empresaIds.length === 0
       ? null
       : await dbQuery<TenantMeEmpresaRow>(
-          `SELECT id::text AS id, nombre_empresa FROM empresas WHERE id = ANY($1::bigint[]) ORDER BY nombre_empresa ASC`,
+          `
+            SELECT
+              e.id::text AS id,
+              e.nombre_empresa,
+              o.id::text AS organizacion_id,
+              o.codigo AS organizacion_codigo,
+              o.nombre AS organizacion_nombre,
+              o.estado AS organizacion_estado
+            FROM empresas e
+            LEFT JOIN organizaciones o ON o.id = e.organizacion_id
+            WHERE e.id = ANY($1::bigint[])
+            ORDER BY e.nombre_empresa ASC
+          `,
           [tenant.empresaIds]
         );
 
@@ -139,7 +177,19 @@ export const getTenantMeContext = async (tenant: TenantAccessContext): Promise<T
 
   const empresas: TenantMeEmpresa[] = (empresasResult?.rows ?? []).map((row) => ({
     id: toNumber(row.id),
-    nombre_empresa: row.nombre_empresa
+    nombre_empresa: row.nombre_empresa,
+    organizacion:
+      row.organizacion_id &&
+      row.organizacion_codigo &&
+      row.organizacion_nombre &&
+      row.organizacion_estado
+        ? {
+            id: toNumber(row.organizacion_id),
+            codigo: row.organizacion_codigo,
+            nombre: row.organizacion_nombre,
+            estado: row.organizacion_estado
+          }
+        : null
   }));
 
   const contratos: TenantMeContrato[] = (contratosResult?.rows ?? []).map((row) => ({
@@ -154,13 +204,27 @@ export const getTenantMeContext = async (tenant: TenantAccessContext): Promise<T
     (empresa_default_id !== null
       ? contratos.find((contrato) => contrato.empresa_id === empresa_default_id)?.id
       : contratos[0]?.id) ?? null;
+  const organizaciones = Array.from(
+    new Map(
+      empresas
+        .filter((empresa): empresa is TenantMeEmpresa & { organizacion: TenantMeOrganizacion } => empresa.organizacion !== null)
+        .map((empresa) => [empresa.organizacion.id, empresa.organizacion])
+    ).values()
+  ).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  const organizacion_default_id =
+    empresas.find((empresa) => empresa.id === empresa_default_id)?.organizacion?.id ??
+    organizaciones[0]?.id ??
+    null;
 
   return {
     isGlobalAdmin: tenant.isGlobalAdmin,
     empresaIds: tenant.empresaIds,
     contratoIds: tenant.contratoIds,
+    organizacionIds: organizaciones.map((organizacion) => organizacion.id),
+    organizaciones,
     empresas,
     contratos,
+    organizacion_default_id,
     empresa_default_id,
     contrato_default_id
   };

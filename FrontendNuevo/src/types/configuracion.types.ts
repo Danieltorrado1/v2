@@ -10,8 +10,16 @@ export interface PaginatedItems<T> {
   pagination: PaginationState;
 }
 
+export interface Organizacion {
+  id: number;
+  codigo: string;
+  nombre: string;
+  estado: string;
+}
+
 export interface Empresa {
   id: number;
+  organizacion: Organizacion;
   tipo_empresa: string;
   nombre_empresa: string;
   nit: string;
@@ -34,6 +42,7 @@ export interface EmpresaFilters {
 }
 
 export interface CreateEmpresaPayload {
+  organizacion_id?: number | null;
   tipo_empresa: string;
   nombre_empresa: string;
   nit: string;
@@ -47,6 +56,7 @@ export interface CreateEmpresaPayload {
 }
 
 export interface UpdateEmpresaPayload {
+  organizacion_id?: number | null;
   tipo_empresa?: string;
   nombre_empresa?: string;
   nit?: string;
@@ -635,4 +645,30 @@ export interface AccesoUsuario {
   usuario: UsuarioAdministracion;
   empresas: AccesoEmpresaUsuario[];
   contratos: AccesoContratoUsuario[];
+}
+
+export interface TenantContextEmpresa {
+  id: number;
+  nombre_empresa: string;
+  organizacion: Organizacion | null;
+}
+
+export interface TenantContextContrato {
+  id: number;
+  empresa_id: number | null;
+  numero_contrato: string | null;
+  entidad_contratante: string | null;
+}
+
+export interface TenantContext {
+  isGlobalAdmin: boolean;
+  organizacionIds: number[];
+  organizaciones: Organizacion[];
+  organizacion_default_id: number | null;
+  empresaIds: number[];
+  empresas: TenantContextEmpresa[];
+  empresa_default_id: number | null;
+  contratoIds: number[];
+  contratos: TenantContextContrato[];
+  contrato_default_id: number | null;
 }

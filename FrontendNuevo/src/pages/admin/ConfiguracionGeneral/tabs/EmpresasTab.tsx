@@ -18,6 +18,7 @@ import {
 
 type EstadoFiltro = 'all' | 'active' | 'inactive';
 type EmpresaForm = {
+  organizacion_id: string;
   tipo_empresa: string;
   nombre_empresa: string;
   nit: string;
@@ -39,6 +40,7 @@ const PAGE_SIZE = 10;
 
 function createBlankForm(): EmpresaForm {
   return {
+    organizacion_id: '',
     tipo_empresa: '',
     nombre_empresa: '',
     nit: '',
@@ -54,6 +56,7 @@ function createBlankForm(): EmpresaForm {
 
 function mapEmpresaToForm(empresa: Empresa): EmpresaForm {
   return {
+    organizacion_id: String(empresa.organizacion.id),
     tipo_empresa: empresa.tipo_empresa,
     nombre_empresa: empresa.nombre_empresa,
     nit: empresa.nit,
@@ -69,6 +72,7 @@ function mapEmpresaToForm(empresa: Empresa): EmpresaForm {
 
 function buildPayload(form: EmpresaForm): CreateEmpresaPayload {
   return {
+    organizacion_id: form.organizacion_id ? Number(form.organizacion_id) : null,
     tipo_empresa: form.tipo_empresa.trim(),
     nombre_empresa: form.nombre_empresa.trim(),
     nit: form.nit.trim(),
@@ -94,6 +98,7 @@ export function EmpresasTab() {
   const canUpdate = hasAnyPermission(permissions, ['empresas.update']);
 
   const [items, setItems] = useState<Empresa[]>([]);
+  const [allEmpresas, setAllEmpresas] = useState<Empresa[]>([]);
   const [pagination, setPagination] = useState<PaginationState | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -122,6 +127,7 @@ export function EmpresasTab() {
   useEffect(() => {
     if (!canRead) {
       setItems([]);
+      setAllEmpresas([]);
       setPagination(null);
       setSelectedEmpresa(null);
       setError('No tienes permisos para consultar empresas.');
@@ -144,12 +150,17 @@ export function EmpresasTab() {
           search: search.trim() || undefined,
           activo: estado === 'all' ? undefined : estado === 'active',
         });
+        const allResponse = await configuracionApi.listarEmpresas({
+          page: 1,
+          limit: 500,
+        });
 
         if (cancelled) {
           return;
         }
 
         setItems(response.items);
+        setAllEmpresas(allResponse.items);
         setPagination(response.pagination);
 
         if (selectedId && response.items.some((item) => item.id === selectedId)) {
@@ -195,6 +206,13 @@ export function EmpresasTab() {
   }, [canRead, estado, page, search, selectedId]);
 
   const totalItems = pagination?.total ?? 0;
+  const organizationOptions = useMemo(
+    () =>
+      Array.from(
+        new Map(allEmpresas.map((empresa) => [empresa.organizacion.id, empresa.organizacion])).values()
+      ).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+    [allEmpresas]
+  );
   const pageLabel = useMemo(() => {
     if (!pagination || totalItems === 0) {
       return 'Sin resultados';
@@ -244,7 +262,12 @@ export function EmpresasTab() {
         search: search.trim() || undefined,
         activo: estado === 'all' ? undefined : estado === 'active',
       });
+      const allResponse = await configuracionApi.listarEmpresas({
+        page: 1,
+        limit: 500,
+      });
       setItems(response.items);
+      setAllEmpresas(allResponse.items);
       setPagination(response.pagination);
 
       if (targetId) {
@@ -458,8 +481,8 @@ export function EmpresasTab() {
                 >
                   <td>
                     <div className="cg-primary-cell" title={empresa.nombre_empresa}>{empresa.nombre_empresa}</div>
-                    <div className="cg-secondary-cell" title={empresa.correo ?? empresa.direccion ?? ''}>
-                      {empresa.correo ?? empresa.direccion ?? 'No disponible'}
+                    <div className="cg-secondary-cell" title={empresa.organizacion.nombre}>
+                      {empresa.organizacion.nombre}
                     </div>
                   </td>
                   <td className="cg-mono-cell">{empresa.nit}</td>
@@ -552,6 +575,7 @@ export function EmpresasTab() {
           <div className="adm-empty"><p>Selecciona una empresa para ver su detalle.</p></div>
         ) : (
           <div className="cg-detail-grid">
+            <div><span className="cg-detail-label">Organizacion</span><strong>{selectedEmpresa.organizacion.nombre}</strong></div>
             <div><span className="cg-detail-label">Nombre</span><strong>{selectedEmpresa.nombre_empresa}</strong></div>
             <div><span className="cg-detail-label">NIT</span><strong>{selectedEmpresa.nit}</strong></div>
             <div><span className="cg-detail-label">Tipo</span><strong>{selectedEmpresa.tipo_empresa}</strong></div>
@@ -576,6 +600,21 @@ export function EmpresasTab() {
           wide
         >
           <div className="adm-form-grid">
+            <div className="adm-field adm-field full-width">
+              <label className="adm-label">Organizacion</label>
+              <select
+                className="adm-input"
+                value={form.organizacion_id}
+                onChange={(event) => setForm((current) => ({ ...current, organizacion_id: event.target.value }))}
+              >
+                <option value="">Crear organizacion 1:1 automaticamente</option>
+                {organizationOptions.map((organizacion) => (
+                  <option key={organizacion.id} value={organizacion.id}>
+                    {organizacion.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="adm-field">
               <label className="adm-label">Tipo de empresa *</label>
               <input

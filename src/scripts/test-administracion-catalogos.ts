@@ -67,6 +67,7 @@ const main = async (): Promise<void> => {
   const uniqueToken = Date.now();
   const empresa = await createEmpresa(
     {
+      organizacion_id: null,
       tipo_empresa: 'S.A.S.',
       nombre_empresa: `ZZ_TEST_ADMIN_${uniqueToken}`,
       nit: `TEST-${uniqueToken}`,
@@ -84,6 +85,7 @@ const main = async (): Promise<void> => {
   await expectAppErrorCode(
     createEmpresa(
       {
+        organizacion_id: null,
         tipo_empresa: 'S.A.S.',
         nombre_empresa: `ZZ_TEST_ADMIN_DUP_${uniqueToken}`,
         nit: empresa.nit,

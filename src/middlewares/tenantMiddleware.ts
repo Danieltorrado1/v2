@@ -145,6 +145,36 @@ const hasTenantScope = (tenant: TenantAccessContext, contratoId: number, empresa
   return empresaId !== null && tenant.empresaIds.includes(empresaId);
 };
 
+export const hasTenantEmpresaAccess = (
+  tenant: TenantAccessContext | undefined,
+  empresaId: number
+): boolean => {
+  if (!tenant) {
+    return true;
+  }
+
+  if (tenant.isGlobalAdmin) {
+    return true;
+  }
+
+  return tenant.empresaIds.includes(empresaId);
+};
+
+export const assertTenantAccessForEmpresaId = (
+  tenant: TenantAccessContext | undefined,
+  empresaId: string | number
+): void => {
+  if (!tenant || tenant.isGlobalAdmin) {
+    return;
+  }
+
+  const numericEmpresaId = toNumber(empresaId);
+
+  if (!tenant.empresaIds.includes(numericEmpresaId)) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+  }
+};
+
 export const assertTenantAccessForVinculacionId = async (
   tenant: TenantAccessContext | undefined,
   vinculacionId: string | number
@@ -241,7 +271,7 @@ export const requireEmpresaAccess =
     try {
       const tenant = getTenantOrThrow(req);
 
-      if (tenant.isGlobalAdmin || tenant.empresaIds.includes(empresaId)) {
+      if (hasTenantEmpresaAccess(tenant, empresaId)) {
         next();
         return;
       }

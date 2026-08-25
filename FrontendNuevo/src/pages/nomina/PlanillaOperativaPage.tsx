@@ -3,6 +3,12 @@ import { NavLink, useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Plus, Search, X } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
+import { useCompanyContext } from "../../context/CompanyContext";
+import {
+  pickAvailableScopedId,
+  readCompanyScopedStorage,
+  writeCompanyScopedStorage,
+} from "../../context/companyScope";
 import { apiClient } from "../../services/apiClient";
 import {
   createNominaNovedadConTurno,
@@ -208,7 +214,7 @@ function buildContextTitle(employee: NominaEmpleadoApi, context: PlanillaContext
     .join(" · ");
 }
 
-function readPersistedFilters(): PersistedFilters {
+function readPersistedFilters(empresaId: number | null): PersistedFilters {
   if (typeof window === "undefined") {
     return {
       eventFilter: "TODOS",
@@ -222,7 +228,7 @@ function readPersistedFilters(): PersistedFilters {
   }
 
   try {
-    const raw = window.sessionStorage.getItem(PLANILLA_FILTERS_KEY);
+    const raw = readCompanyScopedStorage(window.sessionStorage, PLANILLA_FILTERS_KEY, empresaId);
     if (!raw) {
       throw new Error("missing");
     }
@@ -332,8 +338,9 @@ async function loadAttendance(periodId: string) {
 
 export default function PlanillaOperativaPage() {
   const { user } = useAuth();
+  const { empresaId } = useCompanyContext();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialFilters = useRef(readPersistedFilters());
+  const initialFilters = useRef(readPersistedFilters(empresaId));
 
   const [periods, setPeriods] = useState<NominaPeriodoApi[]>([]);
   const [periodId, setPeriodId] = useState("");
@@ -373,6 +380,14 @@ export default function PlanillaOperativaPage() {
   const [manualValue, setManualValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [reviewSaving, setReviewSaving] = useState<Set<string>>(new Set());
+  const planillaFiltersStorageKey = useMemo(
+    () => `nomina.planilla.filters:${empresaId ?? "global"}`,
+    [empresaId],
+  );
+  const nominaPeriodStorageKey = useMemo(
+    () => `nomina.periodo_id:${empresaId ?? "global"}`,
+    [empresaId],
+  );
 
   const viewport = useRef<HTMLDivElement>(null);
   const canCreate = user?.permissions.includes("nomina.novedades.create") === true;
@@ -383,8 +398,10 @@ export default function PlanillaOperativaPage() {
       return;
     }
 
-    window.sessionStorage.setItem(
+    writeCompanyScopedStorage(
+      window.sessionStorage,
       PLANILLA_FILTERS_KEY,
+      empresaId,
       JSON.stringify({
         eventFilter,
         gestor: gestorFilter,
@@ -395,14 +412,14 @@ export default function PlanillaOperativaPage() {
         sortMode,
       }),
     );
-  }, [eventFilter, gestorFilter, modalidad, municipio, query, reviewFilter, sortMode]);
+  }, [empresaId, eventFilter, gestorFilter, modalidad, municipio, query, reviewFilter, sortMode, planillaFiltersStorageKey]);
 
   useEffect(() => {
     if (!periodId || typeof window === "undefined") {
       return;
     }
 
-    window.sessionStorage.setItem("nomina.periodo_id", periodId);
+    writeCompanyScopedStorage(window.sessionStorage, "nomina.periodo_id", empresaId, periodId);
     if (searchParams.get("period_id") !== periodId) {
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
@@ -410,35 +427,38 @@ export default function PlanillaOperativaPage() {
         return next;
       }, { replace: true });
     }
-  }, [periodId, searchParams, setSearchParams]);
+  }, [empresaId, periodId, searchParams, setSearchParams, nominaPeriodStorageKey]);
 
   useEffect(() => {
+    if (!empresaId) {
+      setPeriods([]);
+      setPeriodId("");
+      return;
+    }
+
     const preferredPeriodId =
       searchParams.get("period_id") ??
-      (typeof window !== "undefined" ? window.sessionStorage.getItem("nomina.periodo_id") ?? undefined : undefined);
+      (typeof window !== "undefined"
+        ? readCompanyScopedStorage(window.sessionStorage, "nomina.periodo_id", empresaId) ?? undefined
+        : undefined);
 
     void Promise.all([
-      getNominaPeriodos({ page: 1, limit: MAX_PAGE }),
+      getNominaPeriodos({ page: 1, limit: MAX_PAGE, empresa_id: String(empresaId) }),
       listarTiposNovedad({ activo: true, page: 1, limit: MAX_PAGE }),
     ])
       .then(([periodResponse, typeResponse]) => {
         const availablePeriods = periodResponse.items;
         setPeriods(availablePeriods);
         setTypes(typeResponse.items);
-        setPeriodId((current) => {
-          if (current && availablePeriods.some((item) => String(item.id) === current)) {
-            return current;
-          }
-          if (preferredPeriodId && availablePeriods.some((item) => String(item.id) === preferredPeriodId)) {
-            return String(preferredPeriodId);
-          }
-          return String(pickDefaultNominaPeriod(availablePeriods)?.id ?? "");
-        });
+        setPeriodId((current) =>
+          pickAvailableScopedId(availablePeriods, preferredPeriodId, current) ??
+          String(pickDefaultNominaPeriod(availablePeriods)?.id ?? ""),
+        );
       })
       .catch((value) => {
         setError(value instanceof Error ? value.message : "No fue posible cargar la configuracion de nomina");
       });
-  }, [searchParams]);
+  }, [empresaId, searchParams]);
 
   useEffect(() => {
     if (!periodId) {
@@ -453,7 +473,9 @@ export default function PlanillaOperativaPage() {
       setScrollTop(0);
 
       try {
-        const employeeResponse = await getAllNominaPeriodoEmpleados(periodId);
+        const employeeResponse = await getAllNominaPeriodoEmpleados(periodId, {
+          empresa_id: empresaId ? String(empresaId) : undefined,
+        });
         if (!cancelled) {
           setEmployees(employeeResponse.items);
         }
@@ -516,7 +538,33 @@ export default function PlanillaOperativaPage() {
     return () => {
       cancelled = true;
     };
-  }, [periodId]);
+  }, [empresaId, periodId]);
+
+  useEffect(() => {
+    const persistedFilters = readPersistedFilters(empresaId);
+    setQuery(persistedFilters.query);
+    setMunicipio(persistedFilters.municipio);
+    setGestorFilter(persistedFilters.gestor);
+    setModalidad(persistedFilters.modalidad);
+    setReviewFilter(persistedFilters.reviewFilter);
+    setEventFilter(persistedFilters.eventFilter);
+    setSortMode(persistedFilters.sortMode);
+    setSelected(null);
+    setRangeSelection(null);
+    setNoveltyCell(null);
+    setSelectedType(null);
+    setCoverSearch("");
+    setCoverEmployee(null);
+    setExternalName("");
+    setExternalDocument("");
+    setCoverageObservation("");
+    setObservacion("");
+    setDocumentoPersonaId("");
+    setRangeEnd("");
+    setHours("");
+    setManualValue("");
+    setError("");
+  }, [empresaId]);
 
   const period = periods.find((item) => String(item.id) === periodId);
   const editable = period?.estado === "ABIERTO" && canCreate;

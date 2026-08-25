@@ -126,6 +126,7 @@ export const configuracionToggleEstadoSchema = z
 
 export const createEmpresaSchema = z
   .object({
+    organizacion_id: positiveIntegerSchema.nullable().optional().default(null),
     tipo_empresa: trimmedStringSchema.max(120),
     nombre_empresa: trimmedStringSchema.max(200),
     nit: trimmedStringSchema.max(40),
@@ -141,6 +142,7 @@ export const createEmpresaSchema = z
 
 export const updateEmpresaSchema = z
   .object({
+    organizacion_id: positiveIntegerSchema.nullable().optional(),
     tipo_empresa: trimmedStringSchema.max(120).optional(),
     nombre_empresa: trimmedStringSchema.max(200).optional(),
     nit: trimmedStringSchema.max(40).optional(),

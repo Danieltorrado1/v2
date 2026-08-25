@@ -41,6 +41,12 @@ import {
   updateNominaNovedad,
 } from "../../services/nominaApi";
 import { ApiClientError } from "../../services/apiClient";
+import { useCompanyContext } from "../../context/CompanyContext";
+import {
+  pickAvailableScopedId,
+  readCompanyScopedStorage,
+  writeCompanyScopedStorage,
+} from "../../context/companyScope";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
 import type {
   GenerateNominaDesprendiblesResponse,
@@ -745,6 +751,7 @@ function buildKpis(
 export default function NominaPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
+  const { empresaId } = useCompanyContext();
   const [activeTab, setActiveTab] = useState("nomina");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -866,7 +873,11 @@ export default function NominaPage() {
     }));
 
     try {
-      const data = await getNominaPeriodos({ page: 1, limit: PERIODS_LIMIT });
+      const data = await getNominaPeriodos({
+        page: 1,
+        limit: PERIODS_LIMIT,
+        empresa_id: empresaId ? String(empresaId) : undefined,
+      });
 
       if (requestId !== periodsRequestRef.current) {
         return;
@@ -878,17 +889,11 @@ export default function NominaPage() {
         error: null,
       });
 
-      setSelectedPeriodId((current) => {
-        if (preferredPeriodId && data.items.some((periodo) => periodo.id === preferredPeriodId)) {
-          return preferredPeriodId;
-        }
-
-        if (current && data.items.some((periodo) => periodo.id === current)) {
-          return current;
-        }
-
-        return pickDefaultNominaPeriod(data.items)?.id ?? null;
-      });
+      setSelectedPeriodId((current) =>
+        pickAvailableScopedId(data.items, preferredPeriodId, current) ??
+        pickDefaultNominaPeriod(data.items)?.id ??
+        null,
+      );
     } catch (error) {
       if (requestId !== periodsRequestRef.current) {
         return;
@@ -900,7 +905,7 @@ export default function NominaPage() {
         error: toMessage(error),
       }));
     }
-  }, []);
+  }, [empresaId]);
 
   const loadPeriod = useCallback(async (periodId: string) => {
     const requestId = ++periodRequestRef.current;
@@ -989,7 +994,9 @@ export default function NominaPage() {
     }));
 
     try {
-      const data = await getAllNominaPeriodoEmpleados(periodId);
+      const data = await getAllNominaPeriodoEmpleados(periodId, {
+        empresa_id: empresaId ? String(empresaId) : undefined,
+      });
 
       if (requestId !== employeesRequestRef.current) {
         return;
@@ -1011,7 +1018,7 @@ export default function NominaPage() {
         error: toMessage(error),
       });
     }
-  }, []);
+  }, [empresaId]);
 
   const loadNovedades = useCallback(async (periodId: string) => {
     const requestId = ++novedadesRequestRef.current;
@@ -1189,8 +1196,27 @@ export default function NominaPage() {
   }, [employeesDataId, novedadesDataId, novedadesState.data?.items, selectedPeriodId]);
 
   useEffect(() => {
-    void loadPeriods(searchParams.get("period_id") ?? (typeof window !== "undefined" ? window.sessionStorage.getItem("nomina.periodo_id") ?? undefined : undefined));
-  }, [loadPeriods, searchParams]);
+    if (!empresaId) {
+      setSelectedPeriodId(null);
+      return;
+    }
+
+    const preferredPeriodId =
+      searchParams.get("period_id") ??
+      (typeof window !== "undefined"
+        ? readCompanyScopedStorage(window.sessionStorage, "nomina.periodo_id", empresaId) ?? undefined
+        : undefined);
+
+    void loadPeriods(preferredPeriodId);
+  }, [empresaId, loadPeriods, searchParams]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    writeCompanyScopedStorage(window.sessionStorage, "nomina.periodo_id", empresaId, selectedPeriodId);
+  }, [empresaId, selectedPeriodId]);
 
   useEffect(() => {
     void loadTiposNovedad();
