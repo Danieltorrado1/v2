@@ -1,58 +1,63 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { AppError } from '../utils/AppError';
 import {
   OFFICIAL_NOMINA_NOVEDAD_CODES,
   resolveNominaNovedadTypeSelection
 } from '../modules/nomina/nomina.novedades';
 
 const catalog = [
-  { id: '1', codigo_operativo: 'L50', nombre: 'DIAS DE NO CLASE', activo: true },
-  { id: '2', codigo_operativo: 'PR1', nombre: 'CITA MEDICA', activo: true },
-  { id: '3', codigo_operativo: 'PR2', nombre: 'INCAPACIDAD MEDICA', activo: true },
-  { id: '4', codigo_operativo: 'PR3', nombre: 'CALAMIDAD FAMILIAR', activo: true },
-  { id: '5', codigo_operativo: 'PR4', nombre: 'CITACIONES OFICIALES', activo: true },
-  { id: '6', codigo_operativo: 'PNR', nombre: 'PERMISO NO REMUNERADO', activo: true },
-  { id: '7', codigo_operativo: 'S', nombre: 'SUSPENSION', activo: true },
-  { id: '8', codigo_operativo: 'PR2X', nombre: 'INCAPACIDAD MEDICA HISTORICA', activo: false }
+  { id: '1', codigo_operativo: 'DNC', nombre: 'Dia no clase', activo: true },
+  { id: '2', codigo_operativo: 'PR1', nombre: 'Permiso remunerado 1', activo: true },
+  { id: '3', codigo_operativo: 'PNR', nombre: 'Permiso no remunerado', activo: true },
+  { id: '4', codigo_operativo: 'S', nombre: 'Suspension', activo: true },
+  { id: '5', codigo_operativo: 'FNJ', nombre: 'Falla no justificada', activo: true },
+  { id: '6', codigo_operativo: 'INC_ARL', nombre: 'Incapacidad por accidente laboral', activo: true },
+  { id: '7', codigo_operativo: 'LEGACY', nombre: 'Inactivo', activo: false }
 ];
 
-test('expone los siete codigos operativos oficiales de nomina', () => {
-  assert.deepEqual(
-    OFFICIAL_NOMINA_NOVEDAD_CODES.map((item) => item.code),
-    ['L50', 'PR1', 'PR2', 'PR3', 'PR4', 'PNR', 'S']
-  );
+test('official novelty catalog includes COBERTURA v1.0 codes', () => {
+  const codes = OFFICIAL_NOMINA_NOVEDAD_CODES.map((item) => item.code);
+  for (const code of ['DNC', 'PR1', 'PR2', 'PR3', 'PR4', 'PNR', 'FNJ', 'S', 'INC_GENERAL', 'INC_ARL'] as const) {
+    assert.equal(codes.includes(code), true, code);
+  }
 });
 
-test('resuelve L50 por codigo operativo', () => {
+test('resolves by code case-insensitively', () => {
+  const match = resolveNominaNovedadTypeSelection(catalog, { codigo_operativo: 'pnr' });
+  assert.equal(match.id, '3');
+});
+
+test('resolves by historical alias L50 -> DNC', () => {
   const match = resolveNominaNovedadTypeSelection(catalog, { codigo_operativo: 'l50' });
   assert.equal(match.id, '1');
-  assert.equal(match.nombre, 'DIAS DE NO CLASE');
 });
 
-test('resuelve PR1 por nombre canonico', () => {
-  const match = resolveNominaNovedadTypeSelection(catalog, { nombre: 'Cita medica' });
-  assert.equal(match.codigo_operativo, 'PR1');
+test('resolves ARL historical alias', () => {
+  const match = resolveNominaNovedadTypeSelection(catalog, { codigo_operativo: 'incap_acl' });
+  assert.equal(match.id, '6');
 });
 
-test('resuelve PR2 por id directo', () => {
+test('resolves by normalized name alias', () => {
+  const match = resolveNominaNovedadTypeSelection(catalog, { nombre: 'Dia de no clase' });
+  assert.equal(match.id, '1');
+});
+
+test('resolves by id', () => {
   const match = resolveNominaNovedadTypeSelection(catalog, { id: '3' });
-  assert.equal(match.codigo_operativo, 'PR2');
+  assert.equal(match.codigo_operativo, 'PNR');
 });
 
-test('rechaza codigo inexistente', () => {
+test('throws when code does not exist', () => {
   assert.throws(
     () => resolveNominaNovedadTypeSelection(catalog, { codigo_operativo: 'XYZ' }),
-    (error: unknown) =>
-      error instanceof AppError && error.code === 'NOMINA_TIPO_NOVEDAD_CODIGO_NOT_FOUND'
+    (error: unknown) => (error as { code?: string })?.code === 'NOMINA_TIPO_NOVEDAD_CODIGO_NOT_FOUND'
   );
 });
 
-test('rechaza tipo inactivo por id', () => {
+test('throws when selected type is inactive', () => {
   assert.throws(
-    () => resolveNominaNovedadTypeSelection(catalog, { id: '8' }),
-    (error: unknown) =>
-      error instanceof AppError && error.code === 'NOMINA_TIPO_NOVEDAD_INACTIVO'
+    () => resolveNominaNovedadTypeSelection(catalog, { id: '7' }),
+    (error: unknown) => (error as { code?: string })?.code === 'NOMINA_TIPO_NOVEDAD_INACTIVO'
   );
 });

@@ -1,34 +1,17 @@
 import { AppError } from '../../utils/AppError';
 
 export const OFFICIAL_NOMINA_NOVEDAD_CODES = [
-  {
-    code: 'L50',
-    label: 'Dia de no clase'
-  },
-  {
-    code: 'PR1',
-    label: 'Cita medica'
-  },
-  {
-    code: 'PR2',
-    label: 'Incapacidad medica'
-  },
-  {
-    code: 'PR3',
-    label: 'Calamidad familiar'
-  },
-  {
-    code: 'PR4',
-    label: 'Citacion oficial'
-  },
-  {
-    code: 'PNR',
-    label: 'Permiso no remunerado'
-  },
-  {
-    code: 'S',
-    label: 'Suspension'
-  }
+  { code: 'DNC', label: 'Dia no clase' },
+  { code: 'L50', label: 'Dia no clase (historico)' },
+  { code: 'PR1', label: 'Permiso remunerado 1' },
+  { code: 'PR2', label: 'Permiso remunerado 2' },
+  { code: 'PR3', label: 'Permiso remunerado 3' },
+  { code: 'PR4', label: 'Permiso remunerado 4' },
+  { code: 'PNR', label: 'Permiso no remunerado' },
+  { code: 'FNJ', label: 'Falla no justificada' },
+  { code: 'S', label: 'Suspension' },
+  { code: 'INC_GENERAL', label: 'Incapacidad general' },
+  { code: 'INC_ARL', label: 'Incapacidad ARL' }
 ] as const;
 
 export type OfficialNominaNovedadCode = (typeof OFFICIAL_NOMINA_NOVEDAD_CODES)[number]['code'];
@@ -46,6 +29,19 @@ export interface NominaNovedadTypeSelectionInput {
   nombre?: string | null;
 }
 
+const CODE_ALIASES: Record<string, string[]> = {
+  DNC: ['DNC', 'L50'],
+  L50: ['L50', 'DNC'],
+  INC_ARL: ['INC_ARL', 'INCAP_ACL'],
+  INCAP_ACL: ['INC_ARL', 'INCAP_ACL'],
+};
+
+const NAME_ALIASES: string[][] = [
+  ['DIA NO CLASE', 'DIA DE NO CLASE'],
+  ['INCAPACIDAD GENERAL', 'INCAPACIDAD MEDICA'],
+  ['INCAPACIDAD ARL', 'INCAPACIDAD POR ACCIDENTE LABORAL'],
+];
+
 export const normalizeNominaNovedadLabel = (value: string | null | undefined): string => {
   return (value ?? '')
     .normalize('NFD')
@@ -57,6 +53,25 @@ export const normalizeNominaNovedadLabel = (value: string | null | undefined): s
 
 export const normalizeNominaNovedadCode = (value: string | null | undefined): string => {
   return (value ?? '').trim().toUpperCase();
+};
+
+const matchesOperationalCode = (rowCode: string | null | undefined, inputCode: string): boolean => {
+  const normalizedRow = normalizeNominaNovedadCode(rowCode);
+  if (normalizedRow === inputCode) {
+    return true;
+  }
+
+  const aliases = CODE_ALIASES[inputCode] ?? [inputCode];
+  return aliases.includes(normalizedRow);
+};
+
+const matchesName = (rowName: string | null | undefined, inputName: string): boolean => {
+  const normalizedRow = normalizeNominaNovedadLabel(rowName);
+  if (normalizedRow === inputName) {
+    return true;
+  }
+
+  return NAME_ALIASES.some((aliases) => aliases.includes(inputName) && aliases.includes(normalizedRow));
 };
 
 export const resolveNominaNovedadTypeSelection = <T extends NominaNovedadTypeSelectionRow>(
@@ -81,9 +96,7 @@ export const resolveNominaNovedadTypeSelection = <T extends NominaNovedadTypeSel
 
   const normalizedCode = normalizeNominaNovedadCode(input.codigo_operativo);
   if (normalizedCode.length > 0) {
-    const matches = rows.filter(
-      (row) => normalizeNominaNovedadCode(row.codigo_operativo) === normalizedCode
-    );
+    const matches = rows.filter((row) => matchesOperationalCode(row.codigo_operativo, normalizedCode));
 
     if (matches.length === 0) {
       throw new AppError(
@@ -93,7 +106,7 @@ export const resolveNominaNovedadTypeSelection = <T extends NominaNovedadTypeSel
       );
     }
 
-    const match = matches[0];
+    const match = matches.find((row) => row.activo !== false) ?? matches[0];
     if (!match || match.activo === false) {
       throw new AppError(
         'Payroll novelty type is inactive',
@@ -106,9 +119,7 @@ export const resolveNominaNovedadTypeSelection = <T extends NominaNovedadTypeSel
 
   const normalizedName = normalizeNominaNovedadLabel(input.nombre);
   if (normalizedName.length > 0) {
-    const matches = rows.filter(
-      (row) => normalizeNominaNovedadLabel(row.nombre) === normalizedName
-    );
+    const matches = rows.filter((row) => matchesName(row.nombre, normalizedName));
 
     if (matches.length === 0) {
       throw new AppError(

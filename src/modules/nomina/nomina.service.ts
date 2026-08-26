@@ -58,6 +58,16 @@ import {
 } from './nomina.novedades';
 import { buildCsv, buildSectionedCsv } from './nomina.exporter';
 import {
+  COBERTURA_PORCENTAJE_PENSION,
+  COBERTURA_PORCENTAJE_SALUD,
+  calculateCoberturaPayroll
+} from './nomina.cobertura';
+import {
+  resolverTramosOperativos,
+  type CambioOperativoDerivable,
+  type ContextoOperativo
+} from './nomina.tramos';
+import {
   CreateNominaRecargoInput,
   CreateNominaMovimientoInput,
   CreateNominaNovedadInput,
@@ -149,7 +159,10 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   categoria_nombre: string | null;
   categoria_otros_recargos: number | string | null;
   categoria_salario_base: number | string | null;
+  categoria_vigente_desde: Date | string | null;
+  categoria_vigente_hasta: Date | string | null;
   created_at: Date | string;
+  detalle_calculo: Record<string, unknown> | null;
   devengado_basico: number | string | null;
   devengado_otros: number | string | null;
   devengado_transporte: number | string | null;
@@ -691,8 +704,11 @@ export interface NominaEmpleado {
     nombre_categoria: string | null;
     otros_recargos: number;
     salario_base: number;
+    vigente_desde: string | null;
+    vigente_hasta: string | null;
   } | null;
   created_at: string;
+  detalle_calculo?: Record<string, unknown> | null;
   devengado_basico: number;
   devengado_otros: number;
   devengado_transporte: number;
@@ -1740,6 +1756,7 @@ const getNominaEmpleadosRealSelect = (): string => {
       ne.salud,
       ne.pension,
       ne.neto_pagar,
+      ne.detalle_calculo,
       COALESCE(ne.revisado, FALSE) AS revisado,
       ne.estado,
       COALESCE(ne.activo, TRUE) AS activo,
@@ -1787,6 +1804,8 @@ const getNominaEmpleadosRealSelect = (): string => {
       ncs.salario_base AS categoria_salario_base,
       ncs.auxilio_transporte AS categoria_auxilio_transporte,
       ncs.otros_recargos AS categoria_otros_recargos,
+      ncs.vigente_desde AS categoria_vigente_desde,
+      ncs.vigente_hasta AS categoria_vigente_hasta,
       COALESCE(novedades_summary.total_novedades, 0)::int AS total_novedades,
       red.total_requeridos AS total_documental_requeridos,
       red.total_faltantes AS total_documental_faltantes,
@@ -2304,6 +2323,7 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
     estado: row.estado,
     activo: toBooleanValue(row.activo),
     created_at: toIsoString(row.created_at) ?? '',
+    detalle_calculo: row.detalle_calculo ?? null,
     institucion: institucionOperativa,
     gestor: row.gestor_usuario_id
       ? {
@@ -2375,7 +2395,9 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
           modalidad: row.categoria_modalidad,
           salario_base: toNumberValue(row.categoria_salario_base),
           auxilio_transporte: toNumberValue(row.categoria_auxilio_transporte),
-          otros_recargos: toNumberValue(row.categoria_otros_recargos)
+          otros_recargos: toNumberValue(row.categoria_otros_recargos),
+          vigente_desde: toDateString(row.categoria_vigente_desde),
+          vigente_hasta: toDateString(row.categoria_vigente_hasta)
         }
       : null
   };
@@ -4406,35 +4428,69 @@ const ensureNoBlockingCanonicalOverlap = async (
   client: PoolClient,
   input: {
     excludeCanonicalId?: string | null;
+    excludeNovedadId?: string | null;
     fecha_fin: string;
     fecha_inicio: string;
     vinculacion_id: string;
   }
 ): Promise<void> => {
   const params: unknown[] = [input.vinculacion_id, input.fecha_inicio, input.fecha_fin];
-  let excludeSql = '';
+  let excludeCanonicalSql = '';
+  let excludeOrdinarySql = '';
 
   if (input.excludeCanonicalId) {
     params.push(input.excludeCanonicalId);
-    excludeSql = `AND nnc.id <> $${params.length}::bigint`;
+    excludeCanonicalSql = `AND nnc.id <> ${params.length}::bigint`;
   }
 
-  const result = await client.query<{ id: string; nombre: string | null }>(
+  if (input.excludeNovedadId) {
+    params.push(input.excludeNovedadId);
+    excludeOrdinarySql = `AND nn.id <> ${params.length}::bigint`;
+  }
+
+  const result = await client.query<{
+    codigo_operativo: string | null;
+    fecha_conflicto: string;
+    id: string;
+    nombre: string | null;
+    origen: 'CANONICA' | 'ORDINARIA';
+  }>(
     `
-      SELECT
-        nnc.id::text AS id,
-        ntn.nombre
-      FROM nomina_novedades_canonicas nnc
-      INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nnc.tipo_novedad_id
-      WHERE nnc.vinculacion_id = $1::bigint
-        AND COALESCE(nnc.activo, TRUE) = TRUE
-        AND nnc.fecha_inicio <= $3::date
-        AND nnc.fecha_fin >= $2::date
-        AND (
-          COALESCE(ntn.bloquea_otras_novedades, FALSE) = TRUE
-          OR COALESCE(ntn.grupo_exclusividad, 'NINGUNA') <> 'NINGUNA'
-        )
-        ${excludeSql}
+      SELECT *
+      FROM (
+        SELECT
+          nn.id::text AS id,
+          COALESCE(nn.tipo_novedad_codigo_operativo, ntn.codigo_operativo) AS codigo_operativo,
+          ntn.nombre,
+          GREATEST(COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio), $2::date)::text AS fecha_conflicto,
+          'ORDINARIA'::text AS origen
+        FROM nomina_novedades nn
+        INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
+        INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nn.tipo_novedad_id
+        WHERE nn.vinculacion_id = $1::bigint
+          AND COALESCE(nn.activo, TRUE) = TRUE
+          AND (nn.fecha_inicio IS NOT NULL OR nn.fecha_fin IS NOT NULL)
+          AND COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio) <= $3::date
+          AND COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin) >= $2::date
+          ${excludeOrdinarySql}
+
+        UNION ALL
+
+        SELECT
+          nnc.id::text AS id,
+          COALESCE(nnc.tipo_novedad_codigo_operativo, ntn.codigo_operativo) AS codigo_operativo,
+          ntn.nombre,
+          GREATEST(nnc.fecha_inicio, $2::date)::text AS fecha_conflicto,
+          'CANONICA'::text AS origen
+        FROM nomina_novedades_canonicas nnc
+        INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nnc.tipo_novedad_id
+        WHERE nnc.vinculacion_id = $1::bigint
+          AND COALESCE(nnc.activo, TRUE) = TRUE
+          AND nnc.fecha_inicio <= $3::date
+          AND nnc.fecha_fin >= $2::date
+          ${excludeCanonicalSql}
+      ) conflicts
+      ORDER BY fecha_conflicto ASC, origen ASC, id ASC
       LIMIT 1
     `,
     params
@@ -4444,9 +4500,9 @@ const ensureNoBlockingCanonicalOverlap = async (
 
   if (overlap) {
     throw new AppError(
-      'The selected range overlaps a canonical novelty that blocks ordinary novelties',
+      'Only one payroll novelty is allowed per person and date',
       409,
-      'NOMINA_NOVEDAD_CONFLICTO_LICENCIA',
+      'NOMINA_NOVEDAD_FECHA_OCUPADA',
       overlap
     );
   }
@@ -5974,37 +6030,9 @@ export const recalculateNominaPeriodo = async (
       tenant
     );
 
-    const empleadosResult = await client.query<{
-      auxilio_transporte: number | string | null;
-      dias_pagados: number | string | null;
-      fecha_fin_pago: Date | string | null;
-      fecha_inicio_pago: Date | string | null;
-      horas_trabajadas: number | string | null;
-      id: string;
-      metodo_liquidacion: string | null;
-      otros_devengos: number | string | null;
-      salario_base: number | string | null;
-      vinculacion_id: string;
-    }>(
-      `
-        SELECT
-          id::text AS id,
-          vinculacion_id::text AS vinculacion_id,
-          metodo_liquidacion,
-          salario_base,
-          auxilio_transporte,
-          otros_devengos,
-          dias_pagados,
-          fecha_inicio_pago,
-          fecha_fin_pago,
-          horas_trabajadas
-        FROM nomina_empleados
-        WHERE periodo_id = $1::bigint
-          AND COALESCE(activo, TRUE) = TRUE
-        ORDER BY id ASC
-      `,
-      [periodoId]
-    );
+    const empleadosResult = {
+      rows: await loadNominaEmpleadoRowsForPeriodo(periodoId, {}, tenant, client)
+    };
 
     const novedadesResult = await client.query<NominaNovedadRealRow>(
       `
@@ -6099,6 +6127,260 @@ export const recalculateNominaPeriodo = async (
     const movimientosByEmpleado = new Map(
       movimientosResult.rows.map((row) => [row.nomina_empleado_id, row])
     );
+    const contextosBaseResult = await client.query<{
+      contexto: Record<string, unknown> | null;
+      nomina_empleado_id: string;
+    }>(
+      `
+        SELECT
+          nomina_empleado_id::text AS nomina_empleado_id,
+          contexto
+        FROM nomina_contextos_operativos_base
+        WHERE periodo_id = $1::bigint
+      `,
+      [periodoId]
+    );
+    const cambiosCoberturaResult = await client.query<{
+      activo: boolean | null;
+      contexto_anterior: Record<string, unknown> | null;
+      contexto_nuevo: Record<string, unknown> | null;
+      estado: string | null;
+      fecha_fin_efectiva: string | null;
+      fecha_inicio_efectiva: string;
+      id: string;
+      nomina_empleado_id: string;
+    }>(
+      `
+        SELECT
+          id::text AS id,
+          nomina_empleado_id::text AS nomina_empleado_id,
+          fecha::text AS fecha_inicio_efectiva,
+          fecha_fin_efectiva::text AS fecha_fin_efectiva,
+          contexto_anterior,
+          contexto_nuevo,
+          estado,
+          activo
+        FROM nomina_movimientos
+        WHERE periodo_id = $1::bigint
+          AND familia_movimiento = 'CAMBIO_OPERATIVO'
+          AND COALESCE(activo, TRUE) = TRUE
+          AND COALESCE(estado, 'PENDIENTE') <> 'RECHAZADO'
+        ORDER BY nomina_empleado_id ASC, fecha ASC, id ASC
+      `,
+      [periodoId]
+    );
+    const turnosInternosCoberturaResult = await client.query<{
+      contexto_operativo: Record<string, unknown> | null;
+      fecha_fin: string;
+      fecha_inicio: string;
+      id: string;
+      nomina_empleado_id: string;
+      observacion: string | null;
+    }>(
+      `
+        SELECT
+          nnt.id::text AS id,
+          nnt.nomina_empleado_id::text AS nomina_empleado_id,
+          COALESCE(nn.fecha_inicio, np.fecha_inicio)::text AS fecha_inicio,
+          COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin)::text AS fecha_fin,
+          nnt.contexto_operativo,
+          nnt.observacion
+        FROM nomina_novedad_turnos nnt
+        INNER JOIN nomina_novedades nn ON nn.id = nnt.nomina_novedad_id
+        INNER JOIN nomina_periodos np ON np.id = nnt.periodo_id
+        WHERE nnt.periodo_id = $1::bigint
+          AND nnt.tipo_turno = 'INTERNO'
+          AND COALESCE(nnt.activo, TRUE) = TRUE
+          AND COALESCE(nn.activo, TRUE) = TRUE
+      `,
+      [periodoId]
+    );
+    const categoriasCoberturaResult = await client.query<{
+      auxilio_transporte: number | string | null;
+      codigo_categoria: string | null;
+      id: string;
+      nombre_categoria: string | null;
+      otros_recargos: number | string | null;
+      salario_base: number | string | null;
+      vigente_desde: string | null;
+      vigente_hasta: string | null;
+    }>(
+      `
+        SELECT
+          ncs.id::text AS id,
+          ncs.codigo_categoria,
+          ncs.nombre_categoria,
+          ncs.salario_base,
+          ncs.otros_recargos,
+          ncs.auxilio_transporte,
+          ncs.vigente_desde::text AS vigente_desde,
+          ncs.vigente_hasta::text AS vigente_hasta
+        FROM nomina_categorias_salariales ncs
+        WHERE ncs.contrato_id = $1::bigint
+          AND COALESCE(ncs.activo, TRUE) = TRUE
+          AND (ncs.vigente_desde IS NULL OR ncs.vigente_desde <= $3::date)
+          AND (ncs.vigente_hasta IS NULL OR ncs.vigente_hasta >= $2::date)
+      `,
+      [periodo.contrato_id, periodoRange.start, periodoRange.end]
+    );
+    const parametrosCoberturaResult = periodo.contrato_empresa_id
+      ? await client.query<{
+          porcentaje_pension_empleado: number | string | null;
+          porcentaje_salud_empleado: number | string | null;
+          regla_redondeo: string | null;
+        }>(
+          `
+            SELECT
+              porcentaje_salud_empleado,
+              porcentaje_pension_empleado,
+              regla_redondeo
+            FROM nomina_parametros_economicos
+            WHERE empresa_id = $1::bigint
+              AND vigente_desde <= $3::date
+              AND COALESCE(vigente_hasta, '9999-12-31'::date) >= $2::date
+            ORDER BY vigente_desde DESC, id DESC
+            LIMIT 1
+          `,
+          [periodo.contrato_empresa_id, periodoRange.start, periodoRange.end]
+        )
+      : { rows: [] as Array<{ porcentaje_pension_empleado: number | string | null; porcentaje_salud_empleado: number | string | null; regla_redondeo: string | null }> };
+    const condicionesPensionResult = empleadosResult.rows.length > 0
+      ? await client.query<{
+          valor: number | string | null;
+          vigente_desde: string;
+          vigente_hasta: string | null;
+          vinculacion_id: string;
+        }>(
+          `
+            SELECT
+              vinculacion_id::text AS vinculacion_id,
+              valor,
+              vigencia_desde::text AS vigente_desde,
+              vigencia_hasta::text AS vigente_hasta
+            FROM vinculacion_condiciones_economicas
+            WHERE vinculacion_id = ANY($1::bigint[])
+              AND COALESCE(activo, TRUE) = TRUE
+              AND LOWER(BTRIM(tipo_condicion)) = 'aporta_pension'
+            ORDER BY vinculacion_id ASC, vigencia_desde DESC, id DESC
+          `,
+          [empleadosResult.rows.map((item) => item.vinculacion_id)]
+        )
+      : { rows: [] as Array<{ valor: number | string | null; vigente_desde: string; vigente_hasta: string | null; vinculacion_id: string }> };
+
+    const toRecord = (value: unknown): Record<string, unknown> =>
+      value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+    const toTextToken = (value: unknown): string | null => {
+      if (typeof value !== 'string') {
+        return null;
+      }
+      const normalized = value.trim().toUpperCase();
+      return normalized.length > 0 ? normalized : null;
+    };
+    const toNullableId = (value: unknown): string | null => {
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : null;
+      }
+      if (typeof value === 'number' || typeof value === 'bigint') {
+        return String(value);
+      }
+      return null;
+    };
+    const stripCategoriaContext = (value: unknown): ContextoOperativo => {
+      const record = toRecord(value);
+      return {
+        categoria_id: toNullableId(record.categoria_id),
+        categoria:
+          toTextToken(record.categoria) ??
+          toTextToken(record.codigo_categoria) ??
+          toTextToken(record.nombre_categoria)
+      };
+    };
+    const categoriasCoberturaById = new Map(categoriasCoberturaResult.rows.map((row) => [row.id, row] as const));
+    const findCategoriaByLabel = (label: string | null | undefined) => {
+      const normalized = toTextToken(label);
+      if (!normalized) {
+        return null;
+      }
+      return (
+        categoriasCoberturaResult.rows.find((row) =>
+          [row.codigo_categoria, row.nombre_categoria].some((candidate) => toTextToken(candidate) === normalized)
+        ) ?? null
+      );
+    };
+    const buildCategoriaSnapshot = (
+      categoriaId: string | null | undefined,
+      empleadoRow: NominaEmpleadoRealRow,
+      fallbackLabel?: string | null,
+      required = false
+    ) => {
+      const normalizedId = categoriaId ? String(categoriaId) : null;
+      const categoriaRow =
+        (normalizedId ? categoriasCoberturaById.get(normalizedId) ?? null : null) ??
+        findCategoriaByLabel(fallbackLabel);
+
+      if (required && !categoriaRow) {
+        throw new AppError(
+          'Coverage salary category not found for tramo or internal addition',
+          409,
+          'NOMINA_COBERTURA_CATEGORIA_NO_ENCONTRADA',
+          { categoria_id: normalizedId, categoria_label: fallbackLabel ?? null }
+        );
+      }
+
+      return {
+        categoria_id: categoriaRow?.id ?? normalizedId ?? empleadoRow.categoria_id ?? null,
+        codigo_categoria: categoriaRow?.codigo_categoria ?? empleadoRow.categoria_codigo,
+        nombre_categoria: categoriaRow?.nombre_categoria ?? empleadoRow.categoria_nombre,
+        salario_base: toNumberValue(categoriaRow?.salario_base ?? empleadoRow.categoria_salario_base ?? empleadoRow.salario_base),
+        recargo_mensual: toNumberValue(categoriaRow?.otros_recargos ?? empleadoRow.categoria_otros_recargos),
+        auxilio_transporte: toNumberValue(categoriaRow?.auxilio_transporte ?? empleadoRow.categoria_auxilio_transporte ?? empleadoRow.auxilio_transporte),
+        configuracion_id: categoriaRow?.id ?? normalizedId ?? empleadoRow.categoria_id ?? null,
+        vigente_desde: categoriaRow?.vigente_desde ?? toDateString(empleadoRow.categoria_vigente_desde),
+        vigente_hasta: categoriaRow?.vigente_hasta ?? toDateString(empleadoRow.categoria_vigente_hasta)
+      };
+    };
+    const contextoBaseByEmpleado = new Map(
+      contextosBaseResult.rows.map((row) => [row.nomina_empleado_id, row.contexto ?? {}] as const)
+    );
+    const cambiosCoberturaByEmpleado = new Map<string, CambioOperativoDerivable[]>();
+    for (const row of cambiosCoberturaResult.rows) {
+      const current = cambiosCoberturaByEmpleado.get(row.nomina_empleado_id) ?? [];
+      current.push({
+        id: row.id,
+        fecha_inicio_efectiva: row.fecha_inicio_efectiva,
+        fecha_fin_efectiva: row.fecha_fin_efectiva,
+        contexto_anterior: row.contexto_anterior ?? {},
+        contexto_nuevo: row.contexto_nuevo ?? {},
+        activo: row.activo ?? true
+      });
+      cambiosCoberturaByEmpleado.set(row.nomina_empleado_id, current);
+    }
+    const turnosInternosCoberturaByEmpleado = new Map<string, Array<typeof turnosInternosCoberturaResult.rows[number]>>();
+    for (const row of turnosInternosCoberturaResult.rows) {
+      const current = turnosInternosCoberturaByEmpleado.get(row.nomina_empleado_id) ?? [];
+      current.push(row);
+      turnosInternosCoberturaByEmpleado.set(row.nomina_empleado_id, current);
+    }
+    const condicionesPensionByVinculacion = new Map<string, Array<typeof condicionesPensionResult.rows[number]>>();
+    for (const row of condicionesPensionResult.rows) {
+      const current = condicionesPensionByVinculacion.get(row.vinculacion_id) ?? [];
+      current.push(row);
+      condicionesPensionByVinculacion.set(row.vinculacion_id, current);
+    }
+    const parametrosCobertura = {
+      porcentaje_salud_empleado: toNumberValue(parametrosCoberturaResult.rows[0]?.porcentaje_salud_empleado) || COBERTURA_PORCENTAJE_SALUD,
+      porcentaje_pension_empleado: toNumberValue(parametrosCoberturaResult.rows[0]?.porcentaje_pension_empleado) || COBERTURA_PORCENTAJE_PENSION,
+      regla_redondeo: parametrosCoberturaResult.rows[0]?.regla_redondeo ?? 'ROUNDUP_CENTENA_FALLBACK'
+    };
+    const resolveAportaPension = (vinculacionId: string, fecha: string): boolean => {
+      const rows = condicionesPensionByVinculacion.get(vinculacionId) ?? [];
+      const match = rows.find((item) => item.vigente_desde <= fecha && (item.vigente_hasta === null || item.vigente_hasta >= fecha));
+      if (!match) {
+        return true;
+      }
+      return toNumberValue(match.valor) !== 0;
+    };
 
     for (const novedad of novedadesResult.rows) {
       const currentItems = novedadesByEmpleado.get(novedad.nomina_empleado_id) ?? [];
@@ -6233,6 +6515,177 @@ export const recalculateNominaPeriodo = async (
         if (esDeduccion && valorManual > 0) {
           deduccionesNovedadManual += valorManual;
         }
+      }
+
+      const usaCobertura =
+        (empleadoRow.vinculacion_metodo_pago ?? '').trim().toUpperCase() === 'COBERTURA';
+
+      if (usaCobertura) {
+        const contextoBaseCategoria = stripCategoriaContext(
+          contextoBaseByEmpleado.get(empleadoRow.id) ?? {
+            categoria_id: empleadoRow.categoria_id,
+            categoria: empleadoRow.categoria_codigo ?? empleadoRow.categoria_nombre
+          }
+        );
+        const tramosCobertura = resolverTramosOperativos({
+          periodo_inicio: periodoRange.start,
+          periodo_fin: periodoRange.end,
+          vinculacion_inicio: employmentRange.start,
+          vinculacion_fin: employmentRange.end,
+          contexto_base:
+            contextoBaseCategoria.categoria_id || contextoBaseCategoria.categoria
+              ? contextoBaseCategoria
+              : {
+                  categoria_id: empleadoRow.categoria_id,
+                  categoria: empleadoRow.categoria_codigo ?? empleadoRow.categoria_nombre
+                },
+          cambios: (cambiosCoberturaByEmpleado.get(empleadoRow.id) ?? []).map((item) => ({
+            ...item,
+            contexto_anterior: stripCategoriaContext(item.contexto_anterior),
+            contexto_nuevo: stripCategoriaContext(item.contexto_nuevo)
+          }))
+        }).map((tramo) => {
+          const categoriaContexto = stripCategoriaContext(tramo.contexto);
+          return {
+            fecha_inicio: tramo.fecha_inicio,
+            fecha_fin: tramo.fecha_fin,
+            movimiento_origen_id: tramo.movimiento_origen_id,
+            contexto: toRecord(tramo.contexto),
+            categoria: buildCategoriaSnapshot(
+              categoriaContexto.categoria_id,
+              empleadoRow,
+              categoriaContexto.categoria ?? null,
+              Boolean(categoriaContexto.categoria_id || categoriaContexto.categoria)
+            )
+          };
+        });
+        const adicionesInternasCobertura = (turnosInternosCoberturaByEmpleado.get(empleadoRow.id) ?? []).map((turnoRow) => {
+          const turnoContexto = toRecord(turnoRow.contexto_operativo);
+          const categoriaTurno = stripCategoriaContext(turnoContexto);
+          if (!categoriaTurno.categoria_id && !categoriaTurno.categoria) {
+            throw new AppError(
+              'Internal addition requires the covered salary category in contexto_operativo',
+              409,
+              'NOMINA_COBERTURA_ADICION_CATEGORIA_REQUERIDA',
+              { nomina_empleado_id: empleadoRow.id, turno_id: turnoRow.id }
+            );
+          }
+
+          return {
+            id: turnoRow.id,
+            fecha_inicio: turnoRow.fecha_inicio,
+            fecha_fin: turnoRow.fecha_fin,
+            observacion: turnoRow.observacion,
+            contexto: turnoContexto,
+            aporta_pension: resolveAportaPension(empleadoRow.vinculacion_id, turnoRow.fecha_inicio),
+            categoria: buildCategoriaSnapshot(
+              categoriaTurno.categoria_id,
+              empleadoRow,
+              categoriaTurno.categoria ?? null,
+              true
+            )
+          };
+        });
+        const coberturaResult = calculateCoberturaPayroll({
+          empleo: {
+            fecha_inicio: employmentRange.start,
+            fecha_fin: employmentRange.end
+          },
+          tramos: tramosCobertura,
+          dias_efectos: effectResolution.days,
+          aporta_pension: resolveAportaPension(empleadoRow.vinculacion_id, employmentRange.start),
+          porcentaje_salud: parametrosCobertura.porcentaje_salud_empleado,
+          porcentaje_pension: parametrosCobertura.porcentaje_pension_empleado,
+          descuentos_autorizados: deduccionesNovedadManual,
+          otras_deducciones_reales: totalMovimientosDeducciones,
+          otros_devengos_reales: Math.max(0, otrosDevengos) + totalMovimientosDevengados,
+          adiciones_internas: adicionesInternasCobertura
+        });
+        const totalAdicionesInternasDevengado = coberturaResult.adiciones_internas.reduce(
+          (accumulator, item) => accumulator + item.devengado_turno,
+          0
+        );
+        const detalleCalculoCobertura = {
+          motor: 'COBERTURA_V1_0',
+          periodo: periodoRange,
+          empleo: {
+            fecha_inicio: employmentRange.start,
+            fecha_fin: employmentRange.end,
+            aporta_pension: coberturaResult.aporta_pension
+          },
+          parametros: {
+            dias_base_nomina: coberturaResult.dias_base_nomina,
+            porcentaje_salud: coberturaResult.porcentaje_salud,
+            porcentaje_pension: coberturaResult.porcentaje_pension,
+            regla_redondeo: parametrosCobertura.regla_redondeo
+          },
+          contadores: {
+            dias_vinculacion: coberturaResult.dias_vinculacion,
+            dias_salario: coberturaResult.dias_salario,
+            dias_recargo: coberturaResult.dias_recargo,
+            dias_transporte: coberturaResult.dias_transporte,
+            dias_cotizacion_ss: coberturaResult.dias_cotizacion_ss
+          },
+          componentes: {
+            salario_ordinario: coberturaResult.salario_ordinario,
+            recargos_ordinarios: coberturaResult.recargos_ordinarios,
+            transporte_ordinario: coberturaResult.transporte_ordinario,
+            salud_ordinaria: coberturaResult.salud_ordinaria,
+            pension_ordinaria: coberturaResult.pension_ordinaria,
+            salud_adiciones_internas: coberturaResult.salud_adiciones_internas,
+            pension_adiciones_internas: coberturaResult.pension_adiciones_internas,
+            descuentos_autorizados: coberturaResult.descuentos_autorizados,
+            otros_devengos_reales: coberturaResult.otros_devengos_reales,
+            otras_deducciones_reales: coberturaResult.otras_deducciones_reales,
+            total_devengado: coberturaResult.total_devengado,
+            total_deducciones: coberturaResult.total_deducciones,
+            neto_nomina: coberturaResult.neto_nomina
+          },
+          auditoria: coberturaResult.auditoria,
+          adiciones_internas: coberturaResult.adiciones_internas
+        };
+        const saludTotal = coberturaResult.salud_ordinaria + coberturaResult.salud_adiciones_internas;
+        const pensionTotal =
+          coberturaResult.pension_ordinaria + coberturaResult.pension_adiciones_internas;
+        const devengadoOtros =
+          coberturaResult.recargos_ordinarios +
+          coberturaResult.otros_devengos_reales +
+          totalAdicionesInternasDevengado;
+
+        await client.query(
+          `
+            UPDATE nomina_empleados
+            SET
+              dias_pagados = $2,
+              horas_trabajadas = $3,
+              devengado_basico = $4,
+              devengado_transporte = $5,
+              devengado_otros = $6,
+              salud = $7,
+              pension = $8,
+              total_adiciones = $9,
+              total_deducciones = $10,
+              neto_pagar = $11,
+              detalle_calculo = $12::jsonb
+            WHERE id = $1::bigint
+          `,
+          [
+            empleadoRow.id,
+            coberturaResult.dias_salario,
+            horasTrabajadasBase,
+            coberturaResult.salario_ordinario,
+            coberturaResult.transporte_ordinario,
+            devengadoOtros,
+            saludTotal,
+            pensionTotal,
+            coberturaResult.total_devengado,
+            coberturaResult.total_deducciones,
+            coberturaResult.neto_nomina,
+            JSON.stringify(detalleCalculoCobertura)
+          ]
+        );
+
+        continue;
       }
 
       if (!usaAsistencia) {
@@ -8392,6 +8845,11 @@ export const createNominaNovedad = async (
         );
       }
 
+      await ensureNoBlockingCanonicalOverlap(client, {
+        vinculacion_id: input.vinculacion_id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin
+      });
       await ensureNoExactCanonicalDuplicate(client, {
         vinculacion_id: input.vinculacion_id,
         tipo_novedad_id: tipoNovedad.id,
@@ -8793,6 +9251,12 @@ export const updateNominaNovedad = async (
         await ensureDocumentoPersonaScope(nextDocumentoPersonaId, empleado.persona_id, client);
       }
 
+      await ensureNoBlockingCanonicalOverlap(client, {
+        vinculacion_id: current.vinculacion_id,
+        fecha_inicio: nextRange.fecha_inicio,
+        fecha_fin: nextRange.fecha_fin,
+        excludeCanonicalId: current.id
+      });
       await ensureNoExactCanonicalDuplicate(client, {
         vinculacion_id: current.vinculacion_id,
         tipo_novedad_id: tipoNovedad.id,
@@ -8977,7 +9441,8 @@ export const updateNominaNovedad = async (
       await ensureNoBlockingCanonicalOverlap(client, {
         vinculacion_id: current.vinculacion_id,
         fecha_inicio: nextRange.fecha_inicio,
-        fecha_fin: nextRange.fecha_fin
+        fecha_fin: nextRange.fecha_fin,
+        excludeNovedadId: parsedId.entidad_id
       });
     }
 

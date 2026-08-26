@@ -254,26 +254,21 @@ export const resolveNominaEfectosPorDia = (input: {
   for (const [fecha, events] of Array.from(byDate.entries()).sort(([left], [right]) =>
     left.localeCompare(right)
   )) {
-    const exclusives = events.filter(
-      (event) =>
-        event.matrix.bloquea_otras_novedades ||
-        event.matrix.grupo_exclusividad !== 'NINGUNA'
-    );
-
-    if (exclusives.length > 0 && events.length > exclusives.length) {
-      for (const exclusive of exclusives) {
-        for (const ordinary of events) {
-          if (ordinary.fuente_id === exclusive.fuente_id) {
+    const uniqueSources = Array.from(new Set(events.map((event) => event.fuente_id)));
+    if (uniqueSources.length > 1) {
+      for (let leftIndex = 0; leftIndex < uniqueSources.length - 1; leftIndex += 1) {
+        for (let rightIndex = leftIndex + 1; rightIndex < uniqueSources.length; rightIndex += 1) {
+          const fuenteA = uniqueSources[leftIndex];
+          const fuenteB = uniqueSources[rightIndex];
+          if (!fuenteA || !fuenteB) {
             continue;
           }
-
           conflictos.push({
             code: 'CONFLICTO_NOVEDADES',
             fecha,
-            fuente_a: exclusive.fuente_id,
-            fuente_b: ordinary.fuente_id,
-            motivo:
-              'Existe una novedad exclusiva para la fecha y no puede coexistir con otra novedad ordinaria.'
+            fuente_a: fuenteA,
+            fuente_b: fuenteB,
+            motivo: 'Existe mas de una novedad para la misma persona y fecha.'
           });
         }
       }
@@ -285,7 +280,7 @@ export const resolveNominaEfectosPorDia = (input: {
 
     days.push({
       fecha,
-      fuentes: Array.from(new Set(events.map((event) => event.fuente_id))),
+      fuentes: uniqueSources,
       codigos: codes,
       salario_descuento: events.some(
         (event) => event.matrix.efecto_salario === 'DESCUENTA_PROPORCIONAL'

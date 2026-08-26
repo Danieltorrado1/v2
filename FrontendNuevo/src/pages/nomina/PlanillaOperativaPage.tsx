@@ -11,6 +11,7 @@ import {
 } from "../../context/companyScope";
 import { apiClient } from "../../services/apiClient";
 import {
+  createNominaNovedad,
   createNominaNovedadConTurno,
   getAllNominaMovimientos,
   getAllNominaNovedades,
@@ -24,6 +25,7 @@ import {
 } from "../../services/nominaApi";
 import type { ApiResponse } from "../../types/api.types";
 import type {
+  CreateNominaNovedadApi,
   CreateNominaNovedadConTurnoApi,
   NominaEmpleadoApi,
   NominaMovimientoApi,
@@ -257,7 +259,7 @@ function readPersistedFilters(empresaId: number | null): PersistedFilters {
 }
 
 function mapCoverageToTurno(coverageType: CoverageType): "INTERNO" | "EXTERNO" {
-  return coverageType === "SIN_REEMPLAZO" ? "INTERNO" : "EXTERNO";
+  return coverageType === "PERSONAL_VINCULADO" ? "INTERNO" : "EXTERNO";
 }
 
 function buildReviewRecord(
@@ -976,7 +978,7 @@ export default function PlanillaOperativaPage() {
           (item) => item.inicio <= noveltyCell.date && item.fin >= noveltyCell.date,
         )?.contexto ?? employeeBaseContext(noveltyCell.employee);
 
-      const payload: CreateNominaNovedadConTurnoApi = {
+      const basePayload: CreateNominaNovedadApi = {
         periodo_id: periodId,
         nomina_empleado_id: noveltyCell.employee.id,
         vinculacion_id: noveltyCell.employee.vinculacion_id,
@@ -1014,28 +1016,37 @@ export default function PlanillaOperativaPage() {
                     tipo_cobertura: "SIN_REEMPLAZO",
                     observacion_interna: normalizeLabel(coverageObservation),
                   },
-        turno: {
-          tipo: mapCoverageToTurno(coverageType),
-          persona_reemplazada_id: coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.id ?? null : null,
-          contexto_operativo: {
-            ...tramo,
-            cobertura_documento_externo: coverageType === "PERSONA_EXTERNA" ? externalDocument.trim() : null,
-            cobertura_interna_nomina_empleado_id:
-              coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.id ?? null : null,
-            cobertura_interna_persona_id:
-              coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.id ?? null : null,
-            cobertura_tipo: coverageType,
-            gestor_nombre: getEmployeeGestorLabel(noveltyCell.employee),
-            modalidad_codigo: getEmployeeModalidadCode(noveltyCell.employee),
-            persona_cubre_nombre:
-              coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.nombre_completo ?? null : null,
-            persona_externa_nombre: coverageType === "PERSONA_EXTERNA" ? externalName.trim() : null,
-          } as Record<string, unknown>,
-          observacion: normalizeLabel(coverageObservation),
-        },
       };
 
-      const response = await createNominaNovedadConTurno(payload);
+      const response =
+        coverageType === "SIN_REEMPLAZO" || selectedType.afecta_cobertura === false
+          ? {
+              novedad: await createNominaNovedad(basePayload),
+            }
+          : await createNominaNovedadConTurno({
+              ...(basePayload as Omit<CreateNominaNovedadConTurnoApi, "turno">),
+              turno: {
+                tipo: mapCoverageToTurno(coverageType),
+                persona_reemplazada_id:
+                  coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.id ?? null : null,
+                contexto_operativo: {
+                  ...tramo,
+                  cobertura_documento_externo:
+                    coverageType === "PERSONA_EXTERNA" ? externalDocument.trim() : null,
+                  cobertura_interna_nomina_empleado_id:
+                    coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.id ?? null : null,
+                  cobertura_interna_persona_id:
+                    coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.id ?? null : null,
+                  cobertura_tipo: coverageType,
+                  gestor_nombre: getEmployeeGestorLabel(noveltyCell.employee),
+                  modalidad_codigo: getEmployeeModalidadCode(noveltyCell.employee),
+                  persona_cubre_nombre:
+                    coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.nombre_completo ?? null : null,
+                  persona_externa_nombre: coverageType === "PERSONA_EXTERNA" ? externalName.trim() : null,
+                } as Record<string, unknown>,
+                observacion: normalizeLabel(coverageObservation),
+              },
+            });
 
       if (response.novedad) {
         setNovelties((current) => [...current, response.novedad]);

@@ -499,6 +499,8 @@ export interface NominaCategoriaSalarialApi {
   nombre_categoria: string | null;
   otros_recargos: number;
   salario_base: number;
+  vigente_desde?: string | null;
+  vigente_hasta?: string | null;
 }
 
 export interface NominaEmpleadoEstadoDocumentalApi {
@@ -546,6 +548,7 @@ export interface NominaEmpleadoApi {
   estado: string | null;
   activo: boolean;
   created_at: string;
+  detalle_calculo?: Record<string, unknown> | null;
   motivo_caso_especial: string | null;
   municipio?: string | null;
   institucion?: string | null;

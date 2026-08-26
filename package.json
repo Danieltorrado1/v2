@@ -37,6 +37,7 @@
     "db:migrate:nomina-adiciones-turnos": "node --experimental-strip-types src/scripts/migrate-nomina-adiciones-turnos.ts",
       "db:migrate:nomina-cambios-operativos": "tsx src/scripts/migrate-nomina-cambios-operativos.ts",
       "db:migrate:nomina-captura-operativa": "tsx src/scripts/migrate-nomina-captura-operativa.ts",
+    "db:migrate:nomina-4a-cobertura": "tsx src/scripts/migrate-nomina-4a-cobertura.ts",
     "db:migrate:organizaciones-contexto-empresarial": "tsx src/scripts/migrate-organizaciones-contexto-empresarial.ts",
     "db:migrate:planes-modulos-saas": "tsx src/scripts/migrate-planes-modulos-saas.ts",
     "db:migrate:configuracion-empresarial": "tsx src/scripts/migrate-configuracion-empresarial.ts",
