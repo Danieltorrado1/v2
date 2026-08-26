@@ -16,6 +16,25 @@ async function resolveEmpresaId(req: Request): Promise<number> {
     const row=(await dbQuery<{empresa_id:string}>('SELECT c.empresa_id::text empresa_id FROM nomina_periodos np INNER JOIN contratos c ON c.id=np.contrato_id WHERE np.id=$1::bigint',[periodo])).rows[0];
     if(row)return Number(row.empresa_id);
   }
+  // Varias rutas históricas de Nómina usan el parámetro genérico :id.
+  // Resolverlo aquí evita perder el contexto al navegar directamente a /nomina/cobertura.
+  const genericId = req.params.id;
+  if (genericId && /^\d+$/.test(String(genericId))) {
+    const row = (await dbQuery<{ empresa_id: string }>(`
+      SELECT c.empresa_id::text AS empresa_id
+      FROM nomina_periodos np INNER JOIN contratos c ON c.id=np.contrato_id
+      WHERE np.id=$1::bigint
+      UNION ALL
+      SELECT c.empresa_id::text
+      FROM nomina_empleados ne INNER JOIN nomina_periodos np ON np.id=ne.periodo_id INNER JOIN contratos c ON c.id=np.contrato_id
+      WHERE ne.id=$1::bigint
+      UNION ALL
+      SELECT c.empresa_id::text
+      FROM nomina_liquidaciones nl INNER JOIN nomina_periodos np ON np.id=nl.periodo_id INNER JOIN contratos c ON c.id=np.contrato_id
+      WHERE nl.id=$1::bigint
+      LIMIT 1`, [genericId])).rows[0];
+    if (row) return Number(row.empresa_id);
+  }
   if (req.tenant && !req.tenant.isGlobalAdmin && req.tenant.empresaIds.length === 1) return req.tenant.empresaIds[0]!;
   throw new AppError('Company context is required for module access',400,'EMPRESA_CONTEXT_REQUIRED');
 }
