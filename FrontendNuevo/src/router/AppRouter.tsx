@@ -17,6 +17,7 @@ import PersonalOpsPage from "../pages/nomina/PersonalOpsPage";
 import CorreccionNominaPage from "../pages/nomina/CorreccionNominaPage";
 import CambiosOperativosPage from "../pages/nomina/CambiosOperativosPage";
 import PlanillaOperativaPage from "../pages/nomina/PlanillaOperativaPage";
+import NominaHubPage from "../pages/nomina/NominaHubPage";
 import SstPage from "../pages/sst/SstPage";
 import PortalPage from "../pages/portal/PortalPage";
 import AdminPage from "../pages/admin/AdminPage";
@@ -34,7 +35,10 @@ export default function AppRouter() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="personal" element={<ModuleRoute code="PERSONAL"><OperationalPersonalPage /></ModuleRoute>} />
-            <Route path="nomina" element={<ModuleRoute code="NOMINA"><PlanillaOperativaPage /></ModuleRoute>} />
+            <Route path="nomina" element={<ModuleRoute code="NOMINA"><NominaHubPage /></ModuleRoute>} />
+            <Route path="nomina/cobertura" element={<ModuleRoute code="NOMINA"><PlanillaOperativaPage /></ModuleRoute>} />
+            <Route path="nomina/asistencia" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
+            <Route path="nomina/ops" element={<ModuleRoute code="NOMINA"><PersonalOpsPage /></ModuleRoute>} />
             <Route path="nomina/novedades" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
             <Route path="nomina/validacion" element={<ModuleRoute code="NOMINA"><PersonalOpsPage /></ModuleRoute>} />
             <Route path="nomina/pago" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />

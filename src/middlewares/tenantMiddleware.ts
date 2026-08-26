@@ -5,6 +5,7 @@ import { dbQuery } from '../config/db';
 import { AppError } from '../utils/AppError';
 
 export interface TenantAccessContext {
+  userId?: number;
   contratoIds: number[];
   empresaIds: number[];
   isGlobalAdmin: boolean;
@@ -80,6 +81,7 @@ export const loadTenantAccess = async (
 
   if (isGlobalAdmin) {
     return {
+      userId: numericUserId,
       isGlobalAdmin: true,
       empresaIds: [],
       contratoIds: []
@@ -111,6 +113,7 @@ export const loadTenantAccess = async (
       ]);
 
   return {
+    userId: numericUserId,
     isGlobalAdmin: false,
     empresaIds: toUniqueNumbers(empresasResult.rows),
     contratoIds: toUniqueNumbers(contratosResult.rows)

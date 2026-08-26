@@ -41,6 +41,7 @@ import {
   type NominaMovimientoAlerta,
   type NominaMovimientoEstado
 } from './nomina.movimientos';
+import { appendNominaCoberturaScope, assertNominaEmpleadoCoberturaScope, assertNominaPeriodoCoberturaScope } from './nomina.procesos';
 import {
   buildNominaCanonicalProjectedRecordId,
   parseNominaNovedadRecordId,
@@ -3463,6 +3464,7 @@ const loadNominaEmpleadoByIdOrThrow = async (
   }
 
   await assertTenantAccessForContrato(empleado.vinculacion_contrato_id, tenant, client);
+  await assertNominaEmpleadoCoberturaScope(empleadoId, tenant, executor);
   return empleado;
 };
 
@@ -4316,6 +4318,7 @@ const loadNominaEmpleadoRowsForPeriodo = async (
   const executor = client ?? dbPool;
   const params: unknown[] = [periodoId];
   const conditions = ['ne.periodo_id = $1::bigint'];
+  appendNominaCoberturaScope(conditions, params, tenant);
 
   if (query.nomina_empleado_id) {
     params.push(query.nomina_empleado_id);
@@ -4812,6 +4815,7 @@ const loadNominaPeriodoAsistenciaPendiente = async (
         COUNT(nad.id)::int AS pendientes
       FROM nomina_empleados ne
       INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
+      INNER JOIN nomina_periodos np ON np.id = ne.periodo_id
       INNER JOIN personas p ON p.id = v.persona_id
       INNER JOIN nomina_asistencia_diaria nad
         ON nad.periodo_id = ne.periodo_id
@@ -5732,7 +5736,7 @@ export const updateNominaEmpleado = async (
 
     assertPeriodoAllowsOpenMutations(context.periodo_estado, 'updating payroll employees');
 
-    const current = mapRealEmpleado(await loadNominaEmpleadoByIdOrThrow(empleadoId, undefined, client));
+    const current = mapRealEmpleado(await loadNominaEmpleadoByIdOrThrow(empleadoId, tenant, client));
     const nextFechaInicioPago =
       input.fecha_inicio_pago !== undefined ? input.fecha_inicio_pago : current.fecha_inicio_pago;
     const nextFechaFinPago =
@@ -5787,7 +5791,7 @@ export const updateNominaEmpleado = async (
       ]
     );
 
-    const updated = mapRealEmpleado(await loadNominaEmpleadoByIdOrThrow(empleadoId, undefined, client));
+    const updated = mapRealEmpleado(await loadNominaEmpleadoByIdOrThrow(empleadoId, tenant, client));
 
     await registerAuditEntry({
       client,
@@ -5823,6 +5827,7 @@ export const importNominaEmpleados = async (
   try {
     await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
+    await assertNominaPeriodoCoberturaScope(periodoId, tenant, client);
 
     assertPeriodoAllowsOpenMutations(periodo.estado, 'importing payroll employees');
 
@@ -6024,6 +6029,7 @@ export const recalculateNominaPeriodo = async (
   try {
     await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
+    await assertNominaPeriodoCoberturaScope(periodoId, tenant, client);
     const recalculateMode = assertPeriodoAllowsRecalculate(
       periodo.estado,
       options?.force === true,
@@ -7205,7 +7211,7 @@ export const createNominaMovimiento = async (
     assertPeriodoAllowsOpenMutations(periodo.estado, 'creating payroll movements');
 
     const empleadoContext = await loadNominaEmpleadoContextOrThrow(input.nomina_empleado_id, tenant, client);
-    const empleado = await loadNominaEmpleadoByIdOrThrow(input.nomina_empleado_id, undefined, client);
+    const empleado = await loadNominaEmpleadoByIdOrThrow(input.nomina_empleado_id, tenant, client);
 
     if (empleadoContext.periodo_id !== input.periodo_id) {
       throw new AppError('Payroll employee does not belong to the target period', 409, 'NOMINA_MOVIMIENTO_INVALID_PERIODO');
@@ -7556,7 +7562,7 @@ export const createNominaRecargo = async (
     assertPeriodoAllowsOpenMutations(periodo.estado, 'creating payroll surcharges');
 
     const empleadoContext = await loadNominaEmpleadoContextOrThrow(input.nomina_empleado_id, tenant, client);
-    const empleado = await loadNominaEmpleadoByIdOrThrow(input.nomina_empleado_id, undefined, client);
+    const empleado = await loadNominaEmpleadoByIdOrThrow(input.nomina_empleado_id, tenant, client);
 
     if (empleadoContext.periodo_id !== input.periodo_id) {
       throw new AppError('Payroll employee does not belong to the target period', 409, 'NOMINA_RECARGO_INVALID_PERIODO');
@@ -8147,6 +8153,7 @@ export const listNominaLiquidaciones = async (
   await loadRealPeriodoOrThrow(periodoId, tenant);
   const params: unknown[] = [periodoId];
   const conditions = ['nl.periodo_id = $1::bigint'];
+  appendNominaCoberturaScope(conditions, params, tenant);
 
   if (query.vinculacion_id) {
     params.push(query.vinculacion_id);
@@ -8171,6 +8178,7 @@ export const listNominaLiquidaciones = async (
       FROM nomina_liquidaciones nl
       INNER JOIN vinculaciones v ON v.id = nl.vinculacion_id
       INNER JOIN personas p ON p.id = v.persona_id
+      INNER JOIN nomina_periodos np ON np.id = nl.periodo_id
       ${whereSql}
     `,
     params
@@ -8234,6 +8242,7 @@ export const generarNominaLiquidaciones = async (
   try {
     await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
+    await assertNominaPeriodoCoberturaScope(periodoId, tenant, client);
 
     const empleadosResult = await client.query<{
       auxilio_transporte: number | string | null;
@@ -8566,6 +8575,7 @@ export const listNominaNovedades = async (
   const conditions: string[] = [];
 
   appendTenantScopeConditions(conditions, params, tenant, 'np.contrato_id', 'c.empresa_id');
+  appendNominaCoberturaScope(conditions, params, tenant);
 
   if (query.periodo_id) {
     params.push(query.periodo_id);
@@ -8782,7 +8792,7 @@ export const createNominaNovedad = async (
     assertPeriodoAllowsOpenMutations(periodo.estado, 'creating payroll novelties');
 
     const empleadoContext = await loadNominaEmpleadoContextOrThrow(input.nomina_empleado_id, tenant, client);
-    const empleado = await loadNominaEmpleadoByIdOrThrow(input.nomina_empleado_id, undefined, client);
+    const empleado = await loadNominaEmpleadoByIdOrThrow(input.nomina_empleado_id, tenant, client);
     const empleadoMapped = mapRealEmpleado(empleado);
 
     if (empleadoContext.periodo_id !== input.periodo_id) {

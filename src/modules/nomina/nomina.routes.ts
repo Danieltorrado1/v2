@@ -138,12 +138,22 @@ import {
   updateCambioOperativoHandler
 } from './cambios-operativos.controller';
 import { listRevisionOperativaHandler, updateRevisionOperativaHandler } from './revision-operativa.controller';
+import { getNominaProcessAccessHandler, listNominaAsistenciaPersonalHandler } from './nomina.procesos.controller';
+import { createNominaAreaHandler, listNominaAreasHandler, listNominaResponsibilitiesHandler, replaceNominaResponsibilityHandler, updateNominaAreaHandler } from './nomina.procesos.admin.controller';
 
 const nominaRoutes = Router();
 
 nominaRoutes.use(authMiddleware);
 nominaRoutes.use(tenantMiddleware);
 nominaRoutes.use(requireModule('NOMINA'));
+
+nominaRoutes.get('/procesos/acceso', requirePermissions('nomina.read'), getNominaProcessAccessHandler);
+nominaRoutes.get('/procesos/areas', requirePermissions('nomina.read'), listNominaAreasHandler);
+nominaRoutes.get('/procesos/responsabilidades', requirePermissions('nomina.read'), listNominaResponsibilitiesHandler);
+nominaRoutes.post('/procesos/areas', requirePermissions('nomina.periodos.update'), createNominaAreaHandler);
+nominaRoutes.patch('/procesos/areas/:area_id', requirePermissions('nomina.periodos.update'), updateNominaAreaHandler);
+nominaRoutes.get('/procesos/asistencia/areas/:area_id/personal', requirePermissions('nomina.read'), listNominaAsistenciaPersonalHandler);
+nominaRoutes.put('/procesos/responsabilidades', requirePermissions('nomina.periodos.update'), replaceNominaResponsibilityHandler);
 
 nominaRoutes.get('/periodos', requirePermissions('nomina.read'), getNominaPeriodosHandler);
 nominaRoutes.get('/periodos/:id', requirePermissions('nomina.read'), getNominaPeriodoHandler);

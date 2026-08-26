@@ -16,9 +16,10 @@ import { CatalogosTab } from './tabs/CatalogosTab';
 import { CargosTab } from './tabs/CargosTab';
 import { PlanesModulosTab } from './tabs/PlanesModulosTab';
 import { EmpresaConfiguracionTab } from './tabs/EmpresaConfiguracionTab';
+import { NominaProcesosTab } from './tabs/NominaProcesosTab';
 import './ConfiguracionGeneral.css';
 
-type TabId = 'empresas' | 'empresa-config' | 'planes' | 'contratos' | 'cargos' | 'catalogos' | 'usuarios';
+type TabId = 'empresas' | 'empresa-config' | 'planes' | 'contratos' | 'cargos' | 'catalogos' | 'usuarios' | 'nomina-procesos';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'empresas', label: 'Empresas', icon: <Building2 size={14} /> },
@@ -28,6 +29,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'cargos', label: 'Cargos', icon: <Briefcase size={14} /> },
   { id: 'catalogos', label: 'Catalogos', icon: <BookOpen size={14} /> },
   { id: 'usuarios', label: 'Usuarios', icon: <Users size={14} /> },
+  { id: 'nomina-procesos', label: 'Nómina', icon: <SlidersHorizontal size={14} /> },
 ];
 
 export default function ConfiguracionGeneral() {
@@ -78,6 +80,7 @@ export default function ConfiguracionGeneral() {
         {activeTab === 'cargos' && <CargosTab />}
         {activeTab === 'catalogos' && <CatalogosTab />}
         {activeTab === 'usuarios' && <UsuariosTab />}
+        {activeTab === 'nomina-procesos' && <NominaProcesosTab />}
       </div>
     </div>
   );

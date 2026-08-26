@@ -835,3 +835,6 @@ select.np-form-control {
   align-items: center;
   gap: 10px;
 }
+.payroll-process-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; }
+.payroll-process-card { display:flex; flex-direction:column; gap:.45rem; padding:1.25rem; border:1px solid var(--border-color,#d7dbe2); border-radius:12px; text-decoration:none; color:inherit; background:var(--surface-color,#fff); }
+.payroll-process-card small { color:var(--accent-color,#2563eb); font-weight:600; }

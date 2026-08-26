@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { evaluateNominaProcessAccess } from '../modules/nomina/nomina.procesos';
+
+const root = process.cwd();
+const service = readFileSync(join(root, 'src/modules/nomina/nomina.service.ts'), 'utf8');
+const procesos = readFileSync(join(root, 'src/modules/nomina/nomina.procesos.ts'), 'utf8');
+const routes = readFileSync(join(root, 'src/modules/nomina/nomina.routes.ts'), 'utf8');
+const migration = readFileSync(join(root, 'sql/phase-36-nomina-4b-procesos.sql'), 'utf8');
+const hub = readFileSync(join(root, 'FrontendNuevo/src/pages/nomina/NominaHubPage.tsx'), 'utf8');
+
+test('listado COBERTURA filtra municipios en backend', () => assert.match(service, /appendNominaCoberturaScope/));
+test('conteo COBERTURA usa el mismo filtro que items', () => assert.match(service, /COUNT\(\*\).*nomina_empleados/s));
+test('detalle fuera de scope bloqueado', () => assert.match(service, /assertNominaEmpleadoCoberturaScope/));
+test('novedades respetan scope', () => assert.match(service, /listNominaNovedades[\s\S]*appendNominaCoberturaScope/));
+test('movimientos siguen resolviendo empleado protegido', () => assert.match(service, /createNominaMovimiento/));
+test('cambios operativos se mantienen en servicio existente', () => assert.match(service, /cambio_operativo|cambios_operativos/i));
+test('adiciones validan empleado', () => assert.match(service, /adicion/i));
+test('liquidaciones filtran scope', () => assert.match(service, /listNominaLiquidaciones[\s\S]*appendNominaCoberturaScope/));
+test('exportación no usa bypass frontend', () => assert.match(service, /exportNominaPeriodo/));
+test('ASISTENCIA consulta por área y fecha', () => assert.match(procesos, /listNominaAsistenciaPersonal/));
+test('ASISTENCIA bloquea área no autorizada', () => assert.match(procesos, /NOMINA_AREA_FORBIDDEN/));
+test('histórico de área usa vigencias', () => assert.match(procesos, /vigencia_desde <= \$2::date/));
+test('múltiples municipios se agregan sin duplicados', () => assert.deepEqual(evaluateNominaProcessAccess([{ proceso: 'COBERTURA', municipios: [1, 2, 2] }]), [{ proceso: 'COBERTURA', responsable: true, municipios: [1, 2], areas: [] }, { proceso: 'ASISTENCIA', responsable: false, municipios: [], areas: [] }, { proceso: 'OPS', responsable: false, municipios: [], areas: [] }]));
+test('múltiples áreas se agregan sin duplicados', () => assert.equal(evaluateNominaProcessAccess([{ proceso: 'ASISTENCIA', areas: [5, 6] }])[1]!.areas.length, 2));
+test('combinación COBERTURA + ASISTENCIA', () => assert.equal(evaluateNominaProcessAccess([{ proceso: 'COBERTURA', municipios: [1] }, { proceso: 'ASISTENCIA', areas: [2] }]).filter((x) => x.responsable).length, 2));
+test('NINGUNO queda sin responsabilidades', () => assert.equal(evaluateNominaProcessAccess([]).filter((x) => x.responsable).length, 0));
+test('administrador global se distingue de responsable operativo', () => assert.match(procesos, /administrative/));
+test('aislamiento empresa A/B por claves', () => assert.match(migration, /empresa_id.*REFERENCES empresas/));
+test('acceso directo asistencia está enrutado con permisos', () => assert.match(routes, /asistencia\/areas\/:area_id\/personal/));
+test('hub no deriva acceso desde rol', () => { assert.doesNotMatch(hub, /talento_humano|gestor/); assert.match(hub, /responsable/); });
