@@ -283,6 +283,7 @@ export const listNominaNovedadesQuerySchema = payrollDatasetPaginationSchema.ext
 
 export const listNominaTiposNovedadQuerySchema = paginationSchema
   .extend({
+    empresa_id: z.coerce.number().int().positive().optional(),
     activo: z.coerce.boolean().optional(),
     busqueda: nullableTrimmedStringSchema.optional(),
     categoria: nullableTrimmedStringSchema.optional()
