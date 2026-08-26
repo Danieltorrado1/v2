@@ -1066,7 +1066,7 @@ export default function NominaPage() {
     setTiposNovedadStatusCode(null);
 
     try {
-      const data = await listarTiposNovedad();
+      const data = await listarTiposNovedad({ empresa_id: empresaId ? String(empresaId) : undefined });
 
       if (requestId !== tiposNovedadRequestRef.current) {
         return;

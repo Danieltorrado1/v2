@@ -629,6 +629,7 @@ export interface NominaTipoNovedad {
 }
 
 export interface NominaTipoNovedadFilters {
+  empresa_id?: string;
   activo?: boolean;
   busqueda?: string;
   categoria?: string;

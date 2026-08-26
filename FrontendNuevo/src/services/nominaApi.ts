@@ -540,6 +540,7 @@ export async function listarTiposNovedad(
     {
       params: toParams({
         activo: filters.activo ?? true,
+        empresa_id: filters.empresa_id,
         busqueda: filters.busqueda,
         categoria: filters.categoria,
         page: filters.page ?? 1,

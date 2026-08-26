@@ -3,7 +3,7 @@ import { dbQuery } from '../../config/db';
 import { AppError } from '../../utils/AppError';
 import { assertEmpresaModuleEnabled } from './saas.service';
 
-async function resolveEmpresaId(req: Request): Promise<number> {
+export async function resolveEmpresaId(req: Request): Promise<number> {
   const direct = req.params.empresaId ?? req.query.empresa_id ?? req.body?.empresa_id;
   if (direct && Number.isInteger(Number(direct))) return Number(direct);
   const contrato = req.params.contratoId ?? req.params.contrato_id ?? req.query.contrato_id ?? req.body?.contrato_id;

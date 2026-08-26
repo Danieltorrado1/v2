@@ -446,7 +446,7 @@ export default function PlanillaOperativaPage() {
 
     void Promise.all([
       getNominaPeriodos({ page: 1, limit: MAX_PAGE, empresa_id: String(empresaId) }),
-      listarTiposNovedad({ activo: true, page: 1, limit: MAX_PAGE }),
+      listarTiposNovedad({ activo: true, page: 1, limit: MAX_PAGE, empresa_id: String(empresaId) }),
     ])
       .then(([periodResponse, typeResponse]) => {
         const availablePeriods = periodResponse.items;
