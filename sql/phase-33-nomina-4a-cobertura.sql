@@ -23,6 +23,90 @@ $$;
 CREATE INDEX IF NOT EXISTS idx_nomina_categoria_salarial_contrato_vigencia
   ON nomina_categorias_salariales (contrato_id, activo, vigente_desde, vigente_hasta, id);
 
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'ex_nomina_categoria_salarial_sin_solape'
+      AND conrelid = 'nomina_categorias_salariales'::regclass
+  ) THEN
+    ALTER TABLE nomina_categorias_salariales
+      ADD CONSTRAINT ex_nomina_categoria_salarial_sin_solape
+      EXCLUDE USING gist (
+        contrato_id WITH =,
+        (UPPER(BTRIM(codigo_categoria))) WITH =,
+        (DATERANGE(COALESCE(vigente_desde, '-infinity'::date), COALESCE(vigente_hasta, 'infinity'::date), '[]')) WITH &&
+      ) WHERE (activo = TRUE);
+  END IF;
+END;
+$$;
+
+-- Reutiliza los triggers de phase-32 y endurece su función: solo una fuente de un
+-- período editable puede invalidar, y cualquier estado previo pasa a revisión.
+CREATE OR REPLACE FUNCTION public.nomina_invalidar_revision_operativa()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE v_periodo BIGINT; v_empleado BIGINT; v_persona BIGINT; v_vinculacion BIGINT; v_reason TEXT; v_family TEXT; v_record BIGINT;
+BEGIN
+  v_periodo := COALESCE(NEW.periodo_id, OLD.periodo_id);
+  IF NOT EXISTS (SELECT 1 FROM nomina_periodos WHERE id=v_periodo AND estado='ABIERTO') THEN
+    IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+  END IF;
+  IF TG_TABLE_NAME='nomina_asistencia_diaria' THEN
+    SELECT ne.id INTO v_empleado FROM nomina_empleados ne
+    WHERE ne.periodo_id=v_periodo AND ne.vinculacion_id=COALESCE(NEW.vinculacion_id, OLD.vinculacion_id)
+    ORDER BY ne.id LIMIT 1;
+  ELSE v_empleado := COALESCE(NEW.nomina_empleado_id, OLD.nomina_empleado_id); END IF;
+  v_reason := CASE WHEN TG_TABLE_NAME='nomina_novedades' THEN CASE WHEN TG_OP='INSERT' THEN 'NOVEDAD_CREADA' WHEN TG_OP='DELETE' THEN 'NOVEDAD_DESACTIVADA' ELSE 'NOVEDAD_MODIFICADA' END
+    WHEN TG_TABLE_NAME='nomina_asistencia_diaria' THEN 'ASISTENCIA_MODIFICADA'
+    WHEN TG_TABLE_NAME='nomina_movimientos' THEN 'TA_MODIFICADO' ELSE TG_TABLE_NAME||'_MODIFICADA' END;
+  IF TG_TABLE_NAME='nomina_movimientos' THEN
+    v_record := COALESCE(NEW.id, OLD.id);
+    EXECUTE 'SELECT familia_movimiento FROM nomina_movimientos WHERE id=$1' INTO v_family USING v_record;
+    IF v_family='CAMBIO_OPERATIVO' THEN v_reason := 'CAMBIO_OPERATIVO_MODIFICADO'; END IF;
+  END IF;
+  IF v_empleado IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;
+  SELECT ne.vinculacion_id,v.persona_id INTO v_vinculacion,v_persona FROM nomina_empleados ne
+    JOIN vinculaciones v ON v.id=ne.vinculacion_id WHERE ne.id=v_empleado LIMIT 1;
+  IF v_persona IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;
+  INSERT INTO nomina_revision_operativa(periodo_id,nomina_empleado_id,persona_id,vinculacion_id,estado_revision,invalidado_at,motivo_invalidacion,updated_at)
+  VALUES(v_periodo,v_empleado,v_persona,v_vinculacion,'REQUIERE_REVISION',NOW(),v_reason,NOW())
+  ON CONFLICT(periodo_id,nomina_empleado_id) DO UPDATE SET estado_revision='REQUIERE_REVISION',revisado_por=NULL,revisado_at=NULL,
+    invalidado_at=NOW(),motivo_invalidacion=v_reason,version_revision=nomina_revision_operativa.version_revision+1,updated_at=NOW();
+  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;
+END; $$;
+
+CREATE OR REPLACE FUNCTION nomina_invalidar_revision_condicion_economica() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE r RECORD;
+BEGIN
+  IF LOWER(BTRIM(COALESCE(NEW.tipo_condicion, OLD.tipo_condicion))) <> 'aporta_pension' THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+  FOR r IN
+    SELECT np.id AS periodo_id, ne.id AS nomina_empleado_id, ne.vinculacion_id
+    FROM nomina_periodos np JOIN nomina_empleados ne ON ne.periodo_id = np.id
+    WHERE ne.vinculacion_id = COALESCE(NEW.vinculacion_id, OLD.vinculacion_id)
+      AND np.estado = 'ABIERTO'
+      AND np.fecha_fin >= COALESCE(NEW.vigencia_desde, OLD.vigencia_desde)
+      AND np.fecha_inicio <= COALESCE(NEW.vigencia_hasta, OLD.vigencia_hasta, 'infinity'::date)
+  LOOP
+    INSERT INTO nomina_revision_operativa(periodo_id,nomina_empleado_id,persona_id,vinculacion_id,estado_revision,invalidado_at,motivo_invalidacion,updated_at)
+    SELECT r.periodo_id,r.nomina_empleado_id,v.persona_id,r.vinculacion_id,'REQUIERE_REVISION',NOW(),'FUENTE_APORTA_PENSION',NOW()
+    FROM vinculaciones v WHERE v.id=r.vinculacion_id
+    ON CONFLICT(periodo_id,nomina_empleado_id) DO UPDATE SET estado_revision='REQUIERE_REVISION',revisado_por=NULL,revisado_at=NULL,
+      invalidado_at=NOW(),motivo_invalidacion='FUENTE_APORTA_PENSION',version_revision=nomina_revision_operativa.version_revision+1,updated_at=NOW();
+  END LOOP;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_vinculacion_condicion_revision ON vinculacion_condiciones_economicas;
+CREATE TRIGGER trg_vinculacion_condicion_revision
+  AFTER INSERT OR UPDATE OR DELETE ON vinculacion_condiciones_economicas
+  FOR EACH ROW
+  EXECUTE FUNCTION nomina_invalidar_revision_condicion_economica();
+
 UPDATE nomina_tipos_novedad
 SET
   codigo_operativo = 'DNC',

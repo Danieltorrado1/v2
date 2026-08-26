@@ -1635,7 +1635,7 @@ const assertPeriodoAllowsPostCloseOutputs = (estado: string, action: string): vo
   );
 };
 
-const assertPeriodoAllowsRecalculate = (
+export const assertPeriodoAllowsRecalculate = (
   estado: string,
   force: boolean,
   tenant?: TenantAccessContext
