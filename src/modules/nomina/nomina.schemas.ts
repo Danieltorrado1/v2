@@ -67,6 +67,13 @@ export const estadoPeriodoSchema = z.enum([
 ]);
 export const estadoLiquidacionSchema = z.enum(['PRELIMINAR', 'FINAL']);
 export const tipoNovedadSchema = z.enum(['ADICION', 'DEDUCCION']);
+
+/** Payload for the single-day attendance action used by the operational grid. */
+export const markNominaAsistenciaSchema = z.object({
+  vinculacion_id: z.coerce.number().int().positive(),
+  fecha: z.string().date(),
+  presente: z.boolean().default(true),
+}).strict();
 export const afectaConceptoSchema = z.enum(['SALARIO', 'TRANSPORTE', 'AMBOS']);
 export const nominaExportTipoSchema = z.enum([
   'resumen',

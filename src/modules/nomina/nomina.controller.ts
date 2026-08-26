@@ -18,6 +18,7 @@ import {
   listNominaNovedadesQuerySchema,
   listNominaTiposNovedadQuerySchema,
   listNominaPeriodosQuerySchema,
+  markNominaAsistenciaSchema,
   nominaAsistenciaIdParamSchema,
   nominaMovimientoEstadoActionSchema,
   nominaEmpleadoIdParamSchema,
@@ -605,9 +606,17 @@ export const createNominaNovedadHandler = asyncHandler(async (req: Request, res:
 });
 
 export const markNominaAsistenciaHandler = asyncHandler(async (req: Request,res: Response) => {
-  const periodo_id=String(req.params.periodo_id); const vinculacion_id=String(req.body?.vinculacion_id); const fecha=String(req.body?.fecha); const presente=req.body?.presente !== false;
-  if(!vinculacion_id||!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) throw new AppError('vinculacion_id y fecha son requeridos',400,'NOMINA_ASISTENCIA_INPUT_INVALIDO');
-  const data=await markNominaAsistencia(periodo_id,vinculacion_id,fecha,presente,getActorUserId(req),req.tenant,getAuditRequestMeta(req)); return successResponse(res,{data,message:'Attendance updated successfully'});
+  const input = markNominaAsistenciaSchema.parse(req.body ?? {});
+  const data = await markNominaAsistencia(
+    String(req.params.periodo_id),
+    String(input.vinculacion_id),
+    input.fecha,
+    input.presente,
+    getActorUserId(req),
+    req.tenant,
+    getAuditRequestMeta(req),
+  );
+  return successResponse(res, { data, message: 'Attendance updated successfully' });
 });
 export const markNominaAsistenciaRangoHandler = asyncHandler(async (req: Request,res: Response) => { const {vinculacion_id,fecha_inicio,fecha_fin}=req.body??{}; if(!vinculacion_id||!fecha_inicio||!fecha_fin) throw new AppError('Trabajador y rango son requeridos',400,'NOMINA_ASISTENCIA_RANGO_INPUT_INVALIDO'); const data=await markNominaAsistenciaRango(String(req.params.periodo_id),String(vinculacion_id),String(fecha_inicio),String(fecha_fin),getActorUserId(req),req.tenant,getAuditRequestMeta(req)); return successResponse(res,{data,message:'Attendance range processed'}); });
 export const markNominaAsistenciaMasivaHandler = asyncHandler(async (req: Request,res: Response) => { const {vinculacion_ids,fecha_inicio,fecha_fin}=req.body??{}; if(!Array.isArray(vinculacion_ids)||!vinculacion_ids.length) throw new AppError('Debe seleccionar trabajadores',400,'NOMINA_ASISTENCIA_SELECCION_REQUERIDA'); const data=await markNominaAsistenciaMasiva(String(req.params.periodo_id),vinculacion_ids.map(String),String(fecha_inicio),String(fecha_fin),getActorUserId(req),req.tenant,getAuditRequestMeta(req)); return successResponse(res,{data,message:'Bulk attendance processed'}); });

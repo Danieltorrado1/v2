@@ -1457,7 +1457,11 @@ export default function PlanillaOperativaPage() {
               <button type="button" disabled={!editable} onClick={() => void toggleAttendance(selected.employee, selected.date, true)}>
                 Quitar asistencia
               </button>
-            ) : null}
+            ) : (
+              <button type="button" disabled={!editable} onClick={() => void toggleAttendance(selected.employee, selected.date)}>
+                Marcar asistencia
+              </button>
+            )}
             <button
               type="button"
               disabled={!editable}
