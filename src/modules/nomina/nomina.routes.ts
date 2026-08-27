@@ -137,7 +137,7 @@ import {
   resolverTramosHandler,
   updateCambioOperativoHandler
 } from './cambios-operativos.controller';
-import { listRevisionOperativaHandler, updateRevisionOperativaHandler } from './revision-operativa.controller';
+import { closeNominaEmpleadoOperativoHandler, listRevisionOperativaHandler, reopenNominaEmpleadoOperativoHandler, updateRevisionOperativaHandler } from './revision-operativa.controller';
 import { getNominaProcessAccessHandler, listNominaAsistenciaPersonalHandler } from './nomina.procesos.controller';
 import { createNominaAreaHandler, listNominaAreasHandler, listNominaResponsibilitiesHandler, replaceNominaResponsibilityHandler, updateNominaAreaHandler } from './nomina.procesos.admin.controller';
 
@@ -298,6 +298,8 @@ nominaRoutes.post('/periodos/:periodo_id/asistencia/rango', requirePermissions('
 nominaRoutes.post('/periodos/:periodo_id/asistencia/masiva', requirePermissions('nomina.periodos.update'), markNominaAsistenciaMasivaHandler);
 nominaRoutes.get('/periodos/:periodo_id/revision-operativa', requirePermissions('nomina.read'), listRevisionOperativaHandler);
 nominaRoutes.patch('/periodos/:periodo_id/revision-operativa/:nomina_empleado_id', requirePermissions('nomina.periodos.update'), updateRevisionOperativaHandler);
+nominaRoutes.post('/periodos/:periodo_id/cierre-operativo/:nomina_empleado_id', requirePermissions('nomina.periodos.close'), closeNominaEmpleadoOperativoHandler);
+nominaRoutes.post('/periodos/:periodo_id/reapertura-operativa/:nomina_empleado_id', requirePermissions('nomina.periodos.reopen'), reopenNominaEmpleadoOperativoHandler);
 
 nominaRoutes.get('/cambios-operativos', requirePermissions('nomina.movimientos.read'), listCambiosOperativosHandler);
 nominaRoutes.get('/cambios-operativos/:id', requirePermissions('nomina.movimientos.read'), getCambioOperativoHandler);
@@ -628,3 +630,4 @@ nominaRoutes.patch(
 );
 
 export { nominaRoutes };
+

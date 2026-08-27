@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 const trimmedStringSchema = z.string().trim().min(1);
 const identifierSchema = z.preprocess((value) => {
@@ -162,6 +162,10 @@ export const nominaTipoNovedadIdParamSchema = z
 export const nominaEmpleadoIdParamSchema = z.object({
   id: trimmedStringSchema
 });
+
+export const nominaEmpleadoReaperturaSchema = z.object({
+  motivo: trimmedStringSchema
+}).strict();
 
 export const nominaAsistenciaIdParamSchema = z.object({
   id: identifierSchema
@@ -567,6 +571,7 @@ export const createNominaNovedadSchema = z.object({
   categoria_anterior_id: identifierSchema.nullable().optional().default(null),
   categoria_nueva_id: identifierSchema.nullable().optional().default(null),
   observacion: nullableTrimmedStringSchema.optional().default(null),
+  reemplazar_asistencia_confirmado: z.coerce.boolean().optional().default(false),
   revisado: z.coerce.boolean().optional().default(false),
   requiere_cobertura: z.coerce.boolean().optional().default(false),
   cubierta: z.coerce.boolean().optional().default(false),
@@ -612,6 +617,7 @@ export const updateNominaNovedadSchema = z.object({
   categoria_anterior_id: identifierSchema.nullable().optional(),
   categoria_nueva_id: identifierSchema.nullable().optional(),
   observacion: nullableTrimmedStringSchema.optional(),
+  reemplazar_asistencia_confirmado: z.coerce.boolean().optional(),
   revisado: z.coerce.boolean().optional(),
   requiere_cobertura: z.coerce.boolean().optional(),
   cubierta: z.coerce.boolean().optional(),
@@ -648,6 +654,7 @@ export type CreateNominaPeriodoInput = z.infer<typeof createNominaPeriodoSchema>
 export type UpdateNominaPeriodoInput = z.infer<typeof updateNominaPeriodoSchema>;
 export type ListNominaPeriodosQuery = z.infer<typeof listNominaPeriodosQuerySchema>;
 export type NominaPeriodoActionInput = z.infer<typeof nominaPeriodoActionSchema>;
+export type NominaEmpleadoReaperturaInput = z.infer<typeof nominaEmpleadoReaperturaSchema>;
 export type ListNominaEmpleadosQuery = z.infer<typeof listNominaEmpleadosQuerySchema>;
 export type UpdateNominaEmpleadoInput = z.infer<typeof updateNominaEmpleadoSchema>;
 export type ListNominaLiquidacionesQuery = z.infer<typeof listNominaLiquidacionesQuerySchema>;
@@ -664,3 +671,5 @@ export type NominaNovedadCoberturaInput = z.infer<typeof nominaNovedadCoberturaS
 export type CreateNominaNovedadInput = z.infer<typeof createNominaNovedadSchema>;
 export type CreateNominaNovedadConTurnoInput = z.infer<typeof createNominaNovedadConTurnoSchema>;
 export type UpdateNominaNovedadInput = z.infer<typeof updateNominaNovedadSchema>;
+
+

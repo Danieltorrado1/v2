@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Plus, Search, X } from "lucide-react";
 
@@ -61,7 +61,7 @@ const DAY_WIDTH = 22;
 const PLANILLA_GRID_TEMPLATE = (dayCount: number) =>
   `${REVIEW_WIDTH}px ${DOCUMENT_WIDTH}px minmax(${NAME_WIDTH}px,1.35fr) repeat(${dayCount},minmax(${DAY_WIDTH}px,1fr))`;
 // Los 31 dias se muestran juntos. Compatibilidad de auditoria: [1,7] [8,14] [15,21] [22,28] [29,31]. Teclado: ArrowDown ArrowUp ArrowRight ArrowLeft Enter Escape.
-const REVIEW_STATES = ["TODOS", "PENDIENTES", "REVISADOS", "REQUIERE_REVISION"] as const;
+const REVIEW_STATES = ["TODOS", "PENDIENTES", "REVISADOS", "CERRADOS"] as const;
 // Compatibilidad con auditorias previas: period?.estado==="ABIERTO"&&canCreate.
 const SORT_MODES = [
   "NOMBRE_ASC",
@@ -90,6 +90,7 @@ type ReviewFilter = (typeof REVIEW_STATES)[number];
 type EventFilter = "TODOS" | "CON_NOVEDADES" | "SIN_NOVEDADES" | "INCONSISTENCIAS";
 type SortMode = (typeof SORT_MODES)[number];
 type CoverageType = "SIN_REEMPLAZO" | "PERSONAL_VINCULADO" | "PERSONA_EXTERNA";
+type OperativeState = "PENDIENTE" | "REVISADO" | "CERRADO";
 type Attendance = PlanillaAsistencia;
 type SelectedCell = { employee: NominaEmpleadoApi; date: string; context: PlanillaContexto };
 type RangeSelection = { employeeId: string; start: string; end: string | null } | null;
@@ -286,6 +287,20 @@ function buildReviewRecord(
     };
   }
 
+  if (estado === "PENDIENTE") {
+    return {
+      nomina_empleado_id: employee.id,
+      periodo_id: periodoId,
+      persona_id: employee.persona.id,
+      vinculacion_id: employee.vinculacion_id,
+      estado_revision: "PENDIENTE",
+      revisado_por: current?.revisado_por ?? null,
+      revisado_at: current?.revisado_at ?? null,
+      invalidado_at: null,
+      motivo_invalidacion: null,
+    };
+  }
+
   return {
     nomina_empleado_id: employee.id,
     periodo_id: periodoId,
@@ -301,6 +316,19 @@ function buildReviewRecord(
 
 function upsertReview(items: RevisionOperativaApi[], next: RevisionOperativaApi) {
   return [...items.filter((item) => item.nomina_empleado_id !== next.nomina_empleado_id), next];
+}
+
+function resolveOperativeState(employee: NominaEmpleadoApi, review?: RevisionOperativaApi | null): OperativeState {
+  const nominaEstado = String(review?.nomina_estado ?? employee.estado ?? "").toUpperCase();
+  if (nominaEstado === "CERRADO") {
+    return "CERRADO";
+  }
+
+  if (nominaEstado === "REVISADO") {
+    return "REVISADO";
+  }
+
+  return review?.estado_revision === "REVISADO" ? "REVISADO" : "PENDIENTE";
 }
 
 function WorkspaceTabs({ periodId = "" }: { periodId?: string }) {
@@ -673,15 +701,15 @@ export default function PlanillaOperativaPage() {
           return false;
         }
 
-        if (reviewFilter === "PENDIENTES" && reviewState !== "PENDIENTE") {
+        if (reviewFilter === "PENDIENTES" && resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null) !== "PENDIENTE") {
           return false;
         }
 
-        if (reviewFilter === "REVISADOS" && reviewState !== "REVISADO") {
+        if (reviewFilter === "REVISADOS" && resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null) !== "REVISADO") {
           return false;
         }
 
-        if (reviewFilter === "REQUIERE_REVISION" && reviewState !== "REQUIERE_REVISION") {
+        if (reviewFilter === "CERRADOS" && resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null) !== "CERRADO") {
           return false;
         }
 
@@ -1129,15 +1157,15 @@ export default function PlanillaOperativaPage() {
     const wanted =
       reviewFilter === "PENDIENTES"
         ? "PENDIENTE"
-        : reviewFilter === "REQUIERE_REVISION"
-          ? "REQUIERE_REVISION"
-          : null;
-
-    const eligible = ordered
+        : reviewFilter === "REVISADOS"
+          ? "REVISADO"
+          : reviewFilter === "CERRADOS"
+            ? "CERRADO"
+            : "PENDIENTE";
       .map((employee, index) => ({ employee, index }))
       .filter(({ employee }) => {
-        const state = reviewByEmployee.get(employee.id)?.estado_revision ?? "PENDIENTE";
-        return wanted ? state === wanted : state !== "REVISADO";
+        const state = resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null);
+        return state === wanted;
       });
 
     const currentIndex = selected ? ordered.findIndex((employee) => employee.id === selected.employee.id) : -1;
@@ -1715,3 +1743,5 @@ export default function PlanillaOperativaPage() {
     </section>
   );
 }
+
+

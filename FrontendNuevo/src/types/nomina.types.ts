@@ -1,4 +1,4 @@
-﻿export type NominaPeriodoTipo = 'PRIMERA_QUINCENA' | 'SEGUNDA_QUINCENA' | 'MENSUAL';
+export type NominaPeriodoTipo = 'PRIMERA_QUINCENA' | 'SEGUNDA_QUINCENA' | 'MENSUAL';
 
 export type NominaPeriodoEstado = 'ABIERTO' | 'REVISADO' | 'CERRADO' | 'PAGADO' | 'ANULADO';
 
@@ -718,6 +718,7 @@ export interface CreateNominaNovedadApi {
   categoria_anterior_id?: string | null;
   categoria_nueva_id?: string | null;
   observacion?: string | null;
+  reemplazar_asistencia_confirmado?: boolean;
   revisado?: boolean;
   requiere_cobertura?: boolean;
   cubierta?: boolean;
@@ -733,7 +734,8 @@ export interface CreateNominaNovedadApi {
   activo?: boolean;
 }
 export interface CreateNominaNovedadConTurnoApi extends CreateNominaNovedadApi { turno: { tipo: 'INTERNO'|'EXTERNO'; contexto_operativo?: Record<string, unknown>; persona_reemplazada_id?: string|null; observacion?: string|null } }
-export interface RevisionOperativaApi { nomina_empleado_id:string; periodo_id:string; persona_id:string; vinculacion_id:string; estado_revision:'PENDIENTE'|'REVISADO'|'REQUIERE_REVISION'; revisado_por?:string|null; revisado_at?:string|null; invalidado_at?:string|null; motivo_invalidacion?:string|null }
+export interface RevisionOperativaApi { nomina_empleado_id:string; periodo_id:string; persona_id:string; vinculacion_id:string; estado_revision:'PENDIENTE'|'REVISADO'|'REQUIERE_REVISION'; revisado_por?:string|null; revisado_at?:string|null; invalidado_at?:string|null; motivo_invalidacion?:string|null; nomina_estado?: string | null; nomina_revisado?: boolean | null }
+export interface NominaEmpleadoOperativoStateApi { nomina_empleado_id:string; periodo_id:string; persona_id:string; vinculacion_id:string; estado:'PENDIENTE'|'REVISADO'|'CERRADO'; revision_estado:'PENDIENTE'|'REVISADO'|'REQUIERE_REVISION'; revisado:boolean; revisado_at?:string|null; invalidado_at?:string|null; motivo_invalidacion?:string|null }
 
 export interface UpdateNominaNovedadApi {
   tipo_novedad_id?: string;
@@ -748,6 +750,7 @@ export interface UpdateNominaNovedadApi {
   categoria_anterior_id?: string | null;
   categoria_nueva_id?: string | null;
   observacion?: string | null;
+  reemplazar_asistencia_confirmado?: boolean;
   revisado?: boolean;
   requiere_cobertura?: boolean;
   cubierta?: boolean;
@@ -967,6 +970,7 @@ export interface GenerateNominaLiquidacionesResponse {
   omitidas_activas?: number;
   omitidas_fuera_periodo?: number;
 }
+
 
 
 
