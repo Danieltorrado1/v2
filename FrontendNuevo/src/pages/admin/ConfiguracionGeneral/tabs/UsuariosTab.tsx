@@ -66,6 +66,7 @@ const EMPTY_FORM: UserForm = {
 };
 
 const ADMIN_ROLE_NAME = 'ADMINISTRADOR';
+const CATALOG_BATCH_LIMIT = 100;
 
 function humanizeRole(role: string): string {
   return role
@@ -100,6 +101,31 @@ function mapUserToForm(user: UsuarioAdminRecord): UserForm {
 
 function buildContratoLookup(contratos: Contrato[]): Map<number, Contrato> {
   return new Map(contratos.map((contrato) => [contrato.id, contrato]));
+}
+
+async function getAllCatalogPages<T>(
+  loader: (params: { page: number; limit: number }) => Promise<{ items: T[]; pagination: { total_pages: number } }>
+): Promise<T[]> {
+  const firstPage = await loader({ page: 1, limit: CATALOG_BATCH_LIMIT });
+  const totalPages = firstPage.pagination.total_pages;
+
+  if (totalPages <= 1) {
+    return firstPage.items;
+  }
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      loader({
+        page: index + 2,
+        limit: CATALOG_BATCH_LIMIT
+      })
+    )
+  );
+
+  return [
+    ...firstPage.items,
+    ...remainingPages.flatMap((pageData) => pageData.items)
+  ];
 }
 
 function renderSummaryChips(values: string[], maxVisible = 2) {
@@ -176,9 +202,9 @@ export function UsuariosTab() {
         const [usersResponse, rolesResponse, empresasResponse, contratosResponse, municipiosResponse] = await Promise.all([
           configuracionApi.listarUsuariosAdmin(),
           configuracionApi.listarRoles(),
-          configuracionApi.listarEmpresas({ page: 1, limit: 500 }),
-          configuracionApi.listarContratos({ page: 1, limit: 500 }),
-          configuracionApi.listarMunicipios({ page: 1, limit: 500 })
+          getAllCatalogPages((params) => configuracionApi.listarEmpresas(params)),
+          getAllCatalogPages((params) => configuracionApi.listarContratos(params)),
+          getAllCatalogPages((params) => configuracionApi.listarMunicipios(params))
         ]);
 
         if (cancelled) {
@@ -187,9 +213,9 @@ export function UsuariosTab() {
 
         setUsers(usersResponse);
         setRoles(rolesResponse);
-        setEmpresas(empresasResponse.items);
-        setContratos(contratosResponse.items);
-        setMunicipios(municipiosResponse.items);
+        setEmpresas(empresasResponse);
+        setContratos(contratosResponse);
+        setMunicipios(municipiosResponse);
       } catch (loadError) {
         if (!cancelled) {
           setError(getErrorMessage(loadError, 'No fue posible cargar usuarios, roles y accesos.'));

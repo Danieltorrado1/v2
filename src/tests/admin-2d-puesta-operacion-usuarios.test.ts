@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const usersUi = readFileSync('FrontendNuevo/src/pages/admin/ConfiguracionGeneral/tabs/UsuariosTab.tsx', 'utf8');
+const configuracionApi = readFileSync('FrontendNuevo/src/services/configuracionApi.ts', 'utf8');
+const configuracionSchemas = readFileSync('src/modules/configuracion/configuracion.admin.schemas.ts', 'utf8');
 const usersRoutes = readFileSync('src/modules/users/adminUsers.routes.ts', 'utf8');
 const usersService = readFileSync('src/modules/users/users.service.ts', 'utf8');
 const gestorRoutes = readFileSync('src/modules/vinculaciones/vinculaciones.routes.ts', 'utf8');
@@ -12,6 +14,11 @@ const gestorMigration = readFileSync('src/scripts/migrate-admin-2d-gestor-role.t
 
 test('ADMIN-2D usa el catalogo real y conserva roles multiples', () => {
   assert.match(usersUi, /configuracionApi\.listarRoles\(\)/);
+  assert.match(usersUi, /getAllCatalogPages\(/);
+  assert.match(usersUi, /CATALOG_BATCH_LIMIT = 100/);
+  assert.doesNotMatch(usersUi, /limit:\s*500/);
+  assert.match(configuracionApi, /listarEmpresas: \(filters: EmpresaFilters = \{\}\) => getPaginated<Empresa>\('\/configuracion\/empresas', filters\)/);
+  assert.match(configuracionSchemas, /limit: z\.coerce\.number\(\)\.int\(\)\.min\(1\)\.max\(100\)\.default\(25\)/);
   assert.match(usersUi, /form\.roleIds\.includes/);
   assert.match(usersService, /INSERT INTO usuario_roles/);
   assert.match(usersService, /syncUserRoles/);
