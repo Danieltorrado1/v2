@@ -524,6 +524,31 @@ export const listAsignacionesOperativasByVinculacion = async (
   return result.rows.map(mapAsignacionOperativa);
 };
 
+export const listOpcionesAsignacionOperativa = async (vinculacionId: number, tenant?: TenantAccessContext) => {
+  await assertTenantAccessForVinculacionId(tenant, vinculacionId);
+  const context = await dbPool.query<{ contrato_id: string }>('SELECT contrato_id::text FROM vinculaciones WHERE id=$1::bigint', [vinculacionId]);
+  if (!context.rows[0]) throw new AppError('Vinculacion not found', 404, 'VINCULACION_NOT_FOUND');
+  return (await dbPool.query(`SELECT ff.id::text,ff.municipio_id::text,COALESCE(mu.nombre_municipio,ff.municipio_texto) municipio,ff.institucion_id::text,ff.institucion_final institucion,ff.sede_id::text,ff.sede_final sede,ff.modalidad_id::text,ff.modalidad_final modalidad FROM focalizacion_final ff LEFT JOIN municipios mu ON mu.id=ff.municipio_id WHERE ff.contrato_id=$1::bigint AND COALESCE(ff.activo,TRUE)=TRUE ORDER BY municipio,institucion,sede,modalidad`, [context.rows[0].contrato_id])).rows;
+};
+
+export const replaceAsignacionOperativaPersonal = async (vinculacionId: number, focalizacionFinalId: number, actorUserId: any, tenant?: TenantAccessContext) => {
+  await assertTenantAccessForVinculacionId(tenant, vinculacionId);
+  const client=await dbPool.connect();
+  try {
+    await client.query('BEGIN');
+    const vinculacion=await getVinculacionContextRow(client,vinculacionId,{forUpdate:true});
+    const target=await client.query<any>(`SELECT ff.*,COALESCE(mu.nombre_municipio,ff.municipio_texto) municipio_nombre FROM focalizacion_final ff LEFT JOIN municipios mu ON mu.id=ff.municipio_id WHERE ff.id=$1::bigint AND ff.contrato_id=$2::bigint AND COALESCE(ff.activo,TRUE)=TRUE`,[focalizacionFinalId,vinculacion.contrato_id]);
+    if(!target.rows[0])throw new AppError('La sede no pertenece al municipio, institucion o contrato seleccionado',409,'ASIGNACION_OPERATIVA_CONTEXTO_INVALIDO');
+    const current=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND activo=TRUE AND fecha_inicio<=CURRENT_DATE AND (fecha_fin IS NULL OR fecha_fin>=CURRENT_DATE) ORDER BY fecha_inicio DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId]);
+    if(String(current.rows[0]?.focalizacion_final_id)===String(focalizacionFinalId)){await client.query('COMMIT');return current.rows[0];}
+    if(current.rows[0])await client.query(`UPDATE cobertura_asignaciones SET activo=FALSE,fecha_fin=GREATEST(fecha_inicio,CURRENT_DATE-1),observacion=CONCAT_WS(' · ',observacion,'Corregida desde Personal') WHERE id=$1::bigint`,[current.rows[0].id]);
+    const f=target.rows[0];
+    const inserted=await client.query<any>(`INSERT INTO cobertura_asignaciones(contrato_id,municipio_id,focalizacion_final_id,vinculacion_id,institucion,sede,consecutivo_sede,modalidad,categoria_cobertura,tipo_asignacion,porcentaje_cobertura,fecha_inicio,fecha_fin,observacion,activo) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,'PRINCIPAL'),COALESCE($11,1),CURRENT_DATE,NULL,'Correccion operativa desde Personal',TRUE) RETURNING *`,[vinculacion.contrato_id,f.municipio_id,focalizacionFinalId,vinculacionId,f.institucion_final,f.sede_final,f.consecutivo_final,f.modalidad_final,f.categoria_cobertura,current.rows[0]?.tipo_asignacion,current.rows[0]?.porcentaje_cobertura]);
+    await registerAuditEntry({client,usuario_id:actorUserId,accion:'PERSONAL_ASIGNACION_OPERATIVA_UPDATE',tabla:'cobertura_asignaciones',registro_id:String(inserted.rows[0].id),descripcion:'Correccion versionada de municipio, institucion y sede desde Personal',before:current.rows[0]??null,after:inserted.rows[0]});
+    await client.query('COMMIT');return inserted.rows[0];
+  }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+};
+
 export const listAsignacionesLaboralesByVinculacion = async (
   vinculacionId: number,
   tenant?: TenantAccessContext

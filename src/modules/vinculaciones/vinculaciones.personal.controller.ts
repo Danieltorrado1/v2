@@ -8,6 +8,7 @@ import {
   createAsignacionLaboralSchema,
   createPresentacionLicitacionSchema,
   updateAsignacionLaboralSchema,
+  updateAsignacionOperativaPersonalSchema,
   updatePresentacionLicitacionSchema,
   vinculacionAsignacionLaboralParamSchema,
   vinculacionPersonalIdParamSchema,
@@ -20,6 +21,8 @@ import {
   getVinculacionPersonalContext,
   listAsignacionesLaboralesByVinculacion,
   listAsignacionesOperativasByVinculacion,
+  listOpcionesAsignacionOperativa,
+  replaceAsignacionOperativaPersonal,
   listPresentacionesLicitacionByVinculacion,
   updateAsignacionLaboral,
   updatePresentacionLicitacion
@@ -60,6 +63,9 @@ export const getAsignacionesOperativasByVinculacionHandler = asyncHandler(async 
     data
   });
 });
+
+export const getOpcionesAsignacionOperativaHandler = asyncHandler(async(req:Request,res:Response)=>{const {id}=vinculacionPersonalIdParamSchema.parse(req.params);return successResponse(res,{data:await listOpcionesAsignacionOperativa(id,req.tenant),message:'Opciones operativas retrieved successfully'});});
+export const replaceAsignacionOperativaPersonalHandler = asyncHandler(async(req:Request,res:Response)=>{const {id}=vinculacionPersonalIdParamSchema.parse(req.params);const input=updateAsignacionOperativaPersonalSchema.parse(req.body);return successResponse(res,{data:await replaceAsignacionOperativaPersonal(id,input.focalizacion_final_id,getActorUserId(req),req.tenant),message:'Informacion operativa actualizada correctamente'});});
 
 export const getAsignacionesLaboralesByVinculacionHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = vinculacionPersonalIdParamSchema.parse(req.params);

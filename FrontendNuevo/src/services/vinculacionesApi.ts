@@ -203,6 +203,10 @@ export async function getVinculacionExpediente(id: number): Promise<VinculacionE
   return res.data;
 }
 
+export type OperativeAssignmentOption={id:string;municipio_id:string;municipio:string;institucion_id:string;institucion:string;sede_id:string;sede:string;modalidad_id:string;modalidad:string};
+export async function getOperativeAssignmentOptions(id:number):Promise<OperativeAssignmentOption[]>{const res=await apiClient.get<ApiResponse<OperativeAssignmentOption[]>>(`/vinculaciones/${id}/asignacion-operativa/opciones`);return res.data;}
+export async function updateOperativeAssignment(id:number,focalizacionFinalId:number):Promise<unknown>{const res=await apiClient.patch<ApiResponse<unknown>>(`/vinculaciones/${id}/asignacion-operativa`,{focalizacion_final_id:focalizacionFinalId});return res.data;}
+
 export async function createVinculacion(payload: CreateVinculacionPayload): Promise<VinculacionApi> {
   const res = await apiClient.post<ApiResponse<VinculacionApi>>('/vinculaciones', payload);
   return res.data;

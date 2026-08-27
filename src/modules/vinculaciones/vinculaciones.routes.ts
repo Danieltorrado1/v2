@@ -32,10 +32,12 @@ import {
   createPresentacionLicitacionHandler,
   getAsignacionesLaboralesByVinculacionHandler,
   getAsignacionesOperativasByVinculacionHandler,
+  getOpcionesAsignacionOperativaHandler,
   getContratoLicitacionResumenHandler,
   getPresentacionesLicitacionByVinculacionHandler,
   getVinculacionPersonalContextHandler,
   updateAsignacionLaboralHandler,
+  replaceAsignacionOperativaPersonalHandler,
   updatePresentacionLicitacionHandler
 } from './vinculaciones.personal.controller';
 
@@ -81,6 +83,8 @@ vinculacionesRoutes.get(
   requirePermissions('vinculaciones.read'),
   getAsignacionesOperativasByVinculacionHandler
 );
+vinculacionesRoutes.get('/:id/asignacion-operativa/opciones', requirePermissions('vinculaciones.read'), getOpcionesAsignacionOperativaHandler);
+vinculacionesRoutes.patch('/:id/asignacion-operativa', requirePermissions('vinculaciones.update'), replaceAsignacionOperativaPersonalHandler);
 vinculacionesRoutes.get(
   '/:id/asignaciones-laborales',
   requirePermissions('vinculaciones.read'),

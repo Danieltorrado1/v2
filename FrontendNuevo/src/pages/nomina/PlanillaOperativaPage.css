@@ -245,8 +245,17 @@
 
 .op-head > div,
 .op-row > * {
-  border-right: 1px solid var(--border-subtle, #e8ebf0);
   box-sizing: border-box;
+}
+
+.op-head > div:not(:last-child),
+.op-row > *:not(:last-child) {
+  border-right: 1px solid color-mix(in srgb, var(--border-color, #d0d7e2) 72%, transparent);
+}
+
+.op-head > :nth-child(3),
+.op-row > :nth-child(3) {
+  border-right-color: color-mix(in srgb, var(--text-muted, #667085) 48%, var(--border-color, #d0d7e2));
 }
 
 .op-head > div {
@@ -300,7 +309,7 @@
 
 .op-row {
   background: var(--surface, #fff);
-  border-bottom: 1px solid var(--border-subtle, #e8ebf0);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-color, #d0d7e2) 72%, transparent);
   left: 0;
   position: absolute;
   top: 0;
@@ -385,7 +394,9 @@
 .op-cell {
   align-items: center;
   background: transparent;
-  border: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-top: 0;
   color: inherit;
   cursor: pointer;
   display: flex;

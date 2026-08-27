@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import "./PersonalPage.css";
 import ExpedienteDocumentosPanel from "./ExpedienteDocumentosPanel";
 import IdentificationHistoryCard from "./IdentificationHistoryCard";
@@ -45,7 +46,10 @@ import {
   retirarVinculacion,
   suspenderVinculacion,
   reactivarVinculacion,
+  getOperativeAssignmentOptions,
+  updateOperativeAssignment,
 } from "../../services/vinculacionesApi";
+import type { OperativeAssignmentOption } from "../../services/vinculacionesApi";
 import { getExpedienteConsolidado } from "../../services/expedienteApi";
 import type {
   PersonaApi,
@@ -793,6 +797,8 @@ function QuickEmployeeView({
   onVinculacionChanged: () => void;
 }) {
   const navigate = useNavigate();
+  const {user}=useAuth();
+  const canEditPersonal=user?.permissions.some(permission=>['personas.update','vinculaciones.update','vinculacion.editar'].includes(permission))===true;
   const [showMasAcciones, setShowMasAcciones] = useState(false);
   const [showEditarModal, setShowEditarModal] = useState(false);
   const [showCambiarIdentificacionModal, setShowCambiarIdentificacionModal] = useState(false);
@@ -830,14 +836,14 @@ function QuickEmployeeView({
         <span className="profile-view-label">Vista rápida del colaborador</span>
 
         <div className="profile-actions-buttons">
-          <button
+          {canEditPersonal ? <button
             type="button"
             onClick={() => setShowEditarModal(true)}
             disabled={!personaActual}
           >
             <Edit3 size={17} />
-            Editar
-          </button>
+            Editar información
+          </button> : null}
 
           <button
             type="button"
@@ -1409,6 +1415,8 @@ function QuickEmployeeView({
       {showEditarModal && personaActual && (
         <EditarEmpleadoModal
           persona={personaActual}
+          vinculacion={vinculacionPrincipal}
+          expediente={expediente ? { ...expediente, asignacion_actual: { municipio: null, institucion: expediente.personal_contexto.asignacion_operativa_actual?.institucion ?? null, sede: expediente.personal_contexto.asignacion_operativa_actual?.sede ?? null, modalidad: expediente.personal_contexto.asignacion_operativa_actual?.modalidad ?? null } } : null}
           onClose={() => setShowEditarModal(false)}
           onSuccess={() => {
             setShowEditarModal(false);
@@ -1798,10 +1806,14 @@ function NuevoEmpleadoModal({
 
 function EditarEmpleadoModal({
   persona,
+  vinculacion,
+  expediente,
   onClose,
   onSuccess,
 }: {
   persona: PersonaApi | VinculacionExpedientePersona;
+  vinculacion: VinculacionApi | null;
+  expediente: (VinculacionExpedienteApi & { asignacion_actual: { municipio: string | null; institucion: string | null; sede: string | null; modalidad: string | null } }) | null;
   onClose: () => void;
   onSuccess: () => void;
 }) {
@@ -1817,6 +1829,14 @@ function EditarEmpleadoModal({
   });
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [options,setOptions]=useState<OperativeAssignmentOption[]>([]);
+  const [municipio,setMunicipio]=useState(''),[institucion,setInstitucion]=useState(''),[sede,setSede]=useState('');
+  const [institutionSearch,setInstitutionSearch]=useState(''),[siteSearch,setSiteSearch]=useState('');
+  useEffect(()=>{if(!vinculacion)return;void getOperativeAssignmentOptions(vinculacion.id).then(rows=>{setOptions(rows);const current=rows.find(x=>x.municipio===expediente?.asignacion_actual.municipio&&x.institucion===expediente?.asignacion_actual.institucion&&x.sede===expediente?.asignacion_actual.sede);if(current){setMunicipio(current.municipio_id);setInstitucion(current.institucion_id);setSede(current.sede_id)}}).catch(err=>setApiError(err instanceof Error?err.message:'No fue posible cargar la asignación operativa'))},[vinculacion,expediente]);
+  useEffect(()=>{const current=expediente?.personal_contexto.asignacion_operativa_actual;if(!current||options.length===0)return;const option=options.find(item=>Number(item.id)===current.focalizacion_final_id);if(option){setMunicipio(option.municipio_id);setInstitucion(option.institucion_id);setSede(option.sede_id)}},[expediente,options]);
+  const municipalities=Array.from(new Map(options.map(x=>[x.municipio_id,x.municipio])).entries());
+  const institutions=Array.from(new Map(options.filter(x=>x.municipio_id===municipio&&x.institucion.toLowerCase().includes(institutionSearch.toLowerCase())).map(x=>[x.institucion_id,x.institucion])).entries());
+  const sites=Array.from(new Map(options.filter(x=>x.institucion_id===institucion&&x.sede.toLowerCase().includes(siteSearch.toLowerCase())).map(x=>[x.sede_id,x.sede])).entries());
 
   function set(field: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -1841,6 +1861,7 @@ function EditarEmpleadoModal({
         direccion: form.direccion.trim() || null,
         barrio: form.barrio.trim() || null,
       });
+      if(vinculacion&&sede){const target=options.find(x=>x.municipio_id===municipio&&x.institucion_id===institucion&&x.sede_id===sede);if(!target)throw new Error('La institución o sede no corresponde al municipio seleccionado.');const changed=target.municipio!==expediente?.asignacion_actual.municipio||target.institucion!==expediente?.asignacion_actual.institucion||target.sede!==expediente?.asignacion_actual.sede;if(changed)await updateOperativeAssignment(vinculacion.id,Number(target.id));}
       onSuccess();
     } catch (err) {
       setApiError(err instanceof Error ? err.message : "Error al actualizar el colaborador.");
@@ -1856,6 +1877,7 @@ function EditarEmpleadoModal({
 
         <form onSubmit={(e) => { void handleSubmit(e); }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <strong>INFORMACIÓN PERSONAL</strong>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <label style={FIELD_LABEL}>
                 Primer nombre *
@@ -1905,6 +1927,7 @@ function EditarEmpleadoModal({
               <input type="text" style={FIELD_INPUT} value={form.barrio}
                 onChange={(e) => set("barrio", e.target.value)} />
             </label>
+            {vinculacion?<><strong>ASIGNACIÓN OPERATIVA</strong><label style={FIELD_LABEL}>Municipio<select style={FIELD_INPUT} value={municipio} onChange={e=>{setMunicipio(e.target.value);setInstitucion('');setSede('')}}><option value="">Seleccionar</option>{municipalities.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><label style={FIELD_LABEL}>Buscar institución<input style={FIELD_INPUT} placeholder="Buscar institución..." value={institutionSearch} onChange={e=>setInstitutionSearch(e.target.value)}/></label><label style={FIELD_LABEL}>Institución<select style={FIELD_INPUT} value={institucion} disabled={!municipio} onChange={e=>{setInstitucion(e.target.value);setSede('')}}><option value="">Seleccionar</option>{institutions.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><label style={FIELD_LABEL}>Buscar sede<input style={FIELD_INPUT} placeholder="Buscar sede..." value={siteSearch} onChange={e=>setSiteSearch(e.target.value)}/></label><label style={FIELD_LABEL}>Sede<select style={FIELD_INPUT} value={sede} disabled={!institucion} onChange={e=>setSede(e.target.value)}><option value="">Seleccionar</option>{sites.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><p style={{fontSize:12,color:'var(--text-secondary)'}}>Modalidad: {expediente?.asignacion_actual.modalidad??'Sin modalidad'}. Para cambios efectivos por fecha usa Cambio Operativo en Nómina.</p></>:null}
           </div>
 
           {apiError && <FormError msg={apiError} />}

@@ -55,6 +55,10 @@ export const vinculacionPresentacionLicitacionParamSchema = z.object({
   presentacionId: z.coerce.number().int().positive()
 });
 
+export const updateAsignacionOperativaPersonalSchema = z.object({
+  focalizacion_final_id: z.coerce.number().int().positive()
+}).strict();
+
 export const contratoPersonalIdQuerySchema = z.object({
   contrato_id: z.coerce.number().int().positive()
 });
@@ -102,3 +106,4 @@ export type CreateAsignacionLaboralInput = z.infer<typeof createAsignacionLabora
 export type UpdateAsignacionLaboralInput = z.infer<typeof updateAsignacionLaboralSchema>;
 export type CreatePresentacionLicitacionInput = z.infer<typeof createPresentacionLicitacionSchema>;
 export type UpdatePresentacionLicitacionInput = z.infer<typeof updatePresentacionLicitacionSchema>;
+export type UpdateAsignacionOperativaPersonalInput = z.infer<typeof updateAsignacionOperativaPersonalSchema>;
