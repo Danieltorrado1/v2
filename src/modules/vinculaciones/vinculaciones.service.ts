@@ -828,13 +828,37 @@ const getGestorPersonalAssignments = async (
 
 const ensureGestorAssignmentUserExists = async (
   client: PoolClient,
-  usuarioId: number
+  usuarioId: number,
+  contratoId: number
 ): Promise<GestorAssignmentUser> => {
   const users = await listGestorAssignableUsers(client);
   const user = users.find((item) => item.id === usuarioId);
 
   if (!user) {
     throw new AppError('Gestor user not found', 404, 'GESTOR_USER_NOT_FOUND');
+  }
+
+  const access = await client.query<ExistsRow>(
+    `
+      SELECT EXISTS(
+        SELECT 1
+        FROM usuario_contratos uc
+        INNER JOIN contratos c ON c.id = uc.contrato_id
+        WHERE uc.usuario_id = $1::bigint
+          AND uc.contrato_id = $2::bigint
+          AND COALESCE(uc.activo, TRUE) = TRUE
+          AND COALESCE(c.activo, TRUE) = TRUE
+      ) AS exists
+    `,
+    [usuarioId, contratoId]
+  );
+
+  if (!access.rows[0]?.exists) {
+    throw new AppError(
+      'Gestor user does not have access to the contract',
+      403,
+      'GESTOR_CONTRATO_ACCESS_REQUIRED'
+    );
   }
 
   return user;
@@ -1969,7 +1993,7 @@ export const createGestorMunicipioAssignment = async (
   try {
     await client.query('BEGIN');
     await ensureContractTenantAccess(client, tenant, input.contrato_id);
-    await ensureGestorAssignmentUserExists(client, input.gestor_usuario_id);
+    await ensureGestorAssignmentUserExists(client, input.gestor_usuario_id, input.contrato_id);
     await ensureMunicipioExists(client, input.municipio_id);
 
     const vigenciaDesde = toIsoDate(input.vigencia_desde);
@@ -2142,7 +2166,7 @@ export const saveGestorAssignments = async (
   try {
     await client.query('BEGIN');
     await ensureContractTenantAccess(client, tenant, input.contrato_id);
-    await ensureGestorAssignmentUserExists(client, input.gestor_usuario_id);
+    await ensureGestorAssignmentUserExists(client, input.gestor_usuario_id, input.contrato_id);
     await ensureMunicipioExists(client, input.municipio_id);
 
     const fechaEfectiva = toIsoDate(input.fecha);

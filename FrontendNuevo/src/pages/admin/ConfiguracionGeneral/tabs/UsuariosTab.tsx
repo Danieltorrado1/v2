@@ -5,18 +5,26 @@ import {
   Edit2,
   FileText,
   KeyRound,
+  MapPin,
   Plus,
   Power,
+  Search,
   ShieldCheck,
   Users
 } from 'lucide-react';
 
 import { useAuth } from '../../../../context/AuthContext';
 import { configuracionApi } from '../../../../services/configuracionApi';
+import {
+  closeGestorMunicipioAssignment,
+  createGestorMunicipioAssignment,
+  getGestorMunicipios
+} from '../../../../services/vinculacionesApi';
 import type {
   Contrato,
   CreateUsuarioAdminPayload,
   Empresa,
+  Municipio,
   Rol,
   UpdateUsuarioAdminPayload,
   UsuarioAdminRecord
@@ -58,6 +66,20 @@ const EMPTY_FORM: UserForm = {
 };
 
 const ADMIN_ROLE_NAME = 'ADMINISTRADOR';
+
+function humanizeRole(role: string): string {
+  return role
+    .toLowerCase()
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function isGestorRoleSelected(roleIds: string[], rolesCatalog: Rol[]): boolean {
+  const selected = new Set(roleIds);
+  return rolesCatalog.some((role) => selected.has(String(role.id)) && role.nombre_rol.toUpperCase().includes('GESTOR'));
+}
 
 function isAdminRoleSelected(roleIds: string[], rolesCatalog: Rol[]): boolean {
   const selected = new Set(roleIds);
@@ -106,6 +128,10 @@ export function UsuariosTab() {
   const [roles, setRoles] = useState<Rol[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [municipioSearch, setMunicipioSearch] = useState('');
+  const [gestorMunicipios, setGestorMunicipios] = useState<Record<number, number[]>>({});
+  const [loadingGestorScope, setLoadingGestorScope] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
@@ -147,11 +173,12 @@ export function UsuariosTab() {
       setError('');
 
       try {
-        const [usersResponse, rolesResponse, empresasResponse, contratosResponse] = await Promise.all([
+        const [usersResponse, rolesResponse, empresasResponse, contratosResponse, municipiosResponse] = await Promise.all([
           configuracionApi.listarUsuariosAdmin(),
           configuracionApi.listarRoles(),
           configuracionApi.listarEmpresas({ page: 1, limit: 500 }),
-          configuracionApi.listarContratos({ page: 1, limit: 500 })
+          configuracionApi.listarContratos({ page: 1, limit: 500 }),
+          configuracionApi.listarMunicipios({ page: 1, limit: 500 })
         ]);
 
         if (cancelled) {
@@ -162,6 +189,7 @@ export function UsuariosTab() {
         setRoles(rolesResponse);
         setEmpresas(empresasResponse.items);
         setContratos(contratosResponse.items);
+        setMunicipios(municipiosResponse.items);
       } catch (loadError) {
         if (!cancelled) {
           setError(getErrorMessage(loadError, 'No fue posible cargar usuarios, roles y accesos.'));
@@ -182,6 +210,7 @@ export function UsuariosTab() {
 
   const contratosById = useMemo(() => buildContratoLookup(contratos), [contratos]);
   const isGlobalAdminTarget = useMemo(() => isAdminRoleSelected(form.roleIds, roles), [form.roleIds, roles]);
+  const isGestorTarget = useMemo(() => isGestorRoleSelected(form.roleIds, roles), [form.roleIds, roles]);
   const selectedEmpresaSet = useMemo(() => new Set(form.empresaIds), [form.empresaIds]);
 
   const availableContracts = useMemo(() => {
@@ -191,6 +220,11 @@ export function UsuariosTab() {
 
     return contratos.filter((contrato) => selectedEmpresaSet.has(contrato.empresa.id));
   }, [contratos, selectedEmpresaSet]);
+
+  const filteredMunicipios = useMemo(() => {
+    const normalized = municipioSearch.trim().toLowerCase();
+    return municipios.filter((item) => !normalized || item.label.toLowerCase().includes(normalized));
+  }, [municipioSearch, municipios]);
 
   const filteredUsers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -216,6 +250,8 @@ export function UsuariosTab() {
   function resetForm() {
     setForm(EMPTY_FORM);
     setFormError('');
+    setMunicipioSearch('');
+    setGestorMunicipios({});
   }
 
   function openCreate() {
@@ -228,6 +264,68 @@ export function UsuariosTab() {
     setForm(mapUserToForm(targetUser));
     setFormError('');
     setUserModal({ mode: 'edit', user: targetUser });
+    void loadGestorScopes(targetUser.id, targetUser.contratoIds);
+  }
+
+  async function loadGestorScopes(userId: string, contratoIds: number[]) {
+    setLoadingGestorScope(true);
+    try {
+      const entries = await Promise.all(contratoIds.map(async (contratoId) => {
+        const response = await getGestorMunicipios({ contrato_id: contratoId, gestor_usuario_id: Number(userId) });
+        return [contratoId, response.items] as const;
+      }));
+      setGestorMunicipios(Object.fromEntries(entries.map(([contratoId, items]) => [
+        contratoId,
+        items.filter((item) => item.activo).map((item) => item.municipio.id)
+      ])));
+    } catch (scopeError) {
+      setFormError(getErrorMessage(scopeError, 'No fue posible cargar los municipios asignados al gestor.'));
+    } finally {
+      setLoadingGestorScope(false);
+    }
+  }
+
+  function toggleGestorMunicipio(contratoId: number, municipioId: number, checked: boolean) {
+    setGestorMunicipios((current) => {
+      const selected = current[contratoId] ?? [];
+      return {
+        ...current,
+        [contratoId]: checked
+          ? Array.from(new Set([...selected, municipioId]))
+          : selected.filter((id) => id !== municipioId)
+      };
+    });
+  }
+
+  async function syncGestorScopes(userId: string, originalContratoIds: number[]) {
+    const contractsToSync = Array.from(new Set([...originalContratoIds, ...form.contratoIds]));
+    const today = new Date().toISOString().slice(0, 10);
+
+    for (const contratoId of contractsToSync) {
+      const response = await getGestorMunicipios({ contrato_id: contratoId, gestor_usuario_id: Number(userId) });
+      const current = response.items.filter((item) => item.activo);
+      const desired = new Set(isGestorTarget && form.active && form.contratoIds.includes(contratoId)
+        ? (gestorMunicipios[contratoId] ?? [])
+        : []);
+
+      await Promise.all(current
+        .filter((item) => !desired.has(item.municipio.id))
+        .map((item) => closeGestorMunicipioAssignment(item.id, {
+          vigencia_hasta: today,
+          observacion: 'Actualizacion desde Administracion de usuarios'
+        })));
+
+      const currentIds = new Set(current.map((item) => item.municipio.id));
+      await Promise.all(Array.from(desired)
+        .filter((municipioId) => !currentIds.has(municipioId))
+        .map((municipioId) => createGestorMunicipioAssignment({
+          contrato_id: contratoId,
+          gestor_usuario_id: Number(userId),
+          municipio_id: municipioId,
+          vigencia_desde: today,
+          observacion: 'Asignacion desde Administracion de usuarios'
+        })));
+    }
   }
 
   function openPasswordModal(targetUser: UsuarioAdminRecord) {
@@ -356,6 +454,7 @@ export function UsuariosTab() {
         };
 
         const created = await configuracionApi.crearUsuarioAdmin(payload);
+        await syncGestorScopes(created.id, []);
         setFeedback({ tone: 'success', text: 'Usuario creado correctamente.' });
         setUserModal(null);
         resetForm();
@@ -370,7 +469,9 @@ export function UsuariosTab() {
           contratoIds: form.contratoIds
         };
 
+        const originalContratoIds = userModal.user.contratoIds;
         const updated = await configuracionApi.actualizarUsuarioAdmin(userModal.user.id, payload);
+        await syncGestorScopes(updated.id, originalContratoIds);
         setFeedback({ tone: 'success', text: 'Usuario actualizado correctamente.' });
         setUserModal(null);
         resetForm();
@@ -557,7 +658,7 @@ export function UsuariosTab() {
                     <div className="cg-secondary-cell" title={item.email}>{item.email}</div>
                   </td>
                   <td>
-                    <div className="cg-primary-cell">{item.primaryRole ?? 'Sin rol'}</div>
+                    <div className="cg-primary-cell">{item.primaryRole ? humanizeRole(item.primaryRole) : 'Sin rol'}</div>
                     {item.roles.length > 1 && <div className="cg-secondary-cell">+{item.roles.length - 1} rol(es)</div>}
                   </td>
                   <td>
@@ -676,12 +777,62 @@ export function UsuariosTab() {
                       checked={checked}
                       onChange={(event) => toggleRole(String(role.id), event.target.checked)}
                     />
-                    <span>{role.nombre_rol}</span>
+                    <span>{humanizeRole(role.nombre_rol)}</span>
                   </label>
                 );
               })}
             </div>
           </div>
+
+          {isGestorTarget && (
+            <div className="cg-user-form-block">
+              <div className="cg-role-selector-header">
+                <span><MapPin size={14} /> Municipios asignados</span>
+                <span className="cg-secondary-cell">Alcance general del gestor por contrato</span>
+              </div>
+              <p className="cg-secondary-cell cg-user-scope-help">
+                Selecciona los municipios sobre los que este gestor puede operar. El alcance de Nómina se configura aparte.
+              </p>
+              <label className="cg-search-field">
+                <Search size={14} />
+                <input
+                  value={municipioSearch}
+                  onChange={(event) => setMunicipioSearch(event.target.value)}
+                  placeholder="Buscar municipio..."
+                />
+              </label>
+              {loadingGestorScope ? (
+                <div className="cg-selector-empty">Cargando municipios asignados...</div>
+              ) : availableContracts.length === 0 ? (
+                <div className="cg-selector-empty">Selecciona al menos un contrato para asignar municipios.</div>
+              ) : availableContracts.map((contrato) => {
+                const selected = gestorMunicipios[contrato.id] ?? [];
+                return (
+                  <div key={contrato.id} className="cg-manager-contract-scope">
+                    <div className="cg-manager-contract-header">
+                      <strong>{contrato.numero_contrato ?? `Contrato ${contrato.id}`}</strong>
+                      <span>
+                        <button type="button" onClick={() => setGestorMunicipios((current) => ({ ...current, [contrato.id]: filteredMunicipios.map((item) => item.id) }))}>Seleccionar todos</button>
+                        <button type="button" onClick={() => setGestorMunicipios((current) => ({ ...current, [contrato.id]: [] }))}>Limpiar selección</button>
+                      </span>
+                    </div>
+                    <div className="cg-access-selector-grid cg-manager-municipality-list">
+                      {filteredMunicipios.map((municipio) => (
+                        <label key={municipio.id} className="cg-role-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(municipio.id)}
+                            onChange={(event) => toggleGestorMunicipio(contrato.id, municipio.id, event.target.checked)}
+                          />
+                          <span>{municipio.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="cg-user-form-block">
             <div className="cg-role-selector-header">

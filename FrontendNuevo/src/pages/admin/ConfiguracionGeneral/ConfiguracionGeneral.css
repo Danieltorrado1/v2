@@ -630,6 +630,67 @@
   background: var(--bg-secondary);
 }
 
+.cg-user-scope-help {
+  margin: -4px 0 12px;
+}
+
+.cg-search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.cg-search-field input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.cg-manager-contract-scope + .cg-manager-contract-scope {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.cg-manager-contract-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.cg-manager-contract-header span {
+  display: flex;
+  gap: 10px;
+}
+
+.cg-manager-contract-header button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.cg-manager-municipality-list {
+  max-height: 190px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
 @media (max-width: 900px) {
   .cg-detail-grid,
   .cg-user-detail-layout,
