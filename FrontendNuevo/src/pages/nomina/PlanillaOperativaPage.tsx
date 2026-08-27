@@ -13,6 +13,8 @@ import { apiClient } from "../../services/apiClient";
 import {
   createNominaNovedad,
   createNominaNovedadConTurno,
+  closeNominaEmpleadoOperativo,
+  deactivateNominaNovedad,
   getAllNominaMovimientos,
   getAllNominaNovedades,
   getAllNominaPeriodoEmpleados,
@@ -21,6 +23,8 @@ import {
   listarTiposNovedad,
   markNominaAsistencia,
   markNominaAsistenciaRango,
+  reopenNominaEmpleadoOperativo,
+  updateNominaNovedad,
   updateRevisionOperativa,
 } from "../../services/nominaApi";
 import type { ApiResponse } from "../../types/api.types";
@@ -421,6 +425,9 @@ export default function PlanillaOperativaPage() {
 
   const viewport = useRef<HTMLDivElement>(null);
   const canCreate = user?.permissions.includes("nomina.novedades.create") === true;
+  const canUpdate = user?.permissions.includes("nomina.novedades.update") === true;
+  const canClose = user?.permissions.includes("nomina.periodos.close") === true;
+  const canReopen = user?.permissions.includes("nomina.periodos.reopen") === true;
   const actorUserId = user?.id ? String(user.id) : null;
 
   useEffect(() => {
@@ -668,7 +675,6 @@ export default function PlanillaOperativaPage() {
     () =>
       employees.filter((employee) => {
         const employeeNovelties = noveltyByEmployee.get(employee.id) ?? [];
-        const reviewState = reviewByEmployee.get(employee.id)?.estado_revision ?? "PENDIENTE";
         const baseContext = employeeBaseContext(employee);
         const visible = buildVisibleContext(employee, baseContext);
         const searchValue = normalizeSearchValue(
@@ -879,6 +885,11 @@ export default function PlanillaOperativaPage() {
     }
 
     const key = `${employee.vinculacion_id}|${date}`;
+    const activeNovelty = novedadesOnDate(noveltyByEmployee.get(employee.id) ?? [], date)[0];
+    if (!remove && activeNovelty) {
+      setError(`Este dia tiene una novedad activa: ${novedadCode(activeNovelty)}. Para marcar asistencia primero debes editar o anular la novedad.`);
+      return;
+    }
     const shouldPresent = !remove && !present.has(key);
     const nextItem: Attendance = {
       activo: true,
@@ -930,6 +941,22 @@ export default function PlanillaOperativaPage() {
     }
   };
 
+  const changeOperativeState = async (employee: NominaEmpleadoApi, action: "UNDO" | "CLOSE" | "REOPEN") => {
+    setError("");
+    try {
+      if (action === "UNDO") await updateRevisionOperativa(periodId, employee.id, "PENDIENTE");
+      if (action === "CLOSE") await closeNominaEmpleadoOperativo(periodId, employee.id);
+      if (action === "REOPEN") {
+        const motivo = window.prompt("Motivo obligatorio de reapertura:")?.trim();
+        if (!motivo) return;
+        await reopenNominaEmpleadoOperativo(periodId, employee.id, motivo);
+      }
+      setReviews(await getRevisionOperativa(periodId));
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "No fue posible cambiar el estado operativo");
+    }
+  };
+
   const openCell = (employee: NominaEmpleadoApi, date: string) => {
     const context =
       buildTramos(employee, start, end, changesByLink.get(employee.vinculacion_id) ?? []).find(
@@ -943,7 +970,7 @@ export default function PlanillaOperativaPage() {
       return;
     }
 
-    if (present.has(`${employee.vinculacion_id}|${date}`)) {
+    if (present.has(`${employee.vinculacion_id}|${date}`) || novedadesOnDate(noveltyByEmployee.get(employee.id) ?? [], date).length > 0) {
       return;
     }
 
@@ -1018,6 +1045,9 @@ export default function PlanillaOperativaPage() {
         horas: selectedType.requiere_horas ? Number(hours || 0) : null,
         valor_manual: selectedType.requiere_valor ? Number(manualValue || 0) : null,
         observacion: normalizeLabel(observacion) ?? "Captura desde planilla",
+        reemplazar_asistencia_confirmado: present.has(`${noveltyCell.employee.vinculacion_id}|${noveltyCell.date}`)
+          ? window.confirm(`Este dia esta marcado como asistencia.\n\nRegistrar ${selectedType.codigo_operativo ?? "la novedad"} reemplazara la asistencia del dia ${dateLabel(noveltyCell.date)}.`)
+          : false,
         documento_persona_id: normalizeLabel(documentoPersonaId),
         revisado: false,
         requiere_cobertura: selectedType.afecta_cobertura !== false,
@@ -1045,6 +1075,8 @@ export default function PlanillaOperativaPage() {
                     observacion_interna: normalizeLabel(coverageObservation),
                   },
       };
+
+      if (present.has(`${noveltyCell.employee.vinculacion_id}|${noveltyCell.date}`) && !basePayload.reemplazar_asistencia_confirmado) return;
 
       const response =
         coverageType === "SIN_REEMPLAZO" || selectedType.afecta_cobertura === false
@@ -1162,6 +1194,7 @@ export default function PlanillaOperativaPage() {
           : reviewFilter === "CERRADOS"
             ? "CERRADO"
             : "PENDIENTE";
+    const eligible = ordered
       .map((employee, index) => ({ employee, index }))
       .filter(({ employee }) => {
         const state = resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null);
@@ -1355,7 +1388,8 @@ export default function PlanillaOperativaPage() {
           <div className="op-virtual-space" style={{ height: ordered.length * ROW_HEIGHT, minWidth: gridMinWidth }}>
             {visibleEmployees.map((employee, offset) => {
               const index = startIndex + offset;
-              const state = reviewByEmployee.get(employee.id)?.estado_revision ?? "PENDIENTE";
+              const review = reviewByEmployee.get(employee.id) ?? null;
+              const state = resolveOperativeState(employee, review);
               const baseContext = employeeBaseContext(employee);
               const visible = buildVisibleContext(employee, baseContext);
               const tramos = buildTramos(employee, start, end, changesByLink.get(employee.vinculacion_id) ?? []);
@@ -1375,12 +1409,12 @@ export default function PlanillaOperativaPage() {
                 >
                   <button
                     type="button"
-                    className={`op-review ${state === "REVISADO" ? "done" : state === "REQUIERE_REVISION" ? "warning" : ""}`}
-                    disabled={!editable || reviewSaving.has(employee.id) || state === "REVISADO"}
+                    className={`op-review ${state === "REVISADO" || state === "CERRADO" ? "done" : ""}`}
+                    disabled={!editable || reviewSaving.has(employee.id) || state !== "PENDIENTE"}
                     title={state}
                     onClick={() => void saveReview(employee)}
                   >
-                    {state === "REVISADO" ? <Check size={16} /> : state === "REQUIERE_REVISION" ? <AlertTriangle size={16} /> : "REV"}
+                    {state === "CERRADO" ? "CER" : state === "REVISADO" ? <Check size={16} /> : "REV"}
                   </button>
 
                   <div className="op-doc">{text(employee.persona.numero_documento)}</div>
@@ -1420,7 +1454,7 @@ export default function PlanillaOperativaPage() {
                         type="button"
                         key={day}
                         className={`op-cell ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""}`}
-                        title={`${dateLabel(day)} · ${buildContextTitle(employee, dayContext)}`}
+                        title={noveltiesOnThisDay.length ? `${novedadCode(noveltiesOnThisDay[0])} · ${noveltiesOnThisDay[0]?.tipo_novedad?.nombre ?? "Novedad"} · ${dateLabel(day)} · ${noveltiesOnThisDay[0]?.fecha_inicio ?? day} a ${noveltiesOnThisDay[0]?.fecha_fin ?? day} · ${noveltiesOnThisDay[0]?.observacion ?? "Sin observacion"}` : `${dateLabel(day)} · ${buildContextTitle(employee, dayContext)}`}
                         onContextMenu={(event) => {
                           event.preventDefault();
                           setSelected({ employee, date: day, context: dayContext });
@@ -1474,8 +1508,13 @@ export default function PlanillaOperativaPage() {
             <span>Sede: {text(buildVisibleContext(selected.employee, selected.context).sede)}</span>
             <span>Modalidad: {text(buildVisibleContext(selected.employee, selected.context).modalidad)}</span>
             <span>Gestor: {text(getEmployeeGestorLabel(selected.employee))}</span>
-            <span>Revision: {reviewByEmployee.get(selected.employee.id)?.estado_revision ?? "PENDIENTE"}</span>
+            <span>Estado: {resolveOperativeState(selected.employee, reviewByEmployee.get(selected.employee.id) ?? null)}</span>
           </div>
+
+          {novedadesOnDate(noveltyByEmployee.get(selected.employee.id) ?? [], selected.date)[0] ? (() => {
+            const novelty = novedadesOnDate(noveltyByEmployee.get(selected.employee.id) ?? [], selected.date)[0]!;
+            return <div className="op-context-detail"><strong>Novedad</strong><span>Codigo: {novedadCode(novelty)}</span><span>Nombre: {novelty.tipo_novedad?.nombre ?? "Novedad"}</span><span>Inicio: {novelty.fecha_inicio ?? selected.date}</span><span>Fin: {novelty.fecha_fin ?? selected.date}</span><span>Observacion: {novelty.observacion ?? "Sin observacion"}</span><span>Soporte: {novelty.documento_persona_id ?? "Sin soporte"}</span><span>Estado: {novelty.activo ? "ACTIVA" : "ANULADA"}</span>{canUpdate ? <><button type="button" onClick={() => { const observacion = window.prompt("Observacion de la novedad:", novelty.observacion ?? "")?.trim(); if (observacion === undefined) return; void updateNominaNovedad(novelty.id, { observacion: observacion || null }).then(updated => { setNovelties(items => items.map(item => item.id === updated.id ? updated : item)); invalidateReviewLocally(selected.employee, "NOVEDAD_EDITADA"); }).catch(value => setError(value instanceof Error ? value.message : "No fue posible editar la novedad")); }}>Editar novedad</button><button type="button" onClick={() => { if (window.confirm(`Anular ${novedadCode(novelty)}?`)) void deactivateNominaNovedad(novelty.id).then(() => { setNovelties(items => items.filter(item => item.id !== novelty.id)); invalidateReviewLocally(selected.employee, "NOVEDAD_ANULADA"); }).catch(value => setError(value instanceof Error ? value.message : "No fue posible anular la novedad")); }}>Anular novedad</button></> : null}</div>;
+          })() : null}
 
           <div className="op-actions">
             <button type="button" disabled={!editable} onClick={() => openNovelty(selected)}>
@@ -1503,6 +1542,8 @@ export default function PlanillaOperativaPage() {
             >
               Preparar rango
             </button>
+            {resolveOperativeState(selected.employee, reviewByEmployee.get(selected.employee.id) ?? null) === "REVISADO" ? <><button type="button" disabled={!editable} onClick={() => void changeOperativeState(selected.employee, "UNDO")}>Deshacer revision</button><button type="button" disabled={!canClose} onClick={() => void changeOperativeState(selected.employee, "CLOSE")}>Cerrar nomina</button></> : null}
+            {resolveOperativeState(selected.employee, reviewByEmployee.get(selected.employee.id) ?? null) === "CERRADO" ? <button type="button" disabled={!canReopen} onClick={() => void changeOperativeState(selected.employee, "REOPEN")}>Reabrir nomina</button> : null}
           </div>
         </aside>
       ) : null}

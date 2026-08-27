@@ -1,5 +1,6 @@
 import { dbPool } from '../../config/db';
 import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
+import { assertTenantAccessForVinculacionId } from '../../middlewares/tenantMiddleware';
 import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditoria.helper';
 import { AppError } from '../../utils/AppError';
 import {
@@ -61,7 +62,7 @@ const mapOperativeState = (
   motivo_invalidacion: input.motivo_invalidacion ?? null
 });
 
-export async function listRevisionOperativa(periodoId: string, _tenant?: TenantAccessContext) {
+export async function listRevisionOperativa(periodoId: string, tenant?: TenantAccessContext) {
   const result = await dbPool.query(`
     SELECT ne.id::text AS nomina_empleado_id, ne.periodo_id::text, v.persona_id::text,
       v.id::text AS vinculacion_id, COALESCE(ro.estado_revision,'PENDIENTE') AS estado_revision,
@@ -70,14 +71,16 @@ export async function listRevisionOperativa(periodoId: string, _tenant?: TenantA
     FROM nomina_empleados ne JOIN vinculaciones v ON v.id=ne.vinculacion_id
     LEFT JOIN nomina_revision_operativa ro ON ro.periodo_id=ne.periodo_id AND ro.nomina_empleado_id=ne.id
     WHERE ne.periodo_id=$1::bigint ORDER BY ne.id`, [periodoId]);
+  for (const row of result.rows) await assertTenantAccessForVinculacionId(tenant, row.vinculacion_id);
   return result.rows;
 }
 
-export async function updateRevisionOperativa(periodoId: string, nominaEmpleadoId: string, estado: RevisionOperativaEstado, actorUserId: string, _tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta) {
+export async function updateRevisionOperativa(periodoId: string, nominaEmpleadoId: string, estado: RevisionOperativaEstado, actorUserId: string, tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta) {
   const client = await dbPool.connect();
   try {
     await client.query('BEGIN');
     const employee = await loadNominaEmpleadoOperativoContextByIdOrThrow(client, nominaEmpleadoId);
+    await assertTenantAccessForVinculacionId(tenant, employee.vinculacion_id);
     if (employee.periodo_id !== periodoId) throw new AppError('Trabajador no pertenece al periodo',404,'NOMINA_EMPLEADO_NOT_FOUND');
     if (!['ABIERTO','EN_PROCESO'].includes(employee.periodo_estado)) throw new AppError('El periodo no permite revision operativa',409,'NOMINA_PERIODO_CERRADO');
     assertNominaEmpleadoEditable(employee, 'modificar la revision operativa');
@@ -98,11 +101,12 @@ export async function updateRevisionOperativa(periodoId: string, nominaEmpleadoI
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 }
 
-export async function closeNominaEmpleadoOperativo(periodoId: string, nominaEmpleadoId: string, actorUserId: string, _tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta): Promise<NominaEmpleadoOperativoState> {
+export async function closeNominaEmpleadoOperativo(periodoId: string, nominaEmpleadoId: string, actorUserId: string, tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta): Promise<NominaEmpleadoOperativoState> {
   const client = await dbPool.connect();
   try {
     await client.query('BEGIN');
     const employee = await loadNominaEmpleadoOperativoContextByIdOrThrow(client, nominaEmpleadoId);
+    await assertTenantAccessForVinculacionId(tenant, employee.vinculacion_id);
     if (employee.periodo_id !== periodoId) throw new AppError('Trabajador no pertenece al periodo',404,'NOMINA_EMPLEADO_NOT_FOUND');
     if (!['ABIERTO','EN_PROCESO'].includes(employee.periodo_estado)) throw new AppError('El periodo no permite cierre individual',409,'NOMINA_PERIODO_CERRADO');
     assertNominaEmpleadoEditable(employee, 'cerrar la nomina');
@@ -123,11 +127,12 @@ export async function closeNominaEmpleadoOperativo(periodoId: string, nominaEmpl
   }
 }
 
-export async function reopenNominaEmpleadoOperativo(periodoId: string, nominaEmpleadoId: string, motivo: string, actorUserId: string, _tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta): Promise<NominaEmpleadoOperativoState> {
+export async function reopenNominaEmpleadoOperativo(periodoId: string, nominaEmpleadoId: string, motivo: string, actorUserId: string, tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta): Promise<NominaEmpleadoOperativoState> {
   const client = await dbPool.connect();
   try {
     await client.query('BEGIN');
     const employee = await loadNominaEmpleadoOperativoContextByIdOrThrow(client, nominaEmpleadoId);
+    await assertTenantAccessForVinculacionId(tenant, employee.vinculacion_id);
     if (employee.periodo_id !== periodoId) throw new AppError('Trabajador no pertenece al periodo',404,'NOMINA_EMPLEADO_NOT_FOUND');
     if (!['ABIERTO','EN_PROCESO'].includes(employee.periodo_estado)) throw new AppError('El periodo no permite reapertura individual',409,'NOMINA_PERIODO_CERRADO');
     if (normalizeNominaEmpleadoOperativoEstado(employee.estado) !== 'CERRADO') {

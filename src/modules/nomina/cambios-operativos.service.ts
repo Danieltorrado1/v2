@@ -5,7 +5,7 @@ import { assertTenantAccessForVinculacionId } from '../../middlewares/tenantMidd
 import { AppError } from '../../utils/AppError';
 import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditoria.helper';
 import type { CreateCambioOperativoInput, UpdateCambioOperativoInput } from './cambios-operativos.schemas';
-import { assertNominaEmpleadoEditable } from './nomina.operativa';
+import { assertNominaEmpleadoEditable, invalidateNominaEmpleadoRevisionState } from './nomina.operativa';
 import { resolverTramosOperativos, type CambioOperativoDerivable, type ContextoOperativo } from './nomina.tramos';
 
 interface BaseRow extends QueryResultRow { periodo_inicio: string; periodo_fin: string; periodo_estado: string; contrato_id: string; nomina_empleado_id: string; estado_nomina: string | null; vinculacion_inicio: string; vinculacion_fin: string | null; contexto: ContextoOperativo | null; }
@@ -44,6 +44,7 @@ const derive = async (periodoId: string, vinculacionId: string, client?: PoolCli
   const base = await loadBase(periodoId, vinculacionId, client);
   if (!base.contexto) throw new AppError('Falta snapshot de contexto operativo base', 409, 'NOMINA_CAMBIO_SNAPSHOT_BASE_REQUERIDO');
   const cambios = await listRows(periodoId, vinculacionId, client);
+  if (client) await invalidateNominaEmpleadoRevisionState(client, base.nomina_empleado_id);
   return resolverTramosOperativos({ periodo_inicio: base.periodo_inicio, periodo_fin: base.periodo_fin, vinculacion_inicio: base.vinculacion_inicio, vinculacion_fin: base.vinculacion_fin, contexto_base: base.contexto, cambios: cambios.map((r): CambioOperativoDerivable => ({ id:r.id,fecha_inicio_efectiva:r.fecha_inicio_efectiva,fecha_fin_efectiva:r.fecha_fin_efectiva,contexto_anterior:r.contexto_anterior,contexto_nuevo:r.contexto_nuevo,activo:r.activo })) });
 };
 

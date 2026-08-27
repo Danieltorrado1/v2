@@ -9,6 +9,7 @@ import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditori
 import { registerAuditEvent } from '../auditoria/auditoria.service';
 import {
   assertNominaEmpleadoEditable,
+  invalidateNominaEmpleadoRevisionState,
   loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow
 } from './nomina.operativa';
 import { createDocumentSignedUrlForBucket } from '../documentos/documentos.storage';
@@ -8976,6 +8977,7 @@ export const createNominaNovedad = async (
     const empleado = await loadNominaEmpleadoByIdOrThrow(input.nomina_empleado_id, tenant, client);
     const empleadoMapped = mapRealEmpleado(empleado);
     assertNominaEmpleadoEditable(empleado, 'registrar novedades de nomina');
+    await invalidateNominaEmpleadoRevisionState(client, input.nomina_empleado_id);
 
     if (empleadoContext.periodo_id !== input.periodo_id) {
       throw new AppError(
@@ -9310,6 +9312,7 @@ export const markNominaAsistencia = async (periodoId: string, vinculacionId: str
     const existing = await client.query<{ id: string }>(`SELECT id::text FROM nomina_asistencia_diaria WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint AND fecha=$3::date ORDER BY id DESC LIMIT 1`, [periodoId, vinculacionId, fecha]);
     if (existing.rows[0]) await client.query(`UPDATE nomina_asistencia_diaria SET estado_dia=$2, activo=TRUE, observacion=$3 WHERE id=$1::bigint`, [existing.rows[0].id, presente ? 'PRESENTE' : 'PENDIENTE', presente ? 'Asistencia confirmada desde planilla' : 'Asistencia desmarcada']);
     else if (presente) await client.query(`INSERT INTO nomina_asistencia_diaria(periodo_id,vinculacion_id,fecha,estado_dia,activo,observacion) VALUES($1::bigint,$2::bigint,$3::date,'PRESENTE',TRUE,'Asistencia confirmada desde planilla')`, [periodoId, vinculacionId, fecha]);
+    await invalidateNominaEmpleadoRevisionState(client, empleado.nomina_empleado_id);
     await registerAuditEntry({ client, usuario_id: actorUserId, accion: presente ? 'NOMINA_ASISTENCIA_CREATE' : 'NOMINA_ASISTENCIA_UPDATE', tabla: 'nomina_asistencia_diaria', registro_id: existing.rows[0]?.id ?? `${periodoId}:${vinculacionId}:${fecha}`, descripcion: 'Marcacion rapida de asistencia desde planilla', after: { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha, presente }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
     await client.query('COMMIT');
     return { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha, estado_dia: presente ? 'PRESENTE' : 'PENDIENTE', activo: presente };
@@ -9348,6 +9351,7 @@ export const markNominaAsistenciaRango = async (periodoId: string, vinculacionId
       else await client.query(`INSERT INTO nomina_asistencia_diaria(periodo_id,vinculacion_id,fecha,estado_dia,activo,observacion) VALUES($1::bigint,$2::bigint,$3::date,'PRESENTE',TRUE,'Asistencia confirmada desde planilla')`, [periodoId, vinculacionId, fecha]);
       marcados.push(fecha);
     }
+    await invalidateNominaEmpleadoRevisionState(client, empleado.nomina_empleado_id);
     await registerAuditEntry({ client, usuario_id: actorUserId, accion: 'NOMINA_ASISTENCIA_RANGE_UPDATE', tabla: 'nomina_asistencia_diaria', registro_id: `${periodoId}:${vinculacionId}:${fechaInicio}:${fechaFin}`, descripcion: 'Marcacion atomica de asistencia por rango desde planilla', after: { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha_inicio: fechaInicio, fecha_fin: fechaFin, marcados }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
     await client.query('COMMIT');
     return { marcados, omitidos: [], total_marcados: marcados.length, total_omitidos: 0 };
@@ -9449,6 +9453,7 @@ export const updateNominaNovedad = async (
 
       const empleado = await loadNominaEmpleadoByIdOrThrow(empleadoRow.id, tenant, client);
       assertNominaEmpleadoEditable(empleado, 'editar novedades de nomina');
+      await invalidateNominaEmpleadoRevisionState(client, empleadoRow.id);
       const currentTipo = await loadNominaTipoNovedadByIdOrThrow(current.tipo_novedad_id, client);
       const tipoNovedad = await resolveNominaTipoNovedadOrThrow(
         {
@@ -9659,6 +9664,7 @@ export const updateNominaNovedad = async (
     const empleadoMapped = mapRealEmpleado(empleado);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'updating payroll novelties');
     assertNominaEmpleadoEditable(empleado, 'editar novedades de nomina');
+    await invalidateNominaEmpleadoRevisionState(client, current.nomina_empleado_id);
 
     const tipoNovedad = await resolveNominaTipoNovedadOrThrow(
       {
@@ -9863,6 +9869,7 @@ export const deactivateNominaNovedad = async (
       if (!empleadoRow) throw new AppError('Payroll employee not found for canonical novelty projection',404,'NOMINA_NOVEDAD_CANONICA_EMPLEADO_NOT_FOUND');
       const empleado = await loadNominaEmpleadoByIdOrThrow(empleadoRow.id, tenant, client);
       assertNominaEmpleadoEditable(empleado, 'anular novedades de nomina');
+      await invalidateNominaEmpleadoRevisionState(client, empleadoRow.id);
       const tipo = await loadNominaTipoNovedadByIdOrThrow(current.tipo_novedad_id, client);
       const before = empleadoRow
         ? buildProjectedNominaNovedadFromCanonica({
@@ -9964,6 +9971,7 @@ export const deactivateNominaNovedad = async (
     const empleado = await loadNominaEmpleadoByIdOrThrow(current.nomina_empleado_id, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'deactivating payroll novelties');
     assertNominaEmpleadoEditable(empleado, 'anular novedades de nomina');
+    await invalidateNominaEmpleadoRevisionState(client, current.nomina_empleado_id);
 
     await client.query(
       `
