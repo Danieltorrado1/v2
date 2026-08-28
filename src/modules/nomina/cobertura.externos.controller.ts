@@ -1,0 +1,22 @@
+import type { Request, Response } from 'express';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { successResponse } from '../../utils/apiResponse';
+import { AppError } from '../../utils/AppError';
+import { coberturaExternoIdSchema, coberturaCuentaIdSchema, generarCoberturaCuentaSchema, listCoberturaExternosSchema, upsertCoberturaExternoSchema } from './cobertura.externos.schemas';
+import { generateCoberturaCuenta, getCoberturaCuentaDownload, getCoberturaCuentaFirmadaDownload, getCoberturaExternoDocumentoDownload, listCoberturaExternoDocumentos, listCoberturaExternos, listCoberturaExternosOperativos, uploadCoberturaCuentaFirmada, upsertCoberturaExterno, uploadCoberturaExternoDocumento } from './cobertura.externos.service';
+
+const actor = (req: Request) => {
+  if (!req.user?.userId) throw new AppError('Authentication required', 401, 'UNAUTHORIZED');
+  return String(req.user.userId);
+};
+
+export const listCoberturaExternosHandler = asyncHandler(async (req: Request, res: Response) => successResponse(res, { data: await listCoberturaExternos(listCoberturaExternosSchema.parse(req.query), req.tenant), message: 'Cobertura external identities retrieved successfully' }));
+export const listCoberturaExternosOperativosHandler = asyncHandler(async (req: Request, res: Response) => successResponse(res, { data: await listCoberturaExternosOperativos(listCoberturaExternosSchema.parse(req.query), req.tenant), message: 'Operational external coverage retrieved successfully' }));
+export const upsertCoberturaExternoHandler = asyncHandler(async (req: Request, res: Response) => successResponse(res, { statusCode: 201, data: await upsertCoberturaExterno(upsertCoberturaExternoSchema.parse(req.body), actor(req), req.tenant), message: 'Cobertura external identity saved successfully' }));
+export const generateCoberturaCuentaHandler = asyncHandler(async (req: Request, res: Response) => successResponse(res, { statusCode: 201, data: await generateCoberturaCuenta(generarCoberturaCuentaSchema.parse(req.body), actor(req), req.tenant), message: 'Cobertura external account generated successfully' }));
+export const downloadCoberturaCuentaHandler = asyncHandler(async (req: Request, res: Response) => successResponse(res, { data: await getCoberturaCuentaDownload(coberturaCuentaIdSchema.parse(req.params).id, req.tenant), message: 'Cobertura external account download URL generated successfully' }));
+export const downloadCoberturaCuentaFirmadaHandler = asyncHandler(async (req: Request, res: Response) => successResponse(res, { data: await getCoberturaCuentaFirmadaDownload(coberturaCuentaIdSchema.parse(req.params).id, req.tenant), message: 'Signed coverage external account download URL generated successfully' }));
+export const uploadCoberturaCuentaFirmadaHandler = asyncHandler(async (req: Request, res: Response) => { if (!req.file) throw new AppError('Archivo requerido',400,'FILE_REQUIRED'); return successResponse(res, { statusCode: 201, data: await uploadCoberturaCuentaFirmada(coberturaCuentaIdSchema.parse(req.params).id, req.file, actor(req), req.tenant), message: 'Signed coverage external account uploaded successfully' }); });
+export const listCoberturaExternoDocumentosHandler = asyncHandler(async (req: Request, res: Response) => { const id = coberturaExternoIdSchema.parse(req.params).id; return successResponse(res, { data: await listCoberturaExternoDocumentos(id, req.tenant), message: 'Cobertura external documents retrieved successfully' }); });
+export const downloadCoberturaExternoDocumentoHandler = asyncHandler(async (req: Request, res: Response) => { const id = coberturaExternoIdSchema.parse(req.params).id; return successResponse(res, { data: await getCoberturaExternoDocumentoDownload(id, req.tenant), message: 'Cobertura external document download URL generated successfully' }); });
+export const uploadCoberturaExternoDocumentoHandler = asyncHandler(async (req: Request, res: Response) => { const id = coberturaExternoIdSchema.parse(req.params).id; if (!req.file) throw new AppError('Archivo requerido', 400, 'FILE_REQUIRED'); const tipo = String(req.body.tipo_documento); if (tipo !== 'CEDULA_EXTERNO_COBERTURA' && tipo !== 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA') throw new AppError('Tipo de documento externo inválido',400,'COBERTURA_EXTERNO_DOCUMENT_TYPE_INVALID'); return successResponse(res, { statusCode: 201, data: await uploadCoberturaExternoDocumento(id, tipo, req.file, actor(req), req.tenant), message: 'Cobertura external document uploaded successfully' }); });

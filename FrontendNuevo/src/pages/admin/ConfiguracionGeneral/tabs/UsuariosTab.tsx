@@ -18,7 +18,9 @@ import { configuracionApi } from '../../../../services/configuracionApi';
 import {
   closeGestorMunicipioAssignment,
   createGestorMunicipioAssignment,
-  getGestorMunicipios
+  getGestorAssignmentWorkspace,
+  getGestorMunicipios,
+  saveGestorAssignments
 } from '../../../../services/vinculacionesApi';
 import type {
   Contrato,
@@ -29,6 +31,7 @@ import type {
   UpdateUsuarioAdminPayload,
   UsuarioAdminRecord
 } from '../../../../types/configuracion.types';
+import type { GestorAssignmentWorkspace } from '../../../../types/vinculaciones.types';
 import { FormModal } from '../components/FormModal';
 import {
   getErrorMessage,
@@ -44,6 +47,14 @@ type UserModalState =
 type PasswordModalState =
   | { user: UsuarioAdminRecord }
   | null;
+
+type AssignmentModalState = {
+  contratoId: number;
+  municipioId: number;
+  municipioNombre: string;
+  userId: number;
+  userName: string;
+} | null;
 
 type UserForm = {
   active: boolean;
@@ -77,9 +88,17 @@ function humanizeRole(role: string): string {
     .join(' ');
 }
 
-function isGestorRoleSelected(roleIds: string[], rolesCatalog: Rol[]): boolean {
+function hasRoleSelected(roleIds: string[], rolesCatalog: Rol[], roleName: string): boolean {
   const selected = new Set(roleIds);
-  return rolesCatalog.some((role) => selected.has(String(role.id)) && role.nombre_rol.toUpperCase().includes('GESTOR'));
+  return rolesCatalog.some((role) => selected.has(String(role.id)) && role.nombre_rol === roleName);
+}
+
+function isGestorRoleSelected(roleIds: string[], rolesCatalog: Rol[]): boolean {
+  return hasRoleSelected(roleIds, rolesCatalog, 'GESTOR');
+}
+
+function isTerritorialRoleSelected(roleIds: string[], rolesCatalog: Rol[]): boolean {
+  return hasRoleSelected(roleIds, rolesCatalog, 'GESTOR') || hasRoleSelected(roleIds, rolesCatalog, 'TALENTO_HUMANO');
 }
 
 function isAdminRoleSelected(roleIds: string[], rolesCatalog: Rol[]): boolean {
@@ -172,6 +191,13 @@ export function UsuariosTab() {
   const [passwordError, setPasswordError] = useState('');
   const [saving, setSaving] = useState(false);
   const [stateLoadingId, setStateLoadingId] = useState<string | null>(null);
+  const [assignmentModal, setAssignmentModal] = useState<AssignmentModalState>(null);
+  const [assignmentWorkspace, setAssignmentWorkspace] = useState<GestorAssignmentWorkspace | null>(null);
+  const [assignmentSearch, setAssignmentSearch] = useState('');
+  const [assignmentMode, setAssignmentMode] = useState<'SELECCION' | 'REEMPLAZAR_MUNICIPIO'>('SELECCION');
+  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<number[]>([]);
+  const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
 
   useEffect(() => {
     if (!feedback) {
@@ -237,6 +263,7 @@ export function UsuariosTab() {
   const contratosById = useMemo(() => buildContratoLookup(contratos), [contratos]);
   const isGlobalAdminTarget = useMemo(() => isAdminRoleSelected(form.roleIds, roles), [form.roleIds, roles]);
   const isGestorTarget = useMemo(() => isGestorRoleSelected(form.roleIds, roles), [form.roleIds, roles]);
+  const isTerritorialTarget = useMemo(() => isTerritorialRoleSelected(form.roleIds, roles), [form.roleIds, roles]);
   const selectedEmpresaSet = useMemo(() => new Set(form.empresaIds), [form.empresaIds]);
 
   const availableContracts = useMemo(() => {
@@ -278,6 +305,62 @@ export function UsuariosTab() {
     setFormError('');
     setMunicipioSearch('');
     setGestorMunicipios({});
+    setAssignmentModal(null);
+    setAssignmentWorkspace(null);
+    setSelectedAssignmentIds([]);
+    setAssignmentSearch('');
+  }
+
+  async function openAssignmentModal(contratoId: number, municipioId: number, municipioNombre: string) {
+    if (!userModal || userModal.mode !== 'edit' || !isGestorTarget) return;
+    setAssignmentModal({ contratoId, municipioId, municipioNombre, userId: Number(userModal.user.id), userName: userModal.user.name });
+    setAssignmentLoading(true);
+    try {
+      const workspace = await getGestorAssignmentWorkspace({
+        contrato_id: contratoId,
+        gestor_usuario_id: Number(userModal.user.id),
+        municipio_id: municipioId
+      });
+      setAssignmentWorkspace(workspace);
+      setSelectedAssignmentIds(workspace.items.filter((item) => item.gestor_actual?.usuario_id === Number(userModal.user.id)).map((item) => item.vinculacion_id));
+    } catch (workspaceError) {
+      setFormError(getErrorMessage(workspaceError, 'No fue posible cargar el personal del municipio.'));
+      setAssignmentModal(null);
+    } finally {
+      setAssignmentLoading(false);
+    }
+  }
+
+  async function handleSaveAssignments() {
+    if (!assignmentModal) return;
+    setAssignmentSaving(true);
+    try {
+      if (assignmentMode === 'REEMPLAZAR_MUNICIPIO') {
+        await createGestorMunicipioAssignment({
+          contrato_id: assignmentModal.contratoId,
+          gestor_usuario_id: assignmentModal.userId,
+          municipio_id: assignmentModal.municipioId,
+          alcance_personal: 'TODO_MUNICIPIO',
+          observacion: 'Alcance dinamico desde Administracion de usuarios'
+        });
+      } else {
+        await saveGestorAssignments({
+          contrato_id: assignmentModal.contratoId,
+          gestor_usuario_id: assignmentModal.userId,
+          municipio_id: assignmentModal.municipioId,
+          modo: 'REEMPLAZAR_MUNICIPIO',
+          vinculacion_ids: selectedAssignmentIds,
+          observacion: 'Asignacion desde Administracion de usuarios'
+        });
+      }
+      setFeedback({ tone: 'success', text: 'Personal del gestor actualizado correctamente.' });
+      setAssignmentModal(null);
+      setAssignmentWorkspace(null);
+    } catch (saveError) {
+      setFormError(getErrorMessage(saveError, 'No fue posible guardar la asignacion de personal.'));
+    } finally {
+      setAssignmentSaving(false);
+    }
   }
 
   function openCreate() {
@@ -330,7 +413,7 @@ export function UsuariosTab() {
     for (const contratoId of contractsToSync) {
       const response = await getGestorMunicipios({ contrato_id: contratoId, gestor_usuario_id: Number(userId) });
       const current = response.items.filter((item) => item.activo);
-      const desired = new Set(isGestorTarget && form.active && form.contratoIds.includes(contratoId)
+      const desired = new Set(isTerritorialTarget && form.active && form.contratoIds.includes(contratoId)
         ? (gestorMunicipios[contratoId] ?? [])
         : []);
 
@@ -349,6 +432,7 @@ export function UsuariosTab() {
           gestor_usuario_id: Number(userId),
           municipio_id: municipioId,
           vigencia_desde: today,
+          alcance_personal: 'PERSONAL_SELECCIONADO',
           observacion: 'Asignacion desde Administracion de usuarios'
         })));
     }
@@ -810,14 +894,14 @@ export function UsuariosTab() {
             </div>
           </div>
 
-          {isGestorTarget && (
+          {isTerritorialTarget && (
             <div className="cg-user-form-block">
               <div className="cg-role-selector-header">
-                <span><MapPin size={14} /> Municipios asignados</span>
-                <span className="cg-secondary-cell">Alcance general del gestor por contrato</span>
+                <span><MapPin size={14} /> Municipios a cargo</span>
+                <span className="cg-secondary-cell">Alcance territorial por contrato</span>
               </div>
               <p className="cg-secondary-cell cg-user-scope-help">
-                Selecciona los municipios sobre los que este gestor puede operar. El alcance de Nómina se configura aparte.
+                Selecciona los municipios sobre los que este usuario puede operar. La responsabilidad de Nomina se configura aparte.
               </p>
               <label className="cg-search-field">
                 <Search size={14} />
@@ -854,6 +938,20 @@ export function UsuariosTab() {
                         </label>
                       ))}
                     </div>
+                    {userModal.mode === 'edit' && isGestorTarget && selected.length > 0 && (
+                      <div className="cg-manager-assignment-summary">
+                        {filteredMunicipios.filter((municipio) => selected.includes(municipio.id)).map((municipio) => (
+                          <button
+                            key={municipio.id}
+                            className="adm-btn ghost sm"
+                            type="button"
+                            onClick={() => void openAssignmentModal(contrato.id, municipio.id, municipio.label)}
+                          >
+                            <Users size={12} /> Gestionar personal de {municipio.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -962,6 +1060,57 @@ export function UsuariosTab() {
               <AlertTriangle size={13} /> {passwordError}
             </div>
           )}
+        </FormModal>
+      )}
+
+      {assignmentModal && (
+        <FormModal
+          title={`Personal: ${assignmentModal.userName} · ${assignmentModal.municipioNombre}`}
+          onClose={() => { setAssignmentModal(null); setAssignmentWorkspace(null); }}
+          onSave={handleSaveAssignments}
+          saving={assignmentSaving}
+          wide
+        >
+          {assignmentLoading ? (
+            <div className="cg-selector-empty">Cargando personal...</div>
+          ) : assignmentWorkspace ? (
+            <>
+              <div className="cg-secondary-cell" style={{ marginBottom: 10 }}>
+                {assignmentWorkspace.resumen.asignados_a_gestor} asignados de {assignmentWorkspace.resumen.total_trabajadores} trabajadores.
+              </div>
+              <div className="cg-role-selector-grid" style={{ marginBottom: 10 }}>
+                <label className="cg-role-checkbox">
+                  <input type="radio" name="assignment-mode" checked={assignmentMode === 'REEMPLAZAR_MUNICIPIO'} onChange={() => setAssignmentMode('REEMPLAZAR_MUNICIPIO')} />
+                  <span>Todo el municipio</span>
+                </label>
+                <label className="cg-role-checkbox">
+                  <input type="radio" name="assignment-mode" checked={assignmentMode === 'SELECCION'} onChange={() => setAssignmentMode('SELECCION')} />
+                  <span>Personal seleccionado</span>
+                </label>
+              </div>
+              {assignmentMode === 'SELECCION' && (
+                <>
+                  <label className="cg-search-field">
+                    <Search size={14} />
+                    <input value={assignmentSearch} onChange={(event) => setAssignmentSearch(event.target.value)} placeholder="Buscar nombre, documento, institucion o sede..." />
+                  </label>
+                  <div className="cg-access-selector-grid">
+                    {assignmentWorkspace.items
+                      .filter((item) => !assignmentSearch.trim() || `${item.nombre_completo} ${item.numero_documento} ${item.asignacion_actual.institucion ?? ''} ${item.asignacion_actual.sede ?? ''}`.toLowerCase().includes(assignmentSearch.toLowerCase()))
+                      .map((item) => {
+                        const checked = selectedAssignmentIds.includes(item.vinculacion_id);
+                        return (
+                          <label key={item.vinculacion_id} className="cg-role-checkbox">
+                            <input type="checkbox" checked={checked} onChange={() => setSelectedAssignmentIds((current) => checked ? current.filter((id) => id !== item.vinculacion_id) : [...current, item.vinculacion_id])} />
+                            <span>{item.nombre_completo} · {item.numero_documento}</span>
+                          </label>
+                        );
+                      })}
+                  </div>
+                </>
+              )}
+            </>
+          ) : null}
         </FormModal>
       )}
     </div>

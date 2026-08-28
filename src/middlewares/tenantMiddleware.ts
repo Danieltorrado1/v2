@@ -9,6 +9,7 @@ export interface TenantAccessContext {
   contratoIds: number[];
   empresaIds: number[];
   isGlobalAdmin: boolean;
+  roleNames: string[];
 }
 
 interface RoleRow extends QueryResultRow {
@@ -78,13 +79,15 @@ export const loadTenantAccess = async (
       );
 
   const isGlobalAdmin = rolesResult.rows.some((row) => row.nombre_rol === 'ADMINISTRADOR');
+  const roleNames = Array.from(new Set(rolesResult.rows.map((row) => row.nombre_rol)));
 
   if (isGlobalAdmin) {
     return {
       userId: numericUserId,
       isGlobalAdmin: true,
       empresaIds: [],
-      contratoIds: []
+      contratoIds: [],
+      roleNames
     };
   }
 
@@ -116,7 +119,8 @@ export const loadTenantAccess = async (
     userId: numericUserId,
     isGlobalAdmin: false,
     empresaIds: toUniqueNumbers(empresasResult.rows),
-    contratoIds: toUniqueNumbers(contratosResult.rows)
+    contratoIds: toUniqueNumbers(contratosResult.rows),
+    roleNames
   };
 };
 

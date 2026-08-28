@@ -137,7 +137,7 @@ test('rutas de movimientos usan permisos granulares y endpoints explicitos de re
 
   assert.match(
     routeSource,
-    /nominaRoutes\.get\(\s*'\/movimientos',\s*requirePermissions\('nomina\.movimientos\.read'\),\s*getNominaMovimientosHandler/s
+    /nominaRoutes\.get\(\s*'\/movimientos',\s*rejectRoles\('GESTOR'\),\s*requirePermissions\('nomina\.movimientos\.read'\),\s*getNominaMovimientosHandler/s
   );
   assert.match(
     routeSource,

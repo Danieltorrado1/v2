@@ -344,7 +344,7 @@ const buildPeriodWhere = (
   const result = buildTenantWhereClause({
     contratoColumn: 'sp.contrato_id',
     empresaColumn: 'sp.empresa_id',
-    tenant: tenant ?? { contratoIds: [], empresaIds: [], isGlobalAdmin: true }
+    tenant: tenant ?? { contratoIds: [], empresaIds: [], isGlobalAdmin: true, roleNames: [] }
   });
 
   const conditions: string[] = result.sql ? [result.sql.replace(/^WHERE\s+/i, '')] : [];

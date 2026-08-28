@@ -1,10 +1,32 @@
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
 import "./DashboardPage.css";
 import PersonalTab from "./components/PersonalTab";
 import type { DashboardFilters } from "../../types/dashboard.types";
+import { useAuth } from "../../context/AuthContext";
+import { useCompanyContext } from "../../context/CompanyContext";
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const { capabilities, capabilitiesLoading } = useCompanyContext();
   const [filters, setFilters] = useState<DashboardFilters>({});
+  const canSeeDashboard = user?.permissions.includes("dashboard.read") === true;
+  const canSeeNomina = capabilities?.modulos.NOMINA === true && user?.permissions.includes("nomina.read") === true;
+  const canSeePersonal = capabilities?.modulos.PERSONAL === true && user?.permissions.includes("vinculaciones.read") === true;
+
+  if (!canSeeDashboard) {
+    if (capabilitiesLoading) {
+      return <section className="dashboard-page">Cargando...</section>;
+    }
+
+    if (canSeeNomina) {
+      return <Navigate to={user?.roles.includes("GESTOR") ? "/nomina/cobertura" : "/nomina"} replace />;
+    }
+
+    if (canSeePersonal) {
+      return <Navigate to="/personal" replace />;
+    }
+  }
 
   const hasFilters =
     !!filters.empresa_id || !!filters.contrato_id || !!filters.fecha_desde || !!filters.fecha_hasta;

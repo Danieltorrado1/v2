@@ -294,6 +294,20 @@
   gap: 2px;
 }
 
+.op-day-head.is-weekend,
+.op-cell.is-weekend {
+  background: color-mix(in srgb, #64748b 8%, transparent);
+}
+
+.op-day-head.is-holiday,
+.op-cell.is-holiday {
+  background: color-mix(in srgb, #f59e0b 17%, transparent);
+}
+
+.op-day-head.is-holiday small {
+  color: #a16207;
+}
+
 .op-day-head b {
   font-size: 11px;
 }

@@ -157,6 +157,7 @@ export const gestorAssignmentWorkspaceQuerySchema = z.object({
 });
 
 export const gestorAssignmentModeSchema = z.enum(['SELECCION', 'REEMPLAZAR_MUNICIPIO']);
+export const gestorMunicipioPersonalScopeSchema = z.enum(['PERSONAL_SELECCIONADO', 'TODO_MUNICIPIO']);
 
 export const listGestorMunicipiosQuerySchema = z.object({
   contrato_id: numericIdSchema.transform((value) => Number(value)),
@@ -182,6 +183,7 @@ export const createGestorMunicipioAssignmentSchema = z.object({
   gestor_usuario_id: numericIdSchema.transform((value) => Number(value)),
   municipio_id: numericIdSchema.transform((value) => Number(value)),
   vigencia_desde: z.string().date().optional(),
+  alcance_personal: gestorMunicipioPersonalScopeSchema.optional().default('PERSONAL_SELECCIONADO'),
   observacion: nullableTrimmedString.optional().default(null)
 });
 
@@ -268,3 +270,4 @@ export type UpdateVinculacionInput = z.infer<typeof updateVinculacionSchema>;
 export type RetirarVinculacionInput = z.infer<typeof retirarVinculacionSchema>;
 export type SuspenderVinculacionInput = z.infer<typeof suspenderVinculacionSchema>;
 export type ReactivarVinculacionInput = z.infer<typeof reactivarVinculacionSchema>;
+export type GestorMunicipioPersonalScope = z.infer<typeof gestorMunicipioPersonalScopeSchema>;

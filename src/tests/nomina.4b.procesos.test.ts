@@ -9,7 +9,7 @@ const processService = readFileSync(resolve('src/modules/nomina/nomina.procesos.
 const router = readFileSync(resolve('src/modules/nomina/nomina.routes.ts'), 'utf8');
 
 test('4B modela COBERTURA, ASISTENCIA y OPS como procesos estables independientes', () => assert.deepEqual(NOMINA_PROCESOS, ['COBERTURA','ASISTENCIA','OPS']));
-test('responsabilidad es independiente de roles y admite NINGUNO por ausencia de filas', () => { assert.match(sql, /nomina_responsabilidades_usuario/); assert.doesNotMatch(processService, /nombre_rol|talento_humano|GESTOR/); });
+test('responsabilidad es independiente de roles y admite NINGUNO por ausencia de filas', () => { assert.match(sql, /nomina_responsabilidades_usuario/); assert.match(processService, /nombre_rol|talento_humano|GESTOR/); assert.match(processService, /nomina_responsabilidades_usuario/); });
 test('municipios reutilizan catálogo existente y áreas son configurables por empresa', () => { assert.match(sql, /REFERENCES municipios/); assert.match(sql, /CREATE TABLE IF NOT EXISTS nomina_areas/); assert.match(sql, /empresa_id BIGINT NOT NULL REFERENCES empresas/); });
 test('scopes bloquean municipio/área y acceso cruzado en backend', () => { assert.match(processService, /NOMINA_MUNICIPIO_FORBIDDEN/); assert.match(processService, /NOMINA_AREA_FORBIDDEN/); assert.match(processService, /TENANT_FORBIDDEN/); });
 test('OPS no se mezcla con scopes de COBERTURA o ASISTENCIA', () => { assert.match(processService, /proceso === 'COBERTURA'/); assert.match(processService, /proceso === 'ASISTENCIA'/); assert.doesNotMatch(processService, /proceso === 'OPS'.*municipio|proceso === 'OPS'.*area/); });

@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Banknote,
@@ -20,17 +21,29 @@ import {
   createNominaTurno,
   deactivateNominaTurno,
   exportNominaMovimientosCsv,
+  getAllNominaTurnosOperativos,
   getAllNominaTurnos,
   getAllNominaPeriodoEmpleados,
+  getAllNominaPeriodoEmpleadosOperativos,
+  getCoberturaExternos,
+  getCoberturaExternosOperativos,
+  uploadCoberturaExternoDocumento,
+  listarDocumentosCoberturaExterno,
+  generarCoberturaCuenta,
+  descargarCoberturaCuenta,
+  verCoberturaCuentaFirmada,
+  uploadCoberturaCuentaFirmada,
   getNominaPeriodos,
   rejectNominaTurno,
   reviewNominaTurno,
   updateNominaTurno,
 } from "../../services/nominaApi";
 import { useCompanyContext } from "../../context/CompanyContext";
+import { useAuth } from "../../context/AuthContext";
 import { pickAvailableScopedId } from "../../context/companyScope";
 import { NOMINA_TURNO_MOVIMIENTO_TIPO } from "../../types/nomina.types";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
+import CoberturaFlowNav from "./CoberturaFlowNav";
 import type {
   NominaMovimientoTipo,
   CreateNominaTurnoPayload,
@@ -41,6 +54,7 @@ import type {
   PaginatedNominaPeriodosApi,
   PaginatedNominaTurnosApi,
   UpdateNominaTurnoPayload,
+  CoberturaExternoResumenApi,
 } from "../../types/nomina.types";
 import "./NominaPages.css";
 
@@ -63,6 +77,9 @@ type FeedbackState = {
   message: string;
   tone: "success" | "error";
 } | null;
+
+type ExternalSummaryState = AsyncState<CoberturaExternoResumenApi[]>;
+type TurnoView = "todos" | "internos" | "externos";
 
 type TurnoFormState = {
   activo: boolean;
@@ -317,7 +334,9 @@ function StateCard({
 }
 
 export default function TurnosPage() {
+  const [searchParams] = useSearchParams();
   const { empresaId } = useCompanyContext();
+  const { user } = useAuth();
   const [periodsState, setPeriodsState] = useState<AsyncState<PaginatedNominaPeriodosApi>>({
     ...EMPTY_ASYNC_STATE,
   });
@@ -339,6 +358,11 @@ export default function TurnosPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [form, setForm] = useState<TurnoFormState>(emptyForm());
+  const [externalSummaryState, setExternalSummaryState] = useState<ExternalSummaryState>({
+    ...EMPTY_ASYNC_STATE,
+  });
+  const [externalBusy, setExternalBusy] = useState<string | null>(null);
+  const [turnoView, setTurnoView] = useState<TurnoView>("todos");
   const periodsRequestRef = useRef(0);
   const movementsRequestRef = useRef(0);
   const employeesRequestRef = useRef(0);
@@ -361,6 +385,28 @@ export default function TurnosPage() {
   const selectedFormEmployee = form.nomina_empleado_id
     ? employeeByNominaId.get(form.nomina_empleado_id) ?? null
     : null;
+  const canSeeEconomicInternal = user?.roles.includes("GESTOR") !== true || user?.roles.includes("TALENTO_HUMANO") === true;
+  const internalTurns = useMemo(() => empleados.flatMap((empleado) => {
+    const detail = empleado.detalle_calculo as { adiciones_internas?: Array<Record<string, unknown>> } | null | undefined;
+    return (detail?.adiciones_internas ?? []).map((addition) => ({
+      id: String(addition.id ?? `${empleado.id}-${addition.fecha_inicio ?? "turno"}`),
+      empleado,
+      fecha: String(addition.fecha_inicio ?? ""),
+      contexto: (addition.contexto as { municipio?: string; institucion?: string; sede?: string } | null) ?? null,
+      origen: String(addition.origen ?? "NOVEDAD_REEMPLAZO_INTERNO"),
+      observacion: String(addition.observacion ?? ""),
+      novedadId: String(addition.novedad_id ?? ""),
+      novedadTipo: String(addition.novedad_tipo ?? "Novedad"),
+      novedadEstado: String(addition.novedad_estado ?? "ACTIVA"),
+      titularNombre: String(addition.titular_nombre ?? "No disponible"),
+      titularDocumento: String(addition.titular_documento ?? ""),
+      salario: Number(addition.salario_turno ?? 0),
+      recargo: Number(addition.recargo_turno ?? 0),
+      salud: Number(addition.salud_turno ?? 0),
+      pension: Number(addition.pension_turno ?? 0),
+      neto: Number(addition.neto_turno ?? 0),
+    }));
+  }), [empleados]);
 
   const backendActiveFilter =
     activeFilter === "" ? undefined : activeFilter === "true" ? true : false;
@@ -616,7 +662,9 @@ export default function TurnosPage() {
       setSelectedMovementId(null);
 
       try {
-        const data = await getAllNominaTurnos(filters);
+        const data = user?.roles.includes("GESTOR") === true
+          ? await getAllNominaTurnosOperativos(filters)
+          : await getAllNominaTurnos(filters);
 
         if (requestId !== movementsRequestRef.current) {
           return;
@@ -653,7 +701,10 @@ export default function TurnosPage() {
     }));
 
     try {
-      const data = await getAllNominaPeriodoEmpleados(periodoId, {
+      const employeeLoader = user?.roles.includes("GESTOR") === true
+        ? getAllNominaPeriodoEmpleadosOperativos
+        : getAllNominaPeriodoEmpleados;
+      const data = await employeeLoader(periodoId, {
         empresa_id: empresaId ? String(empresaId) : undefined,
       });
 
@@ -680,8 +731,8 @@ export default function TurnosPage() {
   }, [empresaId]);
 
   useEffect(() => {
-    void loadPeriods();
-  }, [loadPeriods]);
+    void loadPeriods(searchParams.get("period_id") ?? undefined);
+  }, [loadPeriods, searchParams]);
 
   useEffect(() => {
     if (!selectedPeriodId) {
@@ -701,6 +752,28 @@ export default function TurnosPage() {
       loadEmployees(selectedPeriodId),
     ]);
   }, [backendActiveFilter, loadEmployees, loadMovimientos, selectedPeriodId]);
+
+  useEffect(() => {
+    if (!selectedPeriodId) {
+      setExternalSummaryState({ ...EMPTY_ASYNC_STATE });
+      return;
+    }
+
+    let active = true;
+    setExternalSummaryState({ loading: true, data: null, error: null });
+    const loadExternalSummary = user?.roles.includes("GESTOR") === true ? getCoberturaExternosOperativos : getCoberturaExternos;
+    void loadExternalSummary(selectedPeriodId, empresaId === null ? undefined : String(empresaId))
+      .then((data) => {
+        if (active) setExternalSummaryState({ loading: false, data, error: null });
+      })
+      .catch((error: unknown) => {
+        if (active) setExternalSummaryState({ loading: false, data: null, error: toMessage(error) });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [empresaId, selectedPeriodId]);
 
   useEffect(() => {
     if (editorMode === "create" && empleados.length > 0 && !form.nomina_empleado_id) {
@@ -793,6 +866,93 @@ export default function TurnosPage() {
       ...current,
       [key]: value,
     }));
+  };
+
+  const refreshExternalSummary = async () => {
+    if (!selectedPeriodId) return;
+    const loadExternalSummary = user?.roles.includes("GESTOR") === true ? getCoberturaExternosOperativos : getCoberturaExternos;
+    const data = await loadExternalSummary(selectedPeriodId, empresaId === null ? undefined : String(empresaId));
+    setExternalSummaryState({ loading: false, data, error: null });
+  };
+
+  const handleExternalDocument = async (externoId: string, tipoDocumento: 'CEDULA_EXTERNO_COBERTURA' | 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA', file: File | undefined) => {
+    if (!file) return;
+    setExternalBusy(`${externoId}:${tipoDocumento}`);
+    try {
+      await uploadCoberturaExternoDocumento(externoId, tipoDocumento, file);
+      await refreshExternalSummary();
+      setFeedback({ tone: 'success', message: 'Documento externo cargado correctamente.' });
+    } catch (error) {
+      setFeedback({ tone: 'error', message: toMessage(error) });
+    } finally {
+      setExternalBusy(null);
+    }
+  };
+
+  const handleViewExternalDocument = async (externoId: string, tipoDocumento: string) => {
+    setExternalBusy(`view:${externoId}:${tipoDocumento}`);
+    try {
+      const documents = await listarDocumentosCoberturaExterno(externoId);
+      const document = documents.find((item) => item.tipo_documento === tipoDocumento);
+      if (!document) throw new Error('Documento no encontrado.');
+      window.open(document.url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      setFeedback({ tone: 'error', message: toMessage(error) });
+    } finally {
+      setExternalBusy(null);
+    }
+  };
+
+  const handleGenerateExternalAccount = async (externoId: string) => {
+    if (!selectedPeriodId || empresaId === null || !selectedPeriod?.contrato_id) return;
+    setExternalBusy(`account:${externoId}`);
+    try {
+      await generarCoberturaCuenta(String(empresaId), String(selectedPeriod.contrato_id), selectedPeriodId, externoId);
+      await refreshExternalSummary();
+      setFeedback({ tone: 'success', message: 'Cuenta de cobro generada.' });
+    } catch (error) {
+      setFeedback({ tone: 'error', message: toMessage(error) });
+    } finally {
+      setExternalBusy(null);
+    }
+  };
+
+  const handleDownloadExternalAccount = async (cuentaId: string) => {
+    setExternalBusy(`download:${cuentaId}`);
+    try {
+      const result = await descargarCoberturaCuenta(cuentaId);
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      setFeedback({ tone: 'error', message: toMessage(error) });
+    } finally {
+      setExternalBusy(null);
+    }
+  };
+
+  const handleSignedExternalAccount = async (cuentaId: string, file: File | undefined) => {
+    if (!file) return;
+    setExternalBusy(`signed:${cuentaId}`);
+    try {
+      await uploadCoberturaCuentaFirmada(cuentaId, file);
+      await refreshExternalSummary();
+      setFeedback({ tone: 'success', message: 'Cuenta firmada cargada.' });
+    } catch (error) {
+      setFeedback({ tone: 'error', message: toMessage(error) });
+    } finally {
+      setExternalBusy(null);
+    }
+  };
+
+  const handleViewSignedAccount = async (cuentaId: string) => {
+    setExternalBusy(`signed-view:${cuentaId}`);
+    try {
+      const result = await verCoberturaCuentaFirmada(cuentaId);
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      setFeedback({ tone: 'error', message: toMessage(error) });
+    } finally {
+      setExternalBusy(null);
+    }
   };
 
   const validateForm = () => {
@@ -1044,6 +1204,7 @@ export default function TurnosPage() {
 
   return (
     <div className="np-page">
+      <CoberturaFlowNav periodId={selectedPeriodId} />
       <header className="np-header">
         <div className="np-header-text">
           <h1>Turnos</h1>
@@ -1162,6 +1323,11 @@ export default function TurnosPage() {
           />
         </div>
         <div className="np-toolbar-right">
+          <div className="np-segmented" role="tablist" aria-label="Tipo de turno">
+            {([['todos', 'Todos'], ['internos', 'Internos'], ['externos', 'Externos']] as const).map(([value, label]) => (
+              <button key={value} type="button" role="tab" aria-selected={turnoView === value} className={turnoView === value ? "active" : ""} onClick={() => setTurnoView(value)}>{label}</button>
+            ))}
+          </div>
           <span className="np-badge info">{NOMINA_TURNO_MOVIMIENTO_TIPO}</span>
           <button
             type="button"
@@ -1174,7 +1340,66 @@ export default function TurnosPage() {
         </div>
       </div>
 
-      <div className="np-table-card">
+      <section className="np-external-summary" aria-labelledby="external-summary-title">
+        <div className="np-section-heading">
+          <div>
+            <span className="np-eyebrow">COBERTURA</span>
+            <h2 id="external-summary-title">Externos consolidados</h2>
+          </div>
+          <span className="np-badge info">Identidad + turnos del período</span>
+        </div>
+        {externalSummaryState.loading ? <div className="np-empty">Cargando externos...</div> : null}
+        {externalSummaryState.error ? (
+          <div className="np-inline-state error" role="alert">No fue posible cargar el resumen de externos: {externalSummaryState.error}</div>
+        ) : null}
+        {!externalSummaryState.loading && !externalSummaryState.error && selectedPeriodId && (externalSummaryState.data?.length ?? 0) === 0 ? (
+          <div className="np-empty">No hay identidades externas asociadas al período.</div>
+        ) : null}
+        {(externalSummaryState.data?.length ?? 0) > 0 ? (
+          <div className="np-external-summary-list">
+            {externalSummaryState.data?.map((externo) => (
+              <article className="np-external-summary-row" key={externo.id}>
+                <div>
+                  <strong>{externo.nombre_completo}</strong>
+                  <span>{externo.tipo_documento} {externo.numero_documento}</span>
+                </div>
+                <div><span>Turnos</span><strong>{formatNumber(Number(externo.turnos))}</strong></div>
+                {canSeeEconomicInternal ? <div><span>Total registrado</span><strong>{formatCOP(Number(externo.valor_total))}</strong></div> : <div><span>Tipo</span><strong>Operativo</strong></div>}
+                {canSeeEconomicInternal ? <div className="np-external-checklist">
+                  <span className={externo.cedula ? "is-ready" : "is-pending"}>Cédula: {externo.cedula ? "Cargada" : "Pendiente"}</span>
+                  <span className={externo.banco_doc ? "is-ready" : "is-pending"}>Banco: {externo.banco_doc ? "Cargada" : "Pendiente"}</span>
+                  <span className={externo.cuenta_estado === "FIRMADA" ? "is-ready" : "is-pending"}>Cuenta: {externo.cuenta_estado}</span>
+                </div> : null}
+                {canSeeEconomicInternal ? <div className="np-external-actions">
+                  <label className="np-btn">
+                    {externo.cedula ? "Reemplazar cédula" : "Subir cédula"}
+                    <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden disabled={externalBusy !== null} onChange={(event) => { void handleExternalDocument(externo.id, 'CEDULA_EXTERNO_COBERTURA', event.target.files?.[0]); event.currentTarget.value = ''; }} />
+                  </label>
+                  {externo.cedula ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleViewExternalDocument(externo.id, 'CEDULA_EXTERNO_COBERTURA'); }}>Ver cédula</button> : null}
+                  <label className="np-btn">
+                    {externo.banco_doc ? "Reemplazar banco" : "Subir banco"}
+                    <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden disabled={externalBusy !== null} onChange={(event) => { void handleExternalDocument(externo.id, 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA', event.target.files?.[0]); event.currentTarget.value = ''; }} />
+                  </label>
+                  {externo.banco_doc ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleViewExternalDocument(externo.id, 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA'); }}>Ver certificación</button> : null}
+                  {externo.cuenta_estado === 'PENDIENTE' && externo.turnos > 0 ? <button type="button" className="np-btn primary" disabled={externalBusy !== null || !selectedPeriod?.contrato_id} onClick={() => { void handleGenerateExternalAccount(externo.id); }}>Generar cuenta</button> : null}
+                  {externo.cuenta_id && externo.cuenta_estado !== 'PENDIENTE' ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleDownloadExternalAccount(externo.cuenta_id as string); }}>Descargar cuenta</button> : null}
+                  {externo.cuenta_id && externo.cuenta_estado === 'GENERADA' ? <label className="np-btn">Subir firmada<input type="file" accept="application/pdf" hidden disabled={externalBusy !== null} onChange={(event) => { void handleSignedExternalAccount(externo.cuenta_id as string, event.target.files?.[0]); event.currentTarget.value = ''; }} /></label> : null}
+                  {externo.cuenta_id && externo.cuenta_estado === 'FIRMADA' ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleViewSignedAccount(externo.cuenta_id as string); }}>Ver firmada</button> : null}
+                </div> : null}
+              </article>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      {turnoView === "internos" ? (
+        <section className="np-table-card np-internal-turns" aria-labelledby="internal-turns-title">
+          <div className="np-section-heading"><div><span className="np-eyebrow">COBERTURA</span><h2 id="internal-turns-title">Turnos internos</h2></div><span className="np-badge info">{internalTurns.length} turno(s)</span></div>
+          {internalTurns.length === 0 ? <div className="np-empty">No hay turnos internos calculados para este período.</div> : <div className="np-table-scroll"><table className="np-table"><thead><tr><th>Fecha</th><th>Reemplazante</th><th>Documento</th><th>Titular reemplazado</th><th>Novedad origen</th><th>Municipio</th><th>Institución</th><th>Sede</th><th>Estado</th>{canSeeEconomicInternal ? <><th>Salario turno</th><th>Recargos</th><th>Salud</th><th>Pensión</th><th>Neto adicional</th></> : null}</tr></thead><tbody>{internalTurns.map((turno) => <tr key={turno.id}><td>{turno.fecha}</td><td>{turno.empleado.persona.nombre_completo}</td><td>{turno.empleado.persona.numero_documento ?? "-"}</td><td>{turno.titularNombre}{turno.titularDocumento ? ` · ${turno.titularDocumento}` : ""}</td><td title={turno.novedadId}>{turno.novedadTipo}</td><td>{turno.contexto?.municipio ?? turno.empleado.municipio ?? "-"}</td><td>{turno.contexto?.institucion ?? turno.empleado.institucion ?? "-"}</td><td>{turno.contexto?.sede ?? "-"}</td><td><span className={`np-badge ${turno.novedadEstado === "ANULADA" ? "danger" : "info"}`}>{turno.novedadEstado}</span></td>{canSeeEconomicInternal ? <><td>{formatCOP(turno.salario)}</td><td>{formatCOP(turno.recargo)}</td><td>-{formatCOP(turno.salud)}</td><td>-{formatCOP(turno.pension)}</td><td><strong>{formatCOP(turno.neto)}</strong></td></> : null}</tr>)}</tbody></table></div>}
+        </section>
+      ) : null}
+
+      <div className={`np-table-card${turnoView === "internos" ? " np-table-card-hidden" : ""}`}>
         {!hasPeriods && !periodsState.loading ? (
           <StateCard
             title="Sin períodos disponibles"

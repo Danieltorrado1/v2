@@ -34,22 +34,22 @@ export default function AppRouter() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="personal" element={<ModuleRoute code="PERSONAL"><OperationalPersonalPage /></ModuleRoute>} />
-            <Route path="nomina" element={<ModuleRoute code="NOMINA"><NominaHubPage /></ModuleRoute>} />
-            <Route path="nomina/cobertura" element={<ModuleRoute code="NOMINA"><PlanillaOperativaPage /></ModuleRoute>} />
-            <Route path="nomina/asistencia" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
-            <Route path="nomina/ops" element={<ModuleRoute code="NOMINA"><PersonalOpsPage /></ModuleRoute>} />
-            <Route path="nomina/novedades" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
-            <Route path="nomina/validacion" element={<ModuleRoute code="NOMINA"><PersonalOpsPage /></ModuleRoute>} />
-            <Route path="nomina/pago" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
-            <Route path="nomina/documentos" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
-            <Route path="nomina/liquidacion" element={<ModuleRoute code="NOMINA"><LiquidacionPage /></ModuleRoute>} />
-            <Route path="nomina/turnos" element={<ModuleRoute code="NOMINA"><TurnosPage /></ModuleRoute>} />
-            <Route path="nomina/personal-ops" element={<ModuleRoute code="NOMINA"><PersonalOpsPage /></ModuleRoute>} />
-            <Route path="nomina/correccion" element={<ModuleRoute code="NOMINA"><CorreccionNominaPage /></ModuleRoute>} />
-            <Route path="nomina/cambios-operativos" element={<ModuleRoute code="NOMINA"><CambiosOperativosPage /></ModuleRoute>} />
-            <Route path="nomina/planilla-operativa" element={<ModuleRoute code="NOMINA"><PlanillaOperativaPage /></ModuleRoute>} />
-            <Route path="nomina/gestion" element={<ModuleRoute code="NOMINA"><NominaPage /></ModuleRoute>} />
+            <Route path="personal" element={<ModuleRoute code="PERSONAL" requiredPermissions={["vinculaciones.read"]}><OperationalPersonalPage /></ModuleRoute>} />
+            <Route path="nomina" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaHubPage /></ModuleRoute>} />
+            <Route path="nomina/cobertura" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]}><PlanillaOperativaPage /></ModuleRoute>} />
+            <Route path="nomina/asistencia" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
+            <Route path="nomina/ops" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.cuentas_cobro_ops.read"]}><PersonalOpsPage /></ModuleRoute>} />
+            <Route path="nomina/novedades" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]}><NominaPage /></ModuleRoute>} />
+            <Route path="nomina/validacion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]}><PersonalOpsPage /></ModuleRoute>} />
+            <Route path="nomina/pago" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
+            <Route path="nomina/documentos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
+            <Route path="nomina/liquidacion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><LiquidacionPage /></ModuleRoute>} />
+            <Route path="nomina/turnos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.movimientos.read"]}><TurnosPage /></ModuleRoute>} />
+            <Route path="nomina/personal-ops" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.cuentas_cobro_ops.read"]}><PersonalOpsPage /></ModuleRoute>} />
+            <Route path="nomina/correccion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.correcciones.read"]} denyRoles={["GESTOR"]}><CorreccionNominaPage /></ModuleRoute>} />
+            <Route path="nomina/cambios-operativos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.movimientos.read"]} denyRoles={["GESTOR"]}><CambiosOperativosPage /></ModuleRoute>} />
+            <Route path="nomina/planilla-operativa" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]}><PlanillaOperativaPage /></ModuleRoute>} />
+            <Route path="nomina/gestion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
             <Route path="herramientas/calculadora-salario" element={<CalculadoraSalarioPage />} />
             <Route path="herramientas/calculadora-cobertura" element={<CalculadoraCoberturaPage />} />
             <Route path="herramientas/cobertura" element={<ModuleRoute code="COBERTURA"><CoberturaDashboardPage /></ModuleRoute>} />

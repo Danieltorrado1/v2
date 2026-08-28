@@ -424,6 +424,23 @@ export interface UpdateNominaMovimientoApi {
   activo?: boolean;
 }
 
+export interface CoberturaExternoResumenApi {
+  id: string;
+  empresa_id: string;
+  tipo_documento: string;
+  numero_documento: string;
+  nombre_completo: string;
+  banco: string | null;
+  tipo_cuenta: string | null;
+  numero_cuenta: string | null;
+  turnos: number;
+  valor_total: number;
+  cedula: boolean;
+  banco_doc: boolean;
+  cuenta_id: string | null;
+  cuenta_estado: 'PENDIENTE' | 'GENERADA' | 'FIRMADA' | string;
+}
+
 export const NOMINA_TURNO_MOVIMIENTO_TIPO = 'TURNO_EXTERNO' as const;
 
 export type NominaTurnoMovimientoTipo = typeof NOMINA_TURNO_MOVIMIENTO_TIPO;

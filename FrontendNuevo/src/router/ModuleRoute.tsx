@@ -1,10 +1,60 @@
 import { Navigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
+
+import { useAuth } from '../context/AuthContext';
 import { useCompanyContext } from '../context/CompanyContext';
 
-export default function ModuleRoute({code,children}:{code:string;children:ReactNode}){
-  const {empresaId,capabilities,capabilitiesLoading,hasModule}=useCompanyContext();
-  if(!empresaId||capabilitiesLoading||!capabilities)return <div className="adm-empty">Cargando configuración empresarial...</div>;
-  if(!hasModule(code))return <Navigate to="/dashboard" replace/>;
+function canAny(permissions: string[], required: readonly string[]): boolean {
+  return required.length === 0 || required.some((permission) => permissions.includes(permission));
+}
+
+function resolveFallbackPath(input: {
+  hasModule: (code: string) => boolean;
+  permissions: string[];
+  roles: string[];
+}): string {
+  if (input.hasModule('NOMINA') && input.permissions.includes('nomina.read')) {
+    return input.roles.includes('GESTOR') ? '/nomina/cobertura' : '/nomina';
+  }
+
+  if (input.hasModule('PERSONAL') && input.permissions.includes('vinculaciones.read')) {
+    return '/personal';
+  }
+
+  if (input.hasModule('DASHBOARD') && input.permissions.includes('dashboard.read')) {
+    return '/dashboard';
+  }
+
+  if (input.hasModule('PORTAL_COLABORADOR')) {
+    return '/portal';
+  }
+
+  return '/dashboard';
+}
+
+export default function ModuleRoute({
+  code,
+  children,
+  requiredPermissions = [],
+  denyRoles = []
+}: {
+  code: string;
+  children: ReactNode;
+  requiredPermissions?: readonly string[];
+  denyRoles?: readonly string[];
+}) {
+  const { user } = useAuth();
+  const { empresaId, capabilities, capabilitiesLoading, hasModule } = useCompanyContext();
+  const permissions = user?.permissions ?? [];
+  const roles = user?.roles ?? [];
+
+  if (!empresaId || capabilitiesLoading || !capabilities) {
+    return <div className="adm-empty">Cargando configuracion empresarial...</div>;
+  }
+
+  if (!hasModule(code) || !canAny(permissions, requiredPermissions) || denyRoles.some((role) => roles.includes(role))) {
+    return <Navigate to={resolveFallbackPath({ hasModule, permissions, roles })} replace />;
+  }
+
   return children;
 }

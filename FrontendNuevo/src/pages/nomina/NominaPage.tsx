@@ -34,20 +34,24 @@ import {
   getNominaDesprendibles,
   getNominaPeriodo,
   getNominaPeriodoDashboard,
+  getNovedadSupport,
   getNominaPeriodos,
   listarTiposNovedad,
   openNominaDesprendible,
   recalculateNominaPeriodo,
   updateNominaNovedad,
+  uploadNovedadSupport,
 } from "../../services/nominaApi";
 import { ApiClientError } from "../../services/apiClient";
 import { useCompanyContext } from "../../context/CompanyContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   pickAvailableScopedId,
   readCompanyScopedStorage,
   writeCompanyScopedStorage,
 } from "../../context/companyScope";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
+import CoberturaFlowNav from "./CoberturaFlowNav";
 import type {
   GenerateNominaDesprendiblesResponse,
   NominaDesprendibleApi,
@@ -752,6 +756,8 @@ export default function NominaPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { empresaId } = useCompanyContext();
+  const { user } = useAuth();
+  const gestorOperationalOnly = user?.roles.includes("GESTOR") === true && user?.roles.includes("TALENTO_HUMANO") !== true;
   const [activeTab, setActiveTab] = useState("nomina");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -786,6 +792,7 @@ export default function NominaPage() {
   const [isGeneratingDesprendibles, setIsGeneratingDesprendibles] = useState(false);
   const [downloadingDesprendibleId, setDownloadingDesprendibleId] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<FeedbackState>(null);
+  const [supportBusyId, setSupportBusyId] = useState<string | null>(null);
 
   const [periodsState, setPeriodsState] = useState<AsyncState<PaginatedNominaPeriodosApi>>({
     ...EMPTY_ASYNC_STATE,
@@ -2252,6 +2259,29 @@ export default function NominaPage() {
     openNovedadModal(novedad.nomina_empleado_id, novedad);
   };
 
+  const handleViewSupport = async (novedadId: string) => {
+    setSupportBusyId(novedadId);
+    try {
+      const support = await getNovedadSupport(novedadId);
+      if (!support) throw new Error('Soporte no encontrado.');
+      window.open(support.url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      setActionFeedback({ tone: 'error', message: toMessage(error) });
+    } finally { setSupportBusyId(null); }
+  };
+
+  const handleUploadSupport = async (novedadId: string, file: File | undefined) => {
+    if (!file) return;
+    setSupportBusyId(novedadId);
+    try {
+      await uploadNovedadSupport(novedadId, file);
+      await loadNovedades(selectedPeriodId ?? '');
+      setActionFeedback({ tone: 'success', message: 'Soporte de novedad cargado correctamente.' });
+    } catch (error) {
+      setActionFeedback({ tone: 'error', message: toMessage(error) });
+    } finally { setSupportBusyId(null); }
+  };
+
   const selectedPeriodLabel = selectedPeriod?.nombre_periodo ?? "Periodo seleccionado";
   const modalSubtitle = selectedFormEmployee?.persona.nombre_completo ?? selectedPeriodLabel;
   const canSubmitNovedad =
@@ -2263,8 +2293,9 @@ export default function NominaPage() {
 
   return (
     <div className="nomina-page">
+      <CoberturaFlowNav periodId={selectedPeriodId} />
       <div className="payroll-kpis">
-        {kpis.map((kpi) => {
+        {kpis.filter((kpi) => !gestorOperationalOnly || kpi.label === "Novedades").map((kpi) => {
           const Icon = kpi.icon;
 
           return (
@@ -2516,7 +2547,7 @@ export default function NominaPage() {
       ) : null}
 
       <div className="payroll-tabs">
-        {tabs.map((tab) => (
+        {tabs.filter((tab) => !gestorOperationalOnly || ["novedades", "soportes"].includes(tab.id)).map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -2910,6 +2941,17 @@ export default function NominaPage() {
                       {getNovedadProjectionLabel(novedad) ? (
                         <span>{getNovedadProjectionLabel(novedad)}</span>
                       ) : null}
+                    </div>
+
+                    <div className="payroll-novedad-support">
+                      <span><strong>Soporte:</strong> {novedad.documento_persona_id ? "Cargado" : "Pendiente"}</span>
+                      <div className="payroll-novedad-actions">
+                        <label className="payroll-inline-button">
+                          {novedad.documento_persona_id ? "Reemplazar soporte" : "Subir soporte"}
+                          <input type="file" accept="application/pdf" hidden disabled={supportBusyId !== null} onChange={(event) => { void handleUploadSupport(novedad.id, event.target.files?.[0]); event.currentTarget.value = ''; }} />
+                        </label>
+                        {novedad.documento_persona_id ? <button type="button" className="payroll-inline-button" disabled={supportBusyId !== null} onClick={() => { void handleViewSupport(novedad.id); }}>Ver soporte</button> : null}
+                      </div>
                     </div>
 
                     <div className="payroll-novedad-footer">

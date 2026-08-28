@@ -12,13 +12,14 @@ import {
 import "./MainLayout.css";
 
 const nominaLinks = [
-  { to: "/nomina", label: "N\u00f3mina" },
-  { to: "/nomina/liquidacion", label: "Liquidaci\u00f3n" },
-  { to: "/nomina/turnos", label: "Turnos" },
-  { to: "/nomina/cambios-operativos", label: "Cambios operativos" },
-  { to: "/nomina/personal-ops", label: "Personal OPS" },
-  { to: "/nomina/correccion", label: "Correcci\u00f3n N\u00f3mina" },
-];
+  { to: "/nomina", label: "Centro de n\u00f3mina", requiredPermissions: ["nomina.read"] },
+  { to: "/nomina/cobertura", label: "Planilla operativa", requiredPermissions: ["nomina.read"] },
+  { to: "/nomina/liquidacion", label: "Liquidaci\u00f3n", requiredPermissions: ["nomina.liquidaciones.generate", "nomina.liquidaciones.finalize"] },
+  { to: "/nomina/turnos", label: "Turnos", requiredPermissions: ["nomina.movimientos.read"] },
+  { to: "/nomina/cambios-operativos", label: "Cambios operativos", requiredPermissions: ["nomina.movimientos.read"] },
+  { to: "/nomina/personal-ops", label: "Personal OPS", requiredPermissions: ["nomina.cuentas_cobro_ops.read"] },
+  { to: "/nomina/correccion", label: "Correcci\u00f3n N\u00f3mina", requiredPermissions: ["nomina.correcciones.read"] },
+] as const;
 
 const herramientasLinks = [
   { to: "/herramientas/calculadora-salario", label: "Calculadora de salario" },
@@ -41,6 +42,10 @@ const repositorioLinks = [
   { to: "/repositorio/subir", label: "Subir documentos" },
 ];
 
+function hasAnyPermission(permissions: string[] | undefined, required: readonly string[]) {
+  return required.some((permission) => permissions?.includes(permission) === true);
+}
+
 export default function MainLayout() {
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
@@ -56,6 +61,28 @@ export default function MainLayout() {
   const displayName = user?.name ?? "Usuario";
   const roleLabel = user?.roles?.[0] ?? "Usuario";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "US";
+  const permissions = user?.permissions ?? [];
+  const gestorOperationalOnly = user?.roles.includes("GESTOR") === true && user?.roles.includes("TALENTO_HUMANO") !== true;
+  const canSeeDashboard = hasModule("DASHBOARD") && permissions.includes("dashboard.read");
+  const canSeePersonal = hasModule("PERSONAL") && permissions.includes("vinculaciones.read");
+  const visibleNominaLinks = nominaLinks.filter((link) => {
+    if (gestorOperationalOnly && !["/nomina/cobertura", "/nomina/turnos", "/nomina/novedades"].includes(link.to)) return false;
+    return hasAnyPermission(permissions, link.requiredPermissions);
+  });
+  const canSeeNomina = hasModule("NOMINA") && visibleNominaLinks.length > 0;
+  const canSeeCobertura = hasModule("COBERTURA") && (permissions.includes("cobertura.read") || permissions.includes("cobertura.update"));
+  const canSeeSst = hasModule("SST") && permissions.some((permission) => permission.startsWith("sst."));
+  const canSeePortal = hasModule("PORTAL_COLABORADOR");
+  const canSeeRepositorio = hasModule("REPOSITORIO") && permissions.some((permission) => permission.startsWith("documentos."));
+  const homePath = canSeeDashboard
+    ? "/dashboard"
+    : canSeeNomina
+      ? (user?.roles.includes("GESTOR") ? "/nomina/cobertura" : "/nomina")
+      : canSeePersonal
+        ? "/personal"
+        : canSeePortal
+          ? "/portal"
+          : "/dashboard";
   const logoSrc =
     theme === "dark"
       ? "/branding/empiria-logo-horizontal-dark-web.png"
@@ -87,7 +114,7 @@ export default function MainLayout() {
   return (
     <div className="layout">
       <header className="topbar">
-        <Link to="/dashboard" className="logo-area logo-link" aria-label="Empiria">
+        <Link to={homePath} className="logo-area logo-link" aria-label="Empiria">
           {logoFallback ? (
             <span className="logo-fallback">EMPIRIA</span>
           ) : (
@@ -101,28 +128,28 @@ export default function MainLayout() {
         </Link>
 
         <nav className="menu">
-          {hasModule("DASHBOARD") && <NavLink
+          {canSeeDashboard && <NavLink
             to="/dashboard"
             className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
           >
             Dashboard
           </NavLink>}
-          {hasModule("PERSONAL") && <NavLink
+          {canSeePersonal && <NavLink
             to="/personal"
             className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
           >
             Personal
           </NavLink>}
-          {hasModule("NOMINA") && <NavDropdown label={"N\u00f3mina"} links={nominaLinks} />}
-          {hasModule("COBERTURA") && <NavDropdown label="Herramientas" links={herramientasLinks} />}
-          {hasModule("SST") && <NavDropdown label="SST" links={sstLinks} />}
-          {hasModule("PORTAL_COLABORADOR") && <NavLink
+          {canSeeNomina && <NavDropdown label={"N\u00f3mina"} links={visibleNominaLinks} />}
+          {canSeeCobertura && <NavDropdown label="Herramientas" links={herramientasLinks} />}
+          {canSeeSst && <NavDropdown label="SST" links={sstLinks} />}
+          {canSeePortal && <NavLink
             to="/portal"
             className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
           >
             Portal
           </NavLink>}
-          {hasModule("REPOSITORIO") && <NavDropdown label="Repositorio" links={repositorioLinks} />}
+          {canSeeRepositorio && <NavDropdown label="Repositorio" links={repositorioLinks} />}
           {canAccessAdmin && (
             <NavLink
               to="/admin"

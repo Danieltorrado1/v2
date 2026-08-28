@@ -41,6 +41,7 @@ import type {
   UpdateNominaMovimientoApi,
   UpdateNominaNovedadApi,
   UpdateNominaTurnoPayload,
+  CoberturaExternoResumenApi,
 } from '../types/nomina.types';
 import { ApiClientError } from './apiClient';
 import { env } from '../config/env';
@@ -305,6 +306,17 @@ export async function getNominaPeriodoEmpleados(
   return response.data;
 }
 
+export async function getNominaPeriodoEmpleadosOperativos(
+  id: string,
+  filters: NominaPeriodoEmpleadosQuery = {},
+): Promise<PaginatedNominaEmpleadosApi> {
+  const response = await apiClient.get<ApiResponse<PaginatedNominaEmpleadosApi>>(
+    `/nomina/periodos/${id}/empleados-operativos`,
+    { params: toParams(filters) },
+  );
+  return response.data;
+}
+
 export async function getAllNominaPeriodoEmpleados(
   id: string,
   filters: Omit<NominaPeriodoEmpleadosQuery, 'page' | 'limit'> = {},
@@ -348,6 +360,21 @@ export async function getAllNominaPeriodoEmpleados(
       total_pages: totalPages,
     },
   };
+}
+
+export async function getAllNominaPeriodoEmpleadosOperativos(
+  id: string,
+  filters: Omit<NominaPeriodoEmpleadosQuery, 'page' | 'limit'> = {},
+): Promise<PaginatedNominaEmpleadosApi> {
+  const firstPage = await getNominaPeriodoEmpleadosOperativos(id, { ...filters, page: 1, limit: MAX_BATCH_LIMIT });
+  if (firstPage.pagination.total_pages <= 1) return firstPage;
+  const pages = await Promise.all(
+    Array.from({ length: firstPage.pagination.total_pages - 1 }, (_, index) =>
+      getNominaPeriodoEmpleadosOperativos(id, { ...filters, page: index + 2, limit: MAX_BATCH_LIMIT }),
+    ),
+  );
+  const items = [firstPage, ...pages].flatMap((page) => page.items);
+  return { items, pagination: { ...firstPage.pagination, page: 1, limit: items.length, total_pages: 1 } };
 }
 
 export async function listarCorreccionesNomina(
@@ -675,6 +702,15 @@ export async function getNominaMovimientos(
   return response.data;
 }
 
+export async function getNominaMovimientosOperativos(
+  filters: NominaMovimientosQuery = {},
+): Promise<PaginatedNominaMovimientosApi> {
+  const response = await apiClient.get<ApiResponse<PaginatedNominaMovimientosApi>>('/nomina/movimientos-operativos', {
+    params: toParams(filters),
+  });
+  return response.data;
+}
+
 export async function getAllNominaMovimientos(
   filters: Omit<NominaMovimientosQuery, 'page' | 'limit'> = {},
 ): Promise<PaginatedNominaMovimientosApi> {
@@ -719,10 +755,31 @@ export async function getAllNominaMovimientos(
   };
 }
 
+export async function getAllNominaMovimientosOperativos(
+  filters: Omit<NominaMovimientosQuery, 'page' | 'limit'> = {},
+): Promise<PaginatedNominaMovimientosApi> {
+  const firstPage = await getNominaMovimientosOperativos({ ...filters, page: 1, limit: MAX_BATCH_LIMIT });
+  if (firstPage.pagination.total_pages <= 1) return firstPage;
+  const pages = await Promise.all(Array.from({ length: firstPage.pagination.total_pages - 1 }, (_, index) =>
+    getNominaMovimientosOperativos({ ...filters, page: index + 2, limit: MAX_BATCH_LIMIT }),
+  ));
+  const items = [firstPage, ...pages].flatMap((page) => page.items);
+  return { items, pagination: { ...firstPage.pagination, page: 1, limit: items.length, total_pages: 1 } };
+}
+
 export async function getNominaTurnos(
   filters: NominaTurnoFilters = {},
 ): Promise<PaginatedNominaTurnosApi> {
   return mapPaginatedNominaTurnos(await getNominaMovimientos({
+    ...filters,
+    tipo_movimiento: NOMINA_TURNO_MOVIMIENTO_TIPO,
+  }));
+}
+
+export async function getAllNominaTurnosOperativos(
+  filters: Omit<NominaTurnoFilters, 'page' | 'limit'> = {},
+): Promise<PaginatedNominaTurnosApi> {
+  return mapPaginatedNominaTurnos(await getAllNominaMovimientosOperativos({
     ...filters,
     tipo_movimiento: NOMINA_TURNO_MOVIMIENTO_TIPO,
   }));
@@ -735,6 +792,67 @@ export async function getAllNominaTurnos(
     ...filters,
     tipo_movimiento: NOMINA_TURNO_MOVIMIENTO_TIPO,
   }));
+}
+
+export async function getCoberturaExternos(periodoId: string, empresaId?: string) {
+  const response = await apiClient.get<ApiResponse<CoberturaExternoResumenApi[]>>('/nomina/cobertura/externos', {
+    params: toParams({ periodo_id: periodoId, empresa_id: empresaId }),
+  });
+  return response.data;
+}
+
+export async function getCoberturaExternosOperativos(periodoId: string, empresaId?: string) {
+  const response = await apiClient.get<ApiResponse<CoberturaExternoResumenApi[]>>('/nomina/cobertura/externos-operativos', {
+    params: toParams({ periodo_id: periodoId, empresa_id: empresaId }),
+  });
+  return response.data;
+}
+
+export async function uploadCoberturaExternoDocumento(externoId: string, tipoDocumento: 'CEDULA_EXTERNO_COBERTURA' | 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA', file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('tipo_documento', tipoDocumento);
+  const response = await apiClient.post<ApiResponse<unknown>>(`/nomina/cobertura/externos/${externoId}/documentos`, form);
+  return response.data;
+}
+
+export async function listarDocumentosCoberturaExterno(externoId: string) {
+  const response = await apiClient.get<ApiResponse<Array<{ tipo_documento: string; url: string }>>>(`/nomina/cobertura/externos/${externoId}/documentos`);
+  return response.data;
+}
+
+export async function generarCoberturaCuenta(empresaId: string, contratoId: string, periodoId: string, externoId: string) {
+  const response = await apiClient.post<ApiResponse<{ id: string }>>('/nomina/cobertura/cuentas-cobro/generar', { empresa_id: empresaId, contrato_id: contratoId, periodo_id: periodoId, externo_id: externoId });
+  return response.data;
+}
+
+export async function descargarCoberturaCuenta(cuentaId: string) {
+  const response = await apiClient.get<ApiResponse<{ url: string; estado: string }>>(`/nomina/cobertura/cuentas-cobro/${cuentaId}/download`);
+  return response.data;
+}
+
+export async function verCoberturaCuentaFirmada(cuentaId: string) {
+  const response = await apiClient.get<ApiResponse<{ url: string; estado: string }>>(`/nomina/cobertura/cuentas-cobro/${cuentaId}/firmada/download`);
+  return response.data;
+}
+
+export async function uploadCoberturaCuentaFirmada(cuentaId: string, file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await apiClient.post<ApiResponse<unknown>>(`/nomina/cobertura/cuentas-cobro/${cuentaId}/firmada`, form);
+  return response.data;
+}
+
+export async function getNovedadSupport(novedadId: string) {
+  const response = await apiClient.get<ApiResponse<{ url: string } | null>>(`/nomina/novedades/${novedadId}/soporte`);
+  return response.data;
+}
+
+export async function uploadNovedadSupport(novedadId: string, file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await apiClient.post<ApiResponse<{ url: string } | null>>(`/nomina/novedades/${novedadId}/soporte`, form);
+  return response.data;
 }
 
 export async function createNominaNovedad(

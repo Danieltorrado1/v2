@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react";
-import { NavLink, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Plus, Search, X } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
@@ -18,6 +18,7 @@ import {
   getAllNominaMovimientos,
   getAllNominaNovedades,
   getAllNominaPeriodoEmpleados,
+  getAllNominaPeriodoEmpleadosOperativos,
   getNominaPeriodos,
   getRevisionOperativa,
   listarTiposNovedad,
@@ -39,6 +40,8 @@ import type {
   RevisionOperativaApi,
 } from "../../types/nomina.types";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
+import { getColombianCalendarDay } from "./colombiaHolidays";
+import CoberturaFlowNav from "./CoberturaFlowNav";
 import {
   buildTramos,
   dateKey,
@@ -54,6 +57,12 @@ import {
   type PlanillaContexto,
 } from "./planillaOperativa.domain";
 import "./PlanillaOperativaPage.css";
+
+const formatTurnAmount = (value: number) => new Intl.NumberFormat("es-CO", {
+  style: "currency",
+  currency: "COP",
+  maximumFractionDigits: 0,
+}).format(value);
 
 const ROW_HEIGHT = 78;
 const VIEWPORT_HEIGHT = 620;
@@ -80,15 +89,6 @@ const SORT_MODES = [
 const GESTOR_ALL = "";
 const GESTOR_NONE = "__SIN_GESTOR__";
 const PLANILLA_FILTERS_KEY = "nomina.planilla.filters";
-const WORKSPACE_TABS = [
-  { to: "/nomina", label: "Planilla" },
-  { to: "/nomina/novedades", label: "Novedades" },
-  { to: "/nomina/cambios-operativos", label: "Cambios / Adiciones" },
-  { to: "/nomina/validacion", label: "Validacion" },
-  { to: "/nomina/liquidacion", label: "Liquidacion" },
-  { to: "/nomina/pago", label: "Pago" },
-  { to: "/nomina/documentos", label: "Documentos" },
-] as const;
 
 type ReviewFilter = (typeof REVIEW_STATES)[number];
 type EventFilter = "TODOS" | "CON_NOVEDADES" | "SIN_NOVEDADES" | "INCONSISTENCIAS";
@@ -335,22 +335,6 @@ function resolveOperativeState(employee: NominaEmpleadoApi, review?: RevisionOpe
   return review?.estado_revision === "REVISADO" ? "REVISADO" : "PENDIENTE";
 }
 
-function WorkspaceTabs({ periodId = "" }: { periodId?: string }) {
-  return (
-    <nav className="op-workspace-tabs" aria-label="Workspace Nomina">
-      {WORKSPACE_TABS.map((tab) => (
-        <NavLink
-          key={tab.to}
-          to={`${tab.to}?period_id=${encodeURIComponent(periodId)}`}
-          className={({ isActive }) => (isActive ? "active" : "")}
-        >
-          {tab.label}
-        </NavLink>
-      ))}
-    </nav>
-  );
-}
-
 async function loadAttendance(periodId: string) {
   const all: Attendance[] = [];
   let page = 1;
@@ -428,6 +412,7 @@ export default function PlanillaOperativaPage() {
   const canUpdate = user?.permissions.includes("nomina.novedades.update") === true;
   const canClose = user?.permissions.includes("nomina.periodos.close") === true;
   const canReopen = user?.permissions.includes("nomina.periodos.reopen") === true;
+  const canSeeEconomic = user?.permissions.includes("nomina.economico.read") === true;
   const actorUserId = user?.id ? String(user.id) : null;
 
   useEffect(() => {
@@ -510,7 +495,10 @@ export default function PlanillaOperativaPage() {
       setScrollTop(0);
 
       try {
-        const employeeResponse = await getAllNominaPeriodoEmpleados(periodId, {
+        const employeeLoader = user?.permissions.includes("nomina.economico.read") === true
+          ? getAllNominaPeriodoEmpleados
+          : getAllNominaPeriodoEmpleadosOperativos;
+        const employeeResponse = await employeeLoader(periodId, {
           empresa_id: empresaId ? String(empresaId) : undefined,
         });
         if (!cancelled) {
@@ -1217,6 +1205,7 @@ export default function PlanillaOperativaPage() {
 
   return (
     <section className="op-sheet-page">
+      <CoberturaFlowNav periodId={periodId} />
       <header className="op-sheet-title">
         <div>
           <span>Nomina</span>
@@ -1239,8 +1228,6 @@ export default function PlanillaOperativaPage() {
           </strong>
         </div>
       </header>
-
-      <WorkspaceTabs periodId={periodId} />
 
       {period ? (
         <div className="op-period-meta">
@@ -1378,7 +1365,7 @@ export default function PlanillaOperativaPage() {
             <div>DOCUMENTO</div>
             <div>TRABAJADOR · CONTEXTO</div>
             {days.map((day) => (
-              <div className="op-day-head" key={day}>
+              <div className={`op-day-head ${getColombianCalendarDay(day).className}`} key={day} title={getColombianCalendarDay(day).tooltip}>
                 <b>{day.slice(8)}</b>
                 <small>{weekday(day)}</small>
               </div>
@@ -1441,6 +1428,7 @@ export default function PlanillaOperativaPage() {
                   </button>
 
                   {days.map((day) => {
+                    const calendarDay = getColombianCalendarDay(day);
                     const tramo = tramos.find((item) => item.inicio <= day && item.fin >= day);
                     const dayContext = tramo?.contexto ?? baseContext;
                     const noveltiesOnThisDay = novedadesOnDate(employeeNovelties, day);
@@ -1453,7 +1441,7 @@ export default function PlanillaOperativaPage() {
                       <button
                         type="button"
                         key={day}
-                        className={`op-cell ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""}`}
+                        className={`op-cell ${calendarDay.className} ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""}`}
                         title={noveltiesOnThisDay.length ? `${novedadCode(noveltiesOnThisDay[0])} · ${noveltiesOnThisDay[0]?.tipo_novedad?.nombre ?? "Novedad"} · ${dateLabel(day)} · ${noveltiesOnThisDay[0]?.fecha_inicio ?? day} a ${noveltiesOnThisDay[0]?.fecha_fin ?? day} · ${noveltiesOnThisDay[0]?.observacion ?? "Sin observacion"}` : `${dateLabel(day)} · ${buildContextTitle(employee, dayContext)}`}
                         onContextMenu={(event) => {
                           event.preventDefault();
@@ -1510,6 +1498,20 @@ export default function PlanillaOperativaPage() {
             <span>Gestor: {text(getEmployeeGestorLabel(selected.employee))}</span>
             <span>Estado: {resolveOperativeState(selected.employee, reviewByEmployee.get(selected.employee.id) ?? null)}</span>
           </div>
+
+          {canSeeEconomic ? (() => {
+            const detail = selected.employee.detalle_calculo as { adiciones_internas?: Array<Record<string, unknown>> } | null | undefined;
+            const turns = detail?.adiciones_internas ?? [];
+            const totals = turns.reduce<{ count: number; salario: number; recargo: number; salud: number; pension: number; neto: number }>((sum, turn) => ({
+              count: sum.count + 1,
+              salario: sum.salario + Number(turn.salario_turno ?? 0),
+              recargo: sum.recargo + Number(turn.recargo_turno ?? 0),
+              salud: sum.salud + Number(turn.salud_turno ?? 0),
+              pension: sum.pension + Number(turn.pension_turno ?? 0),
+              neto: sum.neto + Number(turn.neto_turno ?? 0),
+            }), { count: 0, salario: 0, recargo: 0, salud: 0, pension: 0, neto: 0 });
+            return turns.length ? <div className="op-context-detail"><strong>TURNOS INTERNOS</strong><span>Cantidad: {totals.count}</span><span>Salario turnos: {formatTurnAmount(totals.salario)}</span><span>Recargos: {formatTurnAmount(totals.recargo)}</span><span>Salud: -{formatTurnAmount(totals.salud)}</span><span>Pensión: -{formatTurnAmount(totals.pension)}</span><span>Neto adicional: {formatTurnAmount(totals.neto)}</span>{turns.map((turn) => <small key={String(turn.id ?? turn.fecha_inicio)}>{String(turn.fecha_inicio ?? "-")} · {String(turn.titular_nombre ?? "Titular no disponible")} · {String(turn.novedad_tipo ?? "Novedad")} · {formatTurnAmount(Number(turn.neto_turno ?? 0))}</small>)}</div> : null;
+          })() : null}
 
           {novedadesOnDate(noveltyByEmployee.get(selected.employee.id) ?? [], selected.date)[0] ? (() => {
             const novelty = novedadesOnDate(noveltyByEmployee.get(selected.employee.id) ?? [], selected.date)[0]!;

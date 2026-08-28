@@ -19,8 +19,10 @@ import {
   getNominaPeriodos,
 } from "../../services/nominaApi";
 import { useCompanyContext } from "../../context/CompanyContext";
+import { useSearchParams } from "react-router-dom";
 import { pickAvailableScopedId } from "../../context/companyScope";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
+import CoberturaFlowNav from "./CoberturaFlowNav";
 import type {
   GenerateNominaLiquidacionesResponse,
   NominaLiquidacion,
@@ -218,6 +220,7 @@ function StateCard({
 }
 
 export default function LiquidacionPage() {
+  const [searchParams] = useSearchParams();
   const { empresaId } = useCompanyContext();
   const [periodsState, setPeriodsState] = useState<AsyncState<PaginatedNominaPeriodosApi>>({
     ...EMPTY_ASYNC_STATE,
@@ -449,8 +452,8 @@ export default function LiquidacionPage() {
   );
 
   useEffect(() => {
-    void loadPeriods();
-  }, [loadPeriods]);
+    void loadPeriods(searchParams.get("period_id") ?? undefined);
+  }, [loadPeriods, searchParams]);
 
   useEffect(() => {
     if (!selectedPeriodId) {
@@ -560,6 +563,7 @@ export default function LiquidacionPage() {
 
   return (
     <div className="np-page">
+      <CoberturaFlowNav periodId={selectedPeriodId} />
       <header className="np-header">
         <div className="np-header-text">
           <h1>Liquidación laboral</h1>

@@ -395,6 +395,7 @@ export interface PresentacionLicitacionApi {
 export interface VinculacionPersonalContextApi {
   es_manipuladora: boolean;
   asignacion_operativa_actual: AsignacionOperativaApi | null;
+  gestor_actual: { id: number; nombre: string } | null;
   historial_asignacion_operativa: AsignacionOperativaApi[];
   asignacion_laboral_actual: AsignacionLaboralApi | null;
   historial_asignacion_laboral: AsignacionLaboralApi[];

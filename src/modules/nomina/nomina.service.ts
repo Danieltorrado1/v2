@@ -2035,16 +2035,48 @@ const getNominaEmpleadosRealSelect = (): string => {
     ) contexto_operativo ON TRUE
     LEFT JOIN LATERAL (
       SELECT
-        gpa.usuario_id::text AS gestor_usuario_id,
-        u.nombre_completo AS gestor_nombre_completo
-      FROM gestor_personal_asignaciones gpa
-      INNER JOIN usuarios u ON u.id = gpa.usuario_id
-      WHERE gpa.vinculacion_id = v.id
-        AND gpa.contrato_id = v.contrato_id
-        AND COALESCE(gpa.activo, TRUE) = TRUE
-        AND gpa.vigencia_desde <= np.fecha_fin
-        AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= np.fecha_inicio)
-      ORDER BY gpa.vigencia_desde DESC, gpa.id DESC
+        scope.gestor_usuario_id,
+        scope.gestor_nombre_completo
+      FROM (
+        SELECT
+          gpa.usuario_id::text AS gestor_usuario_id,
+          u.nombre_completo AS gestor_nombre_completo,
+          gpa.vigencia_desde,
+          gpa.id,
+          0 AS prioridad
+        FROM gestor_personal_asignaciones gpa
+        INNER JOIN usuarios u ON u.id = gpa.usuario_id
+        WHERE gpa.vinculacion_id = v.id
+          AND gpa.contrato_id = v.contrato_id
+          AND COALESCE(gpa.activo, TRUE) = TRUE
+          AND gpa.vigencia_desde <= np.fecha_fin
+          AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= np.fecha_inicio)
+        UNION ALL
+        SELECT
+          gma.usuario_id::text AS gestor_usuario_id,
+          u.nombre_completo AS gestor_nombre_completo,
+          gma.vigencia_desde,
+          gma.id,
+          1 AS prioridad
+        FROM gestor_municipio_asignaciones gma
+        INNER JOIN usuarios u ON u.id = gma.usuario_id
+        WHERE gma.contrato_id = v.contrato_id
+          AND COALESCE(gma.activo, TRUE) = TRUE
+          AND COALESCE(gma.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
+          AND gma.vigencia_desde <= np.fecha_fin
+          AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= np.fecha_inicio)
+          AND EXISTS (
+            SELECT 1
+            FROM cobertura_asignaciones cas_scope
+            INNER JOIN focalizacion_final cff_scope ON cff_scope.id = cas_scope.focalizacion_final_id
+            WHERE cas_scope.vinculacion_id = v.id
+              AND COALESCE(cas_scope.activo, TRUE) = TRUE
+              AND cas_scope.fecha_inicio <= np.fecha_fin
+              AND (cas_scope.fecha_fin IS NULL OR cas_scope.fecha_fin >= np.fecha_inicio)
+              AND cff_scope.municipio_id = gma.municipio_id
+          )
+      ) scope
+      ORDER BY scope.prioridad ASC, scope.vigencia_desde DESC, scope.id DESC
       LIMIT 1
     ) gestor_actual ON TRUE
     LEFT JOIN LATERAL (
@@ -5832,29 +5864,64 @@ export const listNominaEmpleados = async (
 
   if (query.gestor_usuario_id) {
     params.push(query.gestor_usuario_id);
-    conditions.push(`EXISTS (
-      SELECT 1
-      FROM gestor_personal_asignaciones gpa_f
-      INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
-      WHERE gpa_f.vinculacion_id = ne.vinculacion_id
-        AND gpa_f.contrato_id = v.contrato_id
-        AND gpa_f.usuario_id = $${params.length}::bigint
-        AND COALESCE(gpa_f.activo, TRUE) = TRUE
-        AND gpa_f.vigencia_desde <= np_f.fecha_fin
-        AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= np_f.fecha_inicio)
+    conditions.push(`(
+      EXISTS (
+        SELECT 1
+        FROM gestor_personal_asignaciones gpa_f
+        INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
+        WHERE gpa_f.vinculacion_id = ne.vinculacion_id
+          AND gpa_f.contrato_id = v.contrato_id
+          AND gpa_f.usuario_id = $${params.length}::bigint
+          AND COALESCE(gpa_f.activo, TRUE) = TRUE
+          AND gpa_f.vigencia_desde <= np_f.fecha_fin
+          AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= np_f.fecha_inicio)
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM gestor_municipio_asignaciones gma_f
+        INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
+        INNER JOIN cobertura_asignaciones cas_f ON cas_f.vinculacion_id = ne.vinculacion_id
+        INNER JOIN focalizacion_final cff_f ON cff_f.id = cas_f.focalizacion_final_id
+        WHERE gma_f.contrato_id = v.contrato_id
+          AND gma_f.usuario_id = $${params.length}::bigint
+          AND COALESCE(gma_f.activo, TRUE) = TRUE
+          AND COALESCE(gma_f.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
+          AND gma_f.vigencia_desde <= np_f.fecha_fin
+          AND (gma_f.vigencia_hasta IS NULL OR gma_f.vigencia_hasta >= np_f.fecha_inicio)
+          AND cas_f.fecha_inicio <= np_f.fecha_fin
+          AND (cas_f.fecha_fin IS NULL OR cas_f.fecha_fin >= np_f.fecha_inicio)
+          AND cff_f.municipio_id = gma_f.municipio_id
+      )
     )`);
   }
 
   if (query.sin_gestor === true) {
-    conditions.push(`NOT EXISTS (
-      SELECT 1
-      FROM gestor_personal_asignaciones gpa_f
-      INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
-      WHERE gpa_f.vinculacion_id = ne.vinculacion_id
-        AND gpa_f.contrato_id = v.contrato_id
-        AND COALESCE(gpa_f.activo, TRUE) = TRUE
-        AND gpa_f.vigencia_desde <= np_f.fecha_fin
-        AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= np_f.fecha_inicio)
+    conditions.push(`NOT (
+      EXISTS (
+        SELECT 1
+        FROM gestor_personal_asignaciones gpa_f
+        INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
+        WHERE gpa_f.vinculacion_id = ne.vinculacion_id
+          AND gpa_f.contrato_id = v.contrato_id
+          AND COALESCE(gpa_f.activo, TRUE) = TRUE
+          AND gpa_f.vigencia_desde <= np_f.fecha_fin
+          AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= np_f.fecha_inicio)
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM gestor_municipio_asignaciones gma_f
+        INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
+        INNER JOIN cobertura_asignaciones cas_f ON cas_f.vinculacion_id = ne.vinculacion_id
+        INNER JOIN focalizacion_final cff_f ON cff_f.id = cas_f.focalizacion_final_id
+        WHERE gma_f.contrato_id = v.contrato_id
+          AND COALESCE(gma_f.activo, TRUE) = TRUE
+          AND COALESCE(gma_f.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
+          AND gma_f.vigencia_desde <= np_f.fecha_fin
+          AND (gma_f.vigencia_hasta IS NULL OR gma_f.vigencia_hasta >= np_f.fecha_inicio)
+          AND cas_f.fecha_inicio <= np_f.fecha_fin
+          AND (cas_f.fecha_fin IS NULL OR cas_f.fecha_fin >= np_f.fecha_inicio)
+          AND cff_f.municipio_id = gma_f.municipio_id
+      )
     )`);
   }
 
@@ -5894,6 +5961,29 @@ export const listNominaEmpleados = async (
       total_pages: total === 0 ? 0 : Math.ceil(total / query.limit)
     }
   };
+};
+
+export const listNominaEmpleadosOperativos = async (
+  periodoId: string,
+  query: ListNominaEmpleadosQuery,
+  tenant?: TenantAccessContext
+): Promise<PaginatedResponse<Record<string, unknown>>> => {
+  const result = await listNominaEmpleados(periodoId, query, tenant);
+  const items = result.items.map((employee) => {
+    const {
+      salario_base: _salarioBase, auxilio_transporte: _auxilioTransporte,
+      otros_devengos: _otrosDevengos, devengado_basico: _devengadoBasico,
+      devengado_transporte: _devengadoTransporte, devengado_otros: _devengadoOtros,
+      total_adiciones: _totalAdiciones, total_deducciones: _totalDeducciones,
+      salud: _salud, pension: _pension, neto_pagar: _netoPagar,
+      detalle_calculo: _detalleCalculo, metodo_liquidacion: _metodoLiquidacion,
+      categoria_salarial: category, ...operational
+    } = employee;
+    const { salario_base: _categorySalary, auxilio_transporte: _categoryTransport,
+      otros_recargos: _categorySurcharges, ...operationalCategory } = category ?? {};
+    return { ...operational, categoria_salarial: category ? operationalCategory : null };
+  });
+  return { ...result, items };
 };
 
 export const updateNominaEmpleado = async (
@@ -6356,13 +6446,23 @@ export const recalculateNominaPeriodo = async (
       fecha_fin: string;
       fecha_inicio: string;
       id: string;
+      nomina_novedad_id: string;
       nomina_empleado_id: string;
+      titular_nombre: string | null;
+      titular_documento: string | null;
+      novedad_tipo: string | null;
+      novedad_estado: string | null;
       observacion: string | null;
     }>(
       `
         SELECT
           nnt.id::text AS id,
           nnt.nomina_empleado_id::text AS nomina_empleado_id,
+          nnt.nomina_novedad_id::text AS nomina_novedad_id,
+          CONCAT_WS(' ', titular_p.primer_nombre, titular_p.segundo_nombre, titular_p.primer_apellido, titular_p.segundo_apellido) AS titular_nombre,
+          titular_p.numero_documento AS titular_documento,
+          COALESCE(nt.codigo_operativo, nt.nombre, nt.descripcion_operativa) AS novedad_tipo,
+          CASE WHEN nn.activo THEN 'ACTIVA' ELSE 'ANULADA' END AS novedad_estado,
           COALESCE(nn.fecha_inicio, np.fecha_inicio)::text AS fecha_inicio,
           COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin)::text AS fecha_fin,
           nnt.contexto_operativo,
@@ -6370,6 +6470,10 @@ export const recalculateNominaPeriodo = async (
         FROM nomina_novedad_turnos nnt
         INNER JOIN nomina_novedades nn ON nn.id = nnt.nomina_novedad_id
         INNER JOIN nomina_periodos np ON np.id = nnt.periodo_id
+        LEFT JOIN nomina_empleados titular_ne ON titular_ne.id = nn.nomina_empleado_id
+        LEFT JOIN vinculaciones titular_v ON titular_v.id = titular_ne.vinculacion_id
+        LEFT JOIN personas titular_p ON titular_p.id = titular_v.persona_id
+        LEFT JOIN nomina_tipos_novedad nt ON nt.id = nn.tipo_novedad_id
         WHERE nnt.periodo_id = $1::bigint
           AND nnt.tipo_turno = 'INTERNO'
           AND COALESCE(nnt.activo, TRUE) = TRUE
@@ -6755,6 +6859,11 @@ export const recalculateNominaPeriodo = async (
 
           return {
             id: turnoRow.id,
+            novedad_id: turnoRow.nomina_novedad_id,
+            titular_nombre: turnoRow.titular_nombre,
+            titular_documento: turnoRow.titular_documento,
+            novedad_tipo: turnoRow.novedad_tipo,
+            novedad_estado: turnoRow.novedad_estado,
             fecha_inicio: turnoRow.fecha_inicio,
             fecha_fin: turnoRow.fecha_fin,
             observacion: turnoRow.observacion,
@@ -7371,6 +7480,18 @@ export const getNominaMovimientoById = async (
   tenant?: TenantAccessContext
 ): Promise<NominaMovimiento> => {
   return mapRealMovimiento(await loadNominaMovimientoByIdOrThrow(movimientoId, tenant));
+};
+
+export const getNominaMovimientosOperativos = async (
+  query: ListNominaMovimientosQuery,
+  tenant?: TenantAccessContext
+): Promise<PaginatedResponse<Record<string, unknown>>> => {
+  const result = await getNominaMovimientos(query, tenant);
+  return {
+    ...result,
+    items: result.items.map(({ valor_aplicado: _valorAplicado, valor_calculado: _valorCalculado,
+      valor_total: _valorTotal, valor_unitario: _valorUnitario, ...operational }) => operational)
+  };
 };
 
 export const createNominaMovimiento = async (
@@ -9262,6 +9383,15 @@ export const createNominaNovedad = async (
       throw new AppError('Failed to create payroll novelty', 500, 'NOMINA_NOVEDAD_CREATE_FAILED');
     }
 
+    if (input.documento_persona_id) {
+      await client.query(
+        `INSERT INTO nomina_novedad_documentos (nomina_novedad_id, documento_persona_id, created_by)
+         VALUES ($1::bigint, $2::bigint, $3::bigint)
+         ON CONFLICT (nomina_novedad_id, documento_persona_id) WHERE activo = TRUE DO NOTHING`,
+        [createdRow.id, input.documento_persona_id, actorUserId]
+      );
+    }
+
     await syncNominaNovedadCobertura(client, {
       novedadId: createdRow.id,
       empleado: empleadoMapped,
@@ -9387,14 +9517,41 @@ export const createNominaNovedadConTurno = async (
   try {
     await client.query('BEGIN');
     const novedad = await createNominaNovedad(input, actorUserId, tenant, auditMeta, client);
+    let externoId: string | null = null;
+    if (turno.tipo === 'EXTERNO') {
+      const externalName = typeof turno.contexto_operativo?.persona_externa_nombre === 'string'
+        ? turno.contexto_operativo.persona_externa_nombre.trim()
+        : '';
+      const externalDocument = typeof turno.contexto_operativo?.cobertura_documento_externo === 'string'
+        ? turno.contexto_operativo.cobertura_documento_externo.trim()
+        : '';
+      if (!externalName || !externalDocument) {
+        throw new AppError('La cobertura externa requiere nombre y documento', 400, 'COBERTURA_EXTERNO_IDENTIDAD_REQUERIDA');
+      }
+      const company = await client.query<{ empresa_id: string }>(
+        `SELECT c.empresa_id::text FROM nomina_periodos np INNER JOIN contratos c ON c.id=np.contrato_id WHERE np.id=$1::bigint`,
+        [input.periodo_id]
+      );
+      const empresaId = company.rows[0]?.empresa_id;
+      if (!empresaId) throw new AppError('El periodo no tiene empresa asociada', 409, 'COBERTURA_EXTERNO_EMPRESA_INVALIDA');
+      const external = await client.query<{ id: string }>(
+        `INSERT INTO cobertura_externos (empresa_id,tipo_documento,numero_documento,nombre_completo)
+         VALUES ($1,'CC',$2,$3)
+         ON CONFLICT (empresa_id,tipo_documento,numero_documento) WHERE activo=TRUE
+         DO UPDATE SET nombre_completo=EXCLUDED.nombre_completo,updated_at=NOW()
+         RETURNING id::text AS id`,
+        [empresaId, externalDocument, externalName]
+      );
+      externoId = external.rows[0]?.id ?? null;
+    }
     const row = await client.query<{ id: string }>(
       `INSERT INTO nomina_novedad_turnos
        (periodo_id, nomina_novedad_id, nomina_empleado_id, vinculacion_id, tipo_turno,
-        persona_reemplazada_id, contexto_operativo, observacion, created_by, updated_by)
-       VALUES ($1::bigint,$2::bigint,$3::bigint,$4::bigint,$5,$6::bigint,$7::jsonb,$8,$9::bigint,$9::bigint)
+        externo_id, persona_reemplazada_id, contexto_operativo, observacion, created_by, updated_by)
+       VALUES ($1::bigint,$2::bigint,$3::bigint,$4::bigint,$5,$6::bigint,$7::bigint,$8::jsonb,$9,$10::bigint,$10::bigint)
        RETURNING id::text AS id`,
       [input.periodo_id, novedad.id, input.nomina_empleado_id, input.vinculacion_id,
-        turno.tipo, turno.persona_reemplazada_id,
+        turno.tipo, externoId, turno.persona_reemplazada_id,
         JSON.stringify(turno.contexto_operativo ?? {}), turno.observacion, actorUserId]
     );
     const turnoRow = row.rows[0]; if (!turnoRow) throw new AppError('No fue posible crear relaciÃ³n de turno',500,'NOMINA_TURNO_CREATE_FAILED');
@@ -9980,6 +10137,17 @@ export const deactivateNominaNovedad = async (
         WHERE id = $1::bigint
       `,
       [parsedId.entidad_id]
+    );
+
+    // A replacement cannot remain economically active after its source novelty is cancelled.
+    await client.query(
+      `
+        UPDATE nomina_novedad_turnos
+        SET activo = FALSE, updated_by = $2::bigint, updated_at = NOW()
+        WHERE nomina_novedad_id = $1::bigint
+          AND COALESCE(activo, TRUE) = TRUE
+      `,
+      [parsedId.entidad_id, actorUserId]
     );
 
     const updated = mapRealNovedad(

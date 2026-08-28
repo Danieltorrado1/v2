@@ -30,7 +30,7 @@ async function main(){
    await client.query(`UPDATE empresa_modulo_overrides SET fecha_fin=CURRENT_DATE WHERE empresa_id=$1 AND modulo_id=$2 AND fecha_fin IS NULL`,[empresaA,byCode.get('COBERTURA')]);
    await client.query(`UPDATE empresa_suscripciones SET fecha_fin=CURRENT_DATE WHERE empresa_id=$1 AND plan_id=$2`,[empresaA,planA]);
    await client.query(`INSERT INTO empresa_suscripciones(empresa_id,plan_id,estado,fecha_inicio) VALUES($1,$2,'PRUEBA',CURRENT_DATE+1)`,[empresaA,planB]);
-   const history=await getCompanySaasHistory(empresaA,{isGlobalAdmin:true,empresaIds:[],contratoIds:[]});assert.equal(history.suscripciones.length,2);assert.equal(history.overrides.length,1);
+   const history=await getCompanySaasHistory(empresaA,{isGlobalAdmin:true,empresaIds:[],contratoIds:[],roleNames:[]});assert.equal(history.suscripciones.length,2);assert.equal(history.overrides.length,1);
    console.log(JSON.stringify({empresaA:{capabilities:capA.body.data.modulos,overridePositivo:overrideCaps.body.data.modulos.COBERTURA,historicoSuscripciones:history.suscripciones.length,historicoOverrides:history.overrides.length,cobertura:{status:cobA.status,code:cobA.body.error?.code},nomina:{status:nomA.status,code:nomA.body.error?.code}},empresaB:{capabilities:capB.body.data.modulos,cobertura:{status:cobB.status,code:cobB.body.error?.code},nomina:{status:nomB.status,code:nomB.body.error?.code}},tenantForbidden:{status:crossTenant.status,code:crossTenant.body.error?.code},before}));
   }finally{await new Promise<void>((ok,bad)=>server.close(e=>e?bad(e):ok()));}
  }finally{

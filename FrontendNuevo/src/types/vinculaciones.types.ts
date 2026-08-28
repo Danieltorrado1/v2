@@ -157,6 +157,7 @@ export interface GestorAssignmentUser {
 
 export interface GestorMunicipioAssignment {
   activo: boolean;
+  alcance_personal: "PERSONAL_SELECCIONADO" | "TODO_MUNICIPIO";
   contrato_id: number;
   created_at: string;
   created_by_user_id: number | null;

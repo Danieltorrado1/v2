@@ -35,7 +35,7 @@ const getActor = (req: Request): { tenant: TenantAccessContext; userId: string }
 };
 
 export const getTenantMeHandler = asyncHandler(async (req: Request, res: Response) => {
-  const tenant = req.tenant ?? { contratoIds: [], empresaIds: [], isGlobalAdmin: false };
+  const tenant = req.tenant ?? { contratoIds: [], empresaIds: [], isGlobalAdmin: false, roleNames: [] };
   const context = await getTenantMeContext(tenant);
 
   return successResponse(res, {

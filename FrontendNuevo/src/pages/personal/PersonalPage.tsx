@@ -1931,6 +1931,7 @@ function EditarEmpleadoModal({
           </div>
 
           {apiError && <FormError msg={apiError} />}
+          <p style={{fontSize:12,color:'var(--text-secondary)'}}>Gestor efectivo: {expediente?.personal_contexto.gestor_actual?.nombre ?? 'Sin gestor'}</p>
           <ModalFooter onCancel={onClose} submitLabel="Guardar cambios" submitting={submitting} />
         </form>
       </div>

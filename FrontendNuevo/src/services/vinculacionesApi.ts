@@ -132,6 +132,7 @@ export async function createGestorMunicipioAssignment(payload: {
   gestor_usuario_id: number;
   municipio_id: number;
   vigencia_desde?: string;
+  alcance_personal?: "PERSONAL_SELECCIONADO" | "TODO_MUNICIPIO";
   observacion?: string | null;
 }): Promise<GestorMunicipioAssignment> {
   const res = await apiClient.post<ApiResponse<GestorMunicipioAssignment>>('/vinculaciones/gestores/municipios', payload);

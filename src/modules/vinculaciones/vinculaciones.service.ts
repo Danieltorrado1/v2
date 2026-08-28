@@ -13,6 +13,7 @@ import {
   CloseGestorAssignmentInput,
   CreateGestorMunicipioAssignmentInput,
   CreateVinculacionInput,
+  GestorMunicipioPersonalScope,
   GestorAssignmentWorkspaceQuery,
   GestorPersonalHistoryQuery,
   ListGestorMunicipiosQuery,
@@ -412,6 +413,129 @@ const shiftIsoDate = (value: string, days: number): string => {
   return date.toISOString().slice(0, 10);
 };
 
+const GESTOR_SCOPE_SELECTED: GestorMunicipioPersonalScope = 'PERSONAL_SELECCIONADO';
+const GESTOR_SCOPE_ALL: GestorMunicipioPersonalScope = 'TODO_MUNICIPIO';
+const TALENTO_HUMANO_ROLE = 'TALENTO_HUMANO';
+const GESTOR_ROLE = 'GESTOR';
+
+const tenantHasRole = (tenant: TenantAccessContext | undefined, roleName: string): boolean =>
+  tenant?.roleNames.includes(roleName) === true;
+
+const isScopedGestorTenant = (tenant?: TenantAccessContext): boolean =>
+  Boolean(
+    tenant &&
+      !tenant.isGlobalAdmin &&
+      tenant.userId &&
+      tenantHasRole(tenant, GESTOR_ROLE) &&
+      !tenantHasRole(tenant, TALENTO_HUMANO_ROLE)
+  );
+
+const isScopedTalentoHumanoTenant = (tenant?: TenantAccessContext): boolean =>
+  Boolean(
+    tenant &&
+      !tenant.isGlobalAdmin &&
+      tenant.userId &&
+      tenantHasRole(tenant, TALENTO_HUMANO_ROLE)
+  );
+
+const buildMunicipioCoverageExistsSql = (
+  vinculacionSql: string,
+  startDateSql: string,
+  endDateSql: string,
+  municipioSql: string
+): string => `
+  EXISTS (
+    SELECT 1
+    FROM cobertura_asignaciones ca_scope
+    INNER JOIN focalizacion_final ff_scope ON ff_scope.id = ca_scope.focalizacion_final_id
+    WHERE ca_scope.vinculacion_id = ${vinculacionSql}
+      AND COALESCE(ca_scope.activo, TRUE) = TRUE
+      AND ca_scope.fecha_inicio <= ${endDateSql}
+      AND (ca_scope.fecha_fin IS NULL OR ca_scope.fecha_fin >= ${startDateSql})
+      AND ff_scope.municipio_id = ${municipioSql}
+  )
+`;
+
+const buildGestorScopeExistsSql = (
+  userParamSql: string,
+  vinculacionSql: string,
+  contratoSql: string,
+  startDateSql: string,
+  endDateSql: string
+): string => `
+  (
+    EXISTS (
+      SELECT 1
+      FROM gestor_personal_asignaciones gpa_scope
+      WHERE gpa_scope.vinculacion_id = ${vinculacionSql}
+        AND gpa_scope.contrato_id = ${contratoSql}
+        AND gpa_scope.usuario_id = ${userParamSql}::bigint
+        AND COALESCE(gpa_scope.activo, TRUE) = TRUE
+        AND gpa_scope.vigencia_desde <= ${endDateSql}
+        AND (gpa_scope.vigencia_hasta IS NULL OR gpa_scope.vigencia_hasta >= ${startDateSql})
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM gestor_municipio_asignaciones gma_scope
+      WHERE gma_scope.contrato_id = ${contratoSql}
+        AND gma_scope.usuario_id = ${userParamSql}::bigint
+        AND COALESCE(gma_scope.activo, TRUE) = TRUE
+        AND COALESCE(gma_scope.alcance_personal, '${GESTOR_SCOPE_SELECTED}') = '${GESTOR_SCOPE_ALL}'
+        AND gma_scope.vigencia_desde <= ${endDateSql}
+        AND (gma_scope.vigencia_hasta IS NULL OR gma_scope.vigencia_hasta >= ${startDateSql})
+        AND ${buildMunicipioCoverageExistsSql(vinculacionSql, startDateSql, endDateSql, 'gma_scope.municipio_id')}
+    )
+  )
+`;
+
+const buildAnyGestorScopeExistsSql = (
+  vinculacionSql: string,
+  contratoSql: string,
+  startDateSql: string,
+  endDateSql: string
+): string => `
+  (
+    EXISTS (
+      SELECT 1
+      FROM gestor_personal_asignaciones gpa_scope
+      WHERE gpa_scope.vinculacion_id = ${vinculacionSql}
+        AND gpa_scope.contrato_id = ${contratoSql}
+        AND COALESCE(gpa_scope.activo, TRUE) = TRUE
+        AND gpa_scope.vigencia_desde <= ${endDateSql}
+        AND (gpa_scope.vigencia_hasta IS NULL OR gpa_scope.vigencia_hasta >= ${startDateSql})
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM gestor_municipio_asignaciones gma_scope
+      WHERE gma_scope.contrato_id = ${contratoSql}
+        AND COALESCE(gma_scope.activo, TRUE) = TRUE
+        AND COALESCE(gma_scope.alcance_personal, '${GESTOR_SCOPE_SELECTED}') = '${GESTOR_SCOPE_ALL}'
+        AND gma_scope.vigencia_desde <= ${endDateSql}
+        AND (gma_scope.vigencia_hasta IS NULL OR gma_scope.vigencia_hasta >= ${startDateSql})
+        AND ${buildMunicipioCoverageExistsSql(vinculacionSql, startDateSql, endDateSql, 'gma_scope.municipio_id')}
+    )
+  )
+`;
+
+const buildManagedMunicipioScopeExistsSql = (
+  userParamSql: string,
+  vinculacionSql: string,
+  contratoSql: string,
+  startDateSql: string,
+  endDateSql: string
+): string => `
+  EXISTS (
+    SELECT 1
+    FROM gestor_municipio_asignaciones gma_scope
+    WHERE gma_scope.contrato_id = ${contratoSql}
+      AND gma_scope.usuario_id = ${userParamSql}::bigint
+      AND COALESCE(gma_scope.activo, TRUE) = TRUE
+      AND gma_scope.vigencia_desde <= ${endDateSql}
+      AND (gma_scope.vigencia_hasta IS NULL OR gma_scope.vigencia_hasta >= ${startDateSql})
+      AND ${buildMunicipioCoverageExistsSql(vinculacionSql, startDateSql, endDateSql, 'gma_scope.municipio_id')}
+  )
+`;
+
 const toNullableBoolean = (value: boolean | null | undefined): boolean => {
   return value ?? false;
 };
@@ -505,6 +629,7 @@ const mapGestorMunicipioAssignment = (
 ): GestorMunicipioAssignment => ({
   id: toNumber(row.id),
   contrato_id: toNumber(row.contrato_id),
+  alcance_personal: row.alcance_personal ?? GESTOR_SCOPE_SELECTED,
   gestor: {
     id: toNumber(row.usuario_id),
     nombre: row.gestor_nombre
@@ -690,6 +815,15 @@ const listGestorAssignableUsers = async (client: PoolClient): Promise<GestorAssi
         ) AS roles
       FROM usuarios u
       WHERE COALESCE(u.activo, TRUE) = TRUE
+        AND EXISTS (
+          SELECT 1
+          FROM usuario_roles ur_g
+          INNER JOIN roles r_g ON r_g.id = ur_g.rol_id
+          WHERE ur_g.usuario_id = u.id
+            AND COALESCE(ur_g.activo, TRUE) = TRUE
+            AND COALESCE(r_g.activo, TRUE) = TRUE
+            AND r_g.nombre_rol = '${GESTOR_ROLE}'
+        )
       ORDER BY u.nombre_completo ASC, u.id ASC
     `
   );
@@ -732,6 +866,7 @@ const getGestorMunicipioAssignments = async (
         u.nombre_completo AS gestor_nombre,
         gma.contrato_id,
         gma.municipio_id,
+        gma.alcance_personal,
         mu.nombre_municipio AS municipio_nombre,
         gma.vigencia_desde,
         gma.vigencia_hasta,
@@ -979,6 +1114,55 @@ const ensureContractTenantAccess = async (
   }
 
   throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+};
+
+const appendContractOperationalScopeConditions = (
+  conditions: string[],
+  params: unknown[],
+  tenant: TenantAccessContext | undefined,
+  scope: {
+    vinculacionSql: string;
+    contratoSql: string;
+    startDateSql: string;
+    endDateSql: string;
+  }
+): void => {
+  if (!tenant || tenant.isGlobalAdmin) {
+    return;
+  }
+
+  if (!tenant.userId) {
+    conditions.push('1=0');
+    return;
+  }
+
+  params.push(tenant.userId);
+  const userParamSql = `$${params.length}`;
+
+  if (isScopedGestorTenant(tenant)) {
+    conditions.push(
+      buildGestorScopeExistsSql(
+        userParamSql,
+        scope.vinculacionSql,
+        scope.contratoSql,
+        scope.startDateSql,
+        scope.endDateSql
+      )
+    );
+    return;
+  }
+
+  if (isScopedTalentoHumanoTenant(tenant)) {
+    conditions.push(
+      buildManagedMunicipioScopeExistsSql(
+        userParamSql,
+        scope.vinculacionSql,
+        scope.contratoSql,
+        scope.startDateSql,
+        scope.endDateSql
+      )
+    );
+  }
 };
 
 const ensureEntityExists = async (
@@ -1231,6 +1415,14 @@ export const listContractPersonal = async (
     const params: unknown[] = [filters.contrato_id, consultaFecha];
     let paramIndex = 3;
 
+    appendContractOperationalScopeConditions(conditions, params, tenant, {
+      vinculacionSql: 'v.id',
+      contratoSql: 'v.contrato_id',
+      startDateSql: '$2::date',
+      endDateSql: '$2::date'
+    });
+    paramIndex = params.length + 1;
+
     if (filters.municipio_id !== undefined && filters.municipio_id !== null) {
       params.push(filters.municipio_id);
       conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND ff_f.municipio_id = $${paramIndex}::bigint)`);
@@ -1280,29 +1472,12 @@ export const listContractPersonal = async (
 
     if (filters.gestor_usuario_id !== undefined && filters.gestor_usuario_id !== null) {
       params.push(filters.gestor_usuario_id);
-      conditions.push(`EXISTS (
-        SELECT 1
-        FROM gestor_personal_asignaciones gpa_f
-        WHERE gpa_f.vinculacion_id = v.id
-          AND gpa_f.contrato_id = v.contrato_id
-          AND gpa_f.usuario_id = $${paramIndex}::bigint
-          AND COALESCE(gpa_f.activo, TRUE) = TRUE
-          AND gpa_f.vigencia_desde <= $2::date
-          AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= $2::date)
-      )`);
+      conditions.push(buildGestorScopeExistsSql(`$${paramIndex}`, 'v.id', 'v.contrato_id', '$2::date', '$2::date'));
       paramIndex += 1;
     }
 
     if (filters.sin_gestor === true) {
-      conditions.push(`NOT EXISTS (
-        SELECT 1
-        FROM gestor_personal_asignaciones gpa_f
-        WHERE gpa_f.vinculacion_id = v.id
-          AND gpa_f.contrato_id = v.contrato_id
-          AND COALESCE(gpa_f.activo, TRUE) = TRUE
-          AND gpa_f.vigencia_desde <= $2::date
-          AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= $2::date)
-      )`);
+      conditions.push(`NOT ${buildAnyGestorScopeExistsSql('v.id', 'v.contrato_id', '$2::date', '$2::date')}`);
     }
 
     if (filters.search) {
@@ -1380,17 +1555,49 @@ export const listContractPersonal = async (
           ORDER BY ppl.vinculacion_id, ppl.vigencia_desde DESC, ppl.id DESC
         ),
         gestor_actual AS (
-          SELECT DISTINCT ON (gpa.vinculacion_id)
-            gpa.vinculacion_id,
-            gpa.usuario_id AS gestor_actual_usuario_id,
-            u.nombre_completo AS gestor_actual_nombre
-          FROM gestor_personal_asignaciones gpa
-          INNER JOIN usuarios u ON u.id = gpa.usuario_id
-          WHERE COALESCE(gpa.activo, TRUE) = TRUE
-            AND gpa.contrato_id = $1::bigint
-            AND gpa.vigencia_desde <= DATE '${consultaFecha}'
-            AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= DATE '${consultaFecha}')
-          ORDER BY gpa.vinculacion_id, gpa.vigencia_desde DESC, gpa.id DESC
+          SELECT DISTINCT ON (scope.vinculacion_id)
+            scope.vinculacion_id,
+            scope.usuario_id AS gestor_actual_usuario_id,
+            scope.nombre_completo AS gestor_actual_nombre
+          FROM (
+            SELECT
+              gpa.vinculacion_id,
+              gpa.usuario_id,
+              u.nombre_completo,
+              gpa.vigencia_desde,
+              gpa.id,
+              0 AS prioridad
+            FROM gestor_personal_asignaciones gpa
+            INNER JOIN usuarios u ON u.id = gpa.usuario_id
+            WHERE COALESCE(gpa.activo, TRUE) = TRUE
+              AND gpa.contrato_id = $1::bigint
+              AND gpa.vigencia_desde <= DATE '${consultaFecha}'
+              AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= DATE '${consultaFecha}')
+            UNION ALL
+            SELECT
+              ca_scope.vinculacion_id,
+              gma.usuario_id,
+              u.nombre_completo,
+              gma.vigencia_desde,
+              gma.id,
+              1 AS prioridad
+            FROM gestor_municipio_asignaciones gma
+            INNER JOIN usuarios u ON u.id = gma.usuario_id
+            INNER JOIN cobertura_asignaciones ca_scope
+              ON ca_scope.contrato_id = gma.contrato_id
+             AND COALESCE(ca_scope.activo, TRUE) = TRUE
+             AND ca_scope.fecha_inicio <= DATE '${consultaFecha}'
+             AND (ca_scope.fecha_fin IS NULL OR ca_scope.fecha_fin >= DATE '${consultaFecha}')
+            INNER JOIN focalizacion_final ff_scope
+              ON ff_scope.id = ca_scope.focalizacion_final_id
+             AND ff_scope.municipio_id = gma.municipio_id
+            WHERE COALESCE(gma.activo, TRUE) = TRUE
+              AND COALESCE(gma.alcance_personal, '${GESTOR_SCOPE_SELECTED}') = '${GESTOR_SCOPE_ALL}'
+              AND gma.contrato_id = $1::bigint
+              AND gma.vigencia_desde <= DATE '${consultaFecha}'
+              AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= DATE '${consultaFecha}')
+          ) scope
+          ORDER BY scope.vinculacion_id, scope.prioridad ASC, scope.vigencia_desde DESC, scope.id DESC
         )
         SELECT
           v.id AS vinculacion_id,
@@ -1469,6 +1676,7 @@ interface GestorUserRow extends QueryResultRow {
 
 interface GestorMunicipioAssignmentRow extends QueryResultRow {
   activo: boolean;
+  alcance_personal: GestorMunicipioPersonalScope | null;
   contrato_id: number | string;
   created_at: Date | string;
   created_by_user_id: number | string | null;
@@ -1513,6 +1721,7 @@ export interface GestorAssignmentUser {
 
 export interface GestorMunicipioAssignment {
   activo: boolean;
+  alcance_personal: GestorMunicipioPersonalScope;
   contrato_id: number;
   created_at: string;
   created_by_user_id: number | null;
@@ -1601,9 +1810,54 @@ export const getPersonalResumen = async (
   try {
     await ensureContractTenantAccess(client, tenant, filters.contrato_id);
     const fecha = filters.fecha ?? new Date().toISOString().slice(0, 10);
+    const conditions = ['v.contrato_id = $1::bigint'];
+    const params: unknown[] = [filters.contrato_id, fecha];
+    appendContractOperationalScopeConditions(conditions, params, tenant, {
+      vinculacionSql: 'v.id',
+      contratoSql: 'v.contrato_id',
+      startDateSql: '$2::date',
+      endDateSql: '$2::date'
+    });
+    const whereSql = `WHERE ${conditions.join(' AND ')}`;
     const result = await client.query<{ trabajadores_activos: number; ingresos_mes: number; retiros_mes: number; vacantes: number }>(
-      "WITH periodo AS (SELECT date_trunc('month', $2::date)::date AS inicio, (date_trunc('month', $2::date) + interval '1 month')::date AS siguiente), cobertura AS (SELECT ff.id, COALESCE(ff.cobertura_requerida, 0)::numeric AS requeridas, COALESCE(SUM(CASE WHEN ca.id IS NOT NULL AND ca.activo = TRUE AND ca.fecha_inicio <= $2::date AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $2::date) AND vca.fecha_inicio <= $2::date AND (vca.fecha_fin IS NULL OR vca.fecha_fin >= $2::date) THEN COALESCE(ca.porcentaje_cobertura, 0) ELSE 0 END), 0)::numeric AS asignadas FROM focalizacion_final ff LEFT JOIN cobertura_asignaciones ca ON ca.focalizacion_final_id = ff.id LEFT JOIN vinculaciones vca ON vca.id = ca.vinculacion_id AND vca.contrato_id = $1 WHERE ff.contrato_id = $1 AND COALESCE(ff.activo, TRUE) = TRUE GROUP BY ff.id, ff.cobertura_requerida) SELECT COUNT(*) FILTER (WHERE v.fecha_inicio <= $2::date AND (v.fecha_fin IS NULL OR v.fecha_fin >= $2::date))::int AS trabajadores_activos, COUNT(*) FILTER (WHERE v.fecha_inicio >= periodo.inicio AND v.fecha_inicio < periodo.siguiente)::int AS ingresos_mes, COUNT(*) FILTER (WHERE v.fecha_fin >= periodo.inicio AND v.fecha_fin < periodo.siguiente)::int AS retiros_mes, COALESCE((SELECT SUM(GREATEST(requeridas - asignadas, 0)) FROM cobertura), 0)::int AS vacantes FROM vinculaciones v CROSS JOIN periodo WHERE v.contrato_id = $1",
-      [filters.contrato_id, fecha]
+      `WITH periodo AS (
+         SELECT date_trunc('month', $2::date)::date AS inicio, (date_trunc('month', $2::date) + interval '1 month')::date AS siguiente
+       ),
+       cobertura AS (
+         SELECT
+           ff.id,
+           COALESCE(ff.cobertura_requerida, 0)::numeric AS requeridas,
+           COALESCE(
+             SUM(
+               CASE
+                 WHEN ca.id IS NOT NULL
+                   AND ca.activo = TRUE
+                   AND ca.fecha_inicio <= $2::date
+                   AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $2::date)
+                   AND vca.fecha_inicio <= $2::date
+                   AND (vca.fecha_fin IS NULL OR vca.fecha_fin >= $2::date)
+                 THEN COALESCE(ca.porcentaje_cobertura, 0)
+                 ELSE 0
+               END
+             ),
+             0
+           )::numeric AS asignadas
+         FROM focalizacion_final ff
+         LEFT JOIN cobertura_asignaciones ca ON ca.focalizacion_final_id = ff.id
+         LEFT JOIN vinculaciones vca ON vca.id = ca.vinculacion_id AND vca.contrato_id = $1
+         WHERE ff.contrato_id = $1
+           AND COALESCE(ff.activo, TRUE) = TRUE
+         GROUP BY ff.id, ff.cobertura_requerida
+       )
+       SELECT
+         COUNT(*) FILTER (WHERE v.fecha_inicio <= $2::date AND (v.fecha_fin IS NULL OR v.fecha_fin >= $2::date))::int AS trabajadores_activos,
+         COUNT(*) FILTER (WHERE v.fecha_inicio >= periodo.inicio AND v.fecha_inicio < periodo.siguiente)::int AS ingresos_mes,
+         COUNT(*) FILTER (WHERE v.fecha_fin >= periodo.inicio AND v.fecha_fin < periodo.siguiente)::int AS retiros_mes,
+         COALESCE((SELECT SUM(GREATEST(requeridas - asignadas, 0)) FROM cobertura), 0)::int AS vacantes
+       FROM vinculaciones v
+       CROSS JOIN periodo
+       ${whereSql}`,
+      params
     );
     const row = result.rows[0];
     return {
@@ -1734,6 +1988,7 @@ const createGestorMunicipioAssignmentRecord = async (
     contrato_id: number;
     gestor_usuario_id: number;
     municipio_id: number;
+    alcance_personal: GestorMunicipioPersonalScope;
     observacion: string | null;
     vigencia_desde: string;
   }
@@ -1744,6 +1999,7 @@ const createGestorMunicipioAssignmentRecord = async (
         usuario_id,
         contrato_id,
         municipio_id,
+        alcance_personal,
         vigencia_desde,
         vigencia_hasta,
         activo,
@@ -1755,18 +2011,20 @@ const createGestorMunicipioAssignmentRecord = async (
         $1::bigint,
         $2::bigint,
         $3::bigint,
-        $4::date,
+        $4,
+        $5::date,
         NULL,
         TRUE,
-        $5,
-        $6::bigint,
-        $6::bigint
+        $6,
+        $7::bigint,
+        $7::bigint
       )
     `,
     [
       input.gestor_usuario_id,
       input.contrato_id,
       input.municipio_id,
+      input.alcance_personal,
       input.vigencia_desde,
       input.observacion,
       input.actorUserId
@@ -1833,6 +2091,21 @@ export const getContractPersonalFilterOptions = async (
   try {
     await ensureContractTenantAccess(client, tenant, contratoId);
     const fecha = filters.fecha ?? new Date().toISOString().slice(0, 10);
+    const managedMunicipioFilter =
+      tenant && !tenant.isGlobalAdmin && tenant.userId && (isScopedGestorTenant(tenant) || isScopedTalentoHumanoTenant(tenant))
+        ? `
+        AND EXISTS (
+          SELECT 1
+          FROM gestor_municipio_asignaciones gma_scope
+          WHERE gma_scope.contrato_id = ff.contrato_id
+            AND gma_scope.usuario_id = $5::bigint
+            AND gma_scope.municipio_id = ff.municipio_id
+            AND COALESCE(gma_scope.activo, TRUE) = TRUE
+            AND gma_scope.vigencia_desde <= $6::date
+            AND (gma_scope.vigencia_hasta IS NULL OR gma_scope.vigencia_hasta >= $6::date)
+        )
+      `
+        : '';
     const base = `
       FROM focalizacion_final ff
       LEFT JOIN municipios mu ON mu.id = ff.municipio_id
@@ -1843,8 +2116,16 @@ export const getContractPersonalFilterOptions = async (
         AND ($2::bigint IS NULL OR ff.municipio_id = $2::bigint)
         AND ($3::bigint IS NULL OR ff.institucion_id = $3::bigint)
         AND ($4::bigint IS NULL OR ff.sede_id = $4::bigint)
+        ${managedMunicipioFilter}
     `;
-    const params = [contratoId, filters.municipio_id ?? null, filters.institucion_id ?? null, filters.sede_id ?? null];
+    const params = [
+      contratoId,
+      filters.municipio_id ?? null,
+      filters.institucion_id ?? null,
+      filters.sede_id ?? null,
+      tenant?.userId ?? null,
+      fecha
+    ];
     const [gestores, municipios, instituciones, sedes, modalidades, ubicaciones] = await Promise.all([
       listGestorAssignableUsers(client),
       client.query<{ id: number; nombre: string }>(`SELECT DISTINCT mu.id::int AS id, mu.nombre_municipio AS nombre ${base} ORDER BY nombre`, params),
@@ -1931,7 +2212,6 @@ export const getGestorAssignmentWorkspace = async (
       {
         contrato_id: query.contrato_id,
         municipio_id: query.municipio_id,
-        gestor_usuario_id: query.gestor_usuario_id,
         search: query.search,
         fecha: fechaConsulta,
         page: 1,
@@ -2012,6 +2292,7 @@ export const createGestorMunicipioAssignment = async (
       contrato_id: input.contrato_id,
       gestor_usuario_id: input.gestor_usuario_id,
       municipio_id: input.municipio_id,
+      alcance_personal: input.alcance_personal,
       vigencia_desde: vigenciaDesde,
       observacion: input.observacion
     });
@@ -2074,6 +2355,7 @@ export const closeGestorMunicipioAssignment = async (
           u.nombre_completo AS gestor_nombre,
           gma.contrato_id,
           gma.municipio_id,
+          gma.alcance_personal,
           mu.nombre_municipio AS municipio_nombre,
           gma.vigencia_desde,
           gma.vigencia_hasta,

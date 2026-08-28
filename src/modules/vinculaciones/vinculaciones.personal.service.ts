@@ -174,6 +174,7 @@ export interface PerfilLicitacionResumenItem {
 export interface VinculacionPersonalContext {
   asignacion_laboral_actual: AsignacionLaboralItem | null;
   asignacion_operativa_actual: AsignacionOperativaItem | null;
+  gestor_actual: { id: number; nombre: string } | null;
   es_manipuladora: boolean;
   historial_asignacion_laboral: AsignacionLaboralItem[];
   historial_asignacion_operativa: AsignacionOperativaItem[];
@@ -531,7 +532,13 @@ export const listOpcionesAsignacionOperativa = async (vinculacionId: number, ten
   return (await dbPool.query(`SELECT ff.id::text,ff.municipio_id::text,COALESCE(mu.nombre_municipio,ff.municipio_texto) municipio,ff.institucion_id::text,ff.institucion_final institucion,ff.sede_id::text,ff.sede_final sede,ff.modalidad_id::text,ff.modalidad_final modalidad FROM focalizacion_final ff LEFT JOIN municipios mu ON mu.id=ff.municipio_id WHERE ff.contrato_id=$1::bigint AND COALESCE(ff.activo,TRUE)=TRUE ORDER BY municipio,institucion,sede,modalidad`, [context.rows[0].contrato_id])).rows;
 };
 
-export const replaceAsignacionOperativaPersonal = async (vinculacionId: number, focalizacionFinalId: number, actorUserId: any, tenant?: TenantAccessContext) => {
+export const replaceAsignacionOperativaPersonal = async (
+  vinculacionId: number,
+  focalizacionFinalId: number,
+  actorUserId: number,
+  tenant?: TenantAccessContext,
+  input: { fecha_desde?: string; observacion?: string | null } = {}
+) => {
   await assertTenantAccessForVinculacionId(tenant, vinculacionId);
   const client=await dbPool.connect();
   try {
@@ -539,12 +546,61 @@ export const replaceAsignacionOperativaPersonal = async (vinculacionId: number, 
     const vinculacion=await getVinculacionContextRow(client,vinculacionId,{forUpdate:true});
     const target=await client.query<any>(`SELECT ff.*,COALESCE(mu.nombre_municipio,ff.municipio_texto) municipio_nombre FROM focalizacion_final ff LEFT JOIN municipios mu ON mu.id=ff.municipio_id WHERE ff.id=$1::bigint AND ff.contrato_id=$2::bigint AND COALESCE(ff.activo,TRUE)=TRUE`,[focalizacionFinalId,vinculacion.contrato_id]);
     if(!target.rows[0])throw new AppError('La sede no pertenece al municipio, institucion o contrato seleccionado',409,'ASIGNACION_OPERATIVA_CONTEXTO_INVALIDO');
-    const current=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND activo=TRUE AND fecha_inicio<=CURRENT_DATE AND (fecha_fin IS NULL OR fecha_fin>=CURRENT_DATE) ORDER BY fecha_inicio DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId]);
+    const fechaDesde = input.fecha_desde ?? new Date().toISOString().slice(0, 10);
+    const hoy = new Date().toISOString().slice(0, 10);
+    if (fechaDesde !== hoy) {
+      throw new AppError('Los cambios con fecha distinta de hoy deben registrarse en Cambio Operativo',409,'ASIGNACION_OPERATIVA_FECHA_REQUIERE_CAMBIO_OPERATIVO');
+    }
+    if (tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('GESTOR') && !tenant.roleNames.includes('TALENTO_HUMANO')) {
+      throw new AppError('El Gestor no puede modificar la asignacion administrativa del trabajador',403,'VINCULACION_SCOPE_FORBIDDEN');
+    }
+    if (tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('TALENTO_HUMANO')) {
+      const allowed = await client.query<{ allowed: boolean }>(
+        `SELECT EXISTS (SELECT 1 FROM gestor_municipio_asignaciones gma
+          WHERE gma.usuario_id = $1::bigint AND gma.contrato_id = $2::bigint
+            AND gma.municipio_id = $3::bigint AND COALESCE(gma.activo, TRUE) = TRUE
+            AND gma.vigencia_desde <= $4::date
+            AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= $4::date)) AS allowed`,
+        [tenant.userId, vinculacion.contrato_id, target.rows[0].municipio_id, fechaDesde]
+      );
+      if (!allowed.rows[0]?.allowed) {
+        throw new AppError('El municipio esta fuera del alcance autorizado',403,'VINCULACION_SCOPE_FORBIDDEN');
+      }
+    }
+    const current=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND activo=TRUE AND fecha_inicio<= $2::date AND (fecha_fin IS NULL OR fecha_fin>= $2::date) ORDER BY fecha_inicio DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId,fechaDesde]);
     if(String(current.rows[0]?.focalizacion_final_id)===String(focalizacionFinalId)){await client.query('COMMIT');return current.rows[0];}
     if(current.rows[0])await client.query(`UPDATE cobertura_asignaciones SET activo=FALSE,fecha_fin=GREATEST(fecha_inicio,CURRENT_DATE-1),observacion=CONCAT_WS(' · ',observacion,'Corregida desde Personal') WHERE id=$1::bigint`,[current.rows[0].id]);
     const f=target.rows[0];
-    const inserted=await client.query<any>(`INSERT INTO cobertura_asignaciones(contrato_id,municipio_id,focalizacion_final_id,vinculacion_id,institucion,sede,consecutivo_sede,modalidad,categoria_cobertura,tipo_asignacion,porcentaje_cobertura,fecha_inicio,fecha_fin,observacion,activo) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,'PRINCIPAL'),COALESCE($11,1),CURRENT_DATE,NULL,'Correccion operativa desde Personal',TRUE) RETURNING *`,[vinculacion.contrato_id,f.municipio_id,focalizacionFinalId,vinculacionId,f.institucion_final,f.sede_final,f.consecutivo_final,f.modalidad_final,f.categoria_cobertura,current.rows[0]?.tipo_asignacion,current.rows[0]?.porcentaje_cobertura]);
-    await registerAuditEntry({client,usuario_id:actorUserId,accion:'PERSONAL_ASIGNACION_OPERATIVA_UPDATE',tabla:'cobertura_asignaciones',registro_id:String(inserted.rows[0].id),descripcion:'Correccion versionada de municipio, institucion y sede desde Personal',before:current.rows[0]??null,after:inserted.rows[0]});
+    const inserted=await client.query<any>(`INSERT INTO cobertura_asignaciones(contrato_id,municipio_id,focalizacion_final_id,vinculacion_id,institucion,sede,consecutivo_sede,modalidad,categoria_cobertura,tipo_asignacion,porcentaje_cobertura,fecha_inicio,fecha_fin,observacion,activo) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,'PRINCIPAL'),COALESCE($11,1),$12::date,NULL,$13,TRUE) RETURNING *`,[vinculacion.contrato_id,f.municipio_id,focalizacionFinalId,vinculacionId,f.institucion_final,f.sede_final,f.consecutivo_final,f.modalidad_final,f.categoria_cobertura,current.rows[0]?.tipo_asignacion,current.rows[0]?.porcentaje_cobertura,fechaDesde,input.observacion ?? 'Correccion operativa desde Personal']);
+    if (String(current.rows[0]?.municipio_id ?? '') !== String(f.municipio_id ?? '')) {
+      await client.query(
+        `UPDATE gestor_personal_asignaciones gpa
+         SET activo = FALSE,
+             vigencia_hasta = GREATEST(gpa.vigencia_desde, $5::date - 1),
+             observacion = CONCAT_WS(' · ', gpa.observacion, 'Municipio operativo cambiado desde Personal'),
+             updated_by_user_id = $3::bigint,
+             updated_at = NOW()
+         WHERE gpa.vinculacion_id = $1::bigint
+           AND gpa.contrato_id = $2::bigint
+           AND COALESCE(gpa.activo, TRUE) = TRUE
+           AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= $5::date)
+           AND (
+             gpa.municipio_id IS DISTINCT FROM $4::bigint
+             OR NOT EXISTS (
+               SELECT 1
+               FROM gestor_municipio_asignaciones gma
+               WHERE gma.contrato_id = gpa.contrato_id
+                 AND gma.usuario_id = gpa.usuario_id
+                 AND gma.municipio_id = $4::bigint
+                 AND COALESCE(gma.activo, TRUE) = TRUE
+                 AND gma.vigencia_desde <= $5::date
+                 AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= $5::date)
+             )
+           )`,
+        [vinculacionId, vinculacion.contrato_id, actorUserId, f.municipio_id, fechaDesde]
+      );
+    }
+    await registerAuditEntry({client,usuario_id:String(actorUserId),accion:'PERSONAL_ASIGNACION_OPERATIVA_UPDATE',tabla:'cobertura_asignaciones',registro_id:String(inserted.rows[0].id),descripcion:input.observacion ?? 'Correccion versionada de municipio, institucion y sede desde Personal',before:current.rows[0]??null,after:inserted.rows[0]});
     await client.query('COMMIT');return inserted.rows[0];
   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
 };
@@ -644,16 +700,38 @@ export const getVinculacionPersonalContext = async (
         return Boolean(from) && activeOk && stateOk && from! <= TODAY_ISO && (!to || to >= TODAY_ISO);
       }) ?? null;
 
+    const asignacionActual = pickCurrent(historialOperativo, { from: 'fecha_inicio', to: 'fecha_fin', active: 'activo' });
+    const gestorResult = await client.query<{ id: string; nombre: string }>(
+      `SELECT usuario_id::text AS id, nombre_completo AS nombre
+       FROM (
+         SELECT gpa.usuario_id, u.nombre_completo, 0 AS prioridad, gpa.vigencia_desde, gpa.id
+         FROM gestor_personal_asignaciones gpa
+         INNER JOIN usuarios u ON u.id = gpa.usuario_id
+         WHERE gpa.vinculacion_id = $1::bigint AND gpa.contrato_id = $2::bigint
+           AND COALESCE(gpa.activo, TRUE) = TRUE AND gpa.vigencia_desde <= CURRENT_DATE
+           AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= CURRENT_DATE)
+         UNION ALL
+         SELECT gma.usuario_id, u.nombre_completo, 1, gma.vigencia_desde, gma.id
+         FROM gestor_municipio_asignaciones gma
+         INNER JOIN usuarios u ON u.id = gma.usuario_id
+         WHERE gma.contrato_id = $2::bigint AND gma.municipio_id = $3::bigint
+           AND COALESCE(gma.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
+           AND COALESCE(gma.activo, TRUE) = TRUE AND gma.vigencia_desde <= CURRENT_DATE
+           AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
+       ) effective
+       ORDER BY prioridad, vigencia_desde DESC, id DESC LIMIT 1`,
+      [vinculacionId, vinculacion.contrato_id, asignacionActual?.municipio_id ?? null]
+    );
+
     return {
       es_manipuladora: esManipuladora,
       historial_asignacion_operativa: historialOperativo,
       historial_asignacion_laboral: historialLaboral,
       historial_presentacion_licitacion: historialLicitacion,
-      asignacion_operativa_actual: pickCurrent(historialOperativo, {
-        from: 'fecha_inicio',
-        to: 'fecha_fin',
-        active: 'activo'
-      }),
+      asignacion_operativa_actual: asignacionActual,
+      gestor_actual: gestorResult.rows[0]
+        ? { id: toNumber(gestorResult.rows[0].id), nombre: gestorResult.rows[0].nombre }
+        : null,
       asignacion_laboral_actual: pickCurrent(historialLaboral, {
         from: 'vigencia_desde',
         to: 'vigencia_hasta',

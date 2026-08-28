@@ -60,11 +60,13 @@ import {
   getNominaDesprendibleByPeriodoAndVinculacion,
   getNominaLiquidacionByPeriodoAndVinculacion,
   getNominaMovimientos,
+  getNominaMovimientosOperativos,
   getNominaPeriodoById,
   getNominaTipoNovedadById,
   importNominaEmpleados,
   listNominaDesprendibles,
   listNominaEmpleados,
+  listNominaEmpleadosOperativos,
   listNominaLiquidaciones,
   listNominaNovedades,
   listNominaTiposNovedad,
@@ -237,6 +239,13 @@ export const getNominaPeriodoEmpleadosHandler = asyncHandler(async (req: Request
   });
 });
 
+export const getNominaPeriodoEmpleadosOperativosHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = periodoIdParamSchema.parse(req.params);
+  const query = listNominaEmpleadosQuerySchema.parse(req.query);
+  const result = await listNominaEmpleadosOperativos(id, query, req.tenant);
+  return successResponse(res, { message: 'Operational payroll employees retrieved successfully', data: result });
+});
+
 export const importNominaPeriodoEmpleadosHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = periodoIdParamSchema.parse(req.params);
   const result = await importNominaEmpleados(
@@ -353,6 +362,12 @@ export const getNominaMovimientosHandler = asyncHandler(async (req: Request, res
     message: 'Payroll movements retrieved successfully',
     data: result
   });
+});
+
+export const getNominaMovimientosOperativosHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = listNominaMovimientosQuerySchema.parse(req.query);
+  const result = await getNominaMovimientosOperativos(query, req.tenant);
+  return successResponse(res, { message: 'Operational payroll movements retrieved successfully', data: result });
 });
 
 export const getNominaMovimientoHandler = asyncHandler(async (req: Request, res: Response) => {
