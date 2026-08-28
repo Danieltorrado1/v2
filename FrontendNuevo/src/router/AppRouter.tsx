@@ -44,7 +44,7 @@ export default function AppRouter() {
             <Route path="nomina/pago" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
             <Route path="nomina/documentos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
             <Route path="nomina/liquidacion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><LiquidacionPage /></ModuleRoute>} />
-            <Route path="nomina/turnos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.movimientos.read"]}><TurnosPage /></ModuleRoute>} />
+            <Route path="nomina/turnos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.operativa.read"]}><TurnosPage /></ModuleRoute>} />
             <Route path="nomina/personal-ops" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.cuentas_cobro_ops.read"]}><PersonalOpsPage /></ModuleRoute>} />
             <Route path="nomina/correccion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.correcciones.read"]} denyRoles={["GESTOR"]}><CorreccionNominaPage /></ModuleRoute>} />
             <Route path="nomina/cambios-operativos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.movimientos.read"]} denyRoles={["GESTOR"]}><CambiosOperativosPage /></ModuleRoute>} />

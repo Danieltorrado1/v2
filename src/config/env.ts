@@ -1,7 +1,9 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-dotenv.config();
+const explicitEnvFile = process.env.ENV_FILE?.trim();
+
+dotenv.config(explicitEnvFile ? { path: explicitEnvFile } : undefined);
 
 const booleanFromEnvSchema = z.preprocess((value) => {
   if (typeof value === 'string') {

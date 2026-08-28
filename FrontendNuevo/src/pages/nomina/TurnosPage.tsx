@@ -385,7 +385,7 @@ export default function TurnosPage() {
   const selectedFormEmployee = form.nomina_empleado_id
     ? employeeByNominaId.get(form.nomina_empleado_id) ?? null
     : null;
-  const canSeeEconomicInternal = user?.roles.includes("GESTOR") !== true || user?.roles.includes("TALENTO_HUMANO") === true;
+  const canSeeEconomic = user?.permissions.includes("nomina.economico.read") === true;
   const internalTurns = useMemo(() => empleados.flatMap((empleado) => {
     const detail = empleado.detalle_calculo as { adiciones_internas?: Array<Record<string, unknown>> } | null | undefined;
     return (detail?.adiciones_internas ?? []).map((addition) => ({
@@ -503,7 +503,7 @@ export default function TurnosPage() {
         employeeByNominaId.get(movimiento.nomina_empleado_id)?.vinculacion.metodo_pago === "OPS_CUENTA_COBRO",
     ).length;
 
-    return [
+    const items: Kpi[] = [
       {
         tone: "primary",
         icon: Users,
@@ -547,7 +547,8 @@ export default function TurnosPage() {
         caption: "Solo metodo_pago de vinculacion",
       },
     ];
-  }, [displayedMovimientos, employeeByNominaId, selectedPeriod]);
+    return items.filter((kpi) => canSeeEconomic || !["Valor total", "Metodo OPS cuenta cobro"].includes(kpi.label));
+  }, [canSeeEconomic, displayedMovimientos, employeeByNominaId, selectedPeriod]);
 
   const byTypeSummary = useMemo(() => {
     const map = new Map<string, { count: number; total: number }>();
@@ -662,9 +663,9 @@ export default function TurnosPage() {
       setSelectedMovementId(null);
 
       try {
-        const data = user?.roles.includes("GESTOR") === true
-          ? await getAllNominaTurnosOperativos(filters)
-          : await getAllNominaTurnos(filters);
+        const data = canSeeEconomic
+          ? await getAllNominaTurnos(filters)
+          : await getAllNominaTurnosOperativos(filters);
 
         if (requestId !== movementsRequestRef.current) {
           return;
@@ -687,7 +688,7 @@ export default function TurnosPage() {
         });
       }
     },
-    [],
+    [canSeeEconomic],
   );
 
   const loadEmployees = useCallback(async (periodoId: string) => {
@@ -701,9 +702,9 @@ export default function TurnosPage() {
     }));
 
     try {
-      const employeeLoader = user?.roles.includes("GESTOR") === true
-        ? getAllNominaPeriodoEmpleadosOperativos
-        : getAllNominaPeriodoEmpleados;
+      const employeeLoader = canSeeEconomic
+        ? getAllNominaPeriodoEmpleados
+        : getAllNominaPeriodoEmpleadosOperativos;
       const data = await employeeLoader(periodoId, {
         empresa_id: empresaId ? String(empresaId) : undefined,
       });
@@ -728,7 +729,7 @@ export default function TurnosPage() {
         error: toMessage(error),
       });
     }
-  }, [empresaId]);
+  }, [canSeeEconomic, empresaId]);
 
   useEffect(() => {
     void loadPeriods(searchParams.get("period_id") ?? undefined);
@@ -761,7 +762,7 @@ export default function TurnosPage() {
 
     let active = true;
     setExternalSummaryState({ loading: true, data: null, error: null });
-    const loadExternalSummary = user?.roles.includes("GESTOR") === true ? getCoberturaExternosOperativos : getCoberturaExternos;
+    const loadExternalSummary = canSeeEconomic ? getCoberturaExternos : getCoberturaExternosOperativos;
     void loadExternalSummary(selectedPeriodId, empresaId === null ? undefined : String(empresaId))
       .then((data) => {
         if (active) setExternalSummaryState({ loading: false, data, error: null });
@@ -773,7 +774,7 @@ export default function TurnosPage() {
     return () => {
       active = false;
     };
-  }, [empresaId, selectedPeriodId]);
+  }, [canSeeEconomic, empresaId, selectedPeriodId]);
 
   useEffect(() => {
     if (editorMode === "create" && empleados.length > 0 && !form.nomina_empleado_id) {
@@ -870,7 +871,7 @@ export default function TurnosPage() {
 
   const refreshExternalSummary = async () => {
     if (!selectedPeriodId) return;
-    const loadExternalSummary = user?.roles.includes("GESTOR") === true ? getCoberturaExternosOperativos : getCoberturaExternos;
+    const loadExternalSummary = canSeeEconomic ? getCoberturaExternos : getCoberturaExternosOperativos;
     const data = await loadExternalSummary(selectedPeriodId, empresaId === null ? undefined : String(empresaId));
     setExternalSummaryState({ loading: false, data, error: null });
   };
@@ -1214,6 +1215,7 @@ export default function TurnosPage() {
           <button
             type="button"
             className="np-btn primary"
+            hidden={!canSeeEconomic}
             onClick={openCreateEditor}
             disabled={!canCreate || !canMutatePeriod || isSubmitting}
             title={
@@ -1314,13 +1316,13 @@ export default function TurnosPage() {
             options={activeOptions}
             disabled={!selectedPeriodId}
           />
-          <NpSelect
+          {canSeeEconomic ? <NpSelect
             label="Naturaleza"
             value={natureFilter}
             onChange={setNatureFilter}
             options={natureOptions}
             disabled={!selectedPeriodId}
-          />
+          /> : null}
         </div>
         <div className="np-toolbar-right">
           <div className="np-segmented" role="tablist" aria-label="Tipo de turno">
@@ -1364,13 +1366,13 @@ export default function TurnosPage() {
                   <span>{externo.tipo_documento} {externo.numero_documento}</span>
                 </div>
                 <div><span>Turnos</span><strong>{formatNumber(Number(externo.turnos))}</strong></div>
-                {canSeeEconomicInternal ? <div><span>Total registrado</span><strong>{formatCOP(Number(externo.valor_total))}</strong></div> : <div><span>Tipo</span><strong>Operativo</strong></div>}
-                {canSeeEconomicInternal ? <div className="np-external-checklist">
+                {canSeeEconomic ? <div><span>Total registrado</span><strong>{formatCOP(Number(externo.valor_total))}</strong></div> : <div><span>Tipo</span><strong>Operativo</strong></div>}
+                {canSeeEconomic ? <div className="np-external-checklist">
                   <span className={externo.cedula ? "is-ready" : "is-pending"}>Cédula: {externo.cedula ? "Cargada" : "Pendiente"}</span>
                   <span className={externo.banco_doc ? "is-ready" : "is-pending"}>Banco: {externo.banco_doc ? "Cargada" : "Pendiente"}</span>
                   <span className={externo.cuenta_estado === "FIRMADA" ? "is-ready" : "is-pending"}>Cuenta: {externo.cuenta_estado}</span>
                 </div> : null}
-                {canSeeEconomicInternal ? <div className="np-external-actions">
+                {canSeeEconomic ? <div className="np-external-actions">
                   <label className="np-btn">
                     {externo.cedula ? "Reemplazar cédula" : "Subir cédula"}
                     <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden disabled={externalBusy !== null} onChange={(event) => { void handleExternalDocument(externo.id, 'CEDULA_EXTERNO_COBERTURA', event.target.files?.[0]); event.currentTarget.value = ''; }} />
@@ -1395,7 +1397,7 @@ export default function TurnosPage() {
       {turnoView === "internos" ? (
         <section className="np-table-card np-internal-turns" aria-labelledby="internal-turns-title">
           <div className="np-section-heading"><div><span className="np-eyebrow">COBERTURA</span><h2 id="internal-turns-title">Turnos internos</h2></div><span className="np-badge info">{internalTurns.length} turno(s)</span></div>
-          {internalTurns.length === 0 ? <div className="np-empty">No hay turnos internos calculados para este período.</div> : <div className="np-table-scroll"><table className="np-table"><thead><tr><th>Fecha</th><th>Reemplazante</th><th>Documento</th><th>Titular reemplazado</th><th>Novedad origen</th><th>Municipio</th><th>Institución</th><th>Sede</th><th>Estado</th>{canSeeEconomicInternal ? <><th>Salario turno</th><th>Recargos</th><th>Salud</th><th>Pensión</th><th>Neto adicional</th></> : null}</tr></thead><tbody>{internalTurns.map((turno) => <tr key={turno.id}><td>{turno.fecha}</td><td>{turno.empleado.persona.nombre_completo}</td><td>{turno.empleado.persona.numero_documento ?? "-"}</td><td>{turno.titularNombre}{turno.titularDocumento ? ` · ${turno.titularDocumento}` : ""}</td><td title={turno.novedadId}>{turno.novedadTipo}</td><td>{turno.contexto?.municipio ?? turno.empleado.municipio ?? "-"}</td><td>{turno.contexto?.institucion ?? turno.empleado.institucion ?? "-"}</td><td>{turno.contexto?.sede ?? "-"}</td><td><span className={`np-badge ${turno.novedadEstado === "ANULADA" ? "danger" : "info"}`}>{turno.novedadEstado}</span></td>{canSeeEconomicInternal ? <><td>{formatCOP(turno.salario)}</td><td>{formatCOP(turno.recargo)}</td><td>-{formatCOP(turno.salud)}</td><td>-{formatCOP(turno.pension)}</td><td><strong>{formatCOP(turno.neto)}</strong></td></> : null}</tr>)}</tbody></table></div>}
+          {internalTurns.length === 0 ? <div className="np-empty">No hay turnos internos calculados para este período.</div> : <div className="np-table-scroll"><table className="np-table"><thead><tr><th>Fecha</th><th>Reemplazante</th><th>Documento</th><th>Titular reemplazado</th><th>Novedad origen</th><th>Municipio</th><th>Institución</th><th>Sede</th><th>Estado</th>{canSeeEconomic ? <><th>Salario turno</th><th>Recargos</th><th>Salud</th><th>Pensión</th><th>Neto adicional</th></> : null}</tr></thead><tbody>{internalTurns.map((turno) => <tr key={turno.id}><td>{turno.fecha}</td><td>{turno.empleado.persona.nombre_completo}</td><td>{turno.empleado.persona.numero_documento ?? "-"}</td><td>{turno.titularNombre}{turno.titularDocumento ? ` · ${turno.titularDocumento}` : ""}</td><td title={turno.novedadId}>{turno.novedadTipo}</td><td>{turno.contexto?.municipio ?? turno.empleado.municipio ?? "-"}</td><td>{turno.contexto?.institucion ?? turno.empleado.institucion ?? "-"}</td><td>{turno.contexto?.sede ?? "-"}</td><td><span className={`np-badge ${turno.novedadEstado === "ANULADA" ? "danger" : "info"}`}>{turno.novedadEstado}</span></td>{canSeeEconomic ? <><td>{formatCOP(turno.salario)}</td><td>{formatCOP(turno.recargo)}</td><td>-{formatCOP(turno.salud)}</td><td>-{formatCOP(turno.pension)}</td><td><strong>{formatCOP(turno.neto)}</strong></td></> : null}</tr>)}</tbody></table></div>}
         </section>
       ) : null}
 
@@ -1442,8 +1444,9 @@ export default function TurnosPage() {
             <div
               className="np-table-head"
               style={{
-                gridTemplateColumns:
-                  "110px minmax(220px,1.8fr) 140px 150px 130px minmax(160px,1.2fr) 140px 140px 150px 120px 170px",
+                gridTemplateColumns: canSeeEconomic
+                  ? "110px minmax(220px,1.8fr) 140px 150px 130px minmax(160px,1.2fr) 140px 140px 150px 120px 170px"
+                  : "110px minmax(220px,1.8fr) 140px 150px 130px minmax(160px,1.2fr) 140px 140px 150px 170px",
               }}
             >
               <span>Fecha</span>
@@ -1455,7 +1458,7 @@ export default function TurnosPage() {
               <span>Institucion</span>
               <span>Sede</span>
               <span>Modalidad</span>
-              <span>Valor</span>
+              {canSeeEconomic ? <span>Valor</span> : null}
               <span>Estado / Acc.</span>
             </div>
 
@@ -1464,8 +1467,9 @@ export default function TurnosPage() {
                 key={movimiento.id}
                 className={`np-table-row${selectedMovementId === movimiento.id ? " is-selected" : ""}`}
                 style={{
-                  gridTemplateColumns:
-                    "110px minmax(220px,1.8fr) 140px 150px 130px minmax(160px,1.2fr) 140px 140px 150px 120px 170px",
+                  gridTemplateColumns: canSeeEconomic
+                    ? "110px minmax(220px,1.8fr) 140px 150px 130px minmax(160px,1.2fr) 140px 140px 150px 120px 170px"
+                    : "110px minmax(220px,1.8fr) 140px 150px 130px minmax(160px,1.2fr) 140px 140px 150px 170px",
                 }}
               >
                 <span className="np-table-text">{formatDate(movimiento.fecha)}</span>
@@ -1489,7 +1493,7 @@ export default function TurnosPage() {
                     employeeByNominaId.get(movimiento.nomina_empleado_id)?.categoria_salarial?.modalidad ??
                     "No disponible"}
                 </span>
-                <span className="np-table-text np-table-text-net">{formatCOP(movimiento.valor_aplicado)}</span>
+                {canSeeEconomic ? <span className="np-table-text np-table-text-net">{formatCOP(movimiento.valor_aplicado)}</span> : null}
                 <div className="np-row-status">
                   <span className={`np-badge ${getMovementStatusTone(movimiento)}`}>
                     {getMovementStatusLabel(movimiento)}
@@ -1508,6 +1512,7 @@ export default function TurnosPage() {
                   <button
                     type="button"
                     className="np-icon-button"
+                    hidden={!canSeeEconomic}
                     title="Editar"
                     aria-label={`Editar ${movimiento.persona.nombre_completo}`}
                     onClick={() => openEditEditor(movimiento)}
@@ -1524,6 +1529,7 @@ export default function TurnosPage() {
                   <button
                     type="button"
                     className="np-icon-button"
+                    hidden={!canSeeEconomic}
                     title="Desactivar"
                     aria-label={`Desactivar ${movimiento.persona.nombre_completo}`}
                     onClick={() => void handleDeactivate(movimiento)}
@@ -1587,10 +1593,10 @@ export default function TurnosPage() {
                   "No disponible"}
               </strong>
             </div>
-            <div className="np-detail-field">
+            {canSeeEconomic ? <div className="np-detail-field">
               <span>Metodo de pago</span>
               <strong>{getMetodoPagoLabel(selectedMovementEmployee?.vinculacion.metodo_pago ?? null)}</strong>
-            </div>
+            </div> : null}
             <div className="np-detail-field">
               <span>Reemplaza</span>
               <strong>{selectedMovement.persona_reemplazada?.nombre_completo ?? "No disponible"}</strong>
@@ -1603,10 +1609,10 @@ export default function TurnosPage() {
               <span>Sede</span>
               <strong>{selectedMovement.contexto_operativo?.sede ?? "No disponible"}</strong>
             </div>
-            <div className="np-detail-field">
+            {canSeeEconomic ? <div className="np-detail-field">
               <span>Cuenta de cobro</span>
               <strong>{getCuentaCobroLabel(selectedMovementEmployee?.vinculacion.metodo_pago ?? null)}</strong>
-            </div>
+            </div> : null}
           </div>
 
           <div className="np-detail-divider" />
@@ -1616,26 +1622,26 @@ export default function TurnosPage() {
               <span>Cantidad</span>
               <strong>{selectedMovement.cantidad ?? "No disponible"}</strong>
             </div>
-            <div className="np-detail-field">
+            {canSeeEconomic ? <div className="np-detail-field">
               <span>Valor calculado</span>
               <strong>
                 {selectedMovement.valor_calculado === null
                   ? "No disponible"
                   : formatCOP(selectedMovement.valor_calculado)}
               </strong>
-            </div>
-            <div className="np-detail-field">
+            </div> : null}
+            {canSeeEconomic ? <div className="np-detail-field">
               <span>Valor aplicado</span>
               <strong>{formatCOP(selectedMovement.valor_aplicado)}</strong>
-            </div>
+            </div> : null}
             <div className="np-detail-field">
               <span>Descripción</span>
               <strong>{selectedMovement.descripcion ?? "No disponible"}</strong>
             </div>
-            <div className="np-detail-field">
+            {canSeeEconomic ? <div className="np-detail-field">
               <span>Afecta seguridad social</span>
               <strong>{selectedMovement.afecta_seguridad_social ? "Sí" : "No"}</strong>
-            </div>
+            </div> : null}
             <div className="np-detail-field">
               <span>Cargo</span>
               <strong>{selectedMovementEmployee?.cargo?.nombre_cargo ?? "No disponible"}</strong>
@@ -1644,10 +1650,10 @@ export default function TurnosPage() {
               <span>Creado</span>
               <strong>{formatDate(selectedMovement.created_at)}</strong>
             </div>
-            <div className="np-detail-field">
+            {canSeeEconomic ? <div className="np-detail-field">
               <span>Motivo ajuste</span>
               <strong>{selectedMovement.motivo_ajuste_valor ?? "No disponible"}</strong>
-            </div>
+            </div> : null}
             <div className="np-detail-field">
               <span>Periodo ID</span>
               <strong>{selectedMovement.periodo_id}</strong>
@@ -1666,10 +1672,10 @@ export default function TurnosPage() {
             </div>
           </div>
 
-          <div className="np-detail-total">
+          {canSeeEconomic ? <div className="np-detail-total">
             <span>Valor aplicado</span>
             <strong>{formatCOP(selectedMovement.valor_aplicado)}</strong>
-          </div>
+          </div> : null}
 
           {selectedMovement.alertas_validacion.length > 0 || selectedMovement.posible_duplicado ? (
             <div className="np-inline-state warning">
@@ -1956,14 +1962,14 @@ export default function TurnosPage() {
               <div key={item.label} className="np-summary-item">
                 <span>{item.label}</span>
                 <strong>
-                  {formatNumber(item.count)} · {formatCOP(item.total)}
+                  {formatNumber(item.count)}{canSeeEconomic ? ` · ${formatCOP(item.total)}` : ""}
                 </strong>
               </div>
             ))
           )}
         </div>
 
-        <div className="np-summary-card">
+        {canSeeEconomic ? <div className="np-summary-card">
           <h4>Valor por naturaleza</h4>
           <div className="np-summary-item">
             <span>Devengados</span>
@@ -1977,7 +1983,7 @@ export default function TurnosPage() {
             <span>Sin naturaleza</span>
             <strong>{formatCOP(valueByNature.sinNaturaleza)}</strong>
           </div>
-        </div>
+        </div> : null}
 
         <div className="np-summary-card">
           <h4>Top 5 · mas turnos</h4>

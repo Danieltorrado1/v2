@@ -163,7 +163,7 @@ nominaRoutes.put('/procesos/responsabilidades', requirePermissions('nomina.perio
 
 // External coverage accounts remain separate from the OPS domain.
 nominaRoutes.get('/cobertura/externos', requirePermissions('nomina.movimientos.read'), listCoberturaExternosHandler);
-nominaRoutes.get('/cobertura/externos-operativos', requirePermissions('nomina.movimientos.read'), listCoberturaExternosOperativosHandler);
+nominaRoutes.get('/cobertura/externos-operativos', requirePermissions('nomina.operativa.read'), listCoberturaExternosOperativosHandler);
 nominaRoutes.post('/cobertura/externos', requirePermissions('nomina.movimientos.create'), upsertCoberturaExternoHandler);
 nominaRoutes.get('/cobertura/externos/:id/documentos', requirePermissions('nomina.movimientos.read'), listCoberturaExternoDocumentosHandler);
 nominaRoutes.get('/cobertura/externos/documentos/:id/download', requirePermissions('nomina.movimientos.read'), downloadCoberturaExternoDocumentoHandler);
@@ -280,7 +280,7 @@ nominaRoutes.get(
   requirePermissions('nomina.movimientos.read'),
   getNominaMovimientosHandler
 );
-nominaRoutes.get('/movimientos-operativos', requirePermissions('nomina.movimientos.read'), getNominaMovimientosOperativosHandler);
+nominaRoutes.get('/movimientos-operativos', requirePermissions('nomina.operativa.read'), getNominaMovimientosOperativosHandler);
 nominaRoutes.get(
   '/movimientos/:id',
   rejectRoles('GESTOR'),

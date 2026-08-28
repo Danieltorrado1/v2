@@ -5,7 +5,7 @@ type FlowItem = { label: string; path: string; aliases: string[]; permission: st
 
 const ITEMS: FlowItem[] = [
   { label: "Planilla Operativa", path: "/nomina/planilla-operativa", aliases: ["/nomina/cobertura"], permission: "nomina.read" },
-  { label: "Turnos", path: "/nomina/turnos", aliases: [], permission: "nomina.movimientos.read" },
+  { label: "Turnos", path: "/nomina/turnos", aliases: [], permission: "nomina.operativa.read" },
   { label: "Novedades", path: "/nomina/novedades", aliases: [], permission: "nomina.read" },
   { label: "Nómina", path: "/nomina/gestion", aliases: [], permission: "nomina.read" },
   { label: "Liquidaciones", path: "/nomina/liquidacion", aliases: [], permission: "nomina.liquidaciones_finales.read" },

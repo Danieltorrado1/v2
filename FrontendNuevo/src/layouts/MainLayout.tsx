@@ -15,7 +15,7 @@ const nominaLinks = [
   { to: "/nomina", label: "Centro de n\u00f3mina", requiredPermissions: ["nomina.read"] },
   { to: "/nomina/cobertura", label: "Planilla operativa", requiredPermissions: ["nomina.read"] },
   { to: "/nomina/liquidacion", label: "Liquidaci\u00f3n", requiredPermissions: ["nomina.liquidaciones.generate", "nomina.liquidaciones.finalize"] },
-  { to: "/nomina/turnos", label: "Turnos", requiredPermissions: ["nomina.movimientos.read"] },
+  { to: "/nomina/turnos", label: "Turnos", requiredPermissions: ["nomina.operativa.read"] },
   { to: "/nomina/cambios-operativos", label: "Cambios operativos", requiredPermissions: ["nomina.movimientos.read"] },
   { to: "/nomina/personal-ops", label: "Personal OPS", requiredPermissions: ["nomina.cuentas_cobro_ops.read"] },
   { to: "/nomina/correccion", label: "Correcci\u00f3n N\u00f3mina", requiredPermissions: ["nomina.correcciones.read"] },

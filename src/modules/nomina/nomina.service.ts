@@ -7490,7 +7490,10 @@ export const getNominaMovimientosOperativos = async (
   return {
     ...result,
     items: result.items.map(({ valor_aplicado: _valorAplicado, valor_calculado: _valorCalculado,
-      valor_total: _valorTotal, valor_unitario: _valorUnitario, ...operational }) => operational)
+      valor_total: _valorTotal, valor_unitario: _valorUnitario,
+      es_devengado: _esDevengado, es_deduccion: _esDeduccion,
+      afecta_seguridad_social: _AfectaSeguridadSocial,
+      motivo_ajuste_valor: _motivoAjusteValor, ...operational }) => operational)
   };
 };
 

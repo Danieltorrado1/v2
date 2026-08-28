@@ -7,9 +7,19 @@ import { AppError } from '../utils/AppError';
 
 export const JSON_BODY_LIMIT = '10mb';
 
-const allowedOrigins = env.CORS_ORIGIN.split(',')
+const configuredOrigins = env.CORS_ORIGIN.split(',')
   .map((origin) => origin.trim())
   .filter((origin) => origin.length > 0);
+
+const localDevelopmentOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173'
+];
+
+const allowedOrigins = new Set([
+  ...configuredOrigins,
+  ...(env.NODE_ENV === 'development' ? localDevelopmentOrigins : [])
+]);
 
 export const helmetMiddleware = helmet({
   crossOriginEmbedderPolicy: false,
@@ -29,7 +39,7 @@ export const corsMiddleware = cors({
       return;
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (allowedOrigins.has(origin)) {
       callback(null, true);
       return;
     }
