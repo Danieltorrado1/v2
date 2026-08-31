@@ -148,14 +148,6 @@ const NOMINA_OPERATIONAL_LEGEND = [
   { code: "PNR", label: "Permiso no remunerado" },
   { code: "S", label: "Suspension" },
 ] as const;
-const tabs = [
-  { id: "resumen", label: "Resumen" },
-  { id: "nomina", label: "Nomina" },
-  { id: "novedades", label: "Novedades" },
-  { id: "turnos", label: "Turnos" },
-  { id: "soportes", label: "Soportes" },
-] as const;
-
 function createInitialNovedadForm(empleadoId = ""): NovedadFormState {
   return {
     nomina_empleado_id: empleadoId,
@@ -1072,6 +1064,9 @@ export default function NominaPage() {
   }, []);
 
   const loadTiposNovedad = useCallback(async () => {
+    if (!empresaId) {
+      return;
+    }
     const requestId = ++tiposNovedadRequestRef.current;
 
     setTiposNovedadState((current) => ({
@@ -1105,7 +1100,7 @@ export default function NominaPage() {
       }));
       setTiposNovedadStatusCode(isCatalogPermissionError(error) ? 403 : error instanceof ApiClientError ? error.status : null);
     }
-  }, []);
+  }, [empresaId]);
 
   const loadDesprendibles = useCallback(async (periodId: string, includeVersions: boolean) => {
     const requestId = ++desprendiblesRequestRef.current;
@@ -1243,8 +1238,10 @@ export default function NominaPage() {
   }, [empresaId, selectedPeriodId]);
 
   useEffect(() => {
-    void loadTiposNovedad();
-  }, [loadTiposNovedad]);
+    if (empresaId) {
+      void loadTiposNovedad();
+    }
+  }, [empresaId, loadTiposNovedad]);
 
   useEffect(() => {
     if (!selectedPeriodId) {
@@ -1812,7 +1809,6 @@ export default function NominaPage() {
     allEmployees.length > 0 &&
     !catalogPermissionDenied &&
     canCreateNovedad;
-  const novedadesBadgeCount = allNovedades.length;
 
   const handleSelectPeriod = (periodId: string) => {
     setSelectedPeriodId(periodId);
@@ -2734,22 +2730,6 @@ export default function NominaPage() {
         </div>
       ) : null}
 
-      {!isOperationalCoverageView ? <div className="payroll-tabs">
-        {tabs.filter((tab) => !gestorOperationalOnly || ["novedades", "soportes"].includes(tab.id)).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`payroll-tab ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <span>{tab.label}</span>
-            {tab.id === "novedades" && selectedPeriodId ? (
-              <span className="payroll-tab-badge">{formatNumber(novedadesBadgeCount)}</span>
-            ) : null}
-          </button>
-        ))}
-      </div> : null}
-
       {activeTab === "nomina" ? (
         <>
           {periodsState.loading && periodos.length === 0 ? (
@@ -3012,19 +2992,14 @@ export default function NominaPage() {
                 <div
                   className="payroll-table-head"
                   style={{
-                    gridTemplateColumns:
-                      "110px minmax(220px,2fr) 140px minmax(220px,1.8fr) 110px 110px 90px 110px 140px 170px",
+                    gridTemplateColumns: "minmax(130px,1fr) minmax(200px,1.6fr) minmax(150px,1.1fr) minmax(210px,1.7fr) minmax(150px,1fr) 140px",
                   }}
                 >
                   <span>Fecha</span>
                   <span>Trabajador</span>
-                  <span>Municipio</span>
-                  <span>Tipo de novedad</span>
-                  <span>Inicio</span>
-                  <span>Fin</span>
-                  <span>Días</span>
-                  <span>Estado</span>
-                  <span>Soportes</span>
+                  <span>Ubicación</span>
+                  <span>Novedad</span>
+                  <span>Estado / soporte</span>
                   <span>Acciones</span>
                 </div>
 
@@ -3064,13 +3039,12 @@ export default function NominaPage() {
                         <div
                           className={`payroll-table-row${isExpanded ? " expanded" : ""}`}
                           style={{
-                            gridTemplateColumns:
-                              "110px minmax(220px,2fr) 140px minmax(220px,1.8fr) 110px 110px 90px 110px 140px 170px",
+                            gridTemplateColumns: "minmax(130px,1fr) minmax(200px,1.6fr) minmax(150px,1.1fr) minmax(210px,1.7fr) minmax(150px,1fr) 140px",
                           }}
                         >
                           <span className="cell-stack">
                             <strong>{formatNovedadRange(novedad)}</strong>
-                            <small>{formatDateTime(novedad.created_at)}</small>
+                            <small>{formatNumber(novedad.dias ?? 0)} días · {formatDateTime(novedad.created_at)}</small>
                           </span>
                           <span className="cell-employee">
                             <div className={`avatar ${getAvatarTone(novedad.nomina_empleado_id)}`}>
@@ -3089,14 +3063,9 @@ export default function NominaPage() {
                             <strong>{getVisibleNovedadTipoLabel(novedadType)}</strong>
                             <small>{novedadType.categoria ?? "Sin categoria"}</small>
                           </span>
-                          <span className="cell-dias">{novedad.fecha_inicio ?? "-"}</span>
-                          <span className="cell-dias">{novedad.fecha_fin ?? "-"}</span>
-                          <span className="cell-dias">{formatNumber(novedad.dias ?? 0)}</span>
-                          <span className={`payroll-status-badge ${getNovedadStatusTone(novedad)}`}>
-                            {getNovedadStatusLabel(novedad)}
-                          </span>
-                          <span className={`payroll-status-badge ${supportLabel === "Completo" || supportLabel === "No requerido" ? "success" : "warning"}`}>
-                            {supportLabel}
+                          <span className="cell-stack">
+                            <span className={`payroll-status-badge ${getNovedadStatusTone(novedad)}`}>{getNovedadStatusLabel(novedad)}</span>
+                            <small className={`payroll-status-badge ${supportLabel === "Completo" || supportLabel === "No requerido" ? "success" : "warning"}`}>{supportLabel}</small>
                           </span>
                           <div className="payroll-row-actions">
                             <button

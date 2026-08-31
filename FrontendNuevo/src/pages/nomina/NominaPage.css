@@ -67,6 +67,20 @@
   overscroll-behavior-y: contain;
 }
 
+.nomina-page--novedades > .payroll-period-card > .payroll-table-scroll { overflow-x: hidden; }
+.nomina-page--novedades .payroll-table-head,
+.nomina-page--novedades .payroll-table-row {
+  min-width: 0;
+  gap: 10px;
+}
+.nomina-page--novedades .cell-stack,
+.nomina-page--novedades .cell-employee,
+.nomina-page--novedades .payroll-row-actions { min-width: 0; }
+.nomina-page--novedades .cell-stack strong,
+.nomina-page--novedades .cell-stack small,
+.nomina-page--novedades .cell-employee-meta strong,
+.nomina-page--novedades .cell-employee-meta small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
 .nomina-page--gestion .payroll-table-head,
 .nomina-page--novedades > .payroll-period-card .payroll-table-head {
   position: sticky;

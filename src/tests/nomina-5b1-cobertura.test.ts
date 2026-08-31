@@ -132,7 +132,7 @@ test('5C.1 turnos conserva filtro canonico y tabla compacta sin scroll horizonta
 test('5C.1 novedades elimina tabs locales y nomina contiene el scroll vertical', () => {
   const page = readFileSync(resolve(process.cwd(), 'FrontendNuevo/src/pages/nomina/NominaPage.tsx'), 'utf8');
   const styles = readFileSync(resolve(process.cwd(), 'FrontendNuevo/src/pages/nomina/NominaPage.css'), 'utf8');
-  assert.match(page, /!isOperationalCoverageView \? <div className="payroll-tabs">/);
+  assert.doesNotMatch(page, /className="payroll-tabs"/);
   assert.match(styles, /nomina-page--novedades[\s\S]*overflow: hidden/);
   assert.match(styles, /nomina-page--gestion \.payroll-period-detail > \.payroll-table-scroll[\s\S]*overflow-y: auto/);
 });
