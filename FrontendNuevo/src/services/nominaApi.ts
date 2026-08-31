@@ -793,10 +793,7 @@ export async function getAllNominaMovimientosOperativos(
 export async function getNominaTurnos(
   filters: NominaTurnoFilters = {},
 ): Promise<PaginatedNominaTurnosApi> {
-  return mapPaginatedNominaTurnos(await getNominaMovimientos({
-    ...filters,
-    tipo_movimiento: NOMINA_TURNO_MOVIMIENTO_TIPO,
-  }));
+  return mapPaginatedNominaTurnos(await getNominaMovimientos(filters));
 }
 
 export async function getAllNominaTurnosOperativos(

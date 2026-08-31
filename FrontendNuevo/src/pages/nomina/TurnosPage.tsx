@@ -137,9 +137,7 @@ function formatDate(value: string | null) {
     return "No disponible";
   }
 
-  return new Intl.DateTimeFormat("es-CO", {
-    dateStyle: "medium",
-  }).format(new Date(value));
+  return formatDateOnly(value, { dateStyle: "medium" });
 }
 
 function toMessage(error: unknown) {
@@ -418,7 +416,7 @@ export default function TurnosPage() {
     () =>
       periodos.map((periodo) => ({
         value: periodo.id,
-        label: `${periodo.nombre_periodo} Â· ${formatDate(periodo.fecha_inicio)} - ${formatDate(periodo.fecha_fin)}`,
+        label: `${periodo.nombre_periodo} · ${formatDate(periodo.fecha_inicio)} - ${formatDate(periodo.fecha_fin)}`,
       })),
     [periodos],
   );
@@ -453,7 +451,7 @@ export default function TurnosPage() {
     () =>
       empleados.map((empleado) => ({
         value: empleado.id,
-        label: `${empleado.persona.nombre_completo} Â· ${empleado.persona.numero_documento ?? empleado.id}`,
+        label: `${empleado.persona.nombre_completo} · ${empleado.persona.numero_documento ?? empleado.id}`,
       })),
     [empleados],
   );
@@ -525,10 +523,9 @@ export default function TurnosPage() {
     const activos = displayedMovimientos.filter((movimiento) => movimiento.activo).length;
     const documentacionCompleta = displayedMovimientos.filter(
       (movimiento) => {
+        if (movimiento.tipo_movimiento !== "TURNO_EXTERNO") return false;
         const relation = turnRelationByMovementId.get(movimiento.id);
-        return relation
-          ? relation.tipo_turno === "INTERNO" || relation.documentos_completos
-          : movimiento.tipo_movimiento === "TURNO_INTERNO";
+        return relation?.tipo_turno === "EXTERNO" && relation.documentos_completos;
       },
     ).length;
     const opsCuentaCobro = displayedMovimientos.filter(
@@ -568,7 +565,7 @@ export default function TurnosPage() {
       {
         tone: "purple",
         icon: Clock,
-        label: "DocumentaciÃ³n lista",
+        label: "Documentación lista",
         value: formatNumber(documentacionCompleta),
         caption: "Externos con checklist completo",
       },
@@ -1087,7 +1084,7 @@ export default function TurnosPage() {
       : null;
 
     if (!selectedEmployee) {
-      setFormError("No fue posible resolver el colaborador seleccionado en el perÃ­odo.");
+      setFormError("No fue posible resolver el colaborador seleccionado en el período.");
       return;
     }
 
@@ -1189,7 +1186,7 @@ export default function TurnosPage() {
       return;
     }
 
-    const confirmed = window.confirm("Se desactivara este turno. Â¿Deseas continuar?");
+    const confirmed = window.confirm("Se desactivara este turno. ¿Deseas continuar?");
     if (!confirmed) {
       return;
     }
@@ -1231,7 +1228,7 @@ export default function TurnosPage() {
       const metadata = await exportNominaMovimientosCsv(selectedPeriodId);
       setFeedback({
         tone: "success",
-        message: `Se exportÃ³ el consolidado real de movimientos del perÃ­odo: ${metadata.file_name}.`,
+        message: `Se exportó el consolidado real de movimientos del período: ${metadata.file_name}.`,
       });
     } catch (error) {
       setFeedback({
@@ -1298,8 +1295,8 @@ export default function TurnosPage() {
             disabled={!selectedPeriodId || isExporting || displayedMovimientos.length === 0}
             title={
               displayedMovimientos.length === 0
-                ? "No hay movimientos cargados para exportar en el perÃ­odo seleccionado."
-                : "Exportar movimientos del perÃ­odo"
+                ? "No hay movimientos cargados para exportar en el período seleccionado."
+                : "Exportar movimientos del período"
             }
           >
             <Download size={16} /> {isExporting ? "Exportando..." : "Exportar movimientos"}
@@ -1357,7 +1354,7 @@ export default function TurnosPage() {
             />
           </div>
           <NpSelect
-            label={periodsState.loading ? "Cargando perÃ­odos..." : "PerÃ­odo"}
+            label={periodsState.loading ? "Cargando períodos..." : "Período"}
             value={selectedPeriodId ?? ""}
             onChange={handleSelectPeriod}
             options={periodOptions}
@@ -1396,20 +1393,20 @@ export default function TurnosPage() {
         </div>
       </div>
 
-      <section className="np-external-summary" aria-labelledby="external-summary-title">
+      {turnoView !== "internos" ? <section className="np-external-summary" aria-labelledby="external-summary-title">
         <div className="np-section-heading">
           <div>
             <span className="np-eyebrow">COBERTURA</span>
             <h2 id="external-summary-title">Externos consolidados</h2>
           </div>
-          <span className="np-badge info">Identidad + turnos del perÃ­odo</span>
+          <span className="np-badge info">Identidad + turnos del período</span>
         </div>
         {externalSummaryState.loading ? <div className="np-empty">Cargando externos...</div> : null}
         {externalSummaryState.error ? (
           <div className="np-inline-state error" role="alert">No fue posible cargar el resumen de externos: {externalSummaryState.error}</div>
         ) : null}
         {!externalSummaryState.loading && !externalSummaryState.error && selectedPeriodId && (externalSummaryState.data?.length ?? 0) === 0 ? (
-          <div className="np-empty">No hay identidades externas asociadas al perÃ­odo.</div>
+          <div className="np-empty">No hay identidades externas asociadas al período.</div>
         ) : null}
         {(externalSummaryState.data?.length ?? 0) > 0 ? (
           <div className="np-external-summary-list">
@@ -1422,21 +1419,21 @@ export default function TurnosPage() {
                 <div><span>Turnos</span><strong>{formatNumber(Number(externo.turnos))}</strong></div>
                 {canSeeEconomic ? <div><span>Total registrado</span><strong>{formatCOP(Number(externo.valor_total))}</strong></div> : <div><span>Tipo</span><strong>Operativo</strong></div>}
                 {canSeeEconomic ? <div className="np-external-checklist">
-                  <span className={externo.cedula ? "is-ready" : "is-pending"}>CÃ©dula: {externo.cedula ? "Cargada" : "Pendiente"}</span>
+                  <span className={externo.cedula ? "is-ready" : "is-pending"}>Cédula: {externo.cedula ? "Cargada" : "Pendiente"}</span>
                   <span className={externo.banco_doc ? "is-ready" : "is-pending"}>Banco: {externo.banco_doc ? "Cargada" : "Pendiente"}</span>
                   <span className={externo.cuenta_estado === "FIRMADA" ? "is-ready" : "is-pending"}>Cuenta: {externo.cuenta_estado}</span>
                 </div> : null}
                 {canSeeEconomic ? <div className="np-external-actions">
                   <label className="np-btn">
-                    {externo.cedula ? "Reemplazar cÃ©dula" : "Subir cÃ©dula"}
+                    {externo.cedula ? "Reemplazar cédula" : "Subir cédula"}
                     <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden disabled={externalBusy !== null} onChange={(event) => { void handleExternalDocument(externo.id, 'CEDULA_EXTERNO_COBERTURA', event.target.files?.[0]); event.currentTarget.value = ''; }} />
                   </label>
-                  {externo.cedula ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleViewExternalDocument(externo.id, 'CEDULA_EXTERNO_COBERTURA'); }}>Ver cÃ©dula</button> : null}
+                  {externo.cedula ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleViewExternalDocument(externo.id, 'CEDULA_EXTERNO_COBERTURA'); }}>Ver cédula</button> : null}
                   <label className="np-btn">
                     {externo.banco_doc ? "Reemplazar banco" : "Subir banco"}
                     <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden disabled={externalBusy !== null} onChange={(event) => { void handleExternalDocument(externo.id, 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA', event.target.files?.[0]); event.currentTarget.value = ''; }} />
                   </label>
-                  {externo.banco_doc ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleViewExternalDocument(externo.id, 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA'); }}>Ver certificaciÃ³n</button> : null}
+                  {externo.banco_doc ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleViewExternalDocument(externo.id, 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA'); }}>Ver certificación</button> : null}
                   {externo.cuenta_estado === 'PENDIENTE' && externo.turnos > 0 ? <button type="button" className="np-btn primary" disabled={externalBusy !== null || !selectedPeriod?.contrato_id} onClick={() => { void handleGenerateExternalAccount(externo.id); }}>Generar cuenta</button> : null}
                   {externo.cuenta_id && externo.cuenta_estado !== 'PENDIENTE' ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleDownloadExternalAccount(externo.cuenta_id as string); }}>Descargar cuenta</button> : null}
                   {externo.cuenta_id && externo.cuenta_estado === 'GENERADA' ? <label className="np-btn">Subir firmada<input type="file" accept="application/pdf" hidden disabled={externalBusy !== null} onChange={(event) => { void handleSignedExternalAccount(externo.cuenta_id as string, event.target.files?.[0]); event.currentTarget.value = ''; }} /></label> : null}
@@ -1446,17 +1443,17 @@ export default function TurnosPage() {
             ))}
           </div>
         ) : null}
-      </section>
+      </section> : null}
 
       <div className="np-table-card">
         {!hasPeriods && !periodsState.loading ? (
           <StateCard
-            title="Sin perÃ­odos disponibles"
+            title="Sin períodos disponibles"
             message="No hay periodos de nomina disponibles para consultar turnos."
           />
         ) : periodsState.error && !hasPeriods ? (
           <StateCard
-            title="No fue posible cargar los perÃ­odos"
+            title="No fue posible cargar los períodos"
             message={periodsState.error}
             tone="error"
             actionLabel="Reintentar"
@@ -1534,9 +1531,9 @@ export default function TurnosPage() {
               >
                 <span className="np-table-text">{formatDate(movimiento.fecha)}</span>
                 <span className={`np-badge ${tipoTurno === "INTERNO" ? "info" : "primary"}`}>{getTurnCoverageLabel(tipoTurno)}</span>
-                <span className="np-table-text np-table-text-strong">{cubreNombre}{cubreDocumento ? ` Â· ${cubreDocumento}` : ""}</span>
+                <span className="np-table-text np-table-text-strong">{cubreNombre}{cubreDocumento ? ` · ${cubreDocumento}` : ""}</span>
                 <span className="np-table-text np-table-text-secondary">
-                  {reemplazadoNombre}{reemplazadoDocumento ? ` Â· ${reemplazadoDocumento}` : ""}
+                  {reemplazadoNombre}{reemplazadoDocumento ? ` · ${reemplazadoDocumento}` : ""}
                 </span>
                 <span className="np-table-text np-table-text-secondary">
                   {turnRelation?.municipio ?? movimiento.contexto_operativo?.municipio ?? "No disponible"}
@@ -1608,7 +1605,7 @@ export default function TurnosPage() {
             <div>
               <h3>Detalle del turno</h3>
               <p>
-                {selectedMovement.persona.nombre_completo} Â· {selectedMovement.periodo.nombre_periodo}
+                {selectedMovement.persona.nombre_completo} · {selectedMovement.periodo.nombre_periodo}
               </p>
             </div>
             <button
@@ -1694,12 +1691,12 @@ export default function TurnosPage() {
               <strong>{formatCOP(selectedMovement.valor_aplicado)}</strong>
             </div> : null}
             <div className="np-detail-field">
-              <span>DescripciÃ³n</span>
+              <span>Descripción</span>
               <strong>{selectedTurnRelation?.motivo ?? selectedMovement.descripcion ?? "No disponible"}</strong>
             </div>
             {canSeeEconomic ? <div className="np-detail-field">
               <span>Afecta seguridad social</span>
-              <strong>{selectedMovement.afecta_seguridad_social ? "SÃ­" : "No"}</strong>
+              <strong>{selectedMovement.afecta_seguridad_social ? "Sí" : "No"}</strong>
             </div> : null}
             <div className="np-detail-field">
               <span>Cargo</span>
@@ -1723,7 +1720,7 @@ export default function TurnosPage() {
           {selectedMovement.alertas_validacion.length > 0 || selectedMovement.posible_duplicado ? (
             <div className="np-inline-state warning">
               {selectedMovement.posible_duplicado ? (
-                <div>Este turno fue marcado como posible duplicado y requiere revisiÃ³n.</div>
+                <div>Este turno fue marcado como posible duplicado y requiere revisión.</div>
               ) : null}
               {selectedMovement.alertas_validacion.map((alerta, index) => (
                 <div key={`${alerta.tipo}-${index}`}>
@@ -1758,7 +1755,7 @@ export default function TurnosPage() {
 
           <div className="np-detail-grid">
             <div className="np-detail-field">
-              <span>CÃ©dula</span>
+              <span>Cédula</span>
               <strong>
                 {selectedMovement.tipo_movimiento === "TURNO_INTERNO"
                   ? "No aplica"
@@ -1768,7 +1765,7 @@ export default function TurnosPage() {
               </strong>
             </div>
             <div className="np-detail-field">
-              <span>CertificaciÃ³n bancaria</span>
+              <span>Certificación bancaria</span>
               <strong>
                 {selectedMovement.tipo_movimiento === "TURNO_INTERNO"
                   ? "No aplica"
@@ -1806,7 +1803,7 @@ export default function TurnosPage() {
           <div className="np-detail-header">
             <div>
               <h3>{editorMode === "create" ? "Registrar turno externo" : "Editar turno externo"}</h3>
-              <p>{selectedPeriod?.nombre_periodo ?? "Periodo no disponible"} Â· Turno externo del periodo seleccionado.</p>
+              <p>{selectedPeriod?.nombre_periodo ?? "Periodo no disponible"} · Turno externo del periodo seleccionado.</p>
             </div>
             <button
               type="button"
@@ -2055,7 +2052,7 @@ export default function TurnosPage() {
               <div key={item.label} className="np-summary-item">
                 <span>{item.label}</span>
                 <strong>
-                  {formatNumber(item.count)}{canSeeEconomic ? ` Â· ${formatCOP(item.total)}` : ""}
+                  {formatNumber(item.count)}{canSeeEconomic ? ` · ${formatCOP(item.total)}` : ""}
                 </strong>
               </div>
             ))}
@@ -2078,7 +2075,7 @@ export default function TurnosPage() {
           </div> : null}
 
           <div className="np-summary-card">
-            <h4>Top 5 Â· mas turnos</h4>
+            <h4>Top 5 · mas turnos</h4>
             {topEmployees.map((item, index) => (
               <div key={item.name} className="np-summary-item">
                 <span>

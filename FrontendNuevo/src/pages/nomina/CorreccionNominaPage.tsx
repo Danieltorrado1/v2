@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCompanyContext } from "../../context/CompanyContext";
+import { formatDateOnly } from "./dateOnly";
 import { pickAvailableScopedId } from "../../context/companyScope";
 import {
   actualizarCorreccionNomina,
@@ -172,14 +173,7 @@ function formatDate(value: string | null | undefined) {
     return "No disponible";
   }
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "No disponible";
-  }
-
-  return new Intl.DateTimeFormat("es-CO", {
-    dateStyle: "medium",
-  }).format(date);
+  return formatDateOnly(value, { dateStyle: "medium" });
 }
 
 function formatDateTime(value: string | null | undefined) {

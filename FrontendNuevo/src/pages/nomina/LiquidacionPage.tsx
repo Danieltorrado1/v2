@@ -22,6 +22,7 @@ import { useCompanyContext } from "../../context/CompanyContext";
 import { useSearchParams } from "react-router-dom";
 import { pickAvailableScopedId } from "../../context/companyScope";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
+import { formatDateOnly } from "./dateOnly";
 import CoberturaFlowNav from "./CoberturaFlowNav";
 import type {
   GenerateNominaLiquidacionesResponse,
@@ -82,9 +83,7 @@ function formatDate(value: string | null) {
     return "No disponible";
   }
 
-  return new Intl.DateTimeFormat("es-CO", {
-    dateStyle: "medium",
-  }).format(new Date(value));
+  return formatDateOnly(value, { dateStyle: "medium" });
 }
 
 function toMessage(error: unknown) {

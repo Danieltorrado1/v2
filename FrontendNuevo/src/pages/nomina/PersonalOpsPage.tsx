@@ -20,6 +20,7 @@ import { getPersonalOPS } from "../../services/personasApi";
 import type {
   VinculacionOPS,
 } from "../../types/personas.types";
+import { formatDateOnly, parseDateOnly } from "./dateOnly";
 import "./NominaPages.css";
 
 type AsyncState<T> = {
@@ -59,9 +60,7 @@ function formatDate(value: string | null) {
     return "No disponible";
   }
 
-  return new Intl.DateTimeFormat("es-CO", {
-    dateStyle: "medium",
-  }).format(new Date(value));
+  return formatDateOnly(value, { dateStyle: "medium" });
 }
 
 function formatNumber(value: number) {
@@ -150,7 +149,8 @@ function isExpiringSoon(item: VinculacionOPS) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const fechaFin = new Date(item.fecha_fin);
+  const fechaFin = parseDateOnly(item.fecha_fin);
+  if (!fechaFin) return false;
   fechaFin.setHours(0, 0, 0, 0);
 
   if (Number.isNaN(fechaFin.getTime()) || fechaFin < today) {

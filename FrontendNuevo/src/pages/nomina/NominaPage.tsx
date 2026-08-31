@@ -543,7 +543,7 @@ function getNovedadCoverageDetail(novedad: NominaNovedadApi) {
   if (novedad.cobertura?.tipo_cobertura === "PERSONAL_VINCULADO") {
     const nombre = normalizeOptionalLabel(novedad.cobertura.persona_cubre?.nombre_completo);
     const documento = normalizeOptionalLabel(novedad.cobertura.persona_cubre?.numero_documento);
-    return [nombre, documento].filter(Boolean).join(" Ã‚Â· ") || "Personal vinculado";
+    return [nombre, documento].filter(Boolean).join(" · ") || "Personal vinculado";
   }
 
   if (novedad.cobertura?.tipo_cobertura === "PERSONA_EXTERNA") {
@@ -552,7 +552,7 @@ function getNovedadCoverageDetail(novedad: NominaNovedadApi) {
       normalizeOptionalLabel(novedad.cobertura.documento_externo),
     ]
       .filter(Boolean)
-      .join(" Ã‚Â· ");
+      .join(" · ");
   }
 
   return normalizeOptionalLabel(novedad.cobertura?.observacion_interna);
@@ -565,7 +565,7 @@ function getEmployeeTotalNovedades(empleado: NominaEmpleadoApi) {
 }
 
 function getEmployeeDocumentSummary(empleado: NominaEmpleadoApi) {
-  return `${getEmployeeDocumentLabel(empleado)} Ã¢â‚¬Â¢ Contrato ${getEmployeeContractLabel(empleado)}`;
+  return `${getEmployeeDocumentLabel(empleado)} • Contrato ${getEmployeeContractLabel(empleado)}`;
 }
 
 function getEmployeeDocumentStatusSummary(empleado: NominaEmpleadoApi): EmployeeDocumentStatusSummary | null {
@@ -609,7 +609,7 @@ function getEmployeeDocumentStatusLabel(empleado: NominaEmpleadoApi) {
     parts.push(porcentaje);
   }
 
-  return parts.join(" Ã¢â‚¬Â¢ ");
+  return parts.join(" • ");
 }
 
 function getInitials(nombreCompleto: string) {
@@ -692,12 +692,12 @@ function buildKpis(
 ): KpiCard[] {
   const unavailable = hasSelectedPeriod && !loading && !dashboard && Boolean(error);
   const countValue = (value?: number) => {
-    if (loading) return "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
+    if (loading) return "—";
     if (unavailable && value === undefined) return "No disponible";
     return formatNumber(value ?? 0);
   };
   const moneyValue = (value?: number) => {
-    if (loading) return "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
+    if (loading) return "—";
     if (unavailable && value === undefined) return "No disponible";
     return formatCOP(value ?? 0);
   };
@@ -1276,12 +1276,12 @@ export default function NominaPage() {
   }, [isOperationalCoverageView, refreshSelectedPeriodData, selectedPeriodId]);
 
   useEffect(() => {
-    if (!selectedPeriodId || isOperationalCoverageView) {
+    if (!selectedPeriodId || isOperationalCoverageView || !isSupportsTab) {
       return;
     }
 
     void loadDesprendibles(selectedPeriodId, includeDesprendibleVersions);
-  }, [includeDesprendibleVersions, isOperationalCoverageView, loadDesprendibles, selectedPeriodId]);
+  }, [includeDesprendibleVersions, isOperationalCoverageView, isSupportsTab, loadDesprendibles, selectedPeriodId]);
 
   useEffect(() => {
     setTablePage(1);
@@ -1875,7 +1875,7 @@ export default function NominaPage() {
       ]);
       setActionFeedback({
         tone: "success",
-        message: "El perÃƒÆ’Ã‚Â­odo fue recalculado y los datos se refrescaron desde el backend.",
+        message: "El período fue recalculado y los datos se refrescaron desde el backend.",
       });
     } catch (error) {
       setRecalculateError(toMessage(error));
@@ -1899,7 +1899,7 @@ export default function NominaPage() {
       });
       setActionFeedback({
         tone: "success",
-        message: `Se generÃƒÆ’Ã‚Â³ la exportaciÃƒÆ’Ã‚Â³n real del backend: ${metadata.file_name}.`,
+        message: `Se generó la exportación real del backend: ${metadata.file_name}.`,
       });
     } catch (error) {
       setActionFeedback({
@@ -1948,7 +1948,7 @@ export default function NominaPage() {
       const metadata = await openNominaDesprendible(desprendible.periodo_id, desprendible.vinculacion_id);
       setActionFeedback({
         tone: "success",
-        message: `Se abriÃƒÆ’Ã‚Â³ el desprendible vigente: ${metadata.file_name}.`,
+        message: `Se abrió el desprendible vigente: ${metadata.file_name}.`,
       });
     } catch (error) {
       setActionFeedback({
@@ -2644,7 +2644,7 @@ export default function NominaPage() {
               type="button"
               className="payroll-action primary"
               disabled
-              title="No existe un endpoint real para crear perÃƒÆ’Ã‚Â­odos desde esta pantalla."
+              title="No existe un endpoint real para crear períodos desde esta pantalla."
             >
               <Plus size={18} />
               Crear periodo
@@ -2711,7 +2711,7 @@ export default function NominaPage() {
               type="button"
               className="payroll-action danger-outline"
               disabled
-              title="No existe un endpoint real para cerrar perÃƒÆ’Ã‚Â­odos en esta pantalla."
+              title="No existe un endpoint real para cerrar períodos en esta pantalla."
             >
               <Lock size={18} />
               Cerrar periodo
@@ -2867,9 +2867,9 @@ export default function NominaPage() {
                                         <small title={getEmployeeSedeLabel(empleado)}>{getEmployeeSedeLabel(empleado)}</small>
                                         <small
                                           className="cell-context-accent"
-                                          title={`${getEmployeeModalidadDescription(empleado)} Ã‚Â· ${getEmployeeGestorLabel(empleado)}`}
+                                          title={`${getEmployeeModalidadDescription(empleado)} · ${getEmployeeGestorLabel(empleado)}`}
                                         >
-                                          {getEmployeeModalidadCode(empleado)} Ã‚Â· Gestor: {getEmployeeGestorLabel(empleado)}
+                                          {getEmployeeModalidadCode(empleado)} · Gestor: {getEmployeeGestorLabel(empleado)}
                                         </small>
                                       </div>
                                     </div>
@@ -2891,7 +2891,7 @@ export default function NominaPage() {
                                       </small>
                                     </div>
 
-                                    <span className="cell-devengado" title={`Total adiciones: ${formatCOP(empleado.total_adiciones)} Ã¯Â¿Â½ Devengado transporte: ${formatCOP(empleado.devengado_transporte)}`}><strong>{formatCOP(empleado.total_adiciones)}</strong><small>Transporte {formatCOP(empleado.devengado_transporte)}</small></span>
+                                    <span className="cell-devengado" title={`Total adiciones: ${formatCOP(empleado.total_adiciones)} ï¿½ Devengado transporte: ${formatCOP(empleado.devengado_transporte)}`}><strong>{formatCOP(empleado.total_adiciones)}</strong><small>Transporte {formatCOP(empleado.devengado_transporte)}</small></span>
 
                                     <span className="cell-deduccion">{formatCOP(empleado.total_deducciones)}</span>
 
@@ -3073,7 +3073,7 @@ export default function NominaPage() {
                   <span>Tipo de novedad</span>
                   <span>Inicio</span>
                   <span>Fin</span>
-                  <span>DÃƒÂ­as</span>
+                  <span>Días</span>
                   <span>Estado</span>
                   <span>Soportes</span>
                   <span>Acciones</span>
@@ -3231,14 +3231,14 @@ export default function NominaPage() {
                                 <strong>{novedadType.efecto_recargos}</strong>
                               </div>
                               <div className="payroll-detail-item wide">
-                                <span>ObservaciÃƒÂ³n</span>
-                                <strong>{novedad.observacion ?? "Sin observaciÃƒÂ³n registrada."}</strong>
+                                <span>Observación</span>
+                                <strong>{novedad.observacion ?? "Sin observación registrada."}</strong>
                               </div>
                             </div>
 
                             <div className="payroll-inline-note compact">
                               <strong>Documentos</strong>
-                              <p>Los documentos obligatorios se leen desde la parametrizaciÃƒÂ³n real del tipo de novedad y se gestionan al final del detalle.</p>
+                              <p>Los documentos obligatorios se leen desde la parametrización real del tipo de novedad y se gestionan al final del detalle.</p>
                             </div>
 
                             <div className="payroll-detail-grid">
@@ -3373,7 +3373,7 @@ export default function NominaPage() {
                           <div>
                             <strong>{novedad.persona.nombre_completo}</strong>
                             <p>
-                              {novedad.persona.numero_documento ?? "Documento no disponible"} Ãƒâ€šÃ‚Â·{" "}
+                              {novedad.persona.numero_documento ?? "Documento no disponible"} ·{" "}
                               {getVisibleNovedadTipoLabel(novedadType)}
                             </p>
                           </div>
@@ -3426,12 +3426,12 @@ export default function NominaPage() {
           {!selectedPeriodId ? (
             <StateCard
               title="Selecciona un periodo"
-              message="La consulta real de desprendibles depende del perÃƒÆ’Ã‚Â­odo de nÃƒÆ’Ã‚Â³mina."
+              message="La consulta real de desprendibles depende del período de nómina."
             />
           ) : desprendiblesState.loading && allDesprendibles.length === 0 ? (
             <StateCard
               title="Cargando desprendibles"
-              message="Consultando desprendibles reales del perÃƒÆ’Ã‚Â­odo seleccionado..."
+              message="Consultando desprendibles reales del período seleccionado..."
             />
           ) : desprendiblesState.error ? (
             <StateCard
@@ -3444,14 +3444,14 @@ export default function NominaPage() {
           ) : allDesprendibles.length === 0 ? (
             <StateCard
               title="Sin desprendibles"
-              message="El backend no reporta desprendibles para este perÃƒÆ’Ã‚Â­odo."
+              message="El backend no reporta desprendibles para este período."
             />
           ) : (
             <>
               <div className="payroll-inline-note compact">
                 <strong>Desprendibles reales</strong>
                 <p>
-                  Esta pestaÃƒÆ’Ã‚Â±a usa `GET /nomina/desprendibles/:periodo_id` y permite alternar entre
+                  Esta pestaña usa `GET /nomina/desprendibles/:periodo_id` y permite alternar entre
                   vigentes e historial. La apertura usa `GET /nomina/desprendibles/:periodo_id/:vinculacion_id`,
                   que solo resuelve el desprendible vigente.
                 </p>
@@ -3479,8 +3479,8 @@ export default function NominaPage() {
                     <div className="payroll-table-head">
                       <span>Persona</span>
                       <span>Documento</span>
-                      <span>PerÃƒÆ’Ã‚Â­odo</span>
-                      <span>VersiÃƒÆ’Ã‚Â³n</span>
+                      <span>Período</span>
+                      <span>Versión</span>
                       <span>Generado</span>
                       <span>Estado</span>
                       <span>Vigente</span>
@@ -3511,7 +3511,7 @@ export default function NominaPage() {
                           <span className={`payroll-status-badge ${getDesprendibleStatusTone(desprendible)}`}>
                             {getDesprendibleStatusLabel(desprendible)}
                           </span>
-                          <span>{desprendible.es_vigente ? "SÃƒÆ’Ã‚Â­" : "No"}</span>
+                          <span>{desprendible.es_vigente ? "Sí" : "No"}</span>
                           <span>{getDesprendibleFileLabel(desprendible)}</span>
                           <span>{desprendible.tipo_desprendible ?? "No disponible"}</span>
 
@@ -3521,7 +3521,7 @@ export default function NominaPage() {
                               title={
                                 desprendible.es_vigente
                                   ? "Abrir desprendible vigente"
-                                  : "El backend no expone descarga directa para versiones histÃƒÆ’Ã‚Â³ricas."
+                                  : "El backend no expone descarga directa para versiones históricas."
                               }
                               aria-label={`Abrir desprendible de ${desprendible.persona.nombre_completo}`}
                               onClick={() => void handleOpenDesprendible(desprendible)}
@@ -3636,7 +3636,7 @@ export default function NominaPage() {
                   >
                     {allEmployees.map((employee) => (
                       <option key={employee.id} value={employee.id}>
-                        {employee.persona.nombre_completo} Ãƒâ€šÃ‚Â· {employee.persona.numero_documento ?? "Documento no disponible"}
+                        {employee.persona.nombre_completo} · {employee.persona.numero_documento ?? "Documento no disponible"}
                       </option>
                     ))}
                   </select>
@@ -3914,9 +3914,9 @@ export default function NominaPage() {
                     {selectedCoverageEmployee ? (
                       <div className="payroll-inline-note compact">
                         <p>
-                          Seleccionado: {selectedCoverageEmployee.persona.nombre_completo} Ã‚Â·{" "}
-                          {selectedCoverageEmployee.persona.numero_documento ?? "Documento no disponible"} Ã‚Â·{" "}
-                          {getEmployeeMunicipioLabel(selectedCoverageEmployee)} Ã‚Â·{" "}
+                          Seleccionado: {selectedCoverageEmployee.persona.nombre_completo} ·{" "}
+                          {selectedCoverageEmployee.persona.numero_documento ?? "Documento no disponible"} ·{" "}
+                          {getEmployeeMunicipioLabel(selectedCoverageEmployee)} ·{" "}
                           {getEmployeeGestorLabel(selectedCoverageEmployee)}
                         </p>
                       </div>
@@ -3936,10 +3936,10 @@ export default function NominaPage() {
                           <strong>{employee.persona.nombre_completo}</strong>
                           <span>{employee.persona.numero_documento ?? "Documento no disponible"}</span>
                           <small>
-                            {getEmployeeMunicipioLabel(employee)} Ã‚Â· {getEmployeeInstitucionLabel(employee)}
+                            {getEmployeeMunicipioLabel(employee)} · {getEmployeeInstitucionLabel(employee)}
                           </small>
                           <small>
-                            {getEmployeeSedeLabel(employee)} Ã‚Â· {getEmployeeModalidadCode(employee)} Ã‚Â·{" "}
+                            {getEmployeeSedeLabel(employee)} · {getEmployeeModalidadCode(employee)} ·{" "}
                             {getEmployeeGestorLabel(employee)}
                           </small>
                         </button>
@@ -4018,7 +4018,7 @@ export default function NominaPage() {
               {selectedFormEmployee ? (
                 <div className="payroll-inline-note compact">
                   <p>
-                    {selectedFormEmployee.persona.nombre_completo} Ã‚Â· {selectedFormEmployee.persona.numero_documento ?? "Documento no disponible"} Ã‚Â· {getEmployeeMunicipioLabel(selectedFormEmployee)} Ã‚Â· {getEmployeeInstitucionLabel(selectedFormEmployee)} Ã‚Â· {getEmployeeSedeLabel(selectedFormEmployee)}
+                    {selectedFormEmployee.persona.nombre_completo} · {selectedFormEmployee.persona.numero_documento ?? "Documento no disponible"} · {getEmployeeMunicipioLabel(selectedFormEmployee)} · {getEmployeeInstitucionLabel(selectedFormEmployee)} · {getEmployeeSedeLabel(selectedFormEmployee)}
                   </p>
                 </div>
               ) : null}

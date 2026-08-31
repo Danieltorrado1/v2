@@ -108,6 +108,18 @@ test('5C.1 distingue captura de control: GESTOR no cierra ni reabre', () => {
   assert.match(nominaPage, /gestorOperationalOnly/);
 });
 
+test('5C.1 TH consulta dashboard y soportes con permisos específicos', () => {
+  assert.match(gestorSeed, /nomina\.dashboard/);
+  assert.match(gestorSeed, /nomina\.desprendibles/);
+  assert.match(nominaPage, /isOperationalCoverageView \|\| !isSupportsTab/);
+});
+
+test('5C.1 filtro interno oculta consolidado externo y no cuenta checklist interno', () => {
+  assert.match(turnosPage, /turnoView !== "internos"/);
+  assert.match(turnosPage, /movimiento\.tipo_movimiento !== "TURNO_EXTERNO"/);
+  assert.match(turnosPage, /relation\?\.tipo_turno === "EXTERNO" && relation\.documentos_completos/);
+});
+
 test('5C.1 separa DTO operativo y lectura economica en backend', () => {
   assert.match(routes, /empleados-operativos/);
   assert.match(routes, /nomina\.operativa\.read/);

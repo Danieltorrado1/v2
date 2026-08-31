@@ -21,6 +21,10 @@ const PERMISSIONS = [
   ['nomina.novedades', 'deactivate', 'Anular novedades operativas'],
 ] as const;
 const ECONOMIC_PERMISSION = ['nomina.economico', 'read', 'Consultar información económica de nómina'] as const;
+const TALENTO_HUMANO_RESOURCE_PERMISSIONS = [
+  ['nomina.dashboard', 'read', 'Consultar indicadores consolidados de nómina'],
+  ['nomina.desprendibles', 'read', 'Consultar desprendibles y soportes de nómina'],
+] as const;
 const GESTOR_FORBIDDEN_PERMISSIONS = [
   'nomina.read',
   'nomina.economico.read',
@@ -88,6 +92,22 @@ const main = async (): Promise<void> => {
         `INSERT INTO rol_permisos (rol_id, permiso_id, activo) VALUES ($1::bigint, $2::bigint, TRUE)
          ON CONFLICT (rol_id, permiso_id) DO UPDATE SET activo = TRUE`,
         [roleId, economicPermission.rows[0]?.id]
+      );
+    }
+    const talentoHumanoRoleId = roleIds.get('TALENTO_HUMANO');
+    if (!talentoHumanoRoleId) throw new Error('Required role TALENTO_HUMANO was not loaded');
+    for (const [modulo, accion, descripcion] of TALENTO_HUMANO_RESOURCE_PERMISSIONS) {
+      const permission = await client.query<{ id: string }>(
+        `INSERT INTO permisos (modulo, accion, descripcion, activo)
+         VALUES ($1,$2,$3,TRUE)
+         ON CONFLICT (modulo,accion) DO UPDATE SET descripcion=EXCLUDED.descripcion,activo=TRUE
+         RETURNING id::text AS id`,
+        [modulo, accion, descripcion]
+      );
+      await client.query(
+        `INSERT INTO rol_permisos (rol_id,permiso_id,activo) VALUES ($1::bigint,$2::bigint,TRUE)
+         ON CONFLICT (rol_id,permiso_id) DO UPDATE SET activo=TRUE`,
+        [talentoHumanoRoleId, permission.rows[0]?.id]
       );
     }
     const nominaRoleId = roleIds.get('NOMINA');

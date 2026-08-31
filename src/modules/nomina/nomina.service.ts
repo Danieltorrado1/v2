@@ -6447,6 +6447,7 @@ export const recalculateNominaPeriodo = async (
             WHERE COALESCE(activo, TRUE) = TRUE
               AND COALESCE(estado, 'APROBADO') = 'APROBADO'
               AND COALESCE(es_devengado, TRUE) = TRUE
+              AND tipo_movimiento <> 'TURNO_INTERNO'
           ), 0) AS movimientos_devengados,
           COALESCE(SUM(valor_total) FILTER (
             WHERE COALESCE(activo, TRUE) = TRUE
@@ -6458,6 +6459,7 @@ export const recalculateNominaPeriodo = async (
               AND COALESCE(estado, 'APROBADO') = 'APROBADO'
               AND COALESCE(es_devengado, TRUE) = TRUE
               AND COALESCE(afecta_seguridad_social, TRUE) = TRUE
+              AND tipo_movimiento <> 'TURNO_INTERNO'
           ), 0) AS movimientos_ss_devengados
         FROM nomina_movimientos
         WHERE periodo_id = $1::bigint
@@ -6520,6 +6522,7 @@ export const recalculateNominaPeriodo = async (
       fecha_fin: string;
       fecha_inicio: string;
       id: string;
+      movimiento_id: string | null;
       nomina_novedad_id: string;
       nomina_empleado_id: string;
       titular_nombre: string | null;
@@ -6539,6 +6542,7 @@ export const recalculateNominaPeriodo = async (
       `
         SELECT
           nnt.id::text AS id,
+          nnt.movimiento_id::text AS movimiento_id,
           nnt.nomina_empleado_id::text AS nomina_empleado_id,
           nnt.nomina_novedad_id::text AS nomina_novedad_id,
           CONCAT_WS(' ', titular_p.primer_nombre, titular_p.segundo_nombre, titular_p.primer_apellido, titular_p.segundo_apellido) AS titular_nombre,
@@ -7070,6 +7074,25 @@ export const recalculateNominaPeriodo = async (
           coberturaResult.recargos_ordinarios +
           coberturaResult.otros_devengos_reales +
           totalAdicionesInternasDevengado;
+
+        for (const adicion of coberturaResult.adiciones_internas) {
+          const turno = (turnosInternosCoberturaByEmpleado.get(empleadoRow.id) ?? [])
+            .find((item) => item.id === adicion.id);
+          if (!turno?.movimiento_id) continue;
+          const diasTurno = Math.max(1, adicion.dias_turno);
+          await client.query(
+            `UPDATE nomina_movimientos
+             SET cantidad = $2,
+                 valor_unitario = $3,
+                 valor_calculado = $4,
+                 valor_total = $4,
+                 es_devengado = TRUE,
+                 es_deduccion = FALSE,
+                 afecta_seguridad_social = TRUE
+             WHERE id = $1::bigint AND tipo_movimiento = 'TURNO_INTERNO'`,
+            [turno.movimiento_id, diasTurno, adicion.devengado_turno / diasTurno, adicion.devengado_turno]
+          );
+        }
 
         await client.query(
           `
@@ -9943,7 +9966,7 @@ export const createNominaNovedadConTurno = async (
         turno.tipo, externoId, personaReemplazadaId,
         JSON.stringify(persistedTurnoContexto), turno.observacion, actorUserId]
     );
-    const turnoRow = row.rows[0]; if (!turnoRow) throw new AppError('No fue posible crear relaciÃ³n de turno',500,'NOMINA_TURNO_CREATE_FAILED');
+    const turnoRow = row.rows[0]; if (!turnoRow) throw new AppError('No fue posible crear relación de turno',500,'NOMINA_TURNO_CREATE_FAILED');
     const fechaTurno = input.fecha_inicio ?? input.fecha_fin ?? null;
     if (turno.tipo === 'INTERNO' && fechaTurno) {
       const duplicateMovement = await client.query<{ id: string }>(
