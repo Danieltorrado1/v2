@@ -760,6 +760,7 @@ export default function NominaPage() {
   const canCreateNovedad = user?.permissions.includes("nomina.novedades.create") === true;
   const canUpdateNovedad = user?.permissions.includes("nomina.novedades.update") === true;
   const canDeactivateNovedad = user?.permissions.includes("nomina.novedades.deactivate") === true;
+  const canGenerateDesprendibles = user?.permissions.includes("nomina.desprendibles.generate") === true;
   const [activeTab, setActiveTab] = useState("nomina");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -2442,7 +2443,7 @@ export default function NominaPage() {
     !catalogPermissionDenied;
 
   return (
-    <div className="nomina-page">
+    <div className={`nomina-page ${isOperationalCoverageView ? "nomina-page--novedades" : "nomina-page--gestion"}`}>
       <CoberturaFlowNav periodId={selectedPeriodId} />
       {!isOperationalCoverageView ? (
         <div className="payroll-kpis">
@@ -2692,7 +2693,8 @@ export default function NominaPage() {
               type="button"
               className="payroll-action"
               onClick={handleGenerateDesprendibles}
-              disabled={!selectedPeriodId || isGeneratingDesprendibles}
+              disabled={!selectedPeriodId || isGeneratingDesprendibles || !canGenerateDesprendibles}
+              title={canGenerateDesprendibles ? "Generar desprendibles reales del periodo" : "No tienes permiso para generar desprendibles"}
             >
               <FileText size={18} />
               {isGeneratingDesprendibles ? "Generando desprendibles..." : "Generar desprendibles"}
@@ -2732,7 +2734,7 @@ export default function NominaPage() {
         </div>
       ) : null}
 
-      <div className="payroll-tabs">
+      {!isOperationalCoverageView ? <div className="payroll-tabs">
         {tabs.filter((tab) => !gestorOperationalOnly || ["novedades", "soportes"].includes(tab.id)).map((tab) => (
           <button
             key={tab.id}
@@ -2746,7 +2748,7 @@ export default function NominaPage() {
             ) : null}
           </button>
         ))}
-      </div>
+      </div> : null}
 
       {activeTab === "nomina" ? (
         <>
@@ -2947,70 +2949,17 @@ export default function NominaPage() {
 
                                   {isExpanded ? (
                                     <div className="payroll-table-row-detail">
-                                      <div className="payroll-detail-grid">
-                                        <div className="payroll-detail-item">
-                                          <span>Municipio</span>
-                                          <strong>{getEmployeeMunicipioLabel(empleado)}</strong>
+                                      <div className="payroll-person-summary">
+                                        <header>
+                                          <div><strong>{empleado.persona.nombre_completo}</strong><span>{getEmployeeDocumentLabel(empleado)}</span></div>
+                                          <div><span>{getEmployeeCargoLabel(empleado)}</span><small>{getEmployeeMunicipioLabel(empleado)} · {getEmployeeSedeLabel(empleado)}</small></div>
+                                        </header>
+                                        <div className="payroll-person-groups">
+                                          <section><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Otros</dt><dd>{formatCOP(empleado.devengado_otros)}</dd></div></dl></section>
+                                          <section><h4>Deducciones</h4><dl><div><dt>Salud</dt><dd>{formatCOP(empleado.salud)}</dd></div><div><dt>Pension</dt><dd>{formatCOP(empleado.pension)}</dd></div><div><dt>Total</dt><dd>{formatCOP(empleado.total_deducciones)}</dd></div></dl></section>
+                                          <section><h4>Novedades y turnos</h4><dl><div><dt>Novedades</dt><dd>{formatNumber(novedadesCountByEmpleadoId.get(empleado.id) ?? getEmployeeTotalNovedades(empleado))}</dd></div><div><dt>Modalidad</dt><dd title={getEmployeeModalidadDescription(empleado)}>{getEmployeeModalidadCode(empleado)}</dd></div><div><dt>Documentos</dt><dd>{getEmployeeDocumentStatusLabel(empleado)}{documentStatusPercentage ? ` · ${documentStatusPercentage}` : ""}</dd></div></dl></section>
                                         </div>
-                                        <div className="payroll-detail-item">
-                                          <span>Institucion</span>
-                                          <strong>{getEmployeeInstitucionLabel(empleado)}</strong>
-                                        </div>
-                                        <div className="payroll-detail-item">
-                                          <span>Sede</span>
-                                          <strong>{getEmployeeSedeLabel(empleado)}</strong>
-                                        </div>
-                                        <div className="payroll-detail-item">
-                                          <span>Gestor</span>
-                                          <strong>{getEmployeeGestorLabel(empleado)}</strong>
-                                        </div>
-                                        <div className="payroll-detail-item">
-                                          <span>Contrato</span>
-                                          <strong>{getEmployeeContractLabel(empleado)}</strong>
-                                        </div>
-                                        <div className="payroll-detail-item">
-                                          <span>Cargo</span>
-                                          <strong>{getEmployeeCargoLabel(empleado)}</strong>
-                                        </div>
-                                        <div className="payroll-detail-item">
-                                          <span>Clasificacion</span>
-                                          <strong>{getEmployeeClassificationLabel(empleado)}</strong>
-                                        </div>
-                                        <div className="payroll-detail-item">
-                                          <span>Metodo de liquidacion</span>
-                                          <strong>{getEmployeeMetodoLiquidacionLabel(empleado)}</strong>
-                                        </div>
-                                        <div className="payroll-detail-item">
-                                          <span>Total novedades</span>
-                                          <strong>
-                                            {formatNumber(
-                                              novedadesCountByEmpleadoId.get(empleado.id) ?? getEmployeeTotalNovedades(empleado),
-                                            )}
-                                          </strong>
-                                        </div>
-                                        <div className="payroll-detail-item">
-                                          <span>Devengado transporte</span>
-                                          <strong>{formatCOP(empleado.devengado_transporte)}</strong>
-                                        </div>
-                                        <div className="payroll-detail-item">
-                                          <span>Modalidad</span>
-                                          <strong title={getEmployeeModalidadDescription(empleado)}>
-                                            {getEmployeeModalidadCode(empleado)}
-                                          </strong>
-                                          <small>{getEmployeeModalidadDescription(empleado)}</small>
-                                        </div>
-                                        <div className="payroll-detail-item wide">
-                                          <span>Estado documental</span>
-                                          <strong>{getEmployeeDocumentStatusLabel(empleado)}</strong>
-                                          {documentStatusSummary ? (
-                                            <div className="payroll-detail-chips">
-                                              <span>Cargados {formatNumber(documentStatusSummary.totalCargados)}</span>
-                                              <span>Faltantes {formatNumber(documentStatusSummary.totalFaltantes)}</span>
-                                              <span>Total {formatNumber(documentStatusSummary.totalRequeridos)}</span>
-                                              {documentStatusPercentage ? <span>{documentStatusPercentage}</span> : null}
-                                            </div>
-                                          ) : null}
-                                        </div>
+                                        <footer><span>{getEmployeeContractLabel(empleado)} · {getEmployeeMetodoLiquidacionLabel(empleado)}</span><strong>Neto {formatCOP(empleado.neto_pagar)}</strong></footer>
                                       </div>
                                     </div>
                                   ) : null}

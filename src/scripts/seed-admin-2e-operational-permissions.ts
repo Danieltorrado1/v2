@@ -24,6 +24,7 @@ const ECONOMIC_PERMISSION = ['nomina.economico', 'read', 'Consultar información
 const TALENTO_HUMANO_RESOURCE_PERMISSIONS = [
   ['nomina.dashboard', 'read', 'Consultar indicadores consolidados de nómina'],
   ['nomina.desprendibles', 'read', 'Consultar desprendibles y soportes de nómina'],
+  ['nomina.desprendibles', 'generate', 'Generar desprendibles de nómina'],
 ] as const;
 const GESTOR_FORBIDDEN_PERMISSIONS = [
   'nomina.read',

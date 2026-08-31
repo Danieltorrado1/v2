@@ -398,7 +398,7 @@ nominaRoutes.get(
 );
 nominaRoutes.post(
   '/desprendibles/:periodo_id/generar',
-  requirePermissions('nomina.liquidaciones.generate'),
+  requirePermissions('nomina.desprendibles.generate'),
   generateNominaDesprendiblesHandler
 );
 nominaRoutes.post(

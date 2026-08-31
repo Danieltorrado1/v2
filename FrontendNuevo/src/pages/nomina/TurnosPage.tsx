@@ -467,6 +467,10 @@ export default function TurnosPage() {
       const turnRelation = turnRelationByMovementId.get(movimiento.id) ?? null;
       const tipoTurno = movimiento.tipo_movimiento === "TURNO_INTERNO" ? "INTERNO" : "EXTERNO";
 
+      if (turnoView === "todos" && !["TURNO_INTERNO", "TURNO_EXTERNO"].includes(movimiento.tipo_movimiento)) {
+        return false;
+      }
+
       if (turnoView === "internos" && tipoTurno !== "INTERNO") {
         return false;
       }
@@ -1484,24 +1488,16 @@ export default function TurnosPage() {
             }
           />
         ) : (
-          <div className="np-table-scroll">
+          <div className="np-table-scroll np-turns-table-scroll">
             <div
-              className="np-table-head"
-              style={{
-                gridTemplateColumns:
-                  "110px 120px minmax(220px,1.55fr) minmax(220px,1.45fr) 140px 140px minmax(180px,1.2fr) 120px 130px 150px",
-              }}
+              className="np-table-head np-turns-table-grid"
             >
               <span>Fecha</span>
-              <span>Tipo</span>
               <span>Trabajador que cubre</span>
               <span>Trabajador reemplazado</span>
-              <span>Municipio</span>
-              <span>Sede</span>
+              <span>Municipio / Sede</span>
               <span>Motivo</span>
               <span>Estado</span>
-              <span>Documentos</span>
-              <span>Acciones</span>
             </div>
 
             {displayedMovimientos.map((movimiento) => {
@@ -1523,34 +1519,33 @@ export default function TurnosPage() {
               return (
               <div
                 key={movimiento.id}
-                className={`np-table-row${selectedMovementId === movimiento.id ? " is-selected" : ""}`}
-                style={{
-                  gridTemplateColumns:
-                    "110px 120px minmax(220px,1.55fr) minmax(220px,1.45fr) 140px 140px minmax(180px,1.2fr) 120px 130px 150px",
-                }}
+                className={`np-table-row np-turns-table-grid${selectedMovementId === movimiento.id ? " is-selected" : ""}`}
               >
-                <span className="np-table-text">{formatDate(movimiento.fecha)}</span>
-                <span className={`np-badge ${tipoTurno === "INTERNO" ? "info" : "primary"}`}>{getTurnCoverageLabel(tipoTurno)}</span>
-                <span className="np-table-text np-table-text-strong">{cubreNombre}{cubreDocumento ? ` · ${cubreDocumento}` : ""}</span>
-                <span className="np-table-text np-table-text-secondary">
-                  {reemplazadoNombre}{reemplazadoDocumento ? ` · ${reemplazadoDocumento}` : ""}
+                <span className="np-table-stack">
+                  <strong>{formatDate(movimiento.fecha)}</strong>
+                  <small className={`np-badge ${tipoTurno === "INTERNO" ? "info" : "primary"}`}>{getTurnCoverageLabel(tipoTurno)}</small>
                 </span>
-                <span className="np-table-text np-table-text-secondary">
-                  {turnRelation?.municipio ?? movimiento.contexto_operativo?.municipio ?? "No disponible"}
+                <span className="np-table-stack" title={[cubreNombre, cubreDocumento].filter(Boolean).join(" · ")}>
+                  <strong>{cubreNombre}</strong>
+                  <small>{cubreDocumento ?? "Sin documento"}</small>
                 </span>
-                <span className="np-table-text np-table-text-secondary">
-                  {turnRelation?.sede ?? movimiento.contexto_operativo?.sede ?? "No disponible"}
+                <span className="np-table-stack" title={[reemplazadoNombre, reemplazadoDocumento].filter(Boolean).join(" · ")}>
+                  <strong>{reemplazadoNombre}</strong>
+                  <small>{reemplazadoDocumento ?? "Sin documento"}</small>
                 </span>
-                <span className="np-table-text">
+                <span className="np-table-stack" title={[turnRelation?.municipio ?? movimiento.contexto_operativo?.municipio, turnRelation?.sede ?? movimiento.contexto_operativo?.sede].filter(Boolean).join(" · ")}>
+                  <strong>{turnRelation?.municipio ?? movimiento.contexto_operativo?.municipio ?? "No disponible"}</strong>
+                  <small>{turnRelation?.sede ?? movimiento.contexto_operativo?.sede ?? "Sin sede"}</small>
+                </span>
+                <span className="np-table-text np-table-ellipsis" title={turnRelation?.motivo ?? movimiento.descripcion ?? "No disponible"}>
                   {turnRelation?.motivo ?? movimiento.descripcion ?? "No disponible"}
                 </span>
-                <span className={`np-badge ${getMovementStatusTone(movimiento)}`}>
-                  {turnRelation?.estado ?? getMovementStatusLabel(movimiento)}
-                </span>
-                <span className={`np-badge ${documentosLabel === "Completo" || documentosLabel === "No aplica" ? "success" : "warning"}`}>
-                  {documentosLabel}
-                </span>
-                <div className="np-row-status">
+                <div className="np-turn-status-actions">
+                  <span className={`np-badge ${getMovementStatusTone(movimiento)}`}>
+                    {turnRelation?.estado ?? getMovementStatusLabel(movimiento)}
+                  </span>
+                  <small title="Estado documental">Docs: {documentosLabel}</small>
+                  <span className="np-row-status">
                   <button
                     type="button"
                     className="np-icon-button"
@@ -1591,6 +1586,7 @@ export default function TurnosPage() {
                   >
                     <Trash2 size={14} />
                   </button>
+                  </span>
                 </div>
               </div>
               );

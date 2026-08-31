@@ -120,6 +120,31 @@ test('5C.1 filtro interno oculta consolidado externo y no cuenta checklist inter
   assert.match(turnosPage, /relation\?\.tipo_turno === "EXTERNO" && relation\.documentos_completos/);
 });
 
+test('5C.1 turnos conserva filtro canonico y tabla compacta sin scroll horizontal', () => {
+  const page = readFileSync(resolve(process.cwd(), 'FrontendNuevo/src/pages/nomina/TurnosPage.tsx'), 'utf8');
+  const styles = readFileSync(resolve(process.cwd(), 'FrontendNuevo/src/pages/nomina/NominaPages.css'), 'utf8');
+  assert.match(page, /turnoView === "todos"/);
+  assert.match(page, /TURNO_INTERNO", "TURNO_EXTERNO/);
+  assert.match(page, /np-turns-table-grid/);
+  assert.match(styles, /\.np-turns-table-scroll\s*\{\s*overflow-x:hidden/);
+});
+
+test('5C.1 novedades elimina tabs locales y nomina contiene el scroll vertical', () => {
+  const page = readFileSync(resolve(process.cwd(), 'FrontendNuevo/src/pages/nomina/NominaPage.tsx'), 'utf8');
+  const styles = readFileSync(resolve(process.cwd(), 'FrontendNuevo/src/pages/nomina/NominaPage.css'), 'utf8');
+  assert.match(page, /!isOperationalCoverageView \? <div className="payroll-tabs">/);
+  assert.match(styles, /nomina-page--novedades[\s\S]*overflow: hidden/);
+  assert.match(styles, /nomina-page--gestion \.payroll-period-detail > \.payroll-table-scroll[\s\S]*overflow-y: auto/);
+});
+
+test('5C.1 desprendibles usa permiso documental especifico', () => {
+  const routes = readFileSync(resolve(process.cwd(), 'src/modules/nomina/nomina.routes.ts'), 'utf8');
+  const page = readFileSync(resolve(process.cwd(), 'FrontendNuevo/src/pages/nomina/NominaPage.tsx'), 'utf8');
+  assert.match(routes, /desprendibles\/:periodo_id\/generar'[\s\S]*nomina\.desprendibles\.generate/);
+  assert.match(page, /permissions\.includes\("nomina\.desprendibles\.generate"\)/);
+  assert.match(page, /payroll-person-summary/);
+});
+
 test('5C.1 separa DTO operativo y lectura economica en backend', () => {
   assert.match(routes, /empleados-operativos/);
   assert.match(routes, /nomina\.operativa\.read/);

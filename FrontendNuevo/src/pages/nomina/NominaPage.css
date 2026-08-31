@@ -12,6 +12,69 @@
   color: var(--text-primary);
 }
 
+.nomina-page--gestion,
+.nomina-page--novedades {
+  overflow: hidden;
+  gap: 10px;
+}
+
+.nomina-page--gestion .payroll-kpis { gap:10px; }
+.nomina-page--gestion .payroll-kpi { min-height:72px; padding:10px 12px; border-radius:14px; }
+.nomina-page--gestion .payroll-filterbar,
+.nomina-page--gestion .payroll-actionbar { padding:10px 12px; gap:8px; border-radius:14px; }
+.nomina-page--gestion .payroll-filter-select,
+.nomina-page--gestion .payroll-search,
+.nomina-page--gestion .payroll-action { height:36px; }
+.nomina-page--gestion .payroll-tabs { min-height:38px; }
+.nomina-page--gestion .payroll-tab { height:38px; }
+.nomina-page--gestion .payroll-period-summary { padding:12px 16px; }
+.nomina-page--gestion .payroll-period-detail { padding:10px 14px 14px; }
+
+.nomina-page--gestion .payroll-periods,
+.nomina-page--novedades > .payroll-period-card {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.nomina-page--gestion .payroll-periods {
+  overflow: hidden;
+}
+
+.nomina-page--gestion .payroll-period-card.open,
+.nomina-page--novedades > .payroll-period-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.nomina-page--gestion .payroll-period-card.open {
+  flex: 1 1 0;
+}
+
+.nomina-page--gestion .payroll-period-detail,
+.nomina-page--novedades > .payroll-period-card > .payroll-table-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.nomina-page--gestion .payroll-period-detail {
+  display: flex;
+}
+
+.nomina-page--gestion .payroll-period-detail > .payroll-table-scroll,
+.nomina-page--novedades > .payroll-period-card > .payroll-table-scroll {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+.nomina-page--gestion .payroll-table-head,
+.nomina-page--novedades > .payroll-period-card .payroll-table-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg-secondary);
+}
+
 .nomina-page::-webkit-scrollbar {
   width: 6px;
 }
@@ -909,6 +972,21 @@
   line-height: 1.4;
 }
 
+.payroll-person-summary { display:flex; flex-direction:column; gap:14px; padding:4px; }
+.payroll-person-summary > header,.payroll-person-summary > footer { display:flex; justify-content:space-between; align-items:center; gap:18px; }
+.payroll-person-summary > header > div { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.payroll-person-summary > header span,.payroll-person-summary > header small,.payroll-person-summary > footer span { color:var(--text-secondary); font-size:11px; }
+.payroll-person-groups { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border:1px solid var(--border-color); border-radius:14px; overflow:hidden; }
+.payroll-person-groups section { padding:12px 14px; border-right:1px solid var(--border-color); }
+.payroll-person-groups section:last-child { border-right:0; }
+.payroll-person-groups h4 { margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-secondary); }
+.payroll-person-groups dl { margin:0; display:grid; gap:6px; }
+.payroll-person-groups dl div { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.payroll-person-groups dt { font-size:11px; color:var(--text-secondary); }
+.payroll-person-groups dd { margin:0; font-size:12px; font-weight:800; text-align:right; }
+.payroll-person-summary > footer { border-top:1px solid var(--border-color); padding-top:10px; }
+.payroll-person-summary > footer strong { color:var(--color-primary); font-size:16px; }
+
 .payroll-detail-chips {
   display: flex;
   flex-wrap: wrap;
@@ -1573,6 +1651,11 @@
     flex-direction: column;
     align-items: stretch;
   }
+
+  .nomina-page--gestion,.nomina-page--novedades { overflow-y:auto; }
+  .payroll-person-groups { grid-template-columns:1fr; }
+  .payroll-person-groups section { border-right:0; border-bottom:1px solid var(--border-color); }
+  .payroll-person-groups section:last-child { border-bottom:0; }
 }
 
 

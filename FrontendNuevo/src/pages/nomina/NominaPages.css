@@ -337,6 +337,22 @@ select.np-form-control option:focus {
 
 .np-table-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-gutter: stable; }
 
+.np-turns-table-grid {
+  grid-template-columns: minmax(82px,.65fr) minmax(150px,1.25fr) minmax(150px,1.2fr) minmax(125px,1fr) minmax(130px,1.2fr) minmax(128px,.9fr);
+  min-width: 0;
+}
+.np-turns-table-scroll { overflow-x:hidden; }
+.np-table-stack { min-width:0; display:flex; flex-direction:column; gap:3px; }
+.np-table-stack strong,.np-table-stack small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.np-table-stack strong { font-size:12px; color:var(--text-primary); }
+.np-table-stack small { font-size:10px; color:var(--text-secondary); }
+.np-table-stack .np-badge { align-self:flex-start; height:18px; padding:0 6px; font-size:9px; }
+.np-table-ellipsis { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.np-turn-status-actions { min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:5px; }
+.np-turn-status-actions > small { flex-basis:100%; color:var(--text-secondary); font-size:9px; }
+.np-turn-status-actions .np-row-status { display:flex; gap:4px; }
+.np-turn-status-actions .np-icon-button { width:26px; height:26px; }
+
 .np-table-head,
 .np-table-row {
   display: grid;
