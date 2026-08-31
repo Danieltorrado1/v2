@@ -172,8 +172,9 @@ function createInitialNovedadForm(empleadoId = ""): NovedadFormState {
   };
 }
 
-function formatCOP(value: number) {
-  return `$${value.toLocaleString("es-CO")}`;
+function formatCOP(value: number | null | undefined) {
+  const normalized = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  return `$${normalized.toLocaleString("es-CO")}`;
 }
 
 function formatNumber(value: number) {

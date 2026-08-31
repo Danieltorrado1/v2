@@ -3,6 +3,7 @@ import { apiClient } from '../../../../services/apiClient';
 import { configuracionApi } from '../../../../services/configuracionApi';
 import { useCompanyContext } from '../../../../context/CompanyContext';
 import type { UsuarioAdminRecord } from '../../../../types/configuracion.types';
+import { PayrollParametersTab, SalaryCategoriesTab } from './NominaEconomicaTabs';
 
 type Process='COBERTURA'|'ASISTENCIA'|'OPS';
 type Responsibility={id:string;proceso:Process;activo:boolean;municipio_ids:number[];area_ids:number[]};
@@ -15,7 +16,7 @@ const slug=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
 
 export function NominaProcesosTab(){
  const {empresaActual}=useCompanyContext();
- const [tab,setTab]=useState<'asignaciones'|'areas'>('asignaciones');
+ const [tab,setTab]=useState<'asignaciones'|'parametros'|'categorias'|'areas'>('asignaciones');
  const [users,setUsers]=useState<UsuarioAdminRecord[]>([]),[responsibilities,setResponsibilities]=useState<Record<string,Responsibility[]>>({});
  const [areas,setAreas]=useState<Area[]>([]),[municipalities,setMunicipalities]=useState<Municipality[]>([]);
  const [selected,setSelected]=useState<UsuarioAdminRecord|null>(null),[selectedProcesses,setSelectedProcesses]=useState<Process[]>([]),[municipalityIds,setMunicipalityIds]=useState<number[]>([]),[areaIds,setAreaIds]=useState<number[]>([]);
@@ -62,7 +63,8 @@ export function NominaProcesosTab(){
  if(!empresaActual)return <div className="adm-empty">Seleccione una empresa autorizada.</div>;
 
  return <div className="nomina-config">
-  <div className="adm-card"><h2>Asignaciones de Nómina</h2><p>Define qué usuarios gestionan cada proceso de nómina y sobre qué personal pueden trabajar.</p><p>Empresa activa: <strong>{empresaActual.nombre_empresa}</strong></p><div className="cg-cat-tabs"><button className={tab==='asignaciones'?'active':''} onClick={()=>setTab('asignaciones')}>ASIGNACIONES</button><button className={tab==='areas'?'active':''} onClick={()=>setTab('areas')}>ÁREAS</button></div></div>
+  <div className="adm-card"><h2>Configuración de Nómina</h2><p>Empresa activa: <strong>{empresaActual.nombre_empresa}</strong></p><div className="cg-cat-tabs"><button className={tab==='asignaciones'?'active':''} onClick={()=>setTab('asignaciones')}>ASIGNACIONES</button><button className={tab==='parametros'?'active':''} onClick={()=>setTab('parametros')}>PARÁMETROS ECONÓMICOS</button><button className={tab==='categorias'?'active':''} onClick={()=>setTab('categorias')}>CATEGORÍAS SALARIALES</button><button className={tab==='areas'?'active':''} onClick={()=>setTab('areas')}>ÁREAS</button></div></div>
+  {tab==='parametros'&&<PayrollParametersTab/>}{tab==='categorias'&&<SalaryCategoriesTab/>}
   {tab==='asignaciones'&&<div className="adm-card">
    <div className="nomina-section-head"><div><h3>Asignaciones</h3><p>¿Quién va a gestionar qué?</p></div><button className="adm-btn primary" onClick={start}>+ Asignar usuario</button></div>
    <div className="nomina-assignment-filters"><input placeholder="Buscar por nombre o correo..." aria-label="Buscar por nombre o correo" value={search} onChange={event=>setSearch(event.target.value)}/><select aria-label="Proceso" value={processFilter} onChange={event=>setProcessFilter(event.target.value as typeof processFilter)}><option value="TODOS">Todos los procesos</option>{processes.map(item=><option key={item}>{item}</option>)}</select><select aria-label="Estado" value={stateFilter} onChange={event=>setStateFilter(event.target.value as typeof stateFilter)}><option value="ACTIVO">Activo</option><option value="SIN_ASIGNACION">Sin asignación</option><option value="TODOS">Todos</option></select></div>

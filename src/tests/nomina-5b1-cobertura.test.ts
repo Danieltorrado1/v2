@@ -145,6 +145,12 @@ test('5C.1 desprendibles usa permiso documental especifico', () => {
   assert.match(page, /payroll-person-summary/);
 });
 
+test('5C.1 nomina tolera campos monetarios opcionales del DTO', () => {
+  const page = readFileSync(resolve(process.cwd(), 'FrontendNuevo/src/pages/nomina/NominaPage.tsx'), 'utf8');
+  assert.match(page, /function formatCOP\(value: number \| null \| undefined\)/);
+  assert.match(page, /typeof value === "number" && Number\.isFinite\(value\) \? value : 0/);
+});
+
 test('5C.1 separa DTO operativo y lectura economica en backend', () => {
   assert.match(routes, /empleados-operativos/);
   assert.match(routes, /nomina\.operativa\.read/);
