@@ -4,6 +4,7 @@ import { dbPool, dbQuery } from '../../config/db';
 import { AppError } from '../../utils/AppError';
 import { AuditRequestMeta, registerAuditEntry } from '../auditoria/auditoria.helper';
 import { GeneratedAlertCandidate, generateSystemAlertCandidates } from './alertas.generator';
+import { filterVisibleNotificationsForUser } from './alertas.visibility';
 import {
   EstadoAlerta,
   GenerateAlertasInput,
@@ -934,6 +935,39 @@ export const deactivateAlerta = async (
   }
 };
 
+const queryNotificacionesRows = async (
+  filters: ListNotificacionesQuery,
+  pagination?: { limit: number; offset: number }
+): Promise<NotificacionRow[]> => {
+  const { params, whereClause } = buildNotificacionesFilters(filters);
+  if (!pagination) {
+    const result = await dbQuery<NotificacionRow>(
+      `
+        ${getNotificacionSelect()}
+        ${whereClause}
+        ORDER BY n.created_at DESC
+      `,
+      params
+    );
+
+    return result.rows;
+  }
+
+  const listParams = [...params, pagination.limit, pagination.offset];
+  const result = await dbQuery<NotificacionRow>(
+    `
+      ${getNotificacionSelect()}
+      ${whereClause}
+      ORDER BY n.created_at DESC
+      LIMIT ${listParams.length - 1}
+      OFFSET ${listParams.length}
+    `,
+    listParams
+  );
+
+  return result.rows;
+};
+
 export const listNotificaciones = async (
   filters: ListNotificacionesQuery
 ): Promise<PaginatedNotificaciones> => {
@@ -976,10 +1010,35 @@ export const listMisNotificaciones = async (
   usuarioId: string,
   filters: Omit<ListNotificacionesQuery, 'usuario_id'>
 ): Promise<PaginatedNotificaciones> => {
-  return listNotificaciones({
-    ...filters,
-    usuario_id: usuarioId
-  });
+  const rows = await queryNotificacionesRows({ ...filters, usuario_id: usuarioId }, undefined);
+  const visibleRows = await filterVisibleNotificationsForUser(usuarioId, rows);
+  const total = visibleRows.length;
+  const offset = (filters.page - 1) * filters.limit;
+  const paginatedRows = visibleRows.slice(offset, offset + filters.limit) as NotificacionRow[];
+
+  return {
+    items: paginatedRows.map(mapNotificacion),
+    pagination: {
+      page: filters.page,
+      limit: filters.limit,
+      total,
+      total_pages: total === 0 ? 0 : Math.ceil(total / filters.limit)
+    }
+  };
+};
+
+export const countMisNotificacionesNoLeidas = async (usuarioId: string): Promise<number> => {
+  const rows = await queryNotificacionesRows(
+    {
+      usuario_id: usuarioId,
+      page: 1,
+      limit: 100,
+      leida: false
+    },
+    undefined
+  );
+  const visibleRows = await filterVisibleNotificationsForUser(usuarioId, rows);
+  return visibleRows.length;
 };
 
 export const markNotificacionAsLeida = async (

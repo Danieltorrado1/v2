@@ -1,11 +1,13 @@
 import type { NominaPeriodoApi } from "../../types/nomina.types";
+import { dateOnlyTimestamp, normalizeDateOnly } from "./dateOnly";
 
 function toTimestamp(value: string | null | undefined) {
   if (!value) {
     return 0;
   }
 
-  const timestamp = Date.parse(value);
+  const normalizedDateOnly = normalizeDateOnly(value);
+  const timestamp = normalizedDateOnly ? dateOnlyTimestamp(normalizedDateOnly) : Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 

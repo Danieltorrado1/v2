@@ -66,6 +66,29 @@ export const generateCoberturaCuenta = async (input: GenerarCoberturaCuentaInput
   const client = await dbPool.connect();
   try {
     await client.query('BEGIN');
+    const requiredDocuments = await client.query<{ tipo_documento: string }>(
+      `
+        SELECT tipo_documento
+        FROM cobertura_externo_documentos
+        WHERE externo_id = $1::bigint
+          AND activo = TRUE
+          AND es_vigente = TRUE
+          AND tipo_documento IN ('CEDULA_EXTERNO_COBERTURA', 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA')
+        GROUP BY tipo_documento
+      `,
+      [input.externo_id]
+    );
+    const documentTypes = new Set(requiredDocuments.rows.map((row) => row.tipo_documento));
+    const missingDocuments = ['CEDULA_EXTERNO_COBERTURA', 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA']
+      .filter((type) => !documentTypes.has(type));
+    if (missingDocuments.length > 0) {
+      throw new AppError(
+        'La cuenta de cobro requiere cedula y certificacion bancaria vigentes',
+        409,
+        'COBERTURA_DOCUMENTOS_EXTERNOS_INCOMPLETOS',
+        { faltantes: missingDocuments }
+      );
+    }
     const turns = await client.query<{ id: string; fecha: string; valor: string | number }>(`SELECT nm.id::text,nm.fecha::text,nm.valor_total AS valor FROM nomina_movimientos nm INNER JOIN nomina_periodos np ON np.id=nm.periodo_id WHERE nm.externo_id=$1 AND nm.periodo_id=$2 AND np.contrato_id=$3 AND np.contrato_empresa_id=$4 AND nm.tipo_movimiento='TURNO_EXTERNO' AND nm.activo=TRUE AND COALESCE(nm.estado,'PENDIENTE') <> 'RECHAZADO'`, [input.externo_id,input.periodo_id,input.contrato_id,input.empresa_id]);
     if (!turns.rows.length) throw new AppError('No hay turnos externos activos para consolidar', 409, 'COBERTURA_CUENTA_SIN_TURNOS');
     const total = turns.rows.reduce((sum, row) => sum + Number(row.valor ?? 0), 0);

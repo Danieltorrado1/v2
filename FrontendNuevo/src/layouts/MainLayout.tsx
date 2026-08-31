@@ -1,24 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { Bell, Building2, ChevronDown, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { useCompanyContext } from "../context/CompanyContext";
 import { NavDropdown } from "./NavDropdown";
-import {
-  NotificationsPanel,
-  INITIAL_UNREAD_COUNT,
-} from "../components/notifications/NotificationsPanel";
+import { NotificationsPanel } from "../components/notifications/NotificationsPanel";
+import { notificacionesApi } from "../services/notificacionesApi";
 import "./MainLayout.css";
 
 const nominaLinks = [
-  { to: "/nomina", label: "Centro de n\u00f3mina", requiredPermissions: ["nomina.read"] },
-  { to: "/nomina/cobertura", label: "Planilla operativa", requiredPermissions: ["nomina.read"] },
-  { to: "/nomina/liquidacion", label: "Liquidaci\u00f3n", requiredPermissions: ["nomina.liquidaciones.generate", "nomina.liquidaciones.finalize"] },
+  { to: "/nomina", label: "Centro de nómina", requiredPermissions: ["nomina.read"] },
+  { to: "/nomina/cobertura", label: "Planilla operativa", requiredPermissions: ["nomina.operativa.read", "nomina.read"] },
+  { to: "/nomina/liquidacion", label: "Liquidación", requiredPermissions: ["nomina.liquidaciones.generate", "nomina.liquidaciones.finalize"] },
   { to: "/nomina/turnos", label: "Turnos", requiredPermissions: ["nomina.operativa.read"] },
+  { to: "/nomina/novedades", label: "Novedades", requiredPermissions: ["nomina.operativa.read", "nomina.read"] },
   { to: "/nomina/cambios-operativos", label: "Cambios operativos", requiredPermissions: ["nomina.movimientos.read"] },
   { to: "/nomina/personal-ops", label: "Personal OPS", requiredPermissions: ["nomina.cuentas_cobro_ops.read"] },
-  { to: "/nomina/correccion", label: "Correcci\u00f3n N\u00f3mina", requiredPermissions: ["nomina.correcciones.read"] },
+  { to: "/nomina/correccion", label: "Corrección Nómina", requiredPermissions: ["nomina.correcciones.read"] },
 ] as const;
 
 const herramientasLinks = [
@@ -30,7 +29,7 @@ const herramientasLinks = [
 const sstLinks = [
   { to: "/sst?tab=resumen", label: "Resumen SST" },
   { to: "/sst?tab=eventos", label: "Eventos" },
-  { to: "/sst?tab=planes", label: "Planes de acci\u00f3n" },
+  { to: "/sst?tab=planes", label: "Planes de acción" },
   { to: "/sst?tab=inspecciones", label: "Inspecciones" },
   { to: "/sst?tab=hallazgos", label: "Hallazgos y acciones" },
   { to: "/sst?tab=accidentes", label: "Accidentes" },
@@ -51,7 +50,7 @@ export default function MainLayout() {
   const { user, logout } = useAuth();
   const { empresasDisponibles, empresaId, empresaActual, organizacionActual, isLoading, setEmpresaActual, hasModule } = useCompanyContext();
   const [notifOpen, setNotifOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(INITIAL_UNREAD_COUNT);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [logoFallback, setLogoFallback] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
@@ -71,13 +70,14 @@ export default function MainLayout() {
   });
   const canSeeNomina = hasModule("NOMINA") && visibleNominaLinks.length > 0;
   const canSeeCobertura = hasModule("COBERTURA") && (permissions.includes("cobertura.read") || permissions.includes("cobertura.update"));
+  const canSeeNotifications = permissions.includes("notificaciones.read");
   const canSeeSst = hasModule("SST") && permissions.some((permission) => permission.startsWith("sst."));
   const canSeePortal = hasModule("PORTAL_COLABORADOR");
   const canSeeRepositorio = hasModule("REPOSITORIO") && permissions.some((permission) => permission.startsWith("documentos."));
   const homePath = canSeeDashboard
     ? "/dashboard"
     : canSeeNomina
-      ? (user?.roles.includes("GESTOR") ? "/nomina/cobertura" : "/nomina")
+      ? (user?.roles.includes("GESTOR") && permissions.includes("nomina.operativa.read") ? "/nomina/cobertura" : "/nomina")
       : canSeePersonal
         ? "/personal"
         : canSeePortal
@@ -91,6 +91,39 @@ export default function MainLayout() {
   useEffect(() => {
     setLogoFallback(false);
   }, [logoSrc]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUnreadCount() {
+      if (!canSeeNotifications) {
+        setUnreadCount(0);
+        return;
+      }
+
+      try {
+        const total = await notificacionesApi.countUnreadMine();
+        if (!cancelled) {
+          setUnreadCount(total);
+        }
+      } catch {
+        if (!cancelled) {
+          setUnreadCount(0);
+        }
+      }
+    }
+
+    void loadUnreadCount();
+    return () => {
+      cancelled = true;
+    };
+  }, [canSeeNotifications, user?.id]);
+
+  useEffect(() => {
+    if (!canSeeNotifications && notifOpen) {
+      setNotifOpen(false);
+    }
+  }, [canSeeNotifications, notifOpen]);
 
   useEffect(() => {
     if (!accountOpen) return;
@@ -107,6 +140,7 @@ export default function MainLayout() {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [accountOpen]);
+
   function toggleNotif() {
     setNotifOpen((value) => !value);
   }
@@ -140,7 +174,7 @@ export default function MainLayout() {
           >
             Personal
           </NavLink>}
-          {canSeeNomina && <NavDropdown label={"N\u00f3mina"} links={visibleNominaLinks} />}
+          {canSeeNomina && <NavDropdown label={"Nómina"} links={visibleNominaLinks} />}
           {canSeeCobertura && <NavDropdown label="Herramientas" links={herramientasLinks} />}
           {canSeeSst && <NavDropdown label="SST" links={sstLinks} />}
           {canSeePortal && <NavLink
@@ -155,26 +189,28 @@ export default function MainLayout() {
               to="/admin"
               className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
             >
-              {"Administraci\u00f3n"}
+              Administración
             </NavLink>
           )}
         </nav>
 
         <div className="right-side">
-          <button
-            ref={bellRef}
-            type="button"
-            className={`notif-bell-button ${notifOpen ? "active" : ""}`}
-            onClick={toggleNotif}
-            aria-label="Abrir notificaciones"
-            aria-expanded={notifOpen}
-            aria-haspopup="dialog"
-          >
-            <Bell size={18} />
-            {unreadCount > 0 && (
-              <span className="notif-bell-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
-            )}
-          </button>
+          {canSeeNotifications && (
+            <button
+              ref={bellRef}
+              type="button"
+              className={`notif-bell-button ${notifOpen ? "active" : ""}`}
+              onClick={toggleNotif}
+              aria-label="Abrir notificaciones"
+              aria-expanded={notifOpen}
+              aria-haspopup="dialog"
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="notif-bell-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+              )}
+            </button>
+          )}
 
           <button
             className="theme-button"
@@ -238,7 +274,8 @@ export default function MainLayout() {
                     <span>Correo</span><strong>{user?.email ?? "No disponible"}</strong>
                     <span>Rol</span><strong>{roleLabel}</strong>
                   </div>
-                )}                <button type="button" className="account-menu-item" role="menuitem" aria-expanded={accountDetailsOpen} onClick={() => setAccountDetailsOpen((open) => !open)}>
+                )}
+                <button type="button" className="account-menu-item" role="menuitem" aria-expanded={accountDetailsOpen} onClick={() => setAccountDetailsOpen((open) => !open)}>
                   <UserRound size={16} /> Mi cuenta
                 </button>
                 <button type="button" className="account-menu-item account-menu-item-danger" role="menuitem" onClick={logout}>
@@ -250,10 +287,10 @@ export default function MainLayout() {
         </div>
       </header>
 
-      {notifOpen && (
+      {canSeeNotifications && notifOpen && (
         <NotificationsPanel
           onClose={() => setNotifOpen(false)}
-          onAllRead={() => setUnreadCount(0)}
+          onUnreadCountChange={setUnreadCount}
           bellRef={bellRef}
         />
       )}

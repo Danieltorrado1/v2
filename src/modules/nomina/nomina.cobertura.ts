@@ -191,6 +191,13 @@ const normalizeAmount = (value: number | null | undefined): number => {
   return Number(value);
 };
 
+const normalizePercentage = (value: number | null | undefined, fallback: number): number => {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  return value > 1 ? value / 100 : value;
+};
+
 const buildEffectsByDate = (items: NominaDayEffectSummary[]): Map<string, NominaDayEffectSummary> => {
   const map = new Map<string, NominaDayEffectSummary>();
   for (const item of items) {
@@ -337,8 +344,8 @@ export const calculateCoberturaPayroll = (
   const recargosOrdinarios = tramos.reduce((accumulator, tramo) => accumulator + tramo.recargo_causado, 0);
   const transporteOrdinario = tramos.reduce((accumulator, tramo) => accumulator + tramo.transporte_causado, 0);
 
-  const porcentajeSalud = input.porcentaje_salud ?? COBERTURA_PORCENTAJE_SALUD;
-  const porcentajePension = input.porcentaje_pension ?? COBERTURA_PORCENTAJE_PENSION;
+  const porcentajeSalud = normalizePercentage(input.porcentaje_salud, COBERTURA_PORCENTAJE_SALUD);
+  const porcentajePension = normalizePercentage(input.porcentaje_pension, COBERTURA_PORCENTAJE_PENSION);
   const saludOrdinaria = roundUpToHundreds(salarioOrdinario * porcentajeSalud);
   const pensionOrdinaria = input.aporta_pension ? roundUpToHundreds(salarioOrdinario * porcentajePension) : 0;
 

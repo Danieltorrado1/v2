@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import {
   Activity,
   Briefcase,
@@ -7,6 +7,7 @@ import {
   Inbox,
   UserCog,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 import { mockColaborador, mockTHUser } from "./mockData";
 import MiActividad from "./components/colaborador/MiActividad";
 import SolicitudDocumentos from "./components/colaborador/SolicitudDocumentos";
@@ -88,13 +89,13 @@ function ColaboradorPortal() {
       </nav>
 
       <div className="pp-content">
-        {section === "actividad"   && <MiActividad />}
-        {section === "documentos"  && <SolicitudDocumentos />}
+        {section === "actividad" && <MiActividad />}
+        {section === "documentos" && <SolicitudDocumentos />}
         {section === "solicitudes" && <OtrasSolicitudes />}
-        {section === "novedades"   && <NovedadesNomina />}
-        {section === "datos"       && <ActualizarDatos />}
-        {section === "historial"   && <Historial />}
-        {section === "sesiones"    && <HistorialSesiones />}
+        {section === "novedades" && <NovedadesNomina />}
+        {section === "datos" && <ActualizarDatos />}
+        {section === "historial" && <Historial />}
+        {section === "sesiones" && <HistorialSesiones />}
       </div>
     </>
   );
@@ -144,32 +145,41 @@ function THPortal() {
 }
 
 export default function PortalPage() {
+  const { user } = useAuth();
+  const canAccessTh = user?.roles.includes("TALENTO_HUMANO") === true || user?.roles.includes("ADMINISTRADOR") === true;
   const [role, setRole] = useState<PortalRole>("colaborador");
+
+  useEffect(() => {
+    if (!canAccessTh && role === "th") {
+      setRole("colaborador");
+    }
+  }, [canAccessTh, role]);
 
   return (
     <div className="pp-page">
-      <div className="pp-demo-toggle">
-        <span>Demo — Vista como:</span>
-        <button
-          type="button"
-          className={role === "colaborador" ? "active" : ""}
-          onClick={() => setRole("colaborador")}
-        >
-          <UserCog size={12} style={{ marginRight: 4 }} />
-          Colaborador
-        </button>
-        <button
-          type="button"
-          className={role === "th" ? "active" : ""}
-          onClick={() => setRole("th")}
-        >
-          <ClipboardList size={12} style={{ marginRight: 4 }} />
-          Talento Humano
-        </button>
-      </div>
+      {canAccessTh && (
+        <div className="pp-demo-toggle">
+          <span>Vista activa:</span>
+          <button
+            type="button"
+            className={role === "colaborador" ? "active" : ""}
+            onClick={() => setRole("colaborador")}
+          >
+            <UserCog size={12} style={{ marginRight: 4 }} />
+            Colaborador
+          </button>
+          <button
+            type="button"
+            className={role === "th" ? "active" : ""}
+            onClick={() => setRole("th")}
+          >
+            <ClipboardList size={12} style={{ marginRight: 4 }} />
+            Talento Humano
+          </button>
+        </div>
+      )}
 
-      {role === "colaborador" ? <ColaboradorPortal /> : <THPortal />}
+      {role === "th" && canAccessTh ? <THPortal /> : <ColaboradorPortal />}
     </div>
   );
 }
-

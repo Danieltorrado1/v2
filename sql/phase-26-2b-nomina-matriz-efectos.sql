@@ -273,13 +273,13 @@ WHERE UPPER(nombre) = 'INCAPACIDAD POR ACCIDENTE LABORAL';
 UPDATE nomina_tipos_novedad
 SET
   afecta_salario = FALSE,
-  afecta_transporte = FALSE,
+  afecta_transporte = TRUE,
   afecta_dias_laborados = FALSE,
   afecta_recargos = TRUE,
-  efecto_salario = 'PENDIENTE_CONFIGURACION',
-  efecto_auxilio_transporte = 'PENDIENTE_CONFIGURACION',
+  efecto_salario = 'SIN_EFECTO',
+  efecto_auxilio_transporte = 'DESCUENTA_DIA',
   efecto_recargos_detallado = 'EXCLUIR_DIA',
-  efecto_liquidacion = 'PREPARAR_LIQUIDACION',
+  efecto_liquidacion = 'SIN_EFECTO',
   efecto_cobertura_config = 'SIN_EFECTO',
   efecto_operativo = 'SIN_EFECTO',
   modelo_registro = 'EVENTO_CANONICO_RANGO',

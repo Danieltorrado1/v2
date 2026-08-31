@@ -262,6 +262,7 @@ export type NominaMovimientoTipo =
   | 'RECARGO_NOCTURNO'
   | 'DOMINICAL'
   | 'FESTIVO'
+  | 'TURNO_INTERNO'
   | 'TURNO_EXTERNO'
   | 'BONIFICACION'
   | 'AUXILIO'
@@ -424,6 +425,56 @@ export interface UpdateNominaMovimientoApi {
   activo?: boolean;
 }
 
+export interface NominaNovedadTurnoOperativoApi {
+  activo: boolean;
+  cedula_cargada: boolean;
+  certificacion_bancaria_cargada: boolean;
+  cuenta_cobro_cargada: boolean;
+  contexto_operativo: Record<string, unknown> | null;
+  documentos_completos: boolean;
+  externo_documento: string | null;
+  externo_id: string | null;
+  externo_nombre: string | null;
+  fecha: string | null;
+  fecha_fin: string | null;
+  fecha_inicio: string | null;
+  id: string;
+  institucion: string | null;
+  modalidad: string | null;
+  movimiento_id: string | null;
+  movimiento_activo: boolean;
+  movimiento_afecta_seguridad_social: boolean;
+  movimiento_alertas_validacion: Array<{
+    codigo?: string | null;
+    mensaje: string;
+    metadata?: Record<string, unknown> | null;
+    severidad: 'INFO' | 'WARNING' | 'ERROR';
+    tipo: string;
+  }>;
+  movimiento_cantidad: number | null;
+  movimiento_descripcion: string | null;
+  movimiento_estado: string | null;
+  movimiento_tipo: string;
+  movimiento_valor_aplicado: number | null;
+  movimiento_valor_calculado: number | null;
+  municipio: string | null;
+  motivo: string | null;
+  novedad_id: string;
+  novedad_tipo_codigo: string | null;
+  novedad_tipo_nombre: string | null;
+  nomina_empleado_id: string;
+  origen_cobertura: string | null;
+  periodo_id: string;
+  sede: string | null;
+  tipo_turno: "INTERNO" | "EXTERNO";
+  trabajador_cubre: string;
+  trabajador_cubre_documento: string | null;
+  trabajador_reemplazado: string;
+  trabajador_reemplazado_documento: string | null;
+  vinculacion_id: string;
+  estado: string;
+}
+
 export interface CoberturaExternoResumenApi {
   id: string;
   empresa_id: string;
@@ -441,9 +492,10 @@ export interface CoberturaExternoResumenApi {
   cuenta_estado: 'PENDIENTE' | 'GENERADA' | 'FIRMADA' | string;
 }
 
+export const NOMINA_TURNO_OPERATIVO_TIPOS = ['TURNO_INTERNO', 'TURNO_EXTERNO'] as const;
 export const NOMINA_TURNO_MOVIMIENTO_TIPO = 'TURNO_EXTERNO' as const;
 
-export type NominaTurnoMovimientoTipo = typeof NOMINA_TURNO_MOVIMIENTO_TIPO;
+export type NominaTurnoMovimientoTipo = (typeof NOMINA_TURNO_OPERATIVO_TIPOS)[number];
 
 export interface NominaTurno extends Omit<NominaMovimientoApi, 'tipo_movimiento'> {
   tipo_movimiento: NominaTurnoMovimientoTipo;
@@ -636,6 +688,7 @@ export interface NominaTipoNovedad {
   requiere_soporte: boolean;
   permite_rango: boolean;
   requiere_revision: boolean;
+  requiere_solicitud_permiso: boolean;
   soporte_documento_tipo: string | null;
   requiere_fechas: boolean;
   requiere_dias: boolean;
@@ -708,10 +761,49 @@ export interface NominaNovedadApi {
     tipo_cobertura: 'SIN_REEMPLAZO' | 'PERSONAL_VINCULADO' | 'PERSONA_EXTERNA';
     vinculacion_cubre_id: string | null;
   } | null;
+  documentos: {
+    SOLICITUD_PERMISO: {
+      cargado: boolean;
+      documento_persona_id: string | null;
+      requerido: boolean;
+      tipo: 'SOLICITUD_PERMISO';
+    };
+    SOPORTE: {
+      cargado: boolean;
+      documento_persona_id: string | null;
+      requerido: boolean;
+      tipo: 'SOPORTE';
+    };
+  };
   registro_tipo: 'ORDINARIA' | 'CANONICA_PROYECTADA';
   evento_canonico_id: string | null;
   tipo_novedad: NominaNovedadTipoApi;
   persona: NominaNovedadPersonaApi;
+}
+
+export interface NominaNovedadDocumentoDetalleApi {
+  documento_persona_id: string;
+  id: string;
+  mime_type: string;
+  nombre_original: string;
+  tipo: 'SOPORTE' | 'SOLICITUD_PERMISO';
+  url: string;
+  version: number;
+}
+
+export interface NominaNovedadDocumentoEstadoApi {
+  cargado: boolean;
+  documento: NominaNovedadDocumentoDetalleApi | null;
+  requerido: boolean;
+  tipo: 'SOPORTE' | 'SOLICITUD_PERMISO';
+}
+
+export interface NominaNovedadDocumentosApi {
+  novedad_id: string;
+  slots: {
+    SOPORTE: NominaNovedadDocumentoEstadoApi;
+    SOLICITUD_PERMISO: NominaNovedadDocumentoEstadoApi;
+  };
 }
 
 export interface PaginatedNominaNovedadesApi {

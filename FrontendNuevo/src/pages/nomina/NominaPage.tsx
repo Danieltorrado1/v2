@@ -1,4 +1,4 @@
-﻿import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, FormEvent } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import {
@@ -31,6 +31,8 @@ import {
   generateNominaDesprendibles,
   getAllNominaNovedades,
   getAllNominaPeriodoEmpleados,
+  getAllNominaPeriodoEmpleadosOperativos,
+  getNovedadDocumentos,
   getNominaDesprendibles,
   getNominaPeriodo,
   getNominaPeriodoDashboard,
@@ -40,6 +42,7 @@ import {
   openNominaDesprendible,
   recalculateNominaPeriodo,
   updateNominaNovedad,
+  uploadNovedadDocumento,
   uploadNovedadSupport,
 } from "../../services/nominaApi";
 import { ApiClientError } from "../../services/apiClient";
@@ -55,6 +58,7 @@ import CoberturaFlowNav from "./CoberturaFlowNav";
 import type {
   GenerateNominaDesprendiblesResponse,
   NominaDesprendibleApi,
+  NominaNovedadDocumentosApi,
   NominaEmpleadoApi,
   NominaExportTipo,
   NominaNovedadApi,
@@ -206,6 +210,10 @@ function titleCase(value: string) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function parseDateOnlyForDisplay(value: string) {
+  return new Date(`${value}T12:00:00Z`);
+}
+
 function formatPeriodRange(fechaInicio: string, fechaFin: string) {
   if (!fechaInicio || !fechaFin) {
     return "Rango no disponible";
@@ -214,9 +222,10 @@ function formatPeriodRange(fechaInicio: string, fechaFin: string) {
   const formatter = new Intl.DateTimeFormat("es-CO", {
     day: "2-digit",
     month: "short",
+    timeZone: "UTC",
   });
 
-  return `${formatter.format(new Date(fechaInicio))} - ${formatter.format(new Date(fechaFin))}`;
+  return `${formatter.format(parseDateOnlyForDisplay(fechaInicio))} - ${formatter.format(parseDateOnlyForDisplay(fechaFin))}`;
 }
 
 function formatNovedadRange(novedad: NominaNovedadApi) {
@@ -229,7 +238,8 @@ function formatNovedadRange(novedad: NominaNovedadApi) {
       day: "2-digit",
       month: "short",
       year: "numeric",
-    }).format(new Date(novedad.fecha_inicio));
+      timeZone: "UTC",
+    }).format(parseDateOnlyForDisplay(novedad.fecha_inicio));
   }
 
   if (novedad.fecha_fin) {
@@ -237,7 +247,8 @@ function formatNovedadRange(novedad: NominaNovedadApi) {
       day: "2-digit",
       month: "short",
       year: "numeric",
-    }).format(new Date(novedad.fecha_fin));
+      timeZone: "UTC",
+    }).format(parseDateOnlyForDisplay(novedad.fecha_fin));
   }
 
   return "Sin fechas";
@@ -245,21 +256,6 @@ function formatNovedadRange(novedad: NominaNovedadApi) {
 
 function isCanonicalProjectedNovedad(novedad: NominaNovedadApi) {
   return novedad.registro_tipo === "CANONICA_PROYECTADA";
-}
-
-function getNovedadProjectionLabel(novedad: NominaNovedadApi) {
-  if (!isCanonicalProjectedNovedad(novedad)) {
-    return null;
-  }
-
-  if (!novedad.fecha_inicio_evento_canonico || !novedad.fecha_fin_evento_canonico) {
-    return "Evento canónico proyectado";
-  }
-
-  return `Evento canonico ${formatPeriodRange(
-    novedad.fecha_inicio_evento_canonico,
-    novedad.fecha_fin_evento_canonico,
-  )}`;
 }
 
 function normalizeTextValue(value: string) {
@@ -547,7 +543,7 @@ function getNovedadCoverageDetail(novedad: NominaNovedadApi) {
   if (novedad.cobertura?.tipo_cobertura === "PERSONAL_VINCULADO") {
     const nombre = normalizeOptionalLabel(novedad.cobertura.persona_cubre?.nombre_completo);
     const documento = normalizeOptionalLabel(novedad.cobertura.persona_cubre?.numero_documento);
-    return [nombre, documento].filter(Boolean).join(" · ") || "Personal vinculado";
+    return [nombre, documento].filter(Boolean).join(" Ã‚Â· ") || "Personal vinculado";
   }
 
   if (novedad.cobertura?.tipo_cobertura === "PERSONA_EXTERNA") {
@@ -556,7 +552,7 @@ function getNovedadCoverageDetail(novedad: NominaNovedadApi) {
       normalizeOptionalLabel(novedad.cobertura.documento_externo),
     ]
       .filter(Boolean)
-      .join(" · ");
+      .join(" Ã‚Â· ");
   }
 
   return normalizeOptionalLabel(novedad.cobertura?.observacion_interna);
@@ -569,7 +565,7 @@ function getEmployeeTotalNovedades(empleado: NominaEmpleadoApi) {
 }
 
 function getEmployeeDocumentSummary(empleado: NominaEmpleadoApi) {
-  return `${getEmployeeDocumentLabel(empleado)} • Contrato ${getEmployeeContractLabel(empleado)}`;
+  return `${getEmployeeDocumentLabel(empleado)} Ã¢â‚¬Â¢ Contrato ${getEmployeeContractLabel(empleado)}`;
 }
 
 function getEmployeeDocumentStatusSummary(empleado: NominaEmpleadoApi): EmployeeDocumentStatusSummary | null {
@@ -613,7 +609,7 @@ function getEmployeeDocumentStatusLabel(empleado: NominaEmpleadoApi) {
     parts.push(porcentaje);
   }
 
-  return parts.join(" • ");
+  return parts.join(" Ã¢â‚¬Â¢ ");
 }
 
 function getInitials(nombreCompleto: string) {
@@ -696,12 +692,12 @@ function buildKpis(
 ): KpiCard[] {
   const unavailable = hasSelectedPeriod && !loading && !dashboard && Boolean(error);
   const countValue = (value?: number) => {
-    if (loading) return "â€”";
+    if (loading) return "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
     if (unavailable && value === undefined) return "No disponible";
     return formatNumber(value ?? 0);
   };
   const moneyValue = (value?: number) => {
-    if (loading) return "â€”";
+    if (loading) return "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
     if (unavailable && value === undefined) return "No disponible";
     return formatCOP(value ?? 0);
   };
@@ -758,6 +754,12 @@ export default function NominaPage() {
   const { empresaId } = useCompanyContext();
   const { user } = useAuth();
   const gestorOperationalOnly = user?.roles.includes("GESTOR") === true && user?.roles.includes("TALENTO_HUMANO") !== true;
+  const isCoverageNovedadesRoute = location.pathname.endsWith("/novedades");
+  const canReadOperationalCoverage = user?.permissions.includes("nomina.operativa.read") === true;
+  const isOperationalCoverageView = isCoverageNovedadesRoute && canReadOperationalCoverage;
+  const canCreateNovedad = user?.permissions.includes("nomina.novedades.create") === true;
+  const canUpdateNovedad = user?.permissions.includes("nomina.novedades.update") === true;
+  const canDeactivateNovedad = user?.permissions.includes("nomina.novedades.deactivate") === true;
   const [activeTab, setActiveTab] = useState("nomina");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -768,6 +770,7 @@ export default function NominaPage() {
   const [modalidadFilter, setModalidadFilter] = useState("");
   const [revisionFilter, setRevisionFilter] = useState("");
   const [novedadesFilter, setNovedadesFilter] = useState("");
+  const [tipoNovedadFilter, setTipoNovedadFilter] = useState("");
   const [sortBy, setSortBy] = useState("nombre_asc");
   const [expandedEmployeeId, setExpandedEmployeeId] = useState<string | null>(null);
   const [tablePage, setTablePage] = useState(1);
@@ -793,6 +796,8 @@ export default function NominaPage() {
   const [downloadingDesprendibleId, setDownloadingDesprendibleId] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<FeedbackState>(null);
   const [supportBusyId, setSupportBusyId] = useState<string | null>(null);
+  const [expandedNovedadId, setExpandedNovedadId] = useState<string | null>(null);
+  const [novedadDocumentosById, setNovedadDocumentosById] = useState<Record<string, NominaNovedadDocumentosApi>>({});
 
   const [periodsState, setPeriodsState] = useState<AsyncState<PaginatedNominaPeriodosApi>>({
     ...EMPTY_ASYNC_STATE,
@@ -1001,7 +1006,10 @@ export default function NominaPage() {
     }));
 
     try {
-      const data = await getAllNominaPeriodoEmpleados(periodId, {
+      const employeeLoader = isOperationalCoverageView
+        ? getAllNominaPeriodoEmpleadosOperativos
+        : getAllNominaPeriodoEmpleados;
+      const data = await employeeLoader(periodId, {
         empresa_id: empresaId ? String(empresaId) : undefined,
       });
 
@@ -1025,7 +1033,7 @@ export default function NominaPage() {
         error: toMessage(error),
       });
     }
-  }, [empresaId]);
+  }, [empresaId, isOperationalCoverageView]);
 
   const loadNovedades = useCallback(async (periodId: string) => {
     const requestId = ++novedadesRequestRef.current;
@@ -1134,13 +1142,21 @@ export default function NominaPage() {
   }, []);
 
   const refreshSelectedPeriodData = useCallback(async (periodId: string) => {
+    if (isOperationalCoverageView) {
+      await Promise.all([
+        loadEmployees(periodId),
+        loadNovedades(periodId),
+      ]);
+      return;
+    }
+
     await Promise.all([
       loadPeriod(periodId),
       loadDashboard(periodId),
       loadEmployees(periodId),
       loadNovedades(periodId),
     ]);
-  }, [loadDashboard, loadEmployees, loadNovedades, loadPeriod]);
+  }, [isOperationalCoverageView, loadDashboard, loadEmployees, loadNovedades, loadPeriod]);
 
   const syncLocalNovedadState = useCallback((nextNovedad: NominaNovedadApi) => {
     setNovedadesState((current) => {
@@ -1248,16 +1264,24 @@ export default function NominaPage() {
     setTablePage(1);
     setExpandedEmployeeId(null);
     setNovedadActionError(null);
+    if (isOperationalCoverageView) {
+      setPeriodState({ ...EMPTY_ASYNC_STATE });
+      setPeriodDataId(null);
+      setDashboardState({ ...EMPTY_ASYNC_STATE });
+      setDashboardDataId(null);
+      setDesprendiblesState({ ...EMPTY_ASYNC_STATE });
+      setDesprendiblesDataId(null);
+    }
     void refreshSelectedPeriodData(selectedPeriodId);
-  }, [refreshSelectedPeriodData, selectedPeriodId]);
+  }, [isOperationalCoverageView, refreshSelectedPeriodData, selectedPeriodId]);
 
   useEffect(() => {
-    if (!selectedPeriodId) {
+    if (!selectedPeriodId || isOperationalCoverageView) {
       return;
     }
 
     void loadDesprendibles(selectedPeriodId, includeDesprendibleVersions);
-  }, [includeDesprendibleVersions, loadDesprendibles, selectedPeriodId]);
+  }, [includeDesprendibleVersions, isOperationalCoverageView, loadDesprendibles, selectedPeriodId]);
 
   useEffect(() => {
     setTablePage(1);
@@ -1531,6 +1555,17 @@ export default function NominaPage() {
         })),
     [allEmployees],
   );
+  const novedadTypeOptions = useMemo<FilterOption[]>(
+    () =>
+      catalogoTiposNovedad
+        .map((tipo) => ({
+          value: (tipo.codigo_operativo ?? tipo.nombre ?? "").trim(),
+          label: getVisibleNovedadTipoLabel(tipo),
+        }))
+        .filter((item) => item.value.length > 0)
+        .sort((left, right) => left.label.localeCompare(right.label, "es-CO")),
+    [catalogoTiposNovedad],
+  );
 
   const employeeGestorOptions = useMemo<FilterOption[]>(
     () =>
@@ -1671,6 +1706,11 @@ export default function NominaPage() {
       const nombre = novedad.persona.nombre_completo.toLowerCase();
       const documento = (novedad.persona.numero_documento ?? "").toLowerCase();
       const estado = getNovedadStatusLabel(novedad).toLowerCase();
+      const municipio = (
+        allEmployees.find((employee) => employee.id === novedad.nomina_empleado_id)?.municipio ?? ""
+      ).toLowerCase();
+      const novedadCodigo = (novedad.tipo_novedad.codigo_operativo ?? "").toLowerCase();
+      const novedadNombre = (novedad.tipo_novedad.nombre ?? "").toLowerCase();
 
       if (searchNeedle && !`${nombre} ${documento}`.includes(searchNeedle)) {
         return false;
@@ -1680,9 +1720,20 @@ export default function NominaPage() {
         return false;
       }
 
+      if (municipioFilter && municipio !== municipioFilter.toLowerCase()) {
+        return false;
+      }
+
+      if (tipoNovedadFilter) {
+        const needle = tipoNovedadFilter.toLowerCase();
+        if (novedadCodigo !== needle && novedadNombre !== needle) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [allNovedades, estadoFilter, searchTerm]);
+  }, [allEmployees, allNovedades, estadoFilter, municipioFilter, searchTerm, tipoNovedadFilter]);
 
   const filteredDesprendibles = useMemo(() => {
     const searchNeedle = searchTerm.trim().toLowerCase();
@@ -1703,13 +1754,14 @@ export default function NominaPage() {
       return true;
     });
   }, [allDesprendibles, estadoFilter, searchTerm]);
+  const filteredSupports = isOperationalCoverageView ? filteredNovedades : filteredDesprendibles;
 
   const totalFilteredRecords = isNominaTab
     ? filteredEmployees.length
     : isNovedadesTab
       ? filteredNovedades.length
       : isSupportsTab
-        ? filteredDesprendibles.length
+        ? filteredSupports.length
         : 0;
   const totalPages = Math.max(1, Math.ceil(totalFilteredRecords / pageSize));
   const currentPage = Math.min(tablePage, totalPages);
@@ -1743,19 +1795,22 @@ export default function NominaPage() {
   const currentTabLoading = isNovedadesTab
     ? novedadesState.loading
     : isSupportsTab
-      ? desprendiblesState.loading
+      ? isOperationalCoverageView
+        ? novedadesState.loading
+        : desprendiblesState.loading
       : employeesState.loading;
   const catalogPermissionDenied = tiposNovedadStatusCode === 403;
   const catalogIsEmpty = !tiposNovedadState.loading && !tiposNovedadState.error && catalogoTiposNovedad.length === 0;
   const catalogInlineError = catalogPermissionDenied
     ? "No tienes permisos para consultar el catalogo de tipos de novedad. La creacion de novedades esta deshabilitada."
     : tiposNovedadState.error;
-  const globalInlineError = dashboardState.error;
+  const globalInlineError = isOperationalCoverageView ? null : dashboardState.error;
   const canOpenNovedadModal =
     Boolean(selectedPeriodId) &&
     !employeesState.loading &&
     allEmployees.length > 0 &&
-    !catalogPermissionDenied;
+    !catalogPermissionDenied &&
+    canCreateNovedad;
   const novedadesBadgeCount = allNovedades.length;
 
   const handleSelectPeriod = (periodId: string) => {
@@ -1774,6 +1829,7 @@ export default function NominaPage() {
     setModalidadFilter("");
     setRevisionFilter("");
     setNovedadesFilter("");
+    setTipoNovedadFilter("");
     setSortBy("nombre_asc");
     setExpandedEmployeeId(null);
     setTablePage(1);
@@ -1788,12 +1844,17 @@ export default function NominaPage() {
       return;
     }
 
-    void Promise.all([
+    const requests: Array<Promise<unknown>> = [
       loadTiposNovedad(),
       loadPeriods(selectedPeriodId),
       refreshSelectedPeriodData(selectedPeriodId),
-      loadDesprendibles(selectedPeriodId, includeDesprendibleVersions),
-    ]);
+    ];
+
+    if (!isOperationalCoverageView) {
+      requests.push(loadDesprendibles(selectedPeriodId, includeDesprendibleVersions));
+    }
+
+    void Promise.all(requests);
   };
 
   const handleRecalculate = async () => {
@@ -1814,7 +1875,7 @@ export default function NominaPage() {
       ]);
       setActionFeedback({
         tone: "success",
-        message: "El perÃ­odo fue recalculado y los datos se refrescaron desde el backend.",
+        message: "El perÃƒÆ’Ã‚Â­odo fue recalculado y los datos se refrescaron desde el backend.",
       });
     } catch (error) {
       setRecalculateError(toMessage(error));
@@ -1838,7 +1899,7 @@ export default function NominaPage() {
       });
       setActionFeedback({
         tone: "success",
-        message: `Se generÃ³ la exportaciÃ³n real del backend: ${metadata.file_name}.`,
+        message: `Se generÃƒÆ’Ã‚Â³ la exportaciÃƒÆ’Ã‚Â³n real del backend: ${metadata.file_name}.`,
       });
     } catch (error) {
       setActionFeedback({
@@ -1887,7 +1948,7 @@ export default function NominaPage() {
       const metadata = await openNominaDesprendible(desprendible.periodo_id, desprendible.vinculacion_id);
       setActionFeedback({
         tone: "success",
-        message: `Se abriÃ³ el desprendible vigente: ${metadata.file_name}.`,
+        message: `Se abriÃƒÆ’Ã‚Â³ el desprendible vigente: ${metadata.file_name}.`,
       });
     } catch (error) {
       setActionFeedback({
@@ -2216,7 +2277,13 @@ export default function NominaPage() {
   };
 
   const handleMarkNovedadReviewed = async (novedad: NominaNovedadApi) => {
-    if (!selectedPeriodId || novedad.revisado || !novedad.activo || isCanonicalProjectedNovedad(novedad)) {
+    if (
+      !selectedPeriodId ||
+      !canUpdateNovedad ||
+      novedad.revisado ||
+      !novedad.activo ||
+      isCanonicalProjectedNovedad(novedad)
+    ) {
       return;
     }
 
@@ -2236,7 +2303,7 @@ export default function NominaPage() {
   };
 
   const handleDeactivateNovedad = async (novedad: NominaNovedadApi) => {
-    if (!selectedPeriodId || !novedad.activo) {
+    if (!selectedPeriodId || !canDeactivateNovedad || !novedad.activo) {
       return;
     }
 
@@ -2256,7 +2323,90 @@ export default function NominaPage() {
   };
 
   const handleEditNovedad = (novedad: NominaNovedadApi) => {
+    if (!canUpdateNovedad) {
+      return;
+    }
+
     openNovedadModal(novedad.nomina_empleado_id, novedad);
+  };
+
+  const ensureNovedadDocuments = async (novedadId: string) => {
+    const cached = novedadDocumentosById[novedadId];
+    if (cached) {
+      return cached;
+    }
+
+    const documents = await getNovedadDocumentos(novedadId);
+    setNovedadDocumentosById((current) => ({ ...current, [novedadId]: documents }));
+    return documents;
+  };
+
+  const toggleNovedadDetail = async (novedadId: string) => {
+    if (expandedNovedadId === novedadId) {
+      setExpandedNovedadId(null);
+      return;
+    }
+
+    setExpandedNovedadId(novedadId);
+
+    try {
+      await ensureNovedadDocuments(novedadId);
+    } catch (error) {
+      setActionFeedback({ tone: "error", message: toMessage(error) });
+    }
+  };
+
+  const handleViewNovedadDocument = async (
+    novedadId: string,
+    tipo: "SOPORTE" | "SOLICITUD_PERMISO",
+  ) => {
+    setSupportBusyId(novedadId);
+
+    try {
+      const documents = await ensureNovedadDocuments(novedadId);
+      const document = documents.slots[tipo].documento;
+      if (!document?.url) {
+        throw new Error(
+          tipo === "SOPORTE"
+            ? "Documento soporte no encontrado."
+            : "Solicitud de permiso no encontrada.",
+        );
+      }
+      window.open(document.url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setActionFeedback({ tone: "error", message: toMessage(error) });
+    } finally {
+      setSupportBusyId(null);
+    }
+  };
+
+  const handleUploadNovedadDocument = async (
+    novedadId: string,
+    tipo: "SOPORTE" | "SOLICITUD_PERMISO",
+    file: File | undefined,
+  ) => {
+    if (!file || !canUpdateNovedad) {
+      return;
+    }
+
+    setSupportBusyId(novedadId);
+
+    try {
+      const documents = await uploadNovedadDocumento(novedadId, tipo, file);
+      setNovedadDocumentosById((current) => ({ ...current, [novedadId]: documents }));
+      await loadNovedades(selectedPeriodId ?? "");
+      setActionFeedback({
+        tone: "success",
+        message:
+          tipo === "SOPORTE"
+            ? "Documento soporte cargado correctamente."
+            : "Solicitud de permiso cargada correctamente.",
+      });
+    } catch (error) {
+      setActionFeedback({ tone: "error", message: toMessage(error) });
+    } finally {
+      setSupportBusyId(null);
+    }
   };
 
   const handleViewSupport = async (novedadId: string) => {
@@ -2271,7 +2421,7 @@ export default function NominaPage() {
   };
 
   const handleUploadSupport = async (novedadId: string, file: File | undefined) => {
-    if (!file) return;
+    if (!file || !canUpdateNovedad) return;
     setSupportBusyId(novedadId);
     try {
       await uploadNovedadSupport(novedadId, file);
@@ -2294,25 +2444,27 @@ export default function NominaPage() {
   return (
     <div className="nomina-page">
       <CoberturaFlowNav periodId={selectedPeriodId} />
-      <div className="payroll-kpis">
-        {kpis.filter((kpi) => !gestorOperationalOnly || kpi.label === "Novedades").map((kpi) => {
-          const Icon = kpi.icon;
+      {!isOperationalCoverageView ? (
+        <div className="payroll-kpis">
+          {kpis.filter((kpi) => !gestorOperationalOnly || kpi.label === "Novedades").map((kpi) => {
+            const Icon = kpi.icon;
 
-          return (
-            <div className={`payroll-kpi ${kpi.tone}`} key={kpi.label}>
-              <div className="payroll-kpi-icon">
-                <Icon size={20} />
-              </div>
+            return (
+              <div className={`payroll-kpi ${kpi.tone}`} key={kpi.label}>
+                <div className="payroll-kpi-icon">
+                  <Icon size={20} />
+                </div>
 
-              <div className="payroll-kpi-body">
-                <span>{kpi.label}</span>
-                <strong>{kpi.value}</strong>
-                <small>{kpi.caption}</small>
+                <div className="payroll-kpi-body">
+                  <span>{kpi.label}</span>
+                  <strong>{kpi.value}</strong>
+                  <small>{kpi.caption}</small>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {globalInlineError ? (
         <div className="payroll-inline-state error" role="alert">
@@ -2439,13 +2591,33 @@ export default function NominaPage() {
                 disabled={!selectedPeriodId || currentStatusOptions.length === 0}
               />
 
-              <FilterSelect
-                label="Clasificacion"
-                value={clasificacionFilter}
-                onChange={setClasificacionFilter}
-                options={employeeClassificationOptions}
-                disabled={!isNominaTab || !selectedPeriodId || employeeClassificationOptions.length === 0}
-              />
+              {isNovedadesTab ? (
+                <>
+                  <FilterSelect
+                    label="Municipio"
+                    value={municipioFilter}
+                    onChange={setMunicipioFilter}
+                    options={employeeMunicipioOptions}
+                    disabled={!selectedPeriodId || employeeMunicipioOptions.length === 0}
+                  />
+
+                  <FilterSelect
+                    label="Tipo de novedad"
+                    value={tipoNovedadFilter}
+                    onChange={setTipoNovedadFilter}
+                    options={novedadTypeOptions}
+                    disabled={!selectedPeriodId || novedadTypeOptions.length === 0}
+                  />
+                </>
+              ) : (
+                <FilterSelect
+                  label="Clasificacion"
+                  value={clasificacionFilter}
+                  onChange={setClasificacionFilter}
+                  options={employeeClassificationOptions}
+                  disabled={!isNominaTab || !selectedPeriodId || employeeClassificationOptions.length === 0}
+                />
+              )}
             </>
           )}
         </div>
@@ -2456,82 +2628,96 @@ export default function NominaPage() {
       </div>
 
       <div className="payroll-actionbar">
-        <button
-          type="button"
-          className="payroll-action primary"
-          disabled
-          title="No existe un endpoint real para crear perÃ­odos desde esta pantalla."
-        >
-          <Plus size={18} />
-          Crear periodo
-        </button>
+        {isOperationalCoverageView ? (
+          <button
+            type="button"
+            className="payroll-action primary"
+            onClick={() => openNovedadModal(null)}
+            disabled={!canOpenNovedadModal}
+          >
+            <FilePlus2 size={18} />
+            Registrar novedad
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="payroll-action primary"
+              disabled
+              title="No existe un endpoint real para crear perÃƒÆ’Ã‚Â­odos desde esta pantalla."
+            >
+              <Plus size={18} />
+              Crear periodo
+            </button>
 
-        <button
-          type="button"
-          className="payroll-action primary"
-          onClick={() => openNovedadModal(null)}
-          disabled={!canOpenNovedadModal}
-        >
-          <FilePlus2 size={18} />
-          Registrar novedad
-        </button>
+            <button
+              type="button"
+              className="payroll-action primary"
+              onClick={() => openNovedadModal(null)}
+              disabled={!canOpenNovedadModal}
+            >
+              <FilePlus2 size={18} />
+              Registrar novedad
+            </button>
 
-        <button
-          type="button"
-          className="payroll-action"
-          disabled
-          title="No existe un endpoint real para cargar personal desde esta pantalla."
-        >
-          <Upload size={18} />
-          Cargar personal
-        </button>
+            <button
+              type="button"
+              className="payroll-action"
+              disabled
+              title="No existe un endpoint real para cargar personal desde esta pantalla."
+            >
+              <Upload size={18} />
+              Cargar personal
+            </button>
 
-        <button
-          type="button"
-          className="payroll-action"
-          onClick={handleRecalculate}
-          disabled={!selectedPeriodId || isRecalculating}
-        >
-          <Calculator size={18} />
-          {isRecalculating ? "Recalculando..." : "Recalcular periodo"}
-        </button>
+            <button
+              type="button"
+              className="payroll-action"
+              onClick={handleRecalculate}
+              disabled={!selectedPeriodId || isRecalculating}
+            >
+              <Calculator size={18} />
+              {isRecalculating ? "Recalculando..." : "Recalcular periodo"}
+            </button>
 
-        <FilterSelect
-          label="Tipo de exporte"
-          value={selectedExportType}
-          onChange={(value) => setSelectedExportType((value as NominaExportTipo) || "todo")}
-          options={NOMINA_EXPORT_OPTIONS}
-          disabled={!selectedPeriodId || isExporting}
-        />
+            <FilterSelect
+              label="Tipo de exporte"
+              value={selectedExportType}
+              onChange={(value) => setSelectedExportType((value as NominaExportTipo) || "todo")}
+              options={NOMINA_EXPORT_OPTIONS}
+              disabled={!selectedPeriodId || isExporting}
+            />
 
-        <button
-          type="button"
-          className="payroll-action"
-          onClick={handleGenerateDesprendibles}
-          disabled={!selectedPeriodId || isGeneratingDesprendibles}
-        >
-          <FileText size={18} />
-          {isGeneratingDesprendibles ? "Generando desprendibles..." : "Generar desprendibles"}
-        </button>
+            <button
+              type="button"
+              className="payroll-action"
+              onClick={handleGenerateDesprendibles}
+              disabled={!selectedPeriodId || isGeneratingDesprendibles}
+            >
+              <FileText size={18} />
+              {isGeneratingDesprendibles ? "Generando desprendibles..." : "Generar desprendibles"}
+            </button>
 
-        <button
-          type="button"
-          className="payroll-action"
-          onClick={handleExportNomina}
-          disabled={!selectedPeriodId || isExporting}
-        >
-          <Download size={18} />
-          {isExporting ? "Exportando..." : "Exportar"}
-        </button>
-        <button
-          type="button"
-          className="payroll-action danger-outline"
-          disabled
-          title="No existe un endpoint real para cerrar perÃ­odos en esta pantalla."
-        >
-          <Lock size={18} />
-          Cerrar periodo
-        </button>
+            <button
+              type="button"
+              className="payroll-action"
+              onClick={handleExportNomina}
+              disabled={!selectedPeriodId || isExporting}
+            >
+              <Download size={18} />
+              {isExporting ? "Exportando..." : "Exportar"}
+            </button>
+            <button
+              type="button"
+              className="payroll-action danger-outline"
+              disabled
+              title="No existe un endpoint real para cerrar perÃƒÆ’Ã‚Â­odos en esta pantalla."
+            >
+              <Lock size={18} />
+              Cerrar periodo
+            </button>
+          </>
+        )}
       </div>
 
       {catalogInlineError ? (
@@ -2681,9 +2867,9 @@ export default function NominaPage() {
                                         <small title={getEmployeeSedeLabel(empleado)}>{getEmployeeSedeLabel(empleado)}</small>
                                         <small
                                           className="cell-context-accent"
-                                          title={`${getEmployeeModalidadDescription(empleado)} · ${getEmployeeGestorLabel(empleado)}`}
+                                          title={`${getEmployeeModalidadDescription(empleado)} Ã‚Â· ${getEmployeeGestorLabel(empleado)}`}
                                         >
-                                          {getEmployeeModalidadCode(empleado)} · Gestor: {getEmployeeGestorLabel(empleado)}
+                                          {getEmployeeModalidadCode(empleado)} Ã‚Â· Gestor: {getEmployeeGestorLabel(empleado)}
                                         </small>
                                       </div>
                                     </div>
@@ -2705,7 +2891,7 @@ export default function NominaPage() {
                                       </small>
                                     </div>
 
-                                    <span className="cell-devengado">{formatCOP(empleado.total_adiciones)}</span>
+                                    <span className="cell-devengado" title={`Total adiciones: ${formatCOP(empleado.total_adiciones)} Ã¯Â¿Â½ Devengado transporte: ${formatCOP(empleado.devengado_transporte)}`}><strong>{formatCOP(empleado.total_adiciones)}</strong><small>Transporte {formatCOP(empleado.devengado_transporte)}</small></span>
 
                                     <span className="cell-deduccion">{formatCOP(empleado.total_deducciones)}</span>
 
@@ -2803,6 +2989,10 @@ export default function NominaPage() {
                                           </strong>
                                         </div>
                                         <div className="payroll-detail-item">
+                                          <span>Devengado transporte</span>
+                                          <strong>{formatCOP(empleado.devengado_transporte)}</strong>
+                                        </div>
+                                        <div className="payroll-detail-item">
                                           <span>Modalidad</span>
                                           <strong title={getEmployeeModalidadDescription(empleado)}>
                                             {getEmployeeModalidadCode(empleado)}
@@ -2868,145 +3058,380 @@ export default function NominaPage() {
               message="No hay novedades que coincidan con los filtros actuales."
             />
           ) : (
-            <div className="payroll-novedades-list">
-              {visibleNovedades.map((novedad) => {
-                const isReviewing = mutatingNovedadId === novedad.id && mutatingNovedadAction === "review";
-                const isDeactivating = mutatingNovedadId === novedad.id && mutatingNovedadAction === "deactivate";
-                const novedadType =
-                  novedadTypesById.get(novedad.tipo_novedad.id) ?? buildHistoricalNovedadType(novedad.tipo_novedad);
+            <div className="payroll-period-card">
+              <div className="payroll-table-scroll">
+                <div
+                  className="payroll-table-head"
+                  style={{
+                    gridTemplateColumns:
+                      "110px minmax(220px,2fr) 140px minmax(220px,1.8fr) 110px 110px 90px 110px 140px 170px",
+                  }}
+                >
+                  <span>Fecha</span>
+                  <span>Trabajador</span>
+                  <span>Municipio</span>
+                  <span>Tipo de novedad</span>
+                  <span>Inicio</span>
+                  <span>Fin</span>
+                  <span>DÃƒÂ­as</span>
+                  <span>Estado</span>
+                  <span>Soportes</span>
+                  <span>Acciones</span>
+                </div>
 
-                return (
-                  <article className="payroll-novedad-card" key={novedad.id}>
-                    <div className="payroll-novedad-top">
-                      <div className="payroll-novedad-persona">
-                        <div className={`avatar ${getAvatarTone(novedad.nomina_empleado_id)}`}>
-                          {getInitials(novedad.persona.nombre_completo)}
-                        </div>
-                        <div>
-                          <strong>{novedad.persona.nombre_completo}</strong>
-                          <p>
-                            {novedad.persona.numero_documento ?? "Documento no disponible"} Â·{" "}
-                            {getVisibleNovedadTipoLabel(novedadType)}
-                          </p>
-                        </div>
-                      </div>
+                <div>
+                  {visibleNovedades.map((novedad) => {
+                    const isReviewing = mutatingNovedadId === novedad.id && mutatingNovedadAction === "review";
+                    const isDeactivating = mutatingNovedadId === novedad.id && mutatingNovedadAction === "deactivate";
+                    const novedadType =
+                      novedadTypesById.get(novedad.tipo_novedad.id) ?? buildHistoricalNovedadType(novedad.tipo_novedad);
+                    const empleado =
+                      allEmployees.find((item) => item.id === novedad.nomina_empleado_id) ?? null;
+                    const isExpanded = expandedNovedadId === novedad.id;
+                    const documents = novedadDocumentosById[novedad.id];
+                    const supportStatus = documents?.slots.SOPORTE ?? {
+                      cargado: novedad.documentos.SOPORTE.cargado,
+                      documento: null,
+                      requerido: novedad.documentos.SOPORTE.requerido,
+                      tipo: "SOPORTE" as const,
+                    };
+                    const permissionStatus = documents?.slots.SOLICITUD_PERMISO ?? {
+                      cargado: novedad.documentos.SOLICITUD_PERMISO.cargado,
+                      documento: null,
+                      requerido: novedad.documentos.SOLICITUD_PERMISO.requerido,
+                      tipo: "SOLICITUD_PERMISO" as const,
+                    };
+                    const requiredDocuments = [supportStatus, permissionStatus].filter((item) => item.requerido);
+                    const missingDocuments = requiredDocuments.filter((item) => !item.cargado).length;
+                    const supportLabel =
+                      requiredDocuments.length === 0
+                        ? "No requerido"
+                        : missingDocuments === 0
+                          ? "Completo"
+                          : `${missingDocuments} pendiente(s)`;
 
-                      <div className="payroll-novedad-badges">
-                        <span className={`payroll-status-badge ${getNovedadStatusTone(novedad)}`}>
-                          {getNovedadStatusLabel(novedad)}
-                        </span>
-                        <span className={`payroll-status-badge ${novedad.activo ? "info" : "neutral"}`}>
-                          {novedad.activo ? "Activa" : "Inactiva"}
-                        </span>
-                        {isCanonicalProjectedNovedad(novedad) ? (
-                          <span className="payroll-status-badge purple">Evento canonico</span>
+                    return (
+                      <Fragment key={novedad.id}>
+                        <div
+                          className={`payroll-table-row${isExpanded ? " expanded" : ""}`}
+                          style={{
+                            gridTemplateColumns:
+                              "110px minmax(220px,2fr) 140px minmax(220px,1.8fr) 110px 110px 90px 110px 140px 170px",
+                          }}
+                        >
+                          <span className="cell-stack">
+                            <strong>{formatNovedadRange(novedad)}</strong>
+                            <small>{formatDateTime(novedad.created_at)}</small>
+                          </span>
+                          <span className="cell-employee">
+                            <div className={`avatar ${getAvatarTone(novedad.nomina_empleado_id)}`}>
+                              {getInitials(novedad.persona.nombre_completo)}
+                            </div>
+                            <span className="cell-employee-meta">
+                              <strong>{novedad.persona.nombre_completo}</strong>
+                              <small>{novedad.persona.numero_documento ?? "Documento no disponible"}</small>
+                            </span>
+                          </span>
+                          <span className="cell-stack">
+                            <strong>{empleado ? getEmployeeMunicipioLabel(empleado) : "No disponible"}</strong>
+                            <small>{empleado ? getEmployeeSedeLabel(empleado) : "Sin sede"}</small>
+                          </span>
+                          <span className="cell-stack">
+                            <strong>{getVisibleNovedadTipoLabel(novedadType)}</strong>
+                            <small>{novedadType.categoria ?? "Sin categoria"}</small>
+                          </span>
+                          <span className="cell-dias">{novedad.fecha_inicio ?? "-"}</span>
+                          <span className="cell-dias">{novedad.fecha_fin ?? "-"}</span>
+                          <span className="cell-dias">{formatNumber(novedad.dias ?? 0)}</span>
+                          <span className={`payroll-status-badge ${getNovedadStatusTone(novedad)}`}>
+                            {getNovedadStatusLabel(novedad)}
+                          </span>
+                          <span className={`payroll-status-badge ${supportLabel === "Completo" || supportLabel === "No requerido" ? "success" : "warning"}`}>
+                            {supportLabel}
+                          </span>
+                          <div className="payroll-row-actions">
+                            <button
+                              type="button"
+                              title={isExpanded ? "Ocultar detalle" : "Ver detalle"}
+                              aria-label={`${isExpanded ? "Ocultar detalle" : "Ver detalle"} de ${novedad.persona.nombre_completo}`}
+                              onClick={() => { void toggleNovedadDetail(novedad.id); }}
+                            >
+                              <Eye size={16} />
+                            </button>
+                            {canUpdateNovedad ? (
+                              <button
+                                type="button"
+                                title="Editar novedad"
+                                aria-label={`Editar novedad de ${novedad.persona.nombre_completo}`}
+                                onClick={() => handleEditNovedad(novedad)}
+                                disabled={isReviewing || isDeactivating}
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                            ) : null}
+                            {canUpdateNovedad ? (
+                              <button
+                                type="button"
+                                title={novedad.revisado ? "Novedad revisada" : "Marcar revisada"}
+                                aria-label={`Marcar revisada ${novedad.persona.nombre_completo}`}
+                                onClick={() => handleMarkNovedadReviewed(novedad)}
+                                disabled={!novedad.activo || novedad.revisado || isReviewing || isDeactivating || isCanonicalProjectedNovedad(novedad)}
+                              >
+                                <CheckCircle2 size={16} />
+                              </button>
+                            ) : null}
+                            {canDeactivateNovedad ? (
+                              <button
+                                type="button"
+                                title="Desactivar novedad"
+                                aria-label={`Desactivar novedad de ${novedad.persona.nombre_completo}`}
+                                onClick={() => handleDeactivateNovedad(novedad)}
+                                disabled={!novedad.activo || isReviewing || isDeactivating}
+                              >
+                                <X size={16} />
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {isExpanded ? (
+                          <div className="payroll-table-row-detail">
+                            <div className="payroll-detail-grid">
+                              <div className="payroll-detail-item">
+                                <span>Estado</span>
+                                <strong>{getNovedadStatusLabel(novedad)}</strong>
+                              </div>
+                              <div className="payroll-detail-item">
+                                <span>Cobertura</span>
+                                <strong>{getNovedadCoverageLabel(novedad)}</strong>
+                                {getNovedadCoverageDetail(novedad) ? <small>{getNovedadCoverageDetail(novedad)}</small> : null}
+                              </div>
+                              <div className="payroll-detail-item">
+                                <span>Modelo</span>
+                                <strong>{isCanonicalProjectedNovedad(novedad) ? "Evento canonico proyectado" : "Novedad por periodo"}</strong>
+                              </div>
+                              <div className="payroll-detail-item">
+                                <span>Horas</span>
+                                <strong>{formatNumber(novedad.horas ?? 0)}</strong>
+                              </div>
+                              <div className="payroll-detail-item">
+                                <span>Valor manual</span>
+                                <strong>{novedad.valor_manual !== null ? formatCOP(novedad.valor_manual) : "No aplica"}</strong>
+                              </div>
+                              <div className="payroll-detail-item">
+                                <span>Salario</span>
+                                <strong>{novedadType.efecto_salario}</strong>
+                              </div>
+                              <div className="payroll-detail-item">
+                                <span>Transporte</span>
+                                <strong>{novedadType.efecto_auxilio_transporte}</strong>
+                              </div>
+                              <div className="payroll-detail-item">
+                                <span>Recargos</span>
+                                <strong>{novedadType.efecto_recargos}</strong>
+                              </div>
+                              <div className="payroll-detail-item wide">
+                                <span>ObservaciÃƒÂ³n</span>
+                                <strong>{novedad.observacion ?? "Sin observaciÃƒÂ³n registrada."}</strong>
+                              </div>
+                            </div>
+
+                            <div className="payroll-inline-note compact">
+                              <strong>Documentos</strong>
+                              <p>Los documentos obligatorios se leen desde la parametrizaciÃƒÂ³n real del tipo de novedad y se gestionan al final del detalle.</p>
+                            </div>
+
+                            <div className="payroll-detail-grid">
+                              <div className="payroll-detail-item">
+                                <span>Documento soporte</span>
+                                <strong>
+                                  {supportStatus.requerido
+                                    ? supportStatus.cargado
+                                      ? "Cargado"
+                                      : "Pendiente"
+                                    : "No requerido"}
+                                </strong>
+                              </div>
+                              <div className="payroll-detail-item">
+                                <span>Solicitud de permiso</span>
+                                <strong>
+                                  {permissionStatus.requerido
+                                    ? permissionStatus.cargado
+                                      ? "Cargada"
+                                      : "Pendiente"
+                                    : "No requerida"}
+                                </strong>
+                              </div>
+                            </div>
+
+                            <div className="payroll-novedad-actions">
+                              {canUpdateNovedad ? (
+                                <label className="payroll-inline-button">
+                                  {supportStatus.cargado ? "Reemplazar soporte" : "Subir soporte"}
+                                  <input
+                                    type="file"
+                                    accept="application/pdf"
+                                    hidden
+                                    disabled={supportBusyId !== null}
+                                    onChange={(event) => {
+                                      void handleUploadNovedadDocument(novedad.id, "SOPORTE", event.target.files?.[0]);
+                                      event.currentTarget.value = "";
+                                    }}
+                                  />
+                                </label>
+                              ) : null}
+                              {supportStatus.cargado ? (
+                                <button
+                                  type="button"
+                                  className="payroll-inline-button"
+                                  disabled={supportBusyId !== null}
+                                  onClick={() => { void handleViewNovedadDocument(novedad.id, "SOPORTE"); }}
+                                >
+                                  Ver soporte
+                                </button>
+                              ) : null}
+                              {permissionStatus.requerido && canUpdateNovedad ? (
+                                <label className="payroll-inline-button">
+                                  {permissionStatus.cargado ? "Reemplazar solicitud" : "Subir solicitud"}
+                                  <input
+                                    type="file"
+                                    accept="application/pdf"
+                                    hidden
+                                    disabled={supportBusyId !== null}
+                                    onChange={(event) => {
+                                      void handleUploadNovedadDocument(novedad.id, "SOLICITUD_PERMISO", event.target.files?.[0]);
+                                      event.currentTarget.value = "";
+                                    }}
+                                  />
+                                </label>
+                              ) : null}
+                              {permissionStatus.cargado ? (
+                                <button
+                                  type="button"
+                                  className="payroll-inline-button"
+                                  disabled={supportBusyId !== null}
+                                  onClick={() => { void handleViewNovedadDocument(novedad.id, "SOLICITUD_PERMISO"); }}
+                                >
+                                  Ver solicitud
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
                         ) : null}
-                      </div>
-                    </div>
-
-                    <div className="payroll-novedad-grid">
-                      <div>
-                        <span>Rango</span>
-                        <strong>{formatNovedadRange(novedad)}</strong>
-                      </div>
-                      <div>
-                        <span>Modelo</span>
-                        <strong>
-                          {isCanonicalProjectedNovedad(novedad) ? "Evento unico proyectado" : "Novedad por periodo"}
-                        </strong>
-                      </div>
-                      <div>
-                        <span>Dias / Horas</span>
-                        <strong>
-                          {novedad.dias ?? 0} / {novedad.horas ?? 0}
-                        </strong>
-                      </div>
-                      <div>
-                        <span>Valor manual</span>
-                        <strong>{novedad.valor_manual !== null ? formatCOP(novedad.valor_manual) : "No aplica"}</strong>
-                      </div>
-                      <div>
-                        <span>Registrada</span>
-                        <strong>{formatDateTime(novedad.created_at)}</strong>
-                      </div>
-                    </div>
-
-                    <div className="payroll-novedad-meta">
-                      <span>
-                        Revision: {isCanonicalProjectedNovedad(novedad) ? "No aplica" : novedad.revisado ? "Revisada" : "Pendiente"}
-                      </span>
-                      <span>Cobertura: {getNovedadCoverageLabel(novedad)}</span>
-                      {getNovedadCoverageDetail(novedad) ? <span>{getNovedadCoverageDetail(novedad)}</span> : null}
-                      <span>Categoria: {novedadType.categoria ?? "No disponible"}</span>
-                      {getNovedadProjectionLabel(novedad) ? (
-                        <span>{getNovedadProjectionLabel(novedad)}</span>
-                      ) : null}
-                    </div>
-
-                    <div className="payroll-novedad-support">
-                      <span><strong>Soporte:</strong> {novedad.documento_persona_id ? "Cargado" : "Pendiente"}</span>
-                      <div className="payroll-novedad-actions">
-                        <label className="payroll-inline-button">
-                          {novedad.documento_persona_id ? "Reemplazar soporte" : "Subir soporte"}
-                          <input type="file" accept="application/pdf" hidden disabled={supportBusyId !== null} onChange={(event) => { void handleUploadSupport(novedad.id, event.target.files?.[0]); event.currentTarget.value = ''; }} />
-                        </label>
-                        {novedad.documento_persona_id ? <button type="button" className="payroll-inline-button" disabled={supportBusyId !== null} onClick={() => { void handleViewSupport(novedad.id); }}>Ver soporte</button> : null}
-                      </div>
-                    </div>
-
-                    <div className="payroll-novedad-footer">
-                      <p>{novedad.observacion ?? "Sin observacion registrada."}</p>
-
-                      <div className="payroll-novedad-actions">
-                        <button
-                          type="button"
-                          className="payroll-inline-button"
-                          onClick={() => handleEditNovedad(novedad)}
-                          disabled={isReviewing || isDeactivating}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          className="payroll-inline-button"
-                          onClick={() => handleMarkNovedadReviewed(novedad)}
-                          disabled={!novedad.activo || novedad.revisado || isReviewing || isDeactivating || isCanonicalProjectedNovedad(novedad)}
-                        >
-                          {isCanonicalProjectedNovedad(novedad)
-                            ? "Revision no aplica"
-                            : isReviewing
-                              ? "Marcando..."
-                              : novedad.revisado
-                                ? "Revisada"
-                                : "Marcar revisada"}
-                        </button>
-                        <button
-                          type="button"
-                          className="payroll-inline-button danger"
-                          onClick={() => handleDeactivateNovedad(novedad)}
-                          disabled={!novedad.activo || isReviewing || isDeactivating}
-                        >
-                          {isDeactivating ? "Desactivando..." : novedad.activo ? "Desactivar" : "Inactiva"}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
+                      </Fragment>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </>
       ) : activeTab === "soportes" ? (
-        <>
+        isOperationalCoverageView ? (
+          <>
+            {!selectedPeriodId ? (
+              <StateCard
+                title="Selecciona un periodo"
+                message="Los soportes se consultan por periodo."
+              />
+            ) : novedadesState.loading && allNovedades.length === 0 ? (
+              <StateCard
+                title="Cargando soportes"
+                message="Consultando soportes asociados a las novedades del periodo..."
+              />
+            ) : novedadesState.error ? (
+              <StateCard
+                title="No fue posible cargar soportes"
+                message={novedadesState.error}
+                tone="error"
+                actionLabel="Reintentar"
+                onAction={handleRetry}
+              />
+            ) : allNovedades.length === 0 ? (
+              <StateCard
+                title="Sin novedades"
+                message="No hay novedades registradas para este periodo."
+              />
+            ) : visibleNovedades.length === 0 ? (
+              <StateCard
+                title="Sin resultados"
+                message="No hay soportes que coincidan con los filtros actuales."
+              />
+            ) : (
+              <div className="payroll-novedades-list">
+                {visibleNovedades.map((novedad) => {
+                  const novedadType =
+                    novedadTypesById.get(novedad.tipo_novedad.id) ?? buildHistoricalNovedadType(novedad.tipo_novedad);
+
+                  return (
+                    <article className="payroll-novedad-card" key={`support-${novedad.id}`}>
+                      <div className="payroll-novedad-top">
+                        <div className="payroll-novedad-persona">
+                          <div className={`avatar ${getAvatarTone(novedad.nomina_empleado_id)}`}>
+                            {getInitials(novedad.persona.nombre_completo)}
+                          </div>
+                          <div>
+                            <strong>{novedad.persona.nombre_completo}</strong>
+                            <p>
+                              {novedad.persona.numero_documento ?? "Documento no disponible"} Ãƒâ€šÃ‚Â·{" "}
+                              {getVisibleNovedadTipoLabel(novedadType)}
+                            </p>
+                          </div>
+                        </div>
+                        <span className={`payroll-status-badge ${novedad.documento_persona_id ? "success" : "warning"}`}>
+                          {novedad.documento_persona_id ? "Soporte cargado" : "Soporte pendiente"}
+                        </span>
+                      </div>
+
+                      <div className="payroll-novedad-grid">
+                        <div>
+                          <span>Periodo</span>
+                          <strong>{selectedPeriodLabel}</strong>
+                        </div>
+                        <div>
+                          <span>Rango</span>
+                          <strong>{formatNovedadRange(novedad)}</strong>
+                        </div>
+                        <div>
+                          <span>Cobertura</span>
+                          <strong>{getNovedadCoverageLabel(novedad)}</strong>
+                        </div>
+                      </div>
+
+                      <div className="payroll-novedad-footer">
+                        <p>{novedad.observacion ?? "Sin observacion registrada."}</p>
+
+                        <div className="payroll-novedad-actions">
+                          {canUpdateNovedad ? (
+                            <label className="payroll-inline-button">
+                              {novedad.documento_persona_id ? "Reemplazar soporte" : "Subir soporte"}
+                              <input type="file" accept="application/pdf" hidden disabled={supportBusyId !== null} onChange={(event) => { void handleUploadSupport(novedad.id, event.target.files?.[0]); event.currentTarget.value = ''; }} />
+                            </label>
+                          ) : null}
+                          {novedad.documento_persona_id ? (
+                            <button type="button" className="payroll-inline-button" disabled={supportBusyId !== null} onClick={() => { void handleViewSupport(novedad.id); }}>
+                              Ver soporte
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
           {!selectedPeriodId ? (
             <StateCard
               title="Selecciona un periodo"
-              message="La consulta real de desprendibles depende del perÃ­odo de nÃ³mina."
+              message="La consulta real de desprendibles depende del perÃƒÆ’Ã‚Â­odo de nÃƒÆ’Ã‚Â³mina."
             />
           ) : desprendiblesState.loading && allDesprendibles.length === 0 ? (
             <StateCard
               title="Cargando desprendibles"
-              message="Consultando desprendibles reales del perÃ­odo seleccionado..."
+              message="Consultando desprendibles reales del perÃƒÆ’Ã‚Â­odo seleccionado..."
             />
           ) : desprendiblesState.error ? (
             <StateCard
@@ -3019,14 +3444,14 @@ export default function NominaPage() {
           ) : allDesprendibles.length === 0 ? (
             <StateCard
               title="Sin desprendibles"
-              message="El backend no reporta desprendibles para este perÃ­odo."
+              message="El backend no reporta desprendibles para este perÃƒÆ’Ã‚Â­odo."
             />
           ) : (
             <>
               <div className="payroll-inline-note compact">
                 <strong>Desprendibles reales</strong>
                 <p>
-                  Esta pestaÃ±a usa `GET /nomina/desprendibles/:periodo_id` y permite alternar entre
+                  Esta pestaÃƒÆ’Ã‚Â±a usa `GET /nomina/desprendibles/:periodo_id` y permite alternar entre
                   vigentes e historial. La apertura usa `GET /nomina/desprendibles/:periodo_id/:vinculacion_id`,
                   que solo resuelve el desprendible vigente.
                 </p>
@@ -3054,8 +3479,8 @@ export default function NominaPage() {
                     <div className="payroll-table-head">
                       <span>Persona</span>
                       <span>Documento</span>
-                      <span>PerÃ­odo</span>
-                      <span>VersiÃ³n</span>
+                      <span>PerÃƒÆ’Ã‚Â­odo</span>
+                      <span>VersiÃƒÆ’Ã‚Â³n</span>
                       <span>Generado</span>
                       <span>Estado</span>
                       <span>Vigente</span>
@@ -3086,7 +3511,7 @@ export default function NominaPage() {
                           <span className={`payroll-status-badge ${getDesprendibleStatusTone(desprendible)}`}>
                             {getDesprendibleStatusLabel(desprendible)}
                           </span>
-                          <span>{desprendible.es_vigente ? "SÃ­" : "No"}</span>
+                          <span>{desprendible.es_vigente ? "SÃƒÆ’Ã‚Â­" : "No"}</span>
                           <span>{getDesprendibleFileLabel(desprendible)}</span>
                           <span>{desprendible.tipo_desprendible ?? "No disponible"}</span>
 
@@ -3096,7 +3521,7 @@ export default function NominaPage() {
                               title={
                                 desprendible.es_vigente
                                   ? "Abrir desprendible vigente"
-                                  : "El backend no expone descarga directa para versiones histÃ³ricas."
+                                  : "El backend no expone descarga directa para versiones histÃƒÆ’Ã‚Â³ricas."
                               }
                               aria-label={`Abrir desprendible de ${desprendible.persona.nombre_completo}`}
                               onClick={() => void handleOpenDesprendible(desprendible)}
@@ -3113,7 +3538,8 @@ export default function NominaPage() {
               )}
             </>
           )}
-        </>
+          </>
+        )
       ) : (
         <div className="payroll-placeholder">
           <p>Esta pestana se conectara despues de finalizar Nomina base.</p>
@@ -3124,7 +3550,7 @@ export default function NominaPage() {
         <div className="payroll-pagination">
           <span>
             Mostrando {showingFrom}-{showingTo} de {formatNumber(totalFilteredRecords)}{" "}
-            {isNominaTab ? "empleados" : isNovedadesTab ? "novedades" : "desprendibles"}
+            {isNominaTab ? "empleados" : isNovedadesTab ? "novedades" : isOperationalCoverageView ? "soportes" : "desprendibles"}
           </span>
 
           <div>
@@ -3210,7 +3636,7 @@ export default function NominaPage() {
                   >
                     {allEmployees.map((employee) => (
                       <option key={employee.id} value={employee.id}>
-                        {employee.persona.nombre_completo} Â· {employee.persona.numero_documento ?? "Documento no disponible"}
+                        {employee.persona.nombre_completo} Ãƒâ€šÃ‚Â· {employee.persona.numero_documento ?? "Documento no disponible"}
                       </option>
                     ))}
                   </select>
@@ -3488,9 +3914,9 @@ export default function NominaPage() {
                     {selectedCoverageEmployee ? (
                       <div className="payroll-inline-note compact">
                         <p>
-                          Seleccionado: {selectedCoverageEmployee.persona.nombre_completo} ·{" "}
-                          {selectedCoverageEmployee.persona.numero_documento ?? "Documento no disponible"} ·{" "}
-                          {getEmployeeMunicipioLabel(selectedCoverageEmployee)} ·{" "}
+                          Seleccionado: {selectedCoverageEmployee.persona.nombre_completo} Ã‚Â·{" "}
+                          {selectedCoverageEmployee.persona.numero_documento ?? "Documento no disponible"} Ã‚Â·{" "}
+                          {getEmployeeMunicipioLabel(selectedCoverageEmployee)} Ã‚Â·{" "}
                           {getEmployeeGestorLabel(selectedCoverageEmployee)}
                         </p>
                       </div>
@@ -3510,10 +3936,10 @@ export default function NominaPage() {
                           <strong>{employee.persona.nombre_completo}</strong>
                           <span>{employee.persona.numero_documento ?? "Documento no disponible"}</span>
                           <small>
-                            {getEmployeeMunicipioLabel(employee)} · {getEmployeeInstitucionLabel(employee)}
+                            {getEmployeeMunicipioLabel(employee)} Ã‚Â· {getEmployeeInstitucionLabel(employee)}
                           </small>
                           <small>
-                            {getEmployeeSedeLabel(employee)} · {getEmployeeModalidadCode(employee)} ·{" "}
+                            {getEmployeeSedeLabel(employee)} Ã‚Â· {getEmployeeModalidadCode(employee)} Ã‚Â·{" "}
                             {getEmployeeGestorLabel(employee)}
                           </small>
                         </button>
@@ -3592,7 +4018,7 @@ export default function NominaPage() {
               {selectedFormEmployee ? (
                 <div className="payroll-inline-note compact">
                   <p>
-                    {selectedFormEmployee.persona.nombre_completo} · {selectedFormEmployee.persona.numero_documento ?? "Documento no disponible"} · {getEmployeeMunicipioLabel(selectedFormEmployee)} · {getEmployeeInstitucionLabel(selectedFormEmployee)} · {getEmployeeSedeLabel(selectedFormEmployee)}
+                    {selectedFormEmployee.persona.nombre_completo} Ã‚Â· {selectedFormEmployee.persona.numero_documento ?? "Documento no disponible"} Ã‚Â· {getEmployeeMunicipioLabel(selectedFormEmployee)} Ã‚Â· {getEmployeeInstitucionLabel(selectedFormEmployee)} Ã‚Â· {getEmployeeSedeLabel(selectedFormEmployee)}
                   </p>
                 </div>
               ) : null}

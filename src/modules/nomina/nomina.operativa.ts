@@ -1,4 +1,4 @@
-import type { PoolClient, QueryResultRow } from 'pg';
+﻿import type { PoolClient, QueryResultRow } from 'pg';
 
 import { AppError } from '../../utils/AppError';
 
@@ -42,6 +42,18 @@ const OPERATIVE_CONTEXT_SELECT = `
    AND ro.nomina_empleado_id = ne.id
 `;
 
+const toDateOnly = (value: Date | string | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return String(value).slice(0, 10);
+};
+
 export const normalizeNominaEmpleadoOperativoEstado = (
   estado: string | null | undefined
 ): NominaEmpleadoOperativoEstado => {
@@ -53,6 +65,71 @@ export const normalizeNominaEmpleadoOperativoEstado = (
 
 export const isNominaEmpleadoCerrado = (estado: string | null | undefined): boolean =>
   normalizeNominaEmpleadoOperativoEstado(estado) === 'CERRADO';
+
+export const assertNominaRangoDentroDePeriodo = (
+  fechaInicio: string,
+  fechaFin: string,
+  periodo: { fecha_inicio: Date | string; fecha_fin: Date | string },
+  errorCode = 'NOMINA_NOVEDAD_FUERA_PERIODO'
+): void => {
+  const periodoInicio = toDateOnly(periodo.fecha_inicio);
+  const periodoFin = toDateOnly(periodo.fecha_fin);
+
+  if (!periodoInicio || !periodoFin) {
+    throw new AppError('La vigencia del periodo no es valida', 500, 'NOMINA_PERIODO_FECHAS_INVALIDAS');
+  }
+
+  if (fechaInicio > fechaFin) {
+    throw new AppError('Rango de nomina invalido', 400, 'NOMINA_RANGO_INVALIDO');
+  }
+
+  if (fechaInicio < periodoInicio || fechaFin > periodoFin) {
+    throw new AppError(
+      'Payroll novelty range does not fit within the selected period',
+      409,
+      errorCode
+    );
+  }
+};
+
+export const assertNominaRangoDentroDeVinculacion = (
+  fechaInicio: string,
+  fechaFin: string,
+  vinculacion: { fecha_inicio: Date | string; fecha_fin: Date | string | null },
+  errorCode = 'NOMINA_NOVEDAD_FUERA_VIGENCIA'
+): void => {
+  const vinculacionInicio = toDateOnly(vinculacion.fecha_inicio);
+  const vinculacionFin = toDateOnly(vinculacion.fecha_fin) ?? '9999-12-31';
+
+  if (!vinculacionInicio) {
+    throw new AppError(
+      'Payroll employee has no vinculacion start date',
+      500,
+      'NOMINA_VINCULACION_FECHA_INICIO_INVALIDA'
+    );
+  }
+
+  if (fechaInicio > fechaFin) {
+    throw new AppError('Rango de nomina invalido', 400, 'NOMINA_RANGO_INVALIDO');
+  }
+
+  if (fechaInicio < vinculacionInicio || fechaFin > vinculacionFin) {
+    throw new AppError(
+      'Payroll novelty range does not fit within the labor validity of the vinculacion',
+      409,
+      errorCode
+    );
+  }
+};
+
+export const assertNominaFechaDentroDeVigencia = (
+  fecha: string,
+  periodo: { fecha_inicio: Date | string; fecha_fin: Date | string },
+  vinculacion: { fecha_inicio: Date | string; fecha_fin: Date | string | null }
+): void => {
+  assertNominaRangoDentroDePeriodo(fecha, fecha, periodo, 'NOMINA_ASISTENCIA_FUERA_VIGENCIA');
+  assertNominaRangoDentroDeVinculacion(fecha, fecha, vinculacion, 'NOMINA_ASISTENCIA_FUERA_VIGENCIA');
+};
 
 export const assertNominaEmpleadoEditable = (
   context: Pick<NominaEmpleadoOperativoContextRow, 'estado'>,

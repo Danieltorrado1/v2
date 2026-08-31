@@ -1,4 +1,4 @@
-﻿import PDFDocument from 'pdfkit';
+import PDFDocument from 'pdfkit';
 import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
@@ -9,6 +9,9 @@ import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditori
 import { registerAuditEvent } from '../auditoria/auditoria.service';
 import {
   assertNominaEmpleadoEditable,
+  assertNominaFechaDentroDeVigencia,
+  assertNominaRangoDentroDePeriodo,
+  assertNominaRangoDentroDeVinculacion,
   invalidateNominaEmpleadoRevisionState,
   loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow
 } from './nomina.operativa';
@@ -20,6 +23,7 @@ import {
   minDateString
 } from './nomina.calculator';
 import {
+  buildNominaEffectMatrixFromConfig,
   countInclusiveDays,
   generateNominaNovedadObservation,
   nominaDateRangesOverlap,
@@ -290,6 +294,7 @@ interface NominaTipoNovedadRow extends QueryResultRow {
   permite_rango: boolean | null;
   proyecta_periodos: boolean | null;
   requiere_revision: boolean | null;
+  requiere_solicitud_permiso: boolean | null;
   requiere_soporte: boolean | null;
   requiere_dias: boolean | null;
   requiere_fechas: boolean | null;
@@ -333,6 +338,8 @@ interface NominaNovedadRealRow extends QueryResultRow {
   revisado: boolean | null;
   segundo_apellido: string | null;
   segundo_nombre: string | null;
+  solicitud_permiso_documento_persona_id: string | null;
+  soporte_documento_persona_id: string | null;
   tipo_novedad_activo: boolean | null;
   tipo_novedad_afecta_salario: boolean | null;
   tipo_novedad_afecta_transporte: boolean | null;
@@ -366,6 +373,7 @@ interface NominaNovedadRealRow extends QueryResultRow {
   tipo_novedad_permite_rango: boolean | null;
   tipo_novedad_proyecta_periodos: boolean | null;
   tipo_novedad_requiere_revision: boolean | null;
+  tipo_novedad_requiere_solicitud_permiso: boolean | null;
   tipo_novedad_requiere_soporte: boolean | null;
   tipo_novedad_requiere_dias: boolean | null;
   tipo_novedad_requiere_fechas: boolean | null;
@@ -838,6 +846,7 @@ export interface NominaTipoNovedadCatalogItem {
   permite_rango: boolean;
   proyecta_periodos: boolean;
   requiere_revision: boolean;
+  requiere_solicitud_permiso: boolean;
   requiere_soporte: boolean;
   requiere_dias: boolean;
   requiere_fechas: boolean;
@@ -881,6 +890,20 @@ export interface NominaNovedad {
     tipo_cobertura: NominaNovedadCoberturaTipo;
     vinculacion_cubre_id: string | null;
   } | null;
+  documentos: {
+    SOLICITUD_PERMISO: {
+      cargado: boolean;
+      documento_persona_id: string | null;
+      requerido: boolean;
+      tipo: 'SOLICITUD_PERMISO';
+    };
+    SOPORTE: {
+      cargado: boolean;
+      documento_persona_id: string | null;
+      requerido: boolean;
+      tipo: 'SOPORTE';
+    };
+  };
   persona: {
     nombre_completo: string;
     numero_documento: string | null;
@@ -926,6 +949,7 @@ export interface NominaNovedad {
     permite_rango: boolean;
     proyecta_periodos: boolean;
     requiere_revision: boolean;
+    requiere_solicitud_permiso: boolean;
     requiere_soporte: boolean;
     requiere_dias: boolean;
     requiere_fechas: boolean;
@@ -1343,6 +1367,18 @@ const toNumberValue = (value: string | number | null | undefined): number => {
   return parsed;
 };
 
+const resolvePayrollPercentage = (
+  value: string | number | null | undefined,
+  fallback: number
+): number => {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+
+  const percentage = toNumberValue(value);
+  return percentage > 1 ? percentage / 100 : percentage;
+};
+
 const toOptionalNumberValue = (value: string | number | null | undefined): number | null => {
   if (value === null || value === undefined) {
     return null;
@@ -1559,37 +1595,7 @@ const toNominaGrupoExclusividad = (
   return value === 'LICENCIA_MATERNIDAD_PATERNIDAD' ? value : 'NINGUNA';
 };
 
-const buildNominaEffectMatrixFromRow = (row: {
-  bloquea_otras_novedades: boolean | null;
-  codigo_operativo: string | null;
-  efecto_auxilio_transporte: string | null;
-  efecto_cobertura_config: string | null;
-  efecto_liquidacion: string | null;
-  efecto_operativo: string | null;
-  efecto_recargos_detallado: string | null;
-  efecto_salario: string | null;
-  grupo_exclusividad: string | null;
-  modelo_registro: string | null;
-  nombre: string | null;
-  observacion_plantilla: string | null;
-  proyecta_periodos: boolean | null;
-}): NominaNovedadEffectMatrix => {
-  return {
-    codigo_operativo: row.codigo_operativo,
-    nombre: row.nombre,
-    efecto_salario: toNominaEfectoSalario(row.efecto_salario),
-    efecto_transporte: toNominaEfectoTransporte(row.efecto_auxilio_transporte),
-    efecto_recargos: toNominaEfectoRecargos(row.efecto_recargos_detallado),
-    efecto_liquidacion: toNominaEfectoLiquidacion(row.efecto_liquidacion),
-    efecto_cobertura: toNominaEfectoCobertura(row.efecto_cobertura_config),
-    efecto_operativo: toNominaEfectoOperativo(row.efecto_operativo),
-    modelo_registro: toNominaModeloRegistro(row.modelo_registro),
-    proyecta_periodos: toBooleanValue(row.proyecta_periodos),
-    bloquea_otras_novedades: toBooleanValue(row.bloquea_otras_novedades),
-    grupo_exclusividad: toNominaGrupoExclusividad(row.grupo_exclusividad),
-    observacion_plantilla: row.observacion_plantilla
-  };
-};
+const buildNominaEffectMatrixFromRow = buildNominaEffectMatrixFromConfig;
 
 const NOMINA_PERIODO_ESTADOS_EDITABLES = new Set(['ABIERTO']);
 const NOMINA_PERIODO_ESTADOS_DESPRENDIBLES = new Set(['ABIERTO', 'REVISADO']);
@@ -2118,6 +2124,7 @@ const getNominaTiposNovedadSelect = (): string => {
       COALESCE(requiere_soporte, FALSE) AS requiere_soporte,
       COALESCE(permite_rango, FALSE) AS permite_rango,
       COALESCE(requiere_revision, FALSE) AS requiere_revision,
+      COALESCE(requiere_solicitud_permiso, FALSE) AS requiere_solicitud_permiso,
       COALESCE(es_incapacidad, FALSE) AS es_incapacidad,
       COALESCE(es_accidente_laboral, FALSE) AS es_accidente_laboral,
       COALESCE(es_permiso, FALSE) AS es_permiso,
@@ -2150,6 +2157,11 @@ const getNominaNovedadesRealSelect = (): string => {
       nn.categoria_anterior_id::text AS categoria_anterior_id,
       nn.categoria_nueva_id::text AS categoria_nueva_id,
       nn.documento_persona_id::text AS documento_persona_id,
+      COALESCE(
+        soporte_doc.documento_persona_id::text,
+        nn.documento_persona_id::text
+      ) AS soporte_documento_persona_id,
+      permiso_doc.documento_persona_id::text AS solicitud_permiso_documento_persona_id,
       nn.observacion,
       COALESCE(nn.revisado, FALSE) AS revisado,
       COALESCE(nn.activo, TRUE) AS activo,
@@ -2192,6 +2204,7 @@ const getNominaNovedadesRealSelect = (): string => {
       COALESCE(ntn.requiere_soporte, FALSE) AS tipo_novedad_requiere_soporte,
       COALESCE(ntn.permite_rango, FALSE) AS tipo_novedad_permite_rango,
       COALESCE(ntn.requiere_revision, FALSE) AS tipo_novedad_requiere_revision,
+      COALESCE(ntn.requiere_solicitud_permiso, FALSE) AS tipo_novedad_requiere_solicitud_permiso,
       COALESCE(ntn.es_incapacidad, FALSE) AS tipo_novedad_es_incapacidad,
       COALESCE(ntn.es_accidente_laboral, FALSE) AS tipo_novedad_es_accidente_laboral,
       COALESCE(ntn.es_permiso, FALSE) AS tipo_novedad_es_permiso,
@@ -2220,6 +2233,24 @@ const getNominaNovedadesRealSelect = (): string => {
     INNER JOIN personas p ON p.id = v.persona_id
     INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
     INNER JOIN contratos c ON c.id = np.contrato_id
+    LEFT JOIN LATERAL (
+      SELECT nd.documento_persona_id
+      FROM nomina_novedad_documentos nd
+      WHERE nd.nomina_novedad_id = nn.id
+        AND nd.tipo_relacion = 'SOPORTE_NOVEDAD'
+        AND COALESCE(nd.activo, TRUE) = TRUE
+      ORDER BY nd.id DESC
+      LIMIT 1
+    ) soporte_doc ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT nd.documento_persona_id
+      FROM nomina_novedad_documentos nd
+      WHERE nd.nomina_novedad_id = nn.id
+        AND nd.tipo_relacion = 'SOLICITUD_PERMISO'
+        AND COALESCE(nd.activo, TRUE) = TRUE
+      ORDER BY nd.id DESC
+      LIMIT 1
+    ) permiso_doc ON TRUE
     LEFT JOIN nomina_novedad_coberturas nnc
       ON nnc.nomina_novedad_id = nn.id
      AND COALESCE(nnc.activo, TRUE) = TRUE
@@ -2625,7 +2656,7 @@ const mapRealNovedad = (row: NominaNovedadRealRow): NominaNovedad => {
     periodo_id: row.periodo_id,
     nomina_empleado_id: row.nomina_empleado_id,
     vinculacion_id: row.vinculacion_id,
-    documento_persona_id: row.documento_persona_id,
+    documento_persona_id: row.soporte_documento_persona_id ?? row.documento_persona_id,
     fecha_inicio: toDateString(row.fecha_inicio),
     fecha_fin: toDateString(row.fecha_fin),
     fecha_inicio_evento_canonico: null,
@@ -2643,6 +2674,20 @@ const mapRealNovedad = (row: NominaNovedadRealRow): NominaNovedad => {
     created_at: toIsoString(row.created_at) ?? '',
     requiere_cobertura: toBooleanValue(row.requiere_cobertura),
     cubierta: toBooleanValue(row.cubierta),
+    documentos: {
+      SOPORTE: {
+        cargado: Boolean(row.soporte_documento_persona_id ?? row.documento_persona_id),
+        documento_persona_id: row.soporte_documento_persona_id ?? row.documento_persona_id,
+        requerido: toBooleanValue(row.tipo_novedad_requiere_soporte),
+        tipo: 'SOPORTE',
+      },
+      SOLICITUD_PERMISO: {
+        cargado: Boolean(row.solicitud_permiso_documento_persona_id),
+        documento_persona_id: row.solicitud_permiso_documento_persona_id,
+        requerido: toBooleanValue(row.tipo_novedad_requiere_solicitud_permiso),
+        tipo: 'SOLICITUD_PERMISO',
+      },
+    },
     cobertura: row.cobertura_id && row.cobertura_tipo_cobertura
       ? {
           id: row.cobertura_id,
@@ -2717,6 +2762,7 @@ const mapRealNovedad = (row: NominaNovedadRealRow): NominaNovedad => {
       requiere_soporte: toBooleanValue(row.tipo_novedad_requiere_soporte),
       permite_rango: toBooleanValue(row.tipo_novedad_permite_rango),
       requiere_revision: toBooleanValue(row.tipo_novedad_requiere_revision),
+      requiere_solicitud_permiso: toBooleanValue(row.tipo_novedad_requiere_solicitud_permiso),
       soporte_documento_tipo: row.tipo_novedad_soporte_documento_tipo,
       requiere_fechas: toBooleanValue(row.tipo_novedad_requiere_fechas),
       requiere_dias: toBooleanValue(row.tipo_novedad_requiere_dias),
@@ -2785,6 +2831,7 @@ const mapNominaTipoNovedad = (
     requiere_soporte: toBooleanValue(row.requiere_soporte),
     permite_rango: toBooleanValue(row.permite_rango),
     requiere_revision: toBooleanValue(row.requiere_revision),
+    requiere_solicitud_permiso: toBooleanValue(row.requiere_solicitud_permiso),
     soporte_documento_tipo: row.soporte_documento_tipo,
     requiere_fechas: toBooleanValue(row.requiere_fechas),
     requiere_dias: toBooleanValue(row.requiere_dias),
@@ -4215,20 +4262,7 @@ const assertNominaNovedadRangeIntersectsPeriodo = (
     return;
   }
 
-  const periodoInicio = toDateString(periodo.fecha_inicio) ?? '';
-  const periodoFin = toDateString(periodo.fecha_fin) ?? '';
-
-  if (!periodoInicio || !periodoFin) {
-    throw new AppError('Payroll period dates are invalid', 500, 'NOMINA_PERIODO_FECHAS_INVALIDAS');
-  }
-
-  if (!nominaDateRangesOverlap(range.fecha_inicio, range.fecha_fin, periodoInicio, periodoFin)) {
-    throw new AppError(
-      'Payroll novelty range does not intersect the selected period',
-      409,
-      'NOMINA_NOVEDAD_FUERA_PERIODO'
-    );
-  }
+  assertNominaRangoDentroDePeriodo(range.fecha_inicio, range.fecha_fin, periodo);
 };
 
 const assertNominaNovedadRangeIntersectsVinculacion = (
@@ -4258,9 +4292,9 @@ const assertNominaNovedadRangeIntersectsVinculacion = (
     );
   }
 
-  if (!nominaDateRangesOverlap(range.fecha_inicio, range.fecha_fin, vinculacionInicio, vinculacionFin)) {
+  if (range.fecha_inicio < vinculacionInicio || range.fecha_fin > vinculacionFin) {
     throw new AppError(
-      'Payroll novelty range does not intersect the labor validity of the vinculacion',
+      'Payroll novelty range does not fit within the labor validity of the vinculacion',
       409,
       'NOMINA_NOVEDAD_FUERA_VIGENCIA'
     );
@@ -4321,6 +4355,32 @@ const resolveNominaNovedadCoberturaFlags = (
     requiere_cobertura: true,
     cubierta: true
   };
+};
+
+const assertNominaLinkedCoverageScope = async (
+  client: PoolClient,
+  periodoId: string,
+  cobertura: NominaNovedadCoberturaInput | null | undefined,
+  tenant?: TenantAccessContext
+): Promise<void> => {
+  if (cobertura?.tipo_cobertura !== 'PERSONAL_VINCULADO') {
+    return;
+  }
+
+  if (!cobertura.vinculacion_cubre_id) {
+    throw new AppError(
+      'Linked coverage requires vinculacion_cubre_id',
+      400,
+      'NOMINA_NOVEDAD_COBERTURA_INVALID'
+    );
+  }
+
+  const empleado = await loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow(
+    client,
+    periodoId,
+    cobertura.vinculacion_cubre_id
+  );
+  await assertNominaEmpleadoCoberturaScope(empleado.nomina_empleado_id, tenant, client);
 };
 
 const syncNominaNovedadCobertura = async (
@@ -4612,6 +4672,20 @@ const buildProjectedNominaNovedadFromCanonica = (input: {
     requiere_cobertura: false,
     cubierta: false,
     cobertura: null,
+    documentos: {
+      SOPORTE: {
+        cargado: Boolean(input.canonical.documento_persona_id),
+        documento_persona_id: input.canonical.documento_persona_id,
+        requerido: toBooleanValue(input.tipo.requiere_soporte),
+        tipo: 'SOPORTE',
+      },
+      SOLICITUD_PERMISO: {
+        cargado: false,
+        documento_persona_id: null,
+        requerido: toBooleanValue(input.tipo.requiere_solicitud_permiso),
+        tipo: 'SOLICITUD_PERMISO',
+      },
+    },
     registro_tipo: 'CANONICA_PROYECTADA',
     evento_canonico_id: input.canonical.id,
     tipo_novedad: {
@@ -4651,12 +4725,12 @@ const ensureNoBlockingCanonicalOverlap = async (
 
   if (input.excludeCanonicalId) {
     params.push(input.excludeCanonicalId);
-    excludeCanonicalSql = `AND nnc.id <> ${params.length}::bigint`;
+    excludeCanonicalSql = `AND nnc.id <> $${params.length}::bigint`;
   }
 
   if (input.excludeNovedadId) {
     params.push(input.excludeNovedadId);
-    excludeOrdinarySql = `AND nn.id <> ${params.length}::bigint`;
+    excludeOrdinarySql = `AND nn.id <> $${params.length}::bigint`;
   }
 
   const result = await client.query<{
@@ -6450,6 +6524,14 @@ export const recalculateNominaPeriodo = async (
       nomina_empleado_id: string;
       titular_nombre: string | null;
       titular_documento: string | null;
+      titular_categoria_id: string | null;
+      titular_categoria_codigo: string | null;
+      titular_categoria_nombre: string | null;
+      titular_categoria_salario_base: number | string | null;
+      titular_categoria_auxilio_transporte: number | string | null;
+      titular_categoria_otros_recargos: number | string | null;
+      titular_categoria_vigente_desde: string | null;
+      titular_categoria_vigente_hasta: string | null;
       novedad_tipo: string | null;
       novedad_estado: string | null;
       observacion: string | null;
@@ -6461,6 +6543,14 @@ export const recalculateNominaPeriodo = async (
           nnt.nomina_novedad_id::text AS nomina_novedad_id,
           CONCAT_WS(' ', titular_p.primer_nombre, titular_p.segundo_nombre, titular_p.primer_apellido, titular_p.segundo_apellido) AS titular_nombre,
           titular_p.numero_documento AS titular_documento,
+          titular_ne.categoria_salarial_id::text AS titular_categoria_id,
+          ncs.codigo_categoria AS titular_categoria_codigo,
+          ncs.nombre_categoria AS titular_categoria_nombre,
+          ncs.salario_base AS titular_categoria_salario_base,
+          ncs.auxilio_transporte AS titular_categoria_auxilio_transporte,
+          ncs.otros_recargos AS titular_categoria_otros_recargos,
+          ncs.vigente_desde::text AS titular_categoria_vigente_desde,
+          ncs.vigente_hasta::text AS titular_categoria_vigente_hasta,
           COALESCE(nt.codigo_operativo, nt.nombre, nt.descripcion_operativa) AS novedad_tipo,
           CASE WHEN nn.activo THEN 'ACTIVA' ELSE 'ANULADA' END AS novedad_estado,
           COALESCE(nn.fecha_inicio, np.fecha_inicio)::text AS fecha_inicio,
@@ -6474,6 +6564,7 @@ export const recalculateNominaPeriodo = async (
         LEFT JOIN vinculaciones titular_v ON titular_v.id = titular_ne.vinculacion_id
         LEFT JOIN personas titular_p ON titular_p.id = titular_v.persona_id
         LEFT JOIN nomina_tipos_novedad nt ON nt.id = nn.tipo_novedad_id
+        LEFT JOIN nomina_categorias_salariales ncs ON ncs.id = titular_ne.categoria_salarial_id
         WHERE nnt.periodo_id = $1::bigint
           AND nnt.tipo_turno = 'INTERNO'
           AND COALESCE(nnt.activo, TRUE) = TRUE
@@ -6655,8 +6746,14 @@ export const recalculateNominaPeriodo = async (
       condicionesPensionByVinculacion.set(row.vinculacion_id, current);
     }
     const parametrosCobertura = {
-      porcentaje_salud_empleado: toNumberValue(parametrosCoberturaResult.rows[0]?.porcentaje_salud_empleado) || COBERTURA_PORCENTAJE_SALUD,
-      porcentaje_pension_empleado: toNumberValue(parametrosCoberturaResult.rows[0]?.porcentaje_pension_empleado) || COBERTURA_PORCENTAJE_PENSION,
+      porcentaje_salud_empleado: resolvePayrollPercentage(
+        parametrosCoberturaResult.rows[0]?.porcentaje_salud_empleado,
+        COBERTURA_PORCENTAJE_SALUD
+      ),
+      porcentaje_pension_empleado: resolvePayrollPercentage(
+        parametrosCoberturaResult.rows[0]?.porcentaje_pension_empleado,
+        COBERTURA_PORCENTAJE_PENSION
+      ),
       regla_redondeo: parametrosCoberturaResult.rows[0]?.regla_redondeo ?? 'ROUNDUP_CENTENA_FALLBACK'
     };
     const resolveAportaPension = (vinculacionId: string, fecha: string): boolean => {
@@ -6727,6 +6824,8 @@ export const recalculateNominaPeriodo = async (
           matrix: buildNominaEffectMatrixFromRow({
             codigo_operativo: novedad.tipo_novedad_codigo_operativo,
             nombre: novedad.tipo_novedad_nombre,
+            afecta_salario: novedad.tipo_novedad_afecta_salario,
+            afecta_transporte: novedad.tipo_novedad_afecta_transporte,
             efecto_salario: novedad.tipo_novedad_efecto_salario,
             efecto_auxilio_transporte: novedad.tipo_novedad_efecto_auxilio_transporte,
             efecto_recargos_detallado: novedad.tipo_novedad_efecto_recargos_detallado,
@@ -6848,7 +6947,13 @@ export const recalculateNominaPeriodo = async (
         const adicionesInternasCobertura = (turnosInternosCoberturaByEmpleado.get(empleadoRow.id) ?? []).map((turnoRow) => {
           const turnoContexto = toRecord(turnoRow.contexto_operativo);
           const categoriaTurno = stripCategoriaContext(turnoContexto);
-          if (!categoriaTurno.categoria_id && !categoriaTurno.categoria) {
+          const categoriaTurnoFaltante = !categoriaTurno.categoria_id && !categoriaTurno.categoria;
+          if (
+            categoriaTurnoFaltante &&
+            !turnoRow.titular_categoria_id &&
+            !turnoRow.titular_categoria_codigo &&
+            !turnoRow.titular_categoria_nombre
+          ) {
             throw new AppError(
               'Internal addition requires the covered salary category in contexto_operativo',
               409,
@@ -6857,6 +6962,34 @@ export const recalculateNominaPeriodo = async (
             );
           }
 
+          const categoriaTurnoSnapshot = categoriaTurnoFaltante
+            ? {
+                categoria_id: turnoRow.titular_categoria_id ?? null,
+                codigo_categoria: turnoRow.titular_categoria_codigo ?? null,
+                nombre_categoria: turnoRow.titular_categoria_nombre ?? null,
+                salario_base: toNumberValue(
+                  turnoRow.titular_categoria_salario_base ??
+                    empleadoRow.categoria_salario_base ??
+                    empleadoRow.salario_base
+                ),
+                recargo_mensual: toNumberValue(
+                  turnoRow.titular_categoria_otros_recargos ?? empleadoRow.categoria_otros_recargos
+                ),
+                auxilio_transporte: toNumberValue(
+                  turnoRow.titular_categoria_auxilio_transporte ??
+                    empleadoRow.categoria_auxilio_transporte ??
+                    empleadoRow.auxilio_transporte
+                ),
+                configuracion_id: turnoRow.titular_categoria_id ?? null,
+                vigente_desde: turnoRow.titular_categoria_vigente_desde,
+                vigente_hasta: turnoRow.titular_categoria_vigente_hasta
+              }
+            : buildCategoriaSnapshot(
+                categoriaTurno.categoria_id,
+                empleadoRow,
+                categoriaTurno.categoria ?? null,
+                true
+              );
           return {
             id: turnoRow.id,
             novedad_id: turnoRow.nomina_novedad_id,
@@ -6869,12 +7002,7 @@ export const recalculateNominaPeriodo = async (
             observacion: turnoRow.observacion,
             contexto: turnoContexto,
             aporta_pension: resolveAportaPension(empleadoRow.vinculacion_id, turnoRow.fecha_inicio),
-            categoria: buildCategoriaSnapshot(
-              categoriaTurno.categoria_id,
-              empleadoRow,
-              categoriaTurno.categoria ?? null,
-              true
-            )
+            categoria: categoriaTurnoSnapshot
           };
         });
         const coberturaResult = calculateCoberturaPayroll({
@@ -7004,6 +7132,34 @@ export const recalculateNominaPeriodo = async (
         (salud + pension + deduccionesNovedadManual + totalMovimientosDeducciones).toFixed(2)
       );
       const netoPagar = Number((totalAdiciones - totalDeducciones).toFixed(2));
+      const detalleCalculo = {
+        motor: 'NOMINA_V1_0',
+        periodo: periodoRange,
+        dias: {
+          base: diasPagadosBase,
+          salario: diasPagadosSalario,
+          transporte: diasPagadosTransporte,
+          recargos: diasPagadosOtrosRecargos
+        },
+        componentes: {
+          salario_base: salarioBase,
+          devengado_basico: devengadoBasico,
+          devengado_transporte: devengadoTransporte,
+          devengado_otros: devengadoOtros,
+          salud,
+          pension,
+          total_adiciones: totalAdiciones,
+          total_deducciones: totalDeducciones,
+          neto_pagar: netoPagar
+        },
+        novedades: {
+          descuentos_salario: diasDescuentoSalario,
+          descuentos_transporte: diasDescuentoTransporte,
+          descuentos_recargos: diasDescuentoOtrosRecargos,
+          adiciones_manuales: adicionesNovedad,
+          deducciones_manuales: deduccionesNovedadManual
+        }
+      };
 
       await client.query(
         `
@@ -7018,7 +7174,8 @@ export const recalculateNominaPeriodo = async (
             pension = $8,
             total_adiciones = $9,
             total_deducciones = $10,
-            neto_pagar = $11
+            neto_pagar = $11,
+            detalle_calculo = $12::jsonb
           WHERE id = $1::bigint
         `,
         [
@@ -7032,7 +7189,8 @@ export const recalculateNominaPeriodo = async (
           pension,
           totalAdiciones,
           totalDeducciones,
-          netoPagar
+          netoPagar,
+          JSON.stringify(detalleCalculo)
         ]
       );
     }
@@ -7497,6 +7655,166 @@ export const getNominaMovimientosOperativos = async (
   };
 };
 
+export const listNominaNovedadTurnosOperativos = async (
+  query: ListNominaMovimientosQuery & { tipo_turno?: 'INTERNO' | 'EXTERNO' },
+  tenant?: TenantAccessContext
+): Promise<PaginatedResponse<Record<string, unknown>>> => {
+  const params: unknown[] = [];
+  const conditions: string[] = [];
+  if (query.periodo_id) {
+    params.push(query.periodo_id);
+    conditions.push(`nnt.periodo_id = $${params.length}::bigint`);
+  }
+  if (query.nomina_empleado_id) {
+    params.push(query.nomina_empleado_id);
+    conditions.push(`nnt.nomina_empleado_id = $${params.length}::bigint`);
+  }
+  if (query.tipo_turno) {
+    params.push(query.tipo_turno);
+    conditions.push(`nnt.tipo_turno = $${params.length}`);
+  }
+  if (query.activo !== undefined) {
+    params.push(query.activo);
+    conditions.push(`COALESCE(nnt.activo, TRUE) = $${params.length}`);
+  }
+  appendNominaCoberturaScope(conditions, params, tenant);
+  appendTenantScopeConditions(conditions, params, tenant, 'v.contrato_id', 'v.empresa_id');
+  const whereSql = buildSqlWhere(conditions);
+  const count = await dbQuery<{ total: number }>(
+    `
+      SELECT COUNT(*)::int AS total
+      FROM nomina_novedad_turnos nnt
+      INNER JOIN nomina_empleados ne ON ne.id = nnt.nomina_empleado_id
+      INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
+      INNER JOIN nomina_periodos np ON np.id = nnt.periodo_id
+      INNER JOIN contratos c ON c.id = np.contrato_id
+      ${whereSql}
+    `,
+    params
+  );
+  const total = count.rows[0]?.total ?? 0;
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 100;
+  const listParams = [...params, limit, (page - 1) * limit];
+  const result = await dbQuery<Record<string, unknown>>(
+    `
+      SELECT
+        nnt.id::text AS id,
+        nnt.periodo_id::text AS periodo_id,
+        nnt.nomina_novedad_id::text AS novedad_id,
+        nnt.nomina_empleado_id::text AS nomina_empleado_id,
+        nnt.vinculacion_id::text AS vinculacion_id,
+        nnt.tipo_turno,
+        COALESCE(nn.fecha_inicio::text, nn.fecha_fin::text) AS fecha,
+        nn.fecha_inicio::text AS fecha_inicio,
+        nn.fecha_fin::text AS fecha_fin,
+        nn.dias,
+        COALESCE(nm.descripcion, nnt.observacion, nn.observacion) AS motivo,
+        COALESCE(nnt.activo, TRUE) AS activo,
+        CASE
+          WHEN COALESCE(nnt.activo, TRUE) = FALSE OR (nm.id IS NOT NULL AND COALESCE(nm.activo, TRUE) = FALSE)
+            THEN 'ANULADO'
+          WHEN nm.estado IS NOT NULL
+            THEN nm.estado
+          ELSE 'ACTIVO'
+        END AS estado,
+        nnt.movimiento_id::text AS movimiento_id,
+        nnt.contexto_operativo,
+        COALESCE(NULLIF(BTRIM(ce.nombre_completo), ''), CONCAT_WS(' ', cubre_p.primer_nombre, cubre_p.segundo_nombre, cubre_p.primer_apellido, cubre_p.segundo_apellido)) AS trabajador_cubre,
+        COALESCE(NULLIF(BTRIM(ce.numero_documento), ''), cubre_p.numero_documento) AS trabajador_cubre_documento,
+        CONCAT_WS(' ', titular_p.primer_nombre, titular_p.segundo_nombre, titular_p.primer_apellido, titular_p.segundo_apellido) AS trabajador_reemplazado,
+        titular_p.numero_documento AS trabajador_reemplazado_documento,
+        COALESCE(nm.contexto_municipio, mu.nombre_municipio) AS municipio,
+        COALESCE(nm.contexto_institucion, ins.nombre_institucion) AS institucion,
+        COALESCE(nm.contexto_sede, s.nombre_sede) AS sede,
+        COALESCE(nm.contexto_modalidad, mo.nombre_modalidad) AS modalidad,
+        COALESCE(nnt.contexto_operativo ->> 'origen_cobertura', 'NOVEDAD') AS origen_cobertura,
+        ntn.codigo_operativo AS novedad_tipo_codigo,
+        ntn.nombre AS novedad_tipo_nombre,
+        nnt.externo_id::text AS externo_id,
+        ce.nombre_completo AS externo_nombre,
+        ce.numero_documento AS externo_documento,
+        COALESCE(nm.tipo_movimiento, CASE WHEN nnt.tipo_turno = 'INTERNO' THEN 'TURNO_INTERNO' ELSE 'TURNO_EXTERNO' END) AS movimiento_tipo,
+        nm.estado AS movimiento_estado,
+        COALESCE(nm.activo, TRUE) AS movimiento_activo,
+        nm.cantidad AS movimiento_cantidad,
+        nm.valor_calculado AS movimiento_valor_calculado,
+        nm.valor_total AS movimiento_valor_aplicado,
+        COALESCE(nm.descripcion, nnt.observacion, nn.observacion) AS movimiento_descripcion,
+        COALESCE(nm.afecta_seguridad_social, TRUE) AS movimiento_afecta_seguridad_social,
+        COALESCE(nm.alertas_validacion, '[]'::jsonb) AS movimiento_alertas_validacion,
+        CASE WHEN nnt.tipo_turno = 'EXTERNO' THEN EXISTS (
+          SELECT 1 FROM cobertura_externo_documentos d
+          WHERE d.externo_id = nnt.externo_id AND d.tipo_documento = 'CEDULA_EXTERNO_COBERTURA'
+            AND d.activo AND d.es_vigente
+        ) ELSE TRUE END AS cedula_cargada,
+        CASE WHEN nnt.tipo_turno = 'EXTERNO' THEN EXISTS (
+          SELECT 1 FROM cobertura_externo_documentos d
+          WHERE d.externo_id = nnt.externo_id AND d.tipo_documento = 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA'
+            AND d.activo AND d.es_vigente
+        ) ELSE TRUE END AS certificacion_bancaria_cargada,
+        CASE WHEN nnt.tipo_turno = 'EXTERNO' THEN EXISTS (
+          SELECT 1 FROM cobertura_cuentas_cobro_externas cx
+          WHERE cx.externo_id = nnt.externo_id AND cx.periodo_id = nnt.periodo_id AND cx.activo
+            AND cx.estado IN ('GENERADA', 'FIRMADA')
+        ) ELSE TRUE END AS cuenta_cobro_cargada,
+        CASE
+          WHEN nnt.tipo_turno = 'INTERNO' THEN TRUE
+          ELSE (
+            EXISTS (
+              SELECT 1 FROM cobertura_externo_documentos d
+              WHERE d.externo_id = nnt.externo_id AND d.tipo_documento = 'CEDULA_EXTERNO_COBERTURA'
+                AND d.activo AND d.es_vigente
+            )
+            AND EXISTS (
+              SELECT 1 FROM cobertura_externo_documentos d
+              WHERE d.externo_id = nnt.externo_id AND d.tipo_documento = 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA'
+                AND d.activo AND d.es_vigente
+            )
+            AND EXISTS (
+              SELECT 1 FROM cobertura_cuentas_cobro_externas cx
+              WHERE cx.externo_id = nnt.externo_id AND cx.periodo_id = nnt.periodo_id AND cx.activo
+                AND cx.estado IN ('GENERADA', 'FIRMADA')
+            )
+          )
+        END AS documentos_completos
+      FROM nomina_novedad_turnos nnt
+      INNER JOIN nomina_novedades nn ON nn.id = nnt.nomina_novedad_id
+      INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nn.tipo_novedad_id
+      INNER JOIN nomina_empleados ne ON ne.id = nnt.nomina_empleado_id
+      INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
+      INNER JOIN nomina_periodos np ON np.id = nnt.periodo_id
+      INNER JOIN contratos c ON c.id = np.contrato_id
+      INNER JOIN vinculaciones titular_v ON titular_v.id = nn.vinculacion_id
+      INNER JOIN personas titular_p ON titular_p.id = titular_v.persona_id
+      INNER JOIN personas cubre_p ON cubre_p.id = v.persona_id
+      LEFT JOIN nomina_movimientos nm ON nm.id = nnt.movimiento_id
+      LEFT JOIN cobertura_externos ce ON ce.id = nnt.externo_id
+      LEFT JOIN LATERAL (
+        SELECT ff.municipio_id, ff.institucion_id, ff.sede_id, ff.modalidad_id
+        FROM cobertura_asignaciones ca
+        INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+        WHERE ca.vinculacion_id = nnt.vinculacion_id AND ca.activo
+          AND ca.fecha_inicio <= COALESCE(nn.fecha_fin, np.fecha_fin)
+          AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= COALESCE(nn.fecha_inicio, np.fecha_inicio))
+        ORDER BY ca.fecha_inicio DESC, ca.id DESC LIMIT 1
+      ) ctx ON TRUE
+      LEFT JOIN municipios mu ON mu.id = ctx.municipio_id
+      LEFT JOIN instituciones ins ON ins.id = COALESCE(nm.institucion_id, ctx.institucion_id)
+      LEFT JOIN sedes s ON s.id = ctx.sede_id
+      LEFT JOIN modalidades mo ON mo.id = COALESCE(nm.modalidad_id, ctx.modalidad_id)
+      ${whereSql}
+      ORDER BY COALESCE(nn.fecha_inicio, np.fecha_inicio) DESC, nnt.id DESC
+      LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
+    `,
+    listParams
+  );
+  return {
+    items: result.rows,
+    pagination: { page, limit, total, total_pages: total === 0 ? 0 : Math.ceil(total / limit) }
+  };
+};
+
 export const createNominaMovimiento = async (
   input: CreateNominaMovimientoInput,
   actorUserId: string,
@@ -7528,9 +7846,9 @@ export const createNominaMovimiento = async (
       input.familia_movimiento ?? resolveNominaMovimientoFamilia(input.tipo_movimiento);
     const estadoMovimiento = normalizeNominaMovimientoEstado(input.estado);
 
-    if (input.tipo_movimiento === 'TURNO_EXTERNO' && !fechaMovimiento) {
+    if ((input.tipo_movimiento === 'TURNO_EXTERNO' || input.tipo_movimiento === 'TURNO_INTERNO') && !fechaMovimiento) {
       throw new AppError(
-        'fecha is required for TURNO_EXTERNO',
+        'fecha is required for payroll turn movements',
         400,
         'NOMINA_MOVIMIENTO_FECHA_REQUERIDA'
       );
@@ -8010,9 +8328,9 @@ export const updateNominaMovimiento = async (
       resolveNominaMovimientoFamilia(nextTipoMovimiento);
     const nextEstado = normalizeNominaMovimientoEstado(input.estado ?? current.estado);
 
-    if (nextTipoMovimiento === 'TURNO_EXTERNO' && !nextFecha) {
+    if ((nextTipoMovimiento === 'TURNO_EXTERNO' || nextTipoMovimiento === 'TURNO_INTERNO') && !nextFecha) {
       throw new AppError(
-        'fecha is required for TURNO_EXTERNO',
+        'fecha is required for payroll turn movements',
         400,
         'NOMINA_MOVIMIENTO_FECHA_REQUERIDA'
       );
@@ -9100,6 +9418,7 @@ export const createNominaNovedad = async (
     const empleadoContext = await loadNominaEmpleadoContextOrThrow(input.nomina_empleado_id, tenant, client);
     const empleado = await loadNominaEmpleadoByIdOrThrow(input.nomina_empleado_id, tenant, client);
     const empleadoMapped = mapRealEmpleado(empleado);
+    await assertNominaEmpleadoCoberturaScope(input.nomina_empleado_id, tenant, client);
     assertNominaEmpleadoEditable(empleado, 'registrar novedades de nomina');
     await invalidateNominaEmpleadoRevisionState(client, input.nomina_empleado_id);
 
@@ -9297,7 +9616,10 @@ export const createNominaNovedad = async (
         user_agent: auditMeta?.user_agent ?? null
       });
 
-      if (ownsClient) await client.query('COMMIT');
+      if (ownsClient) {
+        await client.query('COMMIT');
+        await recalculateNominaPeriodo(input.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
+      }
       return created;
     }
 
@@ -9313,6 +9635,7 @@ export const createNominaNovedad = async (
       requiere_cobertura: input.requiere_cobertura,
       cubierta: input.cubierta
     });
+    await assertNominaLinkedCoverageScope(client, input.periodo_id, input.cobertura, tenant);
 
     const result = await client.query<{ id: string }>(
       `
@@ -9388,8 +9711,8 @@ export const createNominaNovedad = async (
 
     if (input.documento_persona_id) {
       await client.query(
-        `INSERT INTO nomina_novedad_documentos (nomina_novedad_id, documento_persona_id, created_by)
-         VALUES ($1::bigint, $2::bigint, $3::bigint)
+        `INSERT INTO nomina_novedad_documentos (nomina_novedad_id, documento_persona_id, tipo_relacion, created_by)
+         VALUES ($1::bigint, $2::bigint, 'SOPORTE_NOVEDAD', $3::bigint)
          ON CONFLICT (nomina_novedad_id, documento_persona_id) WHERE activo = TRUE DO NOTHING`,
         [createdRow.id, input.documento_persona_id, actorUserId]
       );
@@ -9431,14 +9754,12 @@ export const markNominaAsistencia = async (periodoId: string, vinculacionId: str
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'marking payroll attendance');
     const empleado = await loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow(client, periodoId, vinculacionId);
+    await assertNominaEmpleadoCoberturaScope(empleado.nomina_empleado_id, tenant, client);
     assertNominaEmpleadoEditable(empleado, 'modificar la asistencia');
     const vinc = await client.query<{ fecha_inicio: string; fecha_fin: string | null }>('SELECT fecha_inicio::text, fecha_fin::text FROM vinculaciones WHERE id=$1::bigint', [vinculacionId]);
     if (!vinc.rows[0]) throw new AppError('Vinculacion no encontrada', 404, 'NOMINA_ASISTENCIA_VINCULACION_INVALIDA');
     const v = vinc.rows[0];
-    const dateOnly = (value: unknown) => value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
-    const pStart = dateOnly(periodo.fecha_inicio);
-    const pEnd = dateOnly(periodo.fecha_fin);
-    if (fecha < pStart || fecha > pEnd || fecha < v.fecha_inicio || (v.fecha_fin && fecha > v.fecha_fin)) throw new AppError('La fecha esta fuera de la vigencia laboral o del periodo', 409, 'NOMINA_ASISTENCIA_FUERA_VIGENCIA');
+    assertNominaFechaDentroDeVigencia(fecha, periodo, v);
     if (presente) {
       await assertNominaAsistenciaSinNovedadActiva(client, vinculacionId, { fecha_inicio: fecha, fecha_fin: fecha });
     }
@@ -9467,14 +9788,13 @@ export const markNominaAsistenciaRango = async (periodoId: string, vinculacionId
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'marking payroll attendance range');
     const empleado = await loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow(client, periodoId, vinculacionId);
+    await assertNominaEmpleadoCoberturaScope(empleado.nomina_empleado_id, tenant, client);
     assertNominaEmpleadoEditable(empleado, 'modificar la asistencia');
     const vinc = await client.query<{ fecha_inicio: string; fecha_fin: string | null }>('SELECT fecha_inicio::text, fecha_fin::text FROM vinculaciones WHERE id=$1::bigint', [vinculacionId]);
     if (!vinc.rows[0]) throw new AppError('Vinculacion no encontrada', 404, 'NOMINA_ASISTENCIA_VINCULACION_INVALIDA');
     const v = vinc.rows[0];
-    const dateOnly = (value: unknown) => value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
-    const pStart = dateOnly(periodo.fecha_inicio);
-    const pEnd = dateOnly(periodo.fecha_fin);
-    if (fechaInicio < pStart || fechaFin > pEnd || fechaInicio < v.fecha_inicio || (v.fecha_fin && fechaFin > v.fecha_fin)) throw new AppError('El rango esta fuera de la vigencia laboral o del periodo', 409, 'NOMINA_ASISTENCIA_FUERA_VIGENCIA');
+    assertNominaRangoDentroDePeriodo(fechaInicio, fechaFin, periodo, 'NOMINA_ASISTENCIA_FUERA_VIGENCIA');
+    assertNominaRangoDentroDeVinculacion(fechaInicio, fechaFin, v, 'NOMINA_ASISTENCIA_FUERA_VIGENCIA');
     await assertNominaAsistenciaSinNovedadActiva(client, vinculacionId, { fecha_inicio: fechaInicio, fecha_fin: fechaFin });
     const marcados: string[] = [];
     for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
@@ -9520,6 +9840,72 @@ export const createNominaNovedadConTurno = async (
   try {
     await client.query('BEGIN');
     const novedad = await createNominaNovedad(input, actorUserId, tenant, auditMeta, client);
+    const titularResult = await client.query<{
+      persona_id: string;
+      vinculacion_id: string;
+      categoria_id: string | null;
+      categoria_codigo: string | null;
+      categoria_nombre: string | null;
+    }>(
+      `
+        SELECT
+          v.persona_id::text AS persona_id,
+          v.id::text AS vinculacion_id,
+          ne.categoria_salarial_id::text AS categoria_id,
+          ncs.codigo_categoria,
+          ncs.nombre_categoria
+        FROM nomina_empleados ne
+        INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
+        LEFT JOIN nomina_categorias_salariales ncs ON ncs.id = ne.categoria_salarial_id
+        WHERE ne.id = $1::bigint AND ne.periodo_id = $2::bigint
+        LIMIT 1
+      `,
+      [input.nomina_empleado_id, input.periodo_id]
+    );
+    const titular = titularResult.rows[0];
+    if (!titular) {
+      throw new AppError('La novedad no pertenece al periodo indicado', 409, 'NOMINA_TURNO_TITULAR_INVALIDO');
+    }
+
+    const turnoContextoRaw =
+      turno.contexto_operativo && typeof turno.contexto_operativo === 'object'
+        ? (turno.contexto_operativo as Record<string, unknown>)
+        : {};
+    const persistedTurnoContexto: Record<string, unknown> = {
+      ...turnoContextoRaw
+    };
+    let turnoEmpleadoId = input.nomina_empleado_id;
+    let turnoVinculacionId = input.vinculacion_id;
+    let personaReemplazadaId = turno.persona_reemplazada_id;
+
+    if (turno.tipo === 'INTERNO') {
+      const coveredEmployeeId = typeof turno.contexto_operativo?.cobertura_interna_nomina_empleado_id === 'string'
+        ? turno.contexto_operativo.cobertura_interna_nomina_empleado_id.trim()
+        : '';
+      if (!coveredEmployeeId) {
+        throw new AppError('El turno interno requiere el trabajador que cubre', 400, 'NOMINA_TURNO_INTERNO_TRABAJADOR_REQUERIDO');
+      }
+      const coveredEmployee = await loadNominaEmpleadoByIdOrThrow(coveredEmployeeId, tenant, client);
+      if (coveredEmployee.periodo_id !== input.periodo_id) {
+        throw new AppError('El trabajador que cubre no pertenece al periodo', 409, 'NOMINA_TURNO_INTERNO_PERIODO_INVALIDO');
+      }
+      if (coveredEmployee.id === input.nomina_empleado_id) {
+        throw new AppError('El trabajador que cubre debe ser distinto al titular', 409, 'NOMINA_TURNO_INTERNO_REEMPLAZO_INVALIDO');
+      }
+      turnoEmpleadoId = coveredEmployee.id;
+      turnoVinculacionId = coveredEmployee.vinculacion_id;
+      personaReemplazadaId = titular.persona_id;
+      if (
+        !persistedTurnoContexto.categoria_id &&
+        !persistedTurnoContexto.categoria &&
+        !persistedTurnoContexto.codigo_categoria
+      ) {
+        persistedTurnoContexto.categoria_id = titular.categoria_id ?? null;
+        persistedTurnoContexto.categoria = titular.categoria_codigo ?? titular.categoria_nombre ?? null;
+        persistedTurnoContexto.codigo_categoria = titular.categoria_codigo ?? null;
+        persistedTurnoContexto.nombre_categoria = titular.categoria_nombre ?? null;
+      }
+    }
     let externoId: string | null = null;
     if (turno.tipo === 'EXTERNO') {
       const externalName = typeof turno.contexto_operativo?.persona_externa_nombre === 'string'
@@ -9553,13 +9939,101 @@ export const createNominaNovedadConTurno = async (
         externo_id, persona_reemplazada_id, contexto_operativo, observacion, created_by, updated_by)
        VALUES ($1::bigint,$2::bigint,$3::bigint,$4::bigint,$5,$6::bigint,$7::bigint,$8::jsonb,$9,$10::bigint,$10::bigint)
        RETURNING id::text AS id`,
-      [input.periodo_id, novedad.id, input.nomina_empleado_id, input.vinculacion_id,
-        turno.tipo, externoId, turno.persona_reemplazada_id,
-        JSON.stringify(turno.contexto_operativo ?? {}), turno.observacion, actorUserId]
+       [input.periodo_id, novedad.id, turnoEmpleadoId, turnoVinculacionId,
+        turno.tipo, externoId, personaReemplazadaId,
+        JSON.stringify(persistedTurnoContexto), turno.observacion, actorUserId]
     );
     const turnoRow = row.rows[0]; if (!turnoRow) throw new AppError('No fue posible crear relaciÃ³n de turno',500,'NOMINA_TURNO_CREATE_FAILED');
+    const fechaTurno = input.fecha_inicio ?? input.fecha_fin ?? null;
+    if (turno.tipo === 'INTERNO' && fechaTurno) {
+      const duplicateMovement = await client.query<{ id: string }>(
+        `
+          SELECT id::text
+          FROM nomina_movimientos
+          WHERE periodo_id = $1::bigint
+            AND nomina_empleado_id = $2::bigint
+            AND vinculacion_reemplazada_id = $3::bigint
+            AND fecha = $4::date
+            AND tipo_movimiento = $5
+            AND COALESCE(activo, TRUE) = TRUE
+          LIMIT 1
+        `,
+        [input.periodo_id, turnoEmpleadoId, input.vinculacion_id, fechaTurno, 'TURNO_INTERNO']
+      );
+      const movementId = duplicateMovement.rows[0]?.id ?? (
+        await client.query<{ id: string }>(
+          `
+            INSERT INTO nomina_movimientos (
+              periodo_id, nomina_empleado_id, vinculacion_id, fecha, tipo_movimiento,
+              familia_movimiento, estado, descripcion, valor_total, valor_calculado,
+              persona_reemplazada_id, vinculacion_reemplazada_id, es_devengado,
+              es_deduccion, afecta_seguridad_social, activo, updated_by
+            )
+            VALUES ($1::bigint, $2::bigint, $3::bigint, $4::date, 'TURNO_INTERNO',
+              'ADICION_DEVENGO', 'APROBADO', $5, 0, 0, $6::bigint, $7::bigint,
+              TRUE, FALSE, TRUE, TRUE, $8::bigint)
+            RETURNING id::text AS id
+          `,
+          [
+            input.periodo_id,
+            turnoEmpleadoId,
+            turnoVinculacionId,
+            fechaTurno,
+            turno.observacion ?? 'Turno interno de cobertura',
+            personaReemplazadaId,
+            input.vinculacion_id,
+            actorUserId
+          ]
+        )
+      ).rows[0]?.id ?? null;
+      if (movementId) {
+        await client.query(
+          `UPDATE nomina_novedad_turnos SET movimiento_id = $2::bigint WHERE id = $1::bigint`,
+          [turnoRow.id, movementId]
+        );
+      }
+    }
+    if (turno.tipo === 'EXTERNO' && externoId && fechaTurno) {
+      const duplicateExternal = await client.query<{ id: string }>(
+        `
+          SELECT id::text
+          FROM nomina_movimientos
+          WHERE periodo_id = $1::bigint
+            AND externo_id = $2::bigint
+            AND fecha = $3::date
+            AND tipo_movimiento = 'TURNO_EXTERNO'
+            AND COALESCE(activo, TRUE) = TRUE
+          LIMIT 1
+        `,
+        [input.periodo_id, externoId, fechaTurno]
+      );
+      const movementId = duplicateExternal.rows[0]?.id ?? (
+        await client.query<{ id: string }>(
+          `
+            INSERT INTO nomina_movimientos (
+              periodo_id, nomina_empleado_id, vinculacion_id, fecha, tipo_movimiento,
+              familia_movimiento, estado, descripcion, valor_total, valor_calculado,
+              externo_id, es_devengado, es_deduccion, afecta_seguridad_social,
+              activo, updated_by
+            )
+            VALUES ($1::bigint, $2::bigint, $3::bigint, $4::date, 'TURNO_EXTERNO',
+              'ADICION_DEVENGO', 'PENDIENTE', $5, 0, 0, $6::bigint,
+              TRUE, FALSE, TRUE, TRUE, $7::bigint)
+            RETURNING id::text AS id
+          `,
+          [input.periodo_id, turnoEmpleadoId, turnoVinculacionId, fechaTurno, turno.observacion ?? 'Turno externo de cobertura', externoId, actorUserId]
+        )
+      ).rows[0]?.id ?? null;
+      if (movementId) {
+        await client.query(
+          `UPDATE nomina_novedad_turnos SET movimiento_id = $2::bigint WHERE id = $1::bigint`,
+          [turnoRow.id, movementId]
+        );
+      }
+    }
     await registerAuditEntry({ client, usuario_id: actorUserId, accion: 'NOMINA_NOVEDAD_TURNO_CREATE', tabla: 'nomina_novedad_turnos', registro_id: turnoRow.id, descripcion: 'Relacion de novedad con turno operativo', before: null, after: { novedad_id: novedad.id, tipo: turno.tipo }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
     await client.query('COMMIT');
+    await recalculateNominaPeriodo(input.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
     return { novedad, turno_id: turnoRow.id, turno };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -9773,6 +10247,7 @@ export const updateNominaNovedad = async (
       });
 
       await client.query('COMMIT');
+      await recalculateNominaPeriodo(periodoId, { force: true }, actorUserId, tenant, auditMeta);
       if (updated) {
         return updated;
       }
@@ -9800,6 +10275,20 @@ export const updateNominaNovedad = async (
         requiere_cobertura: false,
         cubierta: false,
         cobertura: null,
+        documentos: {
+          SOPORTE: {
+            cargado: Boolean(updatedCanonical.documento_persona_id),
+            documento_persona_id: updatedCanonical.documento_persona_id,
+            requerido: toBooleanValue(tipoNovedad.requiere_soporte),
+            tipo: 'SOPORTE',
+          },
+          SOLICITUD_PERMISO: {
+            cargado: false,
+            documento_persona_id: null,
+            requerido: toBooleanValue(tipoNovedad.requiere_solicitud_permiso),
+            tipo: 'SOLICITUD_PERMISO',
+          },
+        },
         registro_tipo: 'CANONICA_PROYECTADA',
         evento_canonico_id: updatedCanonical.id,
         tipo_novedad: {
@@ -9822,13 +10311,14 @@ export const updateNominaNovedad = async (
     const periodo = await loadRealPeriodoOrThrow(current.periodo_id, tenant, client);
     const empleado = await loadNominaEmpleadoByIdOrThrow(current.nomina_empleado_id, tenant, client);
     const empleadoMapped = mapRealEmpleado(empleado);
+    await assertNominaEmpleadoCoberturaScope(current.nomina_empleado_id, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'updating payroll novelties');
     assertNominaEmpleadoEditable(empleado, 'editar novedades de nomina');
     await invalidateNominaEmpleadoRevisionState(client, current.nomina_empleado_id);
 
     const tipoNovedad = await resolveNominaTipoNovedadOrThrow(
       {
-        tipo_novedad_id: input.tipo_novedad_id ?? current.tipo_novedad.id,
+        tipo_novedad_id: input.tipo_novedad_id ?? current.tipo_novedad_id,
         tipo_novedad_codigo: input.tipo_novedad_codigo,
         tipo_novedad_nombre: input.tipo_novedad_nombre
       },
@@ -9909,6 +10399,7 @@ export const updateNominaNovedad = async (
       cubierta:
         input.cubierta !== undefined ? input.cubierta : toBooleanValue(current.cubierta)
     });
+    await assertNominaLinkedCoverageScope(client, current.periodo_id, coverageInput, tenant);
 
     await client.query(
       `
@@ -9978,6 +10469,7 @@ export const updateNominaNovedad = async (
     });
 
     await client.query('COMMIT');
+    await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
     return updated;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -10081,6 +10573,7 @@ export const deactivateNominaNovedad = async (
       });
 
       await client.query('COMMIT');
+      await recalculateNominaPeriodo(periodoId, { force: true }, actorUserId, tenant, auditMeta);
 
       if (after) {
         return after;
@@ -10108,6 +10601,20 @@ export const deactivateNominaNovedad = async (
         requiere_cobertura: false,
         cubierta: false,
         cobertura: null,
+        documentos: {
+          SOPORTE: {
+            cargado: Boolean(current.documento_persona_id),
+            documento_persona_id: current.documento_persona_id,
+            requerido: toBooleanValue(tipo.requiere_soporte),
+            tipo: 'SOPORTE',
+          },
+          SOLICITUD_PERMISO: {
+            cargado: false,
+            documento_persona_id: null,
+            requerido: toBooleanValue(tipo.requiere_solicitud_permiso),
+            tipo: 'SOLICITUD_PERMISO',
+          },
+        },
         registro_tipo: 'CANONICA_PROYECTADA',
         evento_canonico_id: current.id,
         tipo_novedad: {
@@ -10153,6 +10660,25 @@ export const deactivateNominaNovedad = async (
       [parsedId.entidad_id, actorUserId]
     );
 
+    await client.query(
+      `
+        UPDATE nomina_movimientos
+        SET
+          activo = FALSE,
+          motivo_estado = COALESCE(motivo_estado, 'NOVEDAD_ANULADA'),
+          updated_by = $2::bigint,
+          updated_at = NOW()
+        WHERE id IN (
+          SELECT movimiento_id
+          FROM nomina_novedad_turnos
+          WHERE nomina_novedad_id = $1::bigint
+            AND movimiento_id IS NOT NULL
+        )
+          AND COALESCE(activo, TRUE) = TRUE
+      `,
+      [parsedId.entidad_id, actorUserId]
+    );
+
     const updated = mapRealNovedad(
       await loadNominaNovedadByIdOrThrow(parsedId.entidad_id, tenant, client)
     );
@@ -10171,6 +10697,7 @@ export const deactivateNominaNovedad = async (
     });
 
     await client.query('COMMIT');
+    await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
     return updated;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -11750,12 +12277,4 @@ export const exportNominaPeriodo = async (
     file_name: `nomina-${normalizedTipo}-periodo-${periodoId}.csv`
   };
 };
-
-
-
-
-
-
-
-
 

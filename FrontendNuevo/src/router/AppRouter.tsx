@@ -36,19 +36,19 @@ export default function AppRouter() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="personal" element={<ModuleRoute code="PERSONAL" requiredPermissions={["vinculaciones.read"]}><OperationalPersonalPage /></ModuleRoute>} />
             <Route path="nomina" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaHubPage /></ModuleRoute>} />
-            <Route path="nomina/cobertura" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]}><PlanillaOperativaPage /></ModuleRoute>} />
+            <Route path="nomina/cobertura" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.operativa.read", "nomina.read"]}><PlanillaOperativaPage /></ModuleRoute>} />
             <Route path="nomina/asistencia" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
-            <Route path="nomina/ops" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.cuentas_cobro_ops.read"]}><PersonalOpsPage /></ModuleRoute>} />
-            <Route path="nomina/novedades" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]}><NominaPage /></ModuleRoute>} />
-            <Route path="nomina/validacion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]}><PersonalOpsPage /></ModuleRoute>} />
+            <Route path="nomina/ops" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.cuentas_cobro_ops.read"]} denyRoles={["GESTOR"]}><PersonalOpsPage /></ModuleRoute>} />
+            <Route path="nomina/novedades" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.operativa.read", "nomina.read"]}><NominaPage /></ModuleRoute>} />
+            <Route path="nomina/validacion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><PersonalOpsPage /></ModuleRoute>} />
             <Route path="nomina/pago" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
             <Route path="nomina/documentos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
             <Route path="nomina/liquidacion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><LiquidacionPage /></ModuleRoute>} />
             <Route path="nomina/turnos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.operativa.read"]}><TurnosPage /></ModuleRoute>} />
-            <Route path="nomina/personal-ops" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.cuentas_cobro_ops.read"]}><PersonalOpsPage /></ModuleRoute>} />
+            <Route path="nomina/personal-ops" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.cuentas_cobro_ops.read"]} denyRoles={["GESTOR"]}><PersonalOpsPage /></ModuleRoute>} />
             <Route path="nomina/correccion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.correcciones.read"]} denyRoles={["GESTOR"]}><CorreccionNominaPage /></ModuleRoute>} />
             <Route path="nomina/cambios-operativos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.movimientos.read"]} denyRoles={["GESTOR"]}><CambiosOperativosPage /></ModuleRoute>} />
-            <Route path="nomina/planilla-operativa" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]}><PlanillaOperativaPage /></ModuleRoute>} />
+            <Route path="nomina/planilla-operativa" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.operativa.read", "nomina.read"]}><PlanillaOperativaPage /></ModuleRoute>} />
             <Route path="nomina/gestion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
             <Route path="herramientas/calculadora-salario" element={<CalculadoraSalarioPage />} />
             <Route path="herramientas/calculadora-cobertura" element={<CalculadoraCoberturaPage />} />

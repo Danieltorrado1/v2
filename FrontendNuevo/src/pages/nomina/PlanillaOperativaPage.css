@@ -716,3 +716,37 @@
     grid-template-columns: 1fr;
   }
 }
+
+.op-cell.has-active-novelty {
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+}
+
+.op-cell.has-active-novelty .op-novelty-mark {
+  background: #fef3c7;
+  border: 1px solid #d97706;
+  color: #92400e;
+  font-weight: 800;
+  min-width: 18px;
+  text-align: center;
+}
+
+.op-cell.has-active-novelty::after {
+  background: #b45309;
+  border-radius: 3px;
+  color: #fff;
+  content: attr(data-active-novelty);
+  font-size: 8px;
+  font-weight: 800;
+  left: 1px;
+  line-height: 12px;
+  max-width: calc(100% - 2px);
+  overflow: hidden;
+  padding: 0 1px;
+  position: absolute;
+  right: 1px;
+  text-align: center;
+  text-overflow: ellipsis;
+  top: 1px;
+  white-space: nowrap;
+  z-index: 2;
+}

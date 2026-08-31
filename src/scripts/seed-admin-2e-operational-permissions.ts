@@ -22,6 +22,7 @@ const PERMISSIONS = [
 ] as const;
 const ECONOMIC_PERMISSION = ['nomina.economico', 'read', 'Consultar información económica de nómina'] as const;
 const GESTOR_FORBIDDEN_PERMISSIONS = [
+  'nomina.read',
   'nomina.economico.read',
   'nomina.periodos.close',
   'nomina.periodos.reopen'

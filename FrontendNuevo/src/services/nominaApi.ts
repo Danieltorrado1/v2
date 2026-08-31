@@ -1,6 +1,6 @@
 ﻿import { apiClient } from './apiClient';
 import type { ApiQueryParams, ApiResponse } from '../types/api.types';
-import { NOMINA_TURNO_MOVIMIENTO_TIPO } from '../types/nomina.types';
+import { NOMINA_TURNO_MOVIMIENTO_TIPO, NOMINA_TURNO_OPERATIVO_TIPOS } from '../types/nomina.types';
 import type {
   CreateNominaMovimientoApi,
   CreateNominaCorreccionPayload,
@@ -17,6 +17,8 @@ import type {
   NominaDesprendiblesQuery,
   NominaLiquidacionFilters,
   NominaMovimientoApi,
+  NominaNovedadTurnoOperativoApi,
+  NominaNovedadDocumentosApi,
   NominaMovimientosQuery,
   NominaNovedadApi,
   NominaNovedadesQuery,
@@ -226,16 +228,27 @@ async function fetchNominaFile(
 function mapNominaTurno(item: NominaMovimientoApi): NominaTurno {
   return {
     ...item,
-    tipo_movimiento: NOMINA_TURNO_MOVIMIENTO_TIPO,
+    tipo_movimiento: item.tipo_movimiento as NominaTurno["tipo_movimiento"],
   };
 }
 
 function mapPaginatedNominaTurnos(
   data: PaginatedNominaMovimientosApi,
 ): PaginatedNominaTurnosApi {
+  const items = data.items.filter((item) =>
+    (NOMINA_TURNO_OPERATIVO_TIPOS as readonly string[]).includes(item.tipo_movimiento),
+  );
+
   return {
     ...data,
-    items: data.items.map(mapNominaTurno),
+    items: items.map(mapNominaTurno),
+    pagination: {
+      ...data.pagination,
+      total: items.length,
+      total_pages: items.length === 0 ? 0 : 1,
+      page: 1,
+      limit: items.length,
+    },
   };
 }
 
@@ -711,6 +724,16 @@ export async function getNominaMovimientosOperativos(
   return response.data;
 }
 
+export async function getNominaNovedadTurnosOperativos(
+  filters: NominaMovimientosQuery & { tipo_turno?: "INTERNO" | "EXTERNO" } = {},
+): Promise<{ items: NominaNovedadTurnoOperativoApi[]; pagination: { page: number; limit: number; total: number; total_pages: number } }> {
+  const response = await apiClient.get<ApiResponse<{ items: NominaNovedadTurnoOperativoApi[]; pagination: { page: number; limit: number; total: number; total_pages: number } }>>(
+    '/nomina/novedad-turnos-operativos',
+    { params: toParams(filters) },
+  );
+  return response.data;
+}
+
 export async function getAllNominaMovimientos(
   filters: Omit<NominaMovimientosQuery, 'page' | 'limit'> = {},
 ): Promise<PaginatedNominaMovimientosApi> {
@@ -779,19 +802,13 @@ export async function getNominaTurnos(
 export async function getAllNominaTurnosOperativos(
   filters: Omit<NominaTurnoFilters, 'page' | 'limit'> = {},
 ): Promise<PaginatedNominaTurnosApi> {
-  return mapPaginatedNominaTurnos(await getAllNominaMovimientosOperativos({
-    ...filters,
-    tipo_movimiento: NOMINA_TURNO_MOVIMIENTO_TIPO,
-  }));
+  return mapPaginatedNominaTurnos(await getAllNominaMovimientosOperativos(filters));
 }
 
 export async function getAllNominaTurnos(
   filters: Omit<NominaTurnoFilters, 'page' | 'limit'> = {},
 ): Promise<PaginatedNominaTurnosApi> {
-  return mapPaginatedNominaTurnos(await getAllNominaMovimientos({
-    ...filters,
-    tipo_movimiento: NOMINA_TURNO_MOVIMIENTO_TIPO,
-  }));
+  return mapPaginatedNominaTurnos(await getAllNominaMovimientos(filters));
 }
 
 export async function getCoberturaExternos(periodoId: string, empresaId?: string) {
@@ -852,6 +869,27 @@ export async function uploadNovedadSupport(novedadId: string, file: File) {
   const form = new FormData();
   form.append('file', file);
   const response = await apiClient.post<ApiResponse<{ url: string } | null>>(`/nomina/novedades/${novedadId}/soporte`, form);
+  return response.data;
+}
+
+export async function getNovedadDocumentos(novedadId: string) {
+  const response = await apiClient.get<ApiResponse<NominaNovedadDocumentosApi>>(
+    `/nomina/novedades/${novedadId}/documentos`,
+  );
+  return response.data;
+}
+
+export async function uploadNovedadDocumento(
+  novedadId: string,
+  tipo: 'SOPORTE' | 'SOLICITUD_PERMISO',
+  file: File,
+) {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await apiClient.post<ApiResponse<NominaNovedadDocumentosApi>>(
+    `/nomina/novedades/${novedadId}/documentos/${tipo}`,
+    form,
+  );
   return response.data;
 }
 

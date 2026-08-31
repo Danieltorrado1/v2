@@ -14,6 +14,7 @@ import {
   listNominaAsistenciaQuerySchema,
   listNominaEmpleadosQuerySchema,
   listNominaLiquidacionesQuerySchema,
+  listNominaMovimientosOperativosQuerySchema,
   listNominaMovimientosQuerySchema,
   listNominaNovedadesQuerySchema,
   listNominaTiposNovedadQuerySchema,
@@ -61,6 +62,7 @@ import {
   getNominaLiquidacionByPeriodoAndVinculacion,
   getNominaMovimientos,
   getNominaMovimientosOperativos,
+  listNominaNovedadTurnosOperativos,
   getNominaPeriodoById,
   getNominaTipoNovedadById,
   importNominaEmpleados,
@@ -365,9 +367,18 @@ export const getNominaMovimientosHandler = asyncHandler(async (req: Request, res
 });
 
 export const getNominaMovimientosOperativosHandler = asyncHandler(async (req: Request, res: Response) => {
-  const query = listNominaMovimientosQuerySchema.parse(req.query);
+  const query = listNominaMovimientosOperativosQuerySchema.parse(req.query);
   const result = await getNominaMovimientosOperativos(query, req.tenant);
   return successResponse(res, { message: 'Operational payroll movements retrieved successfully', data: result });
+});
+
+export const getNominaNovedadTurnosOperativosHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = listNominaMovimientosOperativosQuerySchema.parse(req.query);
+  const tipoTurno = typeof req.query.tipo_turno === 'string' && ['INTERNO', 'EXTERNO'].includes(req.query.tipo_turno)
+    ? req.query.tipo_turno as 'INTERNO' | 'EXTERNO'
+    : undefined;
+  const result = await listNominaNovedadTurnosOperativos({ ...query, tipo_turno: tipoTurno }, req.tenant);
+  return successResponse(res, { message: 'Operational coverage turns retrieved successfully', data: result });
 });
 
 export const getNominaMovimientoHandler = asyncHandler(async (req: Request, res: Response) => {

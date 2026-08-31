@@ -65,11 +65,9 @@ export function buildTramos(
 
   for (const cambio of relevant) {
     if (cambio.fecha_inicio_efectiva > cursor) {
-      const day = new Date(`${cambio.fecha_inicio_efectiva}T00:00:00Z`);
-      day.setUTCDate(day.getUTCDate() - 1);
       result.push({
         inicio: cursor,
-        fin: day.toISOString().slice(0, 10),
+        fin: addDaysToDateOnly(cambio.fecha_inicio_efectiva, -1),
         contexto: context,
         cambioId: source,
       });
@@ -84,13 +82,23 @@ export function buildTramos(
   return result;
 }
 
-export const novedadesOnDate = (items: NominaNovedadApi[], date: string) =>
-  items.filter(
-    (item) =>
-      item.activo &&
-      (item.fecha_inicio_evento_canonico ?? item.fecha_inicio ?? date) <= date &&
-      (item.fecha_fin_evento_canonico ?? item.fecha_fin ?? item.fecha_inicio ?? date) >= date,
-  );
+export const normalizeDateOnly = (value: string | null | undefined) => {
+  const match = value?.match(/^\\d{4}-\\d{2}-\\d{2}/);
+  return match?.[0] ?? null;
+};
+
+export const novedadesOnDate = (items: NominaNovedadApi[], date: string) => {
+  const normalizedDate = normalizeDateOnly(date);
+  if (!normalizedDate) {
+    return [];
+  }
+
+  return items.filter((item) => {
+    const start = normalizeDateOnly(item.fecha_inicio_evento_canonico ?? item.fecha_inicio) ?? normalizedDate;
+    const end = normalizeDateOnly(item.fecha_fin_evento_canonico ?? item.fecha_fin ?? item.fecha_inicio) ?? normalizedDate;
+    return item.activo && start <= normalizedDate && end >= normalizedDate;
+  });
+};
 
 export const movimientosOnDate = (items: NominaMovimientoApi[], date: string) =>
   items.filter((item) => item.activo && item.fecha === date);
@@ -105,6 +113,17 @@ export const isOutsideEmployment = (employee: NominaEmpleadoApi, date: string) =
   (employee.vinculacion.fecha_inicio !== null && date < employee.vinculacion.fecha_inicio) ||
   (employee.vinculacion.fecha_fin !== null && date > employee.vinculacion.fecha_fin);
 
+export const getEmploymentStatusMessage = (employee: NominaEmpleadoApi, date: string) => {
+  if (employee.vinculacion.fecha_inicio !== null && date < employee.vinculacion.fecha_inicio) {
+    return `Vinculacion inicia el ${employee.vinculacion.fecha_inicio}`;
+  }
+
+  if (employee.vinculacion.fecha_fin !== null && date > employee.vinculacion.fecha_fin) {
+    return `Vinculacion finalizo el ${employee.vinculacion.fecha_fin}`;
+  }
+
+  return null;
+};
 export interface PlanillaAsistencia {
   vinculacion_id: string;
   fecha: string;

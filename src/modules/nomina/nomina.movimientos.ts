@@ -55,7 +55,7 @@ const roundMoney = (value: number): number => Number(value.toFixed(2));
 export const resolveNominaMovimientoFamilia = (
   tipoMovimiento: string
 ): NominaMovimientoFamilia => {
-  if (tipoMovimiento === 'TURNO_EXTERNO') {
+  if (tipoMovimiento === 'TURNO_EXTERNO' || tipoMovimiento === 'TURNO_INTERNO') {
     return 'ADICION_DEVENGO';
   }
 

@@ -13,6 +13,7 @@ const flowNav = readFileSync(resolve('FrontendNuevo/src/pages/nomina/CoberturaFl
 const moduleRoute = readFileSync(resolve('FrontendNuevo/src/router/ModuleRoute.tsx'), 'utf8');
 const turnosPage = readFileSync(resolve('FrontendNuevo/src/pages/nomina/TurnosPage.tsx'), 'utf8');
 const nominaPage = readFileSync(resolve('FrontendNuevo/src/pages/nomina/NominaPage.tsx'), 'utf8');
+const supportService = readFileSync(resolve('src/modules/nomina/cobertura.novedad-documentos.ts'), 'utf8');
 
 const category = {
   auxilio_transporte: 0,
@@ -47,7 +48,7 @@ test('5B.1 separa documentos externos y cuenta de cobro de OPS', () => {
   assert.doesNotMatch(externalService, /nomina_cuentas_cobro_ops/);
 });
 
-test('5B.1 cuenta de cobro solo consolida movimientos activos del período y contrato', () => {
+test('5B.1 cuenta de cobro solo consolida movimientos activos del periodo y contrato', () => {
   assert.match(externalService, /nm\.periodo_id=\$2/);
   assert.match(externalService, /np\.contrato_id=\$3/);
   assert.match(externalService, /np\.contrato_empresa_id=\$4/);
@@ -56,14 +57,14 @@ test('5B.1 cuenta de cobro solo consolida movimientos activos del período y con
   assert.match(externalService, /COBERTURA_CUENTA_REGENERACION_REQUIERE_VERSION/);
 });
 
-test('5B.1 soporte de novedad tiene relación inequívoca y no bloquea captura sin documento', () => {
+test('5B.1 soporte de novedad tiene relacion inequivoca y no bloquea captura sin documento', () => {
   assert.match(migration, /CREATE TABLE IF NOT EXISTS (?:public\.)?nomina_novedad_documentos/);
   assert.match(migration, /ux_nomina_novedad_documento_activo/);
   assert.match(nominaService, /INSERT INTO nomina_novedad_documentos/);
   assert.match(nominaService, /if \(input\.documento_persona_id\)/);
 });
 
-test('5B.1 turno interno conserva fórmula única y no descuenta pensión si no aplica', () => {
+test('5B.1 turno interno conserva formula unica y no descuenta pension si no aplica', () => {
   const result = calculateCoberturaPayroll({
     aporta_pension: false,
     dias_efectos: [],
@@ -93,6 +94,7 @@ test('5B.1 endpoints de cobertura externa permanecen protegidos por permisos de 
 
 test('5C.1 distingue captura de control: GESTOR no cierra ni reabre', () => {
   assert.match(gestorSeed, /GESTOR_FORBIDDEN_PERMISSIONS/);
+  assert.match(gestorSeed, /nomina\.read/);
   assert.match(gestorSeed, /nomina\.periodos\.close/);
   assert.match(gestorSeed, /nomina\.periodos\.reopen/);
   assert.match(flowNav, /gestorOperationalOnly/);
@@ -101,11 +103,12 @@ test('5C.1 distingue captura de control: GESTOR no cierra ni reabre', () => {
   assert.match(routes, /requireRoles\('TALENTO_HUMANO', 'ADMINISTRADOR'\).*nomina\.periodos\.reopen/);
   assert.match(turnosPage, /TurnoView/);
   assert.match(turnosPage, /Turnos internos/);
-  assert.match(turnosPage, /detalle_calculo/);
+  assert.match(turnosPage, /TURNO_INTERNO \/ TURNO_EXTERNO/);
+  assert.match(turnosPage, /Trabajador reemplazado/);
   assert.match(nominaPage, /gestorOperationalOnly/);
 });
 
-test('5C.1 separa DTO operativo y lectura económica en backend', () => {
+test('5C.1 separa DTO operativo y lectura economica en backend', () => {
   assert.match(routes, /empleados-operativos/);
   assert.match(routes, /nomina\.operativa\.read/);
   assert.match(routes, /rejectRoles\('GESTOR'\)/);
@@ -115,24 +118,29 @@ test('5C.1 separa DTO operativo y lectura económica en backend', () => {
   assert.match(nominaService, /salario_base: _salarioBase/);
 });
 
-test('5C.1 conserva trazabilidad canónica de turno interno', () => {
+test('5C.1 conserva trazabilidad canonica de turno interno', () => {
   assert.match(nominaService, /nnt\.nomina_novedad_id::text AS nomina_novedad_id/);
   assert.match(nominaService, /titular_ne\.id = nn\.nomina_empleado_id/);
   assert.match(nominaService, /titular_p\.numero_documento AS titular_documento/);
   assert.match(nominaService, /novedad_id: turnoRow\.nomina_novedad_id/);
-  assert.match(turnosPage, /titularNombre/);
-  assert.match(turnosPage, /novedadTipo/);
+  assert.match(turnosPage, /trabajador_reemplazado/);
+  assert.match(turnosPage, /novedad_tipo_codigo/);
+  assert.match(turnosPage, /origen_cobertura/);
 });
 
 test('5C.1 mantiene soporte y descargas documentales seguras', () => {
-  assert.match(routes, /novedades\/:id\/soporte.*requirePermissions\('nomina\.read'\)/);
+  assert.match(routes, /novedades\/:id\/soporte.*requireAnyPermissions\('nomina\.operativa\.read', 'nomina\.read'\)/);
   assert.match(routes, /novedades\/:id\/soporte.*requirePermissions\('nomina\.novedades\.update'\)/);
   assert.match(routes, /externos\/documentos\/:id\/download.*requirePermissions\('nomina\.movimientos\.read'\)/);
   assert.match(routes, /cuentas-cobro\/:id\/firmada\/download.*requirePermissions\('nomina\.movimientos\.read'\)/);
   assert.match(nominaPage, /Subir soporte/);
   assert.match(nominaPage, /Ver soporte/);
   assert.match(nominaPage, /Reemplazar soporte/);
-  assert.match(turnosPage, /Ver cédula/);
-  assert.match(turnosPage, /Ver certificación/);
+  assert.match(turnosPage, /Ver c.dula/);
+  assert.match(turnosPage, /Ver certificaci.n/);
   assert.match(turnosPage, /Ver firmada/);
+});
+
+test('5C.1 soporte de novedades refuerza scope territorial en backend', () => {
+  assert.match(supportService, /assertNominaEmpleadoCoberturaScope/);
 });

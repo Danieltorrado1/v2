@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import type { ComponentType, RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -7,109 +7,30 @@ import {
   CheckCheck,
   FolderOpen,
   MapPin,
-  Settings,
   ShieldAlert,
   User,
   Users,
   X,
 } from "lucide-react";
+import { notificacionesApi } from "../../services/notificacionesApi";
+import type { NotificacionApiItem } from "../../types/notificaciones.types";
 import "./NotificationsPanel.css";
 
 type Severity = "danger" | "warning" | "info" | "success" | "neutral";
 
 type Alert = {
+  description: string;
+  icon: ComponentType<{ size?: number }>;
   id: string;
   module: string;
-  icon: ComponentType<{ size?: number }>;
-  title: string;
-  description: string;
-  severity: Severity;
-  route: string;
-  time: string;
   read: boolean;
+  route: string;
+  severity: Severity;
+  time: string;
+  title: string;
 };
 
-const INITIAL_ALERTS: Alert[] = [
-  {
-    id: "1",
-    module: "Personal",
-    icon: Users,
-    title: "Documento próximo a vencer",
-    description: "María López tiene examen médico próximo a vencer.",
-    severity: "warning",
-    route: "/personal",
-    time: "hace 10 min",
-    read: false,
-  },
-  {
-    id: "2",
-    module: "Nómina",
-    icon: Banknote,
-    title: "Novedades pendientes",
-    description: "Hay 14 novedades sin revisar para el período actual.",
-    severity: "warning",
-    route: "/nomina",
-    time: "hace 32 min",
-    read: false,
-  },
-  {
-    id: "3",
-    module: "SST",
-    icon: ShieldAlert,
-    title: "Hallazgo crítico abierto",
-    description: "Inspección SST con acción correctiva pendiente.",
-    severity: "danger",
-    route: "/sst/incidentes",
-    time: "hace 1 h",
-    read: false,
-  },
-  {
-    id: "4",
-    module: "Repositorio",
-    icon: FolderOpen,
-    title: "Documento vencido",
-    description: "Antecedentes judiciales vencidos en 3 colaboradores.",
-    severity: "danger",
-    route: "/repositorio",
-    time: "hace 2 h",
-    read: false,
-  },
-  {
-    id: "5",
-    module: "Cobertura",
-    icon: MapPin,
-    title: "Municipio con déficit",
-    description: "Granada presenta faltante de personal requerido.",
-    severity: "warning",
-    route: "/herramientas/cobertura",
-    time: "hace 3 h",
-    read: false,
-  },
-  {
-    id: "6",
-    module: "Portal",
-    icon: User,
-    title: "Solicitud pendiente",
-    description: "2 colaboradores solicitaron certificaciones laborales.",
-    severity: "info",
-    route: "/portal",
-    time: "hace 4 h",
-    read: false,
-  },
-  {
-    id: "7",
-    module: "Administración",
-    icon: Settings,
-    title: "Usuario pendiente de activación",
-    description: "Nuevo usuario creado sin rol asignado.",
-    severity: "info",
-    route: "/administracion",
-    time: "hace 5 h",
-    read: false,
-  },
-];
-
-export const INITIAL_UNREAD_COUNT = INITIAL_ALERTS.filter((a) => !a.read).length;
+export const INITIAL_UNREAD_COUNT = 0;
 
 type Filter = "todos" | "criticas" | "pendientes" | "informativas";
 
@@ -119,6 +40,67 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "pendientes", label: "Pendientes" },
   { id: "informativas", label: "Informativas" },
 ];
+
+const routeByType = (tipo: string): string => {
+  if (tipo.startsWith("DOCUMENTO_")) return "/repositorio";
+  if (tipo.startsWith("CONTRATO_") || tipo.startsWith("VINCULACION_")) return "/personal";
+  if (tipo.startsWith("COBERTURA") || tipo === "SOBRECOBERTURA") return "/nomina/cobertura";
+  if (tipo.startsWith("NOMINA_")) return "/nomina/novedades";
+  if (tipo.startsWith("PLAN_SST_")) return "/sst?tab=planes";
+  return "/dashboard";
+};
+
+const moduleByType = (tipo: string): string => {
+  if (tipo.startsWith("DOCUMENTO_")) return "Repositorio";
+  if (tipo.startsWith("CONTRATO_") || tipo.startsWith("VINCULACION_")) return "Personal";
+  if (tipo.startsWith("COBERTURA") || tipo === "SOBRECOBERTURA") return "Cobertura";
+  if (tipo.startsWith("NOMINA_")) return "Nómina";
+  if (tipo.startsWith("PLAN_SST_")) return "SST";
+  return "Sistema";
+};
+
+const iconByType = (tipo: string): ComponentType<{ size?: number }> => {
+  if (tipo.startsWith("DOCUMENTO_")) return FolderOpen;
+  if (tipo.startsWith("CONTRATO_") || tipo.startsWith("VINCULACION_")) return Users;
+  if (tipo.startsWith("COBERTURA") || tipo === "SOBRECOBERTURA") return MapPin;
+  if (tipo.startsWith("NOMINA_")) return Banknote;
+  if (tipo.startsWith("PLAN_SST_")) return ShieldAlert;
+  return User;
+};
+
+const severityByNotification = (item: NotificacionApiItem): Severity => {
+  if (item.prioridad === "CRITICA") return "danger";
+  if (item.prioridad === "ALTA" || item.prioridad === "MEDIA") return "warning";
+  if (item.prioridad === "BAJA") return "info";
+  return "neutral";
+};
+
+const relativeTime = (value: string): string => {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) {
+    return "reciente";
+  }
+
+  const diffMinutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000));
+  if (diffMinutes < 1) return "hace unos segundos";
+  if (diffMinutes < 60) return `hace ${diffMinutes} min`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `hace ${diffHours} h`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `hace ${diffDays} d`;
+};
+
+const toAlert = (item: NotificacionApiItem): Alert => ({
+  id: item.id,
+  module: moduleByType(item.tipo),
+  icon: iconByType(item.tipo),
+  title: item.titulo,
+  description: item.mensaje,
+  severity: severityByNotification(item),
+  route: item.url_accion ?? routeByType(item.tipo),
+  time: relativeTime(item.created_at),
+  read: item.leida,
+});
 
 function matchesFilter(alert: Alert, filter: Filter): boolean {
   if (filter === "todos") return true;
@@ -137,18 +119,48 @@ function sevLabel(sev: Severity): string {
 }
 
 type Props = {
-  onClose: () => void;
-  onAllRead: () => void;
   bellRef: RefObject<HTMLButtonElement | null>;
+  onClose: () => void;
+  onUnreadCountChange: (count: number) => void;
 };
 
-export function NotificationsPanel({ onClose, onAllRead, bellRef }: Props) {
+export function NotificationsPanel({ onClose, onUnreadCountChange, bellRef }: Props) {
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
-  const [alerts, setAlerts] = useState<Alert[]>(INITIAL_ALERTS);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [activeFilter, setActiveFilter] = useState<Filter>("todos");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Escape + click-outside
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadNotifications() {
+      try {
+        setLoading(true);
+        setError("");
+        const response = await notificacionesApi.listMine({ page: 1, limit: 50 });
+        if (!cancelled) {
+          setAlerts(response.items.map(toAlert));
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : "No fue posible cargar notificaciones.");
+          setAlerts([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadNotifications();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -169,24 +181,36 @@ export function NotificationsPanel({ onClose, onAllRead, bellRef }: Props) {
     };
   }, [onClose, bellRef]);
 
-  function handleAlertClick(alert: Alert) {
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === alert.id ? { ...a, read: true } : a)),
-    );
+  const unreadCount = alerts.filter((a) => !a.read).length;
+
+  useEffect(() => {
+    onUnreadCountChange(unreadCount);
+  }, [onUnreadCountChange, unreadCount]);
+
+  async function handleAlertClick(alert: Alert) {
+    setAlerts((prev) => prev.map((item) => (item.id === alert.id ? { ...item, read: true } : item)));
+    try {
+      if (!alert.read) {
+        await notificacionesApi.markRead(alert.id);
+      }
+    } catch {
+      // Mantener navegación aunque el backend rechace marcar lectura.
+    }
     onClose();
     navigate(alert.route);
   }
 
-  function markAllRead() {
-    setAlerts((prev) => prev.map((a) => ({ ...a, read: true })));
-    onAllRead();
+  async function markAllRead() {
+    setAlerts((prev) => prev.map((alert) => ({ ...alert, read: true })));
+    try {
+      await notificacionesApi.markAllRead();
+    } catch (markError) {
+      setError(markError instanceof Error ? markError.message : "No fue posible marcar las notificaciones.");
+    }
   }
-
-  const unreadCount = alerts.filter((a) => !a.read).length;
 
   const dangerUnread = alerts.filter((a) => !a.read && a.severity === "danger").length;
   const warningUnread = alerts.filter((a) => !a.read && a.severity === "warning").length;
-
   const filtered = alerts.filter((a) => matchesFilter(a, activeFilter));
 
   return (
@@ -196,7 +220,6 @@ export function NotificationsPanel({ onClose, onAllRead, bellRef }: Props) {
       role="dialog"
       aria-label="Panel de notificaciones"
     >
-      {/* Header */}
       <div className="notif-header">
         <div className="notif-header-left">
           <h3>Alertas</h3>
@@ -211,7 +234,7 @@ export function NotificationsPanel({ onClose, onAllRead, bellRef }: Props) {
             <button
               type="button"
               className="notif-mark-all-btn"
-              onClick={markAllRead}
+              onClick={() => void markAllRead()}
               title="Marcar todas como leídas"
             >
               <CheckCheck size={13} />
@@ -229,7 +252,6 @@ export function NotificationsPanel({ onClose, onAllRead, bellRef }: Props) {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="notif-filters">
         {FILTERS.map((f) => (
           <button
@@ -249,9 +271,20 @@ export function NotificationsPanel({ onClose, onAllRead, bellRef }: Props) {
         ))}
       </div>
 
-      {/* Alert list */}
       <div className="notif-list">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="notif-empty">
+            <Bell size={34} />
+            <strong>Cargando notificaciones</strong>
+            <span>Consultando el backend filtrado.</span>
+          </div>
+        ) : error ? (
+          <div className="notif-empty">
+            <Bell size={34} />
+            <strong>No fue posible cargar</strong>
+            <span>{error}</span>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="notif-empty">
             <Bell size={34} />
             <strong>Sin alertas pendientes</strong>
@@ -265,7 +298,7 @@ export function NotificationsPanel({ onClose, onAllRead, bellRef }: Props) {
                 key={alert.id}
                 type="button"
                 className={`notif-item sev-${alert.severity} ${alert.read ? "read" : ""}`}
-                onClick={() => handleAlertClick(alert)}
+                onClick={() => void handleAlertClick(alert)}
               >
                 <div className={`notif-item-icon sev-${alert.severity}`}>
                   <Icon size={15} />
@@ -291,10 +324,9 @@ export function NotificationsPanel({ onClose, onAllRead, bellRef }: Props) {
         )}
       </div>
 
-      {/* Footer */}
       <div className="notif-footer">
-        <button type="button" className="notif-footer-btn">
-          Ver centro de alertas
+        <button type="button" className="notif-footer-btn" onClick={() => navigate("/dashboard") }>
+          Ver dashboard
         </button>
       </div>
     </div>

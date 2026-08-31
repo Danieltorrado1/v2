@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Plus, Search, X } from "lucide-react";
 
@@ -15,8 +15,9 @@ import {
   createNominaNovedadConTurno,
   closeNominaEmpleadoOperativo,
   deactivateNominaNovedad,
-  getAllNominaMovimientos,
+  getAllNominaMovimientosOperativos,
   getAllNominaNovedades,
+  getNominaNovedadTurnosOperativos,
   getAllNominaPeriodoEmpleados,
   getAllNominaPeriodoEmpleadosOperativos,
   getNominaPeriodos,
@@ -35,6 +36,7 @@ import type {
   NominaEmpleadoApi,
   NominaMovimientoApi,
   NominaNovedadApi,
+  NominaNovedadTurnoOperativoApi,
   NominaPeriodoApi,
   NominaTipoNovedad,
   RevisionOperativaApi,
@@ -46,6 +48,7 @@ import {
   buildTramos,
   dateKey,
   employeeBaseContext,
+  getEmploymentStatusMessage,
   isOutsideEmployment,
   mergeAttendance,
   movimientosOnDate,
@@ -159,6 +162,14 @@ function group<T>(items: T[], key: (item: T) => string) {
     result.set(key(item), [...(result.get(key(item)) ?? []), item]);
   });
   return result;
+}
+
+function coverageTurnsOnDate(items: NominaNovedadTurnoOperativoApi[], date: string) {
+  return items.filter((item) => {
+    const start = item.fecha ?? item.fecha_inicio ?? item.fecha_fin;
+    const end = item.fecha_fin ?? item.fecha_inicio ?? item.fecha ?? start;
+    return Boolean(start && end && start <= date && end >= date);
+  });
 }
 
 function getEmployeeMunicipioLabel(employee: NominaEmpleadoApi) {
@@ -365,6 +376,7 @@ export default function PlanillaOperativaPage() {
   const [employees, setEmployees] = useState<NominaEmpleadoApi[]>([]);
   const [novelties, setNovelties] = useState<NominaNovedadApi[]>([]);
   const [movements, setMovements] = useState<NominaMovimientoApi[]>([]);
+  const [coverageTurns, setCoverageTurns] = useState<NominaNovedadTurnoOperativoApi[]>([]);
   const [changes, setChanges] = useState<PlanillaCambio[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [reviews, setReviews] = useState<RevisionOperativaApi[]>([]);
@@ -413,6 +425,7 @@ export default function PlanillaOperativaPage() {
   const canClose = user?.permissions.includes("nomina.periodos.close") === true;
   const canReopen = user?.permissions.includes("nomina.periodos.reopen") === true;
   const canSeeEconomic = user?.permissions.includes("nomina.economico.read") === true;
+  const selectedEmploymentMessage = selected ? getEmploymentStatusMessage(selected.employee, selected.date) : null;
   const actorUserId = user?.id ? String(user.id) : null;
 
   useEffect(() => {
@@ -507,7 +520,8 @@ export default function PlanillaOperativaPage() {
 
         const layers = await Promise.allSettled([
           getAllNominaNovedades({ periodo_id: periodId, activo: true }),
-          getAllNominaMovimientos({ periodo_id: periodId, activo: true }),
+          getAllNominaMovimientosOperativos({ periodo_id: periodId, activo: true }),
+          getNominaNovedadTurnosOperativos({ periodo_id: periodId, activo: true, limit: 500 }),
           apiClient.get<ApiResponse<PlanillaCambio[]>>("/nomina/cambios-operativos", {
             params: { activo: true, periodo_id: periodId },
           }),
@@ -519,10 +533,11 @@ export default function PlanillaOperativaPage() {
           return;
         }
 
-        const [noveltiesResult, movementsResult, changesResult, attendanceResult, reviewResult] = layers;
+        const [noveltiesResult, movementsResult, coverageTurnsResult, changesResult, attendanceResult, reviewResult] = layers;
 
         setNovelties(noveltiesResult.status === "fulfilled" ? noveltiesResult.value.items : []);
         setMovements(movementsResult.status === "fulfilled" ? movementsResult.value.items : []);
+        setCoverageTurns(coverageTurnsResult.status === "fulfilled" ? coverageTurnsResult.value.items : []);
         setChanges(
           changesResult.status === "fulfilled" && Array.isArray(changesResult.value.data)
             ? changesResult.value.data
@@ -534,7 +549,7 @@ export default function PlanillaOperativaPage() {
         const failed = layers
           .map((item, index) =>
             item.status === "rejected"
-              ? ["novedades", "movimientos", "cambios operativos", "asistencia", "revision operativa"][index]
+              ? ["novedades", "movimientos", "turnos de cobertura", "cambios operativos", "asistencia", "revision operativa"][index]
               : null,
           )
           .filter(Boolean);
@@ -614,6 +629,10 @@ export default function PlanillaOperativaPage() {
 
   const noveltyByEmployee = useMemo(() => group(novelties, (item) => String(item.nomina_empleado_id)), [novelties]);
   const movementByEmployee = useMemo(() => group(movements, (item) => String(item.nomina_empleado_id)), [movements]);
+  const coverageTurnByEmployee = useMemo(
+    () => group(coverageTurns, (item) => String(item.nomina_empleado_id)),
+    [coverageTurns],
+  );
   const changesByLink = useMemo(() => group(changes, (item) => String(item.vinculacion_id)), [changes]);
   const reviewByEmployee = useMemo(
     () => new Map(reviews.map((item) => [String(item.nomina_empleado_id), item])),
@@ -958,7 +977,11 @@ export default function PlanillaOperativaPage() {
       return;
     }
 
-    if (present.has(`${employee.vinculacion_id}|${date}`) || novedadesOnDate(noveltyByEmployee.get(employee.id) ?? [], date).length > 0) {
+    if (
+      present.has(`${employee.vinculacion_id}|${date}`) ||
+      novedadesOnDate(noveltyByEmployee.get(employee.id) ?? [], date).length > 0 ||
+      coverageTurnsOnDate(coverageTurnByEmployee.get(employee.id) ?? [], date).length > 0
+    ) {
       return;
     }
 
@@ -1021,6 +1044,9 @@ export default function PlanillaOperativaPage() {
           (item) => item.inicio <= noveltyCell.date && item.fin >= noveltyCell.date,
         )?.contexto ?? employeeBaseContext(noveltyCell.employee);
 
+      const hasCoverageSelection = coverageType !== "SIN_REEMPLAZO";
+      const shouldPersistCoverage = selectedType.afecta_cobertura !== false || hasCoverageSelection;
+
       const basePayload: CreateNominaNovedadApi = {
         periodo_id: periodId,
         nomina_empleado_id: noveltyCell.employee.id,
@@ -1038,10 +1064,10 @@ export default function PlanillaOperativaPage() {
           : false,
         documento_persona_id: normalizeLabel(documentoPersonaId),
         revisado: false,
-        requiere_cobertura: selectedType.afecta_cobertura !== false,
-        cubierta: coverageType !== "SIN_REEMPLAZO",
+        requiere_cobertura: shouldPersistCoverage,
+        cubierta: hasCoverageSelection,
         cobertura:
-          selectedType.afecta_cobertura === false
+          !shouldPersistCoverage
             ? null
             : coverageType === "PERSONAL_VINCULADO"
               ? {
@@ -1067,7 +1093,7 @@ export default function PlanillaOperativaPage() {
       if (present.has(`${noveltyCell.employee.vinculacion_id}|${noveltyCell.date}`) && !basePayload.reemplazar_asistencia_confirmado) return;
 
       const response =
-        coverageType === "SIN_REEMPLAZO" || selectedType.afecta_cobertura === false
+        !hasCoverageSelection
           ? {
               novedad: await createNominaNovedad(basePayload),
             }
@@ -1432,17 +1458,24 @@ export default function PlanillaOperativaPage() {
                     const tramo = tramos.find((item) => item.inicio <= day && item.fin >= day);
                     const dayContext = tramo?.contexto ?? baseContext;
                     const noveltiesOnThisDay = novedadesOnDate(employeeNovelties, day);
+                    const activeNoveltiesOnThisDay = noveltiesOnThisDay.filter((item) => item.activo);
                     const movementsOnThisDay = movimientosOnDate(employeeMovements, day);
+                    const additionalTurnsOnThisDay = coverageTurnsOnDate(
+                      coverageTurnByEmployee.get(employee.id) ?? [],
+                      day,
+                    );
                     const key = `${employee.vinculacion_id}|${day}`;
                     const isPresent = present.has(key);
                     const outside = isOutsideEmployment(employee, day);
+                    const outsideMessage = getEmploymentStatusMessage(employee, day);
 
                     return (
                       <button
                         type="button"
                         key={day}
-                        className={`op-cell ${calendarDay.className} ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""}`}
-                        title={noveltiesOnThisDay.length ? `${novedadCode(noveltiesOnThisDay[0])} · ${noveltiesOnThisDay[0]?.tipo_novedad?.nombre ?? "Novedad"} · ${dateLabel(day)} · ${noveltiesOnThisDay[0]?.fecha_inicio ?? day} a ${noveltiesOnThisDay[0]?.fecha_fin ?? day} · ${noveltiesOnThisDay[0]?.observacion ?? "Sin observacion"}` : `${dateLabel(day)} · ${buildContextTitle(employee, dayContext)}`}
+                        className={`op-cell ${calendarDay.className} ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""} ${activeNoveltiesOnThisDay.length ? "has-active-novelty" : ""}`}
+                        data-active-novelty={activeNoveltiesOnThisDay.length ? novedadCode(activeNoveltiesOnThisDay[0]) : undefined}
+                        title={`${outsideMessage ? `${outsideMessage} · ` : ""}${noveltiesOnThisDay.length ? `${novedadCode(noveltiesOnThisDay[0])} · ${noveltiesOnThisDay[0]?.tipo_novedad?.nombre ?? "Novedad"} · ${dateLabel(day)} · ${noveltiesOnThisDay[0]?.fecha_inicio ?? day} a ${noveltiesOnThisDay[0]?.fecha_fin ?? day} · ${noveltiesOnThisDay[0]?.observacion ?? "Sin observacion"}` : `${dateLabel(day)} · ${buildContextTitle(employee, dayContext)}`}`}
                         onContextMenu={(event) => {
                           event.preventDefault();
                           setSelected({ employee, date: day, context: dayContext });
@@ -1453,13 +1486,14 @@ export default function PlanillaOperativaPage() {
                           openNovelty({ employee, date: day, context: dayContext });
                         }}
                       >
-                        {isPresent ? <b>✓</b> : null}
+                        {activeNoveltiesOnThisDay.length === 0 && isPresent ? <b className="op-attendance-mark">✓</b> : null}
                         {noveltiesOnThisDay.slice(0, 2).map((item) => (
-                          <b key={item.id} data-state={novedadState(item)}>
+                          <b className="op-novelty-mark" key={item.id} data-state={novedadState(item)}>
                             {novedadCode(item)}
                           </b>
                         ))}
-                        {movementsOnThisDay.some((item) => item.familia_movimiento === "ADICION_DEVENGO") ? <em>TA</em> : null}
+                        {additionalTurnsOnThisDay.length > 0 ? <em>{`+${additionalTurnsOnThisDay.length}TA`}</em> : null}
+                        {additionalTurnsOnThisDay.length === 0 && movementsOnThisDay.some((item) => item.familia_movimiento === "ADICION_DEVENGO") ? <em>TA</em> : null}
                         {tramo?.cambioId ? <i>C</i> : null}
                       </button>
                     );
@@ -1499,6 +1533,28 @@ export default function PlanillaOperativaPage() {
             <span>Estado: {resolveOperativeState(selected.employee, reviewByEmployee.get(selected.employee.id) ?? null)}</span>
           </div>
 
+          {(() => {
+            const additionalTurns = coverageTurnsOnDate(
+              coverageTurnByEmployee.get(selected.employee.id) ?? [],
+              selected.date,
+            );
+
+            if (additionalTurns.length === 0) {
+              return null;
+            }
+
+            return (
+              <div className="op-context-detail">
+                <strong>{`+${additionalTurns.length} TURNO ADICIONAL`}</strong>
+                {additionalTurns.map((turno) => (
+                  <small key={turno.id}>
+                    {`${turno.fecha ?? turno.fecha_inicio ?? selected.date} · ${turno.trabajador_reemplazado} · ${turno.sede ?? "Sede no disponible"} · ${turno.municipio ?? "Municipio no disponible"} · ${turno.tipo_turno} · ${turno.estado}`}
+                  </small>
+                ))}
+              </div>
+            );
+          })()}
+
           {canSeeEconomic ? (() => {
             const detail = selected.employee.detalle_calculo as { adiciones_internas?: Array<Record<string, unknown>> } | null | undefined;
             const turns = detail?.adiciones_internas ?? [];
@@ -1518,22 +1574,24 @@ export default function PlanillaOperativaPage() {
             return <div className="op-context-detail"><strong>Novedad</strong><span>Codigo: {novedadCode(novelty)}</span><span>Nombre: {novelty.tipo_novedad?.nombre ?? "Novedad"}</span><span>Inicio: {novelty.fecha_inicio ?? selected.date}</span><span>Fin: {novelty.fecha_fin ?? selected.date}</span><span>Observacion: {novelty.observacion ?? "Sin observacion"}</span><span>Soporte: {novelty.documento_persona_id ?? "Sin soporte"}</span><span>Estado: {novelty.activo ? "ACTIVA" : "ANULADA"}</span>{canUpdate ? <><button type="button" onClick={() => { const observacion = window.prompt("Observacion de la novedad:", novelty.observacion ?? "")?.trim(); if (observacion === undefined) return; void updateNominaNovedad(novelty.id, { observacion: observacion || null }).then(updated => { setNovelties(items => items.map(item => item.id === updated.id ? updated : item)); invalidateReviewLocally(selected.employee, "NOVEDAD_EDITADA"); }).catch(value => setError(value instanceof Error ? value.message : "No fue posible editar la novedad")); }}>Editar novedad</button><button type="button" onClick={() => { if (window.confirm(`Anular ${novedadCode(novelty)}?`)) void deactivateNominaNovedad(novelty.id).then(() => { setNovelties(items => items.filter(item => item.id !== novelty.id)); invalidateReviewLocally(selected.employee, "NOVEDAD_ANULADA"); }).catch(value => setError(value instanceof Error ? value.message : "No fue posible anular la novedad")); }}>Anular novedad</button></> : null}</div>;
           })() : null}
 
+          {selectedEmploymentMessage ? <div className="op-inline-note compact"><span>{selectedEmploymentMessage}</span></div> : null}
+
           <div className="op-actions">
-            <button type="button" disabled={!editable} onClick={() => openNovelty(selected)}>
+            <button type="button" disabled={!editable || Boolean(selectedEmploymentMessage)} onClick={() => openNovelty(selected)}>
               <Plus size={14} /> + Novedad
             </button>
             {present.has(`${selected.employee.vinculacion_id}|${selected.date}`) ? (
-              <button type="button" disabled={!editable} onClick={() => void toggleAttendance(selected.employee, selected.date, true)}>
+              <button type="button" disabled={!editable || Boolean(selectedEmploymentMessage)} onClick={() => void toggleAttendance(selected.employee, selected.date, true)}>
                 Quitar asistencia
               </button>
             ) : (
-              <button type="button" disabled={!editable} onClick={() => void toggleAttendance(selected.employee, selected.date)}>
+              <button type="button" disabled={!editable || Boolean(selectedEmploymentMessage)} onClick={() => void toggleAttendance(selected.employee, selected.date)}>
                 Marcar asistencia
               </button>
             )}
             <button
               type="button"
-              disabled={!editable}
+              disabled={!editable || Boolean(selectedEmploymentMessage)}
               onClick={() =>
                 setRangeSelection({
                   employeeId: selected.employee.id,
@@ -1600,6 +1658,7 @@ export default function PlanillaOperativaPage() {
                       type="date"
                       value={selectedType.permite_rango ? rangeEnd || noveltyCell.date : noveltyCell.date}
                       min={noveltyCell.date}
+                      max={noveltyCell.employee.vinculacion.fecha_fin ?? undefined}
                       readOnly={!selectedType.permite_rango}
                       onChange={(event) => setRangeEnd(event.target.value)}
                     />

@@ -89,7 +89,7 @@ export const getDashboardSstHandler = asyncHandler(async (req: Request, res: Res
 export const getDashboardAlertasHandler = asyncHandler(async (req: Request, res: Response) => {
   ensureAuthenticated(req);
   const query = dashboardQuerySchema.parse(req.query);
-  const data = await getDashboardAlertas(query);
+  const data = await getDashboardAlertas(query, req.user!.userId);
 
   return successResponse(res, {
     message: 'Dashboard alertas retrieved successfully',

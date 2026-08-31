@@ -43,13 +43,13 @@ const run = async (): Promise<void> => {
 
   assert.match(
     routeSource,
-    /nominaRoutes\.get\('\/tipos-novedad',\s*requirePermissions\('nomina\.read'\),\s*getNominaTiposNovedadHandler\)/,
-    'list route must require nomina.read'
+    /nominaRoutes\.get\('\/tipos-novedad',\s*requireAnyPermissions\('nomina\.operativa\.read', 'nomina\.read'\),\s*getNominaTiposNovedadHandler\)/,
+    'list route must allow lectura operativa o lectura general'
   );
   assert.match(
     routeSource,
-    /nominaRoutes\.get\('\/tipos-novedad\/:id',\s*requirePermissions\('nomina\.read'\),\s*getNominaTipoNovedadHandler\)/,
-    'detail route must require nomina.read'
+    /nominaRoutes\.get\('\/tipos-novedad\/:id',\s*requireAnyPermissions\('nomina\.operativa\.read', 'nomina\.read'\),\s*getNominaTipoNovedadHandler\)/,
+    'detail route must allow lectura operativa o lectura general'
   );
 
   const base = await listNominaTiposNovedad(

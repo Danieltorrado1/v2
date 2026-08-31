@@ -1,4 +1,4 @@
-﻿import { z } from 'zod';
+import { z } from 'zod';
 
 const trimmedStringSchema = z.string().trim().min(1);
 const identifierSchema = z.preprocess((value) => {
@@ -103,6 +103,7 @@ export const nominaMovimientoTipoSchema = z.enum([
   'RECARGO_NOCTURNO',
   'DOMINICAL',
   'FESTIVO',
+  'TURNO_INTERNO',
   'TURNO_EXTERNO',
   'BONIFICACION',
   'AUXILIO',
@@ -307,6 +308,16 @@ export const exportNominaPeriodoQuerySchema = z.object({
 });
 
 export const listNominaMovimientosQuerySchema = paginationSchema.extend({
+  periodo_id: identifierSchema.nullable().optional(),
+  nomina_empleado_id: identifierSchema.nullable().optional(),
+  vinculacion_id: identifierSchema.nullable().optional(),
+  tipo_movimiento: nominaMovimientoTipoSchema.optional(),
+  estado: nominaMovimientoEstadoSchema.optional(),
+  familia_movimiento: nominaMovimientoFamiliaSchema.optional(),
+  activo: z.coerce.boolean().optional()
+});
+
+export const listNominaMovimientosOperativosQuerySchema = payrollDatasetPaginationSchema.extend({
   periodo_id: identifierSchema.nullable().optional(),
   nomina_empleado_id: identifierSchema.nullable().optional(),
   vinculacion_id: identifierSchema.nullable().optional(),
@@ -662,6 +673,7 @@ export type ListNominaNovedadesQuery = z.infer<typeof listNominaNovedadesQuerySc
 export type ListNominaTiposNovedadQuery = z.infer<typeof listNominaTiposNovedadQuerySchema>;
 export type ExportNominaPeriodoQuery = z.infer<typeof exportNominaPeriodoQuerySchema>;
 export type ListNominaMovimientosQuery = z.infer<typeof listNominaMovimientosQuerySchema>;
+export type ListNominaMovimientosOperativosQuery = z.infer<typeof listNominaMovimientosOperativosQuerySchema>;
 export type ListNominaAsistenciaQuery = z.infer<typeof listNominaAsistenciaQuerySchema>;
 export type UpdateNominaAsistenciaInput = z.infer<typeof updateNominaAsistenciaSchema>;
 export type CreateNominaMovimientoInput = z.infer<typeof createNominaMovimientoSchema>;

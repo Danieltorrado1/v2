@@ -1,4 +1,4 @@
-﻿.nomina-page {
+.nomina-page {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
@@ -756,6 +756,18 @@
   color: var(--color-purple);
 }
 
+.cell-devengado {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cell-devengado small {
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
 .cell-dias,
 .cell-devengado,
 .cell-novedades {
@@ -909,7 +921,7 @@
   font-weight: 700;
 }
 
-/* PAGINACIÃ“N */
+/* PAGINACIÓN */
 
 .payroll-pagination {
   flex-shrink: 0;
@@ -996,7 +1008,7 @@
   cursor: pointer;
 }
 
-/* MODAL â€” registrar novedad (preparado, sin formulario aÃºn) */
+/* MODAL — registrar novedad (preparado, sin formulario aún) */
 
 .payroll-modal-overlay {
   position: fixed;

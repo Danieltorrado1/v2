@@ -74,6 +74,20 @@ test('CAA1 control case matches expected math', () => {
   assert.equal(result.neto_nomina, 193132);
 });
 
+test('accepts configured social security percentages expressed as whole percentages', () => {
+  const result = calculateCoberturaPayroll({
+    empleo: { fecha_inicio: '2026-08-01', fecha_fin: '2026-08-03' },
+    tramos: singleTramo(caa1, '2026-08-01', '2026-08-03'),
+    dias_efectos: [],
+    aporta_pension: true,
+    porcentaje_salud: 4,
+    porcentaje_pension: 4,
+  });
+
+  assert.equal(result.salud_ordinaria, 7100);
+  assert.equal(result.pension_ordinaria, 7100);
+});
+
 test('RI control case matches expected math', () => {
   const result = calculateCoberturaPayroll({
     empleo: { fecha_inicio: '2026-08-01', fecha_fin: '2026-08-03' },

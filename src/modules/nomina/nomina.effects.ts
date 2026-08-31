@@ -76,6 +76,24 @@ export interface NominaNovedadEffectMatrix {
   proyecta_periodos: boolean;
 }
 
+export interface NominaEffectMatrixConfigInput {
+  bloquea_otras_novedades: boolean | null;
+  codigo_operativo: string | null;
+  afecta_salario?: boolean | null;
+  afecta_transporte?: boolean | null;
+  efecto_auxilio_transporte: string | null;
+  efecto_cobertura_config: string | null;
+  efecto_liquidacion: string | null;
+  efecto_operativo: string | null;
+  efecto_recargos_detallado: string | null;
+  efecto_salario: string | null;
+  grupo_exclusividad: string | null;
+  modelo_registro: string | null;
+  nombre: string | null;
+  observacion_plantilla: string | null;
+  proyecta_periodos: boolean | null;
+}
+
 export interface NominaPeriodoDateRange {
   end: string;
   start: string;
@@ -200,6 +218,122 @@ const computeEventDateRange = (
 const buildFormattedDate = (value: string): string => {
   const [year, month, day] = value.split('-');
   return `${day}/${month}/${year}`;
+};
+
+const toBooleanValue = (value: unknown): boolean => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return ['1', 'true', 't', 'yes', 'y', 'si', 'sí'].includes(normalized);
+  }
+
+  return false;
+};
+
+const toNominaEfectoSalario = (value: string | null | undefined): NominaEfectoSalario => {
+  switch (value) {
+    case 'DESCUENTA_PROPORCIONAL':
+    case 'LIQUIDACION_ESPECIAL':
+    case 'PENDIENTE_CONFIGURACION':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaEfectoTransporte = (
+  value: string | null | undefined
+): NominaEfectoTransporte => {
+  switch (value) {
+    case 'DESCUENTA_DIA':
+    case 'PENDIENTE_CONFIGURACION':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaEfectoRecargos = (value: string | null | undefined): NominaEfectoRecargos => {
+  switch (value) {
+    case 'EXCLUIR_DIA':
+    case 'PENDIENTE_CONFIGURACION':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaEfectoLiquidacion = (
+  value: string | null | undefined
+): NominaEfectoLiquidacion => {
+  switch (value) {
+    case 'PREPARAR_LIQUIDACION':
+    case 'PENDIENTE_CONFIGURACION':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaEfectoCobertura = (value: string | null | undefined): NominaEfectoCobertura => {
+  switch (value) {
+    case 'PENDIENTE_CONFIGURACION':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaEfectoOperativo = (value: string | null | undefined): NominaEfectoOperativo => {
+  switch (value) {
+    case 'PENDIENTE_NOMINA_3':
+      return value;
+    default:
+      return 'SIN_EFECTO';
+  }
+};
+
+const toNominaModeloRegistro = (value: string | null | undefined): NominaModeloRegistro => {
+  return value === 'EVENTO_CANONICO_RANGO' ? value : 'POR_PERIODO';
+};
+
+const toNominaGrupoExclusividad = (
+  value: string | null | undefined
+): NominaGrupoExclusividad => {
+  return value === 'LICENCIA_MATERNIDAD_PATERNIDAD' ? value : 'NINGUNA';
+};
+
+export const buildNominaEffectMatrixFromConfig = (
+  row: NominaEffectMatrixConfigInput
+): NominaNovedadEffectMatrix => {
+  return {
+    codigo_operativo: row.codigo_operativo,
+    nombre: row.nombre,
+    efecto_salario:
+      row.efecto_salario === null && row.afecta_salario
+        ? 'DESCUENTA_PROPORCIONAL'
+        : toNominaEfectoSalario(row.efecto_salario),
+    efecto_transporte:
+      row.efecto_auxilio_transporte === null && row.afecta_transporte
+        ? 'DESCUENTA_DIA'
+        : toNominaEfectoTransporte(row.efecto_auxilio_transporte),
+    efecto_recargos: toNominaEfectoRecargos(row.efecto_recargos_detallado),
+    efecto_liquidacion: toNominaEfectoLiquidacion(row.efecto_liquidacion),
+    efecto_cobertura: toNominaEfectoCobertura(row.efecto_cobertura_config),
+    efecto_operativo: toNominaEfectoOperativo(row.efecto_operativo),
+    modelo_registro: toNominaModeloRegistro(row.modelo_registro),
+    proyecta_periodos: toBooleanValue(row.proyecta_periodos),
+    bloquea_otras_novedades: toBooleanValue(row.bloquea_otras_novedades),
+    grupo_exclusividad: toNominaGrupoExclusividad(row.grupo_exclusividad),
+    observacion_plantilla: row.observacion_plantilla
+  };
 };
 
 export const generateNominaNovedadObservation = (input: {

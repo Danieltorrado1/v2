@@ -13,7 +13,7 @@ function resolveFallbackPath(input: {
   permissions: string[];
   roles: string[];
 }): string {
-  if (input.hasModule('NOMINA') && input.permissions.includes('nomina.read')) {
+  if (input.hasModule('NOMINA') && (input.permissions.includes('nomina.read') || input.permissions.includes('nomina.operativa.read'))) {
     return input.roles.includes('GESTOR') ? '/nomina/cobertura' : '/nomina';
   }
 

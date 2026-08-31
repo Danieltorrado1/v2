@@ -309,7 +309,11 @@ export async function listNominaAsistenciaPersonal(areaId: string | number, fech
 
   return (
     await dbPool.query(
-      `SELECT v.id vinculacion_id,p.id persona_id,p.nombre_completo,va.area_id
+      `SELECT
+         v.id vinculacion_id,
+         p.id persona_id,
+         CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido) AS nombre_completo,
+         va.area_id
        FROM nomina_vinculacion_areas va
        JOIN nomina_areas a ON a.id=va.area_id
        JOIN vinculaciones v ON v.id=va.vinculacion_id
@@ -319,7 +323,7 @@ export async function listNominaAsistenciaPersonal(areaId: string | number, fech
          AND va.vigencia_desde <= $2::date
          AND (va.vigencia_hasta IS NULL OR va.vigencia_hasta >= $2::date)
          AND a.activo=TRUE
-       ORDER BY p.nombre_completo`,
+       ORDER BY p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido, p.id`,
       [areaId, fecha]
     )
   ).rows;

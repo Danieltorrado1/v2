@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 
 import { authMiddleware } from '../../middlewares/authMiddleware';
-import { rejectRoles, requirePermissions, requireRoles } from '../../middlewares/roleMiddleware';
+import { rejectRoles, requireAnyPermissions, requirePermissions, requireRoles } from '../../middlewares/roleMiddleware';
 import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
 import { requireModule } from '../saas/saas.middleware';
 import {
@@ -108,6 +108,7 @@ import {
   getNominaLiquidacionesHandler,
   getNominaMovimientosHandler,
   getNominaMovimientosOperativosHandler,
+  getNominaNovedadTurnosOperativosHandler,
   getNominaNovedadesHandler,
   getNominaPeriodoEmpleadosHandler,
   getNominaPeriodoEmpleadosOperativosHandler,
@@ -144,7 +145,13 @@ import { closeNominaEmpleadoOperativoHandler, listRevisionOperativaHandler, reop
 import { getNominaProcessAccessHandler, listNominaAsistenciaPersonalHandler } from './nomina.procesos.controller';
 import { createNominaAreaHandler, listNominaAreasHandler, listNominaResponsibilitiesHandler, replaceNominaResponsibilityHandler, updateNominaAreaHandler } from './nomina.procesos.admin.controller';
 import { downloadCoberturaCuentaFirmadaHandler, downloadCoberturaCuentaHandler, downloadCoberturaExternoDocumentoHandler, generateCoberturaCuentaHandler, listCoberturaExternoDocumentosHandler, listCoberturaExternosHandler, listCoberturaExternosOperativosHandler, uploadCoberturaCuentaFirmadaHandler, upsertCoberturaExternoHandler, uploadCoberturaExternoDocumentoHandler } from './cobertura.externos.controller';
-import { getNovedadSupportHandler, uploadNovedadSupportHandler } from './cobertura.novedad-documentos.controller';
+import {
+  getNovedadDocumentHandler,
+  getNovedadDocumentsHandler,
+  getNovedadSupportHandler,
+  uploadNovedadDocumentHandler,
+  uploadNovedadSupportHandler,
+} from './cobertura.novedad-documentos.controller';
 
 const nominaRoutes = Router();
 const coberturaUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
@@ -172,11 +179,14 @@ nominaRoutes.post('/cobertura/cuentas-cobro/generar', requirePermissions('nomina
 nominaRoutes.get('/cobertura/cuentas-cobro/:id/download', requirePermissions('nomina.movimientos.read'), downloadCoberturaCuentaHandler);
 nominaRoutes.get('/cobertura/cuentas-cobro/:id/firmada/download', requirePermissions('nomina.movimientos.read'), downloadCoberturaCuentaFirmadaHandler);
 nominaRoutes.post('/cobertura/cuentas-cobro/:id/firmada', requirePermissions('nomina.movimientos.create'), coberturaUpload.single('file'), uploadCoberturaCuentaFirmadaHandler);
-nominaRoutes.get('/novedades/:id/soporte', requirePermissions('nomina.read'), getNovedadSupportHandler);
+nominaRoutes.get('/novedades/:id/documentos', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNovedadDocumentsHandler);
+nominaRoutes.get('/novedades/:id/documentos/:tipo', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNovedadDocumentHandler);
+nominaRoutes.post('/novedades/:id/documentos/:tipo', requirePermissions('nomina.novedades.update'), coberturaUpload.single('file'), uploadNovedadDocumentHandler);
+nominaRoutes.get('/novedades/:id/soporte', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNovedadSupportHandler);
 nominaRoutes.post('/novedades/:id/soporte', requirePermissions('nomina.novedades.update'), coberturaUpload.single('file'), uploadNovedadSupportHandler);
 
-nominaRoutes.get('/periodos', requirePermissions('nomina.read'), getNominaPeriodosHandler);
-nominaRoutes.get('/periodos/:id', requirePermissions('nomina.read'), getNominaPeriodoHandler);
+nominaRoutes.get('/periodos', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNominaPeriodosHandler);
+nominaRoutes.get('/periodos/:id', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNominaPeriodoHandler);
 nominaRoutes.post(
   '/periodos',
   requirePermissions('nomina.periodos.create'),
@@ -256,7 +266,7 @@ nominaRoutes.post(
 );
 nominaRoutes.get(
   '/periodos/:periodo_id/asistencia',
-  requirePermissions('nomina.read'),
+  requireAnyPermissions('nomina.operativa.read', 'nomina.read'),
   getNominaAsistenciaHandler
 );
 nominaRoutes.post(
@@ -281,6 +291,7 @@ nominaRoutes.get(
   getNominaMovimientosHandler
 );
 nominaRoutes.get('/movimientos-operativos', requirePermissions('nomina.operativa.read'), getNominaMovimientosOperativosHandler);
+nominaRoutes.get('/novedad-turnos-operativos', requirePermissions('nomina.operativa.read'), getNominaNovedadTurnosOperativosHandler);
 nominaRoutes.get(
   '/movimientos/:id',
   rejectRoles('GESTOR'),
@@ -325,18 +336,18 @@ nominaRoutes.patch(
 nominaRoutes.post('/periodos/:periodo_id/asistencia/marcar', requirePermissions('nomina.periodos.update'), markNominaAsistenciaHandler);
 nominaRoutes.post('/periodos/:periodo_id/asistencia/rango', requirePermissions('nomina.periodos.update'), markNominaAsistenciaRangoHandler);
 nominaRoutes.post('/periodos/:periodo_id/asistencia/masiva', requirePermissions('nomina.periodos.update'), markNominaAsistenciaMasivaHandler);
-nominaRoutes.get('/periodos/:periodo_id/revision-operativa', requirePermissions('nomina.read'), listRevisionOperativaHandler);
+nominaRoutes.get('/periodos/:periodo_id/revision-operativa', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), listRevisionOperativaHandler);
 nominaRoutes.patch('/periodos/:periodo_id/revision-operativa/:nomina_empleado_id', requirePermissions('nomina.periodos.update'), updateRevisionOperativaHandler);
 nominaRoutes.post('/periodos/:periodo_id/cierre-operativo/:nomina_empleado_id', requireRoles('TALENTO_HUMANO', 'ADMINISTRADOR'), requirePermissions('nomina.periodos.close'), closeNominaEmpleadoOperativoHandler);
 nominaRoutes.post('/periodos/:periodo_id/reapertura-operativa/:nomina_empleado_id', requireRoles('TALENTO_HUMANO', 'ADMINISTRADOR'), requirePermissions('nomina.periodos.reopen'), reopenNominaEmpleadoOperativoHandler);
 
-nominaRoutes.get('/cambios-operativos', requirePermissions('nomina.movimientos.read'), listCambiosOperativosHandler);
-nominaRoutes.get('/cambios-operativos/:id', requirePermissions('nomina.movimientos.read'), getCambioOperativoHandler);
+nominaRoutes.get('/cambios-operativos', requireAnyPermissions('nomina.operativa.read', 'nomina.movimientos.read'), listCambiosOperativosHandler);
+nominaRoutes.get('/cambios-operativos/:id', requireAnyPermissions('nomina.operativa.read', 'nomina.movimientos.read'), getCambioOperativoHandler);
 nominaRoutes.post('/cambios-operativos', requirePermissions('nomina.movimientos.create'), createCambioOperativoHandler);
 nominaRoutes.patch('/cambios-operativos/:id', requirePermissions('nomina.movimientos.update'), updateCambioOperativoHandler);
 nominaRoutes.patch('/cambios-operativos/:id/deactivate', requirePermissions('nomina.movimientos.deactivate'), deactivateCambioOperativoHandler);
-nominaRoutes.get('/periodos/:periodo_id/vinculaciones/:vinculacion_id/tramos-operativos', requirePermissions('nomina.movimientos.read'), resolverTramosHandler);
-nominaRoutes.get('/periodos/:periodo_id/vinculaciones/:vinculacion_id/contexto-operativo/:fecha', requirePermissions('nomina.movimientos.read'), resolverContextoFechaHandler);
+nominaRoutes.get('/periodos/:periodo_id/vinculaciones/:vinculacion_id/tramos-operativos', requireAnyPermissions('nomina.operativa.read', 'nomina.movimientos.read'), resolverTramosHandler);
+nominaRoutes.get('/periodos/:periodo_id/vinculaciones/:vinculacion_id/contexto-operativo/:fecha', requireAnyPermissions('nomina.operativa.read', 'nomina.movimientos.read'), resolverContextoFechaHandler);
 
 nominaRoutes.get(
   '/liquidaciones/:periodo_id/:vinculacion_id',
@@ -359,10 +370,10 @@ nominaRoutes.post(
   finalizeNominaLiquidacionesHandler
 );
 
-nominaRoutes.get('/tipos-novedad', requirePermissions('nomina.read'), getNominaTiposNovedadHandler);
-nominaRoutes.get('/tipos-novedad/:id', requirePermissions('nomina.read'), getNominaTipoNovedadHandler);
+nominaRoutes.get('/tipos-novedad', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNominaTiposNovedadHandler);
+nominaRoutes.get('/tipos-novedad/:id', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNominaTipoNovedadHandler);
 
-nominaRoutes.get('/novedades', requirePermissions('nomina.read'), getNominaNovedadesHandler);
+nominaRoutes.get('/novedades', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNominaNovedadesHandler);
 nominaRoutes.post(
   '/novedades',
   requirePermissions('nomina.novedades.create'),

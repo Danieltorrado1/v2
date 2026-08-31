@@ -1,8 +1,9 @@
-import { QueryResultRow } from 'pg';
+﻿import { QueryResultRow } from 'pg';
 
 import { dbQuery } from '../../config/db';
 import { getCoberturaResumen } from '../cobertura/cobertura.service';
 import { DashboardQuery } from './dashboard.schemas';
+import { countMisNotificacionesNoLeidas } from '../alertas/alertas.service';
 
 interface CountMetricRow extends QueryResultRow {
   total: number;
@@ -387,7 +388,7 @@ export const getDashboardResumen = async (query: DashboardQuery): Promise<Dashbo
       ),
       documentos_union AS (
         -- B2: documentos_persona filtrados por el mismo alcance de empresa/contrato
-        -- usando la CTE personas_filtradas ya calculada (evita duplicados por multi-vinculación)
+        -- usando la CTE personas_filtradas ya calculada (evita duplicados por multi-vinculaciÃ³n)
         SELECT dp.fecha_vencimiento
         FROM documentos_persona dp
         WHERE dp.activo = TRUE
@@ -411,8 +412,8 @@ export const getDashboardResumen = async (query: DashboardQuery): Promise<Dashbo
       SELECT
         (SELECT COUNT(*)::int FROM empresas) AS total_empresas,
         (SELECT COUNT(*)::int FROM contratos_filtrados) AS total_contratos,
-        -- contratos no tiene columna activo (no hay borrado lógico a ese nivel),
-        -- así que todo contrato filtrado se considera activo.
+        -- contratos no tiene columna activo (no hay borrado lÃ³gico a ese nivel),
+        -- asÃ­ que todo contrato filtrado se considera activo.
         (SELECT COUNT(*)::int FROM contratos_filtrados) AS contratos_activos,
         (SELECT COUNT(*)::int FROM personas_filtradas) AS total_personas,
         (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'ACTIVA') AS vinculaciones_activas,
@@ -565,7 +566,7 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
         filters.params
       ),
 
-      // Distribución por género — activas con vinculacion ACTIVA
+      // DistribuciÃ³n por gÃ©nero â€” activas con vinculacion ACTIVA
       dbQuery<GeneroRow>(
         `
           WITH personas_activas AS (
@@ -585,7 +586,7 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
         filters.params
       ),
 
-      // Edad promedio y rangos — solo personas con fecha_nacimiento válida
+      // Edad promedio y rangos â€” solo personas con fecha_nacimiento vÃ¡lida
       dbQuery<EdadRow>(
         `
           WITH personas_activas AS (
@@ -620,7 +621,7 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
         filters.params
       ),
 
-      // Cumpleaños próximos — próximos 30 días, máximo 10, maneja cambio de año
+      // CumpleaÃ±os prÃ³ximos â€” prÃ³ximos 30 dÃ­as, mÃ¡ximo 10, maneja cambio de aÃ±o
       dbQuery<CumpleanosRow>(
         `
           WITH personas_activas AS (
@@ -677,7 +678,7 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
 
   const row = summaryResult.rows[0];
 
-  // Clasificar géneros
+  // Clasificar gÃ©neros
   let femenino = 0;
   let masculino = 0;
   let otro = 0;
@@ -857,10 +858,10 @@ export const getDashboardDocumentos = async (
 // focalizacion_final no tiene columnas modalidad_base/manipuladores_requeridos, y
 // cobertura_asignaciones no tiene fraccion_cobertura: esos valores se calculan en
 // cobertura.service.ts (calculateRequiredCoverage), no son columnas de la base de
-// datos. En vez de duplicar esa lógica con nombres de columna inventados, este
+// datos. En vez de duplicar esa lÃ³gica con nombres de columna inventados, este
 // dashboard reutiliza getCoberturaResumen (ya validado) y agrega sus resultados.
-// El módulo de cobertura tampoco filtra por empresa_id (focalizacion_final solo
-// tiene contrato_id), así que ese filtro no aplica aquí.
+// El mÃ³dulo de cobertura tampoco filtra por empresa_id (focalizacion_final solo
+// tiene contrato_id), asÃ­ que ese filtro no aplica aquÃ­.
 export const getDashboardCobertura = async (
   query: DashboardQuery
 ): Promise<DashboardCobertura> => {
@@ -961,7 +962,7 @@ export const getDashboardNomina = async (query: DashboardQuery): Promise<Dashboa
         COALESCE((SELECT SUM(total_liquidacion) FROM liquidaciones_filtradas WHERE estado = 'FINAL'), 0)::numeric AS neto_pagado,
         (
           -- B4: nomina_novedades no tiene columna estado; se usa revisado = FALSE
-          -- como proxy de "pendiente de revisión" (sin columna estado no hay otra opción)
+          -- como proxy de "pendiente de revisiÃ³n" (sin columna estado no hay otra opciÃ³n)
           SELECT COUNT(*)::int
           FROM novedades_filtradas
           WHERE activo = TRUE
@@ -1154,7 +1155,8 @@ export const getDashboardSst = async (query: DashboardQuery): Promise<DashboardS
   };
 };
 export const getDashboardAlertas = async (
-  query: DashboardQuery
+  query: DashboardQuery,
+  actorUserId?: string
 ): Promise<DashboardAlertas> => {
   const range = resolveDashboardDateRange(query);
   // alertas_sistema solo tiene contrato_id (no empresa_id): empresa_id no aplica aquí.
@@ -1162,7 +1164,7 @@ export const getDashboardAlertas = async (
   let contratoCondition = '';
   if (query.contrato_id) {
     contratoParams.push(query.contrato_id);
-    contratoCondition = ` AND a.contrato_id::text = $${contratoParams.length + 2}`;
+    contratoCondition = ` AND a.contrato_id::text = ${contratoParams.length + 2}`;
   }
 
   const summaryResult = await dbQuery<AlertasDashboardRow>(
@@ -1188,12 +1190,7 @@ export const getDashboardAlertas = async (
             AND a.fecha_alerta >= $1
             AND a.fecha_alerta <= $2
         )::int AS alertas_altas,
-        (
-          SELECT COUNT(*)::int
-          FROM notificaciones n
-          WHERE n.archivado_en IS NULL
-            AND n.leida = FALSE
-        ) AS notificaciones_no_leidas
+        0::int AS notificaciones_no_leidas
       FROM alertas_sistema a
       WHERE 1 = 1
       ${contratoCondition}
@@ -1219,13 +1216,16 @@ export const getDashboardAlertas = async (
   );
 
   const row = summaryResult.rows[0];
+  const notificacionesNoLeidas = actorUserId
+    ? await countMisNotificacionesNoLeidas(actorUserId)
+    : row?.notificaciones_no_leidas ?? 0;
 
   return {
     alertas_activas: row?.alertas_activas ?? 0,
     alertas_criticas: row?.alertas_criticas ?? 0,
     alertas_altas: row?.alertas_altas ?? 0,
     alertas_por_tipo: tipoResult.rows,
-    notificaciones_no_leidas: row?.notificaciones_no_leidas ?? 0
+    notificaciones_no_leidas: notificacionesNoLeidas
   };
 };
 
