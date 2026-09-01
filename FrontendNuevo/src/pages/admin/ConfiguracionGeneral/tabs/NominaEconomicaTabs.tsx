@@ -976,6 +976,8 @@ export function SalaryCategoriesTab() {
   const [assignmentCountMin, setAssignmentCountMin] = useState('');
   const [assignmentCountMax, setAssignmentCountMax] = useState('');
   const [assignmentObservation, setAssignmentObservation] = useState('');
+  const [assignmentScope, setAssignmentScope] = useState('ALL_MODALITY');
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [withoutCategoryOnly, setWithoutCategoryOnly] = useState(false);
   const [assignmentModalities, setAssignmentModalities] = useState<AssignmentModalityOption[]>([]);
   const [assignmentOptionsLoading, setAssignmentOptionsLoading] = useState(false);
@@ -1128,6 +1130,8 @@ export function SalaryCategoriesTab() {
       !assignmentModalities.some((option) => option.id === assignmentModalityId)
     ) {
       setAssignmentModalityId('');
+    setAssignmentScope('ALL_MODALITY');
+    setAdvancedFiltersOpen(false);
     }
   }, [assignmentModalities, assignmentModalityId]);
 
@@ -1182,7 +1186,7 @@ export function SalaryCategoriesTab() {
         modalidad_id: assignmentModalityId ? Number(assignmentModalityId) : undefined,
         metodo_pago: toNullableText(assignmentMethod),
         without_category: withoutCategoryOnly || undefined,
-        institucion_sede_count: buildAssignmentCountCriterion()
+        institucion_sede_count: assignmentScope === 'SINGLE_SITE' ? { operator: 'EQ', value: 1 } : buildAssignmentCountCriterion()
       }),
     [
       assignmentCargo,
@@ -1192,7 +1196,8 @@ export function SalaryCategoriesTab() {
       assignmentMunicipio,
       assignmentSearch,
       assignmentSede,
-      buildAssignmentCountCriterion,
+      assignmentScope,
+      buildAssignmentCountCriterion,
       withoutCategoryOnly
     ]
   );
@@ -1209,8 +1214,8 @@ export function SalaryCategoriesTab() {
   );
 
   const currentPreviewCriteriaKey = useMemo(
-    () => (selectedPeriodId ? JSON.stringify(buildPreviewPayload()) : ''),
-    [buildPreviewPayload, selectedPeriodId]
+    () => (selectedPeriodId ? JSON.stringify({ payload: buildPreviewPayload(), scope: assignmentScope }) : ''),
+    [assignmentScope, buildPreviewPayload, selectedPeriodId]
   );
 
   useEffect(() => {
@@ -1344,7 +1349,7 @@ export function SalaryCategoriesTab() {
 
         const nextPreview = response.data;
         setPreview(nextPreview);
-        setPreviewCriteriaKey(JSON.stringify(payload));
+        setPreviewCriteriaKey(JSON.stringify({ payload, scope: assignmentScope }));
         setAssignmentControl(null);
         setSelectedEmployeeIds([]);
         if (!preserveMessage) {
@@ -1375,7 +1380,7 @@ export function SalaryCategoriesTab() {
         setPreviewLoading(false);
       }
     },
-    [buildPreviewPayload, canRead, empresaActual, selectedPeriodId]
+    [assignmentScope, buildPreviewPayload, canRead, empresaActual, selectedPeriodId]
   );
 
   const toggleEmployee = (employeeId: string) => {
@@ -1502,7 +1507,7 @@ export function SalaryCategoriesTab() {
 
         {loadError ? <p role="alert">{loadError}</p> : null}
 
-        <div className="nomina-assignment-filters">
+<div className="nomina-assignment-filters">
           <input
             placeholder="Buscar código, nombre o contrato"
             value={query}
@@ -1582,8 +1587,8 @@ export function SalaryCategoriesTab() {
           </div>
         </div>
 
-        <div className="nomina-assignment-flow">
-          <div className="nomina-assignment-step-title">Paso 1 · Selecciona periodo</div>
+        <div className="nomina-assignment-flow">
+            <div className="nomina-assignment-step-title">Paso 1 · Selecciona periodo</div>
           <div className="adm-form-grid cols-2">
             <div className="adm-field">
               <label className="adm-label">Periodo</label>
@@ -1603,6 +1608,11 @@ export function SalaryCategoriesTab() {
             </div>
           </div>
 
+        <div className="nomina-assignment-primary">
+            <div className="adm-field"><label className="adm-label">Modalidad</label><select className="adm-select" value={assignmentModalityId} onChange={(event) => setAssignmentModalityId(event.target.value)}><option value="">Selecciona una modalidad</option>{assignmentOptionsLoading ? <option disabled>Cargando modalidades...</option> : assignmentModalities.map((option) => (<option key={String(option.id)} value={String(option.id)}>{option.etiqueta}</option>))}</select></div>
+            <div className="adm-field"><label className="adm-label">Alcance de asignacion</label><select className="adm-select" value={assignmentScope} onChange={(event) => setAssignmentScope(event.target.value)}><option value="ALL_MODALITY">Todas las personas de la modalidad</option><option value="SINGLE_SITE">Solo una persona activa por Institucion + Sede</option><option value="ADVANCED">Usar filtros avanzados</option></select></div>
+          </div>
+
           <div className="nomina-assignment-step-title">Paso 2 · Selecciona categoría destino</div>
           <div className="adm-form-grid cols-2">
             <div className="adm-field">
@@ -1622,7 +1632,8 @@ export function SalaryCategoriesTab() {
               </select>
             </div>
           </div>
-          <div className="nomina-assignment-step-title">Paso 3 · Define filtros</div>
+          <details className="nomina-assignment-advanced" open={advancedFiltersOpen} onToggle={(event) => setAdvancedFiltersOpen(event.currentTarget.open)}>
+            <summary>Filtros avanzados</summary>
           <div className="adm-form-grid cols-3">
             <div className="adm-field">
               <label className="adm-label">Buscar trabajador</label>
@@ -1768,9 +1779,9 @@ export function SalaryCategoriesTab() {
               type="checkbox"
             />
             Mostrar solo trabajadores sin categoría salarial actual.
-          </label>
-
-          <div className="adm-form-actions with-test">
+          </label>
+          </details>
+<div className="adm-form-actions with-test">
             <button
               className="adm-btn secondary"
               disabled={!selectedPeriodId || previewLoading}
@@ -1853,7 +1864,7 @@ export function SalaryCategoriesTab() {
 
               <div className="nomina-assignment-summary" role="status">
                 <strong>
-                  {preview.resumen.total_encontrados} trabajadores encontrados · {selectedEmployeeIds.length} seleccionados
+                  {preview.resumen.total_encontrados} encontrados - {selectedEmployeeIds.length} seleccionados - {Math.max(preview.resumen.total_encontrados - selectedEmployeeIds.length, 0)} excluidos
                 </strong>
                 <span>
                   SQL ref: {preview.sql_reference}. Si cambias filtros o categoría destino, debes previsualizar de nuevo.
@@ -2005,7 +2016,7 @@ export function SalaryCategoriesTab() {
                     }
                     onClick={() => void applyAssignment('assign')}
                   >
-                    {applyLoading && applyMode === 'assign' ? 'Aplicando...' : 'Aplicar categoría'}
+                    {applyLoading && applyMode === 'assign' ? 'Aplicando...' : `Aplicar categoria a ${selectedEmployeeIds.length} personas`}
                   </button>
                   <button
                     className="adm-btn ghost"

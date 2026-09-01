@@ -707,3 +707,11 @@
     justify-content: flex-end;
   }
 }
+
+/* Salary assignment: keep the primary flow compact and advanced criteria collapsed. */
+.nomina-assignment-primary { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 12px; margin: 12px 0 18px; }
+.nomina-assignment-primary .adm-field { min-width: 0; }
+.nomina-assignment-advanced { margin: 8px 0 16px; border: 1px solid var(--adm-border, #d8dee9); border-radius: 10px; padding: 10px 12px; }
+.nomina-assignment-advanced > summary { cursor: pointer; font-weight: 700; color: var(--adm-text, #172033); }
+.nomina-assignment-advanced[open] > summary { margin-bottom: 12px; }
+@media (max-width: 760px) { .nomina-assignment-primary { grid-template-columns: 1fr; } }

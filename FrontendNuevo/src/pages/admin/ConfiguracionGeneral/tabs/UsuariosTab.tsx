@@ -182,22 +182,38 @@ const EMPTY_TERRITORIAL_SCOPE: TerritorialScopeCatalog = {
   municipios: []
 };
 
-function buildTerritorialScopeCatalog(municipios: Array<{ id: number; nombre: string; departamento_id: number | null; departamento_nombre: string | null }>): TerritorialScopeCatalog {
+function buildTerritorialScopeCatalog(municipios: Array<Record<string, unknown>>): TerritorialScopeCatalog {
   const departamentos = new Map<number, { id: number; nombre: string }>();
   const municipiosMap = new Map<number, TerritorialMunicipioOption>();
 
-  for (const municipio of municipios) {
-    municipiosMap.set(municipio.id, {
-      id: municipio.id,
-      nombre: municipio.nombre,
-      departamento_id: municipio.departamento_id ?? null,
-      departamento_nombre: municipio.departamento_nombre ?? null
+  for (const rawMunicipio of municipios) {
+    const id = Number(rawMunicipio.id ?? rawMunicipio.municipio_id);
+    const departamentoIdValue = rawMunicipio.departamento_id ?? rawMunicipio.departamentoId;
+    const departamentoId = departamentoIdValue === null || departamentoIdValue === undefined || departamentoIdValue === ''
+      ? null
+      : Number(departamentoIdValue);
+    const normalizedDepartamentoId = typeof departamentoId === 'number' && Number.isInteger(departamentoId) && departamentoId > 0 ? departamentoId : null;
+    const nombre = String(rawMunicipio.nombre ?? rawMunicipio.municipio_nombre ?? '').trim();
+    const departamentoNombre = rawMunicipio.departamento_nombre ?? rawMunicipio.departamentoNombre;
+    const normalizedDepartamentoNombre = departamentoNombre === null || departamentoNombre === undefined
+      ? null
+      : String(departamentoNombre).trim();
+
+    if (!Number.isInteger(id) || id <= 0 || !nombre) {
+      continue;
+    }
+
+    municipiosMap.set(id, {
+      id,
+      nombre,
+      departamento_id: normalizedDepartamentoId,
+      departamento_nombre: normalizedDepartamentoNombre
     });
 
-    if (municipio.departamento_id !== null && municipio.departamento_id !== undefined) {
-      departamentos.set(municipio.departamento_id, {
-        id: municipio.departamento_id,
-        nombre: municipio.departamento_nombre ?? ("Departamento " + municipio.departamento_id)
+    if (normalizedDepartamentoId !== null) {
+      departamentos.set(normalizedDepartamentoId, {
+        id: normalizedDepartamentoId,
+        nombre: normalizedDepartamentoNombre || ("Departamento " + normalizedDepartamentoId)
       });
     }
   }
@@ -214,7 +230,7 @@ function filterTerritorialMunicipios(catalog: TerritorialScopeCatalog, departame
   }
 
   const normalized = search.trim().toLowerCase();
-  return catalog.municipios.filter((municipio) => municipio.departamento_id === departamentoId && (!normalized || municipio.nombre.toLowerCase().includes(normalized)));
+  return catalog.municipios.filter((municipio) => Number(municipio.departamento_id) === Number(departamentoId) && (!normalized || municipio.nombre.toLowerCase().includes(normalized)));
 }
 
 function summarizeTerritorialSelection(catalog: TerritorialScopeCatalog, selectedIds: number[]) {
@@ -366,7 +382,7 @@ export function UsuariosTab() {
     try {
       const entries = await Promise.all(missingContratoIds.map(async (contratoId) => {
         const response = await getContractPersonalFilterOptions({ contrato_id: contratoId });
-        return [contratoId, buildTerritorialScopeCatalog(response.municipios)] as const;
+        return [contratoId, buildTerritorialScopeCatalog((response.municipios ?? []) as Array<Record<string, unknown>>)] as const;
       }));
 
       setTerritorialCatalogs((current) => {
