@@ -4874,6 +4874,13 @@ const findNominaNovedadOverlap = async (
   return result.rows.find((candidate) => isIncompatibleNominaNovedadOverlap(input.tipo_novedad, candidate)) ?? null;
 };
 
+const lockNominaNovedadMutation = async (
+  client: PoolClient,
+  vinculacionId: string
+): Promise<void> => {
+  await client.query('SELECT pg_advisory_xact_lock($1::bigint)', [vinculacionId]);
+};
+
 const ensureNoBlockingCanonicalOverlap = async (
   client: PoolClient,
   input: {
@@ -9568,6 +9575,8 @@ export const createNominaNovedad = async (
       );
     }
 
+    await lockNominaNovedadMutation(client, input.vinculacion_id);
+
     if (toNominaModeloRegistro(tipoNovedad.modelo_registro) === 'EVENTO_CANONICO_RANGO') {
       if (input.cobertura !== null && input.cobertura !== undefined) {
         throw new AppError(
@@ -10244,6 +10253,7 @@ export const updateNominaNovedad = async (
         await ensureDocumentoPersonaScope(nextDocumentoPersonaId, empleado.persona_id, client);
       }
 
+      await lockNominaNovedadMutation(client, current.vinculacion_id);
       await ensureNoBlockingCanonicalOverlap(client, {
         vinculacion_id: current.vinculacion_id,
         fecha_inicio: nextRange.fecha_inicio,
@@ -10458,6 +10468,8 @@ export const updateNominaNovedad = async (
     if (nextDocumentoPersonaId) {
       await ensureDocumentoPersonaScope(nextDocumentoPersonaId, empleado.persona_id, client);
     }
+
+    await lockNominaNovedadMutation(client, current.vinculacion_id);
 
     if (nextRange) {
       await ensureNoBlockingCanonicalOverlap(client, {

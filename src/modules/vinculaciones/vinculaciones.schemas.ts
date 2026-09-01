@@ -169,6 +169,7 @@ export const saveGestorAssignmentsSchema = z.object({
   contrato_id: numericIdSchema.transform((value) => Number(value)),
   gestor_usuario_id: numericIdSchema.transform((value) => Number(value)),
   municipio_id: numericIdSchema.transform((value) => Number(value)),
+  departamento_id: nullableNumericIdSchema.optional(),
   fecha: z.string().date().optional(),
   modo: gestorAssignmentModeSchema.optional().default('SELECCION'),
   vinculacion_ids: z
@@ -182,6 +183,7 @@ export const createGestorMunicipioAssignmentSchema = z.object({
   contrato_id: numericIdSchema.transform((value) => Number(value)),
   gestor_usuario_id: numericIdSchema.transform((value) => Number(value)),
   municipio_id: numericIdSchema.transform((value) => Number(value)),
+  departamento_id: nullableNumericIdSchema.optional(),
   vigencia_desde: z.string().date().optional(),
   alcance_personal: gestorMunicipioPersonalScopeSchema.optional().default('PERSONAL_SELECCIONADO'),
   observacion: nullableTrimmedString.optional().default(null)

@@ -16,9 +16,9 @@ import {
 import { useAuth } from '../../../../context/AuthContext';
 import { configuracionApi } from '../../../../services/configuracionApi';
 import {
-  closeGestorMunicipioAssignment,
   createGestorMunicipioAssignment,
   getGestorAssignmentWorkspace,
+  getContractPersonalFilterOptions,
   getGestorMunicipios,
   saveGestorAssignments
 } from '../../../../services/vinculacionesApi';
@@ -26,7 +26,6 @@ import type {
   Contrato,
   CreateUsuarioAdminPayload,
   Empresa,
-  Municipio,
   Rol,
   UpdateUsuarioAdminPayload,
   UsuarioAdminRecord
@@ -50,11 +49,24 @@ type PasswordModalState =
 
 type AssignmentModalState = {
   contratoId: number;
+  departamentoId: number | null;
   municipioId: number;
   municipioNombre: string;
   userId: number;
   userName: string;
 } | null;
+
+type TerritorialMunicipioOption = {
+  id: number;
+  nombre: string;
+  departamento_id: number | null;
+  departamento_nombre: string | null;
+};
+
+type TerritorialScopeCatalog = {
+  departamentos: Array<{ id: number; nombre: string }>;
+  municipios: TerritorialMunicipioOption[];
+};
 
 type UserForm = {
   active: boolean;
@@ -165,6 +177,64 @@ function renderSummaryChips(values: string[], maxVisible = 2) {
   );
 }
 
+const EMPTY_TERRITORIAL_SCOPE: TerritorialScopeCatalog = {
+  departamentos: [],
+  municipios: []
+};
+
+function buildTerritorialScopeCatalog(municipios: Array<{ id: number; nombre: string; departamento_id: number | null; departamento_nombre: string | null }>): TerritorialScopeCatalog {
+  const departamentos = new Map<number, { id: number; nombre: string }>();
+  const municipiosMap = new Map<number, TerritorialMunicipioOption>();
+
+  for (const municipio of municipios) {
+    municipiosMap.set(municipio.id, {
+      id: municipio.id,
+      nombre: municipio.nombre,
+      departamento_id: municipio.departamento_id ?? null,
+      departamento_nombre: municipio.departamento_nombre ?? null
+    });
+
+    if (municipio.departamento_id !== null && municipio.departamento_id !== undefined) {
+      departamentos.set(municipio.departamento_id, {
+        id: municipio.departamento_id,
+        nombre: municipio.departamento_nombre ?? ("Departamento " + municipio.departamento_id)
+      });
+    }
+  }
+
+  return {
+    departamentos: Array.from(departamentos.values()).sort((left, right) => left.nombre.localeCompare(right.nombre, 'es')),
+    municipios: Array.from(municipiosMap.values()).sort((left, right) => left.nombre.localeCompare(right.nombre, 'es'))
+  };
+}
+
+function filterTerritorialMunicipios(catalog: TerritorialScopeCatalog, departamentoId: number | null, search: string) {
+  if (departamentoId === null) {
+    return [];
+  }
+
+  const normalized = search.trim().toLowerCase();
+  return catalog.municipios.filter((municipio) => municipio.departamento_id === departamentoId && (!normalized || municipio.nombre.toLowerCase().includes(normalized)));
+}
+
+function summarizeTerritorialSelection(catalog: TerritorialScopeCatalog, selectedIds: number[]) {
+  const selectedSet = new Set(selectedIds);
+  const grouped = new Map<string, number>();
+
+  for (const municipio of catalog.municipios) {
+    if (!selectedSet.has(municipio.id)) {
+      continue;
+    }
+
+    const key = municipio.departamento_nombre ?? 'Sin departamento';
+    grouped.set(key, (grouped.get(key) ?? 0) + 1);
+  }
+
+  return Array.from(grouped.entries())
+    .sort((left, right) => left[0].localeCompare(right[0], 'es'))
+    .map(([departamento, total]) => departamento + " - " + total);
+}
+
 export function UsuariosTab() {
   const { user } = useAuth();
   const isAdmin = user?.roles.includes(ADMIN_ROLE_NAME) === true;
@@ -173,9 +243,11 @@ export function UsuariosTab() {
   const [roles, setRoles] = useState<Rol[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
-  const [municipios, setMunicipios] = useState<Municipio[]>([]);
   const [municipioSearch, setMunicipioSearch] = useState('');
   const [gestorMunicipios, setGestorMunicipios] = useState<Record<number, number[]>>({});
+  const [territorialCatalogs, setTerritorialCatalogs] = useState<Record<number, TerritorialScopeCatalog>>({});
+  const [selectedDepartamentoIds, setSelectedDepartamentoIds] = useState<Record<number, number | null>>({});
+  const [loadingTerritorialCatalogs, setLoadingTerritorialCatalogs] = useState(false);
   const [loadingGestorScope, setLoadingGestorScope] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -225,12 +297,11 @@ export function UsuariosTab() {
       setError('');
 
       try {
-        const [usersResponse, rolesResponse, empresasResponse, contratosResponse, municipiosResponse] = await Promise.all([
+        const [usersResponse, rolesResponse, empresasResponse, contratosResponse] = await Promise.all([
           configuracionApi.listarUsuariosAdmin(),
           configuracionApi.listarRoles(),
           getAllCatalogPages((params) => configuracionApi.listarEmpresas(params)),
-          getAllCatalogPages((params) => configuracionApi.listarContratos(params)),
-          getAllCatalogPages((params) => configuracionApi.listarMunicipios(params))
+          getAllCatalogPages((params) => configuracionApi.listarContratos(params))
         ]);
 
         if (cancelled) {
@@ -241,7 +312,6 @@ export function UsuariosTab() {
         setRoles(rolesResponse);
         setEmpresas(empresasResponse);
         setContratos(contratosResponse);
-        setMunicipios(municipiosResponse);
       } catch (loadError) {
         if (!cancelled) {
           setError(getErrorMessage(loadError, 'No fue posible cargar usuarios, roles y accesos.'));
@@ -274,10 +344,44 @@ export function UsuariosTab() {
     return contratos.filter((contrato) => selectedEmpresaSet.has(contrato.empresa.id));
   }, [contratos, selectedEmpresaSet]);
 
-  const filteredMunicipios = useMemo(() => {
-    const normalized = municipioSearch.trim().toLowerCase();
-    return municipios.filter((item) => !normalized || item.label.toLowerCase().includes(normalized));
-  }, [municipioSearch, municipios]);
+  const loadingTerritorial = loadingGestorScope || loadingTerritorialCatalogs;
+
+  const getTerritorialCatalog = (contratoId: number): TerritorialScopeCatalog => territorialCatalogs[contratoId] ?? EMPTY_TERRITORIAL_SCOPE;
+
+  const getVisibleTerritorialMunicipios = (contratoId: number) =>
+    filterTerritorialMunicipios(getTerritorialCatalog(contratoId), selectedDepartamentoIds[contratoId] ?? null, municipioSearch);
+
+  const getTerritorialSummary = (contratoId: number) =>
+    summarizeTerritorialSelection(getTerritorialCatalog(contratoId), gestorMunicipios[contratoId] ?? []);
+
+  async function ensureTerritorialCatalogs(contratoIds: number[]) {
+    const missingContratoIds = contratoIds.filter((contratoId) => !territorialCatalogs[contratoId]);
+
+    if (missingContratoIds.length === 0) {
+      return;
+    }
+
+    setLoadingTerritorialCatalogs(true);
+
+    try {
+      const entries = await Promise.all(missingContratoIds.map(async (contratoId) => {
+        const response = await getContractPersonalFilterOptions({ contrato_id: contratoId });
+        return [contratoId, buildTerritorialScopeCatalog(response.municipios)] as const;
+      }));
+
+      setTerritorialCatalogs((current) => {
+        const next = { ...current };
+        for (const [contratoId, catalog] of entries) {
+          next[contratoId] = catalog;
+        }
+        return next;
+      });
+    } catch (catalogError) {
+      setFormError(getErrorMessage(catalogError, 'No fue posible cargar el alcance territorial del contrato.'));
+    } finally {
+      setLoadingTerritorialCatalogs(false);
+    }
+  }
 
   const filteredUsers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -305,15 +409,16 @@ export function UsuariosTab() {
     setFormError('');
     setMunicipioSearch('');
     setGestorMunicipios({});
+    setSelectedDepartamentoIds({});
     setAssignmentModal(null);
     setAssignmentWorkspace(null);
     setSelectedAssignmentIds([]);
     setAssignmentSearch('');
   }
 
-  async function openAssignmentModal(contratoId: number, municipioId: number, municipioNombre: string) {
+  async function openAssignmentModal(contratoId: number, municipioId: number, municipioNombre: string, departamentoId: number | null) {
     if (!userModal || userModal.mode !== 'edit' || !isGestorTarget) return;
-    setAssignmentModal({ contratoId, municipioId, municipioNombre, userId: Number(userModal.user.id), userName: userModal.user.name });
+    setAssignmentModal({ contratoId, departamentoId, municipioId, municipioNombre, userId: Number(userModal.user.id), userName: userModal.user.name });
     setAssignmentLoading(true);
     try {
       const workspace = await getGestorAssignmentWorkspace({
@@ -340,6 +445,7 @@ export function UsuariosTab() {
           contrato_id: assignmentModal.contratoId,
           gestor_usuario_id: assignmentModal.userId,
           municipio_id: assignmentModal.municipioId,
+          departamento_id: assignmentModal.departamentoId,
           alcance_personal: 'TODO_MUNICIPIO',
           observacion: 'Alcance dinamico desde Administracion de usuarios'
         });
@@ -348,6 +454,7 @@ export function UsuariosTab() {
           contrato_id: assignmentModal.contratoId,
           gestor_usuario_id: assignmentModal.userId,
           municipio_id: assignmentModal.municipioId,
+          departamento_id: assignmentModal.departamentoId,
           modo: 'REEMPLAZAR_MUNICIPIO',
           vinculacion_ids: selectedAssignmentIds,
           observacion: 'Asignacion desde Administracion de usuarios'
@@ -378,6 +485,7 @@ export function UsuariosTab() {
 
   async function loadGestorScopes(userId: string, contratoIds: number[]) {
     setLoadingGestorScope(true);
+    await ensureTerritorialCatalogs(contratoIds);
     try {
       const entries = await Promise.all(contratoIds.map(async (contratoId) => {
         const response = await getGestorMunicipios({ contrato_id: contratoId, gestor_usuario_id: Number(userId) });
@@ -387,8 +495,16 @@ export function UsuariosTab() {
         contratoId,
         items.filter((item) => item.activo).map((item) => item.municipio.id)
       ])));
+      setSelectedDepartamentoIds((current) => {
+        const next = { ...current };
+        for (const [contratoId, items] of entries) {
+          const firstActive = items.find((item) => item.activo && item.municipio.departamento_id !== null);
+          next[contratoId] = firstActive?.municipio.departamento_id ?? next[contratoId] ?? null;
+        }
+        return next;
+      });
     } catch (scopeError) {
-      setFormError(getErrorMessage(scopeError, 'No fue posible cargar los municipios asignados al gestor.'));
+      setFormError(getErrorMessage(scopeError, 'No fue posible cargar los municipios asignados al usuario territorial.'));
     } finally {
       setLoadingGestorScope(false);
     }
@@ -406,36 +522,25 @@ export function UsuariosTab() {
     });
   }
 
-  async function syncGestorScopes(userId: string, originalContratoIds: number[]) {
-    const contractsToSync = Array.from(new Set([...originalContratoIds, ...form.contratoIds]));
-    const today = new Date().toISOString().slice(0, 10);
+  function pruneTerritorialState(allowedContratoIds: number[]) {
+    const allowed = new Set(allowedContratoIds);
 
-    for (const contratoId of contractsToSync) {
-      const response = await getGestorMunicipios({ contrato_id: contratoId, gestor_usuario_id: Number(userId) });
-      const current = response.items.filter((item) => item.activo);
-      const desired = new Set(isTerritorialTarget && form.active && form.contratoIds.includes(contratoId)
-        ? (gestorMunicipios[contratoId] ?? [])
-        : []);
+    setGestorMunicipios((current) => Object.fromEntries(
+      Object.entries(current).filter(([contratoId]) => allowed.has(Number(contratoId)))
+    ) as Record<number, number[]>);
 
-      await Promise.all(current
-        .filter((item) => !desired.has(item.municipio.id))
-        .map((item) => closeGestorMunicipioAssignment(item.id, {
-          vigencia_hasta: today,
-          observacion: 'Actualizacion desde Administracion de usuarios'
-        })));
+    setSelectedDepartamentoIds((current) => Object.fromEntries(
+      Object.entries(current).filter(([contratoId]) => allowed.has(Number(contratoId)))
+    ) as Record<number, number | null>);
+  }
 
-      const currentIds = new Set(current.map((item) => item.municipio.id));
-      await Promise.all(Array.from(desired)
-        .filter((municipioId) => !currentIds.has(municipioId))
-        .map((municipioId) => createGestorMunicipioAssignment({
-          contrato_id: contratoId,
-          gestor_usuario_id: Number(userId),
-          municipio_id: municipioId,
-          vigencia_desde: today,
-          alcance_personal: 'PERSONAL_SELECCIONADO',
-          observacion: 'Asignacion desde Administracion de usuarios'
-        })));
-    }
+
+  function buildTerritorialScopes() {
+    if (!isTerritorialTarget || !form.active) return [];
+    return form.contratoIds.flatMap((contratoId) => {
+      const departamentoId = selectedDepartamentoIds[contratoId] ?? null;
+      return departamentoId === null ? [] : [{ contrato_id: contratoId, departamento_id: departamentoId, municipio_ids: gestorMunicipios[contratoId] ?? [] }];
+    });
   }
 
   function openPasswordModal(targetUser: UsuarioAdminRecord) {
@@ -453,11 +558,14 @@ export function UsuariosTab() {
         return contrato ? allowedEmpresaIds.has(contrato.empresa.id) : false;
       });
 
-      return {
+      const nextState = {
         ...current,
         empresaIds: nextEmpresaIds,
         contratoIds: nextContratoIds
       };
+
+      pruneTerritorialState(nextContratoIds);
+      return nextState;
     });
   }
 
@@ -473,12 +581,15 @@ export function UsuariosTab() {
         return contrato ? allowedEmpresaIds.has(contrato.empresa.id) : false;
       });
 
-      return {
+      const nextState = {
         ...current,
         roleIds,
         empresaIds: nextEmpresaIds,
         contratoIds: nextContratoIds
       };
+
+      pruneTerritorialState(nextContratoIds);
+      return nextState;
     });
   }
 
@@ -491,12 +602,21 @@ export function UsuariosTab() {
   }
 
   function toggleContrato(contratoId: number, checked: boolean) {
-    setForm((current) => ({
-      ...current,
-      contratoIds: checked
+    setForm((current) => {
+      const contratoIds = checked
         ? Array.from(new Set([...current.contratoIds, contratoId]))
-        : current.contratoIds.filter((currentContratoId) => currentContratoId !== contratoId)
-    }));
+        : current.contratoIds.filter((currentContratoId) => currentContratoId !== contratoId);
+
+      pruneTerritorialState(contratoIds);
+      return {
+        ...current,
+        contratoIds
+      };
+    });
+
+    if (checked) {
+      void ensureTerritorialCatalogs([contratoId]);
+    }
   }
 
   function validateForm(mode: 'create' | 'edit'): string | null {
@@ -560,11 +680,11 @@ export function UsuariosTab() {
           active: form.active,
           roleIds: form.roleIds,
           empresaIds: form.empresaIds,
-          contratoIds: form.contratoIds
+          contratoIds: form.contratoIds,
+          territorialScopes: buildTerritorialScopes()
         };
 
         const created = await configuracionApi.crearUsuarioAdmin(payload);
-        await syncGestorScopes(created.id, []);
         setFeedback({ tone: 'success', text: 'Usuario creado correctamente.' });
         setUserModal(null);
         resetForm();
@@ -576,12 +696,11 @@ export function UsuariosTab() {
           active: form.active,
           roleIds: form.roleIds,
           empresaIds: form.empresaIds,
-          contratoIds: form.contratoIds
+          contratoIds: form.contratoIds,
+          territorialScopes: buildTerritorialScopes()
         };
 
-        const originalContratoIds = userModal.user.contratoIds;
         const updated = await configuracionApi.actualizarUsuarioAdmin(userModal.user.id, payload);
-        await syncGestorScopes(updated.id, originalContratoIds);
         setFeedback({ tone: 'success', text: 'Usuario actualizado correctamente.' });
         setUserModal(null);
         resetForm();
@@ -908,46 +1027,104 @@ export function UsuariosTab() {
                 <input
                   value={municipioSearch}
                   onChange={(event) => setMunicipioSearch(event.target.value)}
-                  placeholder="Buscar municipio..."
+                  placeholder="Buscar municipio del departamento seleccionado..."
                 />
               </label>
-              {loadingGestorScope ? (
-                <div className="cg-selector-empty">Cargando municipios asignados...</div>
+              {loadingTerritorial ? (
+                <div className="cg-selector-empty">Cargando alcance territorial...</div>
               ) : availableContracts.length === 0 ? (
                 <div className="cg-selector-empty">Selecciona al menos un contrato para asignar municipios.</div>
               ) : availableContracts.map((contrato) => {
                 const selected = gestorMunicipios[contrato.id] ?? [];
+                const catalog = getTerritorialCatalog(contrato.id);
+                const selectedDepartamentoId = selectedDepartamentoIds[contrato.id] ?? null;
+                const visibleMunicipios = getVisibleTerritorialMunicipios(contrato.id);
+                const scopeSummary = getTerritorialSummary(contrato.id);
+
                 return (
                   <div key={contrato.id} className="cg-manager-contract-scope">
                     <div className="cg-manager-contract-header">
-                      <strong>{contrato.numero_contrato ?? `Contrato ${contrato.id}`}</strong>
-                      <span>
-                        <button type="button" onClick={() => setGestorMunicipios((current) => ({ ...current, [contrato.id]: filteredMunicipios.map((item) => item.id) }))}>Seleccionar todos</button>
-                        <button type="button" onClick={() => setGestorMunicipios((current) => ({ ...current, [contrato.id]: [] }))}>Limpiar selección</button>
-                      </span>
+                      <strong>{contrato.numero_contrato ?? ("Contrato " + contrato.id)}</strong>
+                      <span className="cg-secondary-cell">{scopeSummary.length > 0 ? scopeSummary.join(" | ") : "Sin municipios seleccionados"}</span>
                     </div>
-                    <div className="cg-access-selector-grid cg-manager-municipality-list">
-                      {filteredMunicipios.map((municipio) => (
-                        <label key={municipio.id} className="cg-role-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={selected.includes(municipio.id)}
-                            onChange={(event) => toggleGestorMunicipio(contrato.id, municipio.id, event.target.checked)}
-                          />
-                          <span>{municipio.label}</span>
-                        </label>
-                      ))}
+
+                    <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+                      <label className="adm-field" style={{ margin: 0 }}>
+                        <span className="adm-label">Departamento</span>
+                        <select
+                          className="adm-select"
+                          value={selectedDepartamentoId ?? ""}
+                          onChange={(event) => setSelectedDepartamentoIds((current) => ({
+                            ...current,
+                            [contrato.id]: event.target.value ? Number(event.target.value) : null
+                          }))}
+                        >
+                          <option value="">Selecciona un departamento</option>
+                          {catalog.departamentos.map((departamento) => (
+                            <option key={departamento.id} value={departamento.id}>
+                              {departamento.nombre}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
                     </div>
-                    {userModal.mode === 'edit' && isGestorTarget && selected.length > 0 && (
+
+                    {selectedDepartamentoId === null ? (
+                      <div className="cg-selector-empty">Selecciona primero un departamento para consultar sus municipios.</div>
+                    ) : visibleMunicipios.length === 0 ? (
+                      <div className="cg-selector-empty">
+                        {municipioSearch.trim() ? "No hay municipios del departamento seleccionado que coincidan con la busqueda." : "El contrato no tiene municipios disponibles en ese departamento."}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="cg-manager-contract-header">
+                          <strong>Municipios</strong>
+                          <span>
+                            <button
+                              type="button"
+                              onClick={() => setGestorMunicipios((current) => ({
+                                ...current,
+                                [contrato.id]: Array.from(new Set([...(current[contrato.id] ?? []), ...visibleMunicipios.map((item) => item.id)]))
+                              }))}
+                            >
+                              Seleccionar todos
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setGestorMunicipios((current) => ({
+                                ...current,
+                                [contrato.id]: (current[contrato.id] ?? []).filter((municipioId) => !visibleMunicipios.some((item) => item.id === municipioId))
+                              }))}
+                            >
+                              Limpiar departamento
+                            </button>
+                          </span>
+                        </div>
+                        <div className="cg-access-selector-grid cg-manager-municipality-list">
+                          {visibleMunicipios.map((municipio) => (
+                            <label key={municipio.id} className="cg-role-checkbox">
+                              <input
+                                type="checkbox"
+                                checked={selected.includes(municipio.id)}
+                                onChange={(event) => toggleGestorMunicipio(contrato.id, municipio.id, event.target.checked)}
+                              />
+                              <span>{municipio.nombre}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {userModal.mode === "edit" && isGestorTarget && selected.length > 0 && (
                       <div className="cg-manager-assignment-summary">
-                        {filteredMunicipios.filter((municipio) => selected.includes(municipio.id)).map((municipio) => (
+                        {catalog.municipios.filter((municipio) => selected.includes(municipio.id)).map((municipio) => (
                           <button
                             key={municipio.id}
                             className="adm-btn ghost sm"
                             type="button"
-                            onClick={() => void openAssignmentModal(contrato.id, municipio.id, municipio.label)}
+                            onClick={() => void openAssignmentModal(contrato.id, municipio.id, municipio.nombre, municipio.departamento_id ?? null)}
                           >
-                            <Users size={12} /> Gestionar personal de {municipio.label}
+                            <Users size={12} /> Gestionar personal de {municipio.nombre}
                           </button>
                         ))}
                       </div>

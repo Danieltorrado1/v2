@@ -141,7 +141,7 @@ export interface ReactivarVinculacionPayload {
 
 export interface ContractPersonalFilterOptions {
   gestores: Array<{ id: number; nombre: string; roles: string[] }>;
-  municipios: Array<{ id: number; nombre: string }>;
+  municipios: Array<{ id: number; nombre: string; departamento_id: number | null; departamento_nombre: string | null }>;
   instituciones: Array<{ id: number; nombre: string; municipio_id: number | null }>;
   sedes: Array<{ id: number; nombre: string; institucion_id: number | null }>;
   modalidades: Array<{ id: number; codigo: string | null; nombre: string }>;
@@ -169,6 +169,8 @@ export interface GestorMunicipioAssignment {
   municipio: {
     id: number;
     nombre: string | null;
+    departamento_id: number | null;
+    departamento_nombre: string | null;
   };
   observacion: string | null;
   updated_at: string;
@@ -221,6 +223,7 @@ export interface SaveGestorAssignmentsPayload {
   contrato_id: number;
   gestor_usuario_id: number;
   municipio_id: number;
+  departamento_id?: number | null;
   fecha?: string;
   modo?: "SELECCION" | "REEMPLAZAR_MUNICIPIO";
   vinculacion_ids: number[];

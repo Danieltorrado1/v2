@@ -5,6 +5,8 @@ const numericIdSchema = z.coerce.number().int().positive();
 const roleIdsSchema = z.array(numericIdSchema).max(50).default([]);
 const requiredRoleIdsSchema = z.array(numericIdSchema).min(1, 'At least one role is required').max(50);
 const tenantIdsSchema = z.array(z.coerce.number().int().positive()).max(500).default([]);
+const territorialScopeSchema = z.object({ contrato_id: numericIdSchema, departamento_id: numericIdSchema, municipio_ids: z.array(numericIdSchema).max(500) });
+
 
 export const userIdParamSchema = z.object({
   id: numericIdSchema
@@ -42,7 +44,8 @@ export const createAdminUserSchema = z.object({
   active: z.boolean().optional().default(true),
   roleIds: requiredRoleIdsSchema,
   empresaIds: tenantIdsSchema,
-  contratoIds: tenantIdsSchema
+  contratoIds: tenantIdsSchema,
+  territorialScopes: z.array(territorialScopeSchema).max(500).default([])
 });
 
 export const updateAdminUserSchema = z
@@ -52,7 +55,8 @@ export const updateAdminUserSchema = z
     active: z.boolean().optional(),
     roleIds: requiredRoleIdsSchema.optional(),
     empresaIds: tenantIdsSchema.optional(),
-    contratoIds: tenantIdsSchema.optional()
+    contratoIds: tenantIdsSchema.optional(),
+    territorialScopes: z.array(territorialScopeSchema).max(500).optional()
   })
   .refine(
     (data) => Object.keys(data).length > 0,

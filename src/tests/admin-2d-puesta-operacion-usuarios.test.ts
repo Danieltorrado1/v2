@@ -13,65 +13,66 @@ const nominaService = readFileSync('src/modules/nomina/nomina.procesos.ts', 'utf
 const gestorMigration = readFileSync('src/scripts/migrate-admin-2d-gestor-role.ts', 'utf8');
 
 test('ADMIN-2D usa el catalogo real y conserva roles multiples', () => {
-  assert.match(usersUi, /configuracionApi\.listarRoles\(\)/);
-  assert.match(usersUi, /getAllCatalogPages\(/);
-  assert.match(usersUi, /CATALOG_BATCH_LIMIT = 100/);
-  assert.doesNotMatch(usersUi, /limit:\s*500/);
-  assert.match(configuracionApi, /listarEmpresas: \(filters: EmpresaFilters = \{\}\) => getPaginated<Empresa>\('\/configuracion\/empresas', filters\)/);
-  assert.match(configuracionSchemas, /limit: z\.coerce\.number\(\)\.int\(\)\.min\(1\)\.max\(100\)\.default\(25\)/);
-  assert.match(usersUi, /form\.roleIds\.includes/);
-  assert.match(usersService, /INSERT INTO usuario_roles/);
-  assert.match(usersService, /syncUserRoles/);
-  assert.doesNotMatch(usersUi, /rol_id/i);
+  assert.ok(usersUi.includes('configuracionApi.listarRoles()'));
+  assert.ok(usersUi.includes('getAllCatalogPages('));
+  assert.ok(usersUi.includes('CATALOG_BATCH_LIMIT = 100'));
+  assert.equal(usersUi.includes('limit: 500'), false);
+  assert.ok(configuracionApi.includes("listarEmpresas: (filters: EmpresaFilters = {}) => getPaginated<Empresa>('/configuracion/empresas', filters)"));
+  assert.ok(configuracionSchemas.includes('limit: z.coerce.number().int().min(1).max(100).default(25)'));
+  assert.ok(usersUi.includes('form.roleIds.includes'));
+  assert.ok(usersService.includes('INSERT INTO usuario_roles'));
+  assert.ok(usersService.includes('syncUserRoles'));
+  assert.equal(usersUi.toLowerCase().includes('rol_id'), false);
 });
 
 test('ADMIN-2D incorpora GESTOR al catalogo RBAC de forma idempotente', () => {
-  assert.match(gestorMigration, /INSERT INTO roles/);
-  assert.match(gestorMigration, /'GESTOR'/);
-  assert.match(gestorMigration, /FROM rol_permisos rp/);
-  assert.match(gestorMigration, /source_role\.nombre_rol = 'OPERACION'/);
-  assert.match(gestorMigration, /ON CONFLICT \(rol_id, permiso_id\)/);
-  assert.doesNotMatch(gestorMigration, /usuario_roles/);
+  assert.ok(gestorMigration.includes('INSERT INTO roles'));
+  assert.ok(gestorMigration.includes("'GESTOR'"));
+  assert.ok(gestorMigration.includes('FROM rol_permisos rp'));
+  assert.ok(gestorMigration.includes("source_role.nombre_rol = 'OPERACION'"));
+  assert.ok(gestorMigration.includes('ON CONFLICT (rol_id, permiso_id)'));
+  assert.equal(gestorMigration.includes('usuario_roles'), false);
 });
 
 test('ADMIN-2D permite crear y editar rol sin escalacion propia', () => {
-  assert.match(usersRoutes, /post\('\/', createAdminUserHandler\)/);
-  assert.match(usersRoutes, /patch\('\/:id', updateAdminUserHandler\)/);
-  assert.match(usersRoutes, /requireRoles\('ADMINISTRADOR'\)/);
-  assert.match(usersService, /SELF_ROLE_CHANGE_FORBIDDEN/);
-  assert.match(usersService, /LAST_GLOBAL_ADMIN_PROTECTED/);
+  assert.ok(usersRoutes.includes("post('/', createAdminUserHandler)"));
+  assert.ok(usersRoutes.includes("patch('/:id', updateAdminUserHandler)"));
+  assert.ok(usersRoutes.includes("requireRoles('ADMINISTRADOR')"));
+  assert.ok(usersService.includes('SELF_ROLE_CHANGE_FORBIDDEN'));
+  assert.ok(usersService.includes('LAST_GLOBAL_ADMIN_PROTECTED'));
 });
 
-test('ADMIN-2D presenta municipios humanos, busqueda y seleccion multiple', () => {
-  assert.match(usersUi, /Buscar municipio\.\.\./);
-  assert.match(usersUi, /municipio\.label/);
-  assert.match(usersUi, /Seleccionar todos/);
-  assert.match(usersUi, /Limpiar selecci/);
-  assert.match(usersUi, /toggleGestorMunicipio/);
-  assert.doesNotMatch(usersUi, />municipio_id</i);
+test('ADMIN-2D filtra municipios por contrato y departamento antes de mostrar opciones', () => {
+  assert.ok(usersUi.includes('getContractPersonalFilterOptions'));
+  assert.ok(usersUi.includes('selectedDepartamentoIds'));
+  assert.ok(usersUi.includes('Selecciona primero un departamento para consultar sus municipios'));
+  assert.ok(usersUi.includes('Limpiar departamento'));
+  assert.ok(usersUi.includes('Buscar municipio del departamento seleccionado'));
+  assert.equal(usersUi.includes('filteredMunicipios'), false);
+  assert.equal(usersUi.includes('municipio.label'), false);
 });
 
 test('ADMIN-2D reutiliza asignaciones historicas y no elimina municipios ni usuarios', () => {
-  assert.match(usersUi, /getGestorMunicipios/);
-  assert.match(usersUi, /createGestorMunicipioAssignment/);
-  assert.match(usersUi, /closeGestorMunicipioAssignment/);
-  assert.match(gestorService, /vigencia_hasta/);
-  assert.match(gestorService, /activo = FALSE/);
-  assert.doesNotMatch(gestorService, /DELETE FROM gestor_municipio_asignaciones/);
+  assert.ok(usersUi.includes('getGestorMunicipios'));
+  assert.ok(usersUi.includes('createGestorMunicipioAssignment'));
+  assert.ok(gestorService.includes('vigencia_hasta'));
+  assert.ok(gestorService.includes('activo = FALSE'));
+  assert.equal(gestorService.includes('DELETE FROM gestor_municipio_asignaciones'), false);
 });
 
-test('ADMIN-2D protege contrato y tenant tambien en backend', () => {
-  assert.match(gestorRoutes, /tenantMiddleware/);
-  assert.match(gestorRoutes, /requirePermissions\('vinculaciones\.update'\)/);
-  assert.match(gestorService, /GESTOR_CONTRATO_ACCESS_REQUIRED/);
-  assert.match(gestorService, /FROM usuario_contratos uc/);
-  assert.match(gestorService, /ensureContractTenantAccess/);
+test('ADMIN-2D protege contrato, departamento y tenant tambien en backend', () => {
+  assert.ok(gestorRoutes.includes('tenantMiddleware'));
+  assert.ok(gestorRoutes.includes("requirePermissions('vinculaciones.update')"));
+  assert.ok(gestorService.includes('GESTOR_CONTRATO_ACCESS_REQUIRED'));
+  assert.ok(gestorService.includes('MUNICIPIO_DEPARTAMENTO_INVALIDO'));
+  assert.ok(gestorService.includes('GESTOR_MUNICIPIO_CONTRATO_INVALIDO'));
+  assert.ok(gestorService.includes('ensureContractTenantAccess'));
 });
 
 test('rol, asignacion general y responsabilidad de nomina permanecen separados', () => {
-  assert.match(gestorService, /gestor_municipio_asignaciones/);
-  assert.match(nominaService, /nomina_responsabilidad_municipios/);
-  assert.match(nominaService, /alcance_personal/);
-  assert.match(nominaService, /gestor_personal_asignaciones/);
-  assert.match(usersUi, /responsabilidad de Nomina se configura aparte/);
+  assert.ok(gestorService.includes('gestor_municipio_asignaciones'));
+  assert.ok(nominaService.includes('nomina_responsabilidad_municipios'));
+  assert.ok(nominaService.includes('alcance_personal'));
+  assert.ok(nominaService.includes('gestor_personal_asignaciones'));
+  assert.ok(usersUi.includes('responsabilidad de Nomina se configura aparte'));
 });

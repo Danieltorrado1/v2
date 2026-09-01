@@ -9,41 +9,52 @@ const nominaService = readFileSync('src/modules/nomina/nomina.service.ts', 'utf8
 const migration = readFileSync('src/scripts/migrate-admin-2e-user-territorial-scope.ts', 'utf8');
 const permissions = readFileSync('src/scripts/seed-admin-2e-operational-permissions.ts', 'utf8');
 
-test('ADMIN-2E permite territorio para GESTOR y TALENTO_HUMANO', () => {
-  assert.match(usersUi, /TALENTO_HUMANO/);
-  assert.match(usersUi, /Municipios a cargo/);
-  assert.match(usersUi, /getGestorMunicipios/);
-  assert.match(vincService, /TALENTO_HUMANO_ROLE/);
+test('ADMIN-2E permite territorio para GESTOR y TALENTO_HUMANO sin exigir gestor user', () => {
+  assert.ok(usersUi.includes('TALENTO_HUMANO'));
+  assert.ok(usersUi.includes('Municipios a cargo'));
+  assert.ok(usersUi.includes('getGestorMunicipios'));
+  assert.ok(vincService.includes('ensureTerritorialAssignmentUserExists'));
+  assert.ok(vincService.includes('TERRITORIAL_USER_NOT_FOUND'));
+  assert.ok(vincService.includes("r_scope.nombre_rol IN ('GESTOR', 'TALENTO_HUMANO')"));
 });
 
 test('ADMIN-2E separa municipio autorizado de personal seleccionado o dinamico', () => {
-  assert.match(migration, /TODO_MUNICIPIO/);
-  assert.match(migration, /PERSONAL_SELECCIONADO/);
-  assert.match(vincService, /gestor_personal_asignaciones/);
-  assert.match(vincService, /gestor_municipio_asignaciones/);
-  assert.match(usersUi, /Personal seleccionado/);
-  assert.match(usersUi, /Todo el municipio/);
-  assert.match(usersUi, /saveGestorAssignments/);
+  assert.ok(migration.includes('TODO_MUNICIPIO'));
+  assert.ok(migration.includes('PERSONAL_SELECCIONADO'));
+  assert.ok(vincService.includes('gestor_personal_asignaciones'));
+  assert.ok(vincService.includes('gestor_municipio_asignaciones'));
+  assert.ok(usersUi.includes('Personal seleccionado'));
+  assert.ok(usersUi.includes('Todo el municipio'));
+  assert.ok(usersUi.includes('saveGestorAssignments'));
 });
 
 test('ADMIN-2E usa una fuente efectiva de gestor en personal y nomina', () => {
-  assert.match(vincService, /gestor_actual/);
-  assert.match(vincService, /alcance_personal/);
-  assert.match(nominaService, /gestor_personal_asignaciones/);
-  assert.match(nominaService, /gestor_municipio_asignaciones/);
-  assert.match(nominaProcesos, /NOMINA_SCOPE_FORBIDDEN/);
+  assert.ok(vincService.includes('gestor_actual'));
+  assert.ok(vincService.includes('alcance_personal'));
+  assert.ok(nominaService.includes('gestor_personal_asignaciones'));
+  assert.ok(nominaService.includes('gestor_municipio_asignaciones'));
+  assert.ok(nominaProcesos.includes('NOMINA_SCOPE_FORBIDDEN'));
+});
+
+test('ADMIN-2E filtra municipios por departamento y valida pertenencia real', () => {
+  assert.ok(usersUi.includes('Selecciona primero un departamento para consultar sus municipios'));
+  assert.ok(usersUi.includes('getContractPersonalFilterOptions'));
+  assert.ok(vincService.includes('departamento_id'));
+  assert.ok(vincService.includes('MUNICIPIO_DEPARTAMENTO_INVALIDO'));
+  assert.ok(vincService.includes('GESTOR_MUNICIPIO_CONTRATO_INVALIDO'));
 });
 
 test('ADMIN-2E mantiene permisos operativos minimos e idempotentes', () => {
-  assert.match(permissions, /GESTOR/);
-  assert.match(permissions, /TALENTO_HUMANO/);
-  assert.match(permissions, /ON CONFLICT \(rol_id, permiso_id\)/);
-  assert.match(permissions, /\['nomina', 'read'/);
-  assert.doesNotMatch(permissions, /administracion/);
+  assert.ok(permissions.includes('GESTOR'));
+  assert.ok(permissions.includes('TALENTO_HUMANO'));
+  assert.ok(permissions.includes('ON CONFLICT (rol_id, permiso_id)'));
+  assert.ok(permissions.includes("['nomina', 'read'"));
+  assert.equal(permissions.includes('administracion'), false);
 });
 
 test('ADMIN-2E conserva vigencias y auditoria al cambiar municipio', () => {
-  assert.match(readFileSync('src/modules/vinculaciones/vinculaciones.personal.service.ts', 'utf8'), /vigencia_hasta/);
-  assert.match(readFileSync('src/modules/vinculaciones/vinculaciones.personal.service.ts', 'utf8'), /gestor_personal_asignaciones/);
-  assert.match(vincService, /registerAuditEntry/);
+  const personalService = readFileSync('src/modules/vinculaciones/vinculaciones.personal.service.ts', 'utf8');
+  assert.ok(personalService.includes('vigencia_hasta'));
+  assert.ok(personalService.includes('gestor_personal_asignaciones'));
+  assert.ok(vincService.includes('registerAuditEntry'));
 });

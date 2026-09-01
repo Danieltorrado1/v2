@@ -781,3 +781,38 @@
   white-space: nowrap;
   z-index: 2;
 }
+
+
+/* Dark-theme contrast repair: preserve worksheet surfaces with readable text. */
+[data-theme="dark"] .op-sheet-page .op-period-picker select,
+[data-theme="dark"] .op-sheet-page .op-toolbar input,
+[data-theme="dark"] .op-sheet-page .op-toolbar select,
+[data-theme="dark"] .op-sheet-page .op-summary,
+[data-theme="dark"] .op-sheet-page .op-viewport,
+[data-theme="dark"] .op-sheet-page .op-head,
+[data-theme="dark"] .op-sheet-page .op-row,
+[data-theme="dark"] .op-sheet-page .op-toolbar button,
+[data-theme="dark"] .op-sheet-page .op-actions button { color: #172033; }
+
+[data-theme="dark"] .op-sheet-page .op-period-picker select,
+[data-theme="dark"] .op-sheet-page .op-toolbar input,
+[data-theme="dark"] .op-sheet-page .op-toolbar select,
+[data-theme="dark"] .op-sheet-page .op-form-field input,
+[data-theme="dark"] .op-sheet-page .op-form-field textarea,
+[data-theme="dark"] .op-sheet-page .op-cover-search input { background: #f8fbfd; color: #172033; }
+
+[data-theme="dark"] .op-sheet-page .op-head > div,
+[data-theme="dark"] .op-sheet-page .op-row > *,
+[data-theme="dark"] .op-sheet-page .op-name,
+[data-theme="dark"] .op-sheet-page .op-doc,
+[data-theme="dark"] .op-sheet-page .op-review { color: #172033; }
+
+[data-theme="dark"] .op-sheet-page .op-summary span,
+[data-theme="dark"] .op-sheet-page .op-period-meta,
+[data-theme="dark"] .op-sheet-page .op-day-head small,
+[data-theme="dark"] .op-sheet-page .op-name small { color: #425466; }
+
+[data-theme="dark"] .op-sheet-page input::placeholder { color: #617386; opacity: 1; }
+[data-theme="dark"] .op-sheet-page select:disabled,
+[data-theme="dark"] .op-sheet-page input:disabled { color: #536779; opacity: 1; background: #e7edf2; }
+[data-theme="dark"] .op-sheet-page option { background: #f8fbfd; color: #172033; }

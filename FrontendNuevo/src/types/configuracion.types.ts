@@ -621,7 +621,8 @@ export interface CreateUsuarioAdminPayload {
   active?: boolean;
   roleIds: string[];
   empresaIds: number[];
-  contratoIds: number[];
+  contratoIds: number[]
+  territorialScopes?: Array<{ contrato_id: number; departamento_id: number; municipio_ids: number[] }>;
 }
 
 export interface UpdateUsuarioAdminPayload {
@@ -630,7 +631,8 @@ export interface UpdateUsuarioAdminPayload {
   active?: boolean;
   roleIds?: string[];
   empresaIds?: number[];
-  contratoIds?: number[];
+  contratoIds?: number[]
+  territorialScopes?: Array<{ contrato_id: number; departamento_id: number; municipio_ids: number[] }>;
 }
 
 export interface UpdateUsuarioPasswordPayload {

@@ -572,6 +572,30 @@ const syncUserContratos = async (
   );
 };
 
+const syncAdminTerritorialScopes = async (
+  client: PoolClient, userId: string | number, roleIds: number[], active: boolean,
+  scopes: CreateAdminUserInput['territorialScopes'], actorUserId: string
+): Promise<void> => {
+  const roles = await client.query<{ nombre_rol: string }>('SELECT nombre_rol FROM roles WHERE id = ANY($1::bigint[]) AND COALESCE(activo, TRUE) = TRUE', [uniqueNumberIds(roleIds)]);
+  const territorial = roles.rows.some((row) => row.nombre_rol === 'GESTOR' || row.nombre_rol === 'TALENTO_HUMANO');
+  const desired = active && territorial ? (scopes ?? []) : [];
+  const selectedContracts = new Set(await loadActiveNumberIds(client, 'usuario_contratos', 'contrato_id', userId));
+  for (const scope of desired) {
+    if (!selectedContracts.has(scope.contrato_id)) throw createHttpError('El alcance territorial requiere un contrato asignado al usuario.', 400, 'TERRITORIAL_CONTRACT_NOT_SELECTED');
+    const dept = await client.query('SELECT id FROM departamentos WHERE id = $1::bigint AND COALESCE(activo, TRUE) = TRUE LIMIT 1', [scope.departamento_id]);
+    if (!dept.rows[0]) throw createHttpError('El departamento seleccionado no existe.', 400, 'INVALID_DEPARTAMENTO_ID');
+    const municipalityIds = uniqueNumberIds(scope.municipio_ids);
+    if (municipalityIds.length === 0) continue;
+    const municipalities = await client.query<{ id: string }>('SELECT mu.id::text AS id FROM municipios mu WHERE mu.id = ANY($1::bigint[]) AND mu.departamento_id = $2::bigint AND COALESCE(mu.activo, TRUE) = TRUE AND EXISTS (SELECT 1 FROM focalizacion_final ff WHERE ff.contrato_id = $3::bigint AND ff.municipio_id = mu.id AND ff.activo = TRUE)', [municipalityIds, scope.departamento_id, scope.contrato_id]);
+    const validIds = new Set(municipalities.rows.map((row) => Number(row.id)));
+    const invalidIds = municipalityIds.filter((id) => !validIds.has(id));
+    if (invalidIds.length > 0) throw createHttpError('Uno o m�s municipios no pertenecen al departamento o contrato seleccionado.', 400, 'INVALID_TERRITORIAL_SCOPE', { invalidIds });
+  }
+  await client.query('UPDATE gestor_municipio_asignaciones SET activo = FALSE, vigencia_hasta = CASE WHEN vigencia_desde > CURRENT_DATE - 1 THEN vigencia_desde ELSE CURRENT_DATE - 1 END, updated_by_user_id = $2::bigint, updated_at = NOW() WHERE usuario_id = $1::bigint AND COALESCE(activo, TRUE) = TRUE', [toUserIdText(userId), actorUserId]);
+  for (const scope of desired) for (const municipioId of uniqueNumberIds(scope.municipio_ids)) {
+    await client.query(`INSERT INTO gestor_municipio_asignaciones (usuario_id, contrato_id, municipio_id, alcance_personal, vigencia_desde, vigencia_hasta, activo, observacion, created_by_user_id, updated_by_user_id) VALUES ($1::bigint, $2::bigint, $3::bigint, 'PERSONAL_SELECCIONADO', CURRENT_DATE, NULL, TRUE, 'Alcance territorial guardado con el usuario', $4::bigint, $4::bigint) ON CONFLICT DO NOTHING`, [toUserIdText(userId), scope.contrato_id, municipioId, actorUserId]);
+  }
+};
 const isUniqueViolation = (error: unknown): boolean => {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505';
 };
@@ -1332,7 +1356,7 @@ export const findAdminUserById = async (userId: string | number): Promise<AdminU
   return user ? enrichAdminUserProfile(user) : null;
 };
 
-export const createAdminUser = async (input: CreateAdminUserInput): Promise<AdminUserRecord> => {
+export const createAdminUser = async (input: CreateAdminUserInput, actor: UserMutationActor): Promise<AdminUserRecord> => {
   const client = await dbPool.connect();
 
   try {
@@ -1367,6 +1391,7 @@ export const createAdminUser = async (input: CreateAdminUserInput): Promise<Admi
     await syncUserRoles(client, createdUser.id, normalizedSelection.roleIds);
     await syncUserEmpresas(client, createdUser.id, normalizedSelection.empresaIds);
     await syncUserContratos(client, createdUser.id, normalizedSelection.contratoIds);
+    await syncAdminTerritorialScopes(client, createdUser.id, normalizedSelection.roleIds, input.active, input.territorialScopes, actor.userId);
     await client.query('COMMIT');
 
     const user = await findAdminUserById(createdUser.id);
@@ -1389,7 +1414,8 @@ export const createAdminUser = async (input: CreateAdminUserInput): Promise<Admi
 
 export const updateAdminUser = async (
   userId: string | number,
-  input: UpdateAdminUserInput
+  input: UpdateAdminUserInput,
+  actor: UserMutationActor
 ): Promise<AdminUserRecord> => {
   const client = await dbPool.connect();
 
@@ -1437,6 +1463,7 @@ export const updateAdminUser = async (
     await syncUserRoles(client, userIdText, normalizedSelection.roleIds);
     await syncUserEmpresas(client, userIdText, normalizedSelection.empresaIds);
     await syncUserContratos(client, userIdText, normalizedSelection.contratoIds);
+    if (input.territorialScopes !== undefined) await syncAdminTerritorialScopes(client, userIdText, normalizedSelection.roleIds, nextActive, input.territorialScopes, actor.userId);
 
     await client.query('COMMIT');
 

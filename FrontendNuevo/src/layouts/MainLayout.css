@@ -691,3 +691,11 @@
     display: none;
   }
 }
+
+/* Dark-theme company selector contrast only; dimensions remain unchanged. */
+[data-theme="dark"] .company-context-control { background: #102132; border-color: #53718b; color: #f2f8fc; }
+[data-theme="dark"] .company-context-control svg { color: #59ddff; }
+[data-theme="dark"] .company-context-control select { color: #f2f8fc; }
+[data-theme="dark"] .company-context-control select option { background: #102132; color: #f2f8fc; }
+[data-theme="dark"] .company-context-control:hover,
+[data-theme="dark"] .company-context-control:focus-within { border-color: #59ddff; background: #17314a; }

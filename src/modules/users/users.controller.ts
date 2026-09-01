@@ -137,7 +137,7 @@ export const getAdminUserById = asyncHandler(async (req: Request, res: Response)
 
 export const createAdminUserHandler = asyncHandler(async (req: Request, res: Response) => {
   const input = createAdminUserSchema.parse(req.body);
-  const user = await createAdminUser(input);
+  const user = await createAdminUser(input, getActor(req));
 
   return successResponse(res, {
     message: 'Admin user created successfully',
@@ -149,7 +149,7 @@ export const createAdminUserHandler = asyncHandler(async (req: Request, res: Res
 export const updateAdminUserHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = userIdParamSchema.parse(req.params);
   const input = updateAdminUserSchema.parse(req.body);
-  const user = await updateAdminUser(id, input);
+  const user = await updateAdminUser(id, input, getActor(req));
 
   return successResponse(res, {
     message: 'Admin user updated successfully',

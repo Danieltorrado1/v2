@@ -88,13 +88,37 @@ export const normalizeDateOnly = (value: string | null | undefined) => {
   return match?.[0] ?? null;
 };
 
+export const dedupeNominaNovedades = (items: NominaNovedadApi[]) => {
+  const unique = new Map<string, NominaNovedadApi>();
+
+  for (const item of items) {
+    if (!unique.has(item.id)) {
+      unique.set(item.id, item);
+    }
+  }
+
+  return [...unique.values()];
+};
+
+export const upsertNominaNovedad = (items: NominaNovedadApi[], next: NominaNovedadApi) => {
+  const deduped = dedupeNominaNovedades(items);
+  const index = deduped.findIndex((item) => item.id === next.id);
+
+  if (index === -1) {
+    return [...deduped, next];
+  }
+
+  deduped[index] = next;
+  return deduped;
+};
+
 export const novedadesOnDate = (items: NominaNovedadApi[], date: string) => {
   const normalizedDate = normalizeDateOnly(date);
   if (!normalizedDate) {
     return [];
   }
 
-  return items.filter((item) => {
+  return dedupeNominaNovedades(items).filter((item) => {
     const start = normalizeDateOnly(item.fecha_inicio_evento_canonico ?? item.fecha_inicio) ?? normalizedDate;
     const end = normalizeDateOnly(item.fecha_fin_evento_canonico ?? item.fecha_fin ?? item.fecha_inicio) ?? normalizedDate;
     return item.activo && start <= normalizedDate && end >= normalizedDate;

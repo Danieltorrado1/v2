@@ -636,7 +636,9 @@ const mapGestorMunicipioAssignment = (
   },
   municipio: {
     id: toNumber(row.municipio_id),
-    nombre: row.municipio_nombre
+    nombre: row.municipio_nombre,
+    departamento_id: row.departamento_id === null ? null : toNumber(row.departamento_id),
+    departamento_nombre: row.departamento_nombre
   },
   vigencia_desde: toDateString(row.vigencia_desde) ?? '',
   vigencia_hasta: toDateString(row.vigencia_hasta),
@@ -867,6 +869,8 @@ const getGestorMunicipioAssignments = async (
         gma.contrato_id,
         gma.municipio_id,
         gma.alcance_personal,
+        mu.departamento_id,
+        dep.nombre_departamento AS departamento_nombre,
         mu.nombre_municipio AS municipio_nombre,
         gma.vigencia_desde,
         gma.vigencia_hasta,
@@ -879,6 +883,7 @@ const getGestorMunicipioAssignments = async (
       FROM gestor_municipio_asignaciones gma
       INNER JOIN usuarios u ON u.id = gma.usuario_id
       INNER JOIN municipios mu ON mu.id = gma.municipio_id
+      LEFT JOIN departamentos dep ON dep.id = mu.departamento_id
       WHERE ${conditions.join(' AND ')}
       ORDER BY mu.nombre_municipio ASC, gma.vigencia_desde DESC, gma.id DESC
     `,
@@ -1014,6 +1019,139 @@ const ensureMunicipioExists = async (client: PoolClient, municipioId: number): P
   if (!result.rows[0]?.exists) {
     throw new AppError('Municipio not found', 404, 'MUNICIPIO_NOT_FOUND');
   }
+};
+
+const ensureMunicipioDepartamentoMatch = async (
+  client: PoolClient,
+  municipioId: number,
+  departamentoId?: number | null
+): Promise<void> => {
+  if (departamentoId === undefined || departamentoId === null) {
+    return;
+  }
+
+  const result = await client.query<ExistsRow>(
+    `
+      SELECT EXISTS(
+        SELECT 1
+        FROM municipios
+        WHERE id = $1::bigint
+          AND departamento_id = $2::bigint
+      ) AS exists
+    `,
+    [municipioId, departamentoId]
+  );
+
+  if (!result.rows[0]?.exists) {
+    throw new AppError(
+      'El municipio no pertenece al departamento seleccionado.',
+      409,
+      'MUNICIPIO_DEPARTAMENTO_INVALIDO'
+    );
+  }
+};
+
+const ensureMunicipioBelongsContratoScope = async (
+  client: PoolClient,
+  contratoId: number,
+  municipioId: number
+): Promise<void> => {
+  const result = await client.query<ExistsRow>(
+    `
+      SELECT EXISTS(
+        SELECT 1
+        FROM focalizacion_final ff
+        WHERE ff.contrato_id = $1::bigint
+          AND ff.municipio_id = $2::bigint
+          AND COALESCE(ff.activo, TRUE) = TRUE
+      ) AS exists
+    `,
+    [contratoId, municipioId]
+  );
+
+  if (!result.rows[0]?.exists) {
+    throw new AppError(
+      'El municipio no pertenece al contrato seleccionado.',
+      409,
+      'GESTOR_MUNICIPIO_CONTRATO_INVALIDO'
+    );
+  }
+};
+
+const ensureTerritorialAssignmentUserExists = async (
+  client: PoolClient,
+  usuarioId: number,
+  contratoId: number
+): Promise<GestorAssignmentUser> => {
+  const result = await client.query<GestorUserRow>(
+    `
+      SELECT
+        u.id,
+        u.nombre_completo AS name,
+        COALESCE(u.activo, TRUE) AS active,
+        COALESCE(
+          ARRAY(
+            SELECT DISTINCT r.nombre_rol
+            FROM usuario_roles ur
+            INNER JOIN roles r ON r.id = ur.rol_id
+            WHERE ur.usuario_id = u.id
+              AND COALESCE(ur.activo, TRUE) = TRUE
+              AND COALESCE(r.activo, TRUE) = TRUE
+            ORDER BY r.nombre_rol
+          ),
+          ARRAY[]::text[]
+        ) AS roles
+      FROM usuarios u
+      WHERE u.id = $1::bigint
+        AND COALESCE(u.activo, TRUE) = TRUE
+        AND EXISTS (
+          SELECT 1
+          FROM usuario_roles ur_scope
+          INNER JOIN roles r_scope ON r_scope.id = ur_scope.rol_id
+          WHERE ur_scope.usuario_id = u.id
+            AND COALESCE(ur_scope.activo, TRUE) = TRUE
+            AND COALESCE(r_scope.activo, TRUE) = TRUE
+            AND r_scope.nombre_rol IN ('GESTOR', 'TALENTO_HUMANO')
+        )
+      LIMIT 1
+    `,
+    [usuarioId]
+  );
+
+  const user = result.rows[0] ? mapGestorAssignmentUser(result.rows[0]) : null;
+
+  if (!user) {
+    throw new AppError(
+      'El usuario territorial no existe o no tiene un rol compatible.',
+      404,
+      'TERRITORIAL_USER_NOT_FOUND'
+    );
+  }
+
+  const access = await client.query<ExistsRow>(
+    `
+      SELECT EXISTS(
+        SELECT 1
+        FROM usuario_contratos uc
+        INNER JOIN contratos c ON c.id = uc.contrato_id
+        WHERE uc.usuario_id = $1::bigint
+          AND uc.contrato_id = $2::bigint
+          AND COALESCE(uc.activo, TRUE) = TRUE
+          AND COALESCE(c.activo, TRUE) = TRUE
+      ) AS exists
+    `,
+    [usuarioId, contratoId]
+  );
+
+  if (!access.rows[0]?.exists) {
+    throw new AppError(
+      'El usuario territorial no tiene acceso al contrato.',
+      403,
+      'GESTOR_CONTRATO_ACCESS_REQUIRED'
+    );
+  }
+
+  return user;
 };
 
 const ensureGestorMunicipioScope = async (
@@ -1680,6 +1818,8 @@ interface GestorMunicipioAssignmentRow extends QueryResultRow {
   contrato_id: number | string;
   created_at: Date | string;
   created_by_user_id: number | string | null;
+  departamento_id: number | string | null;
+  departamento_nombre: string | null;
   gestor_nombre: string | null;
   id: number | string;
   municipio_id: number | string;
@@ -1733,6 +1873,8 @@ export interface GestorMunicipioAssignment {
   municipio: {
     id: number;
     nombre: string | null;
+    departamento_id: number | null;
+    departamento_nombre: string | null;
   };
   observacion: string | null;
   updated_at: string;
@@ -2109,6 +2251,7 @@ export const getContractPersonalFilterOptions = async (
     const base = `
       FROM focalizacion_final ff
       LEFT JOIN municipios mu ON mu.id = ff.municipio_id
+      LEFT JOIN departamentos dep ON dep.id = mu.departamento_id
       LEFT JOIN instituciones ins ON ins.id = ff.institucion_id
       LEFT JOIN sedes se ON se.id = ff.sede_id
       LEFT JOIN modalidades mo ON mo.id = ff.modalidad_id
@@ -2128,7 +2271,7 @@ export const getContractPersonalFilterOptions = async (
     ];
     const [gestores, municipios, instituciones, sedes, modalidades, ubicaciones] = await Promise.all([
       listGestorAssignableUsers(client),
-      client.query<{ id: number; nombre: string }>(`SELECT DISTINCT mu.id::int AS id, mu.nombre_municipio AS nombre ${base} ORDER BY nombre`, params),
+      client.query<{ id: number; nombre: string; departamento_id: number | null; departamento_nombre: string | null }>(`SELECT DISTINCT mu.id::int AS id, mu.nombre_municipio AS nombre, mu.departamento_id::int AS departamento_id, dep.nombre_departamento AS departamento_nombre ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string; municipio_id: number | null }>(`SELECT DISTINCT ins.id::int AS id, ins.nombre_institucion AS nombre, ins.municipio_id::int AS municipio_id ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string; institucion_id: number | null }>(`SELECT DISTINCT se.id::int AS id, se.nombre_sede AS nombre, se.institucion_id::int AS institucion_id ${base} ORDER BY nombre`, params),
       client.query<{ id: number; codigo: string | null; nombre: string }>(`SELECT DISTINCT mo.id::int AS id, COALESCE(mo.codigo_base, mo.codigo_original) AS codigo, mo.nombre_modalidad AS nombre ${base} ORDER BY nombre`, params),
@@ -2273,8 +2416,10 @@ export const createGestorMunicipioAssignment = async (
   try {
     await client.query('BEGIN');
     await ensureContractTenantAccess(client, tenant, input.contrato_id);
-    await ensureGestorAssignmentUserExists(client, input.gestor_usuario_id, input.contrato_id);
+    await ensureTerritorialAssignmentUserExists(client, input.gestor_usuario_id, input.contrato_id);
     await ensureMunicipioExists(client, input.municipio_id);
+    await ensureMunicipioDepartamentoMatch(client, input.municipio_id, input.departamento_id);
+    await ensureMunicipioBelongsContratoScope(client, input.contrato_id, input.municipio_id);
 
     const vigenciaDesde = toIsoDate(input.vigencia_desde);
 
@@ -2448,8 +2593,10 @@ export const saveGestorAssignments = async (
   try {
     await client.query('BEGIN');
     await ensureContractTenantAccess(client, tenant, input.contrato_id);
-    await ensureGestorAssignmentUserExists(client, input.gestor_usuario_id, input.contrato_id);
+    await ensureTerritorialAssignmentUserExists(client, input.gestor_usuario_id, input.contrato_id);
     await ensureMunicipioExists(client, input.municipio_id);
+    await ensureMunicipioDepartamentoMatch(client, input.municipio_id, input.departamento_id);
+    await ensureMunicipioBelongsContratoScope(client, input.contrato_id, input.municipio_id);
 
     const fechaEfectiva = toIsoDate(input.fecha);
     const cierreAnterior = shiftIsoDate(fechaEfectiva, -1);

@@ -54,6 +54,8 @@ import {
   movimientosOnDate,
   novedadCode,
   novedadesOnDate,
+  dedupeNominaNovedades,
+  upsertNominaNovedad,
   novedadState,
   type PlanillaAsistencia,
   type PlanillaCambio,
@@ -475,6 +477,7 @@ export default function PlanillaOperativaPage() {
   const [selected, setSelected] = useState<SelectedCell | null>(null);
   const [rangeSelection, setRangeSelection] = useState<RangeSelection>(null);
   const [noveltyCell, setNoveltyCell] = useState<SelectedCell | null>(null);
+  const [editingNovelty, setEditingNovelty] = useState<NominaNovedadApi | null>(null);
   const [selectedType, setSelectedType] = useState<NominaTipoNovedad | null>(null);
   const [coverageType, setCoverageType] = useState<CoverageType>("SIN_REEMPLAZO");
   const [coverSearch, setCoverSearch] = useState("");
@@ -488,6 +491,7 @@ export default function PlanillaOperativaPage() {
   const [hours, setHours] = useState("");
   const [manualValue, setManualValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const noveltySaveInFlightRef = useRef(false);
   const [reviewSaving, setReviewSaving] = useState<Set<string>>(new Set());
   const planillaFiltersStorageKey = useMemo(
     () => `nomina.planilla.filters:${empresaId ?? "global"}`,
@@ -617,7 +621,7 @@ export default function PlanillaOperativaPage() {
 
         const [noveltiesResult, movementsResult, coverageTurnsResult, changesResult, attendanceResult, reviewResult] = layers;
 
-        setNovelties(noveltiesResult.status === "fulfilled" ? noveltiesResult.value.items : []);
+        setNovelties(noveltiesResult.status === "fulfilled" ? dedupeNominaNovedades(noveltiesResult.value.items) : []);
         setMovements(movementsResult.status === "fulfilled" ? movementsResult.value.items : []);
         setCoverageTurns(coverageTurnsResult.status === "fulfilled" ? coverageTurnsResult.value.items : []);
         setChanges(
@@ -674,6 +678,7 @@ export default function PlanillaOperativaPage() {
     setSelected(null);
     setRangeSelection(null);
     setNoveltyCell(null);
+    setEditingNovelty(null);
     setSelectedType(null);
     setCoverSearch("");
     setCoverEmployee(null);
@@ -1087,24 +1092,34 @@ export default function PlanillaOperativaPage() {
       buildTramos(employee, start, end, changesByLink.get(employee.vinculacion_id) ?? []).find(
         (item) => item.inicio <= date && item.fin >= date,
       )?.contexto ?? employeeBaseContext(employee);
+    const cell = { employee, date, context };
     const key = `${employee.vinculacion_id}|${date}`;
     const hasAttendance = present.has(key);
-    const hasActiveNovelty = novedadesOnDate(noveltyByEmployee.get(employee.id) ?? [], date).some(
+    const activeNovelties = novedadesOnDate(noveltyByEmployee.get(employee.id) ?? [], date).filter(
       (item) => item.activo,
     );
     const hasAdditionalTurns =
       coverageTurnsOnDate(coverageTurnByEmployee.get(employee.id) ?? [], date).length > 0;
 
-    setSelected({ employee, date, context });
+    setSelected(cell);
 
     if (rangeSelection && rangeSelection.employeeId === employee.id) {
       setRangeSelection({ ...rangeSelection, end: date });
       return;
     }
 
+    if (activeNovelties.length > 1) {
+      setError(`Se detectaron ${activeNovelties.length} novedades activas en ${dateLabel(date)}. Debes corregir el conflicto antes de registrar otra accion.`);
+      return;
+    }
+
+    if (activeNovelties.length === 1) {
+      openNovelty(cell, activeNovelties[0] ?? null);
+      return;
+    }
+
     if (
       !hasAttendance &&
-      !hasActiveNovelty &&
       !hasAdditionalTurns &&
       !isOutsideEmployment(employee, date) &&
       !pendingAttendanceRef.current.has(key)
@@ -1113,26 +1128,41 @@ export default function PlanillaOperativaPage() {
     }
   };
 
-  const openNovelty = (cell: SelectedCell) => {
+  const openNovelty = (cell: SelectedCell, novelty: NominaNovedadApi | null = null) => {
     setSelected(cell);
     setNoveltyCell(cell);
-    setSelectedType(null);
-    setCoverageType("SIN_REEMPLAZO");
+    setEditingNovelty(novelty);
+    setSelectedType(
+      novelty
+        ? types.find((item) => item.id === novelty.tipo_novedad?.id)
+          ?? types.find((item) => item.codigo_operativo === novedadCode(novelty))
+          ?? null
+        : null,
+    );
+    const currentCoverage = novelty?.cobertura ?? null;
+    const currentCoverageType = currentCoverage?.tipo_cobertura ?? "SIN_REEMPLAZO";
+    setCoverageType(currentCoverageType);
     setCoverSearch("");
-    setCoverEmployee(null);
-    setExternalName("");
-    setExternalDocument("");
-    setCoverageObservation("");
-    setObservacion("");
-    setDocumentoPersonaId("");
-    setRangeEnd(cell.date);
-    setHours("");
-    setManualValue("");
+    setCoverEmployee(
+      currentCoverageType === "PERSONAL_VINCULADO"
+        ? employees.find(
+            (item) => item.vinculacion_id === currentCoverage?.vinculacion_cubre_id || item.persona.id === currentCoverage?.persona_cubre_id,
+          ) ?? null
+        : null,
+    );
+    setExternalName(currentCoverageType === "PERSONA_EXTERNA" ? currentCoverage?.nombre_externo ?? "" : "");
+    setExternalDocument(currentCoverageType === "PERSONA_EXTERNA" ? currentCoverage?.documento_externo ?? "" : "");
+    setCoverageObservation(currentCoverage?.observacion_interna ?? "");
+    setObservacion(novelty?.observacion ?? "");
+    setDocumentoPersonaId(novelty?.documento_persona_id ?? "");
+    setRangeEnd(novelty?.fecha_fin ?? novelty?.fecha_inicio ?? cell.date);
+    setHours(novelty?.horas === null || novelty?.horas === undefined ? "" : String(novelty.horas));
+    setManualValue(novelty?.valor_manual === null || novelty?.valor_manual === undefined ? "" : String(novelty.valor_manual));
     setError("");
   };
 
   const saveNovelty = async () => {
-    if (!noveltyCell || !selectedType || !editable) {
+    if (!noveltyCell || !selectedType || !editable || noveltySaveInFlightRef.current) {
       return;
     }
 
@@ -1160,6 +1190,7 @@ export default function PlanillaOperativaPage() {
       return;
     }
 
+    noveltySaveInFlightRef.current = true;
     setSaving(true);
     setError("");
 
@@ -1218,7 +1249,11 @@ export default function PlanillaOperativaPage() {
       if (present.has(`${noveltyCell.employee.vinculacion_id}|${noveltyCell.date}`) && !basePayload.reemplazar_asistencia_confirmado) return;
 
       const response =
-        !hasCoverageSelection
+        editingNovelty
+          ? {
+              novedad: await updateNominaNovedad(editingNovelty.id, basePayload),
+            }
+          : !hasCoverageSelection
           ? {
               novedad: await createNominaNovedad(basePayload),
             }
@@ -1248,15 +1283,16 @@ export default function PlanillaOperativaPage() {
             });
 
       if (response.novedad) {
-        setNovelties((current) => [...current, response.novedad]);
-        invalidateReviewLocally(noveltyCell.employee, "NOVEDAD_CREADA");
+        setNovelties((current) => upsertNominaNovedad(current, response.novedad));
+        invalidateReviewLocally(noveltyCell.employee, editingNovelty ? "NOVEDAD_EDITADA" : "NOVEDAD_CREADA");
       }
 
       closeNoveltyModal();
       setRangeSelection(null);
     } catch (value) {
-      setError(formatPlanillaErrorMessage(value, "No fue posible registrar la novedad", { date: noveltyCell.date }));
+      setError(formatPlanillaErrorMessage(value, editingNovelty ? "No fue posible corregir la novedad" : "No fue posible registrar la novedad", { date: noveltyCell.date }));
     } finally {
+      noveltySaveInFlightRef.current = false;
       setSaving(false);
     }
   };
@@ -1617,7 +1653,13 @@ export default function PlanillaOperativaPage() {
                         onClick={() => openCell(employee, day)}
                         onDoubleClick={(event) => {
                           event.preventDefault();
-                          openNovelty({ employee, date: day, context: dayContext });
+                          if (activeNoveltiesOnThisDay.length > 1) {
+                            setSelected({ employee, date: day, context: dayContext });
+                            setError(`Se detectaron ${activeNoveltiesOnThisDay.length} novedades activas en ${dateLabel(day)}. Debes corregir el conflicto antes de registrar otra accion.`);
+                            return;
+                          }
+
+                          openNovelty({ employee, date: day, context: dayContext }, activeNoveltiesOnThisDay[0] ?? null);
                         }}
                       >
                         {isPendingAttendance && !isPresent ? <span className="op-attendance-pending-mark">…</span> : null}
@@ -1706,7 +1748,7 @@ export default function PlanillaOperativaPage() {
 
           {novedadesOnDate(noveltyByEmployee.get(selected.employee.id) ?? [], selected.date)[0] ? (() => {
             const novelty = novedadesOnDate(noveltyByEmployee.get(selected.employee.id) ?? [], selected.date)[0]!;
-            return <div className="op-context-detail"><strong>Novedad</strong><span>Codigo: {novedadCode(novelty)}</span><span>Nombre: {novelty.tipo_novedad?.nombre ?? "Novedad"}</span><span>Inicio: {novelty.fecha_inicio ?? selected.date}</span><span>Fin: {novelty.fecha_fin ?? selected.date}</span><span>Observacion: {novelty.observacion ?? "Sin observacion"}</span><span>Soporte: {novelty.documento_persona_id ?? "Sin soporte"}</span><span>Estado: {novelty.activo ? "ACTIVA" : "ANULADA"}</span>{canUpdate ? <><button type="button" onClick={() => { const observacion = window.prompt("Observacion de la novedad:", novelty.observacion ?? "")?.trim(); if (observacion === undefined) return; void updateNominaNovedad(novelty.id, { observacion: observacion || null }).then(updated => { setNovelties(items => items.map(item => item.id === updated.id ? updated : item)); invalidateReviewLocally(selected.employee, "NOVEDAD_EDITADA"); }).catch(value => setError(value instanceof Error ? value.message : "No fue posible editar la novedad")); }}>Editar novedad</button><button type="button" onClick={() => { if (window.confirm(`Anular ${novedadCode(novelty)}?`)) void deactivateNominaNovedad(novelty.id).then(() => { setNovelties(items => items.filter(item => item.id !== novelty.id)); invalidateReviewLocally(selected.employee, "NOVEDAD_ANULADA"); }).catch(value => setError(value instanceof Error ? value.message : "No fue posible anular la novedad")); }}>Anular novedad</button></> : null}</div>;
+            return <div className="op-context-detail"><strong>Novedad</strong><span>Codigo: {novedadCode(novelty)}</span><span>Nombre: {novelty.tipo_novedad?.nombre ?? "Novedad"}</span><span>Inicio: {novelty.fecha_inicio ?? selected.date}</span><span>Fin: {novelty.fecha_fin ?? selected.date}</span><span>Observacion: {novelty.observacion ?? "Sin observacion"}</span><span>Soporte: {novelty.documento_persona_id ?? "Sin soporte"}</span><span>Estado: {novelty.activo ? "ACTIVA" : "ANULADA"}</span>{canUpdate ? <><button type="button" onClick={() => { openNovelty(selected, novelty); }}>Editar novedad</button><button type="button" onClick={() => { if (window.confirm(`Anular ${novedadCode(novelty)}?`)) void deactivateNominaNovedad(novelty.id).then(() => { setNovelties(items => items.filter(item => item.id !== novelty.id)); invalidateReviewLocally(selected.employee, "NOVEDAD_ANULADA"); }).catch(value => setError(value instanceof Error ? value.message : "No fue posible anular la novedad")); }}>Anular novedad</button></> : null}</div>;
           })() : null}
 
           {selectedAttendancePending ? (
@@ -1758,7 +1800,7 @@ export default function PlanillaOperativaPage() {
               <X size={18} />
             </button>
 
-            <h2>Registrar novedad</h2>
+            <h2>{editingNovelty ? "Corregir novedad" : "Registrar novedad"}</h2>
             <strong>{noveltyCell.employee.persona.nombre_completo}</strong>
             <span>
               CC {text(noveltyCell.employee.persona.numero_documento)} · {dateLabel(noveltyCell.date)}
@@ -1977,7 +2019,7 @@ export default function PlanillaOperativaPage() {
                     Cancelar
                   </button>
                   <button type="button" disabled={saving} onClick={() => void saveNovelty()}>
-                    {saving ? "Registrando..." : "Registrar"}
+                    {saving ? (editingNovelty ? "Guardando..." : "Registrando...") : (editingNovelty ? "Guardar correccion" : "Registrar")}
                   </button>
                 </div>
               </>

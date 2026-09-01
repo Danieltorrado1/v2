@@ -131,6 +131,7 @@ export async function createGestorMunicipioAssignment(payload: {
   contrato_id: number;
   gestor_usuario_id: number;
   municipio_id: number;
+  departamento_id?: number | null;
   vigencia_desde?: string;
   alcance_personal?: "PERSONAL_SELECCIONADO" | "TODO_MUNICIPIO";
   observacion?: string | null;
