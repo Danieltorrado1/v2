@@ -4709,16 +4709,81 @@ const buildProjectedNominaNovedadFromCanonica = (input: {
   };
 };
 
-const ensureNoBlockingCanonicalOverlap = async (
+type NominaNovedadOverlapTypeMeta = Pick<
+  NominaTipoNovedadRow,
+  | 'bloquea_otras_novedades'
+  | 'codigo_operativo'
+  | 'es_incapacidad'
+  | 'es_permiso'
+  | 'es_suspension'
+  | 'grupo_exclusividad'
+  | 'id'
+  | 'nombre'
+>;
+
+interface NominaNovedadOverlapRow extends QueryResultRow {
+  bloquea_otras_novedades: boolean | null;
+  codigo_operativo: string | null;
+  es_incapacidad: boolean | null;
+  es_permiso: boolean | null;
+  es_suspension: boolean | null;
+  fecha_conflicto: string;
+  fecha_fin: string;
+  fecha_inicio: string;
+  grupo_exclusividad: string | null;
+  id: string;
+  nombre: string | null;
+  origen: 'CANONICA' | 'ORDINARIA';
+  tipo_novedad_id: string;
+}
+
+const normalizeNominaGrupoExclusividad = (value: string | null | undefined): string => {
+  const normalized = value?.trim().toUpperCase();
+  return normalized && normalized.length > 0 ? normalized : 'NINGUNA';
+};
+
+const blocksNominaNovedadOverlap = (
+  tipo: Pick<
+    NominaNovedadOverlapTypeMeta,
+    'bloquea_otras_novedades' | 'es_incapacidad' | 'es_permiso' | 'es_suspension' | 'grupo_exclusividad'
+  >
+): boolean =>
+  toBooleanValue(tipo.bloquea_otras_novedades) ||
+  toBooleanValue(tipo.es_permiso) ||
+  toBooleanValue(tipo.es_suspension) ||
+  toBooleanValue(tipo.es_incapacidad) ||
+  normalizeNominaGrupoExclusividad(tipo.grupo_exclusividad) !== 'NINGUNA';
+
+const isIncompatibleNominaNovedadOverlap = (
+  current: NominaNovedadOverlapTypeMeta,
+  existing: NominaNovedadOverlapRow
+): boolean => {
+  if (current.id === existing.tipo_novedad_id) {
+    return true;
+  }
+
+  const currentGroup = normalizeNominaGrupoExclusividad(current.grupo_exclusividad);
+  const existingGroup = normalizeNominaGrupoExclusividad(existing.grupo_exclusividad);
+
+  if (currentGroup !== 'NINGUNA' && currentGroup === existingGroup) {
+    return true;
+  }
+
+  return blocksNominaNovedadOverlap(current) || blocksNominaNovedadOverlap(existing);
+};
+
+const findNominaNovedadOverlap = async (
   client: PoolClient,
   input: {
     excludeCanonicalId?: string | null;
     excludeNovedadId?: string | null;
+    existingOrigins?: Array<'CANONICA' | 'ORDINARIA'>;
     fecha_fin: string;
     fecha_inicio: string;
+    tipo_novedad: NominaNovedadOverlapTypeMeta;
     vinculacion_id: string;
   }
-): Promise<void> => {
+): Promise<NominaNovedadOverlapRow | null> => {
   const params: unknown[] = [input.vinculacion_id, input.fecha_inicio, input.fecha_fin];
   let excludeCanonicalSql = '';
   let excludeOrdinarySql = '';
@@ -4733,110 +4798,109 @@ const ensureNoBlockingCanonicalOverlap = async (
     excludeOrdinarySql = `AND nn.id <> $${params.length}::bigint`;
   }
 
-  const result = await client.query<{
-    codigo_operativo: string | null;
-    fecha_conflicto: string;
-    id: string;
-    nombre: string | null;
-    origen: 'CANONICA' | 'ORDINARIA';
-  }>(
-    `
-      SELECT *
-      FROM (
-        SELECT
-          nn.id::text AS id,
-          COALESCE(nn.tipo_novedad_codigo_operativo, ntn.codigo_operativo) AS codigo_operativo,
-          ntn.nombre,
-          GREATEST(COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio), $2::date)::text AS fecha_conflicto,
-          'ORDINARIA'::text AS origen
-        FROM nomina_novedades nn
-        INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
-        INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nn.tipo_novedad_id
-        WHERE nn.vinculacion_id = $1::bigint
-          AND COALESCE(nn.activo, TRUE) = TRUE
-          AND (nn.fecha_inicio IS NOT NULL OR nn.fecha_fin IS NOT NULL)
-          AND COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio) <= $3::date
-          AND COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin) >= $2::date
-          ${excludeOrdinarySql}
+  const includeOrdinary = input.existingOrigins === undefined || input.existingOrigins.includes('ORDINARIA');
+  const includeCanonical = input.existingOrigins === undefined || input.existingOrigins.includes('CANONICA');
+  const selects: string[] = [];
 
-        UNION ALL
-
-        SELECT
-          nnc.id::text AS id,
-          COALESCE(nnc.tipo_novedad_codigo_operativo, ntn.codigo_operativo) AS codigo_operativo,
-          ntn.nombre,
-          GREATEST(nnc.fecha_inicio, $2::date)::text AS fecha_conflicto,
-          'CANONICA'::text AS origen
-        FROM nomina_novedades_canonicas nnc
-        INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nnc.tipo_novedad_id
-        WHERE nnc.vinculacion_id = $1::bigint
-          AND COALESCE(nnc.activo, TRUE) = TRUE
-          AND nnc.fecha_inicio <= $3::date
-          AND nnc.fecha_fin >= $2::date
-          ${excludeCanonicalSql}
-      ) conflicts
-      ORDER BY fecha_conflicto ASC, origen ASC, id ASC
-      LIMIT 1
-    `,
-    params
-  );
-
-  const overlap = result.rows[0];
-
-  if (overlap) {
-    throw new AppError(
-      'Only one payroll novelty is allowed per person and date',
-      409,
-      'NOMINA_NOVEDAD_FECHA_OCUPADA',
-      overlap
-    );
-  }
-};
-
-const ensureNoOrdinaryNovedadOverlapWithCanonical = async (
-  client: PoolClient,
-  input: {
-    excludeNovedadId?: string | null;
-    fecha_fin: string;
-    fecha_inicio: string;
-    vinculacion_id: string;
-  }
-): Promise<void> => {
-  const params: unknown[] = [input.vinculacion_id, input.fecha_inicio, input.fecha_fin];
-  let excludeSql = '';
-
-  if (input.excludeNovedadId) {
-    params.push(input.excludeNovedadId);
-    excludeSql = `AND nn.id <> $${params.length}::bigint`;
-  }
-
-  const result = await client.query<{ id: string; nombre: string | null }>(
-    `
+  if (includeOrdinary) {
+    selects.push(`
       SELECT
         nn.id::text AS id,
-        ntn.nombre
+        nn.tipo_novedad_id::text AS tipo_novedad_id,
+        COALESCE(nn.tipo_novedad_codigo_operativo, ntn.codigo_operativo) AS codigo_operativo,
+        ntn.nombre,
+        COALESCE(ntn.bloquea_otras_novedades, FALSE) AS bloquea_otras_novedades,
+        ntn.es_incapacidad,
+        ntn.es_permiso,
+        ntn.es_suspension,
+        ntn.grupo_exclusividad,
+        COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio)::text AS fecha_inicio,
+        COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin)::text AS fecha_fin,
+        GREATEST(COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio), $2::date)::text AS fecha_conflicto,
+        'ORDINARIA'::text AS origen
       FROM nomina_novedades nn
-      INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nn.tipo_novedad_id
       INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
+      INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nn.tipo_novedad_id
       WHERE nn.vinculacion_id = $1::bigint
         AND COALESCE(nn.activo, TRUE) = TRUE
         AND (nn.fecha_inicio IS NOT NULL OR nn.fecha_fin IS NOT NULL)
         AND COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio) <= $3::date
         AND COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin) >= $2::date
-        ${excludeSql}
-      LIMIT 1
+        ${excludeOrdinarySql}
+    `);
+  }
+
+  if (includeCanonical) {
+    selects.push(`
+      SELECT
+        nnc.id::text AS id,
+        nnc.tipo_novedad_id::text AS tipo_novedad_id,
+        COALESCE(nnc.tipo_novedad_codigo_operativo, ntn.codigo_operativo) AS codigo_operativo,
+        ntn.nombre,
+        COALESCE(ntn.bloquea_otras_novedades, FALSE) AS bloquea_otras_novedades,
+        ntn.es_incapacidad,
+        ntn.es_permiso,
+        ntn.es_suspension,
+        ntn.grupo_exclusividad,
+        nnc.fecha_inicio::text AS fecha_inicio,
+        nnc.fecha_fin::text AS fecha_fin,
+        GREATEST(nnc.fecha_inicio, $2::date)::text AS fecha_conflicto,
+        'CANONICA'::text AS origen
+      FROM nomina_novedades_canonicas nnc
+      INNER JOIN nomina_tipos_novedad ntn ON ntn.id = nnc.tipo_novedad_id
+      WHERE nnc.vinculacion_id = $1::bigint
+        AND COALESCE(nnc.activo, TRUE) = TRUE
+        AND nnc.fecha_inicio <= $3::date
+        AND nnc.fecha_fin >= $2::date
+        ${excludeCanonicalSql}
+    `);
+  }
+
+  if (selects.length === 0) {
+    return null;
+  }
+
+  const result = await client.query<NominaNovedadOverlapRow>(
+    `
+      SELECT *
+      FROM (
+        ${selects.join('\n        UNION ALL\n')}
+      ) conflicts
+      ORDER BY fecha_conflicto ASC, origen ASC, id ASC
     `,
     params
   );
 
-  const overlap = result.rows[0];
+  return result.rows.find((candidate) => isIncompatibleNominaNovedadOverlap(input.tipo_novedad, candidate)) ?? null;
+};
+
+const ensureNoBlockingCanonicalOverlap = async (
+  client: PoolClient,
+  input: {
+    excludeCanonicalId?: string | null;
+    excludeNovedadId?: string | null;
+    fecha_fin: string;
+    fecha_inicio: string;
+    tipo_novedad: NominaNovedadOverlapTypeMeta;
+    vinculacion_id: string;
+  }
+): Promise<void> => {
+  const overlap = await findNominaNovedadOverlap(client, input);
 
   if (overlap) {
     throw new AppError(
-      'The selected canonical range overlaps an existing ordinary novelty',
+      'Ya existe una novedad activa que se cruza con las fechas seleccionadas.',
       409,
-      'NOMINA_NOVEDAD_CONFLICTO_CANONICA_ORDINARIA',
-      overlap
+      'NOMINA_NOVEDAD_FECHA_OCUPADA',
+      {
+        codigo_operativo: overlap.codigo_operativo,
+        fecha_conflicto: overlap.fecha_conflicto,
+        fecha_fin: overlap.fecha_fin,
+        fecha_inicio: overlap.fecha_inicio,
+        id: overlap.id,
+        nombre: overlap.nombre,
+        origen: overlap.origen,
+      }
     );
   }
 };
@@ -9524,16 +9588,12 @@ export const createNominaNovedad = async (
       await ensureNoBlockingCanonicalOverlap(client, {
         vinculacion_id: input.vinculacion_id,
         fecha_inicio: nextRange.fecha_inicio,
-        fecha_fin: nextRange.fecha_fin
+        fecha_fin: nextRange.fecha_fin,
+        tipo_novedad: tipoNovedad
       });
       await ensureNoExactCanonicalDuplicate(client, {
         vinculacion_id: input.vinculacion_id,
         tipo_novedad_id: tipoNovedad.id,
-        fecha_inicio: nextRange.fecha_inicio,
-        fecha_fin: nextRange.fecha_fin
-      });
-      await ensureNoOrdinaryNovedadOverlapWithCanonical(client, {
-        vinculacion_id: input.vinculacion_id,
         fecha_inicio: nextRange.fecha_inicio,
         fecha_fin: nextRange.fecha_fin
       });
@@ -9650,7 +9710,8 @@ export const createNominaNovedad = async (
       await ensureNoBlockingCanonicalOverlap(client, {
         vinculacion_id: input.vinculacion_id,
         fecha_inicio: nextRange.fecha_inicio,
-        fecha_fin: nextRange.fecha_fin
+        fecha_fin: nextRange.fecha_fin,
+        tipo_novedad: tipoNovedad
       });
     }
 
@@ -9966,7 +10027,7 @@ export const createNominaNovedadConTurno = async (
         turno.tipo, externoId, personaReemplazadaId,
         JSON.stringify(persistedTurnoContexto), turno.observacion, actorUserId]
     );
-    const turnoRow = row.rows[0]; if (!turnoRow) throw new AppError('No fue posible crear relación de turno',500,'NOMINA_TURNO_CREATE_FAILED');
+    const turnoRow = row.rows[0]; if (!turnoRow) throw new AppError('No fue posible crear relacion de turno',500,'NOMINA_TURNO_CREATE_FAILED');
     const fechaTurno = input.fecha_inicio ?? input.fecha_fin ?? null;
     if (turno.tipo === 'INTERNO' && fechaTurno) {
       const duplicateMovement = await client.query<{ id: string }>(
@@ -10056,7 +10117,6 @@ export const createNominaNovedadConTurno = async (
     }
     await registerAuditEntry({ client, usuario_id: actorUserId, accion: 'NOMINA_NOVEDAD_TURNO_CREATE', tabla: 'nomina_novedad_turnos', registro_id: turnoRow.id, descripcion: 'Relacion de novedad con turno operativo', before: null, after: { novedad_id: novedad.id, tipo: turno.tipo }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
     await client.query('COMMIT');
-    await recalculateNominaPeriodo(input.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
     return { novedad, turno_id: turnoRow.id, turno };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -10188,7 +10248,8 @@ export const updateNominaNovedad = async (
         vinculacion_id: current.vinculacion_id,
         fecha_inicio: nextRange.fecha_inicio,
         fecha_fin: nextRange.fecha_fin,
-        excludeCanonicalId: current.id
+        excludeCanonicalId: current.id,
+        tipo_novedad: tipoNovedad
       });
       await ensureNoExactCanonicalDuplicate(client, {
         vinculacion_id: current.vinculacion_id,
@@ -10196,11 +10257,6 @@ export const updateNominaNovedad = async (
         fecha_inicio: nextRange.fecha_inicio,
         fecha_fin: nextRange.fecha_fin,
         excludeCanonicalId: current.id
-      });
-      await ensureNoOrdinaryNovedadOverlapWithCanonical(client, {
-        vinculacion_id: current.vinculacion_id,
-        fecha_inicio: nextRange.fecha_inicio,
-        fecha_fin: nextRange.fecha_fin
       });
       await ensureCanonicalRangeDoesNotAffectClosedPeriods(client, {
         vinculacion_id: current.vinculacion_id,
@@ -10408,7 +10464,8 @@ export const updateNominaNovedad = async (
         vinculacion_id: current.vinculacion_id,
         fecha_inicio: nextRange.fecha_inicio,
         fecha_fin: nextRange.fecha_fin,
-        excludeNovedadId: parsedId.entidad_id
+        excludeNovedadId: parsedId.entidad_id,
+        tipo_novedad: tipoNovedad
       });
     }
 

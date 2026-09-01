@@ -5,6 +5,9 @@ ALTER TABLE nomina_categorias_salariales
   ADD COLUMN IF NOT EXISTS vigente_desde DATE NULL,
   ADD COLUMN IF NOT EXISTS vigente_hasta DATE NULL;
 
+ALTER TABLE nomina_categorias_salariales
+  DROP CONSTRAINT IF EXISTS nomina_categorias_salariales_contrato_id_codigo_categoria_key;
+
 DO $$
 BEGIN
   IF NOT EXISTS (

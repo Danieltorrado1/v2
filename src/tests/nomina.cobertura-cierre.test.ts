@@ -39,6 +39,7 @@ test('aporta_pension invalida periodos editables por vigencia y conserva snapsho
 });
 
 test('categorías activas del mismo código y contrato no pueden solapar vigencias', () => {
+  assert.match(sql, /DROP CONSTRAINT IF EXISTS nomina_categorias_salariales_contrato_id_codigo_categoria_key/);
   assert.match(sql, /ex_nomina_categoria_salarial_sin_solape/);
   assert.match(sql, /contrato_id WITH =/);
   assert.match(sql, /UPPER\(BTRIM\(codigo_categoria\)\)/);

@@ -7,11 +7,13 @@ import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { getAuditRequestMeta } from '../auditoria/auditoria.helper';
 import {
+  applySalaryCategoryAssignment,
   createPayrollParameter,
   createSalaryCategory,
   getCompanyConfiguration,
   listPayrollParameters,
   listSalaryCategories,
+  previewSalaryCategoryAssignment,
   saveGeneralConfiguration,
   saveModuleConfiguration,
   updateSalaryCategory
@@ -19,7 +21,7 @@ import {
 
 const router = Router();
 
-router.use(authMiddleware, tenantMiddleware);
+router.use(authMiddleware,tenantMiddleware);
 
 const id = z.coerce.number().int().positive();
 const general = z.object({
@@ -78,6 +80,59 @@ const category = categoryFields.refine(
   (value) => !value.vigente_hasta || value.vigente_hasta >= value.vigente_desde,
   { message: 'Invalid validity range' }
 );
+const assignmentCountCriterion = z
+  .object({
+    operator: z.enum(['EQ', 'GT', 'LT', 'GTE', 'LTE', 'BETWEEN']),
+    value: z.coerce.number().int().nonnegative().nullable().optional(),
+    min: z.coerce.number().int().nonnegative().nullable().optional(),
+    max: z.coerce.number().int().nonnegative().nullable().optional()
+  })
+  .superRefine((value, ctx) => {
+    if (value.operator === 'BETWEEN') {
+      if (value.min === null || value.min === undefined) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'min is required for BETWEEN', path: ['min'] });
+      }
+      if (value.max === null || value.max === undefined) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'max is required for BETWEEN', path: ['max'] });
+      }
+      if ((value.min ?? 0) > (value.max ?? 0)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'max must be greater than or equal to min', path: ['max'] });
+      }
+      return;
+    }
+
+    if (value.value === null || value.value === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'value is required for the selected operator', path: ['value'] });
+    }
+  });
+const assignmentPreview = z.object({
+  periodo_id: z.coerce.number().int().positive(),
+  target_category_id: z.coerce.number().int().positive().nullable().optional(),
+  search: z.string().trim().max(180).nullable().optional(),
+  contrato_cargo_id: z.coerce.number().int().positive().nullable().optional(),
+  cargo: z.string().trim().max(180).nullable().optional(),
+  municipio_id: z.coerce.number().int().positive().nullable().optional(),
+  municipio: z.string().trim().max(180).nullable().optional(),
+  institucion_id: z.coerce.number().int().positive().nullable().optional(),
+  institucion: z.string().trim().max(180).nullable().optional(),
+  sede_id: z.coerce.number().int().positive().nullable().optional(),
+  sede: z.string().trim().max(180).nullable().optional(),
+  modalidad_id: z.coerce.number().int().positive().nullable().optional(),
+  modalidad: z.string().trim().max(180).nullable().optional(),
+  modalidad_codigo: z.string().trim().max(80).nullable().optional(),
+  metodo_pago: z.string().trim().max(80).nullable().optional(),
+  estado_vinculacion: z.string().trim().max(80).nullable().optional(),
+  vinculacion_activa: z.boolean().nullable().optional(),
+  institucion_sede_count: assignmentCountCriterion.nullable().optional(),
+  without_category: z.boolean().optional(),
+  limit: z.coerce.number().int().min(1).max(5000).optional()
+});
+const assignmentApply = z.object({
+  periodo_id: z.coerce.number().int().positive(),
+  target_category_id: z.coerce.number().int().positive().nullable().optional(),
+  nomina_empleado_ids: z.array(z.coerce.number().int().positive()).min(1),
+  observacion: z.string().trim().max(500).nullable().optional()
+});
 
 router.get(
   '/:empresaId',
@@ -183,6 +238,36 @@ router.patch(
       data: await updateSalaryCategory(
         id.parse(req.params.categoryId),
         categoryFields.partial().parse(req.body),
+        req.user!.userId,
+        req.tenant,
+        getAuditRequestMeta(req)
+      )
+    })
+  )
+);
+
+router.post(
+  '/:empresaId/salary-categories/assignments/preview',
+  requirePermissions('nomina.economico.read'),
+  asyncHandler(async (req, res) =>
+    res.json({
+      data: await previewSalaryCategoryAssignment(
+        id.parse(req.params.empresaId),
+        assignmentPreview.parse(req.body),
+        req.tenant
+      )
+    })
+  )
+);
+
+router.post(
+  '/:empresaId/salary-categories/assignments/apply',
+  requirePermissions('nomina.categorias.manage'),
+  asyncHandler(async (req, res) =>
+    res.json({
+      data: await applySalaryCategoryAssignment(
+        id.parse(req.params.empresaId),
+        assignmentApply.parse(req.body),
         req.user!.userId,
         req.tenant,
         getAuditRequestMeta(req)

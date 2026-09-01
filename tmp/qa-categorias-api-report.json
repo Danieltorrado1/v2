@@ -1,0 +1,1380 @@
+{
+  "generated_at": "2026-09-01T13:12:21.813Z",
+  "tag": "QA_CAT_API_1788268341813",
+  "environment": {
+    "empresa": {
+      "id": 15,
+      "nombre_empresa": "CONSORCIO PAE META-26",
+      "organizacion": {
+        "id": 17,
+        "codigo": "ORG-EMPRESA-15",
+        "nombre": "CONSORCIO PAE META-26",
+        "estado": "ACTIVA"
+      }
+    },
+    "contrato": {
+      "id": 24,
+      "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026",
+      "entidad_contratante": "DEPARTAMENTO DEL META",
+      "empresa_id": 15
+    },
+    "periodo": {
+      "id": "2",
+      "contrato_id": "24",
+      "nombre_periodo": "AGOSTO 2026",
+      "tipo_periodo": "MENSUAL",
+      "fecha_inicio": "2026-08-01",
+      "fecha_fin": "2026-08-31",
+      "requiere_asistencia": false,
+      "estado": "ABIERTO",
+      "activo": true,
+      "created_at": "2026-08-24T16:46:23.360Z",
+      "contrato": {
+        "id": "24",
+        "empresa_id": "15",
+        "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026",
+        "entidad_contratante": "DEPARTAMENTO DEL META",
+        "fecha_inicio": "2026-07-29",
+        "fecha_finalizacion": "2026-12-12"
+      }
+    },
+    "categoria_actual_trabajador": {
+      "id": "23",
+      "contrato_id": "24",
+      "codigo_categoria": "CAARES",
+      "nombre_categoria": "Manipuladora de alimentos Residencia",
+      "modalidad": null,
+      "descripcion": null,
+      "salario_base": "2117585.00",
+      "auxilio_transporte": "249095.00",
+      "otros_recargos": "506934.00",
+      "vigente_desde": "2026-08-29",
+      "vigente_hasta": "2026-12-31",
+      "activo": true,
+      "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026"
+    },
+    "categoria_destino_prueba": {
+      "id": "28",
+      "contrato_id": "24",
+      "codigo_categoria": "ZZALT346158",
+      "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813",
+      "modalidad": null,
+      "descripcion": "Destino QA QA_CAT_API_1788268341813",
+      "salario_base": "2217585.00",
+      "auxilio_transporte": "259095.00",
+      "otros_recargos": "511934.00",
+      "vigente_desde": "2026-08-01",
+      "vigente_hasta": "2026-08-31",
+      "activo": true
+    },
+    "categoria_overlap_base": {
+      "id": "29",
+      "contrato_id": "24",
+      "codigo_categoria": "ZZOVL347812",
+      "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+      "modalidad": null,
+      "descripcion": "Base overlaps QA_CAT_API_1788268341813",
+      "salario_base": "2117585.00",
+      "auxilio_transporte": "249095.00",
+      "otros_recargos": "506934.00",
+      "vigente_desde": "2026-08-01",
+      "vigente_hasta": "2026-08-31",
+      "activo": true
+    },
+    "trabajadores": [
+      {
+        "nomina_empleado_id": "766",
+        "persona_id": "1212",
+        "vinculacion_id": "1547",
+        "nombre": "DANIELA YISED ACEVEDO DUQUE",
+        "documento": "1006771797",
+        "cargo": "ADMINISTRATIVO",
+        "modalidad": null,
+        "municipio": null,
+        "institucion": null,
+        "sede": null,
+        "categoria_salarial_id_actual": null,
+        "categoria_actual_codigo": null,
+        "salario_actual": 0,
+        "auxilio_transporte_actual": 0,
+        "recargo_mensual_actual": null,
+        "metodo_pago": "ASISTENCIA",
+        "estado_vinculacion": "ACTIVA",
+        "devengado_basico": 0,
+        "devengado_transporte": 0,
+        "devengado_otros": 0,
+        "total_devengado": 0,
+        "total_deducciones": 0,
+        "neto_pagar": 0
+      },
+      {
+        "nomina_empleado_id": "697",
+        "persona_id": "1143",
+        "vinculacion_id": "1477",
+        "nombre": "CESAR AUGUSTO ACHAGUA LINARES",
+        "documento": "1000858466",
+        "cargo": "ADMINISTRATIVO",
+        "modalidad": null,
+        "municipio": null,
+        "institucion": null,
+        "sede": null,
+        "categoria_salarial_id_actual": null,
+        "categoria_actual_codigo": null,
+        "salario_actual": 0,
+        "auxilio_transporte_actual": 0,
+        "recargo_mensual_actual": null,
+        "metodo_pago": "ASISTENCIA",
+        "estado_vinculacion": "ACTIVA",
+        "devengado_basico": 0,
+        "devengado_transporte": 0,
+        "devengado_otros": 0,
+        "total_devengado": 0,
+        "total_deducciones": 0,
+        "neto_pagar": 0
+      }
+    ],
+    "permisos_usuario": [
+      "alertas.deactivate",
+      "alertas.documentales.generate",
+      "alertas.documentales.read",
+      "alertas.documentales.update",
+      "alertas.generate",
+      "alertas.read",
+      "alertas.update",
+      "auditoria.export",
+      "auditoria.historial.read",
+      "auditoria.read",
+      "bancario.editar",
+      "bancario.ver",
+      "bancario.ver_numero_completo",
+      "bancario.verificar",
+      "cargos.create",
+      "cargos.read",
+      "cargos.update",
+      "catalogos.read",
+      "cobertura.assign",
+      "cobertura.deactivate",
+      "cobertura.novedades",
+      "cobertura.read",
+      "cobertura.recalculate",
+      "cobertura.update",
+      "configuracion.read",
+      "contracts.create",
+      "contracts.documents.download",
+      "contracts.documents.read",
+      "contracts.documents.review",
+      "contracts.documents.upload",
+      "contracts.events.create",
+      "contracts.events.read",
+      "contracts.exceptions.create",
+      "contracts.exceptions.read",
+      "contracts.exceptions.resolve",
+      "contracts.read",
+      "contracts.status.update",
+      "contracts.update",
+      "contratos.create",
+      "contratos.read",
+      "contratos.update",
+      "dashboard.alertas.read",
+      "dashboard.cobertura.read",
+      "dashboard.documentos.read",
+      "dashboard.nomina.read",
+      "dashboard.personas.read",
+      "dashboard.read",
+      "dashboard.saas.read",
+      "dashboard.sst.read",
+      "documentos.deactivate",
+      "documentos.download",
+      "documentos.read",
+      "documentos.update",
+      "documentos.upload",
+      "empresas.create",
+      "empresas.read",
+      "empresas.update",
+      "evaluaciones.dashboard",
+      "evaluaciones.dashboard_general",
+      "evaluaciones.planes_mejora.alertas",
+      "evaluaciones.planes_mejora.dashboard",
+      "evaluaciones.planes_mejora.read",
+      "evaluaciones.planes_mejora.write",
+      "evaluaciones.read",
+      "evaluaciones.write",
+      "exportaciones.generar",
+      "formacion_academica.crear",
+      "formacion_academica.editar",
+      "formacion_academica.ver",
+      "importaciones.aplicar",
+      "importaciones.cancel",
+      "importaciones.confirm",
+      "importaciones.preparar",
+      "importaciones.read",
+      "importaciones.upload",
+      "nomina.categorias.manage",
+      "nomina.cesantias.alertas",
+      "nomina.cesantias.dashboard",
+      "nomina.cesantias.read",
+      "nomina.cesantias.write",
+      "nomina.correcciones.apply",
+      "nomina.correcciones.approve",
+      "nomina.correcciones.cancel",
+      "nomina.correcciones.create",
+      "nomina.correcciones.read",
+      "nomina.correcciones.review",
+      "nomina.correcciones.update",
+      "nomina.cuentas_cobro_ops.approve",
+      "nomina.cuentas_cobro_ops.create",
+      "nomina.cuentas_cobro_ops.pay",
+      "nomina.cuentas_cobro_ops.read",
+      "nomina.cuentas_cobro_ops.update",
+      "nomina.dashboard.read",
+      "nomina.desprendibles.read",
+      "nomina.economico.read",
+      "nomina.empleados.import",
+      "nomina.export",
+      "nomina.intereses_cesantias.alertas",
+      "nomina.intereses_cesantias.dashboard",
+      "nomina.intereses_cesantias.read",
+      "nomina.intereses_cesantias.write",
+      "nomina.liquidaciones_finales.alertas",
+      "nomina.liquidaciones_finales.dashboard",
+      "nomina.liquidaciones_finales.read",
+      "nomina.liquidaciones_finales.write",
+      "nomina.liquidaciones.finalize",
+      "nomina.liquidaciones.generate",
+      "nomina.movimientos.approve",
+      "nomina.movimientos.create",
+      "nomina.movimientos.deactivate",
+      "nomina.movimientos.read",
+      "nomina.movimientos.review",
+      "nomina.movimientos.update",
+      "nomina.novedades.create",
+      "nomina.novedades.deactivate",
+      "nomina.novedades.update",
+      "nomina.parametros.manage",
+      "nomina.periodos.cancel",
+      "nomina.periodos.close",
+      "nomina.periodos.create",
+      "nomina.periodos.pay",
+      "nomina.periodos.reopen",
+      "nomina.periodos.update",
+      "nomina.planilla_pdf.generate",
+      "nomina.plano_bancario.export",
+      "nomina.prima.alertas",
+      "nomina.prima.dashboard",
+      "nomina.prima.read",
+      "nomina.prima.write",
+      "nomina.read",
+      "nomina.recalculate",
+      "nomina.recargos.create",
+      "nomina.vacaciones.alertas",
+      "nomina.vacaciones.dashboard",
+      "nomina.vacaciones.read",
+      "nomina.vacaciones.write",
+      "notificaciones.read",
+      "notificaciones.update",
+      "permisos.read",
+      "persona.editar",
+      "persona.editar_contacto",
+      "persona.editar_identidad",
+      "persona.ver",
+      "personas.create",
+      "personas.deactivate",
+      "personas.read",
+      "personas.update",
+      "plantillas.create",
+      "plantillas.generate",
+      "plantillas.read",
+      "plantillas.update",
+      "reportes.read",
+      "roles.read",
+      "sst.accidentes.alertas",
+      "sst.accidentes.dashboard",
+      "sst.accidentes.read",
+      "sst.accidentes.write",
+      "sst.alertas.read",
+      "sst.capacitaciones.read",
+      "sst.capacitaciones.write",
+      "sst.dashboard_general.read",
+      "sst.dashboard.read",
+      "sst.dotacion_epp.alertas",
+      "sst.dotacion_epp.dashboard",
+      "sst.dotacion_epp.read",
+      "sst.dotacion_epp.write",
+      "sst.eventos.create",
+      "sst.eventos.deactivate",
+      "sst.eventos.update",
+      "sst.examenes.alertas",
+      "sst.examenes.dashboard",
+      "sst.examenes.read",
+      "sst.examenes.write",
+      "sst.indicadores.calculate",
+      "sst.indicadores.read",
+      "sst.indicadores.write",
+      "sst.inspecciones.alertas",
+      "sst.inspecciones.dashboard",
+      "sst.inspecciones.read",
+      "sst.inspecciones.write",
+      "sst.perfil.aplicar",
+      "sst.perfil.crear",
+      "sst.perfil.editar",
+      "sst.perfil.exportar",
+      "sst.perfil.importar",
+      "sst.perfil.ver",
+      "sst.plan.alertas",
+      "sst.plan.dashboard",
+      "sst.plan.read",
+      "sst.plan.write",
+      "sst.planes.close",
+      "sst.planes.create",
+      "sst.planes.read",
+      "sst.planes.update",
+      "sst.read",
+      "sst.restringido.ver",
+      "sst.revision.resolver",
+      "sst.revision.ver",
+      "sst.riesgos.alertas",
+      "sst.riesgos.dashboard",
+      "sst.riesgos.read",
+      "sst.riesgos.write",
+      "system.jobs.run",
+      "tenant.access.read",
+      "tenant.access.update",
+      "users.activate",
+      "users.create",
+      "users.deactivate",
+      "users.update",
+      "usuarios.read",
+      "usuarios.update",
+      "vinculacion.editar",
+      "vinculacion.editar_cargo",
+      "vinculacion.editar_estado",
+      "vinculacion.editar_fechas",
+      "vinculacion.ver",
+      "vinculaciones.create",
+      "vinculaciones.reactivar",
+      "vinculaciones.read",
+      "vinculaciones.retirar",
+      "vinculaciones.suspender",
+      "vinculaciones.update"
+    ]
+  },
+  "tests": {
+    "patch_persistencia": {
+      "status": "PASS",
+      "response_status": 200,
+      "before": {
+        "id": "29",
+        "contrato_id": "24",
+        "codigo_categoria": "ZZOVL347812",
+        "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+        "modalidad": null,
+        "descripcion": "Base overlaps QA_CAT_API_1788268341813",
+        "salario_base": "2117585.00",
+        "auxilio_transporte": "249095.00",
+        "otros_recargos": "506934.00",
+        "vigente_desde": "2026-08-01",
+        "vigente_hasta": "2026-08-31",
+        "activo": true
+      },
+      "after": {
+        "id": "29",
+        "contrato_id": "24",
+        "codigo_categoria": "ZZOVL347812",
+        "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+        "modalidad": null,
+        "descripcion": "Base overlaps QA_CAT_API_1788268341813 [QA_CAT_API_1788268341813_PATCH]",
+        "salario_base": "2117585.00",
+        "auxilio_transporte": "249095.00",
+        "otros_recargos": "506934.00",
+        "vigente_desde": "2026-08-01",
+        "vigente_hasta": "2026-08-31",
+        "activo": true
+      },
+      "audit_event": {
+        "usuario_id": "2",
+        "empresa_id": "15",
+        "contrato_id": "24",
+        "entidad": "nomina_categorias_salariales",
+        "entidad_id": "29",
+        "accion": "UPDATE",
+        "descripcion": "Corrección de categoría salarial",
+        "datos_anteriores": {
+          "id": "29",
+          "activo": true,
+          "modalidad": null,
+          "contrato_id": "24",
+          "descripcion": "Base overlaps QA_CAT_API_1788268341813",
+          "salario_base": 2117585,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "otros_recargos": 506934,
+          "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026",
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "auxilio_transporte": 249095
+        },
+        "datos_nuevos": {
+          "id": "29",
+          "activo": true,
+          "modalidad": null,
+          "contrato_id": "24",
+          "descripcion": "Base overlaps QA_CAT_API_1788268341813 [QA_CAT_API_1788268341813_PATCH]",
+          "salario_base": 2117585,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "otros_recargos": 506934,
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "auxilio_transporte": 249095
+        },
+        "fecha_evento": "2026-09-01 13:12:32.704785"
+      },
+      "audit_legacy": {
+        "usuario_id": "2",
+        "accion": "UPDATE",
+        "tabla_afectada": "nomina_categorias_salariales",
+        "registro_id": "29",
+        "descripcion": "Corrección de categoría salarial",
+        "datos_anteriores": {
+          "id": "29",
+          "activo": true,
+          "modalidad": null,
+          "contrato_id": "24",
+          "descripcion": "Base overlaps QA_CAT_API_1788268341813",
+          "salario_base": 2117585,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "otros_recargos": 506934,
+          "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026",
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "auxilio_transporte": 249095
+        },
+        "datos_nuevos": {
+          "id": "29",
+          "activo": true,
+          "modalidad": null,
+          "contrato_id": "24",
+          "descripcion": "Base overlaps QA_CAT_API_1788268341813 [QA_CAT_API_1788268341813_PATCH]",
+          "salario_base": 2117585,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "otros_recargos": 506934,
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "auxilio_transporte": 249095
+        },
+        "created_at": "2026-09-01 13:12:32.989644"
+      }
+    },
+    "traslapes": {
+      "status": "PASS",
+      "vigencia_contigua": {
+        "status": 201,
+        "category": {
+          "id": "30",
+          "contrato_id": "24",
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "modalidad": null,
+          "descripcion": "QA_CAT_API_1788268341813 contigua",
+          "salario_base": "2117585.00",
+          "auxilio_transporte": "249095.00",
+          "otros_recargos": "506934.00",
+          "vigente_desde": "2026-09-01",
+          "vigente_hasta": "2026-09-30",
+          "activo": true
+        }
+      },
+      "vigencia_separada": {
+        "status": 201,
+        "category": {
+          "id": "31",
+          "contrato_id": "24",
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "modalidad": null,
+          "descripcion": "QA_CAT_API_1788268341813 separada",
+          "salario_base": "2117585.00",
+          "auxilio_transporte": "249095.00",
+          "otros_recargos": "506934.00",
+          "vigente_desde": "2026-10-01",
+          "vigente_hasta": "2026-10-30",
+          "activo": true
+        }
+      },
+      "traslape_parcial": {
+        "status": 409,
+        "body": {
+          "success": false,
+          "error": {
+            "code": "CATEGORY_VIGENCIA_OVERLAP",
+            "message": "Salary category validity overlaps an active version; close or correct the existing version first"
+          }
+        }
+      },
+      "traslape_contenido": {
+        "status": 409,
+        "body": {
+          "success": false,
+          "error": {
+            "code": "CATEGORY_VIGENCIA_OVERLAP",
+            "message": "Salary category validity overlaps an active version; close or correct the existing version first"
+          }
+        }
+      },
+      "patch_traslape": {
+        "status": 409,
+        "body": {
+          "success": false,
+          "error": {
+            "code": "CATEGORY_VIGENCIA_OVERLAP",
+            "message": "Salary category validity overlaps an active version; close or correct the existing version first"
+          }
+        }
+      }
+    },
+    "preview": {
+      "status": "PASS",
+      "response_status": 200,
+      "response": {
+        "periodo": {
+          "id": "2",
+          "contrato_id": "24",
+          "nombre_periodo": "AGOSTO 2026",
+          "fecha_inicio": "2026-08-01",
+          "fecha_fin": "2026-08-31",
+          "estado": "ABIERTO",
+          "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026"
+        },
+        "categoria_destino": {
+          "id": "28",
+          "contrato_id": "24",
+          "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026",
+          "codigo_categoria": "ZZALT346158",
+          "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813",
+          "modalidad": null,
+          "descripcion": "Destino QA QA_CAT_API_1788268341813",
+          "salario_base": 2217585,
+          "auxilio_transporte": 259095,
+          "otros_recargos": 511934,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "activo": true
+        },
+        "resumen": {
+          "total_encontrados": 1,
+          "instituciones": 0,
+          "sedes": 0,
+          "salario_base": 2217585,
+          "auxilio_transporte": 259095,
+          "otros_recargos": 511934
+        },
+        "items": [
+          {
+            "nomina_empleado_id": "766",
+            "vinculacion_id": "1547",
+            "persona_id": "1212",
+            "nombre_completo": "DANIELA YISED ACEVEDO DUQUE",
+            "numero_documento": "1006771797",
+            "cargo": "ADMINISTRATIVO",
+            "contrato_cargo_id": "38",
+            "municipio": null,
+            "institucion": null,
+            "sede": null,
+            "modalidad": null,
+            "modalidad_codigo": null,
+            "metodo_pago": "ASISTENCIA",
+            "estado_vinculacion": "ACTIVA",
+            "aplica_cobertura": false,
+            "institucion_sede_count": 0,
+            "categoria_salarial_actual": null
+          }
+        ],
+        "sql_reference": "company-settings.salary-category-assignments.preview.v1"
+      }
+    },
+    "aplicar_categoria_1_trabajador": {
+      "status": "PASS",
+      "response_status": 200,
+      "response": {
+        "periodo": {
+          "id": "2",
+          "contrato_id": "24",
+          "nombre_periodo": "AGOSTO 2026",
+          "fecha_inicio": "2026-08-01",
+          "fecha_fin": "2026-08-31",
+          "estado": "ABIERTO",
+          "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026"
+        },
+        "categoria_destino": {
+          "id": "28",
+          "contrato_id": "24",
+          "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026",
+          "codigo_categoria": "ZZALT346158",
+          "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813",
+          "modalidad": null,
+          "descripcion": "Destino QA QA_CAT_API_1788268341813",
+          "salario_base": 2217585,
+          "auxilio_transporte": 259095,
+          "otros_recargos": 511934,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "activo": true
+        },
+        "procesados": 1,
+        "asignados": 1,
+        "omitidos": 0,
+        "mensaje": "Se asignaron 1 trabajadores a la categoría ZZALT346158. Recalcula el periodo cuando termines de configurar y asignar todas las categorías.",
+        "control": {
+          "total_empleados": 771,
+          "con_categoria": 1,
+          "sin_categoria": 770,
+          "categorias_usadas": 1,
+          "sin_contexto_operativo": 101,
+          "inconsistencias": [
+            "EMPLEADOS_SIN_CONTEXTO_OPERATIVO"
+          ]
+        }
+      },
+      "before_api": {
+        "nomina_empleado_id": "766",
+        "persona_id": "1212",
+        "vinculacion_id": "1547",
+        "nombre": "DANIELA YISED ACEVEDO DUQUE",
+        "documento": "1006771797",
+        "cargo": "ADMINISTRATIVO",
+        "modalidad": null,
+        "municipio": null,
+        "institucion": null,
+        "sede": null,
+        "categoria_salarial_id_actual": null,
+        "categoria_actual_codigo": null,
+        "salario_actual": 0,
+        "auxilio_transporte_actual": 0,
+        "recargo_mensual_actual": null,
+        "metodo_pago": "ASISTENCIA",
+        "estado_vinculacion": "ACTIVA",
+        "devengado_basico": 0,
+        "devengado_transporte": 0,
+        "devengado_otros": 0,
+        "total_devengado": 0,
+        "total_deducciones": 0,
+        "neto_pagar": 0
+      },
+      "after_api": {
+        "nomina_empleado_id": "766",
+        "persona_id": "1212",
+        "vinculacion_id": "1547",
+        "nombre": "DANIELA YISED ACEVEDO DUQUE",
+        "documento": "1006771797",
+        "cargo": "ADMINISTRATIVO",
+        "modalidad": null,
+        "municipio": null,
+        "institucion": null,
+        "sede": null,
+        "categoria_salarial_id_actual": "28",
+        "categoria_actual_codigo": "ZZALT346158",
+        "salario_actual": 0,
+        "auxilio_transporte_actual": 0,
+        "recargo_mensual_actual": 511934,
+        "metodo_pago": "ASISTENCIA",
+        "estado_vinculacion": "ACTIVA",
+        "devengado_basico": 0,
+        "devengado_transporte": 0,
+        "devengado_otros": 0,
+        "total_devengado": 0,
+        "total_deducciones": 0,
+        "neto_pagar": 0
+      },
+      "before_db": {
+        "nomina_empleado_id": "766",
+        "periodo_id": "2",
+        "vinculacion_id": "1547",
+        "categoria_salarial_id": null,
+        "salario_base": "0.00",
+        "auxilio_transporte": "0.00",
+        "devengado_basico": "0.00",
+        "devengado_transporte": "0.00",
+        "devengado_otros": "0.00",
+        "total_adiciones": "0.00",
+        "total_deducciones": "0.00",
+        "neto_pagar": "0.00",
+        "persona_id": "1212",
+        "metodo_pago": "ASISTENCIA",
+        "estado_vinculacion": "ACTIVA",
+        "cargo": "ADMINISTRATIVO",
+        "numero_documento": "1006771797",
+        "nombre": "DANIELA YISED ACEVEDO DUQUE",
+        "codigo_categoria": null,
+        "nombre_categoria": null,
+        "categoria_recargo_mensual": null
+      },
+      "after_db": {
+        "nomina_empleado_id": "766",
+        "periodo_id": "2",
+        "vinculacion_id": "1547",
+        "categoria_salarial_id": "28",
+        "salario_base": "0.00",
+        "auxilio_transporte": "0.00",
+        "devengado_basico": "0.00",
+        "devengado_transporte": "0.00",
+        "devengado_otros": "0.00",
+        "total_adiciones": "0.00",
+        "total_deducciones": "0.00",
+        "neto_pagar": "0.00",
+        "persona_id": "1212",
+        "metodo_pago": "ASISTENCIA",
+        "estado_vinculacion": "ACTIVA",
+        "cargo": "ADMINISTRATIVO",
+        "numero_documento": "1006771797",
+        "nombre": "DANIELA YISED ACEVEDO DUQUE",
+        "codigo_categoria": "ZZALT346158",
+        "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813",
+        "categoria_recargo_mensual": "511934.00"
+      },
+      "audit_event": {
+        "usuario_id": "2",
+        "empresa_id": "15",
+        "contrato_id": "24",
+        "entidad": "nomina_empleados",
+        "entidad_id": "766",
+        "accion": "NOMINA_EMPLEADO_CATEGORY_ASSIGN",
+        "descripcion": "QA_CAT_API_1788268341813 apply",
+        "datos_anteriores": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "contrato_id": "24",
+          "categoria_salarial": null,
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": null
+        },
+        "datos_nuevos": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "trabajador": {
+            "nombre_completo": "DANIELA YISED ACEVEDO DUQUE",
+            "numero_documento": "1006771797"
+          },
+          "contrato_id": "24",
+          "categoria_salarial": {
+            "id": "28",
+            "codigo_categoria": "ZZALT346158",
+            "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813"
+          },
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": "28"
+        },
+        "fecha_evento": "2026-09-01 13:12:42.123586"
+      },
+      "audit_legacy": {
+        "usuario_id": "2",
+        "accion": "NOMINA_EMPLEADO_CATEGORY_ASSIGN",
+        "tabla_afectada": "nomina_empleados",
+        "registro_id": "766",
+        "descripcion": "QA_CAT_API_1788268341813 apply",
+        "datos_anteriores": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "contrato_id": "24",
+          "categoria_salarial": null,
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": null
+        },
+        "datos_nuevos": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "trabajador": {
+            "nombre_completo": "DANIELA YISED ACEVEDO DUQUE",
+            "numero_documento": "1006771797"
+          },
+          "contrato_id": "24",
+          "categoria_salarial": {
+            "id": "28",
+            "codigo_categoria": "ZZALT346158",
+            "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813"
+          },
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": "28"
+        },
+        "created_at": "2026-09-01 13:12:42.123586"
+      }
+    },
+    "no_cambio_operativo": {
+      "status": "PASS",
+      "changed_fields": []
+    },
+    "recalculo_automatico": {
+      "status": "PASS",
+      "changed_fields": [],
+      "before_db": {
+        "nomina_empleado_id": "766",
+        "periodo_id": "2",
+        "vinculacion_id": "1547",
+        "categoria_salarial_id": null,
+        "salario_base": "0.00",
+        "auxilio_transporte": "0.00",
+        "devengado_basico": "0.00",
+        "devengado_transporte": "0.00",
+        "devengado_otros": "0.00",
+        "total_adiciones": "0.00",
+        "total_deducciones": "0.00",
+        "neto_pagar": "0.00",
+        "persona_id": "1212",
+        "metodo_pago": "ASISTENCIA",
+        "estado_vinculacion": "ACTIVA",
+        "cargo": "ADMINISTRATIVO",
+        "numero_documento": "1006771797",
+        "nombre": "DANIELA YISED ACEVEDO DUQUE",
+        "codigo_categoria": null,
+        "nombre_categoria": null,
+        "categoria_recargo_mensual": null
+      },
+      "after_db": {
+        "nomina_empleado_id": "766",
+        "periodo_id": "2",
+        "vinculacion_id": "1547",
+        "categoria_salarial_id": "28",
+        "salario_base": "0.00",
+        "auxilio_transporte": "0.00",
+        "devengado_basico": "0.00",
+        "devengado_transporte": "0.00",
+        "devengado_otros": "0.00",
+        "total_adiciones": "0.00",
+        "total_deducciones": "0.00",
+        "neto_pagar": "0.00",
+        "persona_id": "1212",
+        "metodo_pago": "ASISTENCIA",
+        "estado_vinculacion": "ACTIVA",
+        "cargo": "ADMINISTRATIVO",
+        "numero_documento": "1006771797",
+        "nombre": "DANIELA YISED ACEVEDO DUQUE",
+        "codigo_categoria": "ZZALT346158",
+        "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813",
+        "categoria_recargo_mensual": "511934.00"
+      }
+    },
+    "retirar_categoria": {
+      "status": "PASS",
+      "preview": {
+        "periodo": {
+          "id": "2",
+          "contrato_id": "24",
+          "nombre_periodo": "AGOSTO 2026",
+          "fecha_inicio": "2026-08-01",
+          "fecha_fin": "2026-08-31",
+          "estado": "ABIERTO",
+          "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026"
+        },
+        "categoria_destino": null,
+        "resumen": {
+          "total_encontrados": 1,
+          "instituciones": 0,
+          "sedes": 0,
+          "salario_base": null,
+          "auxilio_transporte": null,
+          "otros_recargos": null
+        },
+        "items": [
+          {
+            "nomina_empleado_id": "766",
+            "vinculacion_id": "1547",
+            "persona_id": "1212",
+            "nombre_completo": "DANIELA YISED ACEVEDO DUQUE",
+            "numero_documento": "1006771797",
+            "cargo": "ADMINISTRATIVO",
+            "contrato_cargo_id": "38",
+            "municipio": null,
+            "institucion": null,
+            "sede": null,
+            "modalidad": null,
+            "modalidad_codigo": null,
+            "metodo_pago": "ASISTENCIA",
+            "estado_vinculacion": "ACTIVA",
+            "aplica_cobertura": false,
+            "institucion_sede_count": 0,
+            "categoria_salarial_actual": {
+              "id": "28",
+              "codigo_categoria": "ZZALT346158",
+              "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813"
+            }
+          }
+        ],
+        "sql_reference": "company-settings.salary-category-assignments.preview.v1"
+      },
+      "response_status": 200,
+      "response": {
+        "periodo": {
+          "id": "2",
+          "contrato_id": "24",
+          "nombre_periodo": "AGOSTO 2026",
+          "fecha_inicio": "2026-08-01",
+          "fecha_fin": "2026-08-31",
+          "estado": "ABIERTO",
+          "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026"
+        },
+        "categoria_destino": null,
+        "procesados": 1,
+        "asignados": 1,
+        "omitidos": 0,
+        "mensaje": "Se retiró la categoría salarial a 1 trabajadores. Recalcula el periodo cuando termines de configurar y asignar todas las categorías.",
+        "control": {
+          "total_empleados": 771,
+          "con_categoria": 0,
+          "sin_categoria": 771,
+          "categorias_usadas": 0,
+          "sin_contexto_operativo": 101,
+          "inconsistencias": [
+            "EMPLEADOS_SIN_CONTEXTO_OPERATIVO"
+          ]
+        }
+      },
+      "after_api": {
+        "nomina_empleado_id": "766",
+        "persona_id": "1212",
+        "vinculacion_id": "1547",
+        "nombre": "DANIELA YISED ACEVEDO DUQUE",
+        "documento": "1006771797",
+        "cargo": "ADMINISTRATIVO",
+        "modalidad": null,
+        "municipio": null,
+        "institucion": null,
+        "sede": null,
+        "categoria_salarial_id_actual": null,
+        "categoria_actual_codigo": null,
+        "salario_actual": 0,
+        "auxilio_transporte_actual": 0,
+        "recargo_mensual_actual": null,
+        "metodo_pago": "ASISTENCIA",
+        "estado_vinculacion": "ACTIVA",
+        "devengado_basico": 0,
+        "devengado_transporte": 0,
+        "devengado_otros": 0,
+        "total_devengado": 0,
+        "total_deducciones": 0,
+        "neto_pagar": 0
+      },
+      "after_db": {
+        "nomina_empleado_id": "766",
+        "periodo_id": "2",
+        "vinculacion_id": "1547",
+        "categoria_salarial_id": null,
+        "salario_base": "0.00",
+        "auxilio_transporte": "0.00",
+        "devengado_basico": "0.00",
+        "devengado_transporte": "0.00",
+        "devengado_otros": "0.00",
+        "total_adiciones": "0.00",
+        "total_deducciones": "0.00",
+        "neto_pagar": "0.00",
+        "persona_id": "1212",
+        "metodo_pago": "ASISTENCIA",
+        "estado_vinculacion": "ACTIVA",
+        "cargo": "ADMINISTRATIVO",
+        "numero_documento": "1006771797",
+        "nombre": "DANIELA YISED ACEVEDO DUQUE",
+        "codigo_categoria": null,
+        "nombre_categoria": null,
+        "categoria_recargo_mensual": null
+      },
+      "audit_event": {
+        "usuario_id": "2",
+        "empresa_id": "15",
+        "contrato_id": "24",
+        "entidad": "nomina_empleados",
+        "entidad_id": "766",
+        "accion": "NOMINA_EMPLEADO_CATEGORY_ASSIGN",
+        "descripcion": "QA_CAT_API_1788268341813 remove",
+        "datos_anteriores": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "contrato_id": "24",
+          "categoria_salarial": {
+            "id": "28",
+            "codigo_categoria": "ZZALT346158",
+            "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813"
+          },
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": "28"
+        },
+        "datos_nuevos": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "trabajador": {
+            "nombre_completo": "DANIELA YISED ACEVEDO DUQUE",
+            "numero_documento": "1006771797"
+          },
+          "contrato_id": "24",
+          "categoria_salarial": null,
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": null
+        },
+        "fecha_evento": "2026-09-01 13:12:47.440657"
+      },
+      "audit_legacy": {
+        "usuario_id": "2",
+        "accion": "NOMINA_EMPLEADO_CATEGORY_ASSIGN",
+        "tabla_afectada": "nomina_empleados",
+        "registro_id": "766",
+        "descripcion": "QA_CAT_API_1788268341813 remove",
+        "datos_anteriores": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "contrato_id": "24",
+          "categoria_salarial": {
+            "id": "28",
+            "codigo_categoria": "ZZALT346158",
+            "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813"
+          },
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": "28"
+        },
+        "datos_nuevos": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "trabajador": {
+            "nombre_completo": "DANIELA YISED ACEVEDO DUQUE",
+            "numero_documento": "1006771797"
+          },
+          "contrato_id": "24",
+          "categoria_salarial": null,
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": null
+        },
+        "created_at": "2026-09-01 13:12:47.440657"
+      }
+    },
+    "auditoria": {
+      "status": "PASS",
+      "patch_event": {
+        "usuario_id": "2",
+        "empresa_id": "15",
+        "contrato_id": "24",
+        "entidad": "nomina_categorias_salariales",
+        "entidad_id": "29",
+        "accion": "UPDATE",
+        "descripcion": "Corrección de categoría salarial",
+        "datos_anteriores": {
+          "id": "29",
+          "activo": true,
+          "modalidad": null,
+          "contrato_id": "24",
+          "descripcion": "Base overlaps QA_CAT_API_1788268341813",
+          "salario_base": 2117585,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "otros_recargos": 506934,
+          "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026",
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "auxilio_transporte": 249095
+        },
+        "datos_nuevos": {
+          "id": "29",
+          "activo": true,
+          "modalidad": null,
+          "contrato_id": "24",
+          "descripcion": "Base overlaps QA_CAT_API_1788268341813 [QA_CAT_API_1788268341813_PATCH]",
+          "salario_base": 2117585,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "otros_recargos": 506934,
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "auxilio_transporte": 249095
+        },
+        "fecha_evento": "2026-09-01 13:12:32.704785"
+      },
+      "apply_event": {
+        "usuario_id": "2",
+        "empresa_id": "15",
+        "contrato_id": "24",
+        "entidad": "nomina_empleados",
+        "entidad_id": "766",
+        "accion": "NOMINA_EMPLEADO_CATEGORY_ASSIGN",
+        "descripcion": "QA_CAT_API_1788268341813 apply",
+        "datos_anteriores": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "contrato_id": "24",
+          "categoria_salarial": null,
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": null
+        },
+        "datos_nuevos": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "trabajador": {
+            "nombre_completo": "DANIELA YISED ACEVEDO DUQUE",
+            "numero_documento": "1006771797"
+          },
+          "contrato_id": "24",
+          "categoria_salarial": {
+            "id": "28",
+            "codigo_categoria": "ZZALT346158",
+            "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813"
+          },
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": "28"
+        },
+        "fecha_evento": "2026-09-01 13:12:42.123586"
+      },
+      "remove_event": {
+        "usuario_id": "2",
+        "empresa_id": "15",
+        "contrato_id": "24",
+        "entidad": "nomina_empleados",
+        "entidad_id": "766",
+        "accion": "NOMINA_EMPLEADO_CATEGORY_ASSIGN",
+        "descripcion": "QA_CAT_API_1788268341813 remove",
+        "datos_anteriores": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "contrato_id": "24",
+          "categoria_salarial": {
+            "id": "28",
+            "codigo_categoria": "ZZALT346158",
+            "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813"
+          },
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": "28"
+        },
+        "datos_nuevos": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "trabajador": {
+            "nombre_completo": "DANIELA YISED ACEVEDO DUQUE",
+            "numero_documento": "1006771797"
+          },
+          "contrato_id": "24",
+          "categoria_salarial": null,
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": null
+        },
+        "fecha_evento": "2026-09-01 13:12:47.440657"
+      },
+      "patch_legacy": {
+        "usuario_id": "2",
+        "accion": "UPDATE",
+        "tabla_afectada": "nomina_categorias_salariales",
+        "registro_id": "29",
+        "descripcion": "Corrección de categoría salarial",
+        "datos_anteriores": {
+          "id": "29",
+          "activo": true,
+          "modalidad": null,
+          "contrato_id": "24",
+          "descripcion": "Base overlaps QA_CAT_API_1788268341813",
+          "salario_base": 2117585,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "otros_recargos": 506934,
+          "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026",
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "auxilio_transporte": 249095
+        },
+        "datos_nuevos": {
+          "id": "29",
+          "activo": true,
+          "modalidad": null,
+          "contrato_id": "24",
+          "descripcion": "Base overlaps QA_CAT_API_1788268341813 [QA_CAT_API_1788268341813_PATCH]",
+          "salario_base": 2117585,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "otros_recargos": 506934,
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "auxilio_transporte": 249095
+        },
+        "created_at": "2026-09-01 13:12:32.989644"
+      },
+      "apply_legacy": {
+        "usuario_id": "2",
+        "accion": "NOMINA_EMPLEADO_CATEGORY_ASSIGN",
+        "tabla_afectada": "nomina_empleados",
+        "registro_id": "766",
+        "descripcion": "QA_CAT_API_1788268341813 apply",
+        "datos_anteriores": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "contrato_id": "24",
+          "categoria_salarial": null,
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": null
+        },
+        "datos_nuevos": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "trabajador": {
+            "nombre_completo": "DANIELA YISED ACEVEDO DUQUE",
+            "numero_documento": "1006771797"
+          },
+          "contrato_id": "24",
+          "categoria_salarial": {
+            "id": "28",
+            "codigo_categoria": "ZZALT346158",
+            "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813"
+          },
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": "28"
+        },
+        "created_at": "2026-09-01 13:12:42.123586"
+      },
+      "remove_legacy": {
+        "usuario_id": "2",
+        "accion": "NOMINA_EMPLEADO_CATEGORY_ASSIGN",
+        "tabla_afectada": "nomina_empleados",
+        "registro_id": "766",
+        "descripcion": "QA_CAT_API_1788268341813 remove",
+        "datos_anteriores": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "contrato_id": "24",
+          "categoria_salarial": {
+            "id": "28",
+            "codigo_categoria": "ZZALT346158",
+            "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813"
+          },
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": "28"
+        },
+        "datos_nuevos": {
+          "empresa_id": "15",
+          "periodo_id": "2",
+          "trabajador": {
+            "nombre_completo": "DANIELA YISED ACEVEDO DUQUE",
+            "numero_documento": "1006771797"
+          },
+          "contrato_id": "24",
+          "categoria_salarial": null,
+          "nomina_empleado_id": "766",
+          "categoria_salarial_id": null
+        },
+        "created_at": "2026-09-01 13:12:47.440657"
+      }
+    },
+    "periodos_reales": {
+      "status": "PASS",
+      "api_periods": [
+        {
+          "id": "2",
+          "contrato_id": "24",
+          "nombre_periodo": "AGOSTO 2026",
+          "tipo_periodo": "MENSUAL",
+          "fecha_inicio": "2026-08-01",
+          "fecha_fin": "2026-08-31",
+          "requiere_asistencia": false,
+          "estado": "ABIERTO",
+          "activo": true,
+          "created_at": "2026-08-24T16:46:23.360Z",
+          "contrato": {
+            "id": "24",
+            "empresa_id": "15",
+            "numero_contrato": "CONTRATO DE PRESTACION DE SERVICIOS NRO. 1464 DE 2026",
+            "entidad_contratante": "DEPARTAMENTO DEL META",
+            "fecha_inicio": "2026-07-29",
+            "fecha_finalizacion": "2026-12-12"
+          }
+        }
+      ]
+    }
+  },
+  "cleanup": {
+    "restore_patch": {
+      "status": 200,
+      "after": {
+        "id": "29",
+        "contrato_id": "24",
+        "codigo_categoria": "ZZOVL347812",
+        "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+        "modalidad": null,
+        "descripcion": "Base overlaps QA_CAT_API_1788268341813",
+        "salario_base": "2117585.00",
+        "auxilio_transporte": "249095.00",
+        "otros_recargos": "506934.00",
+        "vigente_desde": "2026-08-01",
+        "vigente_hasta": "2026-08-31",
+        "activo": true
+      }
+    },
+    "deactivate_28": {
+      "status": 200,
+      "body": {
+        "data": {
+          "id": "28",
+          "contrato_id": "24",
+          "codigo_categoria": "ZZALT346158",
+          "nombre_categoria": "Categoria alterna QA_CAT_API_1788268341813",
+          "modalidad": null,
+          "descripcion": "Destino QA QA_CAT_API_1788268341813",
+          "salario_base": 2217585,
+          "auxilio_transporte": 259095,
+          "otros_recargos": 511934,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "activo": false
+        }
+      }
+    },
+    "deactivate_29": {
+      "status": 200,
+      "body": {
+        "data": {
+          "id": "29",
+          "contrato_id": "24",
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "modalidad": null,
+          "descripcion": "Base overlaps QA_CAT_API_1788268341813",
+          "salario_base": 2117585,
+          "auxilio_transporte": 249095,
+          "otros_recargos": 506934,
+          "vigente_desde": "2026-08-01",
+          "vigente_hasta": "2026-08-31",
+          "activo": false
+        }
+      }
+    },
+    "deactivate_30": {
+      "status": 200,
+      "body": {
+        "data": {
+          "id": "30",
+          "contrato_id": "24",
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "modalidad": null,
+          "descripcion": "QA_CAT_API_1788268341813 contigua",
+          "salario_base": 2117585,
+          "auxilio_transporte": 249095,
+          "otros_recargos": 506934,
+          "vigente_desde": "2026-09-01",
+          "vigente_hasta": "2026-09-30",
+          "activo": false
+        }
+      }
+    },
+    "deactivate_31": {
+      "status": 200,
+      "body": {
+        "data": {
+          "id": "31",
+          "contrato_id": "24",
+          "codigo_categoria": "ZZOVL347812",
+          "nombre_categoria": "Categoria overlap QA_CAT_API_1788268341813",
+          "modalidad": null,
+          "descripcion": "QA_CAT_API_1788268341813 separada",
+          "salario_base": 2117585,
+          "auxilio_transporte": 249095,
+          "otros_recargos": 506934,
+          "vigente_desde": "2026-10-01",
+          "vigente_hasta": "2026-10-30",
+          "activo": false
+        }
+      }
+    }
+  },
+  "errors": []
+}

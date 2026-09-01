@@ -9,7 +9,7 @@ import {
   readCompanyScopedStorage,
   writeCompanyScopedStorage,
 } from "../../context/companyScope";
-import { apiClient } from "../../services/apiClient";
+import { ApiClientError, apiClient } from "../../services/apiClient";
 import {
   createNominaNovedad,
   createNominaNovedadConTurno,
@@ -232,6 +232,82 @@ function buildContextTitle(employee: NominaEmpleadoApi, context: PlanillaContext
     .join(" · ");
 }
 
+function shortDateLabel(value: string) {
+  if (!value) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("es-CO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${value}T12:00:00Z`));
+}
+
+function formatOverlapConflictMessage(details: Record<string, unknown> | null | undefined) {
+  const info = details ?? {};
+  const nombre = typeof info.nombre === "string" && info.nombre.trim() ? info.nombre.trim() : "Novedad existente";
+  const codigo = typeof info.codigo_operativo === "string" && info.codigo_operativo.trim()
+    ? info.codigo_operativo.trim()
+    : null;
+  const inicio = typeof info.fecha_inicio === "string" && info.fecha_inicio.trim() ? info.fecha_inicio.trim() : null;
+  const fin = typeof info.fecha_fin === "string" && info.fecha_fin.trim() ? info.fecha_fin.trim() : null;
+  const rango = inicio && fin
+    ? inicio === fin
+      ? shortDateLabel(inicio) ?? inicio
+      : `${shortDateLabel(inicio) ?? inicio} a ${shortDateLabel(fin) ?? fin}`
+    : inicio
+      ? shortDateLabel(inicio) ?? inicio
+      : fin
+        ? shortDateLabel(fin) ?? fin
+        : null;
+
+  return [
+    "Ya existe una novedad activa que se cruza con las fechas seleccionadas.",
+    codigo ? `Tipo: ${codigo}${nombre ? ` (${nombre})` : ""}.` : nombre ? `Tipo: ${nombre}.` : null,
+    rango ? `Rango existente: ${rango}.` : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
+}
+
+function formatPlanillaErrorMessage(
+  value: unknown,
+  fallback: string,
+  options?: { date?: string },
+) {
+  if (value instanceof ApiClientError) {
+    if (value.code === "NOMINA_NOVEDAD_FECHA_OCUPADA") {
+      return formatOverlapConflictMessage(value.details as Record<string, unknown> | null | undefined);
+    }
+
+    if (value.status === 429) {
+      return "Demasiadas solicitudes en poco tiempo. Espera unos segundos e intenta de nuevo.";
+    }
+
+    if (options?.date) {
+      return `${fallback} el ${shortDateLabel(options.date) ?? options.date}: ${value.message}`;
+    }
+
+    return value.message || fallback;
+  }
+
+  if (value instanceof Error) {
+    if (options?.date) {
+      return `${fallback} el ${shortDateLabel(options.date) ?? options.date}: ${value.message}`;
+    }
+
+    return value.message || fallback;
+  }
+
+  if (options?.date) {
+    return `${fallback} el ${shortDateLabel(options.date) ?? options.date}.`;
+  }
+
+  return fallback;
+}
+
 function readPersistedFilters(empresaId: number | null): PersistedFilters {
   if (typeof window === "undefined") {
     return {
@@ -379,6 +455,8 @@ export default function PlanillaOperativaPage() {
   const [coverageTurns, setCoverageTurns] = useState<NominaNovedadTurnoOperativoApi[]>([]);
   const [changes, setChanges] = useState<PlanillaCambio[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [pendingAttendance, setPendingAttendance] = useState<Set<string>>(new Set());
+  const [attendanceFailures, setAttendanceFailures] = useState<Map<string, string>>(new Map());
   const [reviews, setReviews] = useState<RevisionOperativaApi[]>([]);
   const [types, setTypes] = useState<NominaTipoNovedad[]>([]);
 
@@ -427,6 +505,9 @@ export default function PlanillaOperativaPage() {
   const canSeeEconomic = user?.permissions.includes("nomina.economico.read") === true;
   const selectedEmploymentMessage = selected ? getEmploymentStatusMessage(selected.employee, selected.date) : null;
   const actorUserId = user?.id ? String(user.id) : null;
+  const selectedAttendanceKey = selected ? `${selected.employee.vinculacion_id}|${selected.date}` : null;
+  const selectedAttendancePending = selectedAttendanceKey ? pendingAttendance.has(selectedAttendanceKey) : false;
+  const selectedAttendanceFailure = selectedAttendanceKey ? attendanceFailures.get(selectedAttendanceKey) ?? null : null;
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -892,11 +973,22 @@ export default function PlanillaOperativaPage() {
     }
 
     const key = `${employee.vinculacion_id}|${date}`;
-    const activeNovelty = novedadesOnDate(noveltyByEmployee.get(employee.id) ?? [], date)[0];
-    if (!remove && activeNovelty) {
-      setError(`Este dia tiene una novedad activa: ${novedadCode(activeNovelty)}. Para marcar asistencia primero debes editar o anular la novedad.`);
+    if (pendingAttendance.has(key)) {
       return;
     }
+
+    const activeNovelty = novedadesOnDate(noveltyByEmployee.get(employee.id) ?? [], date)[0];
+    if (!remove && activeNovelty) {
+      const message = `No puedes marcar asistencia el ${shortDateLabel(date) ?? date} porque existe una novedad activa: ${novedadCode(activeNovelty)}.`;
+      setAttendanceFailures((current) => {
+        const next = new Map(current);
+        next.set(key, message);
+        return next;
+      });
+      setError(message);
+      return;
+    }
+
     const shouldPresent = !remove && !present.has(key);
     const nextItem: Attendance = {
       activo: true,
@@ -904,17 +996,38 @@ export default function PlanillaOperativaPage() {
       fecha: date,
       vinculacion_id: employee.vinculacion_id,
     };
-    const previous = attendance;
 
     setError("");
-    setAttendance((current) => mergeAttendance(current, nextItem, !shouldPresent));
+    setPendingAttendance((current) => new Set(current).add(key));
+    setAttendanceFailures((current) => {
+      const next = new Map(current);
+      next.delete(key);
+      return next;
+    });
 
     try {
       await markNominaAsistencia(periodId, employee.vinculacion_id, date, shouldPresent);
+      setAttendance((current) => mergeAttendance(current, nextItem, !shouldPresent));
+      setAttendanceFailures((current) => {
+        const next = new Map(current);
+        next.delete(key);
+        return next;
+      });
       invalidateReviewLocally(employee, "ASISTENCIA_MODIFICADA");
     } catch (value) {
-      setAttendance(previous);
-      setError(value instanceof Error ? value.message : "No fue posible actualizar asistencia");
+      const message = formatPlanillaErrorMessage(value, "No fue posible actualizar asistencia", { date });
+      setAttendanceFailures((current) => {
+        const next = new Map(current);
+        next.set(key, message);
+        return next;
+      });
+      setError(message);
+    } finally {
+      setPendingAttendance((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
@@ -965,6 +1078,7 @@ export default function PlanillaOperativaPage() {
   };
 
   const openCell = (employee: NominaEmpleadoApi, date: string) => {
+    const wasSelected = selected?.employee.id === employee.id && selected.date === date;
     const context =
       buildTramos(employee, start, end, changesByLink.get(employee.vinculacion_id) ?? []).find(
         (item) => item.inicio <= date && item.fin >= date,
@@ -985,7 +1099,9 @@ export default function PlanillaOperativaPage() {
       return;
     }
 
-    void toggleAttendance(employee, date);
+    if (wasSelected && !pendingAttendance.has(`${employee.vinculacion_id}|${date}`)) {
+      void toggleAttendance(employee, date);
+    }
   };
 
   const openNovelty = (cell: SelectedCell) => {
@@ -1130,7 +1246,7 @@ export default function PlanillaOperativaPage() {
       closeNoveltyModal();
       setRangeSelection(null);
     } catch (value) {
-      setError(value instanceof Error ? value.message : "No fue posible registrar la novedad");
+      setError(formatPlanillaErrorMessage(value, "No fue posible registrar la novedad", { date: noveltyCell.date }));
     } finally {
       setSaving(false);
     }
@@ -1172,6 +1288,13 @@ export default function PlanillaOperativaPage() {
         }
         return next;
       });
+      setAttendanceFailures((current) => {
+        const next = new Map(current);
+        for (const fecha of result.marcados ?? []) {
+          next.delete(`${selected.employee.vinculacion_id}|${fecha}`);
+        }
+        return next;
+      });
 
       if ((result.total_marcados ?? 0) > 0) {
         invalidateReviewLocally(selected.employee, "ASISTENCIA_MODIFICADA");
@@ -1185,7 +1308,7 @@ export default function PlanillaOperativaPage() {
       );
       setRangeSelection(null);
     } catch (value) {
-      setError(value instanceof Error ? value.message : "No fue posible marcar el rango");
+      setError(formatPlanillaErrorMessage(value, "No fue posible marcar el rango", { date: from }));
     }
   };
 
@@ -1325,7 +1448,7 @@ export default function PlanillaOperativaPage() {
         </select>
 
         <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
-          <option value="NOMBRE_ASC">Ordenar por · Nombre A-Z</option>
+          <option value="NOMBRE_ASC">Ordenar por Nombre A-Z</option>
           <option value="NOMBRE_DESC">Nombre Z-A</option>
           <option value="DOCUMENTO_ASC">Documento ascendente</option>
           <option value="DOCUMENTO_DESC">Documento descendente</option>
@@ -1466,6 +1589,8 @@ export default function PlanillaOperativaPage() {
                     );
                     const key = `${employee.vinculacion_id}|${day}`;
                     const isPresent = present.has(key);
+                    const isPendingAttendance = pendingAttendance.has(key);
+                    const hasAttendanceFailure = attendanceFailures.has(key);
                     const outside = isOutsideEmployment(employee, day);
                     const outsideMessage = getEmploymentStatusMessage(employee, day);
 
@@ -1473,7 +1598,7 @@ export default function PlanillaOperativaPage() {
                       <button
                         type="button"
                         key={day}
-                        className={`op-cell ${calendarDay.className} ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""} ${activeNoveltiesOnThisDay.length ? "has-active-novelty" : ""}`}
+                        className={`op-cell ${calendarDay.className} ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""} ${activeNoveltiesOnThisDay.length ? "has-active-novelty" : ""} ${isPendingAttendance ? "pending-attendance" : ""} ${hasAttendanceFailure ? "attendance-error" : ""}`}
                         data-active-novelty={activeNoveltiesOnThisDay.length ? novedadCode(activeNoveltiesOnThisDay[0]) : undefined}
                         title={`${outsideMessage ? `${outsideMessage} · ` : ""}${noveltiesOnThisDay.length ? `${novedadCode(noveltiesOnThisDay[0])} · ${noveltiesOnThisDay[0]?.tipo_novedad?.nombre ?? "Novedad"} · ${dateLabel(day)} · ${noveltiesOnThisDay[0]?.fecha_inicio ?? day} a ${noveltiesOnThisDay[0]?.fecha_fin ?? day} · ${noveltiesOnThisDay[0]?.observacion ?? "Sin observacion"}` : `${dateLabel(day)} · ${buildContextTitle(employee, dayContext)}`}`}
                         onContextMenu={(event) => {
@@ -1574,6 +1699,14 @@ export default function PlanillaOperativaPage() {
             return <div className="op-context-detail"><strong>Novedad</strong><span>Codigo: {novedadCode(novelty)}</span><span>Nombre: {novelty.tipo_novedad?.nombre ?? "Novedad"}</span><span>Inicio: {novelty.fecha_inicio ?? selected.date}</span><span>Fin: {novelty.fecha_fin ?? selected.date}</span><span>Observacion: {novelty.observacion ?? "Sin observacion"}</span><span>Soporte: {novelty.documento_persona_id ?? "Sin soporte"}</span><span>Estado: {novelty.activo ? "ACTIVA" : "ANULADA"}</span>{canUpdate ? <><button type="button" onClick={() => { const observacion = window.prompt("Observacion de la novedad:", novelty.observacion ?? "")?.trim(); if (observacion === undefined) return; void updateNominaNovedad(novelty.id, { observacion: observacion || null }).then(updated => { setNovelties(items => items.map(item => item.id === updated.id ? updated : item)); invalidateReviewLocally(selected.employee, "NOVEDAD_EDITADA"); }).catch(value => setError(value instanceof Error ? value.message : "No fue posible editar la novedad")); }}>Editar novedad</button><button type="button" onClick={() => { if (window.confirm(`Anular ${novedadCode(novelty)}?`)) void deactivateNominaNovedad(novelty.id).then(() => { setNovelties(items => items.filter(item => item.id !== novelty.id)); invalidateReviewLocally(selected.employee, "NOVEDAD_ANULADA"); }).catch(value => setError(value instanceof Error ? value.message : "No fue posible anular la novedad")); }}>Anular novedad</button></> : null}</div>;
           })() : null}
 
+          {selectedAttendancePending ? (
+            <div className="op-inline-note compact pending"><span>{`Guardando asistencia del ${shortDateLabel(selected.date) ?? selected.date}...`}</span></div>
+          ) : null}
+
+          {selectedAttendanceFailure ? (
+            <div className="op-inline-note compact error"><span>{selectedAttendanceFailure}</span></div>
+          ) : null}
+
           {selectedEmploymentMessage ? <div className="op-inline-note compact"><span>{selectedEmploymentMessage}</span></div> : null}
 
           <div className="op-actions">
@@ -1581,12 +1714,12 @@ export default function PlanillaOperativaPage() {
               <Plus size={14} /> + Novedad
             </button>
             {present.has(`${selected.employee.vinculacion_id}|${selected.date}`) ? (
-              <button type="button" disabled={!editable || Boolean(selectedEmploymentMessage)} onClick={() => void toggleAttendance(selected.employee, selected.date, true)}>
-                Quitar asistencia
+              <button type="button" disabled={!editable || Boolean(selectedEmploymentMessage) || selectedAttendancePending} onClick={() => void toggleAttendance(selected.employee, selected.date, true)}>
+                {selectedAttendancePending ? "Guardando..." : "Quitar asistencia"}
               </button>
             ) : (
-              <button type="button" disabled={!editable || Boolean(selectedEmploymentMessage)} onClick={() => void toggleAttendance(selected.employee, selected.date)}>
-                Marcar asistencia
+              <button type="button" disabled={!editable || Boolean(selectedEmploymentMessage) || selectedAttendancePending} onClick={() => void toggleAttendance(selected.employee, selected.date)}>
+                {selectedAttendancePending ? "Guardando..." : "Marcar asistencia"}
               </button>
             )}
             <button

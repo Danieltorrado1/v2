@@ -1,0 +1,21 @@
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFkbWluLnFhQGVtcGlyaWEuZXhhbXBsZSIsInBlcm1pc3Npb25zIjpbIm5vbWluYS5lY29ub21pY28ucmVhZCIsIm5vbWluYS5wYXJhbWV0cm9zLm1hbmFnZSIsIm5vbWluYS5jYXRlZ29yaWFzLm1hbmFnZSIsIm5vbWluYS5yZWFkIiwibm9taW5hLm9wZXJhdGl2YS5yZWFkIl0sInJvbGVzIjpbIkFETUlOSVNUUkFET1IiXSwiaWF0IjoxNzg4MjY1MzEzLCJleHAiOjE3ODgyOTQxMTMsInN1YiI6IjkifQ.MZRXd3cZH4mU63-rFWX4WMBXKqLSvam6-eiqojFRUs8",
+  "user": {
+    "id": "9",
+    "email": "admin.qa@empiria.example",
+    "name": "QA ADMIN EMPIRIA",
+    "active": true,
+    "roles": [
+      "ADMINISTRADOR"
+    ],
+    "permissions": [
+      "nomina.economico.read",
+      "nomina.parametros.manage",
+      "nomina.categorias.manage",
+      "nomina.read",
+      "nomina.operativa.read"
+    ],
+    "createdAt": "2026-08-28T22:04:17.658Z",
+    "updatedAt": "2026-08-28T22:04:17.658Z"
+  }
+}

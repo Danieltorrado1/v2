@@ -1,0 +1,76 @@
+{
+  "generated_at": "2026-09-01T12:53:06.607Z",
+  "corrections": [],
+  "findings": [],
+  "environment": {
+    "empresa": null,
+    "contrato": null,
+    "periodos": [],
+    "periodo_abierto": null,
+    "categorias_iniciales": [
+      {
+        "id": "3",
+        "contrato_id": "3",
+        "codigo_categoria": "QA_CAA1",
+        "nombre_categoria": "QA CATEGORIA CAA1",
+        "modalidad": "CAA",
+        "descripcion": "Categor�a salarial ficticia QA",
+        "salario_base": "1800000.00",
+        "auxilio_transporte": "249000.00",
+        "otros_recargos": "120000.00",
+        "vigente_desde": "2099-08-01",
+        "vigente_hasta": "2099-08-31",
+        "activo": true
+      },
+      {
+        "id": "7",
+        "contrato_id": "3",
+        "codigo_categoria": "QA_CAA1",
+        "nombre_categoria": "QA CATEGORIA CAA1",
+        "modalidad": "CAA",
+        "descripcion": "Vigencia contigua QA",
+        "salario_base": "1800000.00",
+        "auxilio_transporte": "249000.00",
+        "otros_recargos": "120000.00",
+        "vigente_desde": "2099-09-01",
+        "vigente_hasta": "2099-09-30",
+        "activo": true
+      },
+      {
+        "id": "8",
+        "contrato_id": "3",
+        "codigo_categoria": "QA_CAA1",
+        "nombre_categoria": "QA CATEGORIA CAA1",
+        "modalidad": "CAA",
+        "descripcion": "Vigencia separada QA",
+        "salario_base": "1800000.00",
+        "auxilio_transporte": "249000.00",
+        "otros_recargos": "120000.00",
+        "vigente_desde": "2099-10-01",
+        "vigente_hasta": "2099-10-31",
+        "activo": true
+      },
+      {
+        "id": "4",
+        "contrato_id": "3",
+        "codigo_categoria": "QA_CAA2",
+        "nombre_categoria": "QA CATEGORIA CAA2",
+        "modalidad": "CAA",
+        "descripcion": "Categoria QA alternativa para asignacion controlada",
+        "salario_base": "1910000.00",
+        "auxilio_transporte": "260000.00",
+        "otros_recargos": "130000.00",
+        "vigente_desde": "2099-08-01",
+        "vigente_hasta": "2099-08-31",
+        "activo": true
+      }
+    ],
+    "trabajadores_controlados": [],
+    "permisos_usuario": []
+  },
+  "tests": {},
+  "error": {
+    "message": "page.waitForSelector: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.adm-nav-tab') to be visible\u001b[22m\n",
+    "stack": "page.waitForSelector: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.adm-nav-tab') to be visible\u001b[22m\n\n    at openSalaryCategories (C:\\Users\\CORE ULTRA\\Desktop\\V2\\tmp-sst-qa\\qa-categorias-run.mjs:222:14)\n    at async file:///C:/Users/CORE%20ULTRA/Desktop/V2/tmp-sst-qa/qa-categorias-run.mjs:430:3"
+  }
+}

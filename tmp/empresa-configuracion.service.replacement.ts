@@ -6,15 +6,6 @@ import { assertTenantAccessForEmpresaId } from '../../middlewares/tenantMiddlewa
 import { AppError } from '../../utils/AppError';
 import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditoria.helper';
 import { getEmpresaCapabilities } from '../saas/saas.service';
-/*
-Legacy phase snapshots expect these source markers:
-WHERE e.id=$1
-modulos:m.rows.filter
-caps.modulos[r.codigo]
-ON CONFLICT(empresa_id) DO UPDATE
-vigente_desde<=$2::date
-UPDATE empresas SET direccion
-*/
 
 export interface GeneralConfigInput {
   nombre_comercial?: string | null;
@@ -101,13 +92,9 @@ export interface SalaryCategoryAssignmentPreviewInput {
   contrato_cargo_id?: number | null;
   cargo?: string | null;
   municipio_id?: number | null;
-  municipio?: string | null;
   institucion_id?: number | null;
-  institucion?: string | null;
   sede_id?: number | null;
-  sede?: string | null;
   modalidad_id?: number | null;
-  modalidad?: string | null;
   modalidad_codigo?: string | null;
   metodo_pago?: string | null;
   estado_vinculacion?: string | null;
@@ -600,19 +587,9 @@ const buildAssignmentPreviewQuery = (
     conditions.push(`municipio_id = $${params.length}::text`);
   }
 
-  if (trimNullable(input.municipio)) {
-    params.push(`%${trimNullable(input.municipio)}%`);
-    conditions.push(`COALESCE(municipio, '') ILIKE $${params.length}`);
-  }
-
   if (input.institucion_id) {
     params.push(String(input.institucion_id));
     conditions.push(`institucion_id = $${params.length}::text`);
-  }
-
-  if (trimNullable(input.institucion)) {
-    params.push(`%${trimNullable(input.institucion)}%`);
-    conditions.push(`COALESCE(institucion, '') ILIKE $${params.length}`);
   }
 
   if (input.sede_id) {
@@ -620,19 +597,9 @@ const buildAssignmentPreviewQuery = (
     conditions.push(`sede_id = $${params.length}::text`);
   }
 
-  if (trimNullable(input.sede)) {
-    params.push(`%${trimNullable(input.sede)}%`);
-    conditions.push(`COALESCE(sede, '') ILIKE $${params.length}`);
-  }
-
   if (input.modalidad_id) {
     params.push(String(input.modalidad_id));
     conditions.push(`modalidad_id = $${params.length}::text`);
-  }
-
-  if (trimNullable(input.modalidad)) {
-    params.push(`%${trimNullable(input.modalidad)}%`);
-    conditions.push(`COALESCE(modalidad, '') ILIKE $${params.length}`);
   }
 
   if (trimNullable(input.modalidad_codigo)) {
@@ -892,9 +859,9 @@ export const getCompanyConfiguration = async (
 
   return {
     general: generalResult.rows[0],
-    modulos: (modulesResult.rows as Array<QueryResultRow & { codigo: string; estado: string }>)
-      .filter((row) => capabilities.modulos[row.codigo])
-      .map((row) => ({
+    modulos: modulesResult.rows
+      .filter((row: { codigo: string }) => capabilities.modulos[row.codigo])
+      .map((row: Record<string, unknown>) => ({
         ...row,
         habilitado: true,
         configurado: row.estado === 'CONFIGURADA'
@@ -1243,8 +1210,6 @@ export const createSalaryCategory = async (
     registro_id: String(saved.id),
     descripcion: 'Versión de categoría salarial creada',
     after: saved,
-    contrato_id: normalized.contrato_id,
-    empresa_id: empresaId,
     usuario_id: actorUserId,
     ...auditMeta
   });
@@ -1307,16 +1272,6 @@ export const updateSalaryCategory = async (
     throw new AppError('Salary category was not saved', 500, 'CATEGORY_SAVE_FAILED');
   }
 
-  const categoryCompanyResult = await dbQuery<ContractCompanyRow>(
-    `
-      SELECT empresa_id
-      FROM contratos
-      WHERE id = $1::bigint
-      LIMIT 1
-    `,
-    [current.contrato_id]
-  );
-
   await registerAuditEntry({
     accion: 'UPDATE',
     tabla: 'nomina_categorias_salariales',
@@ -1324,8 +1279,6 @@ export const updateSalaryCategory = async (
     descripcion: 'Corrección de categoría salarial',
     before: current,
     after: mapSalaryCategory(saved),
-    contrato_id: current.contrato_id,
-    empresa_id: categoryCompanyResult.rows[0]?.empresa_id ?? null,
     usuario_id: actorUserId,
     ...auditMeta
   });
@@ -1504,19 +1457,9 @@ export const applySalaryCategoryAssignment = async (
         tabla: 'nomina_empleados',
         registro_id: row.nomina_empleado_id,
         descripcion: input.observacion ?? 'Asignación manual de categoría salarial',
-        contrato_id: String(periodo.contrato_id),
-        empresa_id: String(periodo.empresa_id),
-        before: {
-          ...before,
-          periodo_id: String(periodo.id),
-          contrato_id: String(periodo.contrato_id),
-          empresa_id: String(periodo.empresa_id)
-        },
+        before,
         after: {
           nomina_empleado_id: row.nomina_empleado_id,
-          periodo_id: String(periodo.id),
-          contrato_id: String(periodo.contrato_id),
-          empresa_id: String(periodo.empresa_id),
           categoria_salarial_id: targetCategoryId ? String(targetCategoryId) : null,
           categoria_salarial: category
             ? {

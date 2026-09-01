@@ -14,7 +14,9 @@ export interface RegisterAuditEntryInput extends AuditRequestMeta {
   after?: unknown;
   before?: unknown;
   client?: PoolClient;
+  contrato_id?: string | number | null;
   descripcion: string;
+  empresa_id?: string | number | null;
   registro_id: string;
   tabla: string;
   usuario_id?: string | null;
@@ -290,6 +292,8 @@ export const registerAuditEntry = async (
       descripcion: input.descripcion,
       entidad: input.tabla,
       entidad_id: input.registro_id,
+      empresa_id: input.empresa_id ?? null,
+      contrato_id: input.contrato_id ?? null,
       ip_address: input.ip ?? null,
       modulo: deriveModuleFromTable(input.tabla),
       user_agent: input.user_agent ?? null,
