@@ -268,6 +268,8 @@ type AssignmentModalityOption = {
 
 
 
+const assignmentModalityValue = (option: AssignmentModalityOption): string => String(option.id ?? option.codigo ?? option.nombre ?? option.etiqueta).trim();
+
 type AssignmentOptionsResponse = {
 
   periodo: AssignmentPreviewResponse['periodo'];
@@ -1104,9 +1106,7 @@ export function SalaryCategoriesTab() {
           return;
         }
 
-        setAssignmentModalities(
-          (response.data.modalidades ?? []).filter((option) => Boolean(option.id && option.etiqueta))
-        );
+        setAssignmentModalities(Array.from(new Map((response.data.modalidades ?? []).map((option) => [assignmentModalityValue(option).toUpperCase(), { ...option, id: option.id ? String(option.id) : null, codigo: option.codigo?.trim() || null, nombre: option.nombre?.trim() || null, etiqueta: option.etiqueta?.trim() || assignmentModalityValue(option) }])).values()).filter((option) => Boolean(assignmentModalityValue(option))));
       })
       .catch(() => {
         if (!cancelled) {
@@ -1127,7 +1127,7 @@ export function SalaryCategoriesTab() {
   useEffect(() => {
     if (
       assignmentModalityId &&
-      !assignmentModalities.some((option) => option.id === assignmentModalityId)
+      !assignmentModalities.some((option) => assignmentModalityValue(option) === assignmentModalityId)
     ) {
       setAssignmentModalityId('');
     setAssignmentScope('ALL_MODALITY');
@@ -1175,19 +1175,24 @@ export function SalaryCategoriesTab() {
       value: assignmentCountValue.trim() === '' ? 0 : Number(assignmentCountValue)
     };
   }, [assignmentCountMax, assignmentCountMin, assignmentCountOperator, assignmentCountValue]);
-  const buildAssignmentCriteria = useCallback(
-    () =>
-      compactPayload({
+  const buildAssignmentCriteria = useCallback(
+    () => {
+      const selectedModality = assignmentModalities.find((option) => assignmentModalityValue(option) === assignmentModalityId);
+      const selectedModalityId = selectedModality?.id && /^\d+$/.test(selectedModality.id) ? Number(selectedModality.id) : undefined;
+      return compactPayload({
         search: toNullableText(assignmentSearch),
         cargo: toNullableText(assignmentCargo),
         municipio: toNullableText(assignmentMunicipio),
         institucion: toNullableText(assignmentInstitucion),
         sede: toNullableText(assignmentSede),
-        modalidad_id: assignmentModalityId ? Number(assignmentModalityId) : undefined,
+        modalidad_id: selectedModalityId,
+        modalidad_codigo: selectedModality?.codigo ?? (selectedModalityId ? undefined : selectedModality?.etiqueta),
+        modalidad: selectedModality?.nombre ?? (selectedModalityId ? undefined : selectedModality?.etiqueta),
         metodo_pago: toNullableText(assignmentMethod),
         without_category: withoutCategoryOnly || undefined,
-        institucion_sede_count: assignmentScope === 'SINGLE_SITE' ? { operator: 'EQ', value: 1 } : buildAssignmentCountCriterion()
-      }),
+        institucion_sede_count: assignmentScope === 'SINGLE_SITE' ? { operator: 'EQ', value: 1 } : buildAssignmentCountCriterion()
+      });
+    },
     [
       assignmentCargo,
       assignmentInstitucion,
@@ -1609,7 +1614,7 @@ export function SalaryCategoriesTab() {
           </div>
 
         <div className="nomina-assignment-primary">
-            <div className="adm-field"><label className="adm-label">Modalidad</label><select className="adm-select" value={assignmentModalityId} onChange={(event) => setAssignmentModalityId(event.target.value)}><option value="">Selecciona una modalidad</option>{assignmentOptionsLoading ? <option disabled>Cargando modalidades...</option> : assignmentModalities.map((option) => (<option key={String(option.id)} value={String(option.id)}>{option.etiqueta}</option>))}</select></div>
+            <div className="adm-field"><label className="adm-label">Modalidad</label><select className="adm-select" value={assignmentModalityId} onChange={(event) => setAssignmentModalityId(event.target.value)}><option value="">Selecciona una modalidad</option>{assignmentOptionsLoading ? <option disabled>Cargando modalidades...</option> : assignmentModalities.map((option) => (<option key={String(option.id)} value={assignmentModalityValue(option)}>{option.etiqueta}</option>))}</select></div>
             <div className="adm-field"><label className="adm-label">Alcance de asignacion</label><select className="adm-select" value={assignmentScope} onChange={(event) => setAssignmentScope(event.target.value)}><option value="ALL_MODALITY">Todas las personas de la modalidad</option><option value="SINGLE_SITE">Solo una persona activa por Institucion + Sede</option><option value="ADVANCED">Usar filtros avanzados</option></select></div>
           </div>
 
@@ -1655,15 +1660,17 @@ export function SalaryCategoriesTab() {
               >
                 <option value="">Todas</option>
                 {assignmentModalities.map((option) => (
-                  <option key={option.id ?? option.etiqueta} value={option.id ?? ''}>
+                  <option key={assignmentModalityValue(option)} value={assignmentModalityValue(option)}>
                     {option.etiqueta}
                   </option>
                 ))}
               </select>
-              <small className="cg-secondary-cell">
-                {assignmentOptionsLoading
-                  ? 'Cargando modalidades operativas reales del periodo...'
-                  : 'Solo se listan modalidades operativas existentes en el contrato y periodo seleccionados.'}
+              <small className="cg-secondary-cell">
+                {assignmentOptionsLoading
+                  ? 'Cargando modalidades operativas reales del periodo...'
+                  : assignmentModalities.length === 0
+                    ? 'No hay modalidades disponibles para este periodo.'
+                    : 'Solo se listan modalidades operativas existentes en el contrato y periodo seleccionados.'}
               </small>
             </div>
 

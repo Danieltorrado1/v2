@@ -382,7 +382,9 @@ export function UsuariosTab() {
     try {
       const entries = await Promise.all(missingContratoIds.map(async (contratoId) => {
         const response = await getContractPersonalFilterOptions({ contrato_id: contratoId });
-        return [contratoId, buildTerritorialScopeCatalog((response.municipios ?? []) as Array<Record<string, unknown>>)] as const;
+        const responseBody = response as unknown as { municipios?: unknown; data?: { municipios?: unknown }; items?: unknown };
+        const municipios = responseBody.municipios ?? responseBody.data?.municipios ?? responseBody.items ?? [];
+        return [contratoId, buildTerritorialScopeCatalog((Array.isArray(municipios) ? municipios : []) as Array<Record<string, unknown>>)] as const;
       }));
 
       setTerritorialCatalogs((current) => {
@@ -398,6 +400,15 @@ export function UsuariosTab() {
       setLoadingTerritorialCatalogs(false);
     }
   }
+
+  useEffect(() => {
+    if (!userModal || !isTerritorialTarget || form.contratoIds.length === 0) {
+      return;
+    }
+
+    // Re-run after edit/create state settles so catalog loading is not tied only to click handlers.
+    void ensureTerritorialCatalogs(form.contratoIds);
+  }, [form.contratoIds, isTerritorialTarget, userModal]);
 
   const filteredUsers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -1085,7 +1096,9 @@ export function UsuariosTab() {
                       </label>
                     </div>
 
-                    {selectedDepartamentoId === null ? (
+                    {catalog.departamentos.length === 0 ? (
+                      <div className="cg-selector-empty">No hay departamentos disponibles para este contrato.</div>
+                    ) : selectedDepartamentoId === null ? (
                       <div className="cg-selector-empty">Selecciona primero un departamento para consultar sus municipios.</div>
                     ) : visibleMunicipios.length === 0 ? (
                       <div className="cg-selector-empty">
