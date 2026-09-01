@@ -16,8 +16,8 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 0 24px;
+  gap: 16px;
+  padding: 0 18px;
   background: var(--topbar-bg);
   border-bottom: 1px solid var(--border-color);
   position: sticky;
@@ -35,8 +35,6 @@
 }
 
 .logo-link {
-  width: 100%;
-  height: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
@@ -80,20 +78,22 @@
   min-width: 0;
   flex: 1 1 auto;
   display: flex;
-  justify-content: center;
-  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
 }
 
 .menu button {
-  height: 38px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 10px;
   border: 1px solid transparent;
   border-radius: var(--radius-button);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.2s ease;
 }
 
@@ -105,12 +105,13 @@
 
 .menu-dropdown {
   position: relative;
+  flex: 0 0 auto;
 }
 
 .menu-dropdown-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .menu-dropdown-trigger svg {
@@ -160,16 +161,17 @@
 }
 
 .menu-navlink {
-  height: 38px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 10px;
   border: 1px solid transparent;
   border-radius: var(--radius-button);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   transition: all 0.2s ease;
@@ -184,12 +186,28 @@
 
 .right-side {
   min-width: 0;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 10px;
   white-space: nowrap;
+}
+
+.right-side > .company-context-control {
+  order: 1;
+}
+
+.right-side > .notif-bell-button {
+  order: 2;
+}
+
+.right-side > .theme-button {
+  order: 3;
+}
+
+.right-side > .account-area {
+  order: 4;
 }
 
 /* =========================
@@ -198,8 +216,9 @@
 
 .notif-bell-button {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
   border-radius: var(--radius-button);
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
@@ -240,8 +259,9 @@
 }
 
 .theme-button {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
   border-radius: var(--radius-button);
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
@@ -265,75 +285,15 @@
   font-weight: 600;
 }
 
-/* =========================
-   CONTENIDO
-========================= */
-
-.content {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.page-scroll {
-  height: 100%;
-  min-height: 0;
-  padding: 28px 34px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-}
-
-.page-content {
-  width: 100%;
-  max-width: 1500px;
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: visible;
-}
-
-/* =========================
-   RESPONSIVE
-========================= */
-
-@media (max-width: 1100px) {
-  .menu {
-    justify-content: flex-start;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .menu::-webkit-scrollbar {
-    display: none;
-  }
-
-  .menu button,
-  .menu-navlink {
-    white-space: nowrap;
-  }
-}
-
-/* Shared shell geometry stays identical across themes. */
-.layout { height: 100dvh; min-height: 100dvh; }
-.content, .page-scroll, .page-content { min-height: 0; }
-@media (max-width: 900px) {
-  .topbar { gap: 14px; padding-inline: 18px; }
-  .logo-area { width: 160px; height: 40px; min-width: 160px; min-height: 40px; flex-basis: 160px; }
-  .logo-image--light, .logo-image--dark { width: 160px; height: 40px; }
-}
-
 .company-context-control {
-  min-width: 190px;
-  max-width: 260px;
-  height: 40px;
-  flex: 0 1 260px;
+  min-width: 152px;
+  max-width: 176px;
+  height: 38px;
+  flex: 0 1 176px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 10px;
+  gap: 6px;
+  padding: 0 8px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-button);
   background: var(--bg-secondary);
@@ -370,44 +330,19 @@
   opacity: .9;
 }
 
-@media (max-width: 1100px) {
-  .company-context-control {
-    min-width: 150px;
-    max-width: 190px;
-  }
-}
-
-@media (max-width: 900px) {
-  .company-context-control {
-    min-width: 40px;
-    width: 40px;
-    padding: 0;
-    justify-content: center;
-  }
-
-  .company-context-control select,
-  .company-context-control span {
-    display: none;
-  }
-
-  .company-context-control > svg:last-child {
-    display: none;
-  }
-}
-
 .account-area {
   position: relative;
-  min-width: 176px;
-  flex: 0 0 176px;
+  min-width: 140px;
+  flex: 0 1 140px;
 }
 
 .account-trigger {
   width: 100%;
-  min-height: 44px;
+  min-height: 40px;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 4px 8px;
+  gap: 8px;
+  padding: 4px 6px;
   border: 1px solid transparent;
   border-radius: var(--radius-button);
   background: transparent;
@@ -423,16 +358,16 @@
 }
 
 .account-avatar {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   background: color-mix(in srgb, var(--color-primary) 18%, var(--bg-secondary));
   color: var(--color-primary);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: .03em;
 }
@@ -455,13 +390,13 @@
 }
 
 .account-copy strong {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
 }
 
 .account-copy small {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
 }
 
@@ -539,27 +474,6 @@
   color: var(--color-danger);
 }
 
-@media (max-width: 900px) {
-  .account-area {
-    min-width: 40px;
-    flex-basis: 40px;
-  }
-
-  .account-copy {
-    display: none;
-  }
-
-  .account-trigger {
-    width: 40px;
-    justify-content: center;
-    padding: 4px;
-  }
-
-  .account-trigger > svg {
-    display: none;
-  }
-}
-
 .account-details {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -581,4 +495,199 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-primary);
+}
+
+/* =========================
+   CONTENIDO
+========================= */
+
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-scroll {
+  height: 100%;
+  min-height: 0;
+  padding: 28px 34px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
+.page-content {
+  width: 100%;
+  max-width: 1500px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+/* Shared shell geometry stays identical across themes. */
+.layout { height: 100dvh; min-height: 100dvh; }
+.content, .page-scroll, .page-content { min-height: 0; }
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 1600px) {
+  .topbar {
+    gap: 14px;
+    padding-inline: 16px;
+  }
+
+  .menu {
+    gap: 3px;
+  }
+
+  .menu button,
+  .menu-navlink {
+    padding-inline: 8px;
+  }
+
+  .company-context-control {
+    min-width: 146px;
+    max-width: 168px;
+    flex-basis: 168px;
+  }
+
+  .account-area {
+    min-width: 132px;
+    flex-basis: 132px;
+  }
+}
+
+@media (max-width: 1366px) {
+  .topbar {
+    gap: 10px;
+    padding-inline: 12px;
+  }
+
+  .menu {
+    gap: 2px;
+  }
+
+  .menu button,
+  .menu-navlink {
+    padding-inline: 7px;
+    font-size: 12px;
+  }
+
+  .menu-dropdown-trigger {
+    gap: 4px;
+  }
+
+  .right-side {
+    gap: 8px;
+  }
+
+  .company-context-control {
+    min-width: 132px;
+    max-width: 150px;
+    flex-basis: 150px;
+    padding-inline: 8px;
+  }
+
+  .account-area {
+    min-width: 112px;
+    flex-basis: 112px;
+  }
+
+  .account-trigger {
+    gap: 6px;
+    padding-inline: 6px;
+  }
+
+  .account-avatar {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+
+  .account-copy small {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .menu {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .menu::-webkit-scrollbar {
+    display: none;
+  }
+
+  .company-context-control {
+    min-width: 150px;
+    max-width: 190px;
+    flex-basis: auto;
+  }
+
+  .account-copy small {
+    display: block;
+  }
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    gap: 14px;
+    padding-inline: 18px;
+  }
+
+  .logo-area {
+    width: 160px;
+    height: 40px;
+    min-width: 160px;
+    min-height: 40px;
+    flex-basis: 160px;
+  }
+
+  .logo-image--light,
+  .logo-image--dark {
+    width: 160px;
+    height: 40px;
+  }
+
+  .company-context-control {
+    min-width: 40px;
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .company-context-control select,
+  .company-context-control span {
+    display: none;
+  }
+
+  .company-context-control > svg:last-child {
+    display: none;
+  }
+
+  .account-area {
+    min-width: 40px;
+    flex-basis: 40px;
+  }
+
+  .account-copy {
+    display: none;
+  }
+
+  .account-trigger {
+    width: 40px;
+    justify-content: center;
+    padding: 4px;
+  }
+
+  .account-trigger > svg {
+    display: none;
+  }
 }
