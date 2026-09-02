@@ -582,11 +582,11 @@ const syncAdminTerritorialScopes = async (
   const selectedContracts = new Set(await loadActiveNumberIds(client, 'usuario_contratos', 'contrato_id', userId));
   for (const scope of desired) {
     if (!selectedContracts.has(scope.contrato_id)) throw createHttpError('El alcance territorial requiere un contrato asignado al usuario.', 400, 'TERRITORIAL_CONTRACT_NOT_SELECTED');
-    const dept = await client.query('SELECT id FROM departamentos WHERE id = $1::bigint AND COALESCE(activo, TRUE) = TRUE LIMIT 1', [scope.departamento_id]);
+    const dept = await client.query('SELECT id FROM departamentos WHERE id = $1::bigint LIMIT 1', [scope.departamento_id]);
     if (!dept.rows[0]) throw createHttpError('El departamento seleccionado no existe.', 400, 'INVALID_DEPARTAMENTO_ID');
     const municipalityIds = uniqueNumberIds(scope.municipio_ids);
     if (municipalityIds.length === 0) continue;
-    const municipalities = await client.query<{ id: string }>('SELECT mu.id::text AS id FROM municipios mu WHERE mu.id = ANY($1::bigint[]) AND mu.departamento_id = $2::bigint AND COALESCE(mu.activo, TRUE) = TRUE AND EXISTS (SELECT 1 FROM focalizacion_final ff WHERE ff.contrato_id = $3::bigint AND ff.municipio_id = mu.id AND ff.activo = TRUE)', [municipalityIds, scope.departamento_id, scope.contrato_id]);
+    const municipalities = await client.query<{ id: string }>('SELECT mu.id::text AS id FROM municipios mu WHERE mu.id = ANY($1::bigint[]) AND mu.departamento_id = $2::bigint AND EXISTS (SELECT 1 FROM focalizacion_final ff WHERE ff.contrato_id = $3::bigint AND ff.municipio_id = mu.id AND ff.activo = TRUE)', [municipalityIds, scope.departamento_id, scope.contrato_id]);
     const validIds = new Set(municipalities.rows.map((row) => Number(row.id)));
     const invalidIds = municipalityIds.filter((id) => !validIds.has(id));
     if (invalidIds.length > 0) throw createHttpError('Uno o m�s municipios no pertenecen al departamento o contrato seleccionado.', 400, 'INVALID_TERRITORIAL_SCOPE', { invalidIds });

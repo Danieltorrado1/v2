@@ -754,7 +754,10 @@ export function UsuariosTab() {
           INVALID_EMPRESA_IDS: 'Hay empresas seleccionadas que ya no son validas.',
           INVALID_CONTRATO_IDS: 'Hay contratos seleccionados que ya no son validos.',
           EMPRESA_REQUIRED: 'Los usuarios no administradores deben tener al menos una empresa.',
-          CONTRATOS_EMPRESA_MISMATCH: 'No puedes asignar contratos de otra empresa.'
+          CONTRATOS_EMPRESA_MISMATCH: 'No puedes asignar contratos de otra empresa.',
+          TERRITORIAL_CONTRACT_NOT_SELECTED: 'El alcance territorial requiere un contrato asignado al usuario.',
+          INVALID_DEPARTAMENTO_ID: 'El departamento seleccionado no existe.',
+          INVALID_TERRITORIAL_SCOPE: 'Uno o mas municipios no pertenecen al departamento o contrato seleccionado.'
         })
       );
     } finally {
