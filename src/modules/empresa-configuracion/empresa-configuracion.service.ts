@@ -1674,7 +1674,7 @@ export const listSalaryCategoryAssignmentOptions = async (
   ]);
   return {
     periodo: formatPeriodoScope(periodo),
-    modalidades: modalidades.rows.map((row) => ({ id: row.modalidad_id ? String(row.modalidad_id) : null, codigo: row.modalidad_codigo ? String(row.modalidad_codigo).trim() : null, nombre: row.modalidad ? String(row.modalidad).trim() : null, etiqueta: [row.modalidad_codigo, row.modalidad].filter((value): value is string => Boolean(value && value.trim())).join(" / ") })),
+    modalidades: modalidades.rows.map((row) => ({ key: String(row.modalidad_codigo ?? row.modalidad ?? row.modalidad_id ?? '').trim().toUpperCase(), id: row.modalidad_id ? String(row.modalidad_id) : null, codigo: row.modalidad_codigo ? String(row.modalidad_codigo).trim() : null, nombre: row.modalidad ? String(row.modalidad).trim() : null, etiqueta: [row.modalidad_codigo, row.modalidad].filter((value): value is string => Boolean(value && value.trim())).join(" / ") })),
     cargos: cargos.rows.map((row) => ({ id: String(row.id), nombre: String(row.nombre).trim() })),
     municipios: municipios.rows.map((row) => ({ id: String(row.id), nombre: String(row.nombre).trim() })),
     instituciones: instituciones.rows.map((row) => ({ id: String(row.id), nombre: String(row.nombre).trim() })),
