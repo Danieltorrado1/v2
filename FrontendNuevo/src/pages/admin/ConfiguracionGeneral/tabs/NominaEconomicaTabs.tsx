@@ -6,7 +6,7 @@ import { useAuth } from '../../../../context/AuthContext';
 
 import { useCompanyContext } from '../../../../context/CompanyContext';
 
-import { apiClient } from '../../../../services/apiClient';
+import { ApiClientError, apiClient } from '../../../../services/apiClient';
 
 import { getNominaPeriodos } from '../../../../services/nominaApi';
 
@@ -1087,7 +1087,8 @@ export function SalaryCategoriesTab() {
     }
 
     let cancelled = false;
-    setAssignmentOptionsLoading(true);
+    setAssignmentOptionsLoading(true);
+    setAssignmentError('');
 
     apiClient
       .get<{ data: AssignmentOptionsResponse }>(
@@ -1106,12 +1107,17 @@ export function SalaryCategoriesTab() {
         setAssignmentCatalogs(response.data);
         setAssignmentModalities(Array.from(new Map((response.data.modalidades ?? []).map((option) => [assignmentModalityValue(option).toUpperCase(), { ...option, key: String(option.key ?? option.codigo ?? option.nombre ?? option.id ?? option.etiqueta ?? '').trim().toUpperCase(), id: option.id ? String(option.id) : null, codigo: option.codigo?.trim() || null, nombre: option.nombre?.trim() || null, etiqueta: option.etiqueta?.trim() || assignmentModalityValue(option) }])).values()).filter((option) => Boolean(assignmentModalityValue(option))));
       })
-      .catch(() => {
-        if (!cancelled) {
+      .catch((error: unknown) => {
+        if (!cancelled) {
           setAssignmentModalities([]);
-      setAssignmentCatalogs(null);
-        }
-      })
+          setAssignmentCatalogs(null);
+          const status = error instanceof ApiClientError ? error.status : 'desconocido';
+          const code = error instanceof ApiClientError ? error.code ?? 'SIN_CODIGO' : 'ERROR_CLIENTE';
+          const message = error instanceof Error ? error.message : 'Error desconocido';
+          const details = error instanceof ApiClientError && error.details ? ` Detalles: ${String(error.details)}` : '';
+          setAssignmentError(`No fue posible cargar los cat�logos de asignaci�n (HTTP ${status}, ${code}): ${message}.${details}`);
+        }
+      })
       .finally(() => {
         if (!cancelled) {
           setAssignmentOptionsLoading(false);

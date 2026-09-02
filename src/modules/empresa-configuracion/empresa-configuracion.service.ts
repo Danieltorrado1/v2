@@ -1663,18 +1663,19 @@ export const listSalaryCategoryAssignmentOptions = async (
 ) => {
   const periodo = await loadPeriodoScopeOrThrow(periodoId, empresaId, tenant);
   const base = buildAssignmentBaseSql();
-  const q = (value: string): string => value.replace(/\\n/g, '\n');
+  const catalogQuery = (columns: string, where: string, order: string, groupBy: string): string =>
+    base.replace(/\s+SELECT \*[\s\S]*FROM counted\s*$/, ' SELECT ' + columns + ' FROM counted WHERE ' + where + ' GROUP BY ' + groupBy + ' ORDER BY ' + order);
   const [modalidades, cargos, municipios, instituciones, sedes, metodosPago] = await Promise.all([
-    dbQuery<AssignmentModalityOptionRow>(base + q(" WHERE modalidad_id IS NOT NULL OR modalidad_codigo IS NOT NULL OR modalidad IS NOT NULL\n GROUP BY modalidad_id, modalidad_codigo, modalidad\n ORDER BY UPPER(COALESCE(modalidad_codigo, modalidad, '')), modalidad ASC NULLS LAST"), [periodoId]),
-    dbQuery<{ id: string; nombre: string }>(base + q(" WHERE contrato_cargo_id IS NOT NULL AND cargo IS NOT NULL\n GROUP BY contrato_cargo_id, cargo\n ORDER BY UPPER(cargo)"), [periodoId]),
-    dbQuery<{ id: string; nombre: string }>(base + q(" WHERE municipio_id IS NOT NULL AND municipio IS NOT NULL\n GROUP BY municipio_id, municipio\n ORDER BY UPPER(municipio)"), [periodoId]),
-    dbQuery<{ id: string; nombre: string }>(base + q(" WHERE institucion_id IS NOT NULL AND institucion IS NOT NULL\n GROUP BY institucion_id, institucion\n ORDER BY UPPER(institucion)"), [periodoId]),
-    dbQuery<{ id: string; nombre: string; institucion_id: string | null }>(base + q(" WHERE sede_id IS NOT NULL AND sede IS NOT NULL\n GROUP BY sede_id, sede, institucion_id\n ORDER BY UPPER(sede)"), [periodoId]),
-    dbQuery<{ valor: string }>(base + q(" WHERE metodo_pago IS NOT NULL AND BTRIM(metodo_pago) <> ''\n GROUP BY metodo_pago\n ORDER BY UPPER(metodo_pago)"), [periodoId])
+    dbQuery<AssignmentModalityOptionRow>(catalogQuery('modalidad_id, modalidad_codigo, modalidad', 'modalidad_id IS NOT NULL OR modalidad_codigo IS NOT NULL OR modalidad IS NOT NULL', 'UPPER(modalidad_codigo), modalidad ASC NULLS LAST', '1,2,3'), [periodoId]),
+    dbQuery<{ id: string; nombre: string }>(catalogQuery('contrato_cargo_id AS id, cargo AS nombre', 'contrato_cargo_id IS NOT NULL AND cargo IS NOT NULL', 'UPPER(cargo)', '1,2'), [periodoId]),
+    dbQuery<{ id: string; nombre: string }>(catalogQuery('municipio_id AS id, municipio AS nombre', 'municipio_id IS NOT NULL AND municipio IS NOT NULL', 'UPPER(municipio)', '1,2'), [periodoId]),
+    dbQuery<{ id: string; nombre: string }>(catalogQuery('institucion_id AS id, institucion AS nombre', 'institucion_id IS NOT NULL AND institucion IS NOT NULL', 'UPPER(institucion)', '1,2'), [periodoId]),
+    dbQuery<{ id: string; nombre: string; institucion_id: string | null }>(catalogQuery('sede_id AS id, sede AS nombre, institucion_id', 'sede_id IS NOT NULL AND sede IS NOT NULL', 'UPPER(sede)', '1,2,3'), [periodoId]),
+    dbQuery<{ valor: string }>(catalogQuery('metodo_pago AS valor', "metodo_pago IS NOT NULL AND BTRIM(metodo_pago) <> ''", 'UPPER(metodo_pago)', '1'), [periodoId])
   ]);
   return {
     periodo: formatPeriodoScope(periodo),
-    modalidades: modalidades.rows.map((row) => ({ key: String(row.modalidad_codigo ?? row.modalidad ?? row.modalidad_id ?? '').trim().toUpperCase(), id: row.modalidad_id ? String(row.modalidad_id) : null, codigo: row.modalidad_codigo ? String(row.modalidad_codigo).trim() : null, nombre: row.modalidad ? String(row.modalidad).trim() : null, etiqueta: [row.modalidad_codigo, row.modalidad].filter((value): value is string => Boolean(value && value.trim())).join(" / ") })),
+    modalidades: modalidades.rows.map((row) => ({ key: String(row.modalidad ?? row.modalidad_codigo ?? row.modalidad_id ?? '').trim().toUpperCase(), id: row.modalidad_id ? String(row.modalidad_id) : null, codigo: row.modalidad_codigo ? String(row.modalidad_codigo).trim() : null, nombre: row.modalidad ? String(row.modalidad).trim() : null, etiqueta: [row.modalidad_codigo, row.modalidad].filter((value): value is string => Boolean(value && value.trim())).join(" / ") })),
     cargos: cargos.rows.map((row) => ({ id: String(row.id), nombre: String(row.nombre).trim() })),
     municipios: municipios.rows.map((row) => ({ id: String(row.id), nombre: String(row.nombre).trim() })),
     instituciones: instituciones.rows.map((row) => ({ id: String(row.id), nombre: String(row.nombre).trim() })),
