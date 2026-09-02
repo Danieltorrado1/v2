@@ -82,9 +82,8 @@ const buildGestorPersonalScopeSql = (
       WHERE gma_scope.usuario_id = ${userParamSql}::bigint
         AND gma_scope.contrato_id = ${contratoSql}
         AND COALESCE(gma_scope.activo, TRUE) = TRUE
-        AND COALESCE(gma_scope.alcance_personal, '${GESTOR_SCOPE_SELECTED}') = '${GESTOR_SCOPE_ALL}'
-        AND gma_scope.vigencia_desde <= ${periodoFinSql}
-        AND (gma_scope.vigencia_hasta IS NULL OR gma_scope.vigencia_hasta >= ${periodoInicioSql})
+        AND gma_scope.vigencia_desde <= CURRENT_DATE
+        AND (gma_scope.vigencia_hasta IS NULL OR gma_scope.vigencia_hasta >= CURRENT_DATE)
         AND cas_scope.fecha_inicio <= ${periodoFinSql}
         AND (cas_scope.fecha_fin IS NULL OR cas_scope.fecha_fin >= ${periodoInicioSql})
         AND cff_scope.municipio_id = gma_scope.municipio_id
@@ -122,7 +121,7 @@ const buildNominaCoberturaScopeSql = (
     return responsibilitySql;
   }
 
-  return `(${responsibilitySql} AND ${buildGestorPersonalScopeSql(userParamSql, vinculacionSql, contratoSql, periodoInicioSql, periodoFinSql)})`;
+  return `(${responsibilitySql} OR ${buildGestorPersonalScopeSql(userParamSql, vinculacionSql, contratoSql, periodoInicioSql, periodoFinSql)})`;
 };
 
 export async function getNominaProcessAccess(

@@ -6040,6 +6040,15 @@ export const listNominaEmpleados = async (
     )`);
   }
 
+  if (tenant && !tenant.isGlobalAdmin && tenant.userId && tenant.roleNames.includes('GESTOR')) {
+    params.push(tenant.userId);
+    const gestorScopeParam = params.length;
+    conditions.push(`(
+      EXISTS (SELECT 1 FROM gestor_personal_asignaciones gpa_scope INNER JOIN nomina_periodos np_scope ON np_scope.id = ne.periodo_id WHERE gpa_scope.vinculacion_id = ne.vinculacion_id AND gpa_scope.contrato_id = v.contrato_id AND gpa_scope.usuario_id = $${gestorScopeParam}::bigint AND COALESCE(gpa_scope.activo, TRUE) = TRUE AND gpa_scope.vigencia_desde <= CURRENT_DATE AND (gpa_scope.vigencia_hasta IS NULL OR gpa_scope.vigencia_hasta >= CURRENT_DATE))
+      OR EXISTS (SELECT 1 FROM gestor_municipio_asignaciones gma_scope INNER JOIN nomina_periodos np_scope ON np_scope.id = ne.periodo_id WHERE gma_scope.usuario_id = $${gestorScopeParam}::bigint AND gma_scope.contrato_id = v.contrato_id AND COALESCE(gma_scope.activo, TRUE) = TRUE AND gma_scope.vigencia_desde <= CURRENT_DATE AND (gma_scope.vigencia_hasta IS NULL OR gma_scope.vigencia_hasta >= CURRENT_DATE) AND EXISTS (SELECT 1 FROM cobertura_asignaciones ca_scope INNER JOIN focalizacion_final ff_scope ON ff_scope.id = ca_scope.focalizacion_final_id WHERE ca_scope.vinculacion_id = ne.vinculacion_id AND COALESCE(ca_scope.activo, TRUE) = TRUE AND ca_scope.fecha_inicio <= np_scope.fecha_fin AND (ca_scope.fecha_fin IS NULL OR ca_scope.fecha_fin >= np_scope.fecha_inicio) AND ff_scope.municipio_id = gma_scope.municipio_id))
+    )`);
+  }
+
   if (query.sin_gestor === true) {
     conditions.push(`NOT (
       EXISTS (
@@ -6847,9 +6856,16 @@ export const recalculateNominaPeriodo = async (
     }
 
     for (const empleadoRow of empleadosResult.rows) {
-      const salarioBase = toNumberValue(empleadoRow.salario_base);
-      const auxilioTransporte = toNumberValue(empleadoRow.auxilio_transporte);
-      const otrosDevengos = toNumberValue(empleadoRow.otros_devengos);
+      const categoriaEmpleado = empleadoRow.categoria_id
+        ? categoriasCoberturaById.get(String(empleadoRow.categoria_id)) ?? null
+        : null;
+      const salarioBase = toNumberValue(categoriaEmpleado?.salario_base ?? empleadoRow.salario_base);
+      const auxilioTransporte = toNumberValue(
+        categoriaEmpleado?.auxilio_transporte ?? empleadoRow.auxilio_transporte
+      );
+      const otrosDevengos = toNumberValue(
+        categoriaEmpleado?.otros_recargos ?? empleadoRow.otros_devengos
+      );
       const asistenciaEmpleado = asistenciaByVinculacion.get(empleadoRow.vinculacion_id);
       const usaAsistencia =
         (empleadoRow.metodo_liquidacion ?? '').trim().toUpperCase() === 'ASISTENCIA' &&

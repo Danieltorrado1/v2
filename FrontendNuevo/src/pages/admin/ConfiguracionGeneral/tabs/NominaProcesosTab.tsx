@@ -23,17 +23,24 @@ export function NominaProcesosTab(){
  const [search,setSearch]=useState(''),[pickerSearch,setPickerSearch]=useState(''),[municipalitySearch,setMunicipalitySearch]=useState('');
  const [processFilter,setProcessFilter]=useState<'TODOS'|Process>('TODOS'),[stateFilter,setStateFilter]=useState<'ACTIVO'|'SIN_ASIGNACION'|'TODOS'>('ACTIVO');
  const [drawer,setDrawer]=useState(false),[areaModal,setAreaModal]=useState(false),[editingArea,setEditingArea]=useState<Area|null>(null),[areaName,setAreaName]=useState(''),[message,setMessage]=useState('');
+ const [usersLoading,setUsersLoading]=useState(false),[usersError,setUsersError]=useState(false);
 
  const reload=useCallback(async()=>{
   if(!empresaActual)return;
-  const [allUsers,areaResult,municipalityResult]=await Promise.all([
-   configuracionApi.listarUsuariosAdmin(),
-   apiClient.get<{data:Area[]}>('/nomina/procesos/areas',{params:{empresa_id:empresaActual.id}}),
-   configuracionApi.listarMunicipios({page:1,limit:500}),
-  ]);
-  const companyUsers=allUsers.filter(user=>user.active&&(user.isGlobalAdmin||user.empresaIds.includes(empresaActual.id)));
-  const rows=await Promise.all(companyUsers.map(async user=>[user.id,(await apiClient.get<{data:Responsibility[]}>('/nomina/procesos/responsabilidades',{params:{usuario_id:user.id,empresa_id:empresaActual.id}})).data] as const));
-  setUsers(companyUsers);setAreas(areaResult.data);setMunicipalities(municipalityResult.items??[]);setResponsibilities(Object.fromEntries(rows));
+  setUsersLoading(true);setUsersError(false);
+  try{
+   const [allUsers,areaResult,municipalityResult]=await Promise.all([
+    configuracionApi.listarUsuariosAdmin(),
+    apiClient.get<{data:Area[]}>('/nomina/procesos/areas',{params:{empresa_id:empresaActual.id}}),
+    configuracionApi.listarMunicipios({page:1,limit:500}),
+   ]);
+   const activeEmpresaId=Number(empresaActual.id);
+   const companyUsers=allUsers.filter(user=>user.active&&(user.isGlobalAdmin||user.empresaIds.some(id=>Number(id)===activeEmpresaId)));
+   const rows=await Promise.all(companyUsers.map(async user=>[user.id,(await apiClient.get<{data:Responsibility[]}>('/nomina/procesos/responsabilidades',{params:{usuario_id:user.id,empresa_id:empresaActual.id}})).data] as const));
+   setUsers(companyUsers);setAreas(areaResult.data);setMunicipalities(municipalityResult.items??[]);setResponsibilities(Object.fromEntries(rows));
+  }catch(error){
+   console.error('No fue posible cargar los usuarios de la empresa',error);setUsers([]);setResponsibilities({});setUsersError(true);
+  }finally{setUsersLoading(false)}
  },[empresaActual]);
  useEffect(()=>{void reload()},[reload]);
 
@@ -71,7 +78,7 @@ export function NominaProcesosTab(){
    <div className="nomina-assignment-table"><div className="nomina-assignment-head"><span>USUARIO</span><span>PROCESO</span><span>ASIGNACIÓN</span><span>ESTADO</span><span>ACCIONES</span></div>{visible.map(user=>{const active=(responsibilities[user.id]??[]).filter(row=>row.activo);return <div className="nomina-assignment-row" key={user.id}><span><strong>{user.name}</strong><small>{user.email}</small></span><span className="nomina-process-chips">{active.map(row=><b key={row.proceso}>{row.proceso}</b>)}</span><span>{active.map(assignmentLabel).filter(Boolean).join(' / ')||'Sin alcance asignado'}</span><span>{active.length?'Activo':'Sin asignación'}</span><span><button className="adm-btn ghost sm" onClick={()=>open(user)}>Editar</button>{active.length>0&&<button className="adm-btn ghost sm" onClick={()=>void remove(user)}>Quitar asignación</button>}</span></div>})}</div>
   </div>}
   {tab==='areas'&&<div className="adm-card"><div className="nomina-section-head"><div><h3>Áreas de asistencia</h3><p>Configuración secundaria para ASISTENCIA.</p></div><button className="adm-btn primary" onClick={()=>{setEditingArea(null);setAreaName('');setAreaModal(true)}}>+ Nueva área</button></div><table className="adm-history"><thead><tr><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{areas.map(area=><tr key={area.id}><td>{area.nombre}</td><td>{area.activo?'Activa':'Inactiva'}</td><td><button className="adm-btn ghost sm" onClick={()=>{setEditingArea(area);setAreaName(area.nombre);setAreaModal(true)}}>Editar</button><button className="adm-btn ghost sm" onClick={()=>void apiClient.patch(`/nomina/procesos/areas/${area.id}`,{activo:!area.activo}).then(reload)}>{area.activo?'Desactivar':'Reactivar'}</button></td></tr>)}</tbody></table></div>}
-  {drawer&&<div className="nomina-drawer-backdrop"><aside className="nomina-drawer"><button className="nomina-close" onClick={()=>setDrawer(false)}>×</button><h3>{selected?'Editar asignación':'Asignar usuario'}</h3><label>Usuario<input placeholder="Buscar usuario por nombre o correo..." value={selected?`${selected.name} · ${selected.email}`:pickerSearch} readOnly={Boolean(selected)} onChange={event=>setPickerSearch(event.target.value)}/></label>{!selected?pickerUsers.map(user=><button className="nomina-user-option" key={user.id} onClick={()=>open(user)}><strong>{user.name}</strong><small>{user.email}</small></button>):<AssignmentForm selectedProcesses={selectedProcesses} setSelectedProcesses={setSelectedProcesses} municipalityIds={municipalityIds} setMunicipalityIds={setMunicipalityIds} areaIds={areaIds} setAreaIds={setAreaIds} municipalities={shownMunicipalities} areas={areas} municipalitySearch={municipalitySearch} setMunicipalitySearch={setMunicipalitySearch} onSave={()=>void save()} onCancel={()=>setDrawer(false)}/>}</aside></div>}
+  {drawer&&<div className="nomina-drawer-backdrop"><aside className="nomina-drawer"><button className="nomina-close" onClick={()=>setDrawer(false)}>×</button><h3>{selected?'Editar asignación':'Asignar usuario'}</h3><label>Usuario<input placeholder="Buscar usuario por nombre o correo..." value={selected?`${selected.name} · ${selected.email}`:pickerSearch} readOnly={Boolean(selected)} onChange={event=>setPickerSearch(event.target.value)}/></label>{!selected?(usersLoading?<p>Cargando usuarios...</p>:usersError?<p role="alert">No fue posible cargar los usuarios.</p>:pickerUsers.length?pickerUsers.map(user=><button className="nomina-user-option" key={user.id} onClick={()=>open(user)}><strong>{user.name}</strong><small>{user.email}</small></button>):<p>No hay usuarios disponibles para esta empresa.</p>):<AssignmentForm selectedProcesses={selectedProcesses} setSelectedProcesses={setSelectedProcesses} municipalityIds={municipalityIds} setMunicipalityIds={setMunicipalityIds} areaIds={areaIds} setAreaIds={setAreaIds} municipalities={shownMunicipalities} areas={areas} municipalitySearch={municipalitySearch} setMunicipalitySearch={setMunicipalitySearch} onSave={()=>void save()} onCancel={()=>setDrawer(false)}/>}</aside></div>}
   {areaModal&&<div className="nomina-drawer-backdrop"><div className="nomina-modal"><h3>{editingArea?'Editar área':'Nueva área'}</h3><label>Nombre del área<input autoFocus value={areaName} onChange={event=>setAreaName(event.target.value)}/></label><button className="adm-btn primary" onClick={()=>void saveArea()}>Guardar</button><button className="adm-btn ghost" onClick={()=>setAreaModal(false)}>Cancelar</button></div></div>}{message&&<p role="status">{message}</p>}
  </div>;
 }

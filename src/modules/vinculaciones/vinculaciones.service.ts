@@ -796,7 +796,7 @@ const getVinculacionSelect = (): string => {
   `;
 };
 
-const listGestorAssignableUsers = async (client: PoolClient): Promise<GestorAssignmentUser[]> => {
+const listGestorAssignableUsers = async (client: PoolClient, tenant?: TenantAccessContext, contratoId?: number): Promise<GestorAssignmentUser[]> => {
   const result = await client.query<GestorUserRow>(
     `
       SELECT
@@ -830,7 +830,41 @@ const listGestorAssignableUsers = async (client: PoolClient): Promise<GestorAssi
     `
   );
 
-  return result.rows.map(mapGestorAssignmentUser);
+  let rows = result.rows;
+  if (contratoId !== undefined) {
+    const contractUsers = await client.query<{ id: string }>(
+      "SELECT DISTINCT uc.usuario_id::text AS id FROM usuario_contratos uc INNER JOIN contratos c ON c.id = uc.contrato_id WHERE uc.contrato_id = $1::bigint AND COALESCE(uc.activo, TRUE) = TRUE AND COALESCE(c.activo, TRUE) = TRUE",
+      [contratoId]
+    );
+    const contractUserIds = new Set(contractUsers.rows.map((row) => row.id));
+    rows = rows.filter((row) => contractUserIds.has(String(row.id)));
+  }
+  const scopedUserId = tenant?.userId;
+  if (isScopedTalentoHumanoTenant(tenant) && scopedUserId !== undefined && contratoId !== undefined) {
+    const scopeSql = [
+      "SELECT DISTINCT candidate.usuario_id::text AS id",
+      "FROM gestor_municipio_asignaciones candidate",
+      "WHERE candidate.contrato_id = $1::bigint",
+      "  AND COALESCE(candidate.activo, TRUE) = TRUE",
+      "  AND candidate.vigencia_desde <= CURRENT_DATE",
+      "  AND (candidate.vigencia_hasta IS NULL OR candidate.vigencia_hasta >= CURRENT_DATE)",
+      "  AND EXISTS (",
+      "    SELECT 1",
+      "    FROM gestor_municipio_asignaciones th_scope",
+      "    WHERE th_scope.usuario_id = $2::bigint",
+      "      AND th_scope.contrato_id = candidate.contrato_id",
+      "      AND COALESCE(th_scope.activo, TRUE) = TRUE",
+      "      AND th_scope.vigencia_desde <= CURRENT_DATE",
+      "      AND (th_scope.vigencia_hasta IS NULL OR th_scope.vigencia_hasta >= CURRENT_DATE)",
+      "      AND th_scope.municipio_id = candidate.municipio_id",
+      "  )"
+    ].join("\n");
+    const allowed = await client.query<{ id: string }>(scopeSql, [contratoId, scopedUserId]);
+    const allowedIds = new Set(allowed.rows.map((row) => row.id));
+    rows = rows.filter((row) => allowedIds.has(String(row.id)));
+  }
+
+  return rows.map(mapGestorAssignmentUser);
 };
 
 const getGestorMunicipioAssignments = async (
@@ -2273,7 +2307,7 @@ export const getContractPersonalFilterOptions = async (
         ]
       : [contratoId, filters.municipio_id ?? null, filters.institucion_id ?? null, filters.sede_id ?? null];
     const [gestores, municipios, instituciones, sedes, modalidades, ubicaciones] = await Promise.all([
-      listGestorAssignableUsers(client),
+      listGestorAssignableUsers(client, tenant, contratoId),
       client.query<{ id: number; nombre: string; departamento_id: number | null; departamento_nombre: string | null }>(`SELECT DISTINCT mu.id::int AS id, mu.nombre_municipio AS nombre, mu.departamento_id::int AS departamento_id, dep.nombre_departamento AS departamento_nombre ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string; municipio_id: number | null }>(`SELECT DISTINCT ins.id::int AS id, ins.nombre_institucion AS nombre, ins.municipio_id::int AS municipio_id ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string; institucion_id: number | null }>(`SELECT DISTINCT se.id::int AS id, se.nombre_sede AS nombre, se.institucion_id::int AS institucion_id ${base} ORDER BY nombre`, params),
@@ -2318,7 +2352,7 @@ export const listGestores = async (
   const client = await dbPool.connect();
   try {
     await ensureContractTenantAccess(client, tenant, query.contrato_id);
-    return await listGestorAssignableUsers(client);
+    return await listGestorAssignableUsers(client, tenant, query.contrato_id);
   } finally {
     client.release();
   }
@@ -2334,7 +2368,7 @@ export const listGestorMunicipios = async (
     const fechaConsulta = toIsoDate(query.fecha);
 
     const [gestores, items] = await Promise.all([
-      listGestorAssignableUsers(client),
+      listGestorAssignableUsers(client, tenant, query.contrato_id),
       getGestorMunicipioAssignments(client, {
         contrato_id: query.contrato_id,
         gestor_usuario_id: query.gestor_usuario_id,

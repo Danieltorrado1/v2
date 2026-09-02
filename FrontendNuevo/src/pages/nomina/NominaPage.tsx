@@ -469,7 +469,15 @@ function getEmployeeClassificationTone(empleado: NominaEmpleadoApi): Tone {
 }
 
 function getEmployeeMetodoLiquidacionLabel(empleado: NominaEmpleadoApi) {
-  return normalizeOptionalLabel(empleado.metodo_liquidacion) ?? "No disponible";
+  const metodo = normalizeOptionalLabel(empleado.metodo_liquidacion);
+  if (metodo === "CATEGORIA_SALARIAL") {
+    return (
+      normalizeOptionalLabel(empleado.categoria_salarial?.codigo_categoria) ??
+      normalizeOptionalLabel(empleado.categoria_salarial?.nombre_categoria) ??
+      metodo
+    );
+  }
+  return metodo ?? "No disponible";
 }
 
 function getEmployeeCargoLabel(empleado: NominaEmpleadoApi) {
