@@ -23,6 +23,13 @@ import PortalPage from "../pages/portal/PortalPage";
 import AdminPage from "../pages/admin/AdminPage";
 import VerDocumentosPage from "../pages/repositorio/VerDocumentosPage";
 import SubirDocumentosPage from "../pages/repositorio/SubirDocumentosPage";
+import { useAuth } from "../context/AuthContext";
+import { resolveAuthenticatedHome } from "./roleNavigation";
+
+function HomeRedirect() {
+  const { user } = useAuth();
+  return <Navigate to={user ? resolveAuthenticatedHome(user) : "/login"} replace />;
+}
 
 export default function AppRouter() {
   return (
@@ -32,8 +39,8 @@ export default function AppRouter() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<MainLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route index element={<HomeRedirect />} />
+            <Route path="dashboard" element={<ModuleRoute code="DASHBOARD" requiredPermissions={["dashboard.read"]}><DashboardPage /></ModuleRoute>} />
             <Route path="personal" element={<ModuleRoute code="PERSONAL" requiredPermissions={["vinculaciones.read"]}><OperationalPersonalPage /></ModuleRoute>} />
             <Route path="nomina" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaHubPage /></ModuleRoute>} />
             <Route path="nomina/cobertura" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.operativa.read", "nomina.read"]}><PlanillaOperativaPage /></ModuleRoute>} />

@@ -216,6 +216,7 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   total_novedades: number;
   gestor_usuario_id: string | null;
   gestor_nombre_completo: string | null;
+  gestor_origen: string | null;
   institucion_nombre: string | null;
   modalidad_codigo: string | null;
   modalidad_id: string | null;
@@ -737,6 +738,7 @@ export interface NominaEmpleado {
   gestor: {
     id: string;
     nombre_completo: string;
+    origen: 'PERSONAL' | 'MUNICIPIO' | 'MUNICIPIO_AMBIGUO';
   } | null;
   contexto_operativo: {
     institucion: string | null;
@@ -1975,6 +1977,7 @@ const getNominaEmpleadosRealSelect = (): string => {
       contexto_operativo.modalidad_nombre,
       gestor_actual.gestor_usuario_id,
       gestor_actual.gestor_nombre_completo,
+      gestor_actual.gestor_origen,
       c.numero_contrato AS contrato_numero,
       cc.nombre_cargo AS cargo_nombre,
       co.nombre_cargo AS cargo_operativo_nombre,
@@ -2042,11 +2045,13 @@ const getNominaEmpleadosRealSelect = (): string => {
     LEFT JOIN LATERAL (
       SELECT
         scope.gestor_usuario_id,
-        scope.gestor_nombre_completo
+        scope.gestor_nombre_completo,
+        scope.gestor_origen
       FROM (
         SELECT
           gpa.usuario_id::text AS gestor_usuario_id,
           u.nombre_completo AS gestor_nombre_completo,
+          'PERSONAL'::text AS gestor_origen,
           gpa.vigencia_desde,
           gpa.id,
           0 AS prioridad
@@ -2055,32 +2060,31 @@ const getNominaEmpleadosRealSelect = (): string => {
         WHERE gpa.vinculacion_id = v.id
           AND gpa.contrato_id = v.contrato_id
           AND COALESCE(gpa.activo, TRUE) = TRUE
-          AND gpa.vigencia_desde <= np.fecha_fin
-          AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= np.fecha_inicio)
+          AND gpa.vigencia_desde <= CURRENT_DATE
+          AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= CURRENT_DATE)
         UNION ALL
         SELECT
-          gma.usuario_id::text AS gestor_usuario_id,
-          u.nombre_completo AS gestor_nombre_completo,
-          gma.vigencia_desde,
-          gma.id,
+          CASE WHEN COUNT(DISTINCT gma.usuario_id) = 1 THEN MIN(gma.usuario_id)::text ELSE 'MULTIPLE' END AS gestor_usuario_id,
+          CASE WHEN COUNT(DISTINCT gma.usuario_id) = 1 THEN MIN(u.nombre_completo) ELSE 'Múltiples gestores' END AS gestor_nombre_completo,
+          CASE WHEN COUNT(DISTINCT gma.usuario_id) = 1 THEN 'MUNICIPIO'::text ELSE 'MUNICIPIO_AMBIGUO'::text END AS gestor_origen,
+          MAX(gma.vigencia_desde) AS vigencia_desde,
+          MAX(gma.id) AS id,
           1 AS prioridad
         FROM gestor_municipio_asignaciones gma
         INNER JOIN usuarios u ON u.id = gma.usuario_id
+        INNER JOIN cobertura_asignaciones cas_scope
+          ON cas_scope.vinculacion_id = v.id
+         AND COALESCE(cas_scope.activo, TRUE) = TRUE
+         AND cas_scope.fecha_inicio <= np.fecha_fin
+         AND (cas_scope.fecha_fin IS NULL OR cas_scope.fecha_fin >= np.fecha_inicio)
+        INNER JOIN focalizacion_final cff_scope
+          ON cff_scope.id = cas_scope.focalizacion_final_id
+         AND cff_scope.municipio_id = gma.municipio_id
         WHERE gma.contrato_id = v.contrato_id
           AND COALESCE(gma.activo, TRUE) = TRUE
-          AND COALESCE(gma.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
-          AND gma.vigencia_desde <= np.fecha_fin
-          AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= np.fecha_inicio)
-          AND EXISTS (
-            SELECT 1
-            FROM cobertura_asignaciones cas_scope
-            INNER JOIN focalizacion_final cff_scope ON cff_scope.id = cas_scope.focalizacion_final_id
-            WHERE cas_scope.vinculacion_id = v.id
-              AND COALESCE(cas_scope.activo, TRUE) = TRUE
-              AND cas_scope.fecha_inicio <= np.fecha_fin
-              AND (cas_scope.fecha_fin IS NULL OR cas_scope.fecha_fin >= np.fecha_inicio)
-              AND cff_scope.municipio_id = gma.municipio_id
-          )
+          AND gma.vigencia_desde <= CURRENT_DATE
+          AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
+        HAVING COUNT(DISTINCT gma.usuario_id) > 0
       ) scope
       ORDER BY scope.prioridad ASC, scope.vigencia_desde DESC, scope.id DESC
       LIMIT 1
@@ -2568,7 +2572,8 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
     gestor: row.gestor_usuario_id
       ? {
           id: row.gestor_usuario_id,
-          nombre_completo: row.gestor_nombre_completo ?? ''
+          nombre_completo: row.gestor_nombre_completo ?? '',
+          origen: (row.gestor_origen ?? 'PERSONAL') as 'PERSONAL' | 'MUNICIPIO' | 'MUNICIPIO_AMBIGUO'
         }
       : null,
     contexto_operativo: contextoOperativo,
@@ -3801,6 +3806,18 @@ const loadNominaMovimientoByIdOrThrow = async (
   }
 
   await assertTenantAccessForContrato(movimiento.periodo_contrato_id, tenant, client);
+  await assertNominaEmpleadoCoberturaScope(movimiento.nomina_empleado_id, tenant, executor);
+  if (movimiento.vinculacion_reemplazada_id) {
+    const reemplazado = await executor.query<{ nomina_empleado_id: string }>(
+      `SELECT id::text AS nomina_empleado_id FROM nomina_empleados
+       WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint LIMIT 1`,
+      [movimiento.periodo_id, movimiento.vinculacion_reemplazada_id]
+    );
+    if (!reemplazado.rows[0]) {
+      throw new AppError('Replacement employee not found in payroll period', 404, 'NOMINA_EMPLEADO_NOT_FOUND');
+    }
+    await assertNominaEmpleadoCoberturaScope(reemplazado.rows[0].nomina_empleado_id, tenant, executor);
+  }
   return movimiento;
 };
 
@@ -5976,6 +5993,7 @@ export const listNominaEmpleados = async (
 
   const params: unknown[] = [periodoId];
   const conditions = ['ne.periodo_id = $1::bigint'];
+  appendNominaCoberturaScope(conditions, params, tenant);
 
   if (query.contrato_id) {
     params.push(query.contrato_id);
@@ -6086,6 +6104,7 @@ export const listNominaEmpleados = async (
       SELECT COUNT(*)::int AS total
       FROM nomina_empleados ne
       INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
+      INNER JOIN nomina_periodos np ON np.id = ne.periodo_id
       ${whereSql}
     `,
     params
@@ -7668,6 +7687,7 @@ export const getNominaMovimientos = async (
   const conditions: string[] = [];
 
   appendTenantScopeConditions(conditions, params, tenant, 'np.contrato_id', 'c.empresa_id');
+  appendNominaCoberturaScope(conditions, params, tenant);
 
   if (query.periodo_id) {
     params.push(query.periodo_id);
@@ -7709,6 +7729,8 @@ export const getNominaMovimientos = async (
     `
       SELECT COUNT(*)::int AS total
       FROM nomina_movimientos nm
+      INNER JOIN nomina_empleados ne ON ne.id = nm.nomina_empleado_id
+      INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
       INNER JOIN nomina_periodos np ON np.id = nm.periodo_id
       INNER JOIN contratos c ON c.id = np.contrato_id
       ${whereSql}
@@ -7937,6 +7959,7 @@ export const createNominaMovimiento = async (
     await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(input.periodo_id, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'creating payroll movements');
+    await assertNominaEmpleadoCoberturaScope(input.nomina_empleado_id, tenant, client);
 
     const empleadoContext = await loadNominaEmpleadoContextOrThrow(input.nomina_empleado_id, tenant, client);
     const empleado = await loadNominaEmpleadoByIdOrThrow(input.nomina_empleado_id, tenant, client);
@@ -7996,6 +8019,12 @@ export const createNominaMovimiento = async (
         input.vinculacion_reemplazada_id,
         client
       );
+      const empleadoReemplazado = await loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow(
+        client,
+        input.periodo_id,
+        input.vinculacion_reemplazada_id
+      );
+      await assertNominaEmpleadoCoberturaScope(empleadoReemplazado.nomina_empleado_id, tenant, client);
 
       if (vinculacionReemplazada.id === input.vinculacion_id) {
         throw new AppError(
@@ -8425,6 +8454,7 @@ export const updateNominaMovimiento = async (
   try {
     await client.query('BEGIN');
     const current = await loadNominaMovimientoByIdOrThrow(movimientoId, tenant, client);
+    await assertNominaEmpleadoCoberturaScope(current.nomina_empleado_id, tenant, client);
     const periodo = await loadRealPeriodoOrThrow(current.periodo_id, tenant, client);
     const empleado = await loadNominaEmpleadoByIdOrThrow(current.nomina_empleado_id, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'updating payroll movements');
@@ -8479,6 +8509,12 @@ export const updateNominaMovimiento = async (
         input.vinculacion_reemplazada_id,
         client
       );
+      const empleadoReemplazado = await loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow(
+        client,
+        current.periodo_id,
+        input.vinculacion_reemplazada_id
+      );
+      await assertNominaEmpleadoCoberturaScope(empleadoReemplazado.nomina_empleado_id, tenant, client);
 
       if (vinculacionReemplazada.id === current.vinculacion_id) {
         throw new AppError(
@@ -8837,6 +8873,7 @@ export const deactivateNominaMovimiento = async (
   try {
     await client.query('BEGIN');
     const current = await loadNominaMovimientoByIdOrThrow(movimientoId, tenant, client);
+    await assertNominaEmpleadoCoberturaScope(current.nomina_empleado_id, tenant, client);
     const periodo = await loadRealPeriodoOrThrow(current.periodo_id, tenant, client);
     const empleado = await loadNominaEmpleadoByIdOrThrow(current.nomina_empleado_id, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'deactivating payroll movements');

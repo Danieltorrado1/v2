@@ -9,6 +9,7 @@ import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditori
 import { AppError } from '../../utils/AppError';
 import { createDocumentSignedUrlForBucket } from '../documentos/documentos.storage';
 import type { GenerarCoberturaCuentaInput, ListCoberturaExternosQuery, UpsertCoberturaExternoInput } from './cobertura.externos.schemas';
+import { appendNominaCoberturaScope } from './nomina.procesos';
 
 type ExternoRow = QueryResultRow & { id: string; empresa_id: string; tipo_documento: string; numero_documento: string; nombre_completo: string; banco: string | null; tipo_cuenta: string | null; numero_cuenta: string | null; turnos: string | number; valor_total: string | number; cedula: boolean; banco_doc: boolean; cuenta_id: string | null; cuenta_estado: string };
 type CuentaRow = QueryResultRow & { id: string; empresa_id: string; contrato_id: string; periodo_id: string; externo_id: string; numero_cuenta: string; estado: string; valor_total: string | number; generado_bucket: string | null; generado_path: string | null; firmado_bucket: string | null; firmado_path: string | null };
@@ -56,7 +57,28 @@ export const listCoberturaExternos = async (query: ListCoberturaExternosQuery, t
 
 export const listCoberturaExternosOperativos = async (query: ListCoberturaExternosQuery, tenant?: TenantAccessContext) => {
   const rows = await listCoberturaExternos(query, tenant);
-  return rows.map(({ banco: _banco, tipo_cuenta: _tipoCuenta, numero_cuenta: _numeroCuenta,
+  let scopedRows = rows;
+  if (tenant && !tenant.isGlobalAdmin) {
+    const params: unknown[] = [];
+    const conditions = ['nnt.externo_id IS NOT NULL'];
+    if (query.periodo_id) {
+      params.push(query.periodo_id);
+      conditions.push(`nnt.periodo_id = $${params.length}::bigint`);
+    }
+    appendNominaCoberturaScope(conditions, params, tenant);
+    const allowed = await dbQuery<{ externo_id: string }>(
+      `SELECT DISTINCT nnt.externo_id::text AS externo_id
+       FROM nomina_novedad_turnos nnt
+       JOIN nomina_empleados ne ON ne.id=nnt.nomina_empleado_id
+       JOIN vinculaciones v ON v.id=ne.vinculacion_id
+       JOIN nomina_periodos np ON np.id=nnt.periodo_id
+       WHERE ${conditions.join(' AND ')}`,
+      params
+    );
+    const allowedIds = new Set(allowed.rows.map((row) => row.externo_id));
+    scopedRows = rows.filter((row) => allowedIds.has(row.id));
+  }
+  return scopedRows.map(({ banco: _banco, tipo_cuenta: _tipoCuenta, numero_cuenta: _numeroCuenta,
     valor_total: _valorTotal, cuenta_id: _cuentaId, cuenta_estado: _cuentaEstado,
     cedula: _cedula, banco_doc: _bancoDoc, ...operational }) => operational);
 };

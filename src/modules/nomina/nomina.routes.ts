@@ -143,7 +143,7 @@ import {
 } from './cambios-operativos.controller';
 import { closeNominaEmpleadoOperativoHandler, listRevisionOperativaHandler, reopenNominaEmpleadoOperativoHandler, updateRevisionOperativaHandler } from './revision-operativa.controller';
 import { getNominaProcessAccessHandler, listNominaAsistenciaPersonalHandler } from './nomina.procesos.controller';
-import { createNominaAreaHandler, listNominaAreasHandler, listNominaResponsibilitiesHandler, replaceNominaResponsibilityHandler, updateNominaAreaHandler } from './nomina.procesos.admin.controller';
+import { createNominaAreaHandler, listNominaAreasHandler, listNominaAssignableUsersHandler, listNominaResponsibilitiesHandler, replaceNominaResponsibilityHandler, updateNominaAreaHandler } from './nomina.procesos.admin.controller';
 import { downloadCoberturaCuentaFirmadaHandler, downloadCoberturaCuentaHandler, downloadCoberturaExternoDocumentoHandler, generateCoberturaCuentaHandler, listCoberturaExternoDocumentosHandler, listCoberturaExternosHandler, listCoberturaExternosOperativosHandler, uploadCoberturaCuentaFirmadaHandler, upsertCoberturaExternoHandler, uploadCoberturaExternoDocumentoHandler } from './cobertura.externos.controller';
 import {
   getNovedadDocumentHandler,
@@ -163,6 +163,7 @@ nominaRoutes.use(requireModule('NOMINA'));
 nominaRoutes.get('/procesos/acceso', requirePermissions('nomina.read'), getNominaProcessAccessHandler);
 nominaRoutes.get('/procesos/areas', requirePermissions('nomina.read'), listNominaAreasHandler);
 nominaRoutes.get('/procesos/responsabilidades', requirePermissions('nomina.read'), listNominaResponsibilitiesHandler);
+nominaRoutes.get('/procesos/usuarios-asignables', requirePermissions('nomina.periodos.update'), listNominaAssignableUsersHandler);
 nominaRoutes.post('/procesos/areas', requirePermissions('nomina.periodos.update'), createNominaAreaHandler);
 nominaRoutes.patch('/procesos/areas/:area_id', requirePermissions('nomina.periodos.update'), updateNominaAreaHandler);
 nominaRoutes.get('/procesos/asistencia/areas/:area_id/personal', requirePermissions('nomina.read'), listNominaAsistenciaPersonalHandler);

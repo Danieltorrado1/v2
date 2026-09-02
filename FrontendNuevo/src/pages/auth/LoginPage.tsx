@@ -5,8 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import NeuralBackground from "../../effects/NeuralBackground";
 import "./LoginPage.css";
-
-const ADMIN_ROLES = ["admin", "th", "supervisor"];
+import { resolveAuthenticatedHome } from "../../router/roleNavigation";
 
 export default function LoginPage() {
   const { login, isAuthenticated, isLoading } = useAuth();
@@ -24,7 +23,7 @@ export default function LoginPage() {
     : "/branding/empiria-logo-vertical-dark.png";
 
   if (!isLoading && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -42,10 +41,7 @@ export default function LoginPage() {
 
     try {
       const user = await login({ email: normalizedEmail, password });
-      const isColaborador = !user.roles.some((role) =>
-        ADMIN_ROLES.includes(role.toLowerCase()),
-      );
-      navigate(isColaborador ? "/portal" : "/dashboard", { replace: true });
+      navigate(resolveAuthenticatedHome(user), { replace: true });
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Correo o contrase\u00f1a incorrectos.",

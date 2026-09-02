@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import { useAuth } from '../context/AuthContext';
 import { useCompanyContext } from '../context/CompanyContext';
+import { canAccessDashboard, isGestorOnly } from './roleNavigation';
 
 function canAny(permissions: string[], required: readonly string[]): boolean {
   return required.length === 0 || required.some((permission) => permissions.includes(permission));
@@ -21,7 +22,8 @@ function resolveFallbackPath(input: {
     return '/personal';
   }
 
-  if (input.hasModule('DASHBOARD') && input.permissions.includes('dashboard.read')) {
+  const gestorOnly = input.roles.includes('GESTOR') && !input.roles.includes('TALENTO_HUMANO');
+  if (!gestorOnly && input.hasModule('DASHBOARD') && input.permissions.includes('dashboard.read')) {
     return '/dashboard';
   }
 
@@ -47,12 +49,13 @@ export default function ModuleRoute({
   const { empresaId, capabilities, capabilitiesLoading, hasModule } = useCompanyContext();
   const permissions = user?.permissions ?? [];
   const roles = user?.roles ?? [];
+  const dashboardDenied = code === 'DASHBOARD' && (!canAccessDashboard(user) || isGestorOnly(user));
 
   if (!empresaId || capabilitiesLoading || !capabilities) {
     return <div className="adm-empty">Cargando configuracion empresarial...</div>;
   }
 
-  if (!hasModule(code) || !canAny(permissions, requiredPermissions) || denyRoles.some((role) => roles.includes(role))) {
+  if (dashboardDenied || !hasModule(code) || !canAny(permissions, requiredPermissions) || denyRoles.some((role) => roles.includes(role))) {
     return <Navigate to={resolveFallbackPath({ hasModule, permissions, roles })} replace />;
   }
 

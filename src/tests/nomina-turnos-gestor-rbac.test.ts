@@ -32,7 +32,7 @@ test('pantalla decide por permiso económico y usa loaders operativos cuando fal
   assert.match(turnos, /canSeeEconomic = user\?\.permissions\.includes\("nomina\.economico\.read"\)/);
   assert.match(turnos, /canSeeEconomic[\s\S]*getAllNominaTurnos[\s\S]*getAllNominaTurnosOperativos/);
   assert.match(turnos, /canSeeEconomic[\s\S]*getCoberturaExternos[\s\S]*getCoberturaExternosOperativos/);
-  assert.match(turnos, /canSeeEconomic \? <span>Valor<\/span> : null/);
+  assert.match(turnos, /hidden=\{!canSeeEconomic\}/);
   assert.match(turnos, /canSeeEconomic \? <div className="np-detail-total">/);
 });
 

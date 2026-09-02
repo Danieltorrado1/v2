@@ -586,6 +586,7 @@ export interface NominaEmpleadoApi {
   gestor?: {
     id: string;
     nombre_completo: string;
+    origen: 'PERSONAL' | 'MUNICIPIO' | 'MUNICIPIO_AMBIGUO';
   } | null;
   contexto_operativo?: {
     municipio: string | null;

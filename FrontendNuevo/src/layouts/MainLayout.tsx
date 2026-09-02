@@ -8,6 +8,7 @@ import { NavDropdown } from "./NavDropdown";
 import { NotificationsPanel } from "../components/notifications/NotificationsPanel";
 import { notificacionesApi } from "../services/notificacionesApi";
 import "./MainLayout.css";
+import { canAccessDashboard, isGestorOnly } from "../router/roleNavigation";
 
 const nominaLinks = [
   { to: "/nomina", label: "Centro de nómina", requiredPermissions: ["nomina.read"] },
@@ -61,8 +62,8 @@ export default function MainLayout() {
   const roleLabel = user?.roles?.[0] ?? "Usuario";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "US";
   const permissions = user?.permissions ?? [];
-  const gestorOperationalOnly = user?.roles.includes("GESTOR") === true && user?.roles.includes("TALENTO_HUMANO") !== true;
-  const canSeeDashboard = hasModule("DASHBOARD") && permissions.includes("dashboard.read");
+  const gestorOperationalOnly = isGestorOnly(user);
+  const canSeeDashboard = hasModule("DASHBOARD") && canAccessDashboard(user);
   const canSeePersonal = hasModule("PERSONAL") && permissions.includes("vinculaciones.read");
   const visibleNominaLinks = nominaLinks.filter((link) => {
     if (gestorOperationalOnly && !["/nomina/cobertura", "/nomina/turnos", "/nomina/novedades"].includes(link.to)) return false;
