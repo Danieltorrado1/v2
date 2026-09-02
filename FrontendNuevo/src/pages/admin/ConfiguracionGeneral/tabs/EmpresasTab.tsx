@@ -154,8 +154,8 @@ export function EmpresasTab({onConfigureSaas}:{onConfigureSaas:(empresaId:number
         });
         const [allResponse,saasRows] = await Promise.all([configuracionApi.listarEmpresas({
           page: 1,
-          limit: 500,
-        }),saasApi.companySummaries()]);
+          limit: 100,
+        }),saasApi.companySummaries().catch(() => [])]);
 
         if (cancelled) {
           return;
@@ -267,7 +267,7 @@ export function EmpresasTab({onConfigureSaas}:{onConfigureSaas:(empresaId:number
       });
       const allResponse = await configuracionApi.listarEmpresas({
         page: 1,
-        limit: 500,
+        limit: 100,
       });
       setItems(response.items);
       setAllEmpresas(allResponse.items);

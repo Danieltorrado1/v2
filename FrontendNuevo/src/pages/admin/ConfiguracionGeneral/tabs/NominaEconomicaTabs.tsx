@@ -270,16 +270,10 @@ type AssignmentModalityOption = {
 
 const assignmentModalityValue = (option: AssignmentModalityOption): string => String(option.id ?? option.codigo ?? option.nombre ?? option.etiqueta).trim();
 
-type AssignmentOptionsResponse = {
-
-  periodo: AssignmentPreviewResponse['periodo'];
-
-  modalidades: AssignmentModalityOption[];
-
-};
-
-
-
+type AssignmentCatalogOption = { id: string | number | null; nombre: string; institucion_id?: string | number | null };
+
+type AssignmentOptionsResponse = { periodo: AssignmentPreviewResponse['periodo']; modalidades: AssignmentModalityOption[]; cargos?: AssignmentCatalogOption[]; municipios?: AssignmentCatalogOption[]; instituciones?: AssignmentCatalogOption[]; sedes?: AssignmentCatalogOption[]; metodos_pago?: string[]; };
+
 type AssignmentCountOperator = '' | 'EQ' | 'GT' | 'LT' | 'GTE' | 'LTE' | 'BETWEEN';
 
 
@@ -981,7 +975,8 @@ export function SalaryCategoriesTab() {
   const [assignmentScope, setAssignmentScope] = useState('ALL_MODALITY');
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [withoutCategoryOnly, setWithoutCategoryOnly] = useState(false);
-  const [assignmentModalities, setAssignmentModalities] = useState<AssignmentModalityOption[]>([]);
+  const [assignmentModalities, setAssignmentModalities] = useState<AssignmentModalityOption[]>([]);
+  const [assignmentCatalogs, setAssignmentCatalogs] = useState<AssignmentOptionsResponse | null>(null);
   const [assignmentOptionsLoading, setAssignmentOptionsLoading] = useState(false);
   const [preview, setPreview] = useState<AssignmentPreviewResponse | null>(null);
   const [previewCriteriaKey, setPreviewCriteriaKey] = useState('');
@@ -1085,7 +1080,8 @@ export function SalaryCategoriesTab() {
 
   useEffect(() => {
     if (!empresaActual || !canRead || !selectedPeriodId) {
-      setAssignmentModalities([]);
+      setAssignmentModalities([]);
+      setAssignmentCatalogs(null);
       return;
     }
 
@@ -1106,11 +1102,13 @@ export function SalaryCategoriesTab() {
           return;
         }
 
+        setAssignmentCatalogs(response.data);
         setAssignmentModalities(Array.from(new Map((response.data.modalidades ?? []).map((option) => [assignmentModalityValue(option).toUpperCase(), { ...option, id: option.id ? String(option.id) : null, codigo: option.codigo?.trim() || null, nombre: option.nombre?.trim() || null, etiqueta: option.etiqueta?.trim() || assignmentModalityValue(option) }])).values()).filter((option) => Boolean(assignmentModalityValue(option))));
       })
       .catch(() => {
         if (!cancelled) {
-          setAssignmentModalities([]);
+          setAssignmentModalities([]);
+      setAssignmentCatalogs(null);
         }
       })
       .finally(() => {
@@ -1181,10 +1179,10 @@ export function SalaryCategoriesTab() {
       const selectedModalityId = selectedModality?.id && /^\d+$/.test(selectedModality.id) ? Number(selectedModality.id) : undefined;
       return compactPayload({
         search: toNullableText(assignmentSearch),
-        cargo: toNullableText(assignmentCargo),
-        municipio: toNullableText(assignmentMunicipio),
-        institucion: toNullableText(assignmentInstitucion),
-        sede: toNullableText(assignmentSede),
+        contrato_cargo_id: assignmentCargo ? Number(assignmentCargo) : undefined,
+        municipio_id: assignmentMunicipio ? Number(assignmentMunicipio) : undefined,
+        institucion_id: assignmentInstitucion ? Number(assignmentInstitucion) : undefined,
+        sede_id: assignmentSede ? Number(assignmentSede) : undefined,
         modalidad_id: selectedModalityId,
         modalidad_codigo: selectedModality?.codigo ?? (selectedModalityId ? undefined : selectedModality?.etiqueta),
         modalidad: selectedModality?.nombre ?? (selectedModalityId ? undefined : selectedModality?.etiqueta),
@@ -1396,6 +1394,12 @@ export function SalaryCategoriesTab() {
     );
   };
 
+  const assignmentCargos = assignmentCatalogs?.cargos ?? [];
+  const assignmentMunicipios = assignmentCatalogs?.municipios ?? [];
+  const assignmentInstituciones = assignmentCatalogs?.instituciones ?? [];
+  const assignmentSedes = (assignmentCatalogs?.sedes ?? []).filter((item) => !assignmentInstitucion || String(item.institucion_id ?? '') === assignmentInstitucion);
+  const assignmentMetodosPago = assignmentCatalogs?.metodos_pago ?? [];
+
   const clearAssignmentFilters = () => {
     setAssignmentSearch('');
     setAssignmentCargo('');
@@ -1674,56 +1678,51 @@ export function SalaryCategoriesTab() {
               </small>
             </div>
 
-            <div className="adm-field">
-              <label className="adm-label">Cargo</label>
-              <input
-                className="adm-input"
-                placeholder="Filtrar por cargo"
-                value={assignmentCargo}
-                onChange={(event) => setAssignmentCargo(event.target.value)}
-              />
-            </div>
-
-            <div className="adm-field">
-              <label className="adm-label">Municipio</label>
-              <input
-                className="adm-input"
-                placeholder="Filtrar por municipio"
-                value={assignmentMunicipio}
-                onChange={(event) => setAssignmentMunicipio(event.target.value)}
-              />
-            </div>
-
-            <div className="adm-field">
-              <label className="adm-label">Institución</label>
-              <input
-                className="adm-input"
-                placeholder="Filtrar por institución"
-                value={assignmentInstitucion}
-                onChange={(event) => setAssignmentInstitucion(event.target.value)}
-              />
-            </div>
-
-            <div className="adm-field">
-              <label className="adm-label">Sede</label>
-              <input
-                className="adm-input"
-                placeholder="Filtrar por sede"
-                value={assignmentSede}
-                onChange={(event) => setAssignmentSede(event.target.value)}
-              />
-            </div>
-
-            <div className="adm-field">
-              <label className="adm-label">Método de pago</label>
-              <input
-                className="adm-input"
-                placeholder="COBERTURA, ASISTENCIA u otro"
-                value={assignmentMethod}
-                onChange={(event) => setAssignmentMethod(event.target.value)}
-              />
-            </div>
-
+            <div className="adm-field">
+              <label className="adm-label">Cargo</label>
+              <select className="adm-select" value={assignmentCargo} onChange={(event) => setAssignmentCargo(event.target.value)}>
+                <option value="">Todos</option>
+                {assignmentCargos.map((option) => <option key={String(option.id)} value={String(option.id)}>{option.nombre}</option>)}
+              </select>
+              {assignmentCargos.length === 0 ? <small className="cg-secondary-cell">No hay cargos disponibles para este periodo.</small> : null}
+            </div>
+
+            <div className="adm-field">
+              <label className="adm-label">Municipio</label>
+              <select className="adm-select" value={assignmentMunicipio} onChange={(event) => setAssignmentMunicipio(event.target.value)}>
+                <option value="">Todos</option>
+                {assignmentMunicipios.map((option) => <option key={String(option.id)} value={String(option.id)}>{option.nombre}</option>)}
+              </select>
+              {assignmentMunicipios.length === 0 ? <small className="cg-secondary-cell">No hay municipios disponibles para este periodo.</small> : null}
+            </div>
+
+            <div className="adm-field">
+              <label className="adm-label">Institucion</label>
+              <select className="adm-select" value={assignmentInstitucion} onChange={(event) => setAssignmentInstitucion(event.target.value)}>
+                <option value="">Todos</option>
+                {assignmentInstituciones.map((option) => <option key={String(option.id)} value={String(option.id)}>{option.nombre}</option>)}
+              </select>
+              {assignmentInstituciones.length === 0 ? <small className="cg-secondary-cell">No hay instituciones disponibles para este periodo.</small> : null}
+            </div>
+
+            <div className="adm-field">
+              <label className="adm-label">Sede</label>
+              <select className="adm-select" value={assignmentSede} onChange={(event) => setAssignmentSede(event.target.value)}>
+                <option value="">Todos</option>
+                {assignmentSedes.map((option) => <option key={String(option.id)} value={String(option.id)}>{option.nombre}</option>)}
+              </select>
+              {assignmentSedes.length === 0 ? <small className="cg-secondary-cell">No hay sedes disponibles para este periodo.</small> : null}
+            </div>
+
+            <div className="adm-field">
+              <label className="adm-label">Metodo de pago</label>
+              <select className="adm-select" value={assignmentMethod} onChange={(event) => setAssignmentMethod(event.target.value)}>
+                <option value="">Todos</option>
+                {assignmentMetodosPago.map((method) => <option key={method} value={method}>{method}</option>)}
+              </select>
+              {assignmentMetodosPago.length === 0 ? <small className="cg-secondary-cell">No hay metodos de pago disponibles para este periodo.</small> : null}
+            </div>
+
             <div className="adm-field">
               <label className="adm-label">Conteo Institución + Sede</label>
               <select
