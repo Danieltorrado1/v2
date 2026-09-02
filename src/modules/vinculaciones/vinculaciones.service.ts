@@ -1797,6 +1797,7 @@ export const listContractPersonal = async (
 };
 
 export interface ContractPersonalFilterOptions {
+  departamentos: Array<{ id: number; nombre: string }>;
   gestores: Array<{ id: number; nombre: string; roles: string[] }>;
   municipios: Array<{ id: number; nombre: string }>;
   instituciones: Array<{ id: number; nombre: string; municipio_id: number | null }>;
@@ -2261,14 +2262,16 @@ export const getContractPersonalFilterOptions = async (
         AND ($4::bigint IS NULL OR ff.sede_id = $4::bigint)
         ${managedMunicipioFilter}
     `;
-    const params = [
-      contratoId,
-      filters.municipio_id ?? null,
-      filters.institucion_id ?? null,
-      filters.sede_id ?? null,
-      tenant?.userId ?? null,
-      fecha
-    ];
+    const params = managedMunicipioFilter
+      ? [
+          contratoId,
+          filters.municipio_id ?? null,
+          filters.institucion_id ?? null,
+          filters.sede_id ?? null,
+          tenant?.userId ?? null,
+          fecha
+        ]
+      : [contratoId, filters.municipio_id ?? null, filters.institucion_id ?? null, filters.sede_id ?? null];
     const [gestores, municipios, instituciones, sedes, modalidades, ubicaciones] = await Promise.all([
       listGestorAssignableUsers(client),
       client.query<{ id: number; nombre: string; departamento_id: number | null; departamento_nombre: string | null }>(`SELECT DISTINCT mu.id::int AS id, mu.nombre_municipio AS nombre, mu.departamento_id::int AS departamento_id, dep.nombre_departamento AS departamento_nombre ${base} ORDER BY nombre`, params),
@@ -2277,7 +2280,19 @@ export const getContractPersonalFilterOptions = async (
       client.query<{ id: number; codigo: string | null; nombre: string }>(`SELECT DISTINCT mo.id::int AS id, COALESCE(mo.codigo_base, mo.codigo_original) AS codigo, mo.nombre_modalidad AS nombre ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string }>(`SELECT id::int AS id, nombre_ubicacion AS nombre FROM contrato_ubicaciones_laborales WHERE contrato_id = $1::bigint AND activo = TRUE ORDER BY nombre`, [contratoId])
     ]);
+    const departamentos = Array.from(
+      new Map(
+        municipios.rows
+          .filter((item) => item.departamento_id !== null && item.departamento_nombre)
+          .map((item) => [
+            item.departamento_id,
+            { id: item.departamento_id as number, nombre: item.departamento_nombre as string }
+          ])
+      ).values()
+    ).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
     return {
+      departamentos,
       gestores: gestores
         .map((item) => ({
           id: item.id,

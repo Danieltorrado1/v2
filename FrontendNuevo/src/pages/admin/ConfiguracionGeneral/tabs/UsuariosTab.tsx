@@ -262,6 +262,7 @@ export function UsuariosTab() {
   const [municipioSearch, setMunicipioSearch] = useState('');
   const [gestorMunicipios, setGestorMunicipios] = useState<Record<number, number[]>>({});
   const [territorialCatalogs, setTerritorialCatalogs] = useState<Record<number, TerritorialScopeCatalog>>({});
+  const [territorialCatalogErrors, setTerritorialCatalogErrors] = useState<Record<number, string>>({});
   const [selectedDepartamentoIds, setSelectedDepartamentoIds] = useState<Record<number, number | null>>({});
   const [loadingTerritorialCatalogs, setLoadingTerritorialCatalogs] = useState(false);
   const [loadingGestorScope, setLoadingGestorScope] = useState(false);
@@ -387,6 +388,12 @@ export function UsuariosTab() {
         return [contratoId, buildTerritorialScopeCatalog((Array.isArray(municipios) ? municipios : []) as Array<Record<string, unknown>>)] as const;
       }));
 
+      setTerritorialCatalogErrors((current) => {
+        const next = { ...current };
+        for (const [contratoId] of entries) delete next[contratoId];
+        return next;
+      });
+
       setTerritorialCatalogs((current) => {
         const next = { ...current };
         for (const [contratoId, catalog] of entries) {
@@ -395,7 +402,12 @@ export function UsuariosTab() {
         return next;
       });
     } catch (catalogError) {
-      setFormError(getErrorMessage(catalogError, 'No fue posible cargar el alcance territorial del contrato.'));
+      const message = getErrorMessage(catalogError, 'No fue posible cargar el alcance territorial del contrato.');
+      setTerritorialCatalogErrors((current) => ({
+        ...current,
+        ...Object.fromEntries(missingContratoIds.map((contratoId) => [contratoId, message]))
+      }));
+      setFormError(message);
     } finally {
       setLoadingTerritorialCatalogs(false);
     }
@@ -1096,7 +1108,9 @@ export function UsuariosTab() {
                       </label>
                     </div>
 
-                    {catalog.departamentos.length === 0 ? (
+                    {territorialCatalogErrors[contrato.id] ? (
+                      <div className="cg-selector-empty">No fue posible cargar los departamentos.</div>
+                    ) : catalog.departamentos.length === 0 ? (
                       <div className="cg-selector-empty">No hay departamentos disponibles para este contrato.</div>
                     ) : selectedDepartamentoId === null ? (
                       <div className="cg-selector-empty">Selecciona primero un departamento para consultar sus municipios.</div>
