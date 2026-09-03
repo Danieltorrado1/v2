@@ -9,15 +9,24 @@ import { getAuditRequestMeta } from '../auditoria/auditoria.helper';
 import {
   applySalaryCategoryAssignment,
   createPayrollParameter,
-  createSalaryCategory,
+  createSalaryCategory,
+
+  createTurnShiftRate,
+
   getCompanyConfiguration,
   listPayrollParameters,
   listSalaryCategories,
-  listSalaryCategoryAssignmentOptions,
+  listSalaryCategoryAssignmentOptions,
+
+  listTurnShiftRates,
+
   previewSalaryCategoryAssignment,
   saveGeneralConfiguration,
   saveModuleConfiguration,
-  updateSalaryCategory
+  updateSalaryCategory,
+
+  updateTurnShiftRate
+
 } from './empresa-configuracion.service';
 
 const router = Router();
@@ -81,6 +90,34 @@ const category = categoryFields.refine(
   (value) => !value.vigente_hasta || value.vigente_hasta >= value.vigente_desde,
   { message: 'Invalid validity range' }
 );
+const turnShiftRateFields = z.object({
+
+  contrato_id: z.coerce.number().int().positive(),
+
+  tipo_turno: z.enum(['INTERNO', 'EXTERNO']),
+
+  modalidad_id: z.coerce.number().int().positive(),
+
+  vigencia_desde: z.iso.date(),
+
+  vigencia_hasta: z.iso.date().nullable().optional(),
+
+  valor: z.coerce.number().nonnegative(),
+
+  activo: z.boolean().optional(),
+
+  observacion: z.string().max(1000).nullable().optional()
+
+});
+
+const turnShiftRate = turnShiftRateFields.refine(
+
+  (value) => !value.vigencia_hasta || value.vigencia_hasta >= value.vigencia_desde,
+
+  { message: 'Invalid validity range' }
+
+);
+
 const assignmentCountCriterion = z
   .object({
     operator: z.enum(['EQ', 'GT', 'LT', 'GTE', 'LTE', 'BETWEEN']),
@@ -141,6 +178,86 @@ const assignmentApply = z.object({
   preview_criteria: assignmentCriteria.nullable().optional()
 });
 
+router.get(
+
+  '/:empresaId/turn-shift-rates',
+
+  requirePermissions('nomina.economico.read'),
+
+  asyncHandler(async (req, res) =>
+
+    res.json({
+
+      data: await listTurnShiftRates(id.parse(req.params.empresaId), req.tenant)
+
+    })
+
+  )
+
+);
+
+router.post(
+
+  '/:empresaId/turn-shift-rates',
+
+  requirePermissions('nomina.parametros.manage'),
+
+  asyncHandler(async (req, res) =>
+
+    res.status(201).json({
+
+      data: await createTurnShiftRate(
+
+        id.parse(req.params.empresaId),
+
+        turnShiftRate.parse(req.body),
+
+        req.user!.userId,
+
+        req.tenant,
+
+        getAuditRequestMeta(req)
+
+      )
+
+    })
+
+  )
+
+);
+
+router.patch(
+
+  '/:empresaId/turn-shift-rates/:rateId',
+
+  requirePermissions('nomina.parametros.manage'),
+
+  asyncHandler(async (req, res) => {
+
+    id.parse(req.params.empresaId);
+
+    return res.json({
+
+      data: await updateTurnShiftRate(
+
+        id.parse(req.params.rateId),
+
+        turnShiftRateFields.partial().parse(req.body),
+
+        req.user!.userId,
+
+        req.tenant,
+
+        getAuditRequestMeta(req)
+
+      )
+
+    });
+
+  })
+
+);
+
 router.get(
   '/:empresaId',
   asyncHandler(async (req, res) =>

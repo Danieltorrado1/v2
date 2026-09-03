@@ -160,6 +160,29 @@ export interface SalaryCategoryCorrectionInput {
 
 
 
+export type TurnShiftRateType = 'INTERNO' | 'EXTERNO';
+
+export interface TurnShiftRateInput {
+  contrato_id: number;
+  tipo_turno: TurnShiftRateType;
+  modalidad_id: number;
+  vigencia_desde: string;
+  vigencia_hasta?: string | null;
+  valor: number;
+  activo?: boolean;
+  observacion?: string | null;
+}
+
+export interface TurnShiftRateCorrectionInput {
+  contrato_id?: number;
+  tipo_turno?: TurnShiftRateType;
+  modalidad_id?: number;
+  vigencia_desde?: string;
+  vigencia_hasta?: string | null;
+  valor?: number;
+  activo?: boolean;
+  observacion?: string | null;
+}
 export type SalaryCategoryAssignmentCountOperator =
 
   | 'EQ'
@@ -420,6 +443,22 @@ interface AssignmentModalityOptionRow extends QueryResultRow {
 
 
 
+interface TurnShiftRateRow extends QueryResultRow {
+  activo: boolean | null;
+  contrato_id: string | number;
+  created_at: Date | string;
+  id: string | number;
+  modalidad_codigo: string | null;
+  modalidad_id: string | null;
+  modalidad_nombre: string | null;
+  numero_contrato: string | null;
+  observacion: string | null;
+  tipo_movimiento: string;
+  updated_at: Date | string;
+  valor_unitario: string | number;
+  vigencia_desde: Date | string;
+  vigencia_hasta: Date | string | null;
+}
 const openEndedDate = '9999-12-31';
 
 
@@ -574,6 +613,216 @@ const mapSalaryCategory = (row: SalaryCategoryRow) => ({
 
 
 
+const TURN_SHIFT_TIPO_MOVIMIENTO: Record<TurnShiftRateType, 'TURNO_INTERNO' | 'TURNO_EXTERNO'> = {
+  INTERNO: 'TURNO_INTERNO',
+  EXTERNO: 'TURNO_EXTERNO'
+};
+
+const mapTurnShiftRate = (row: TurnShiftRateRow): {
+  id: string;
+  contrato_id: string;
+  numero_contrato: string | null;
+  tipo_turno: TurnShiftRateType;
+  modalidad: {
+    id: string | null;
+    codigo: string | null;
+    nombre: string | null;
+  };
+  valor: number;
+  vigencia_desde: string | null;
+  vigencia_hasta: string | null;
+  activo: boolean;
+  observacion: string | null;
+  created_at: string;
+  updated_at: string;
+} => ({
+  id: String(row.id),
+  contrato_id: String(row.contrato_id),
+  numero_contrato: row.numero_contrato,
+  tipo_turno: row.tipo_movimiento === 'TURNO_INTERNO' ? 'INTERNO' : 'EXTERNO',
+  modalidad: {
+    id: row.modalidad_id,
+    codigo: row.modalidad_codigo,
+    nombre: row.modalidad_nombre
+  },
+  valor: Number(row.valor_unitario),
+  vigencia_desde: toDateString(row.vigencia_desde),
+  vigencia_hasta: toDateString(row.vigencia_hasta),
+  activo: toBooleanValue(row.activo),
+  observacion: row.observacion,
+  created_at: typeof row.created_at === 'string' ? row.created_at : row.created_at.toISOString(),
+  updated_at: typeof row.updated_at === 'string' ? row.updated_at : row.updated_at.toISOString()
+});
+
+const loadTurnShiftRateRowOrThrow = async (
+  rateId: number,
+  tenant?: TenantAccessContext,
+  client?: PoolClient
+): Promise<TurnShiftRateRow> => {
+  const executor = client ?? dbPool;
+  const result = await executor.query<TurnShiftRateRow>(
+    `
+      SELECT
+        nmt.id,
+        nmt.contrato_id,
+        c.numero_contrato,
+        nmt.tipo_movimiento,
+        nmt.modalidad_id::text AS modalidad_id,
+        COALESCE(m.codigo_base, m.codigo_original) AS modalidad_codigo,
+        m.nombre_modalidad AS modalidad_nombre,
+        nmt.valor_unitario,
+        nmt.vigencia_desde,
+        nmt.vigencia_hasta,
+        nmt.observacion,
+        nmt.activo,
+        nmt.created_at,
+        nmt.updated_at
+      FROM nomina_movimiento_tarifas nmt
+      INNER JOIN contratos c ON c.id = nmt.contrato_id
+      LEFT JOIN modalidades m ON m.id = nmt.modalidad_id
+      WHERE nmt.id = $1::bigint
+      LIMIT 1
+    `,
+    [rateId]
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    throw new AppError('Turn shift rate not found', 404, 'TURN_SHIFT_RATE_NOT_FOUND');
+  }
+
+  const companyResult = await executor.query<ContractCompanyRow>(
+    `SELECT empresa_id FROM contratos WHERE id = $1::bigint LIMIT 1`,
+    [row.contrato_id]
+  );
+  const empresaId = Number(companyResult.rows[0]?.empresa_id ?? 0);
+  assertTenantAccessForEmpresaId(tenant, empresaId);
+  await assertModuleEnabled(empresaId, 'NOMINA', tenant);
+
+  return row;
+};
+
+const assertTurnShiftRateModalidadAvailableForContract = async (
+  contratoId: number,
+  modalidadId: number
+): Promise<void> => {
+  const result = await dbQuery(
+    `
+      SELECT 1
+      FROM focalizacion_final ff
+      INNER JOIN modalidades m ON m.id = ff.modalidad_id
+      WHERE ff.contrato_id = $1::bigint
+        AND ff.modalidad_id = $2::bigint
+        AND ff.activo = TRUE
+        AND COALESCE(m.activo, TRUE) = TRUE
+      LIMIT 1
+    `,
+    [contratoId, modalidadId]
+  );
+
+  if (!result.rows[0]) {
+    throw new AppError('Modalidad not found', 404, 'TURN_SHIFT_MODALIDAD_NOT_FOUND');
+  }
+};
+
+const assertTurnShiftRateOverlap = async (input: {
+  contrato_id: number;
+  empresa_id: number;
+  modalidad_id: number;
+  tipo_turno: TurnShiftRateType;
+  vigente_desde: string;
+  vigencia_hasta: string | null;
+  exclude_id?: number;
+  should_validate: boolean;
+}): Promise<void> => {
+  if (!input.should_validate) {
+    return;
+  }
+
+  const params: unknown[] = [
+    input.empresa_id,
+    input.contrato_id,
+    TURN_SHIFT_TIPO_MOVIMIENTO[input.tipo_turno],
+    input.modalidad_id,
+    input.vigente_desde,
+    input.vigencia_hasta
+  ];
+  let sql = `
+    SELECT nmt.id::text
+    FROM nomina_movimiento_tarifas nmt
+    INNER JOIN contratos c ON c.id = nmt.contrato_id
+    WHERE c.empresa_id = $1::bigint
+      AND nmt.contrato_id = $2::bigint
+      AND nmt.tipo_movimiento = $3
+      AND COALESCE(nmt.modalidad_id, 0) = COALESCE($4::bigint, 0)
+      AND nmt.municipio_id IS NULL
+      AND nmt.institucion_id IS NULL
+      AND nmt.sede_id IS NULL
+      AND COALESCE(nmt.activo, TRUE) = TRUE
+      AND DATERANGE(
+        nmt.vigencia_desde,
+        COALESCE(nmt.vigencia_hasta, '${openEndedDate}'::date),
+        '[]'
+      ) && DATERANGE(
+        $5::date,
+        COALESCE($6::date, '${openEndedDate}'::date),
+        '[]'
+      )
+  `;
+
+  if (input.exclude_id !== undefined) {
+    params.push(input.exclude_id);
+    sql += ` AND nmt.id <> $${params.length}::bigint`;
+  }
+
+  sql += ' LIMIT 1';
+  const overlap = await dbQuery<{ id: string }>(sql, params);
+
+  if (overlap.rows[0]) {
+    throw new AppError(
+      'Turn shift rate validity overlaps an active version for the same contract, type and modality',
+      409,
+      'TURNO_TARIFA_VIGENCIA_OVERLAP'
+    );
+  }
+};
+
+const normalizeTurnShiftRateInput = (input: TurnShiftRateInput) => {
+  assertValidRange(input.vigencia_desde, input.vigencia_hasta ?? null, 'TURN_SHIFT_RATE_INVALID_RANGE');
+
+  return {
+    contrato_id: input.contrato_id,
+    tipo_turno: input.tipo_turno,
+    modalidad_id: input.modalidad_id,
+    vigencia_desde: input.vigencia_desde,
+    vigencia_hasta: input.vigencia_hasta ?? null,
+    valor: input.valor,
+    activo: input.activo ?? true,
+    observacion: trimNullable(input.observacion)
+  };
+};
+
+const normalizeTurnShiftRateCorrectionInput = (
+  current: ReturnType<typeof mapTurnShiftRate>,
+  input: TurnShiftRateCorrectionInput
+) => {
+  const merged = {
+    contrato_id: input.contrato_id ?? Number(current.contrato_id),
+    tipo_turno: input.tipo_turno ?? current.tipo_turno,
+    modalidad_id: input.modalidad_id ?? Number(current.modalidad.id),
+    vigencia_desde: input.vigencia_desde ?? current.vigencia_desde ?? '',
+    vigencia_hasta: input.vigencia_hasta !== undefined ? input.vigencia_hasta : current.vigencia_hasta,
+    valor: input.valor ?? current.valor,
+    activo: input.activo ?? current.activo,
+    observacion: input.observacion !== undefined ? trimNullable(input.observacion) : current.observacion
+  };
+
+  assertValidRange(merged.vigencia_desde, merged.vigencia_hasta ?? null, 'TURN_SHIFT_RATE_INVALID_RANGE');
+  return {
+    ...merged,
+    vigencia_hasta: merged.vigencia_hasta ?? null
+  };
+};
 const buildCategoryRangeOverlapSql = (excludeId = false): string => `
 
   SELECT id::text
@@ -2172,7 +2421,7 @@ export const saveGeneralConfiguration = async (
 
       registro_id: String(empresaId),
 
-      descripcion: 'Configuración general empresarial actualizada',
+      descripcion: 'Configuracion general empresarial actualizada',
 
       before: before.general,
 
@@ -2310,7 +2559,7 @@ export const saveModuleConfiguration = async (
 
     registro_id: String(saved.id),
 
-    descripcion: `Configuración ${codigo} actualizada`,
+    descripcion: `Configuracion ${codigo} actualizada`,
 
     after: saved,
 
@@ -2500,7 +2749,7 @@ export const createPayrollParameter = async (
 
     registro_id: String(saved.id),
 
-    descripcion: 'Parámetro económico de nómina creado',
+    descripcion: 'Parametro economico de nomina creado',
 
     after: saved,
 
@@ -2688,7 +2937,7 @@ export const createSalaryCategory = async (
 
     registro_id: String(saved.id),
 
-    descripcion: 'Versión de categoría salarial creada',
+    descripcion: 'Version de categoria salarial creada',
 
     after: saved,
 
@@ -2848,7 +3097,7 @@ export const updateSalaryCategory = async (
 
     registro_id: String(categoryId),
 
-    descripcion: 'Corrección de categoría salarial',
+    descripcion: 'Correccion de categoria salarial',
 
     before: current,
 
@@ -2872,6 +3121,200 @@ export const updateSalaryCategory = async (
 
 
 
+export const listTurnShiftRates = async (
+  empresaId: number,
+  tenant?: TenantAccessContext
+) => {
+  assertTenantAccessForEmpresaId(tenant, empresaId);
+  await assertModuleEnabled(empresaId, 'NOMINA', tenant);
+
+  const result = await dbQuery<TurnShiftRateRow>(
+    `
+      SELECT
+        nmt.id,
+        nmt.contrato_id,
+        c.numero_contrato,
+        nmt.tipo_movimiento,
+        nmt.modalidad_id::text AS modalidad_id,
+        COALESCE(m.codigo_base, m.codigo_original) AS modalidad_codigo,
+        m.nombre_modalidad AS modalidad_nombre,
+        nmt.valor_unitario,
+        nmt.vigencia_desde,
+        nmt.vigencia_hasta,
+        nmt.observacion,
+        nmt.activo,
+        nmt.created_at,
+        nmt.updated_at
+      FROM nomina_movimiento_tarifas nmt
+      INNER JOIN contratos c ON c.id = nmt.contrato_id
+      LEFT JOIN modalidades m ON m.id = nmt.modalidad_id
+      WHERE c.empresa_id = $1::bigint
+        AND nmt.tipo_movimiento IN ('TURNO_INTERNO', 'TURNO_EXTERNO')
+        AND nmt.municipio_id IS NULL
+        AND nmt.institucion_id IS NULL
+        AND nmt.sede_id IS NULL
+      ORDER BY nmt.tipo_movimiento ASC, m.nombre_modalidad ASC NULLS LAST, nmt.vigencia_desde DESC, nmt.id DESC
+    `,
+    [empresaId]
+  );
+
+  return result.rows.map(mapTurnShiftRate);
+};
+
+export const createTurnShiftRate = async (
+  empresaId: number,
+  input: TurnShiftRateInput,
+  actorUserId: string,
+  tenant?: TenantAccessContext,
+  auditMeta?: AuditRequestMeta
+) => {
+  assertTenantAccessForEmpresaId(tenant, empresaId);
+  await assertModuleEnabled(empresaId, 'NOMINA', tenant);
+
+  const normalized = normalizeTurnShiftRateInput(input);
+  await assertContractBelongsToCompany(normalized.contrato_id, empresaId);
+  await assertTurnShiftRateModalidadAvailableForContract(
+    normalized.contrato_id,
+    normalized.modalidad_id
+  );
+  await assertTurnShiftRateOverlap({
+    contrato_id: normalized.contrato_id,
+    empresa_id: empresaId,
+    modalidad_id: normalized.modalidad_id,
+    tipo_turno: normalized.tipo_turno,
+    vigente_desde: normalized.vigencia_desde,
+    vigencia_hasta: normalized.vigencia_hasta,
+    should_validate: normalized.activo
+  });
+
+  const result = await dbQuery<{ id: string | number }>(
+    `
+      INSERT INTO nomina_movimiento_tarifas (
+        contrato_id,
+        tipo_movimiento,
+        modalidad_id,
+        vigencia_desde,
+        vigencia_hasta,
+        valor_unitario,
+        observacion,
+        activo,
+        created_by,
+        updated_by
+      )
+      VALUES ($1::bigint, $2, $3::bigint, $4::date, $5::date, $6::numeric, $7, $8, $9::bigint, $10::bigint)
+      RETURNING id
+    `,
+    [
+      normalized.contrato_id,
+      TURN_SHIFT_TIPO_MOVIMIENTO[normalized.tipo_turno],
+      normalized.modalidad_id,
+      normalized.vigencia_desde,
+      normalized.vigencia_hasta,
+      normalized.valor,
+      normalized.observacion,
+      normalized.activo,
+      actorUserId,
+      actorUserId
+    ]
+  );
+
+  const createdId = Number(result.rows[0]?.id ?? 0);
+  const createdRow = await loadTurnShiftRateRowOrThrow(createdId, tenant);
+  const created = mapTurnShiftRate(createdRow);
+
+  await registerAuditEntry({
+    accion: 'CREATE',
+    tabla: 'nomina_movimiento_tarifas',
+    registro_id: String(created.id),
+    descripcion: 'Tarifa de turnos creada',
+    contrato_id: String(created.contrato_id),
+    empresa_id: String(empresaId),
+    after: created,
+    usuario_id: actorUserId,
+    ...auditMeta
+  });
+
+  return created;
+};
+
+export const updateTurnShiftRate = async (
+  rateId: number,
+  input: TurnShiftRateCorrectionInput,
+  actorUserId: string,
+  tenant?: TenantAccessContext,
+  auditMeta?: AuditRequestMeta
+) => {
+  const currentRow = await loadTurnShiftRateRowOrThrow(rateId, tenant);
+  const current = mapTurnShiftRate(currentRow);
+  const currentCompanyResult = await dbQuery<ContractCompanyRow>(
+    `SELECT empresa_id FROM contratos WHERE id = $1::bigint LIMIT 1`,
+    [current.contrato_id]
+  );
+  const currentEmpresaId = Number(currentCompanyResult.rows[0]?.empresa_id ?? 0);
+  const normalized = normalizeTurnShiftRateCorrectionInput(current, input);
+
+  await assertContractBelongsToCompany(normalized.contrato_id, currentEmpresaId);
+  await assertTurnShiftRateModalidadAvailableForContract(
+    normalized.contrato_id,
+    normalized.modalidad_id
+  );
+  await assertTurnShiftRateOverlap({
+    contrato_id: normalized.contrato_id,
+    empresa_id: currentEmpresaId,
+    modalidad_id: normalized.modalidad_id,
+    tipo_turno: normalized.tipo_turno,
+    vigente_desde: normalized.vigencia_desde,
+    vigencia_hasta: normalized.vigencia_hasta,
+    exclude_id: rateId,
+    should_validate: normalized.activo
+  });
+
+  await dbQuery(
+    `
+      UPDATE nomina_movimiento_tarifas
+      SET
+        contrato_id = $1::bigint,
+        tipo_movimiento = $2,
+        modalidad_id = $3::bigint,
+        vigencia_desde = $4::date,
+        vigencia_hasta = $5::date,
+        valor_unitario = $6::numeric,
+        observacion = $7,
+        activo = $8,
+        updated_at = NOW(),
+        updated_by = $9::bigint
+      WHERE id = $10::bigint
+    `,
+    [
+      normalized.contrato_id,
+      TURN_SHIFT_TIPO_MOVIMIENTO[normalized.tipo_turno],
+      normalized.modalidad_id,
+      normalized.vigencia_desde,
+      normalized.vigencia_hasta,
+      normalized.valor,
+      normalized.observacion,
+      normalized.activo,
+      actorUserId,
+      rateId
+    ]
+  );
+
+  const updated = mapTurnShiftRate(await loadTurnShiftRateRowOrThrow(rateId, tenant));
+  await registerAuditEntry({
+    accion: 'UPDATE',
+    tabla: 'nomina_movimiento_tarifas',
+    registro_id: String(rateId),
+    descripcion: 'Tarifa de turnos actualizada',
+    contrato_id: String(updated.contrato_id),
+    empresa_id: String(currentEmpresaId),
+    before: current,
+    after: updated,
+    usuario_id: actorUserId,
+    ...auditMeta
+  });
+
+  return updated;
+};
 export const previewSalaryCategoryAssignment = async (
 
   empresaId: number,
@@ -3214,7 +3657,7 @@ export const applySalaryCategoryAssignment = async (
 
         registro_id: row.nomina_empleado_id,
 
-        descripcion: input.observacion ?? `${accionCategoria} categoría salarial manual`,
+        descripcion: input.observacion ?? `${accionCategoria} categoria salarial manual`,
 
         contrato_id: String(periodo.contrato_id),
 
@@ -3294,9 +3737,9 @@ export const applySalaryCategoryAssignment = async (
 
       mensaje: category
 
-        ? `Se asignaron ${changedRows.length} trabajadores a la categoría ${category.codigo_categoria}. Recalcula el periodo cuando termines de configurar y asignar todas las categorías.`
+        ? `Se asignaron ${changedRows.length} trabajadores a la categoria ${category.codigo_categoria}. Recalcula el periodo cuando termines de configurar y asignar todas las categorias.`
 
-        : `Se retiró la categoría salarial a ${changedRows.length} trabajadores. Recalcula el periodo cuando termines de configurar y asignar todas las categorías.`,
+        : `Se retiro la categoria salarial a ${changedRows.length} trabajadores. Recalcula el periodo cuando termines de configurar y asignar todas las categorias.`,
 
       control
 

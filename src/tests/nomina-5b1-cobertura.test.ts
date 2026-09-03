@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { calculateCoberturaPayroll } from '../modules/nomina/nomina.cobertura';
 
 const migration = readFileSync(resolve('sql/phase-35-nomina-5b1-cobertura-externos.sql'), 'utf8');
+const syncMigration = readFileSync(resolve('sql/phase-36-3-nomina-cobertura-cuentas-sync.sql'), 'utf8');
 const externalService = readFileSync(resolve('src/modules/nomina/cobertura.externos.service.ts'), 'utf8');
 const nominaService = readFileSync(resolve('src/modules/nomina/nomina.service.ts'), 'utf8');
 const routes = readFileSync(resolve('src/modules/nomina/nomina.routes.ts'), 'utf8');
@@ -49,12 +50,36 @@ test('5B.1 separa documentos externos y cuenta de cobro de OPS', () => {
 });
 
 test('5B.1 cuenta de cobro solo consolida movimientos activos del periodo y contrato', () => {
-  assert.match(externalService, /nm\.periodo_id=\$2/);
-  assert.match(externalService, /np\.contrato_id=\$3/);
-  assert.match(externalService, /np\.contrato_empresa_id=\$4/);
-  assert.match(externalService, /nm\.activo=TRUE/);
-  assert.match(externalService, /COALESCE\(nm\.estado,'PENDIENTE'\) <> 'RECHAZADO'/);
-  assert.match(externalService, /COBERTURA_CUENTA_REGENERACION_REQUIERE_VERSION/);
+  assert.match(externalService, /WHERE nm\.externo_id = \$1::bigint/);
+  assert.match(externalService, /AND nm\.periodo_id = \$2::bigint/);
+  assert.match(externalService, /AND np\.contrato_id = \$3::bigint/);
+  assert.match(externalService, /AND np\.contrato_empresa_id = \$4::bigint/);
+  assert.match(externalService, /AND COALESCE\(nm\.activo, TRUE\) = TRUE/);
+  assert.match(externalService, /COALESCE\(nm\.estado, 'PENDIENTE'\) <> 'RECHAZADO'/);
+  assert.match(externalService, /syncCoberturaCuentaCobroExterna/);
+  assert.match(externalService, /syncCoberturaCuentasCobroExternasPeriodo/);
+  assert.doesNotMatch(externalService, /COBERTURA_CUENTA_REGENERACION_REQUIERE_VERSION/);
+});
+
+test('5B.1 detalle de cuenta conserva snapshot de tarifa, modalidad e institucion o sede', () => {
+  assert.match(syncMigration, /ADD COLUMN IF NOT EXISTS tarifa_config_id BIGINT/);
+  assert.match(syncMigration, /ADD COLUMN IF NOT EXISTS modalidad_id BIGINT/);
+  assert.match(syncMigration, /ADD COLUMN IF NOT EXISTS modalidad TEXT/);
+  assert.match(syncMigration, /ADD COLUMN IF NOT EXISTS institucion TEXT/);
+  assert.match(syncMigration, /ADD COLUMN IF NOT EXISTS sede TEXT/);
+  assert.match(externalService, /tarifa_config_id/);
+  assert.match(externalService, /modalidad/);
+  assert.match(externalService, /institucion/);
+  assert.match(externalService, /sede/);
+});
+
+test('5B.1 turno desde novedad resuelve snapshot tarifario y recalcula sin crear valores en cero', () => {
+  assert.match(nominaService, /insertNominaTurnMovementSnapshot/);
+  assert.match(nominaService, /refreshNominaTurnMovementSnapshot/);
+  assert.match(nominaService, /resolveNominaTurnMovementSnapshot/);
+  assert.match(nominaService, /syncCoberturaCuentasCobroExternasPeriodo/);
+  assert.match(nominaService, /await recalculateNominaPeriodo\(input\.periodo_id, \{ force: true \}/);
+  assert.doesNotMatch(nominaService, /'Turno externo de cobertura', externoId, actorUserId\]\s*\)\s*\)\.rows\[0\]\?\.id/);
 });
 
 test('5B.1 soporte de novedad tiene relacion inequivoca y no bloquea captura sin documento', () => {

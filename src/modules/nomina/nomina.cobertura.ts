@@ -26,6 +26,7 @@ export interface CoberturaTramoInput {
 }
 
 export interface CoberturaAdicionInternaInput {
+  afecta_seguridad_social?: boolean | null;
   aporta_pension: boolean;
   categoria: CoberturaCategoriaSnapshot;
   contexto?: Record<string, unknown> | null;
@@ -34,6 +35,7 @@ export interface CoberturaAdicionInternaInput {
   id?: string | null;
   observacion?: string | null;
   origen?: string | null;
+  valor_aplicado?: number | null;
 }
 
 export interface CoberturaCalculationInput {
@@ -300,12 +302,26 @@ const calculateAdicionInterna = (
   porcentajePension: number
 ): CoberturaAdicionInternaCalculada => {
   const diasTurno = countActualInclusiveDays(adicion.fecha_inicio, adicion.fecha_fin);
-  const salarioTurno = floorNominaValue((normalizeAmount(adicion.categoria.salario_base) / COBERTURA_DIAS_BASE_NOMINA) * diasTurno);
-  const recargoTurno = floorNominaValue((normalizeAmount(adicion.categoria.recargo_mensual) / COBERTURA_DIAS_BASE_NOMINA) * diasTurno);
-  const transporteTurno = floorNominaValue((normalizeAmount(adicion.categoria.auxilio_transporte) / COBERTURA_DIAS_BASE_NOMINA) * diasTurno);
-  const devengadoTurno = salarioTurno + recargoTurno + transporteTurno;
-  const saludTurno = roundUpToHundreds(salarioTurno * porcentajeSalud);
-  const pensionTurno = adicion.aporta_pension ? roundUpToHundreds(salarioTurno * porcentajePension) : 0;
+  const valorSnapshot =
+    adicion.valor_aplicado === null || adicion.valor_aplicado === undefined
+      ? null
+      : floorNominaValue(normalizeAmount(adicion.valor_aplicado));
+  const usaValorSnapshot = valorSnapshot !== null;
+  const salarioTurno = usaValorSnapshot
+    ? valorSnapshot
+    : floorNominaValue((normalizeAmount(adicion.categoria.salario_base) / COBERTURA_DIAS_BASE_NOMINA) * diasTurno);
+  const recargoTurno = usaValorSnapshot
+    ? 0
+    : floorNominaValue((normalizeAmount(adicion.categoria.recargo_mensual) / COBERTURA_DIAS_BASE_NOMINA) * diasTurno);
+  const transporteTurno = usaValorSnapshot
+    ? 0
+    : floorNominaValue((normalizeAmount(adicion.categoria.auxilio_transporte) / COBERTURA_DIAS_BASE_NOMINA) * diasTurno);
+  const devengadoTurno = usaValorSnapshot ? valorSnapshot : salarioTurno + recargoTurno + transporteTurno;
+  const baseSeguridadSocialTurno = adicion.afecta_seguridad_social === false ? 0 : salarioTurno;
+  const saludTurno = roundUpToHundreds(baseSeguridadSocialTurno * porcentajeSalud);
+  const pensionTurno = adicion.aporta_pension
+    ? roundUpToHundreds(baseSeguridadSocialTurno * porcentajePension)
+    : 0;
 
   return {
     ...adicion,

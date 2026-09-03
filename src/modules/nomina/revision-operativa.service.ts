@@ -10,6 +10,8 @@ import {
   syncNominaEmpleadoOperativoEstado,
   type NominaEmpleadoOperativoEstado
 } from './nomina.operativa';
+import { appendNominaCoberturaScope } from './nomina.procesos';
+import { appendTenantScopeConditions, buildSqlWhere } from './nomina.service';
 
 export type RevisionOperativaEstado = 'PENDIENTE' | 'REVISADO' | 'REQUIERE_REVISION';
 
@@ -63,15 +65,23 @@ const mapOperativeState = (
 });
 
 export async function listRevisionOperativa(periodoId: string, tenant?: TenantAccessContext) {
+  const params: unknown[] = [periodoId];
+  const conditions = ['ne.periodo_id = $1::bigint'];
+
+  appendNominaCoberturaScope(conditions, params, tenant);
+  appendTenantScopeConditions(conditions, params, tenant, 'v.contrato_id', 'v.empresa_id');
+
   const result = await dbPool.query(`
     SELECT ne.id::text AS nomina_empleado_id, ne.periodo_id::text, v.persona_id::text,
       v.id::text AS vinculacion_id, COALESCE(ro.estado_revision,'PENDIENTE') AS estado_revision,
       ro.revisado_por::text, ro.revisado_at, ro.invalidado_at, ro.motivo_invalidacion,
       ne.estado AS nomina_estado, ne.revisado AS nomina_revisado
-    FROM nomina_empleados ne JOIN vinculaciones v ON v.id=ne.vinculacion_id
+    FROM nomina_empleados ne
+    JOIN vinculaciones v ON v.id=ne.vinculacion_id
+    JOIN nomina_periodos np ON np.id=ne.periodo_id
     LEFT JOIN nomina_revision_operativa ro ON ro.periodo_id=ne.periodo_id AND ro.nomina_empleado_id=ne.id
-    WHERE ne.periodo_id=$1::bigint ORDER BY ne.id`, [periodoId]);
-  for (const row of result.rows) await assertTenantAccessForVinculacionId(tenant, row.vinculacion_id);
+    ${buildSqlWhere(conditions)}
+    ORDER BY ne.id`, params);
   return result.rows;
 }
 

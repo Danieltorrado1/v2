@@ -29,6 +29,7 @@ import {
   nominaDateRangesOverlap,
   projectNominaDateRangeToPeriodo,
   projectNominaCanonicalEventsToPeriodo,
+  resolveNominaEffectEventImpact,
   resolveNominaEfectosPorDia,
   type NominaEfectoCobertura,
   type NominaEfectoLiquidacion,
@@ -72,6 +73,7 @@ import {
   COBERTURA_PORCENTAJE_SALUD,
   calculateCoberturaPayroll
 } from './nomina.cobertura';
+import { syncCoberturaCuentasCobroExternasPeriodo } from './cobertura.externos.service';
 import {
   resolverTramosOperativos,
   type CambioOperativoDerivable,
@@ -1858,7 +1860,7 @@ const hasTenantContractAccess = (
   return empresaId !== null && tenant.empresaIds.includes(empresaId);
 };
 
-const appendTenantScopeConditions = (
+export const appendTenantScopeConditions = (
   conditions: string[],
   params: unknown[],
   tenant: TenantAccessContext | undefined,
@@ -1889,7 +1891,7 @@ const appendTenantScopeConditions = (
   conditions.push(`(${scopeConditions.join(' OR ')})`);
 };
 
-const buildSqlWhere = (conditions: string[]): string => {
+export const buildSqlWhere = (conditions: string[]): string => {
   return conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 };
 
@@ -4091,6 +4093,67 @@ const resolveNominaMovimientoTarifa = async (
   return result.rows[0] ?? null;
 };
 
+const isNominaTurnMovementType = (
+  tipoMovimiento: string
+): tipoMovimiento is 'TURNO_INTERNO' | 'TURNO_EXTERNO' =>
+  tipoMovimiento === 'TURNO_INTERNO' || tipoMovimiento === 'TURNO_EXTERNO';
+
+const resolveRequiredTurnMovementTarifa = async (
+  input: {
+    contrato_id: string;
+    empresa_id?: string | null;
+    contexto: NominaMovimientoContextRow;
+    fecha: string;
+    tipo_movimiento: 'TURNO_INTERNO' | 'TURNO_EXTERNO';
+  },
+  client: PoolClient
+): Promise<NominaMovimientoTarifaRow> => {
+  if (!input.contexto.modalidad_id) {
+    throw new AppError(
+      'No fue posible resolver la modalidad del turno para calcular su tarifa',
+      409,
+      'TURNO_MODALIDAD_NO_RESUELTA',
+      {
+        contrato_id: input.contrato_id,
+        empresa_id: input.empresa_id ?? null,
+        fecha: input.fecha,
+        tipo_movimiento: input.tipo_movimiento
+      }
+    );
+  }
+
+  const tarifa = await resolveNominaMovimientoTarifa(
+    {
+      contrato_id: input.contrato_id,
+      fecha: input.fecha,
+      tipo_movimiento: input.tipo_movimiento,
+      municipio_id: input.contexto.municipio_id,
+      institucion_id: input.contexto.institucion_id,
+      sede_id: input.contexto.sede_id,
+      modalidad_id: input.contexto.modalidad_id
+    },
+    client
+  );
+
+  if (!tarifa) {
+    throw new AppError(
+      'No existe una tarifa vigente configurada para el turno',
+      409,
+      'TURNO_TARIFA_NO_CONFIGURADA',
+      {
+        contrato_id: input.contrato_id,
+        empresa_id: input.empresa_id ?? null,
+        fecha: input.fecha,
+        modalidad: input.contexto.contexto_modalidad ?? null,
+        modalidad_id: input.contexto.modalidad_id,
+        tipo_movimiento: input.tipo_movimiento
+      }
+    );
+  }
+
+  return tarifa;
+};
+
 const buildNominaMovimientoAlerts = async (
   input: {
     fecha: string;
@@ -4217,6 +4280,286 @@ const buildNominaMovimientoAlerts = async (
     alerts,
     posible_duplicado: posibleDuplicado
   };
+};
+
+const resolveNominaTurnMovementSnapshot = async (
+  input: {
+    cantidad: number | null | undefined;
+    contrato_id: string;
+    empresa_id?: string | null;
+    fecha: string;
+    tipo_movimiento: 'TURNO_INTERNO' | 'TURNO_EXTERNO';
+    vinculacion_reemplazada_id?: string | null;
+  },
+  client: PoolClient
+) => {
+  const contexto = await resolveNominaMovimientoContext(
+    {
+      fecha: input.fecha,
+      vinculacion_reemplazada_id: input.vinculacion_reemplazada_id ?? null
+    },
+    client
+  );
+  const tarifa = await resolveRequiredTurnMovementTarifa(
+    {
+      contrato_id: input.contrato_id,
+      empresa_id: input.empresa_id ?? null,
+      fecha: input.fecha,
+      tipo_movimiento: input.tipo_movimiento,
+      contexto
+    },
+    client
+  );
+  const resolvedValues = resolveNominaMovimientoValue({
+    cantidad: input.cantidad,
+    valor_unitario: toNumberValue(tarifa.valor_unitario)
+  });
+  return {
+    contexto,
+    tarifa,
+    resolvedValues
+  };
+};
+
+const insertNominaTurnMovementSnapshot = async (
+  input: {
+    actorUserId: string;
+    cantidad?: number | null;
+    contrato_id: string;
+    descripcion?: string | null;
+    empresa_id?: string | null;
+    estado: 'APROBADO' | 'PENDIENTE';
+    externo_id?: string | null;
+    fecha: string;
+    nomina_empleado_id: string;
+    periodo_id: string;
+    persona_reemplazada_id?: string | null;
+    tipo_movimiento: 'TURNO_INTERNO' | 'TURNO_EXTERNO';
+    vinculacion_id: string;
+    vinculacion_reemplazada_id?: string | null;
+  },
+  client: PoolClient
+) => {
+  const snapshot = await resolveNominaTurnMovementSnapshot(
+    {
+      cantidad: input.cantidad ?? 1,
+      contrato_id: input.contrato_id,
+      empresa_id: input.empresa_id ?? null,
+      fecha: input.fecha,
+      tipo_movimiento: input.tipo_movimiento,
+      vinculacion_reemplazada_id: input.vinculacion_reemplazada_id ?? null
+    },
+    client
+  );
+
+  const result = await client.query<{ id: string }>(
+    `
+      INSERT INTO nomina_movimientos (
+        periodo_id,
+        nomina_empleado_id,
+        vinculacion_id,
+        fecha,
+        tipo_movimiento,
+        familia_movimiento,
+        estado,
+        descripcion,
+        cantidad,
+        valor_unitario,
+        valor_calculado,
+        valor_total,
+        persona_reemplazada_id,
+        vinculacion_reemplazada_id,
+        externo_id,
+        municipio_id,
+        institucion_id,
+        sede_id,
+        modalidad_id,
+        contexto_municipio,
+        contexto_institucion,
+        contexto_sede,
+        contexto_modalidad,
+        tarifa_config_id,
+        alertas_validacion,
+        posible_duplicado,
+        es_devengado,
+        es_deduccion,
+        afecta_seguridad_social,
+        activo,
+        updated_by,
+        aprobado_por,
+        aprobado_at
+      )
+      VALUES (
+        $1::bigint,
+        $2::bigint,
+        $3::bigint,
+        $4::date,
+        $5,
+        'ADICION_DEVENGO',
+        $6,
+        $7,
+        $8,
+        $9,
+        $10,
+        $11,
+        $12::bigint,
+        $13::bigint,
+        $14::bigint,
+        $15::bigint,
+        $16::bigint,
+        $17::bigint,
+        $18::bigint,
+        $19,
+        $20,
+        $21,
+        $22,
+        $23::bigint,
+        '[]'::jsonb,
+        FALSE,
+        TRUE,
+        FALSE,
+        $24,
+        TRUE,
+        $25::bigint,
+        CASE WHEN $6 = 'APROBADO' THEN $25::bigint ELSE NULL END,
+        CASE WHEN $6 = 'APROBADO' THEN NOW() ELSE NULL END
+      )
+      RETURNING id::text AS id
+    `,
+    [
+      input.periodo_id,
+      input.nomina_empleado_id,
+      input.vinculacion_id,
+      input.fecha,
+      input.tipo_movimiento,
+      input.estado,
+      input.descripcion ?? null,
+      snapshot.resolvedValues.cantidad,
+      snapshot.resolvedValues.valor_unitario,
+      snapshot.resolvedValues.valor_calculado,
+      snapshot.resolvedValues.valor_aplicado,
+      input.persona_reemplazada_id ?? null,
+      input.vinculacion_reemplazada_id ?? null,
+      input.externo_id ?? null,
+      snapshot.contexto.municipio_id,
+      snapshot.contexto.institucion_id,
+      snapshot.contexto.sede_id,
+      snapshot.contexto.modalidad_id,
+      snapshot.contexto.contexto_municipio,
+      snapshot.contexto.contexto_institucion,
+      snapshot.contexto.contexto_sede,
+      snapshot.contexto.contexto_modalidad,
+      snapshot.tarifa.id,
+      input.tipo_movimiento === 'TURNO_INTERNO',
+      input.actorUserId
+    ]
+  );
+
+  const movementId = result.rows[0]?.id;
+  if (!movementId) {
+    throw new AppError(
+      'No fue posible crear el movimiento de turno',
+      500,
+      'NOMINA_TURNO_MOVIMIENTO_CREATE_FAILED'
+    );
+  }
+  return movementId;
+};
+
+const refreshNominaTurnMovementSnapshot = async (
+  movimientoId: string,
+  input: {
+    actorUserId: string;
+    cantidad?: number | null;
+    contrato_id: string;
+    descripcion?: string | null;
+    empresa_id?: string | null;
+    estado: 'APROBADO' | 'PENDIENTE';
+    externo_id?: string | null;
+    fecha: string;
+    persona_reemplazada_id?: string | null;
+    tipo_movimiento: 'TURNO_INTERNO' | 'TURNO_EXTERNO';
+    vinculacion_reemplazada_id?: string | null;
+  },
+  client: PoolClient
+) => {
+  const snapshot = await resolveNominaTurnMovementSnapshot(
+    {
+      cantidad: input.cantidad ?? 1,
+      contrato_id: input.contrato_id,
+      empresa_id: input.empresa_id ?? null,
+      fecha: input.fecha,
+      tipo_movimiento: input.tipo_movimiento,
+      vinculacion_reemplazada_id: input.vinculacion_reemplazada_id ?? null
+    },
+    client
+  );
+
+  await client.query(
+    `
+      UPDATE nomina_movimientos
+      SET
+        fecha = $2::date,
+        tipo_movimiento = $3,
+        familia_movimiento = 'ADICION_DEVENGO',
+        estado = $4,
+        descripcion = $5,
+        cantidad = $6,
+        valor_unitario = $7,
+        valor_calculado = $8,
+        valor_total = $9,
+        persona_reemplazada_id = $10::bigint,
+        vinculacion_reemplazada_id = $11::bigint,
+        externo_id = $12::bigint,
+        municipio_id = $13::bigint,
+        institucion_id = $14::bigint,
+        sede_id = $15::bigint,
+        modalidad_id = $16::bigint,
+        contexto_municipio = $17,
+        contexto_institucion = $18,
+        contexto_sede = $19,
+        contexto_modalidad = $20,
+        tarifa_config_id = $21::bigint,
+        es_devengado = TRUE,
+        es_deduccion = FALSE,
+        afecta_seguridad_social = $22,
+        activo = TRUE,
+        alertas_validacion = '[]'::jsonb,
+        posible_duplicado = FALSE,
+        aprobado_por = CASE WHEN $4 = 'APROBADO' THEN $23::bigint ELSE NULL END,
+        aprobado_at = CASE WHEN $4 = 'APROBADO' THEN NOW() ELSE NULL END,
+        rechazado_por = NULL,
+        rechazado_at = NULL,
+        updated_at = NOW(),
+        updated_by = $23::bigint
+      WHERE id = $1::bigint
+    `,
+    [
+      movimientoId,
+      input.fecha,
+      input.tipo_movimiento,
+      input.estado,
+      input.descripcion ?? null,
+      snapshot.resolvedValues.cantidad,
+      snapshot.resolvedValues.valor_unitario,
+      snapshot.resolvedValues.valor_calculado,
+      snapshot.resolvedValues.valor_aplicado,
+      input.persona_reemplazada_id ?? null,
+      input.vinculacion_reemplazada_id ?? null,
+      input.externo_id ?? null,
+      snapshot.contexto.municipio_id,
+      snapshot.contexto.institucion_id,
+      snapshot.contexto.sede_id,
+      snapshot.contexto.modalidad_id,
+      snapshot.contexto.contexto_municipio,
+      snapshot.contexto.contexto_institucion,
+      snapshot.contexto.contexto_sede,
+      snapshot.contexto.contexto_modalidad,
+      snapshot.tarifa.id,
+      input.tipo_movimiento === 'TURNO_INTERNO',
+      input.actorUserId
+    ]
+  );
 };
 
 const validateNovedadInputAgainstTipo = (
@@ -6537,6 +6880,8 @@ export const recalculateNominaPeriodo = async (
       movimientos_devengados: number | string | null;
       movimientos_deducciones: number | string | null;
       movimientos_ss_devengados: number | string | null;
+      movimientos_turnos_internos_devengados: number | string | null;
+      movimientos_turnos_internos_ss_devengados: number | string | null;
       nomina_empleado_id: string;
     }>(
       `
@@ -6546,7 +6891,7 @@ export const recalculateNominaPeriodo = async (
             WHERE COALESCE(activo, TRUE) = TRUE
               AND COALESCE(estado, 'APROBADO') = 'APROBADO'
               AND COALESCE(es_devengado, TRUE) = TRUE
-              AND tipo_movimiento <> 'TURNO_INTERNO'
+              AND tipo_movimiento NOT IN ('TURNO_INTERNO', 'TURNO_EXTERNO')
           ), 0) AS movimientos_devengados,
           COALESCE(SUM(valor_total) FILTER (
             WHERE COALESCE(activo, TRUE) = TRUE
@@ -6558,8 +6903,21 @@ export const recalculateNominaPeriodo = async (
               AND COALESCE(estado, 'APROBADO') = 'APROBADO'
               AND COALESCE(es_devengado, TRUE) = TRUE
               AND COALESCE(afecta_seguridad_social, TRUE) = TRUE
-              AND tipo_movimiento <> 'TURNO_INTERNO'
-          ), 0) AS movimientos_ss_devengados
+              AND tipo_movimiento NOT IN ('TURNO_INTERNO', 'TURNO_EXTERNO')
+          ), 0) AS movimientos_ss_devengados,
+          COALESCE(SUM(valor_total) FILTER (
+            WHERE COALESCE(activo, TRUE) = TRUE
+              AND COALESCE(estado, 'APROBADO') = 'APROBADO'
+              AND COALESCE(es_devengado, TRUE) = TRUE
+              AND tipo_movimiento = 'TURNO_INTERNO'
+          ), 0) AS movimientos_turnos_internos_devengados,
+          COALESCE(SUM(valor_total) FILTER (
+            WHERE COALESCE(activo, TRUE) = TRUE
+              AND COALESCE(estado, 'APROBADO') = 'APROBADO'
+              AND COALESCE(es_devengado, TRUE) = TRUE
+              AND COALESCE(afecta_seguridad_social, TRUE) = TRUE
+              AND tipo_movimiento = 'TURNO_INTERNO'
+          ), 0) AS movimientos_turnos_internos_ss_devengados
         FROM nomina_movimientos
         WHERE periodo_id = $1::bigint
         GROUP BY nomina_empleado_id
@@ -6621,7 +6979,9 @@ export const recalculateNominaPeriodo = async (
       fecha_fin: string;
       fecha_inicio: string;
       id: string;
+      movimiento_afecta_seguridad_social: boolean | null;
       movimiento_id: string | null;
+      movimiento_valor_aplicado: number | string | null;
       nomina_novedad_id: string;
       nomina_empleado_id: string;
       titular_nombre: string | null;
@@ -6642,6 +7002,8 @@ export const recalculateNominaPeriodo = async (
         SELECT
           nnt.id::text AS id,
           nnt.movimiento_id::text AS movimiento_id,
+          nm.valor_total AS movimiento_valor_aplicado,
+          nm.afecta_seguridad_social AS movimiento_afecta_seguridad_social,
           nnt.nomina_empleado_id::text AS nomina_empleado_id,
           nnt.nomina_novedad_id::text AS nomina_novedad_id,
           CONCAT_WS(' ', titular_p.primer_nombre, titular_p.segundo_nombre, titular_p.primer_apellido, titular_p.segundo_apellido) AS titular_nombre,
@@ -6668,6 +7030,7 @@ export const recalculateNominaPeriodo = async (
         LEFT JOIN personas titular_p ON titular_p.id = titular_v.persona_id
         LEFT JOIN nomina_tipos_novedad nt ON nt.id = nn.tipo_novedad_id
         LEFT JOIN nomina_categorias_salariales ncs ON ncs.id = titular_ne.categoria_salarial_id
+        LEFT JOIN nomina_movimientos nm ON nm.id = nnt.movimiento_id
         WHERE nnt.periodo_id = $1::bigint
           AND nnt.tipo_turno = 'INTERNO'
           AND COALESCE(nnt.activo, TRUE) = TRUE
@@ -6905,6 +7268,12 @@ export const recalculateNominaPeriodo = async (
       const totalMovimientosDevengados = toNumberValue(movimientosEmpleado?.movimientos_devengados);
       const totalMovimientosDeducciones = toNumberValue(movimientosEmpleado?.movimientos_deducciones);
       const totalMovimientosSsDevengados = toNumberValue(movimientosEmpleado?.movimientos_ss_devengados);
+      const totalTurnosInternosDevengados = toNumberValue(
+        movimientosEmpleado?.movimientos_turnos_internos_devengados
+      );
+      const totalTurnosInternosSsDevengados = toNumberValue(
+        movimientosEmpleado?.movimientos_turnos_internos_ss_devengados
+      );
 
       const employmentRange: NominaEmploymentDateRange = {
         start: toDateString(empleadoRow.fecha_inicio_pago) ?? periodoRange.start,
@@ -6990,6 +7359,73 @@ export const recalculateNominaPeriodo = async (
           }
         );
       }
+
+      const valorDiaSalario = Number((salarioBase / 30).toFixed(2));
+      const valorDiaTransporte = Number((auxilioTransporte / 30).toFixed(2));
+      const valorDiaRecargo = Number((otrosDevengos / 30).toFixed(2));
+      const novedadesEconomicas = effectEvents.flatMap((event) => {
+        const impact = resolveNominaEffectEventImpact({
+          event,
+          periodo: periodoRange,
+          employment: employmentRange
+        });
+
+        if (!impact.projected_range || impact.dias_periodo <= 0) {
+          return [];
+        }
+
+        const descuentoSalario = Number((valorDiaSalario * impact.dias_salario_descuento).toFixed(2));
+        const descuentoTransporte = Number((valorDiaTransporte * impact.dias_transporte_descuento).toFixed(2));
+        const descuentoRecargo = Number((valorDiaRecargo * impact.dias_recargo_excluido).toFixed(2));
+
+        return [{
+          origen: event.origen,
+          fuente_id: event.fuente_id,
+          codigo: event.matrix.codigo_operativo,
+          nombre: event.matrix.nombre,
+          fecha_inicio: impact.fecha_inicio,
+          fecha_fin: impact.fecha_fin,
+          fecha_inicio_periodo: impact.projected_range.fecha_inicio,
+          fecha_fin_periodo: impact.projected_range.fecha_fin,
+          dias: impact.dias_evento,
+          dias_periodo: impact.dias_periodo,
+          afecta_salario: impact.dias_salario_descuento > 0,
+          afecta_transporte: impact.dias_transporte_descuento > 0,
+          afecta_recargo: impact.dias_recargo_excluido > 0,
+          dias_salario: impact.dias_salario_descuento,
+          dias_transporte: impact.dias_transporte_descuento,
+          dias_recargo: impact.dias_recargo_excluido,
+          descuento_salario: descuentoSalario,
+          descuento_transporte: descuentoTransporte,
+          descuento_recargo: descuentoRecargo,
+          efecto_salario: event.matrix.efecto_salario,
+          efecto_transporte: event.matrix.efecto_transporte,
+          efecto_recargo: event.matrix.efecto_recargos,
+          regla_mayor_tres_dias_aplicada: impact.aplica_regla_recargo_mayor_tres_dias,
+          recargo_excluido_por_configuracion: impact.recargo_excluido_por_configuracion
+        }];
+      });
+      const resumenNovedadesEconomicas = novedadesEconomicas.reduce(
+        (accumulator, item) => ({
+          descuento_salario: Number((accumulator.descuento_salario + item.descuento_salario).toFixed(2)),
+          descuento_transporte: Number((accumulator.descuento_transporte + item.descuento_transporte).toFixed(2)),
+          descuento_recargo: Number((accumulator.descuento_recargo + item.descuento_recargo).toFixed(2)),
+          dias_salario: accumulator.dias_salario + item.dias_salario,
+          dias_transporte: accumulator.dias_transporte + item.dias_transporte,
+          dias_recargo: accumulator.dias_recargo + item.dias_recargo,
+          regla_mayor_tres_dias_activa:
+            accumulator.regla_mayor_tres_dias_activa || item.regla_mayor_tres_dias_aplicada
+        }),
+        {
+          descuento_salario: 0,
+          descuento_transporte: 0,
+          descuento_recargo: 0,
+          dias_salario: 0,
+          dias_transporte: 0,
+          dias_recargo: 0,
+          regla_mayor_tres_dias_activa: false
+        }
+      );
 
       let diasDescuentoSalario = 0;
       let diasDescuentoTransporte = 0;
@@ -7112,6 +7548,8 @@ export const recalculateNominaPeriodo = async (
             observacion: turnoRow.observacion,
             contexto: turnoContexto,
             aporta_pension: resolveAportaPension(empleadoRow.vinculacion_id, turnoRow.fecha_inicio),
+            afecta_seguridad_social: turnoRow.movimiento_afecta_seguridad_social,
+            valor_aplicado: toOptionalNumberValue(turnoRow.movimiento_valor_aplicado),
             categoria: categoriaTurnoSnapshot
           };
         });
@@ -7165,12 +7603,17 @@ export const recalculateNominaPeriodo = async (
             pension_adiciones_internas: coberturaResult.pension_adiciones_internas,
             descuentos_autorizados: coberturaResult.descuentos_autorizados,
             otros_devengos_reales: coberturaResult.otros_devengos_reales,
+            turnos_internos: totalAdicionesInternasDevengado,
             otras_deducciones_reales: coberturaResult.otras_deducciones_reales,
             total_devengado: coberturaResult.total_devengado,
             total_deducciones: coberturaResult.total_deducciones,
             neto_nomina: coberturaResult.neto_nomina
           },
           auditoria: coberturaResult.auditoria,
+          novedades: {
+            resumen: resumenNovedadesEconomicas,
+            items: novedadesEconomicas
+          },
           adiciones_internas: coberturaResult.adiciones_internas
         };
         const saludTotal = coberturaResult.salud_ordinaria + coberturaResult.salud_adiciones_internas;
@@ -7180,25 +7623,6 @@ export const recalculateNominaPeriodo = async (
           coberturaResult.recargos_ordinarios +
           coberturaResult.otros_devengos_reales +
           totalAdicionesInternasDevengado;
-
-        for (const adicion of coberturaResult.adiciones_internas) {
-          const turno = (turnosInternosCoberturaByEmpleado.get(empleadoRow.id) ?? [])
-            .find((item) => item.id === adicion.id);
-          if (!turno?.movimiento_id) continue;
-          const diasTurno = Math.max(1, adicion.dias_turno);
-          await client.query(
-            `UPDATE nomina_movimientos
-             SET cantidad = $2,
-                 valor_unitario = $3,
-                 valor_calculado = $4,
-                 valor_total = $4,
-                 es_devengado = TRUE,
-                 es_deduccion = FALSE,
-                 afecta_seguridad_social = TRUE
-             WHERE id = $1::bigint AND tipo_movimiento = 'TURNO_INTERNO'`,
-            [turno.movimiento_id, diasTurno, adicion.devengado_turno / diasTurno, adicion.devengado_turno]
-          );
-        }
 
         await client.query(
           `
@@ -7248,9 +7672,20 @@ export const recalculateNominaPeriodo = async (
       const devengadoBasico = Number(((salarioBase / 30) * diasPagadosSalario).toFixed(2));
       const devengadoTransporte = Number(((auxilioTransporte / 30) * diasPagadosTransporte).toFixed(2));
       const otrosDevengosProrrateado = Number(((otrosDevengos / 30) * diasPagadosOtrosRecargos).toFixed(2));
-      const devengadoOtros = Number((otrosDevengosProrrateado + totalMovimientosDevengados).toFixed(2));
+      const devengadoOtros = Number(
+        (
+          otrosDevengosProrrateado +
+          totalMovimientosDevengados +
+          totalTurnosInternosDevengados
+        ).toFixed(2)
+      );
       const baseSeguridadSocial = Number(
-        (devengadoBasico + otrosDevengosProrrateado + totalMovimientosSsDevengados).toFixed(2)
+        (
+          devengadoBasico +
+          otrosDevengosProrrateado +
+          totalMovimientosSsDevengados +
+          totalTurnosInternosSsDevengados
+        ).toFixed(2)
       );
       const salud = Number((baseSeguridadSocial * 0.04).toFixed(2));
       const pension = Number((baseSeguridadSocial * 0.04).toFixed(2));
@@ -7272,8 +7707,16 @@ export const recalculateNominaPeriodo = async (
         },
         componentes: {
           salario_base: salarioBase,
+          auxilio_transporte: auxilioTransporte,
+          recargo_mensual: otrosDevengos,
+          valor_dia_salario: valorDiaSalario,
+          valor_dia_transporte: valorDiaTransporte,
+          valor_dia_recargo: valorDiaRecargo,
           devengado_basico: devengadoBasico,
           devengado_transporte: devengadoTransporte,
+          recargo_prorrateado: otrosDevengosProrrateado,
+          otros_devengos_movimientos: totalMovimientosDevengados,
+          turnos_internos: totalTurnosInternosDevengados,
           devengado_otros: devengadoOtros,
           salud,
           pension,
@@ -7285,8 +7728,13 @@ export const recalculateNominaPeriodo = async (
           descuentos_salario: diasDescuentoSalario,
           descuentos_transporte: diasDescuentoTransporte,
           descuentos_recargos: diasDescuentoOtrosRecargos,
+          descuento_salario_valor: resumenNovedadesEconomicas.descuento_salario,
+          descuento_transporte_valor: resumenNovedadesEconomicas.descuento_transporte,
+          descuento_recargo_valor: resumenNovedadesEconomicas.descuento_recargo,
+          regla_mayor_tres_dias_activa: resumenNovedadesEconomicas.regla_mayor_tres_dias_activa,
           adiciones_manuales: adicionesNovedad,
-          deducciones_manuales: deduccionesNovedadManual
+          deducciones_manuales: deduccionesNovedadManual,
+          items: novedadesEconomicas
         }
       };
 
@@ -7323,6 +7771,14 @@ export const recalculateNominaPeriodo = async (
         ]
       );
     }
+
+    await syncCoberturaCuentasCobroExternasPeriodo(
+      Number(periodoId),
+      actorUserId,
+      tenant,
+      auditMeta,
+      client
+    );
 
     const recalculationPayload = {
       empleados_procesados: empleadosResult.rows.length,
@@ -7371,6 +7827,14 @@ export const getNominaAsistenciaByPeriodo = async (
 
   const params: unknown[] = [periodoId];
   const conditions = ['nad.periodo_id = $1::bigint'];
+  const attendanceFromSql = `
+    FROM nomina_asistencia_diaria nad
+    INNER JOIN nomina_periodos np ON np.id = nad.periodo_id
+    INNER JOIN vinculaciones v ON v.id = nad.vinculacion_id
+  `;
+
+  appendNominaCoberturaScope(conditions, params, tenant);
+  appendTenantScopeConditions(conditions, params, tenant, 'v.contrato_id', 'v.empresa_id');
 
   if (query.vinculacion_id) {
     params.push(query.vinculacion_id);
@@ -7396,7 +7860,7 @@ export const getNominaAsistenciaByPeriodo = async (
   const countResult = await dbQuery<CountRow>(
     `
       SELECT COUNT(*)::int AS total
-      FROM nomina_asistencia_diaria nad
+      ${attendanceFromSql}
       ${whereSql}
     `,
     params
@@ -7954,6 +8418,7 @@ export const createNominaMovimiento = async (
   auditMeta?: AuditRequestMeta
 ): Promise<NominaMovimiento> => {
   const client = await dbPool.connect();
+  let shouldRecalculate = false;
 
   try {
     await client.query('BEGIN');
@@ -7978,8 +8443,9 @@ export const createNominaMovimiento = async (
     const familiaMovimiento =
       input.familia_movimiento ?? resolveNominaMovimientoFamilia(input.tipo_movimiento);
     const estadoMovimiento = normalizeNominaMovimientoEstado(input.estado);
+    const isTurnMovement = isNominaTurnMovementType(input.tipo_movimiento);
 
-    if ((input.tipo_movimiento === 'TURNO_EXTERNO' || input.tipo_movimiento === 'TURNO_INTERNO') && !fechaMovimiento) {
+    if (isTurnMovement && !fechaMovimiento) {
       throw new AppError(
         'fecha is required for payroll turn movements',
         400,
@@ -8076,27 +8542,47 @@ export const createNominaMovimiento = async (
     const tarifa =
       fechaMovimiento === null
         ? null
-        : await resolveNominaMovimientoTarifa(
-            {
-              contrato_id: periodo.contrato_id,
-              fecha: fechaMovimiento,
-              tipo_movimiento: input.tipo_movimiento,
-              municipio_id: contexto.municipio_id,
-              institucion_id: contexto.institucion_id,
-              sede_id: contexto.sede_id,
-              modalidad_id: contexto.modalidad_id
-            },
-            client
-          );
+        : isTurnMovement
+          ? await resolveRequiredTurnMovementTarifa(
+              {
+                contrato_id: periodo.contrato_id,
+                empresa_id: periodo.contrato_empresa_id,
+                fecha: fechaMovimiento,
+                tipo_movimiento: input.tipo_movimiento as 'TURNO_INTERNO' | 'TURNO_EXTERNO',
+                contexto
+              },
+              client
+            )
+          : await resolveNominaMovimientoTarifa(
+              {
+                contrato_id: periodo.contrato_id,
+                fecha: fechaMovimiento,
+                tipo_movimiento: input.tipo_movimiento as 'TURNO_INTERNO' | 'TURNO_EXTERNO',
+                municipio_id: contexto.municipio_id,
+                institucion_id: contexto.institucion_id,
+                sede_id: contexto.sede_id,
+                modalidad_id: contexto.modalidad_id
+              },
+              client
+            );
 
-    const resolvedValues = resolveNominaMovimientoValue({
-      cantidad: input.cantidad,
-      valor_aplicado: input.valor_aplicado ?? input.valor_total,
-      valor_calculado: input.valor_calculado,
-      valor_unitario:
-        input.valor_unitario ?? (tarifa ? toNumberValue(tarifa.valor_unitario) : null),
-      motivo_ajuste_valor: input.motivo_ajuste_valor
-    });
+    const resolvedValues = isTurnMovement
+      ? resolveNominaMovimientoValue({
+          cantidad: input.cantidad,
+          valor_unitario: tarifa ? toNumberValue(tarifa.valor_unitario) : null
+        })
+      : resolveNominaMovimientoValue({
+          cantidad: input.cantidad,
+          valor_aplicado: input.valor_aplicado ?? input.valor_total,
+          valor_calculado: input.valor_calculado,
+          valor_unitario:
+            input.valor_unitario ?? (tarifa ? toNumberValue(tarifa.valor_unitario) : null),
+          motivo_ajuste_valor: input.motivo_ajuste_valor
+        });
+
+    const afectaSeguridadSocialMovimiento = isTurnMovement
+      ? input.tipo_movimiento === 'TURNO_INTERNO'
+      : input.afecta_seguridad_social;
 
     let movimientoAlerts: NominaMovimientoAlerta[] = [];
     let posibleDuplicado = false;
@@ -8115,7 +8601,7 @@ export const createNominaMovimiento = async (
       posibleDuplicado = alertResolution.posible_duplicado;
     }
 
-    if (familiaMovimiento === 'ADICION_DEVENGO' && !tarifa) {
+    if (familiaMovimiento === 'ADICION_DEVENGO' && !tarifa && !isTurnMovement) {
       movimientoAlerts = appendNominaMovimientoAlert(movimientoAlerts, {
         tipo: 'CONFIGURACION_TARIFA_FALTANTE',
         severidad: 'WARNING',
@@ -8264,7 +8750,7 @@ export const createNominaMovimiento = async (
         rechazadoAt,
         input.es_devengado,
         input.es_deduccion,
-        input.afecta_seguridad_social,
+        afectaSeguridadSocialMovimiento,
         input.activo,
         actorUserId
       ]
@@ -8283,6 +8769,7 @@ export const createNominaMovimiento = async (
     const created = mapRealMovimiento(
       await loadNominaMovimientoByIdOrThrow(createdId, tenant, client)
     );
+    shouldRecalculate = isTurnMovement;
 
     await registerAuditEntry({
       client,
@@ -8297,6 +8784,9 @@ export const createNominaMovimiento = async (
     });
 
     await client.query('COMMIT');
+    if (shouldRecalculate) {
+      await recalculateNominaPeriodo(input.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
+    }
     return created;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -8450,6 +8940,7 @@ export const updateNominaMovimiento = async (
   auditMeta?: AuditRequestMeta
 ): Promise<NominaMovimiento> => {
   const client = await dbPool.connect();
+  let shouldRecalculate = false;
 
   try {
     await client.query('BEGIN');
@@ -8467,8 +8958,9 @@ export const updateNominaMovimiento = async (
       current.familia_movimiento ??
       resolveNominaMovimientoFamilia(nextTipoMovimiento);
     const nextEstado = normalizeNominaMovimientoEstado(input.estado ?? current.estado);
+    const isTurnMovement = isNominaTurnMovementType(nextTipoMovimiento);
 
-    if ((nextTipoMovimiento === 'TURNO_EXTERNO' || nextTipoMovimiento === 'TURNO_INTERNO') && !nextFecha) {
+    if (isTurnMovement && !nextFecha) {
       throw new AppError(
         'fecha is required for payroll turn movements',
         400,
@@ -8617,42 +9109,65 @@ export const updateNominaMovimiento = async (
     const tarifa =
       nextFecha === null
         ? null
-        : await resolveNominaMovimientoTarifa(
-            {
-              contrato_id: periodo.contrato_id,
-              fecha: nextFecha,
-              tipo_movimiento: nextTipoMovimiento,
-              municipio_id: contexto.municipio_id,
-              institucion_id: contexto.institucion_id,
-              sede_id: contexto.sede_id,
-              modalidad_id: contexto.modalidad_id
-            },
-            client
-          );
+        : isTurnMovement
+          ? await resolveRequiredTurnMovementTarifa(
+              {
+                contrato_id: periodo.contrato_id,
+                empresa_id: periodo.contrato_empresa_id,
+                fecha: nextFecha,
+                tipo_movimiento: nextTipoMovimiento as 'TURNO_INTERNO' | 'TURNO_EXTERNO',
+                contexto
+              },
+              client
+            )
+          : await resolveNominaMovimientoTarifa(
+              {
+                contrato_id: periodo.contrato_id,
+                fecha: nextFecha,
+                tipo_movimiento: nextTipoMovimiento as 'TURNO_INTERNO' | 'TURNO_EXTERNO',
+                municipio_id: contexto.municipio_id,
+                institucion_id: contexto.institucion_id,
+                sede_id: contexto.sede_id,
+                modalidad_id: contexto.modalidad_id
+              },
+              client
+            );
 
-    const resolvedValues = resolveNominaMovimientoValue({
-      cantidad:
-        input.cantidad !== undefined ? input.cantidad : toOptionalNumberValue(current.cantidad),
-      valor_aplicado:
-        input.valor_aplicado !== undefined
-          ? input.valor_aplicado
-          : input.valor_total !== undefined
-            ? input.valor_total
-            : current.valor_aplicado,
-      valor_calculado:
-        input.valor_calculado !== undefined
-          ? input.valor_calculado
-          : toOptionalNumberValue(current.valor_calculado),
-      valor_unitario:
-        input.valor_unitario !== undefined
-          ? input.valor_unitario
-          : toOptionalNumberValue(current.valor_unitario) ??
-            (tarifa ? toNumberValue(tarifa.valor_unitario) : null),
-      motivo_ajuste_valor:
-        input.motivo_ajuste_valor !== undefined
-          ? input.motivo_ajuste_valor
-          : current.motivo_ajuste_valor
-    });
+    const resolvedValues = isTurnMovement
+      ? resolveNominaMovimientoValue({
+          cantidad:
+            input.cantidad !== undefined ? input.cantidad : toOptionalNumberValue(current.cantidad),
+          valor_unitario: tarifa ? toNumberValue(tarifa.valor_unitario) : null
+        })
+      : resolveNominaMovimientoValue({
+          cantidad:
+            input.cantidad !== undefined ? input.cantidad : toOptionalNumberValue(current.cantidad),
+          valor_aplicado:
+            input.valor_aplicado !== undefined
+              ? input.valor_aplicado
+              : input.valor_total !== undefined
+                ? input.valor_total
+                : current.valor_aplicado,
+          valor_calculado:
+            input.valor_calculado !== undefined
+              ? input.valor_calculado
+              : toOptionalNumberValue(current.valor_calculado),
+          valor_unitario:
+            input.valor_unitario !== undefined
+              ? input.valor_unitario
+              : toOptionalNumberValue(current.valor_unitario) ??
+                (tarifa ? toNumberValue(tarifa.valor_unitario) : null),
+          motivo_ajuste_valor:
+            input.motivo_ajuste_valor !== undefined
+              ? input.motivo_ajuste_valor
+              : current.motivo_ajuste_valor
+        });
+
+    const afectaSeguridadSocialMovimiento = isTurnMovement
+      ? nextTipoMovimiento === 'TURNO_INTERNO'
+      : input.afecta_seguridad_social !== undefined
+        ? input.afecta_seguridad_social
+        : toBooleanValue(current.afecta_seguridad_social);
 
     let movimientoAlerts: NominaMovimientoAlerta[] = [];
     let posibleDuplicado = false;
@@ -8672,7 +9187,7 @@ export const updateNominaMovimiento = async (
       posibleDuplicado = alertResolution.posible_duplicado;
     }
 
-    if (nextFamilia === 'ADICION_DEVENGO' && !tarifa) {
+    if (nextFamilia === 'ADICION_DEVENGO' && !tarifa && !isTurnMovement) {
       movimientoAlerts = appendNominaMovimientoAlert(movimientoAlerts, {
         tipo: 'CONFIGURACION_TARIFA_FALTANTE',
         severidad: 'WARNING',
@@ -8773,14 +9288,14 @@ export const updateNominaMovimiento = async (
         actorUserId,
         input.es_devengado !== undefined ? input.es_devengado : toBooleanValue(current.es_devengado),
         input.es_deduccion !== undefined ? input.es_deduccion : toBooleanValue(current.es_deduccion),
-        input.afecta_seguridad_social !== undefined
-          ? input.afecta_seguridad_social
-          : toBooleanValue(current.afecta_seguridad_social),
+        afectaSeguridadSocialMovimiento,
         input.activo !== undefined ? input.activo : toBooleanValue(current.activo)
       ]
     );
 
     const updated = mapRealMovimiento(await loadNominaMovimientoByIdOrThrow(movimientoId, tenant, client));
+    shouldRecalculate =
+      isTurnMovement || isNominaTurnMovementType(current.tipo_movimiento);
 
     await registerAuditEntry({
       client,
@@ -8796,6 +9311,9 @@ export const updateNominaMovimiento = async (
     });
 
     await client.query('COMMIT');
+    if (shouldRecalculate) {
+      await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
+    }
     return updated;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -8869,6 +9387,7 @@ export const deactivateNominaMovimiento = async (
   auditMeta?: AuditRequestMeta
 ): Promise<NominaMovimiento> => {
   const client = await dbPool.connect();
+  let shouldRecalculate = false;
 
   try {
     await client.query('BEGIN');
@@ -8892,6 +9411,7 @@ export const deactivateNominaMovimiento = async (
     );
 
     const updated = mapRealMovimiento(await loadNominaMovimientoByIdOrThrow(movimientoId, tenant, client));
+    shouldRecalculate = isNominaTurnMovementType(current.tipo_movimiento);
 
     await registerAuditEntry({
       client,
@@ -8907,6 +9427,9 @@ export const deactivateNominaMovimiento = async (
     });
 
     await client.query('COMMIT');
+    if (shouldRecalculate) {
+      await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
+    }
     return updated;
   } catch (error) {
     await client.query('ROLLBACK');
@@ -9985,6 +10508,7 @@ export const createNominaNovedadConTurno = async (
   const client = await dbPool.connect();
   try {
     await client.query('BEGIN');
+    const periodo = await loadRealPeriodoOrThrow(input.periodo_id, tenant, client);
     const novedad = await createNominaNovedad(input, actorUserId, tenant, auditMeta, client);
     const titularResult = await client.query<{
       persona_id: string;
@@ -10078,6 +10602,7 @@ export const createNominaNovedadConTurno = async (
         [empresaId, externalDocument, externalName]
       );
       externoId = external.rows[0]?.id ?? null;
+      personaReemplazadaId = titular.persona_id;
     }
     const row = await client.query<{ id: string }>(
       `INSERT INTO nomina_novedad_turnos
@@ -10106,32 +10631,43 @@ export const createNominaNovedadConTurno = async (
         `,
         [input.periodo_id, turnoEmpleadoId, input.vinculacion_id, fechaTurno, 'TURNO_INTERNO']
       );
-      const movementId = duplicateMovement.rows[0]?.id ?? (
-        await client.query<{ id: string }>(
-          `
-            INSERT INTO nomina_movimientos (
-              periodo_id, nomina_empleado_id, vinculacion_id, fecha, tipo_movimiento,
-              familia_movimiento, estado, descripcion, valor_total, valor_calculado,
-              persona_reemplazada_id, vinculacion_reemplazada_id, es_devengado,
-              es_deduccion, afecta_seguridad_social, activo, updated_by
-            )
-            VALUES ($1::bigint, $2::bigint, $3::bigint, $4::date, 'TURNO_INTERNO',
-              'ADICION_DEVENGO', 'APROBADO', $5, 0, 0, $6::bigint, $7::bigint,
-              TRUE, FALSE, TRUE, TRUE, $8::bigint)
-            RETURNING id::text AS id
-          `,
-          [
-            input.periodo_id,
-            turnoEmpleadoId,
-            turnoVinculacionId,
-            fechaTurno,
-            turno.observacion ?? 'Turno interno de cobertura',
-            personaReemplazadaId,
-            input.vinculacion_id,
-            actorUserId
-          ]
-        )
-      ).rows[0]?.id ?? null;
+      const existingMovementId = duplicateMovement.rows[0]?.id ?? null;
+      const movementId = existingMovementId ?? await insertNominaTurnMovementSnapshot(
+        {
+          actorUserId,
+          cantidad: 1,
+          contrato_id: periodo.contrato_id,
+          descripcion: turno.observacion ?? 'Turno interno de cobertura',
+          empresa_id: periodo.contrato_empresa_id,
+          estado: 'APROBADO',
+          fecha: fechaTurno,
+          nomina_empleado_id: turnoEmpleadoId,
+          periodo_id: input.periodo_id,
+          persona_reemplazada_id: personaReemplazadaId,
+          tipo_movimiento: 'TURNO_INTERNO',
+          vinculacion_id: turnoVinculacionId,
+          vinculacion_reemplazada_id: input.vinculacion_id
+        },
+        client
+      );
+      if (existingMovementId) {
+        await refreshNominaTurnMovementSnapshot(
+          existingMovementId,
+          {
+            actorUserId,
+            cantidad: 1,
+            contrato_id: periodo.contrato_id,
+            descripcion: turno.observacion ?? 'Turno interno de cobertura',
+            empresa_id: periodo.contrato_empresa_id,
+            estado: 'APROBADO',
+            fecha: fechaTurno,
+            persona_reemplazada_id: personaReemplazadaId,
+            tipo_movimiento: 'TURNO_INTERNO',
+            vinculacion_reemplazada_id: input.vinculacion_id
+          },
+          client
+        );
+      }
       if (movementId) {
         await client.query(
           `UPDATE nomina_novedad_turnos SET movimiento_id = $2::bigint WHERE id = $1::bigint`,
@@ -10153,23 +10689,45 @@ export const createNominaNovedadConTurno = async (
         `,
         [input.periodo_id, externoId, fechaTurno]
       );
-      const movementId = duplicateExternal.rows[0]?.id ?? (
-        await client.query<{ id: string }>(
-          `
-            INSERT INTO nomina_movimientos (
-              periodo_id, nomina_empleado_id, vinculacion_id, fecha, tipo_movimiento,
-              familia_movimiento, estado, descripcion, valor_total, valor_calculado,
-              externo_id, es_devengado, es_deduccion, afecta_seguridad_social,
-              activo, updated_by
-            )
-            VALUES ($1::bigint, $2::bigint, $3::bigint, $4::date, 'TURNO_EXTERNO',
-              'ADICION_DEVENGO', 'PENDIENTE', $5, 0, 0, $6::bigint,
-              TRUE, FALSE, TRUE, TRUE, $7::bigint)
-            RETURNING id::text AS id
-          `,
-          [input.periodo_id, turnoEmpleadoId, turnoVinculacionId, fechaTurno, turno.observacion ?? 'Turno externo de cobertura', externoId, actorUserId]
-        )
-      ).rows[0]?.id ?? null;
+      const existingMovementId = duplicateExternal.rows[0]?.id ?? null;
+      const movementId = existingMovementId ?? await insertNominaTurnMovementSnapshot(
+        {
+          actorUserId,
+          cantidad: 1,
+          contrato_id: periodo.contrato_id,
+          descripcion: turno.observacion ?? 'Turno externo de cobertura',
+          empresa_id: periodo.contrato_empresa_id,
+          estado: 'PENDIENTE',
+          externo_id: externoId,
+          fecha: fechaTurno,
+          nomina_empleado_id: turnoEmpleadoId,
+          periodo_id: input.periodo_id,
+          persona_reemplazada_id: personaReemplazadaId,
+          tipo_movimiento: 'TURNO_EXTERNO',
+          vinculacion_id: turnoVinculacionId,
+          vinculacion_reemplazada_id: input.vinculacion_id
+        },
+        client
+      );
+      if (existingMovementId) {
+        await refreshNominaTurnMovementSnapshot(
+          existingMovementId,
+          {
+            actorUserId,
+            cantidad: 1,
+            contrato_id: periodo.contrato_id,
+            descripcion: turno.observacion ?? 'Turno externo de cobertura',
+            empresa_id: periodo.contrato_empresa_id,
+            estado: 'PENDIENTE',
+            externo_id: externoId,
+            fecha: fechaTurno,
+            persona_reemplazada_id: personaReemplazadaId,
+            tipo_movimiento: 'TURNO_EXTERNO',
+            vinculacion_reemplazada_id: input.vinculacion_id
+          },
+          client
+        );
+      }
       if (movementId) {
         await client.query(
           `UPDATE nomina_novedad_turnos SET movimiento_id = $2::bigint WHERE id = $1::bigint`,
@@ -10179,6 +10737,7 @@ export const createNominaNovedadConTurno = async (
     }
     await registerAuditEntry({ client, usuario_id: actorUserId, accion: 'NOMINA_NOVEDAD_TURNO_CREATE', tabla: 'nomina_novedad_turnos', registro_id: turnoRow.id, descripcion: 'Relacion de novedad con turno operativo', before: null, after: { novedad_id: novedad.id, tipo: turno.tipo }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
     await client.query('COMMIT');
+    await recalculateNominaPeriodo(input.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
     return { novedad, turno_id: turnoRow.id, turno };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -12422,4 +12981,3 @@ export const exportNominaPeriodo = async (
     file_name: `nomina-${normalizedTipo}-periodo-${periodoId}.csv`
   };
 };
-

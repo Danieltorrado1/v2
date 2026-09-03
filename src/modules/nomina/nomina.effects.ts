@@ -141,6 +141,19 @@ export interface NominaEffectResolution {
   dias_transporte_descuento: number;
 }
 
+export interface NominaEffectEventImpact {
+  aplica_regla_recargo_mayor_tres_dias: boolean;
+  dias_evento: number;
+  dias_liquidacion_especial: number;
+  dias_periodo: number;
+  dias_recargo_excluido: number;
+  dias_salario_descuento: number;
+  dias_transporte_descuento: number;
+  fecha_fin: string;
+  fecha_inicio: string;
+  projected_range: NominaProjectedDateRange | null;
+  recargo_excluido_por_configuracion: boolean;
+}
 export interface NominaProjectedCanonicalEvent {
   fecha_fin: string;
   fecha_inicio: string;
@@ -215,6 +228,58 @@ const computeEventDateRange = (
   };
 };
 
+export const resolveNominaEffectEventImpact = (input: {
+  employment: NominaEmploymentDateRange;
+  event: NominaEffectEventInput;
+  periodo: NominaPeriodoDateRange;
+}): NominaEffectEventImpact => {
+  const fechaInicio = input.event.fecha_inicio ?? input.event.fecha_fin ?? input.periodo.start;
+  const fechaFin = input.event.fecha_fin ?? input.event.fecha_inicio ?? fechaInicio;
+
+  if (compareDateStrings(fechaInicio, fechaFin) > 0) {
+    throw new AppError(
+      'Payroll novelty range is invalid',
+      400,
+      'NOMINA_NOVEDAD_INVALID_RANGE',
+      {
+        end: fechaFin,
+        fuente_id: input.event.fuente_id,
+        start: fechaInicio
+      }
+    );
+  }
+
+  const projectedRange = projectNominaDateRangeToPeriodo({
+    periodo: input.periodo,
+    employment: input.employment,
+    fecha_inicio: fechaInicio,
+    fecha_fin: fechaFin
+  });
+  const diasEvento = inclusiveDaysBetween(fechaInicio, fechaFin);
+  const diasPeriodo = projectedRange?.dias ?? 0;
+  const aplicaReglaRecargoMayorTresDias = diasEvento > 3;
+  const recargoExcluidoPorConfiguracion = input.event.matrix.efecto_recargos === 'EXCLUIR_DIA';
+
+  return {
+    fecha_inicio: fechaInicio,
+    fecha_fin: fechaFin,
+    dias_evento: diasEvento,
+    dias_periodo: diasPeriodo,
+    dias_salario_descuento:
+      input.event.matrix.efecto_salario === 'DESCUENTA_PROPORCIONAL' ? diasPeriodo : 0,
+    dias_transporte_descuento:
+      input.event.matrix.efecto_transporte === 'DESCUENTA_DIA' ? diasPeriodo : 0,
+    dias_recargo_excluido:
+      recargoExcluidoPorConfiguracion || aplicaReglaRecargoMayorTresDias ? diasPeriodo : 0,
+    dias_liquidacion_especial:
+      ['LIQUIDACION_ESPECIAL', 'PREPARAR_LIQUIDACION'].includes(input.event.matrix.efecto_liquidacion)
+        ? diasPeriodo
+        : 0,
+    aplica_regla_recargo_mayor_tres_dias: aplicaReglaRecargoMayorTresDias,
+    recargo_excluido_por_configuracion: recargoExcluidoPorConfiguracion,
+    projected_range: projectedRange
+  };
+};
 const buildFormattedDate = (value: string): string => {
   const [year, month, day] = value.split('-');
   return `${day}/${month}/${year}`;
@@ -231,7 +296,7 @@ const toBooleanValue = (value: unknown): boolean => {
 
   if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
-    return ['1', 'true', 't', 'yes', 'y', 'si', 'sí'].includes(normalized);
+    return ['1', 'true', 't', 'yes', 'y', 'si', 'sÃ­'].includes(normalized);
   }
 
   return false;
@@ -363,12 +428,18 @@ export const resolveNominaEfectosPorDia = (input: {
     Array<{
       fuente_id: string;
       matrix: NominaNovedadEffectMatrix;
+      recargo_excluido: boolean;
     }>
   >();
 
   for (const event of input.events) {
+    const impact = resolveNominaEffectEventImpact({
+      event,
+      periodo: input.periodo,
+      employment: input.employment
+    });
     const overlap = computeEventDateRange(event, input.periodo, input.employment);
-    if (!overlap) {
+    if (!overlap || impact.dias_periodo <= 0) {
       continue;
     }
 
@@ -376,7 +447,8 @@ export const resolveNominaEfectosPorDia = (input: {
       const current = byDate.get(date) ?? [];
       current.push({
         fuente_id: event.fuente_id,
-        matrix: event.matrix
+        matrix: event.matrix,
+        recargo_excluido: impact.dias_recargo_excluido > 0
       });
       byDate.set(date, current);
     }
@@ -422,9 +494,7 @@ export const resolveNominaEfectosPorDia = (input: {
       transporte_descuento: events.some(
         (event) => event.matrix.efecto_transporte === 'DESCUENTA_DIA'
       ),
-      recargo_excluido: events.some(
-        (event) => event.matrix.efecto_recargos === 'EXCLUIR_DIA'
-      ),
+      recargo_excluido: events.some((event) => event.recargo_excluido),
       liquidacion_especial: events.some((event) =>
         ['LIQUIDACION_ESPECIAL', 'PREPARAR_LIQUIDACION'].includes(event.matrix.efecto_liquidacion)
       ),

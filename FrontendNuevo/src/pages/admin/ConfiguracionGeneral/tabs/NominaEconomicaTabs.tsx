@@ -8,9 +8,11 @@ import { useCompanyContext } from '../../../../context/CompanyContext';
 
 import { ApiClientError, apiClient } from '../../../../services/apiClient';
 
-import { getNominaPeriodos } from '../../../../services/nominaApi';
+import { getNominaPeriodos } from '../../../../services/nominaApi';
+import { getContractPersonalFilterOptions } from '../../../../services/vinculacionesApi';
 
-import type { NominaPeriodoApi } from '../../../../types/nomina.types';
+import type { NominaPeriodoApi } from '../../../../types/nomina.types';
+import type { ContractPersonalFilterOptions } from '../../../../types/vinculaciones.types';
 
 import { formatDate, hasAnyPermission, mapKnownError, toNullableText } from './adminTabUtils';
 
@@ -90,7 +92,7 @@ type ParameterForm = {
 
 
 
-type CategoryForm = {
+type CategoryForm = {
 
   contrato_id: string;
 
@@ -112,10 +114,38 @@ type CategoryForm = {
 
   otros_recargos: number | '';
 
-  activo: boolean;
-
-};
-
+  activo: boolean;
+
+};
+
+type TurnShiftRate = {
+  id: string;
+  contrato_id: string;
+  numero_contrato?: string | null;
+  tipo_turno: 'INTERNO' | 'EXTERNO';
+  modalidad: {
+    id: string | null;
+    codigo: string | null;
+    nombre: string | null;
+  };
+  valor: number | string;
+  vigencia_desde: string | null;
+  vigencia_hasta?: string | null;
+  activo: boolean;
+  observacion?: string | null;
+};
+
+type TurnShiftRateForm = {
+  contrato_id: string;
+  tipo_turno: 'INTERNO' | 'EXTERNO';
+  modalidad_id: string;
+  vigencia_desde: string;
+  vigencia_hasta: string;
+  valor: number | '';
+  activo: boolean;
+  observacion: string;
+};
+
 
 
 type AssignmentCurrentCategory = {
@@ -321,7 +351,7 @@ const emptyParameterForm = (): ParameterForm => ({
 
 
 
-const emptyCategoryForm = (): CategoryForm => ({
+const emptyCategoryForm = (): CategoryForm => ({
 
   contrato_id: '',
 
@@ -343,10 +373,44 @@ const emptyCategoryForm = (): CategoryForm => ({
 
   otros_recargos: '',
 
-  activo: true
-
-});
-
+  activo: true
+
+});
+
+const emptyTurnShiftRateForm = (): TurnShiftRateForm => ({
+  contrato_id: '',
+  tipo_turno: 'INTERNO',
+  modalidad_id: '',
+  vigencia_desde: '',
+  vigencia_hasta: '',
+  valor: '',
+  activo: true,
+  observacion: ''
+});
+
+const mapTurnShiftRateToForm = (rate: TurnShiftRate): TurnShiftRateForm => ({
+  contrato_id: String(rate.contrato_id),
+  tipo_turno: rate.tipo_turno,
+  modalidad_id: rate.modalidad.id ?? '',
+  vigencia_desde: rate.vigencia_desde ?? '',
+  vigencia_hasta: rate.vigencia_hasta ?? '',
+  valor: Number(rate.valor),
+  activo: rate.activo,
+  observacion: rate.observacion ?? ''
+});
+
+const describeTurnShiftRateModalidad = (
+  modalidad: TurnShiftRate['modalidad'] | ContractPersonalFilterOptions['modalidades'][number] | null | undefined
+) => {
+  if (!modalidad) {
+    return 'Sin modalidad';
+  }
+
+  const codigo = modalidad.codigo?.trim();
+  const nombre = modalidad.nombre?.trim();
+  return [codigo, nombre].filter(Boolean).join(' / ') || 'Sin modalidad';
+};
+
 
 
 const normalizeNumberInput = (value: string): number | '' =>
@@ -943,7 +1007,468 @@ export function PayrollParametersTab() {
 
 
 
-export function SalaryCategoriesTab() {
+export function TurnShiftRatesTab() {
+  const { user } = useAuth();
+  const { empresaActual } = useCompanyContext();
+  const permissions = user?.permissions ?? [];
+  const canRead = hasAnyPermission(permissions, ['nomina.economico.read']);
+  const canManage = hasAnyPermission(permissions, ['nomina.parametros.manage']);
+
+  const [rows, setRows] = useState<TurnShiftRate[]>([]);
+  const [contracts, setContracts] = useState<ContractOption[]>([]);
+  const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'TODOS' | 'INTERNO' | 'EXTERNO'>('TODOS');
+  const [open, setOpen] = useState(false);
+  const [editingRateId, setEditingRateId] = useState<string | null>(null);
+  const [form, setForm] = useState<TurnShiftRateForm>(emptyTurnShiftRateForm);
+  const [modalities, setModalities] = useState<ContractPersonalFilterOptions['modalidades']>([]);
+  const [modalitiesLoading, setModalitiesLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [saveError, setSaveError] = useState('');
+
+  const load = useCallback(async () => {
+    if (!empresaActual || !canRead) {
+      setRows([]);
+      setContracts([]);
+      return;
+    }
+
+    try {
+      const [ratesResponse, contractsResponse] = await Promise.all([
+        apiClient.get<{ data: TurnShiftRate[] }>(`/company-settings/${empresaActual.id}/turn-shift-rates`),
+        apiClient.get<{ data: { items: ContractOption[] } }>('/configuracion/contratos', {
+          params: {
+            empresa_id: empresaActual.id,
+            limit: CONTRACT_LIMIT
+          }
+        })
+      ]);
+
+      setRows(ratesResponse.data);
+      setContracts(contractsResponse.data.items ?? []);
+      setLoadError('');
+    } catch (error) {
+      setRows([]);
+      setContracts([]);
+      setLoadError(
+        mapKnownError(error, 'No fue posible cargar las tarifas de turnos.', {
+          FORBIDDEN: 'No tienes permiso para consultar las tarifas de turnos.'
+        })
+      );
+    }
+  }, [canRead, empresaActual]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!open || !canRead || !form.contrato_id) {
+      setModalities([]);
+      setSaveError('');
+      return;
+    }
+
+    let cancelled = false;
+    setSaveError('');
+    setModalitiesLoading(true);
+
+    getContractPersonalFilterOptions({ contrato_id: Number(form.contrato_id) })
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+
+        setModalities(response.modalidades ?? []);
+        setSaveError('');
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setModalities([]);
+          setSaveError(
+            mapKnownError(error, 'No fue posible cargar las modalidades del contrato seleccionado.', {})
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setModalitiesLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [canRead, form.contrato_id, open]);
+
+  const editingRate = useMemo(
+    () => rows.find((row) => row.id === editingRateId) ?? null,
+    [editingRateId, rows]
+  );
+
+  const availableModalities = useMemo(() => {
+    const currentModalidad = editingRate?.modalidad;
+    if (!currentModalidad?.id) {
+      return modalities;
+    }
+
+    if (modalities.some((item) => String(item.id) === String(currentModalidad.id))) {
+      return modalities;
+    }
+
+    return [
+      ...modalities,
+      {
+        id: Number(currentModalidad.id),
+        codigo: currentModalidad.codigo,
+        nombre:
+          currentModalidad.nombre?.trim() ||
+          currentModalidad.codigo?.trim() ||
+          'Modalidad actual'
+      }
+    ];
+  }, [editingRate, modalities]);
+
+  const visible = useMemo(
+    () =>
+      rows.filter((row) => {
+        const matchesType = typeFilter === 'TODOS' || row.tipo_turno === typeFilter;
+        const haystack = `${row.numero_contrato ?? ''} ${describeTurnShiftRateModalidad(row.modalidad)} ${row.observacion ?? ''}`.toLowerCase();
+        return matchesType && haystack.includes(query.toLowerCase());
+      }),
+    [query, rows, typeFilter]
+  );
+
+  const resumen = useMemo(
+    () => ({
+      internos: rows.filter((row) => row.tipo_turno === 'INTERNO').length,
+      externos: rows.filter((row) => row.tipo_turno === 'EXTERNO').length
+    }),
+    [rows]
+  );
+
+  const isEditing = Boolean(editingRateId);
+
+  const setField = <T extends keyof TurnShiftRateForm>(field: T, value: TurnShiftRateForm[T]) => {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  };
+
+  const closeDrawer = () => {
+    setOpen(false);
+    setEditingRateId(null);
+    setForm(emptyTurnShiftRateForm());
+    setModalities([]);
+    setSaveError('');
+  };
+
+  const openCreate = () => {
+    setEditingRateId(null);
+    setForm(emptyTurnShiftRateForm());
+    setModalities([]);
+    setSaveError('');
+    setOpen(true);
+  };
+
+  const openEdit = (rate: TurnShiftRate) => {
+    setEditingRateId(rate.id);
+    setForm(mapTurnShiftRateToForm(rate));
+    setModalities([]);
+    setSaveError('');
+    setOpen(true);
+  };
+
+  const save = async () => {
+    if (!empresaActual || !canManage) {
+      setSaveError('No tienes permiso para crear o corregir tarifas de turnos.');
+      return;
+    }
+
+    if (!form.contrato_id || !form.modalidad_id || !form.vigencia_desde || form.valor === '') {
+      setSaveError('Contrato, modalidad, vigencia desde y valor son obligatorios.');
+      return;
+    }
+
+    const payload = {
+      contrato_id: Number(form.contrato_id),
+      tipo_turno: form.tipo_turno,
+      modalidad_id: Number(form.modalidad_id),
+      vigencia_desde: form.vigencia_desde,
+      vigencia_hasta: toNullableText(form.vigencia_hasta),
+      valor: Number(form.valor),
+      activo: form.activo,
+      observacion: toNullableText(form.observacion)
+    };
+
+    try {
+      if (editingRateId) {
+        await apiClient.patch(
+          `/company-settings/${empresaActual.id}/turn-shift-rates/${editingRateId}`,
+          payload
+        );
+      } else {
+        await apiClient.post(`/company-settings/${empresaActual.id}/turn-shift-rates`, payload);
+      }
+
+      closeDrawer();
+      await load();
+    } catch (error) {
+      setSaveError(
+        mapKnownError(error, 'No se pudo guardar la tarifa de turnos.', {
+          FORBIDDEN: 'No tienes permiso para crear o corregir tarifas de turnos.',
+          TURNO_TARIFA_VIGENCIA_OVERLAP:
+            'Ya existe una vigencia activa que se cruza para ese contrato, tipo y modalidad.',
+          TURN_SHIFT_MODALIDAD_NOT_FOUND:
+            'La modalidad seleccionada ya no está disponible para el contrato.',
+          VALIDATION_ERROR: 'Revisa contrato, modalidad, vigencias y valor antes de guardar.'
+        })
+      );
+    }
+  };
+
+  if (!empresaActual) {
+    return <div className="adm-empty">Seleccione una empresa autorizada.</div>;
+  }
+
+  if (!canRead) {
+    return (
+      <div className="adm-empty">
+        No tienes permiso para consultar la configuración económica de nómina.
+      </div>
+    );
+  }
+
+  return (
+    <section className="nomina-economic">
+      <div className="adm-card">
+        <div className="nomina-section-head">
+          <div>
+            <h3>Tarifas de turnos</h3>
+            <p>
+              Versiona el valor por turno para <strong>TURNO_INTERNO</strong> y{' '}
+              <strong>TURNO_EXTERNO</strong> por contrato y modalidad.
+            </p>
+          </div>
+          {canManage ? (
+            <button className="adm-btn primary" onClick={openCreate}>
+              + Nueva tarifa
+            </button>
+          ) : null}
+        </div>
+
+        <div className="adm-kpi-row">
+          <div className="adm-kpi neutral">
+            <div className="adm-kpi-body">
+              <span className="adm-kpi-lbl">Tarifas vigentes / históricas</span>
+              <strong className="adm-kpi-val">{rows.length}</strong>
+            </div>
+          </div>
+          <div className="adm-kpi info">
+            <div className="adm-kpi-body">
+              <span className="adm-kpi-lbl">TURNO_INTERNO</span>
+              <strong className="adm-kpi-val">{resumen.internos}</strong>
+            </div>
+          </div>
+          <div className="adm-kpi info">
+            <div className="adm-kpi-body">
+              <span className="adm-kpi-lbl">TURNO_EXTERNO</span>
+              <strong className="adm-kpi-val">{resumen.externos}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="nomina-assignment-filters">
+          <input
+            placeholder="Buscar por contrato, modalidad u observación"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as typeof typeFilter)}>
+            <option value="TODOS">Todos los tipos</option>
+            <option value="INTERNO">TURNO_INTERNO</option>
+            <option value="EXTERNO">TURNO_EXTERNO</option>
+          </select>
+        </div>
+
+        <div className="adm-notice info" role="status">
+          La tarifa se resuelve por <strong>contrato</strong>, <strong>tipo de turno</strong> y{' '}
+          <strong>modalidad</strong>. Cuando una vigencia nueva se cruza con otra activa del mismo
+          conjunto, el backend la rechaza.
+        </div>
+
+        {loadError ? <div className="adm-notice warning" role="alert">{loadError}</div> : null}
+
+        {visible.length ? (
+          <div className="cg-table-wrap">
+            <table className="adm-history">
+              <thead>
+                <tr>
+                  <th>Tipo de turno</th>
+                  <th>Contrato</th>
+                  <th>Modalidad</th>
+                  <th>Valor por turno</th>
+                  <th>Vigencia</th>
+                  <th>Estado</th>
+                  <th>Observación</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.tipo_turno === 'INTERNO' ? 'TURNO_INTERNO' : 'TURNO_EXTERNO'}</td>
+                    <td>{row.numero_contrato ?? row.contrato_id}</td>
+                    <td>{describeTurnShiftRateModalidad(row.modalidad)}</td>
+                    <td>{money(row.valor)}</td>
+                    <td>
+                      {formatDate(row.vigencia_desde)} -{' '}
+                      {row.vigencia_hasta ? formatDate(row.vigencia_hasta) : 'Abierta'}
+                    </td>
+                    <td>
+                      <span className={`adm-status ${row.activo ? 'active' : 'inactive'}`}>
+                        {row.activo ? 'Activa' : 'Inactiva'}
+                      </span>
+                    </td>
+                    <td>{row.observacion ?? 'Sin observación'}</td>
+                    <td>
+                      {canManage ? (
+                        <button className="adm-btn ghost sm" onClick={() => openEdit(row)}>
+                          Corregir tarifa
+                        </button>
+                      ) : (
+                        <span className="cg-secondary-cell">Solo lectura</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>No hay tarifas de turnos configuradas para la empresa seleccionada.</p>
+        )}
+      </div>
+
+      {open ? (
+        <div className="nomina-drawer-backdrop">
+          <aside className="nomina-drawer">
+            <button className="nomina-close" onClick={closeDrawer}>
+              ×
+            </button>
+            <h3>{isEditing ? 'Corregir tarifa de turnos' : 'Nueva tarifa de turnos'}</h3>
+
+            <label>
+              Contrato
+              <select
+                disabled={isEditing}
+                value={form.contrato_id}
+                onChange={(event) => setField('contrato_id', event.target.value)}
+              >
+                <option value="">Seleccione</option>
+                {contracts.map((contract) => (
+                  <option key={String(contract.id)} value={String(contract.id)}>
+                    {contract.numero_contrato ?? contract.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Tipo de turno
+              <select
+                value={form.tipo_turno}
+                onChange={(event) => setField('tipo_turno', event.target.value as TurnShiftRateForm['tipo_turno'])}
+              >
+                <option value="INTERNO">TURNO_INTERNO</option>
+                <option value="EXTERNO">TURNO_EXTERNO</option>
+              </select>
+            </label>
+
+            <label>
+              Modalidad
+              <select
+                value={form.modalidad_id}
+                onChange={(event) => setField('modalidad_id', event.target.value)}
+              >
+                <option value="">
+                  {form.contrato_id
+                    ? modalitiesLoading
+                      ? 'Cargando modalidades...'
+                      : 'Seleccione una modalidad'
+                    : 'Seleccione primero un contrato'}
+                </option>
+                {availableModalities.map((item) => (
+                  <option key={item.id} value={String(item.id)}>
+                    {describeTurnShiftRateModalidad(item)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Vigencia desde
+              <input
+                type="date"
+                value={form.vigencia_desde}
+                onChange={(event) => setField('vigencia_desde', event.target.value)}
+              />
+            </label>
+
+            <label>
+              Vigencia hasta
+              <input
+                type="date"
+                value={form.vigencia_hasta}
+                onChange={(event) => setField('vigencia_hasta', event.target.value)}
+              />
+            </label>
+
+            <label>
+              Valor por turno
+              <input
+                type="number"
+                value={form.valor}
+                onChange={(event) => setField('valor', normalizeNumberInput(event.target.value))}
+              />
+            </label>
+
+            <label>
+              Observación
+              <textarea
+                value={form.observacion}
+                onChange={(event) => setField('observacion', event.target.value)}
+              />
+            </label>
+
+            <label className="cg-checkbox-row">
+              <input
+                checked={form.activo}
+                onChange={(event) => setField('activo', event.target.checked)}
+                type="checkbox"
+              />
+              Mantener tarifa activa
+            </label>
+
+            {saveError ? <p role="alert">{saveError}</p> : null}
+
+            <div className="nomina-drawer-actions">
+              <button className="adm-btn ghost" onClick={closeDrawer}>
+                Cancelar
+              </button>
+              <button className="adm-btn primary" onClick={() => void save()}>
+                {isEditing ? 'Guardar corrección' : 'Guardar tarifa'}
+              </button>
+            </div>
+          </aside>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+export function SalaryCategoriesTab() {
   const { user } = useAuth();
   const { empresaActual } = useCompanyContext();
   const permissions = user?.permissions ?? [];
@@ -1901,11 +2426,11 @@ export function SalaryCategoriesTab() {
                       <th>Municipio</th>
                       <th>Institución</th>
                       <th>Sede</th>
-                      <th>Modalidad</th>
+                      <th>Modalidad operativa del preview</th>
                       <th>Método de pago</th>
                       <th>Categoría actual</th>
                       <th>Categoría destino</th>
-                      <th>Conteo Inst + Sede</th>
+                      <th>Conteo Institución + Sede</th>
                     </tr>
                   </thead>
                   <tbody>

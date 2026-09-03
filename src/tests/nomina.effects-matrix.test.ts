@@ -108,6 +108,12 @@ const MATRICES = {
     bloquea_otras_novedades: true,
     grupo_exclusividad: 'LICENCIA_MATERNIDAD_PATERNIDAD',
     observacion_plantilla: 'Licencia de maternidad/paternidad del {fecha_inicio} al {fecha_fin}.'
+  }),
+  LUTO: buildMatrix({
+    codigo_operativo: 'LUTO',
+    nombre: 'Licencia por luto',
+    efecto_transporte: 'DESCUENTA_DIA',
+    observacion_plantilla: 'Licencia por luto del {fecha_inicio} al {fecha_fin}.'
   })
 } as const;
 
@@ -141,6 +147,20 @@ test('PR1 solo descuenta transporte', () => {
   assert.equal(result.dias_recargo_excluido, 0);
 });
 
+test('PR1 por tres dias no activa recargos por regla mayor a tres dias', () => {
+  const result = resolveSingle(MATRICES.PR1, '2026-08-07', '2026-08-09');
+  assert.equal(result.dias_salario_descuento, 0);
+  assert.equal(result.dias_transporte_descuento, 3);
+  assert.equal(result.dias_recargo_excluido, 0);
+});
+
+test('PR1 por cuatro dias descuenta transporte y activa recargos por la misma novedad', () => {
+  const result = resolveSingle(MATRICES.PR1, '2026-08-07', '2026-08-10');
+  assert.equal(result.dias_salario_descuento, 0);
+  assert.equal(result.dias_transporte_descuento, 4);
+  assert.equal(result.dias_recargo_excluido, 4);
+});
+
 test('PR2, PR3, PR4 e incapacidades solo descuentan transporte', () => {
   for (const key of ['PR2', 'PR3', 'PR4', 'INC_GENERAL', 'INC_ARL'] as const) {
     const result = resolveSingle(MATRICES[key], '2026-08-09');
@@ -164,6 +184,55 @@ test('licencia dentro de un mes excluye recargos y prepara liquidacion', () => {
   assert.equal(result.dias_recargo_excluido, 12);
   assert.equal(result.dias_liquidacion_especial, 12);
   assert.equal(result.dias_salario_descuento, 0);
+});
+
+test('luto de cinco dias usa rango completo y activa regla de recargos por durar mas de tres dias', () => {
+  const result = resolveSingle(MATRICES.LUTO, '2026-08-11', '2026-08-15');
+  assert.equal(result.dias_salario_descuento, 0);
+  assert.equal(result.dias_transporte_descuento, 5);
+  assert.equal(result.dias_recargo_excluido, 5);
+});
+
+test('dos novedades distintas de hasta dos dias no suman para activar recargos', () => {
+  const result = resolveNominaEfectosPorDia({
+    periodo: agosto,
+    employment: baseEmployment,
+    events: [
+      {
+        origen: 'PERIODO',
+        fuente_id: 'PR1-A',
+        fecha_inicio: '2026-08-01',
+        fecha_fin: '2026-08-02',
+        dias: null,
+        matrix: MATRICES.PR1
+      },
+      {
+        origen: 'PERIODO',
+        fuente_id: 'PR1-B',
+        fecha_inicio: '2026-08-05',
+        fecha_fin: '2026-08-06',
+        dias: null,
+        matrix: MATRICES.PR1
+      }
+    ]
+  });
+  assert.equal(result.dias_transporte_descuento, 4);
+  assert.equal(result.dias_recargo_excluido, 0);
+});
+
+test('editar una novedad de cinco a tres dias recalcula recargos correctamente', () => {
+  const original = resolveSingle(MATRICES.LUTO, '2026-08-11', '2026-08-15');
+  const edited = resolveSingle(MATRICES.LUTO, '2026-08-11', '2026-08-13');
+  assert.equal(original.dias_transporte_descuento, 5);
+  assert.equal(original.dias_recargo_excluido, 5);
+  assert.equal(edited.dias_transporte_descuento, 3);
+  assert.equal(edited.dias_recargo_excluido, 0);
+});
+
+test('resolver dos veces el mismo evento economico produce el mismo resultado', () => {
+  const first = resolveSingle(MATRICES.PR1, '2026-08-21', '2026-08-24');
+  const second = resolveSingle(MATRICES.PR1, '2026-08-21', '2026-08-24');
+  assert.deepEqual(second, first);
 });
 
 test('licencia cruzando meses se proyecta por interseccion', () => {

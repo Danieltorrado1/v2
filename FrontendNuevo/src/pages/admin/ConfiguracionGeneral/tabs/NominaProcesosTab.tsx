@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+
 import { apiClient } from '../../../../services/apiClient';
 import { configuracionApi } from '../../../../services/configuracionApi';
 import { useCompanyContext } from '../../../../context/CompanyContext';
-import { PayrollParametersTab, SalaryCategoriesTab } from './NominaEconomicaTabs';
+import {
+  PayrollParametersTab,
+  SalaryCategoriesTab,
+  TurnShiftRatesTab,
+} from './NominaEconomicaTabs';
 
 type Process = 'COBERTURA' | 'ASISTENCIA' | 'OPS';
 
@@ -37,6 +42,13 @@ type AssignableUser = {
   empresaIds: number[];
 };
 
+type NominaConfigTab =
+  | 'asignaciones'
+  | 'parametros'
+  | 'tarifas-turnos'
+  | 'categorias'
+  | 'areas';
+
 const processes: Process[] = ['COBERTURA', 'ASISTENCIA', 'OPS'];
 
 const slug = (value: string) =>
@@ -47,15 +59,10 @@ const slug = (value: string) =>
     .replace(/[^A-Z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
 
-// Compatibilidad 4B.3: slugCode; nombre: areaName; activo: !a.activo; areas.filter((a) => a.activo).
-// Estados vacíos preservados: No hay áreas de asistencia configuradas. No hay responsables configurados.
-
 export function NominaProcesosTab() {
   const { empresaActual } = useCompanyContext();
 
-  const [tab, setTab] = useState<
-    'asignaciones' | 'parametros' | 'categorias' | 'areas'
-  >('asignaciones');
+  const [tab, setTab] = useState<NominaConfigTab>('asignaciones');
 
   const [users, setUsers] = useState<AssignableUser[]>([]);
   const [responsibilities, setResponsibilities] = useState<
@@ -92,7 +99,9 @@ export function NominaProcesosTab() {
   const [usersError, setUsersError] = useState('');
 
   const reload = useCallback(async () => {
-    if (!empresaActual) return;
+    if (!empresaActual) {
+      return;
+    }
 
     setUsersLoading(true);
     setUsersError('');
@@ -107,11 +116,13 @@ export function NominaProcesosTab() {
             },
           },
         ),
+
         apiClient.get<{ data: Area[] }>('/nomina/procesos/areas', {
           params: {
             empresa_id: empresaActual.id,
           },
         }),
+
         configuracionApi.listarMunicipios({
           page: 1,
           limit: 500,
@@ -145,6 +156,8 @@ export function NominaProcesosTab() {
       setMunicipalities(municipalityResult.items ?? []);
       setResponsibilities(Object.fromEntries(rows));
     } catch (error) {
+      console.error('No fue posible cargar la configuración de nómina', error);
+
       setUsers([]);
       setResponsibilities({});
 
@@ -193,7 +206,9 @@ export function NominaProcesosTab() {
   };
 
   const save = async () => {
-    if (!empresaActual || !selected) return;
+    if (!empresaActual || !selected) {
+      return;
+    }
 
     await Promise.all(
       processes.map((proceso) =>
@@ -201,11 +216,13 @@ export function NominaProcesosTab() {
           usuario_id: selected.id,
           empresa_id: empresaActual.id,
           proceso,
+
           municipio_ids:
             proceso === 'COBERTURA' &&
             selectedProcesses.includes(proceso)
               ? municipalityIds
               : [],
+
           area_ids:
             proceso === 'ASISTENCIA' &&
             selectedProcesses.includes(proceso)
@@ -217,6 +234,7 @@ export function NominaProcesosTab() {
 
     setDrawer(false);
     setMessage('Asignación guardada correctamente.');
+
     await reload();
   };
 
@@ -243,11 +261,14 @@ export function NominaProcesosTab() {
     );
 
     setMessage('Asignación retirada correctamente.');
+
     await reload();
   };
 
   const saveArea = async () => {
-    if (!empresaActual || !areaName.trim()) return;
+    if (!empresaActual || !areaName.trim()) {
+      return;
+    }
 
     if (editingArea) {
       await apiClient.patch(`/nomina/procesos/areas/${editingArea.id}`, {
@@ -273,11 +294,11 @@ export function NominaProcesosTab() {
       (row) => row.activo,
     );
 
-    if (
-      !`${user.name} ${user.email}`
-        .toLowerCase()
-        .includes(search.toLowerCase())
-    ) {
+    const matchesSearch = `${user.name} ${user.email}`
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    if (!matchesSearch) {
       return false;
     }
 
@@ -288,12 +309,15 @@ export function NominaProcesosTab() {
       return false;
     }
 
-    return (
-      stateFilter === 'TODOS' ||
-      (stateFilter === 'ACTIVO'
-        ? active.length > 0
-        : active.length === 0)
-    );
+    if (stateFilter === 'TODOS') {
+      return true;
+    }
+
+    if (stateFilter === 'ACTIVO') {
+      return active.length > 0;
+    }
+
+    return active.length === 0;
   });
 
   const pickerUsers = useMemo(
@@ -375,6 +399,13 @@ export function NominaProcesosTab() {
           </button>
 
           <button
+            className={tab === 'tarifas-turnos' ? 'active' : ''}
+            onClick={() => setTab('tarifas-turnos')}
+          >
+            TARIFAS DE TURNOS
+          </button>
+
+          <button
             className={tab === 'categorias' ? 'active' : ''}
             onClick={() => setTab('categorias')}
           >
@@ -391,6 +422,9 @@ export function NominaProcesosTab() {
       </div>
 
       {tab === 'parametros' && <PayrollParametersTab />}
+
+      {tab === 'tarifas-turnos' && <TurnShiftRatesTab />}
+
       {tab === 'categorias' && <SalaryCategoriesTab />}
 
       {tab === 'asignaciones' && (
@@ -414,9 +448,7 @@ export function NominaProcesosTab() {
               placeholder="Buscar por nombre o correo..."
               aria-label="Buscar por nombre o correo"
               value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
+              onChange={(event) => setSearch(event.target.value)}
             />
 
             <select
@@ -498,8 +530,7 @@ export function NominaProcesosTab() {
                     {active
                       .map(assignmentLabel)
                       .filter(Boolean)
-                      .join(' / ') ||
-                      'Sin alcance asignado'}
+                      .join(' / ') || 'Sin alcance asignado'}
                   </span>
 
                   <span>
@@ -676,9 +707,7 @@ export function NominaProcesosTab() {
             ) : (
               <AssignmentForm
                 selectedProcesses={selectedProcesses}
-                setSelectedProcesses={
-                  setSelectedProcesses
-                }
+                setSelectedProcesses={setSelectedProcesses}
                 municipalityIds={municipalityIds}
                 setMunicipalityIds={setMunicipalityIds}
                 areaIds={areaIds}
@@ -733,7 +762,11 @@ export function NominaProcesosTab() {
         </div>
       )}
 
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p role="status">
+          {message}
+        </p>
+      )}
     </div>
   );
 }
@@ -811,6 +844,7 @@ function AssignmentForm(props: {
 
           <div className="nomina-scope-tools">
             <button
+              type="button"
               onClick={() =>
                 props.setMunicipalityIds(
                   props.municipalities.map(
@@ -823,6 +857,7 @@ function AssignmentForm(props: {
             </button>
 
             <button
+              type="button"
               onClick={() =>
                 props.setMunicipalityIds([])
               }
@@ -896,13 +931,13 @@ function AssignmentForm(props: {
 
       {props.selectedProcesses.includes('OPS') && (
         <p className="nomina-ops-note">
-          Este usuario podrá gestionar el proceso OPS
-          de la empresa.
+          Este usuario podrá gestionar el proceso OPS de la empresa.
         </p>
       )}
 
       <div className="nomina-drawer-actions">
         <button
+          type="button"
           className="adm-btn ghost"
           onClick={props.onCancel}
         >
@@ -910,6 +945,7 @@ function AssignmentForm(props: {
         </button>
 
         <button
+          type="button"
           className="adm-btn primary"
           onClick={props.onSave}
         >
@@ -919,8 +955,8 @@ function AssignmentForm(props: {
 
       {props.selectedProcesses.length === 0 && (
         <p>
-          Sin asignación de nómina. No tendrá procesos
-          operativos asignados para esta empresa.
+          Sin asignación de nómina. No tendrá procesos operativos
+          asignados para esta empresa.
         </p>
       )}
     </>

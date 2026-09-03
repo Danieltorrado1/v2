@@ -25,3 +25,45 @@ test('modal de novedad concentra la cobertura sin panel externo',()=>{for(const 
 test('dedupe y upsert evitan render duplicado del mismo registro',()=>{const novelty={id:'dup',activo:true,fecha_inicio:'2026-08-11',fecha_fin:'2026-08-11',fecha_inicio_evento_canonico:null,fecha_fin_evento_canonico:null} as NominaNovedadApi;assert.equal(dedupeNominaNovedades([novelty,novelty]).length,1);assert.equal(upsertNominaNovedad([novelty],{...novelty,observacion:'corregida'} as NominaNovedadApi)[0]?.observacion,'corregida');});
 test('celda con novedad prioriza correccion y celda vacia conserva asistencia rapida',()=>{assert.ok(source.includes('if (activeNovelties.length === 1) {'));assert.ok(source.includes('openNovelty(cell, activeNovelties[0] ?? null);'));assert.ok(source.includes('void toggleAttendance(employee, date);'));assert.ok(source.includes('if (activeNoveltiesOnThisDay.length > 1) {'));});
 test('planilla reutiliza el modal para corregir una novedad existente',()=>{assert.ok(source.includes('editingNovelty'));assert.ok(source.includes('updateNominaNovedad(editingNovelty.id, basePayload)'));assert.ok(source.includes('Guardar correccion'));assert.ok(source.includes('Corregir novedad'));});
+
+test('planilla no conserva literales con mojibake en separadores o marcas de asistencia',()=>{
+  for(const token of ['Â·','Ã‚Â·','Ã¢â‚¬Â¦','Ã¢Å“â€œ','PensiÃ³n']) assert.equal(source.includes(token),false,token);
+});
+
+test('multiday edit usa fecha_inicio real y habilita rango por catalogo',()=>{
+  assert.ok(source.includes('const selectedTypeAllowsRange = typeSupportsDateRange(selectedType);'));
+  assert.ok(source.includes('setRangeStart(novelty?.fecha_inicio_evento_canonico ?? novelty?.fecha_inicio ?? cell.date);'));
+  assert.ok(source.includes('fecha_inicio: fechaInicio'));
+  assert.ok(source.includes('readOnly={!selectedTypeAllowsRange}'));
+});
+
+test('migration de planilla operativa fija tipos multidia y queda registrada en scripts',()=>{
+  const packageSource=readFileSync(resolve(process.cwd(),'package.json'),'utf8');
+  const migrationScript=readFileSync(resolve(process.cwd(),'src/scripts/migrate-nomina-planilla-operativa-fixes.ts'),'utf8');
+  const migrationSql=readFileSync(resolve(process.cwd(),'sql/phase-36-2-nomina-planilla-operativa-fixes.sql'),'utf8');
+  assert.ok(packageSource.includes('"db:migrate:nomina-planilla-operativa-fixes"'));
+  assert.ok(migrationScript.includes('phase-36-2-nomina-planilla-operativa-fixes.sql'));
+  assert.ok(migrationSql.includes("modelo_registro = 'EVENTO_CANONICO_RANGO'"));
+  assert.ok(migrationSql.includes("UPPER(TRIM(COALESCE(nombre, ''))) = 'LUTO'"));
+});
+
+test('carga inicial paraleliza empleados y asistencia en una sola lectura',()=>{
+  assert.ok(source.includes('const ATTENDANCE_BATCH_LIMIT = 5000;'));
+  assert.ok(source.includes('const [employeeResult, ...layers] = await Promise.allSettled(['));
+  assert.ok(source.includes('limit: ATTENDANCE_BATCH_LIMIT, page: 1'));
+});
+
+test('revision operativa resuelve scope en SQL sin validacion secuencial por fila',()=>{
+  const revisionSource=readFileSync(resolve(process.cwd(),'src/modules/nomina/revision-operativa.service.ts'),'utf8');
+  assert.ok(revisionSource.includes('appendNominaCoberturaScope(conditions, params, tenant);'));
+  assert.ok(revisionSource.includes("appendTenantScopeConditions(conditions, params, tenant, 'v.contrato_id', 'v.empresa_id');"));
+  assert.ok(revisionSource.includes('${buildSqlWhere(conditions)}'));
+  assert.equal(revisionSource.includes('for (const row of result.rows) await assertTenantAccessForVinculacionId'),false);
+});
+test('asistencia por periodo usa el mismo scope SQL que la planilla visible',()=>{
+  const serviceSource=readFileSync(resolve(process.cwd(),'src/modules/nomina/nomina.service.ts'),'utf8');
+  assert.ok(serviceSource.includes('const attendanceFromSql = '));
+  assert.ok(serviceSource.includes('appendNominaCoberturaScope(conditions, params, tenant);'));
+  assert.ok(serviceSource.includes("appendTenantScopeConditions(conditions, params, tenant, 'v.contrato_id', 'v.empresa_id');"));
+  assert.ok(serviceSource.includes(''));
+});
