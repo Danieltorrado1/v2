@@ -71,6 +71,7 @@ import { buildCsv, buildSectionedCsv } from './nomina.exporter';
 import {
   COBERTURA_PORCENTAJE_PENSION,
   COBERTURA_PORCENTAJE_SALUD,
+  COBERTURA_DIAS_BASE_NOMINA,
   calculateCoberturaPayroll
 } from './nomina.cobertura';
 import { syncCoberturaCuentasCobroExternasPeriodo } from './cobertura.externos.service';
@@ -7268,12 +7269,22 @@ export const recalculateNominaPeriodo = async (
         (empleadoRow.metodo_liquidacion ?? '').trim().toUpperCase() === 'ASISTENCIA' &&
         !!asistenciaEmpleado &&
         asistenciaEmpleado.total_asistencia_activa > 0;
+      const employmentRange: NominaEmploymentDateRange = {
+        start: toDateString(empleadoRow.fecha_inicio_pago) ?? periodoRange.start,
+        end: toDateString(empleadoRow.fecha_fin_pago) ?? periodoRange.end
+      };
+      // Payroll uses the contractual 30-day base, while a partial linkage can
+      // contribute fewer liquidable days within that base.
+      const diasVigenciaNomina = Math.min(
+        COBERTURA_DIAS_BASE_NOMINA,
+        Math.max(0, inclusiveDaysBetween(employmentRange.start, employmentRange.end))
+      );
       // La asistencia aplica solo para empleados con metodo_liquidacion ASISTENCIA.
       // Categoria salarial, salario fijo y OPS no dependen de asistencia diaria.
       const diasPagadosBase =
         usaAsistencia && asistenciaEmpleado
-          ? asistenciaEmpleado.dias_pagados_base
-          : toNumberValue(empleadoRow.dias_pagados);
+          ? Math.min(diasVigenciaNomina, asistenciaEmpleado.dias_pagados_base)
+          : diasVigenciaNomina;
       const horasTrabajadasBase =
         usaAsistencia && asistenciaEmpleado
           ? toNumberValue(asistenciaEmpleado.horas_trabajadas_base)
@@ -7290,10 +7301,6 @@ export const recalculateNominaPeriodo = async (
         movimientosEmpleado?.movimientos_turnos_internos_ss_devengados
       );
 
-      const employmentRange: NominaEmploymentDateRange = {
-        start: toDateString(empleadoRow.fecha_inicio_pago) ?? periodoRange.start,
-        end: toDateString(empleadoRow.fecha_fin_pago) ?? periodoRange.end
-      };
       const projectedCanonicals = projectNominaCanonicalEventsToPeriodo({
         canonicalEvents: (canonicalByVinculacion.get(empleadoRow.vinculacion_id) ?? []).map(
           (item) => ({
@@ -7739,7 +7746,15 @@ export const recalculateNominaPeriodo = async (
         motor: 'NOMINA_V1_0',
         periodo: periodoRange,
         dias: {
-          base: diasPagadosBase,
+          base: COBERTURA_DIAS_BASE_NOMINA,
+          nomina_base: COBERTURA_DIAS_BASE_NOMINA,
+          salario: diasPagadosSalario,
+          transporte: diasPagadosTransporte,
+          recargos: diasPagadosOtrosRecargos
+        },
+        dias_calendario_periodo: inclusiveDaysBetween(periodoRange.start, periodoRange.end),
+        dias_nomina_base: COBERTURA_DIAS_BASE_NOMINA,
+        dias_nomina_pagados: {
           salario: diasPagadosSalario,
           transporte: diasPagadosTransporte,
           recargos: diasPagadosOtrosRecargos

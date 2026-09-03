@@ -140,6 +140,15 @@ function formatDate(value: string | null) {
   return formatDateOnly(value, { dateStyle: "medium" });
 }
 
+function countInclusiveDays(start: string | null, end: string | null) {
+  if (!start) return 0;
+  const from = new Date(`${start.slice(0, 10)}T00:00:00Z`).getTime();
+  const to = new Date(`${(end ?? start).slice(0, 10)}T00:00:00Z`).getTime();
+  return Number.isFinite(from) && Number.isFinite(to) && to >= from
+    ? Math.floor((to - from) / 86400000) + 1
+    : 0;
+}
+
 function toMessage(error: unknown) {
   return error instanceof Error ? error.message : "Error desconocido";
 }
@@ -610,6 +619,22 @@ export default function TurnosPage() {
         total: summary.total,
       }));
   }, [displayedMovimientos]);
+
+  const byPersonModalitySummary = useMemo(() => {
+    const groups = new Map<string, { person: string; modality: string; days: number; daily: number | null; total: number }>();
+    for (const movimiento of displayedMovimientos) {
+      const relation = turnRelationByMovementId.get(movimiento.id);
+      const modality = relation?.modalidad ?? movimiento.contexto_operativo?.modalidad ?? "Sin modalidad";
+      const days = countInclusiveDays(relation?.fecha_inicio ?? movimiento.fecha, relation?.fecha_fin ?? movimiento.fecha) || movimiento.cantidad || 0;
+      const key = `${movimiento.persona.id}:${modality}`;
+      const current = groups.get(key) ?? { person: movimiento.persona.nombre_completo, modality, days: 0, daily: movimiento.valor_unitario, total: 0 };
+      current.days += days;
+      current.total += movimiento.valor_total;
+      if (current.daily === null) current.daily = movimiento.valor_unitario;
+      groups.set(key, current);
+    }
+    return Array.from(groups.values()).sort((a, b) => a.person.localeCompare(b.person, "es-CO") || a.modality.localeCompare(b.modality, "es-CO"));
+  }, [displayedMovimientos, turnRelationByMovementId]);
 
   const valueByNature = useMemo(() => {
     const devengados = displayedMovimientos
@@ -1492,12 +1517,10 @@ export default function TurnosPage() {
             <div
               className="np-table-head np-turns-table-grid"
             >
-              <span>Fecha</span>
-              <span>Trabajador que cubre</span>
-              <span>Trabajador reemplazado</span>
-              <span>Municipio / Sede</span>
-              <span>Motivo</span>
-              <span>Estado</span>
+              <span>Persona que cubre</span><span>Tipo</span><span>Persona cubierta</span>
+              <span>Institucion / Sede</span><span>Modalidad</span><span>Fecha inicio</span>
+              <span>Fecha fin</span><span>Dias</span><span>Tarifa diaria</span><span>Valor total</span>
+              <span>Motivo</span><span>Estado</span><span>Cuenta / Acciones</span>
             </div>
 
             {displayedMovimientos.map((movimiento) => {
@@ -1515,6 +1538,8 @@ export default function TurnosPage() {
                   : turnRelation?.documentos_completos
                     ? "Completo"
                     : "Pendiente";
+              const diasEfectivos = countInclusiveDays(turnRelation?.fecha_inicio ?? movimiento.fecha, turnRelation?.fecha_fin ?? movimiento.fecha) || movimiento.cantidad || 0;
+              const modalidad = turnRelation?.modalidad ?? movimiento.contexto_operativo?.modalidad ?? "No disponible";
 
               return (
               <div
@@ -1522,21 +1547,26 @@ export default function TurnosPage() {
                 className={`np-table-row np-turns-table-grid${selectedMovementId === movimiento.id ? " is-selected" : ""}`}
               >
                 <span className="np-table-stack">
-                  <strong>{formatDate(movimiento.fecha)}</strong>
-                  <small className={`np-badge ${tipoTurno === "INTERNO" ? "info" : "primary"}`}>{getTurnCoverageLabel(tipoTurno)}</small>
-                </span>
-                <span className="np-table-stack" title={[cubreNombre, cubreDocumento].filter(Boolean).join(" · ")}>
                   <strong>{cubreNombre}</strong>
                   <small>{cubreDocumento ?? "Sin documento"}</small>
+                </span>
+                <span className="np-table-stack" title={[cubreNombre, cubreDocumento].filter(Boolean).join(" · ")}>
+                  <strong className={`np-badge ${tipoTurno === "INTERNO" ? "info" : "primary"}`}>{tipoTurno}</strong>
                 </span>
                 <span className="np-table-stack" title={[reemplazadoNombre, reemplazadoDocumento].filter(Boolean).join(" · ")}>
                   <strong>{reemplazadoNombre}</strong>
                   <small>{reemplazadoDocumento ?? "Sin documento"}</small>
                 </span>
                 <span className="np-table-stack" title={[turnRelation?.municipio ?? movimiento.contexto_operativo?.municipio, turnRelation?.sede ?? movimiento.contexto_operativo?.sede].filter(Boolean).join(" · ")}>
-                  <strong>{turnRelation?.municipio ?? movimiento.contexto_operativo?.municipio ?? "No disponible"}</strong>
+                  <strong>{turnRelation?.institucion ?? movimiento.contexto_operativo?.institucion ?? "No disponible"}</strong>
                   <small>{turnRelation?.sede ?? movimiento.contexto_operativo?.sede ?? "Sin sede"}</small>
                 </span>
+                <span className="np-table-text np-table-ellipsis" title={modalidad}>{modalidad}</span>
+                <span>{formatDate(turnRelation?.fecha_inicio ?? movimiento.fecha)}</span>
+                <span>{formatDate(turnRelation?.fecha_fin ?? movimiento.fecha)}</span>
+                <span><strong>{formatNumber(diasEfectivos)}</strong> días</span>
+                <span>{canSeeEconomic && movimiento.valor_unitario !== null ? `${formatCOP(movimiento.valor_unitario)}/día` : "No disponible"}</span>
+                <span>{canSeeEconomic ? formatCOP(movimiento.valor_total) : "No disponible"}</span>
                 <span className="np-table-text np-table-ellipsis" title={turnRelation?.motivo ?? movimiento.descripcion ?? "No disponible"}>
                   {turnRelation?.motivo ?? movimiento.descripcion ?? "No disponible"}
                 </span>
@@ -1544,7 +1574,7 @@ export default function TurnosPage() {
                   <span className={`np-badge ${getMovementStatusTone(movimiento)}`}>
                     {turnRelation?.estado ?? getMovementStatusLabel(movimiento)}
                   </span>
-                  <small title="Estado documental">Docs: {documentosLabel}</small>
+                  <small title="Estado documental">Cuenta: {documentosLabel}</small>
                   <span className="np-row-status">
                   <button
                     type="button"
@@ -2042,6 +2072,19 @@ export default function TurnosPage() {
 
       {showSummaryRow ? (
         <div className="np-summary-row">
+          <div className="np-summary-card np-turn-person-summary">
+            <h4>Resumen por persona y modalidad</h4>
+            {byPersonModalitySummary.map((item) => (
+              <div key={`${item.person}-${item.modality}`} className="np-summary-item">
+                <span>{item.person} · {item.modality}<small>{formatNumber(item.days)} días · {item.daily === null ? "Sin tarifa" : `${formatCOP(item.daily)}/día`}</small></span>
+                <strong>{canSeeEconomic ? formatCOP(item.total) : "Operativo"}</strong>
+              </div>
+            ))}
+            {Array.from(new Set(byPersonModalitySummary.map((item) => item.person))).map((person) => (
+              <div key={`${person}-total`} className="np-summary-item np-summary-total"><strong>Total días · {person}</strong><strong>{formatNumber(byPersonModalitySummary.filter((item) => item.person === person).reduce((sum, item) => sum + item.days, 0))}</strong></div>
+            ))}
+            {byPersonModalitySummary.length === 0 ? <span className="np-empty">Sin resumen disponible</span> : null}
+          </div>
           <div className="np-summary-card">
             <h4>Turnos por tipo</h4>
             {byTypeSummary.map((item) => (

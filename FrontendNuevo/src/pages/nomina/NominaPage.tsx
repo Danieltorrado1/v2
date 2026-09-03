@@ -565,6 +565,23 @@ function getEmployeeTotalNovedades(empleado: NominaEmpleadoApi) {
     : 0;
 }
 
+function getEmployeeConceptDays(empleado: NominaEmpleadoApi, concept: "salario" | "transporte" | "recargos") {
+  const detail = empleado.detalle_calculo;
+  const days = detail?.dias;
+  const counters = detail?.contadores;
+  const parameters = detail?.parametros;
+  const daysRecord = days && typeof days === "object" ? days as Record<string, unknown> : {};
+  const countersRecord = counters && typeof counters === "object" ? counters as Record<string, unknown> : {};
+  const parametersRecord = parameters && typeof parameters === "object" ? parameters as Record<string, unknown> : {};
+  const counterKey = concept === "salario" ? "dias_salario" : concept === "transporte" ? "dias_transporte" : "dias_recargo";
+  const value = daysRecord[concept] ?? countersRecord[counterKey];
+  const base = daysRecord.nomina_base ?? daysRecord.base ?? parametersRecord.dias_base_nomina;
+  return {
+    paid: typeof value === "number" ? value : empleado.dias_pagados,
+    base: typeof base === "number" ? base : 30,
+  };
+}
+
 function getEmployeeDocumentSummary(empleado: NominaEmpleadoApi) {
   return `${getEmployeeDocumentLabel(empleado)} • Contrato ${getEmployeeContractLabel(empleado)}`;
 }
@@ -2825,6 +2842,7 @@ export default function NominaPage() {
                             <span>Cargo / clasificacion</span>
                             <span>Liquidacion</span>
                             <span>Devengado</span>
+                            <span>Dias pagados</span>
                             <span>Deducciones</span>
                             <span>Neto</span>
                             <span>Novedades</span>
@@ -2849,6 +2867,9 @@ export default function NominaPage() {
                               const documentStatusPercentage = formatOptionalPercentage(
                                 documentStatusSummary?.porcentajeCumplimiento ?? null,
                               );
+                              const salarioDias = getEmployeeConceptDays(empleado, "salario");
+                              const transporteDias = getEmployeeConceptDays(empleado, "transporte");
+                              const recargoDias = getEmployeeConceptDays(empleado, "recargos");
 
                               return (
                                 <Fragment key={empleado.id}>
@@ -2890,6 +2911,8 @@ export default function NominaPage() {
                                     </div>
 
                                     <span className="cell-devengado" title={`Total adiciones: ${formatCOP(empleado.total_adiciones)} ï¿½ Devengado transporte: ${formatCOP(empleado.devengado_transporte)}`}><strong>{formatCOP(empleado.total_adiciones)}</strong><small>Transporte {formatCOP(empleado.devengado_transporte)}</small></span>
+
+                                    <span className="cell-pay-days"><small>Salario ({salarioDias.paid}/{salarioDias.base})</small><small>Transporte ({transporteDias.paid}/{transporteDias.base})</small><small>Recargo ({recargoDias.paid}/{recargoDias.base})</small></span>
 
                                     <span className="cell-deduccion">{formatCOP(empleado.total_deducciones)}</span>
 
@@ -2951,6 +2974,7 @@ export default function NominaPage() {
                                           <div><span>{getEmployeeCargoLabel(empleado)}</span><small>{getEmployeeMunicipioLabel(empleado)} · {getEmployeeSedeLabel(empleado)}</small></div>
                                         </header>
                                         <div className="payroll-person-groups">
+                                          <section><h4>Dias pagados</h4><dl><div><dt>Salario</dt><dd>{salarioDias.paid}/{salarioDias.base}</dd></div><div><dt>Transporte</dt><dd>{transporteDias.paid}/{transporteDias.base}</dd></div><div><dt>Recargo</dt><dd>{recargoDias.paid}/{recargoDias.base}</dd></div></dl></section>
                                           <section><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Otros</dt><dd>{formatCOP(empleado.devengado_otros)}</dd></div></dl></section>
                                           <section><h4>Deducciones</h4><dl><div><dt>Salud</dt><dd>{formatCOP(empleado.salud)}</dd></div><div><dt>Pension</dt><dd>{formatCOP(empleado.pension)}</dd></div><div><dt>Total</dt><dd>{formatCOP(empleado.total_deducciones)}</dd></div></dl></section>
                                           <section><h4>Novedades y turnos</h4><dl><div><dt>Novedades</dt><dd>{formatNumber(novedadesCountByEmpleadoId.get(empleado.id) ?? getEmployeeTotalNovedades(empleado))}</dd></div><div><dt>Modalidad</dt><dd title={getEmployeeModalidadDescription(empleado)}>{getEmployeeModalidadCode(empleado)}</dd></div><div><dt>Documentos</dt><dd>{getEmployeeDocumentStatusLabel(empleado)}{documentStatusPercentage ? ` · ${documentStatusPercentage}` : ""}</dd></div></dl></section>

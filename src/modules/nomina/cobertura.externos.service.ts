@@ -851,15 +851,14 @@ const buildCoberturaCuentaPdfLines = (
   ...input.turnos.flatMap(
     (turno, index) => [
       `${index + 1}. ${
-        turno.fecha
-      } | ${
         turno.modalidad ??
         'Sin modalidad'
-      } | tarifa ${
-        turno.tarifa_config_id ??
-        'N/A'
-      }`,
-      `   Valor ${toNumberValue(
+      } | ${
+        turno.fecha_inicio
+      } al ${turno.fecha_fin} | ${turno.dias_efectivos} dias x ${
+        toNumberValue(turno.valor_diario)
+      } diario`,
+      `   Subtotal ${toNumberValue(
         turno.valor,
       )} | ${
         turno.institucion ??
@@ -1507,20 +1506,6 @@ export const generateCoberturaCuenta =
       );
 
       if (
-        missingDocuments.length > 0
-      ) {
-        throw new AppError(
-          'La cuenta de cobro requiere cedula y certificacion bancaria vigentes',
-          409,
-          'COBERTURA_DOCUMENTOS_EXTERNOS_INCOMPLETOS',
-          {
-            faltantes:
-              missingDocuments,
-          },
-        );
-      }
-
-      if (
         !synced.cuenta ||
         synced.turnos.length === 0
       ) {
@@ -1605,7 +1590,7 @@ export const generateCoberturaCuenta =
           `
             UPDATE cobertura_cuentas_cobro_externas
             SET
-              estado = 'GENERADA',
+              estado = $6,
               valor_total = $2::numeric,
               generado_bucket = $3,
               generado_path = $4,
@@ -1621,6 +1606,7 @@ export const generateCoberturaCuenta =
             stored.bucket,
             stored.path,
             actor,
+            missingDocuments.length > 0 ? 'PENDIENTE' : 'GENERADA',
           ],
         );
 
