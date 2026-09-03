@@ -728,9 +728,16 @@ function buildKpis(
     {
       tone: "info",
       icon: FileText,
-      label: "Novedades",
+      label: "Novedades registradas",
       value: countValue(totalNovedadesOverride ?? dashboard?.total_novedades),
-      caption: "Registradas en backend",
+      caption: "Cantidad de registros administrativos",
+    },
+    {
+      tone: "info",
+      icon: CalendarRange,
+      label: "Días de novedades",
+      value: countValue(dashboard?.total_dias_novedades),
+      caption: "Días efectivos aplicables al periodo",
     },
     {
       tone: "primary",

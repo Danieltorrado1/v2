@@ -216,6 +216,7 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   total_documental_faltantes: number | string | null;
   total_documental_requeridos: number | string | null;
   total_novedades: number;
+  total_dias_novedades: number;
   gestor_usuario_id: string | null;
   gestor_nombre_completo: string | null;
   gestor_origen: string | null;
@@ -780,6 +781,7 @@ export interface NominaEmpleado {
   contrato_id: string;
   numero_contrato: string | null;
   total_novedades: number;
+  total_dias_novedades: number;
   total_adiciones: number;
   total_deducciones: number;
   estado_documental: {
@@ -1275,6 +1277,7 @@ export interface NominaDashboard {
   total_movimientos: number;
   total_neto: number;
   total_novedades: number;
+  total_dias_novedades: number;
   total_otros: number;
   total_pension: number;
   total_salud: number;
@@ -1995,6 +1998,7 @@ const getNominaEmpleadosRealSelect = (): string => {
       ncs.vigente_desde AS categoria_vigente_desde,
       ncs.vigente_hasta AS categoria_vigente_hasta,
       COALESCE(novedades_summary.total_novedades, 0)::int AS total_novedades,
+      COALESCE(novedades_summary.total_dias_novedades, 0)::int AS total_dias_novedades,
       red.total_requeridos AS total_documental_requeridos,
       red.total_faltantes AS total_documental_faltantes,
       red.total_cargados AS total_documental_cargados,
@@ -2092,8 +2096,13 @@ const getNominaEmpleadosRealSelect = (): string => {
       LIMIT 1
     ) gestor_actual ON TRUE
     LEFT JOIN LATERAL (
-      SELECT COUNT(*)::int AS total_novedades
+      SELECT
+        COUNT(*)::int AS total_novedades,
+        COALESCE(SUM(GREATEST(0,
+          LEAST(COALESCE(nn.fecha_fin, nn.fecha_inicio, np_nov.fecha_fin), np_nov.fecha_fin)
+          - GREATEST(COALESCE(nn.fecha_inicio, nn.fecha_fin, np_nov.fecha_inicio), np_nov.fecha_inicio) + 1)), 0)::int AS total_dias_novedades
       FROM nomina_novedades nn
+      INNER JOIN nomina_periodos np_nov ON np_nov.id = nn.periodo_id
       WHERE nn.nomina_empleado_id = ne.id
         AND nn.periodo_id = ne.periodo_id
     ) novedades_summary ON TRUE
@@ -2584,6 +2593,7 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
     modalidad: modalidadEtiqueta,
     clasificacion: resolveNominaEmpleadoClasificacion(row),
     total_novedades: row.total_novedades,
+    total_dias_novedades: row.total_dias_novedades,
     estado_documental:
       totalDocumentalRequeridos === null &&
       totalDocumentalFaltantes === null &&
@@ -6975,6 +6985,7 @@ export const recalculateNominaPeriodo = async (
       [periodoId]
     );
     const turnosInternosCoberturaResult = await client.query<{
+      tipo_turno: 'INTERNO';
       contexto_operativo: Record<string, unknown> | null;
       fecha_fin: string;
       fecha_inicio: string;
@@ -6982,6 +6993,7 @@ export const recalculateNominaPeriodo = async (
       movimiento_afecta_seguridad_social: boolean | null;
       movimiento_id: string | null;
       movimiento_valor_aplicado: number | string | null;
+      movimiento_valor_unitario: number | string | null;
       nomina_novedad_id: string;
       nomina_empleado_id: string;
       titular_nombre: string | null;
@@ -7001,8 +7013,10 @@ export const recalculateNominaPeriodo = async (
       `
         SELECT
           nnt.id::text AS id,
+          nnt.tipo_turno,
           nnt.movimiento_id::text AS movimiento_id,
           nm.valor_total AS movimiento_valor_aplicado,
+          nm.valor_unitario AS movimiento_valor_unitario,
           nm.afecta_seguridad_social AS movimiento_afecta_seguridad_social,
           nnt.nomina_empleado_id::text AS nomina_empleado_id,
           nnt.nomina_novedad_id::text AS nomina_novedad_id,
@@ -7230,6 +7244,7 @@ export const recalculateNominaPeriodo = async (
       }
       return toNumberValue(match.valor) !== 0;
     };
+    const turnosSinSnapshot: Array<{ turno_id: string; nomina_empleado_id: string }> = [];
 
     for (const novedad of novedadesResult.rows) {
       const currentItems = novedadesByEmpleado.get(novedad.nomina_empleado_id) ?? [];
@@ -7388,7 +7403,10 @@ export const recalculateNominaPeriodo = async (
           fecha_inicio_periodo: impact.projected_range.fecha_inicio,
           fecha_fin_periodo: impact.projected_range.fecha_fin,
           dias: impact.dias_evento,
+          dias_calendario: impact.dias_evento,
           dias_periodo: impact.dias_periodo,
+          dias_efectivos_periodo: impact.dias_periodo,
+          cantidad_registros: 1,
           afecta_salario: impact.dias_salario_descuento > 0,
           afecta_transporte: impact.dias_transporte_descuento > 0,
           afecta_recargo: impact.dias_recargo_excluido > 0,
@@ -7398,6 +7416,9 @@ export const recalculateNominaPeriodo = async (
           descuento_salario: descuentoSalario,
           descuento_transporte: descuentoTransporte,
           descuento_recargo: descuentoRecargo,
+          valor_dia_salario: valorDiaSalario,
+          valor_dia_transporte: valorDiaTransporte,
+          valor_dia_recargo: valorDiaRecargo,
           efecto_salario: event.matrix.efecto_salario,
           efecto_transporte: event.matrix.efecto_transporte,
           efecto_recargo: event.matrix.efecto_recargos,
@@ -7490,15 +7511,32 @@ export const recalculateNominaPeriodo = async (
             )
           };
         });
-        const adicionesInternasCobertura = (turnosInternosCoberturaByEmpleado.get(empleadoRow.id) ?? []).map((turnoRow) => {
+        const adicionesInternasCobertura = (turnosInternosCoberturaByEmpleado.get(empleadoRow.id) ?? [])
+          .filter((turnoRow) => {
+            const hasSnapshot = Boolean(
+              turnoRow.movimiento_id &&
+              (turnoRow.movimiento_valor_unitario !== null ||
+                (turnoRow.movimiento_valor_aplicado !== null &&
+                  toNumberValue(turnoRow.movimiento_valor_aplicado) > 0))
+            );
+            if (!hasSnapshot) {
+              turnosSinSnapshot.push({ turno_id: turnoRow.id, nomina_empleado_id: empleadoRow.id });
+            }
+            return hasSnapshot;
+          })
+          .map((turnoRow) => {
           const turnoContexto = toRecord(turnoRow.contexto_operativo);
           const categoriaTurno = stripCategoriaContext(turnoContexto);
           const categoriaTurnoFaltante = !categoriaTurno.categoria_id && !categoriaTurno.categoria;
           if (
+            turnoRow.tipo_turno === 'INTERNO' &&
             categoriaTurnoFaltante &&
             !turnoRow.titular_categoria_id &&
             !turnoRow.titular_categoria_codigo &&
-            !turnoRow.titular_categoria_nombre
+            !turnoRow.titular_categoria_nombre &&
+            !empleadoRow.categoria_id &&
+            !empleadoRow.categoria_codigo &&
+            !empleadoRow.categoria_nombre
           ) {
             throw new AppError(
               'Internal addition requires the covered salary category in contexto_operativo',
@@ -7510,12 +7548,12 @@ export const recalculateNominaPeriodo = async (
 
           const categoriaTurnoSnapshot = categoriaTurnoFaltante
             ? {
-                categoria_id: turnoRow.titular_categoria_id ?? null,
-                codigo_categoria: turnoRow.titular_categoria_codigo ?? null,
-                nombre_categoria: turnoRow.titular_categoria_nombre ?? null,
+                categoria_id: turnoRow.titular_categoria_id ?? empleadoRow.categoria_id ?? null,
+                codigo_categoria: turnoRow.titular_categoria_codigo ?? empleadoRow.categoria_codigo ?? null,
+                nombre_categoria: turnoRow.titular_categoria_nombre ?? empleadoRow.categoria_nombre ?? null,
                 salario_base: toNumberValue(
                   turnoRow.titular_categoria_salario_base ??
-                    empleadoRow.categoria_salario_base ??
+                  empleadoRow.categoria_salario_base ??
                     empleadoRow.salario_base
                 ),
                 recargo_mensual: toNumberValue(
@@ -7526,7 +7564,7 @@ export const recalculateNominaPeriodo = async (
                     empleadoRow.categoria_auxilio_transporte ??
                     empleadoRow.auxilio_transporte
                 ),
-                configuracion_id: turnoRow.titular_categoria_id ?? null,
+                configuracion_id: turnoRow.titular_categoria_id ?? empleadoRow.categoria_id ?? null,
                 vigente_desde: turnoRow.titular_categoria_vigente_desde,
                 vigente_hasta: turnoRow.titular_categoria_vigente_hasta
               }
@@ -7550,9 +7588,10 @@ export const recalculateNominaPeriodo = async (
             aporta_pension: resolveAportaPension(empleadoRow.vinculacion_id, turnoRow.fecha_inicio),
             afecta_seguridad_social: turnoRow.movimiento_afecta_seguridad_social,
             valor_aplicado: toOptionalNumberValue(turnoRow.movimiento_valor_aplicado),
+            valor_unitario: toOptionalNumberValue(turnoRow.movimiento_valor_unitario),
             categoria: categoriaTurnoSnapshot
           };
-        });
+          });
         const coberturaResult = calculateCoberturaPayroll({
           empleo: {
             fecha_inicio: employmentRange.start,
@@ -7705,6 +7744,13 @@ export const recalculateNominaPeriodo = async (
           transporte: diasPagadosTransporte,
           recargos: diasPagadosOtrosRecargos
         },
+        bases_economicas: {
+          salario_base: salarioBase,
+          auxilio_transporte_base: auxilioTransporte,
+          recargo_base: otrosDevengos,
+          divisor: 30,
+          categoria_salarial_id: empleadoRow.categoria_id
+        },
         componentes: {
           salario_base: salarioBase,
           auxilio_transporte: auxilioTransporte,
@@ -7725,6 +7771,8 @@ export const recalculateNominaPeriodo = async (
           neto_pagar: netoPagar
         },
         novedades: {
+          cantidad_novedades: novedadesEconomicas.length,
+          dias_novedad: novedadesEconomicas.reduce((sum, item) => sum + item.dias_periodo, 0),
           descuentos_salario: diasDescuentoSalario,
           descuentos_transporte: diasDescuentoTransporte,
           descuentos_recargos: diasDescuentoOtrosRecargos,
@@ -7787,7 +7835,8 @@ export const recalculateNominaPeriodo = async (
         (accumulator, item) => accumulator + item.total_asistencia_activa,
         0
       ),
-      force: recalculateMode.forced
+      force: recalculateMode.forced,
+      turnos_sin_snapshot: turnosSinSnapshot
     };
 
     await recordNominaAudit(
@@ -10541,8 +10590,24 @@ export const createNominaNovedadConTurno = async (
       turno.contexto_operativo && typeof turno.contexto_operativo === 'object'
         ? (turno.contexto_operativo as Record<string, unknown>)
         : {};
+    const {
+      categoria_id: _categoriaId,
+      categoria: _categoria,
+      codigo_categoria: _codigoCategoria,
+      nombre_categoria: _nombreCategoria,
+      replacement_salary_category_id: _replacementCategoryId,
+      covered_salary_category_id: _coveredCategoryId,
+      replacement_nomina_empleado_id: _replacementEmployeeId,
+      ...turnoContextoSinCategoria
+    } = turnoContextoRaw;
     const persistedTurnoContexto: Record<string, unknown> = {
-      ...turnoContextoRaw
+      ...turnoContextoSinCategoria,
+      covered_nomina_empleado_id: input.nomina_empleado_id,
+      fecha_inicio: input.fecha_inicio ?? null,
+      fecha_fin: input.fecha_fin ?? input.fecha_inicio ?? null,
+      dias_efectivos: input.fecha_inicio && (input.fecha_fin ?? input.fecha_inicio)
+        ? countInclusiveDays(input.fecha_inicio, input.fecha_fin ?? input.fecha_inicio)
+        : 1
     };
     let turnoEmpleadoId = input.nomina_empleado_id;
     let turnoVinculacionId = input.vinculacion_id;
@@ -10565,15 +10630,19 @@ export const createNominaNovedadConTurno = async (
       turnoEmpleadoId = coveredEmployee.id;
       turnoVinculacionId = coveredEmployee.vinculacion_id;
       personaReemplazadaId = titular.persona_id;
+      persistedTurnoContexto.covered_nomina_empleado_id = coveredEmployee.id;
+      persistedTurnoContexto.replacement_nomina_empleado_id = coveredEmployee.id;
+      persistedTurnoContexto.covered_salary_category_id = coveredEmployee.categoria_id ?? null;
+      persistedTurnoContexto.replacement_salary_category_id = coveredEmployee.categoria_id ?? null;
       if (
         !persistedTurnoContexto.categoria_id &&
         !persistedTurnoContexto.categoria &&
         !persistedTurnoContexto.codigo_categoria
       ) {
-        persistedTurnoContexto.categoria_id = titular.categoria_id ?? null;
-        persistedTurnoContexto.categoria = titular.categoria_codigo ?? titular.categoria_nombre ?? null;
-        persistedTurnoContexto.codigo_categoria = titular.categoria_codigo ?? null;
-        persistedTurnoContexto.nombre_categoria = titular.categoria_nombre ?? null;
+        persistedTurnoContexto.categoria_id = coveredEmployee.categoria_id ?? null;
+        persistedTurnoContexto.categoria = coveredEmployee.categoria_codigo ?? coveredEmployee.categoria_nombre ?? null;
+        persistedTurnoContexto.codigo_categoria = coveredEmployee.categoria_codigo ?? null;
+        persistedTurnoContexto.nombre_categoria = coveredEmployee.categoria_nombre ?? null;
       }
     }
     let externoId: string | null = null;
@@ -10603,6 +10672,13 @@ export const createNominaNovedadConTurno = async (
       );
       externoId = external.rows[0]?.id ?? null;
       personaReemplazadaId = titular.persona_id;
+      persistedTurnoContexto.externo_id = externoId;
+      delete persistedTurnoContexto.categoria_id;
+      delete persistedTurnoContexto.categoria;
+      delete persistedTurnoContexto.codigo_categoria;
+      delete persistedTurnoContexto.nombre_categoria;
+      delete persistedTurnoContexto.covered_salary_category_id;
+      delete persistedTurnoContexto.replacement_salary_category_id;
     }
     const row = await client.query<{ id: string }>(
       `INSERT INTO nomina_novedad_turnos
@@ -10616,6 +10692,8 @@ export const createNominaNovedadConTurno = async (
     );
     const turnoRow = row.rows[0]; if (!turnoRow) throw new AppError('No fue posible crear relacion de turno',500,'NOMINA_TURNO_CREATE_FAILED');
     const fechaTurno = input.fecha_inicio ?? input.fecha_fin ?? null;
+    const fechaFinTurno = input.fecha_fin ?? input.fecha_inicio ?? null;
+    const diasTurno = fechaTurno && fechaFinTurno ? countInclusiveDays(fechaTurno, fechaFinTurno) : 1;
     if (turno.tipo === 'INTERNO' && fechaTurno) {
       const duplicateMovement = await client.query<{ id: string }>(
         `
@@ -10635,7 +10713,7 @@ export const createNominaNovedadConTurno = async (
       const movementId = existingMovementId ?? await insertNominaTurnMovementSnapshot(
         {
           actorUserId,
-          cantidad: 1,
+          cantidad: diasTurno,
           contrato_id: periodo.contrato_id,
           descripcion: turno.observacion ?? 'Turno interno de cobertura',
           empresa_id: periodo.contrato_empresa_id,
@@ -10655,7 +10733,7 @@ export const createNominaNovedadConTurno = async (
           existingMovementId,
           {
             actorUserId,
-            cantidad: 1,
+            cantidad: diasTurno,
             contrato_id: periodo.contrato_id,
             descripcion: turno.observacion ?? 'Turno interno de cobertura',
             empresa_id: periodo.contrato_empresa_id,
@@ -10693,7 +10771,7 @@ export const createNominaNovedadConTurno = async (
       const movementId = existingMovementId ?? await insertNominaTurnMovementSnapshot(
         {
           actorUserId,
-          cantidad: 1,
+          cantidad: diasTurno,
           contrato_id: periodo.contrato_id,
           descripcion: turno.observacion ?? 'Turno externo de cobertura',
           empresa_id: periodo.contrato_empresa_id,
@@ -10714,7 +10792,7 @@ export const createNominaNovedadConTurno = async (
           existingMovementId,
           {
             actorUserId,
-            cantidad: 1,
+            cantidad: diasTurno,
             contrato_id: periodo.contrato_id,
             descripcion: turno.observacion ?? 'Turno externo de cobertura',
             empresa_id: periodo.contrato_empresa_id,
@@ -12074,6 +12152,7 @@ const loadNominaDashboardData = async (
   );
 
   const conteosResult = await executor.query<{
+    total_dias_novedades: number;
     total_desprendibles: number;
     total_movimientos: number;
     total_novedades: number;
@@ -12086,6 +12165,15 @@ const loadNominaDashboardData = async (
           WHERE periodo_id = $1::bigint
             AND COALESCE(activo, TRUE) = TRUE
         ) AS total_novedades,
+        (
+          SELECT COALESCE(SUM(GREATEST(0,
+            LEAST(COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin), np.fecha_fin)
+            - GREATEST(COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio), np.fecha_inicio) + 1)), 0)::int
+          FROM nomina_novedades nn
+          INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
+          WHERE nn.periodo_id = $1::bigint
+            AND COALESCE(nn.activo, TRUE) = TRUE
+        ) AS total_dias_novedades,
         (
           SELECT COUNT(*)::int
           FROM nomina_movimientos
@@ -12141,6 +12229,7 @@ const loadNominaDashboardData = async (
     total_transporte: toNumberValue(empleados?.total_transporte),
     total_otros: toNumberValue(empleados?.total_otros),
     total_novedades: conteos?.total_novedades ?? 0,
+    total_dias_novedades: conteos?.total_dias_novedades ?? 0,
     total_movimientos: conteos?.total_movimientos ?? 0,
     total_desprendibles: conteos?.total_desprendibles ?? 0,
     asistencia: {
@@ -12171,6 +12260,7 @@ const dashboardToExportRows = (
       total_transporte: dashboard.total_transporte,
       total_otros: dashboard.total_otros,
       total_novedades: dashboard.total_novedades,
+      total_dias_novedades: dashboard.total_dias_novedades,
       total_movimientos: dashboard.total_movimientos,
       total_desprendibles: dashboard.total_desprendibles,
       asistencia_presentes: dashboard.asistencia.presentes,
@@ -12395,6 +12485,7 @@ const getNominaResumenExportRows = async (
     total_liquidaciones: number;
     total_neto_pagar: number | string | null;
     total_novedades: number;
+    total_dias_novedades: number;
     total_pension: number | string | null;
     total_salud: number | string | null;
     total_devengado: number | string | null;
@@ -12451,6 +12542,14 @@ const getNominaResumenExportRows = async (
           WHERE nn.periodo_id = np.id
         ) AS total_novedades,
         (
+          SELECT COALESCE(SUM(GREATEST(0,
+            LEAST(COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin), np.fecha_fin)
+            - GREATEST(COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio), np.fecha_inicio) + 1)), 0)::int
+          FROM nomina_novedades nn
+          WHERE nn.periodo_id = np.id
+            AND COALESCE(nn.activo, TRUE) = TRUE
+        ) AS total_dias_novedades,
+        (
           SELECT COUNT(*)::int
           FROM nomina_desprendibles nd
           WHERE nd.periodo_id = np.id
@@ -12495,6 +12594,7 @@ const getNominaResumenExportRows = async (
       total_salud: toNumberValue(row.total_salud),
       total_pension: toNumberValue(row.total_pension),
       total_novedades: row.total_novedades,
+      total_dias_novedades: row.total_dias_novedades,
       total_desprendibles: row.total_desprendibles,
       total_liquidaciones: row.total_liquidaciones
     }
@@ -12517,6 +12617,7 @@ const NOMINA_RESUMEN_EXPORT_HEADERS = [
   'total_salud',
   'total_pension',
   'total_novedades',
+  'total_dias_novedades',
   'total_desprendibles',
   'total_liquidaciones'
 ];

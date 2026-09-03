@@ -36,6 +36,7 @@ export interface CoberturaAdicionInternaInput {
   observacion?: string | null;
   origen?: string | null;
   valor_aplicado?: number | null;
+  valor_unitario?: number | null;
 }
 
 export interface CoberturaCalculationInput {
@@ -306,17 +307,22 @@ const calculateAdicionInterna = (
     adicion.valor_aplicado === null || adicion.valor_aplicado === undefined
       ? null
       : floorNominaValue(normalizeAmount(adicion.valor_aplicado));
-  const usaValorSnapshot = valorSnapshot !== null;
-  const salarioTurno = usaValorSnapshot
-    ? valorSnapshot
+  const valorUnitarioSnapshot = adicion.valor_unitario === null || adicion.valor_unitario === undefined
+    ? null
+    : floorNominaValue(normalizeAmount(adicion.valor_unitario));
+  const valorTurno = valorUnitarioSnapshot !== null
+    ? floorNominaValue(valorUnitarioSnapshot * diasTurno)
+    : valorSnapshot;
+  const salarioTurno = valorTurno !== null
+    ? valorTurno
     : floorNominaValue((normalizeAmount(adicion.categoria.salario_base) / COBERTURA_DIAS_BASE_NOMINA) * diasTurno);
-  const recargoTurno = usaValorSnapshot
+  const recargoTurno = valorTurno !== null
     ? 0
     : floorNominaValue((normalizeAmount(adicion.categoria.recargo_mensual) / COBERTURA_DIAS_BASE_NOMINA) * diasTurno);
-  const transporteTurno = usaValorSnapshot
+  const transporteTurno = valorTurno !== null
     ? 0
     : floorNominaValue((normalizeAmount(adicion.categoria.auxilio_transporte) / COBERTURA_DIAS_BASE_NOMINA) * diasTurno);
-  const devengadoTurno = usaValorSnapshot ? valorSnapshot : salarioTurno + recargoTurno + transporteTurno;
+  const devengadoTurno = valorTurno !== null ? valorTurno : salarioTurno + recargoTurno + transporteTurno;
   const baseSeguridadSocialTurno = adicion.afecta_seguridad_social === false ? 0 : salarioTurno;
   const saludTurno = roundUpToHundreds(baseSeguridadSocialTurno * porcentajeSalud);
   const pensionTurno = adicion.aporta_pension

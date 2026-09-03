@@ -60,7 +60,11 @@ type CoberturaCuentaTurnSnapshotRow = QueryResultRow & {
   movimiento_id: string;
   turno_id: string | null;
   fecha: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  dias_efectivos: number;
   valor: string | number;
+  valor_diario: string | number | null;
   tarifa_config_id: string | null;
   modalidad_id: string | null;
   modalidad: string | null;
@@ -72,7 +76,11 @@ type CoberturaCuentaDetalleRow = QueryResultRow & {
   movimiento_id: string | null;
   turno_id: string | null;
   fecha: string;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+  dias_efectivos: number | null;
   valor: string | number;
+  valor_diario: string | number | null;
   tarifa_config_id: string | null;
   modalidad_id: string | null;
   modalidad: string | null;
@@ -248,8 +256,12 @@ const loadCoberturaCuentaTurnSnapshots = async (
         SELECT
           nm.id::text AS movimiento_id,
           turno.id::text AS turno_id,
-          nm.fecha::text AS fecha,
+          COALESCE(nn.fecha_inicio, nm.fecha)::text AS fecha_inicio,
+          COALESCE(nn.fecha_fin, nn.fecha_inicio, nm.fecha)::text AS fecha_fin,
+          COALESCE(nn.fecha_inicio, nm.fecha)::text AS fecha,
+          (COALESCE(nn.fecha_fin, nn.fecha_inicio, nm.fecha) - COALESCE(nn.fecha_inicio, nm.fecha) + 1)::int AS dias_efectivos,
           nm.valor_total AS valor,
+          nm.valor_unitario AS valor_diario,
           nm.tarifa_config_id::text AS tarifa_config_id,
 
           COALESCE(
@@ -289,10 +301,14 @@ const loadCoberturaCuentaTurnSnapshots = async (
         INNER JOIN nomina_periodos np
           ON np.id = nm.periodo_id
 
+        INNER JOIN contratos contrato_periodo
+          ON contrato_periodo.id = np.contrato_id
+
         LEFT JOIN LATERAL (
           SELECT
             nnt.id,
-            nnt.contexto_operativo
+            nnt.contexto_operativo,
+            nnt.nomina_novedad_id
           FROM nomina_novedad_turnos nnt
           WHERE nnt.movimiento_id = nm.id
             AND COALESCE(nnt.activo, TRUE) = TRUE
@@ -300,6 +316,9 @@ const loadCoberturaCuentaTurnSnapshots = async (
           LIMIT 1
         ) turno
           ON TRUE
+
+        LEFT JOIN nomina_novedades nn
+          ON nn.id = turno.nomina_novedad_id
 
         LEFT JOIN modalidades mo
           ON mo.id = COALESCE(
@@ -325,7 +344,7 @@ const loadCoberturaCuentaTurnSnapshots = async (
         WHERE nm.externo_id = $1::bigint
           AND nm.periodo_id = $2::bigint
           AND np.contrato_id = $3::bigint
-          AND np.contrato_empresa_id = $4::bigint
+          AND contrato_periodo.empresa_id = $4::bigint
           AND nm.tipo_movimiento = 'TURNO_EXTERNO'
           AND COALESCE(nm.activo, TRUE) = TRUE
           AND COALESCE(
@@ -359,7 +378,11 @@ const loadCoberturaCuentaDetalles = async (
           movimiento_id::text AS movimiento_id,
           turno_id::text AS turno_id,
           fecha::text AS fecha,
+          fecha_inicio::text AS fecha_inicio,
+          fecha_fin::text AS fecha_fin,
+          dias_efectivos,
           valor,
+          valor_diario,
           tarifa_config_id::text AS tarifa_config_id,
           modalidad_id::text AS modalidad_id,
           modalidad,
@@ -399,6 +422,9 @@ const compareCoberturaCuentaDetalle = (
         target.movimiento_id &&
       row.turno_id === target.turno_id &&
       row.fecha === target.fecha &&
+      (row.fecha_inicio ?? row.fecha) === target.fecha_inicio &&
+      (row.fecha_fin ?? row.fecha) === target.fecha_fin &&
+      (row.dias_efectivos ?? 1) === target.dias_efectivos &&
       roundCurrency(
         toNumberValue(row.valor),
       ) ===
@@ -407,6 +433,8 @@ const compareCoberturaCuentaDetalle = (
         ) &&
       row.tarifa_config_id ===
         target.tarifa_config_id &&
+      roundCurrency(toNumberValue(row.valor_diario)) ===
+        roundCurrency(toNumberValue(target.valor_diario)) &&
       row.modalidad_id ===
         target.modalidad_id &&
       normalizeNullableText(
@@ -449,7 +477,11 @@ const rewriteCoberturaCuentaDetalle = async (
           movimiento_id,
           turno_id,
           fecha,
+          fecha_inicio,
+          fecha_fin,
+          dias_efectivos,
           valor,
+          valor_diario,
           tarifa_config_id,
           modalidad_id,
           modalidad,
@@ -462,12 +494,16 @@ const rewriteCoberturaCuentaDetalle = async (
           $2::bigint,
           $3::bigint,
           $4::date,
-          $5::numeric,
-          $6::bigint,
-          $7::bigint,
-          $8,
-          $9,
-          $10,
+          $5::date,
+          $6::date,
+          $7::int,
+          $8::numeric,
+          $9::numeric,
+          $10::bigint,
+          $11::bigint,
+          $12,
+          $13,
+          $14,
           TRUE
         )
       `,
@@ -476,7 +512,11 @@ const rewriteCoberturaCuentaDetalle = async (
         turno.movimiento_id,
         turno.turno_id,
         turno.fecha,
+        turno.fecha_inicio,
+        turno.fecha_fin,
+        turno.dias_efectivos,
         toNumberValue(turno.valor),
+        toNumberValue(turno.valor_diario),
         turno.tarifa_config_id,
         turno.modalidad_id,
         normalizeNullableText(

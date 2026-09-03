@@ -242,6 +242,7 @@ export interface NominaPeriodoDashboardApi {
   total_movimientos: number;
   total_neto: number;
   total_novedades: number;
+  total_dias_novedades: number;
   total_otros: number;
   total_pension: number;
   total_salud: number;
@@ -631,6 +632,7 @@ export interface NominaEmpleadoApi {
   } | null;
   modalidad?: string | null;
   total_novedades?: number;
+  total_dias_novedades?: number;
   clasificacion?: string | null;
   estado_documental?: NominaEmpleadoEstadoDocumentalApi | null;
   persona: NominaPersonaResumenApi;
