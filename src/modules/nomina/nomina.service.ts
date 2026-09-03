@@ -10622,6 +10622,42 @@ export const markNominaAsistenciaMasiva = async (periodoId: string, vinculacione
   }
   return { trabajadores_procesados: resultados.length, resultados, dias_marcados: resultados.reduce((n, r) => n + r.total_marcados, 0), dias_omitidos: resultados.reduce((n, r) => n + r.total_omitidos, 0) };
 };
+
+export const markNominaAsistenciaBulk = async (
+  periodoId: string,
+  cambios: Array<{ vinculacion_id: string; fecha: string; presente: boolean }>,
+  actorUserId: string,
+  tenant?: TenantAccessContext,
+  auditMeta?: AuditRequestMeta,
+) => {
+  const unique = Array.from(new Map(cambios.map((item) => [`${item.vinculacion_id}|${item.fecha}`, item])).values());
+  if (!unique.length) throw new AppError('Debe enviar cambios de asistencia', 400, 'NOMINA_ASISTENCIA_BULK_INPUT_INVALIDO');
+  const client = await dbPool.connect();
+  const confirmados: Array<{ vinculacion_id: string; fecha: string; presente: boolean }> = [];
+  try {
+    await client.query('BEGIN');
+    const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
+    assertPeriodoAllowsOpenMutations(periodo.estado, 'marking payroll attendance in bulk');
+    for (const cambio of unique) {
+      const empleado = await loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow(client, periodoId, cambio.vinculacion_id);
+      await assertNominaEmpleadoCoberturaScope(empleado.nomina_empleado_id, tenant, client);
+      assertNominaEmpleadoEditable(empleado, 'modificar la asistencia');
+      const vinc = await client.query<{ fecha_inicio: string; fecha_fin: string | null }>('SELECT fecha_inicio::text, fecha_fin::text FROM vinculaciones WHERE id=$1::bigint', [cambio.vinculacion_id]);
+      if (!vinc.rows[0]) throw new AppError('Vinculacion no encontrada', 404, 'NOMINA_ASISTENCIA_VINCULACION_INVALIDA');
+      assertNominaFechaDentroDeVigencia(cambio.fecha, periodo, vinc.rows[0]);
+      if (cambio.presente) await assertNominaAsistenciaSinNovedadActiva(client, cambio.vinculacion_id, { fecha_inicio: cambio.fecha, fecha_fin: cambio.fecha });
+      const existing = await client.query<{ id: string }>('SELECT id::text FROM nomina_asistencia_diaria WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint AND fecha=$3::date ORDER BY id DESC LIMIT 1', [periodoId, cambio.vinculacion_id, cambio.fecha]);
+      if (existing.rows[0]) await client.query('UPDATE nomina_asistencia_diaria SET estado_dia=$2, activo=TRUE, observacion=$3 WHERE id=$1::bigint', [existing.rows[0].id, cambio.presente ? 'PRESENTE' : 'PENDIENTE', cambio.presente ? 'Asistencia confirmada desde planilla (lote)' : 'Asistencia desmarcada desde planilla (lote)']);
+      else if (cambio.presente) await client.query("INSERT INTO nomina_asistencia_diaria(periodo_id,vinculacion_id,fecha,estado_dia,activo,observacion) VALUES($1::bigint,$2::bigint,$3::date,'PRESENTE',TRUE,'Asistencia confirmada desde planilla (lote)')", [periodoId, cambio.vinculacion_id, cambio.fecha]);
+      await invalidateNominaEmpleadoRevisionState(client, empleado.nomina_empleado_id);
+      await registerAuditEntry({ client, usuario_id: actorUserId, accion: 'NOMINA_ASISTENCIA_BULK_UPDATE', tabla: 'nomina_asistencia_diaria', registro_id: existing.rows[0]?.id ?? `${periodoId}:${cambio.vinculacion_id}:${cambio.fecha}`, descripcion: 'Actualizacion de asistencia por lote desde planilla', after: { periodo_id: periodoId, ...cambio }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
+      confirmados.push(cambio);
+    }
+    await client.query('COMMIT');
+    return { confirmados, total_confirmados: confirmados.length };
+  } catch (error) { await client.query('ROLLBACK'); throw error; }
+  finally { client.release(); }
+};
 export const createNominaNovedadConTurno = async (
   input: CreateNominaNovedadConTurnoInput,
   actorUserId: string,

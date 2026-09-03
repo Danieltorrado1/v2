@@ -127,6 +127,7 @@ import {
   markNominaAsistenciaHandler,
   markNominaAsistenciaRangoHandler,
   markNominaAsistenciaMasivaHandler,
+  markNominaAsistenciaBulkHandler,
   updateNominaEmpleadoHandler,
   updateNominaMovimientoHandler,
   updateNominaNovedadHandler,
@@ -343,6 +344,7 @@ nominaRoutes.patch(
 nominaRoutes.post('/periodos/:periodo_id/asistencia/marcar', requirePermissions('nomina.periodos.update'), markNominaAsistenciaHandler);
 nominaRoutes.post('/periodos/:periodo_id/asistencia/rango', requirePermissions('nomina.periodos.update'), markNominaAsistenciaRangoHandler);
 nominaRoutes.post('/periodos/:periodo_id/asistencia/masiva', requirePermissions('nomina.periodos.update'), markNominaAsistenciaMasivaHandler);
+nominaRoutes.post('/periodos/:periodo_id/asistencia/bulk', requirePermissions('nomina.periodos.update'), markNominaAsistenciaBulkHandler);
 nominaRoutes.get('/periodos/:periodo_id/revision-operativa', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), listRevisionOperativaHandler);
 nominaRoutes.patch('/periodos/:periodo_id/revision-operativa/:nomina_empleado_id', requirePermissions('nomina.periodos.update'), updateRevisionOperativaHandler);
 nominaRoutes.post('/periodos/:periodo_id/cierre-operativo/:nomina_empleado_id', requireRoles('TALENTO_HUMANO', 'ADMINISTRADOR'), requirePermissions('nomina.periodos.close'), closeNominaEmpleadoOperativoHandler);

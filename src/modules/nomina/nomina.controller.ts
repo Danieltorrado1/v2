@@ -84,6 +84,7 @@ import {
   markNominaAsistencia,
   markNominaAsistenciaRango,
   markNominaAsistenciaMasiva,
+  markNominaAsistenciaBulk,
   updateNominaEmpleado,
   updateNominaMovimiento,
   updateNominaNovedad,
@@ -646,6 +647,7 @@ export const markNominaAsistenciaHandler = asyncHandler(async (req: Request,res:
 });
 export const markNominaAsistenciaRangoHandler = asyncHandler(async (req: Request,res: Response) => { const {vinculacion_id,fecha_inicio,fecha_fin}=req.body??{}; if(!vinculacion_id||!fecha_inicio||!fecha_fin) throw new AppError('Trabajador y rango son requeridos',400,'NOMINA_ASISTENCIA_RANGO_INPUT_INVALIDO'); const data=await markNominaAsistenciaRango(String(req.params.periodo_id),String(vinculacion_id),String(fecha_inicio),String(fecha_fin),getActorUserId(req),req.tenant,getAuditRequestMeta(req)); return successResponse(res,{data,message:'Attendance range processed'}); });
 export const markNominaAsistenciaMasivaHandler = asyncHandler(async (req: Request,res: Response) => { const {vinculacion_ids,fecha_inicio,fecha_fin}=req.body??{}; if(!Array.isArray(vinculacion_ids)||!vinculacion_ids.length) throw new AppError('Debe seleccionar trabajadores',400,'NOMINA_ASISTENCIA_SELECCION_REQUERIDA'); const data=await markNominaAsistenciaMasiva(String(req.params.periodo_id),vinculacion_ids.map(String),String(fecha_inicio),String(fecha_fin),getActorUserId(req),req.tenant,getAuditRequestMeta(req)); return successResponse(res,{data,message:'Bulk attendance processed'}); });
+export const markNominaAsistenciaBulkHandler = asyncHandler(async (req: Request,res: Response) => { const cambios=req.body?.cambios; if(!Array.isArray(cambios)||!cambios.length) throw new AppError('Debe enviar cambios de asistencia',400,'NOMINA_ASISTENCIA_BULK_INPUT_INVALIDO'); const data=await markNominaAsistenciaBulk(String(req.params.periodo_id),cambios.map((item: any)=>({vinculacion_id:String(item.vinculacion_id),fecha:String(item.fecha),presente:Boolean(item.presente)})),getActorUserId(req),req.tenant,getAuditRequestMeta(req)); return successResponse(res,{data,message:'Attendance batch processed'}); });
 
 export const createNominaNovedadConTurnoHandler = asyncHandler(async (req: Request, res: Response) => {
   const input = createNominaNovedadConTurnoSchema.parse(req.body);

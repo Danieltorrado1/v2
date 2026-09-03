@@ -917,6 +917,8 @@ type NominaAsistenciaMasivaResult = {
   }>;
 };
 export async function markNominaAsistenciaMasiva(periodoId:string,vinculacion_ids:string[],fecha_inicio:string,fecha_fin:string) { const response=await apiClient.post<ApiResponse<NominaAsistenciaMasivaResult>>(`/nomina/periodos/${periodoId}/asistencia/masiva`,{vinculacion_ids,fecha_inicio,fecha_fin}); return response.data; }
+export type NominaAsistenciaBulkChange = { vinculacion_id: string; fecha: string; presente: boolean };
+export async function markNominaAsistenciaBulk(periodoId:string,cambios:NominaAsistenciaBulkChange[]) { const response=await apiClient.post<ApiResponse<{confirmados:NominaAsistenciaBulkChange[];total_confirmados:number}>>(`/nomina/periodos/${periodoId}/asistencia/bulk`,{cambios}); return response.data; }
 
 export async function createNominaMovimiento(
   input: CreateNominaMovimientoApi,
