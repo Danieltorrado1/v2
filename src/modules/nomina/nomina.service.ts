@@ -2109,6 +2109,9 @@ const getNominaEmpleadosRealSelect = (): string => {
       INNER JOIN nomina_periodos np_nov ON np_nov.id = nn.periodo_id
       WHERE nn.nomina_empleado_id = ne.id
         AND nn.periodo_id = ne.periodo_id
+        AND COALESCE(nn.activo, TRUE) = TRUE
+        AND nn.fecha_inicio <= np_nov.fecha_fin
+        AND COALESCE(nn.fecha_fin, nn.fecha_inicio) >= np_nov.fecha_inicio
     ) novedades_summary ON TRUE
   `;
 };

@@ -1291,7 +1291,7 @@ export default function TurnosPage() {
         valueByNature.sinNaturaleza !== 0));
 
   return (
-    <div className="np-page">
+    <div className="np-page turnos-page-shell">
       <CoberturaFlowNav periodId={selectedPeriodId} />
       <header className="np-header">
         <div className="np-header-text">
@@ -1474,7 +1474,7 @@ export default function TurnosPage() {
         ) : null}
       </section> : null}
 
-      <div className="np-table-card">
+      <div className="np-table-card turnos-operational-table">
         {!hasPeriods && !periodsState.loading ? (
           <StateCard
             title="Sin períodos disponibles"

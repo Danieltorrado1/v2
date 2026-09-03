@@ -19,10 +19,18 @@
 }
 
 .np-page::-webkit-scrollbar { width: 6px; }
-.np-page::-webkit-scrollbar-thumb {
+.np-page::-webkit-scrollbar-thumb {
   background: var(--border-color);
   border-radius: 999px;
-}
+}
+
+/* Turnos: keep the operational table directly after filters; summaries remain secondary. */
+.turnos-page-shell > * { order: 0; }
+.turnos-page-shell > .np-kpis { order: 1; }
+.turnos-page-shell > .np-toolbar { order: 2; }
+.turnos-page-shell > .turnos-operational-table { order: 3; }
+.turnos-page-shell > .np-external-summary { order: 4; }
+.turnos-page-shell > .np-detail-panel { order: 5; }
 
 /* ---- page header ---- */
 

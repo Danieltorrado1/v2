@@ -28,6 +28,11 @@ type ExternoRow = QueryResultRow & {
   tipo_cuenta: string | null;
   numero_cuenta: string | null;
   turnos: string | number;
+  turnos_con_tarifa: string | number;
+  turnos_sin_tarifa: string | number;
+  dias_turnos: string | number;
+  dias_listos: string | number;
+  valor_listo: string | number;
   valor_total: string | number;
   cedula: boolean;
   banco_doc: boolean;
@@ -351,6 +356,9 @@ const loadCoberturaCuentaTurnSnapshots = async (
             nm.estado,
             'PENDIENTE'
           ) <> 'RECHAZADO'
+          AND nm.tarifa_config_id IS NOT NULL
+          AND nm.valor_unitario IS NOT NULL
+          AND nm.valor_unitario > 0
 
         ORDER BY
           nm.fecha ASC,
@@ -1232,6 +1240,33 @@ export const listCoberturaExternos =
               )
             )::int AS turnos,
 
+            COUNT(DISTINCT nm.id) FILTER (
+              WHERE nm.tipo_movimiento = 'TURNO_EXTERNO'
+                AND COALESCE(nm.estado, 'PENDIENTE') <> 'RECHAZADO'
+                AND nm.tarifa_config_id IS NOT NULL
+                AND nm.valor_unitario IS NOT NULL
+                AND nm.valor_unitario > 0
+            )::int AS turnos_con_tarifa,
+
+            COUNT(DISTINCT nm.id) FILTER (
+              WHERE nm.tipo_movimiento = 'TURNO_EXTERNO'
+                AND COALESCE(nm.estado, 'PENDIENTE') <> 'RECHAZADO'
+                AND (nm.tarifa_config_id IS NULL OR nm.valor_unitario IS NULL OR nm.valor_unitario <= 0)
+            )::int AS turnos_sin_tarifa,
+
+            COUNT(DISTINCT nm.id) FILTER (
+              WHERE nm.tipo_movimiento = 'TURNO_EXTERNO'
+                AND COALESCE(nm.estado, 'PENDIENTE') <> 'RECHAZADO'
+            )::int AS dias_turnos,
+
+            COUNT(DISTINCT nm.id) FILTER (
+              WHERE nm.tipo_movimiento = 'TURNO_EXTERNO'
+                AND COALESCE(nm.estado, 'PENDIENTE') <> 'RECHAZADO'
+                AND nm.tarifa_config_id IS NOT NULL
+                AND nm.valor_unitario IS NOT NULL
+                AND nm.valor_unitario > 0
+            )::int AS dias_listos,
+
             COALESCE(
               (
                 SELECT
@@ -1258,6 +1293,14 @@ export const listCoberturaExternos =
               ),
               0
             ) AS valor_total,
+
+            COALESCE(SUM(nm.valor_total) FILTER (
+              WHERE nm.tipo_movimiento = 'TURNO_EXTERNO'
+                AND COALESCE(nm.estado, 'PENDIENTE') <> 'RECHAZADO'
+                AND nm.tarifa_config_id IS NOT NULL
+                AND nm.valor_unitario IS NOT NULL
+                AND nm.valor_unitario > 0
+            ), 0) AS valor_listo,
 
             EXISTS (
               SELECT 1
@@ -1505,10 +1548,29 @@ export const generateCoberturaCuenta =
           !documentTypes.has(type),
       );
 
-      if (
-        !synced.cuenta ||
-        synced.turnos.length === 0
-      ) {
+      if (!synced.cuenta || synced.turnos.length === 0) {
+        const pendingTariff = await client.query<{ movimiento_id: string }>(
+          `
+            SELECT id::text AS movimiento_id
+            FROM nomina_movimientos
+            WHERE externo_id = $1::bigint
+              AND periodo_id = $2::bigint
+              AND tipo_movimiento = 'TURNO_EXTERNO'
+              AND COALESCE(activo, TRUE) = TRUE
+              AND COALESCE(estado, 'PENDIENTE') <> 'RECHAZADO'
+              AND (tarifa_config_id IS NULL OR valor_unitario IS NULL OR valor_unitario <= 0)
+            ORDER BY id
+          `,
+          [input.externo_id, input.periodo_id]
+        );
+        if (pendingTariff.rows.length > 0) {
+          throw new AppError(
+            `No hay turnos listos para cuenta; ${pendingTariff.rows.length} turno(s) tienen tarifa pendiente`,
+            409,
+            'COBERTURA_CUENTA_TURNOS_SIN_TARIFA',
+            { movimiento_ids: pendingTariff.rows.map((row) => row.movimiento_id) }
+          );
+        }
         throw new AppError(
           'No hay turnos externos activos para consolidar',
           409,
@@ -1516,17 +1578,6 @@ export const generateCoberturaCuenta =
         );
       }
 
-      const turnosSinTarifa = synced.turnos.filter(
-        (turno) => !turno.tarifa_config_id || turno.valor_diario === null || toNumberValue(turno.valor_diario) <= 0
-      );
-      if (turnosSinTarifa.length > 0) {
-        throw new AppError(
-          'No se puede generar la cuenta: existen turnos externos sin tarifa configurada',
-          409,
-          'COBERTURA_CUENTA_TURNOS_SIN_TARIFA',
-          { movimiento_ids: turnosSinTarifa.map((turno) => turno.movimiento_id) }
-        );
-      }
 
       if (
         synced.cuenta.estado ===

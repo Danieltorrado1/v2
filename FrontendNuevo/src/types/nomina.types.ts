@@ -487,6 +487,11 @@ export interface CoberturaExternoResumenApi {
   tipo_cuenta: string | null;
   numero_cuenta: string | null;
   turnos: number;
+  turnos_con_tarifa: number;
+  turnos_sin_tarifa: number;
+  dias_turnos: number;
+  dias_listos: number;
+  valor_listo: number;
   valor_total: number;
   cedula: boolean;
   banco_doc: boolean;

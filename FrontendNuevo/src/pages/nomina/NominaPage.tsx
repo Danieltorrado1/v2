@@ -2912,7 +2912,7 @@ export default function NominaPage() {
 
                                     <span className="cell-devengado" title={`Total adiciones: ${formatCOP(empleado.total_adiciones)} ï¿½ Devengado transporte: ${formatCOP(empleado.devengado_transporte)}`}><strong>{formatCOP(empleado.total_adiciones)}</strong><small>Transporte {formatCOP(empleado.devengado_transporte)}</small></span>
 
-                                    <span className="cell-pay-days"><small>Salario ({salarioDias.paid}/{salarioDias.base})</small><small>Transporte ({transporteDias.paid}/{transporteDias.base})</small><small>Recargo ({recargoDias.paid}/{recargoDias.base})</small></span>
+                                    <span className="cell-pay-days"><small><span>Salario</span><strong>{salarioDias.paid}/{salarioDias.base}</strong></small><small><span>Transporte</span><strong>{transporteDias.paid}/{transporteDias.base}</strong></small><small><span>Recargo</span><strong>{recargoDias.paid}/{recargoDias.base}</strong></small></span>
 
                                     <span className="cell-deduccion">{formatCOP(empleado.total_deducciones)}</span>
 
