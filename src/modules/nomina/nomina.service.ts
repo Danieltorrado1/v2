@@ -4297,6 +4297,7 @@ const resolveNominaTurnMovementSnapshot = async (
   input: {
     cantidad: number | null | undefined;
     contrato_id: string;
+    contexto?: Partial<NominaMovimientoContextRow>;
     empresa_id?: string | null;
     fecha: string;
     tipo_movimiento: 'TURNO_INTERNO' | 'TURNO_EXTERNO';
@@ -4306,6 +4307,7 @@ const resolveNominaTurnMovementSnapshot = async (
 ) => {
   const contexto = await resolveNominaMovimientoContext(
     {
+      ...input.contexto,
       fecha: input.fecha,
       vinculacion_reemplazada_id: input.vinculacion_reemplazada_id ?? null
     },
@@ -4337,6 +4339,7 @@ const insertNominaTurnMovementSnapshot = async (
     actorUserId: string;
     cantidad?: number | null;
     contrato_id: string;
+    contexto?: Partial<NominaMovimientoContextRow>;
     descripcion?: string | null;
     empresa_id?: string | null;
     estado: 'APROBADO' | 'PENDIENTE';
@@ -4355,6 +4358,7 @@ const insertNominaTurnMovementSnapshot = async (
     {
       cantidad: input.cantidad ?? 1,
       contrato_id: input.contrato_id,
+      contexto: input.contexto,
       empresa_id: input.empresa_id ?? null,
       fecha: input.fecha,
       tipo_movimiento: input.tipo_movimiento,
@@ -4483,6 +4487,7 @@ const refreshNominaTurnMovementSnapshot = async (
     actorUserId: string;
     cantidad?: number | null;
     contrato_id: string;
+    contexto?: Partial<NominaMovimientoContextRow>;
     descripcion?: string | null;
     empresa_id?: string | null;
     estado: 'APROBADO' | 'PENDIENTE';
@@ -4498,6 +4503,7 @@ const refreshNominaTurnMovementSnapshot = async (
     {
       cantidad: input.cantidad ?? 1,
       contrato_id: input.contrato_id,
+      contexto: input.contexto,
       empresa_id: input.empresa_id ?? null,
       fecha: input.fecha,
       tipo_movimiento: input.tipo_movimiento,
@@ -10624,6 +10630,16 @@ export const createNominaNovedadConTurno = async (
         ? countInclusiveDays(input.fecha_inicio, input.fecha_fin ?? input.fecha_inicio)
         : 1
     };
+    const turnoSnapshotContexto: Partial<NominaMovimientoContextRow> = {
+      municipio_id: typeof turnoContextoRaw.municipio_id === 'string' ? turnoContextoRaw.municipio_id : null,
+      institucion_id: typeof turnoContextoRaw.institucion_id === 'string' ? turnoContextoRaw.institucion_id : null,
+      sede_id: typeof turnoContextoRaw.sede_id === 'string' ? turnoContextoRaw.sede_id : null,
+      modalidad_id: typeof turnoContextoRaw.modalidad_id === 'string' ? turnoContextoRaw.modalidad_id : null,
+      contexto_municipio: typeof turnoContextoRaw.municipio === 'string' ? turnoContextoRaw.municipio : null,
+      contexto_institucion: typeof turnoContextoRaw.institucion === 'string' ? turnoContextoRaw.institucion : null,
+      contexto_sede: typeof turnoContextoRaw.sede === 'string' ? turnoContextoRaw.sede : null,
+      contexto_modalidad: typeof turnoContextoRaw.modalidad === 'string' ? turnoContextoRaw.modalidad : null
+    };
     let turnoEmpleadoId = input.nomina_empleado_id;
     let turnoVinculacionId = input.vinculacion_id;
     let personaReemplazadaId = turno.persona_reemplazada_id;
@@ -10645,7 +10661,6 @@ export const createNominaNovedadConTurno = async (
       turnoEmpleadoId = coveredEmployee.id;
       turnoVinculacionId = coveredEmployee.vinculacion_id;
       personaReemplazadaId = titular.persona_id;
-      persistedTurnoContexto.covered_nomina_empleado_id = coveredEmployee.id;
       persistedTurnoContexto.replacement_nomina_empleado_id = coveredEmployee.id;
       persistedTurnoContexto.covered_salary_category_id = coveredEmployee.categoria_id ?? null;
       persistedTurnoContexto.replacement_salary_category_id = coveredEmployee.categoria_id ?? null;
@@ -10730,6 +10745,7 @@ export const createNominaNovedadConTurno = async (
           actorUserId,
           cantidad: diasTurno,
           contrato_id: periodo.contrato_id,
+          contexto: turnoSnapshotContexto,
           descripcion: turno.observacion ?? 'Turno interno de cobertura',
           empresa_id: periodo.contrato_empresa_id,
           estado: 'APROBADO',
@@ -10750,6 +10766,7 @@ export const createNominaNovedadConTurno = async (
             actorUserId,
             cantidad: diasTurno,
             contrato_id: periodo.contrato_id,
+            contexto: turnoSnapshotContexto,
             descripcion: turno.observacion ?? 'Turno interno de cobertura',
             empresa_id: periodo.contrato_empresa_id,
             estado: 'APROBADO',
