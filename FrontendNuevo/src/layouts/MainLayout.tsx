@@ -19,6 +19,8 @@ const nominaLinks = [
   { to: "/nomina/cambios-operativos", label: "Cambios operativos", requiredPermissions: ["nomina.movimientos.read"] },
   { to: "/nomina/personal-ops", label: "Personal OPS", requiredPermissions: ["nomina.cuentas_cobro_ops.read"] },
   { to: "/nomina/correccion", label: "Corrección Nómina", requiredPermissions: ["nomina.correcciones.read"] },
+  { to: "/nomina/ajustes-manuales", label: "Ajustes manuales", requiredPermissions: ["nomina.economico.read"] },
+  { to: "/nomina/cuentas-cobro", label: "Cuentas de cobro", requiredPermissions: ["nomina.movimientos.read"] },
 ] as const;
 
 const herramientasLinks = [

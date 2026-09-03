@@ -106,6 +106,7 @@ export interface CreateVinculacionPayload {
   estado_vinculacion?: VinculacionEstado;
   cuenta_como_experiencia?: boolean;
   metodo_pago?: MetodoPago | null;
+  cotiza_pension?: boolean;
 }
 
 export interface UpdateVinculacionPayload {
@@ -119,6 +120,7 @@ export interface UpdateVinculacionPayload {
   estado_vinculacion?: VinculacionEstado;
   cuenta_como_experiencia?: boolean;
   metodo_pago?: MetodoPago | null;
+  cotiza_pension?: boolean;
   motivo_cambio?: string | null;
 }
 

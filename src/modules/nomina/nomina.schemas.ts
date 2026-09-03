@@ -129,6 +129,18 @@ export const nominaNovedadCoberturaTipoSchema = z.enum([
   'PERSONAL_VINCULADO',
   'PERSONA_EXTERNA'
 ]);
+export const ajusteManualTipoSchema = z.enum(['ADICION', 'DEDUCCION']);
+export const ajusteManualSchema = z.object({
+  nomina_empleado_id: identifierSchema,
+  tipo: ajusteManualTipoSchema,
+  concepto: trimmedStringSchema.max(120),
+  valor: z.coerce.number().positive(),
+  observacion: nullableTrimmedStringSchema.optional(),
+  documento_soporte_id: identifierSchema.nullable().optional()
+}).strict();
+export const ajusteManualUpdateSchema = ajusteManualSchema.partial().strict();
+export const ajusteManualAnularSchema = z.object({ motivo: trimmedStringSchema.max(500) }).strict();
+export const ajusteManualIdParamSchema = z.object({ id: identifierSchema }).strict();
 export const nominaRecargoTipoSchema = z.enum([
   'HORA_EXTRA_DIURNA',
   'HORA_EXTRA_NOCTURNA',

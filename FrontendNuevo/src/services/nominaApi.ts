@@ -33,6 +33,7 @@ import type {
   NominaPeriodosQuery,
   NominaTurno,
   NominaTurnoFilters,
+  AjusteManualApi,
   PaginatedNominaEmpleadosApi,
   PaginatedNominaLiquidacionesApi,
   PaginatedNominaMovimientosApi,
@@ -1039,6 +1040,22 @@ export async function recalculateNominaPeriodo(
 
   return response.data;
 }
+
+export async function getAjustesManuales(periodoId: string) {
+  const response = await apiClient.get<ApiResponse<AjusteManualApi[]>>(`/nomina/periodos/${periodoId}/ajustes-manuales`);
+  return response.data;
+}
+export async function createAjusteManual(periodoId: string, input: { nomina_empleado_id: string; tipo: 'ADICION' | 'DEDUCCION'; concepto: string; valor: number; observacion?: string | null; documento_soporte_id?: string | null }) {
+  const response = await apiClient.post<ApiResponse<AjusteManualApi>>(`/nomina/periodos/${periodoId}/ajustes-manuales`, input);
+  return response.data;
+}
+export async function updateAjusteManual(id: string, input: Partial<{ tipo: 'ADICION' | 'DEDUCCION'; concepto: string; valor: number; observacion: string | null; documento_soporte_id: string | null }>) {
+  const response = await apiClient.patch<ApiResponse<AjusteManualApi>>(`/nomina/ajustes-manuales/${id}`, input); return response.data;
+}
+export async function annulAjusteManual(id: string, motivo: string) {
+  const response = await apiClient.patch<ApiResponse<AjusteManualApi>>(`/nomina/ajustes-manuales/${id}/anular`, { motivo }); return response.data;
+}
+export async function uploadAjusteManualSoporte(id: string, file: File) { const form = new FormData(); form.append('file', file); const response = await apiClient.post<ApiResponse<{ documento_soporte_id: string }>>(`/nomina/ajustes-manuales/${id}/soporte`, form); return response.data; }
 
 export async function generateNominaLiquidaciones(
   periodoId: string,

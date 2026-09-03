@@ -253,6 +253,7 @@ export interface VinculacionApi {
   motivo_retiro: string | null;
   cuenta_como_experiencia: boolean;
   metodo_pago: string | null;
+  cotiza_pension: boolean;
   empresa_nombre?: string | null;
   contrato_numero?: string | null;
   cargo_nombre?: string | null;

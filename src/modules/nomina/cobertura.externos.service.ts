@@ -1516,6 +1516,18 @@ export const generateCoberturaCuenta =
         );
       }
 
+      const turnosSinTarifa = synced.turnos.filter(
+        (turno) => !turno.tarifa_config_id || turno.valor_diario === null || toNumberValue(turno.valor_diario) <= 0
+      );
+      if (turnosSinTarifa.length > 0) {
+        throw new AppError(
+          'No se puede generar la cuenta: existen turnos externos sin tarifa configurada',
+          409,
+          'COBERTURA_CUENTA_TURNOS_SIN_TARIFA',
+          { movimiento_ids: turnosSinTarifa.map((turno) => turno.movimiento_id) }
+        );
+      }
+
       if (
         synced.cuenta.estado ===
         'FIRMADA'

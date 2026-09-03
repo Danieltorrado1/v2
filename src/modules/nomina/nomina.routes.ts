@@ -143,6 +143,7 @@ import {
 } from './cambios-operativos.controller';
 import { closeNominaEmpleadoOperativoHandler, listRevisionOperativaHandler, reopenNominaEmpleadoOperativoHandler, updateRevisionOperativaHandler } from './revision-operativa.controller';
 import { getNominaProcessAccessHandler, listNominaAsistenciaPersonalHandler } from './nomina.procesos.controller';
+import { annulAjusteManualHandler, createAjusteManualHandler, listAjustesManualesHandler, updateAjusteManualHandler, uploadAjusteManualSoporteHandler } from './ajustes-manuales.controller';
 import { createNominaAreaHandler, listNominaAreasHandler, listNominaAssignableUsersHandler, listNominaResponsibilitiesHandler, replaceNominaResponsibilityHandler, updateNominaAreaHandler } from './nomina.procesos.admin.controller';
 import { downloadCoberturaCuentaFirmadaHandler, downloadCoberturaCuentaHandler, downloadCoberturaExternoDocumentoHandler, generateCoberturaCuentaHandler, listCoberturaExternoDocumentosHandler, listCoberturaExternosHandler, listCoberturaExternosOperativosHandler, uploadCoberturaCuentaFirmadaHandler, upsertCoberturaExternoHandler, uploadCoberturaExternoDocumentoHandler } from './cobertura.externos.controller';
 import {
@@ -250,6 +251,11 @@ nominaRoutes.post(
   requirePermissions('nomina.recalculate'),
   recalculateNominaPeriodoHandler
 );
+nominaRoutes.get('/periodos/:periodoId/ajustes-manuales', requirePermissions('nomina.economico.read'), listAjustesManualesHandler);
+nominaRoutes.post('/periodos/:periodoId/ajustes-manuales', requirePermissions('nomina.movimientos.create'), createAjusteManualHandler);
+nominaRoutes.patch('/ajustes-manuales/:id', requirePermissions('nomina.movimientos.update'), updateAjusteManualHandler);
+nominaRoutes.patch('/ajustes-manuales/:id/anular', requirePermissions('nomina.movimientos.update'), annulAjusteManualHandler);
+nominaRoutes.post('/ajustes-manuales/:id/soporte', requirePermissions('nomina.movimientos.update'), coberturaUpload.single('file'), uploadAjusteManualSoporteHandler);
 nominaRoutes.get(
   '/periodos/:id/plano-bancario',
   requirePermissions('nomina.plano_bancario.export'),

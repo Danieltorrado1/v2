@@ -33,6 +33,7 @@ interface VinculacionRow extends QueryResultRow {
   contrato_id: number | string;
   contrato_empresa_id: number | string | null;
   cuenta_como_experiencia: boolean | null;
+  cotiza_pension: boolean | null;
   empresa_id: number | string;
   estado_vinculacion: string | null;
   fecha_fin: string | Date | null;
@@ -62,6 +63,7 @@ export interface Vinculacion {
   contrato_id: number;
   contrato_empresa_id: number | null;
   cuenta_como_experiencia: boolean;
+  cotiza_pension: boolean;
   empresa_id: number;
   estado_vinculacion: VinculacionEstado;
   fecha_fin: string | null;
@@ -568,6 +570,7 @@ const mapVinculacion = (row: VinculacionRow): Vinculacion => {
     estado_vinculacion: normalizeEstado(row.estado_vinculacion),
     motivo_retiro: row.motivo_retiro,
     cuenta_como_experiencia: toNullableBoolean(row.cuenta_como_experiencia),
+    cotiza_pension: row.cotiza_pension !== false,
     metodo_pago: row.metodo_pago
   };
 };
@@ -790,6 +793,7 @@ const getVinculacionSelect = (): string => {
       v.estado_vinculacion,
       v.motivo_retiro,
       v.cuenta_como_experiencia,
+      v.cotiza_pension,
       v.metodo_pago
     FROM vinculaciones v
     INNER JOIN contratos c ON c.id = v.contrato_id
@@ -3298,7 +3302,8 @@ export const createVinculacion = async (
           fecha_fin,
           estado_vinculacion,
           cuenta_como_experiencia,
-          metodo_pago
+          metodo_pago,
+          cotiza_pension
         )
         VALUES (
           $1::bigint,
@@ -3310,7 +3315,8 @@ export const createVinculacion = async (
           $7::date,
           $8,
           $9,
-          $10
+          $10,
+          $11
         )
         RETURNING
           id,
@@ -3325,7 +3331,8 @@ export const createVinculacion = async (
           estado_vinculacion,
           motivo_retiro,
           cuenta_como_experiencia,
-          metodo_pago
+          metodo_pago,
+          cotiza_pension
       `,
       [
         input.persona_id,
@@ -3337,7 +3344,8 @@ export const createVinculacion = async (
         input.fecha_fin,
         input.estado_vinculacion,
         input.cuenta_como_experiencia,
-        input.metodo_pago
+        input.metodo_pago,
+        input.cotiza_pension ?? true
       ]
     );
 
@@ -3405,7 +3413,10 @@ export const updateVinculacion = async (
       cuenta_como_experiencia: hasOwn(input, 'cuenta_como_experiencia')
         ? input.cuenta_como_experiencia ?? current.cuenta_como_experiencia
         : current.cuenta_como_experiencia,
-      metodo_pago: hasOwn(input, 'metodo_pago') ? input.metodo_pago ?? null : current.metodo_pago
+      metodo_pago: hasOwn(input, 'metodo_pago') ? input.metodo_pago ?? null : current.metodo_pago,
+      cotiza_pension: hasOwn(input, 'cotiza_pension')
+        ? input.cotiza_pension ?? true
+        : current.cotiza_pension
     };
 
     await validateForeignKeys(client, {
@@ -3440,7 +3451,8 @@ export const updateVinculacion = async (
           fecha_fin = $8::date,
           estado_vinculacion = $9,
           cuenta_como_experiencia = $10,
-          metodo_pago = $11
+          metodo_pago = $11,
+          cotiza_pension = $12
         WHERE id = $1::bigint
         RETURNING
           id,
@@ -3455,7 +3467,8 @@ export const updateVinculacion = async (
           estado_vinculacion,
           motivo_retiro,
           cuenta_como_experiencia,
-          metodo_pago
+          metodo_pago,
+          cotiza_pension
       `,
       [
         vinculacionId,
@@ -3468,7 +3481,8 @@ export const updateVinculacion = async (
         nextValues.fecha_fin,
         nextValues.estado_vinculacion,
         nextValues.cuenta_como_experiencia,
-        nextValues.metodo_pago
+        nextValues.metodo_pago,
+        nextValues.cotiza_pension
       ]
     );
 
@@ -3546,7 +3560,8 @@ export const retirarVinculacion = async (
           estado_vinculacion,
           motivo_retiro,
           cuenta_como_experiencia,
-          metodo_pago
+          metodo_pago,
+          cotiza_pension
       `,
       [vinculacionId, input.fecha_retiro, input.motivo_retiro]
     );
@@ -3630,7 +3645,8 @@ export const suspenderVinculacion = async (
           estado_vinculacion,
           motivo_retiro,
           cuenta_como_experiencia,
-          metodo_pago
+          metodo_pago,
+          cotiza_pension
       `,
       [vinculacionId]
     );
@@ -3718,7 +3734,8 @@ export const reactivarVinculacion = async (
           estado_vinculacion,
           motivo_retiro,
           cuenta_como_experiencia,
-          metodo_pago
+          metodo_pago,
+          cotiza_pension
       `,
       [vinculacionId]
     );

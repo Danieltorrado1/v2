@@ -56,7 +56,8 @@ const VINCULACION_SENSITIVE_FIELDS = new Set([
   'empresa_id',
   'contrato_id',
   'persona_id',
-  'metodo_pago'
+  'metodo_pago',
+  'cotiza_pension'
 ]);
 
 const hasAnyPermission = (currentPermissions: string[], expected: string[]): boolean =>

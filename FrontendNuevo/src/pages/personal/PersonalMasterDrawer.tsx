@@ -69,6 +69,7 @@ type LaboralFormState = {
   fecha_inicio: string;
   fecha_fin: string;
   estado_vinculacion: 'ACTIVA' | 'RETIRADA' | 'SUSPENDIDA';
+  cotiza_pension: boolean;
   motivo_cambio: string;
 };
 
@@ -257,6 +258,7 @@ function buildLaboralForm(expediente: VinculacionExpedienteApi | null): LaboralF
     fecha_inicio: expediente?.vinculacion.fecha_inicio ?? '',
     fecha_fin: expediente?.vinculacion.fecha_fin ?? '',
     estado_vinculacion: expediente?.vinculacion.estado_vinculacion ?? 'ACTIVA',
+    cotiza_pension: expediente?.vinculacion.cotiza_pension ?? true,
     motivo_cambio: '',
   };
 }
@@ -691,6 +693,14 @@ export default function PersonalMasterDrawer({
       return;
     }
 
+    const currentCotizaPension = activeExpediente.vinculacion.cotiza_pension ?? true;
+    if (currentCotizaPension !== laboralForm.cotiza_pension) {
+      const confirmation = laboralForm.cotiza_pension
+        ? 'Este cambio volverá a activar el cálculo de pensión para esta vinculación. ¿Deseas continuar?'
+        : 'Este cambio hará que la vinculación no genere deducción por pensión en los recálculos de nómina. ¿Deseas continuar?';
+      if (!window.confirm(confirmation)) return;
+    }
+
     setSavingLaboral(true);
     setLaboralError('');
 
@@ -701,6 +711,7 @@ export default function PersonalMasterDrawer({
         fecha_inicio: laboralForm.fecha_inicio || undefined,
         fecha_fin: laboralForm.fecha_fin || null,
         estado_vinculacion: laboralForm.estado_vinculacion,
+        cotiza_pension: laboralForm.cotiza_pension,
         motivo_cambio: laboralForm.motivo_cambio.trim(),
       });
 
@@ -1059,6 +1070,7 @@ export default function PersonalMasterDrawer({
                 <Field label="Fecha inicio"><input type="date" value={laboralForm.fecha_inicio} onChange={(event) => setLaboralField('fecha_inicio', event.target.value)} /></Field>
                 <Field label="Fecha fin"><input type="date" value={laboralForm.fecha_fin} onChange={(event) => setLaboralField('fecha_fin', event.target.value)} /></Field>
                 <Field label="Estado"><select value={laboralForm.estado_vinculacion} onChange={(event) => setLaboralField('estado_vinculacion', event.target.value as LaboralFormState['estado_vinculacion'])}><option value="ACTIVA">Activa</option><option value="SUSPENDIDA">Suspendida</option><option value="RETIRADA">Retirada</option></select></Field>
+                <Field label="Cotiza pensión"><select value={laboralForm.cotiza_pension ? 'true' : 'false'} onChange={(event) => setLaboralField('cotiza_pension', event.target.value === 'true')}><option value="true">Sí</option><option value="false">No</option></select></Field>
               </div>
               <Field label="Motivo del cambio *"><textarea value={laboralForm.motivo_cambio} onChange={(event) => setLaboralField('motivo_cambio', event.target.value)} /></Field>
               {laboralError && <StateBlock tone="error" compact message={laboralError} />}
@@ -1080,6 +1092,7 @@ export default function PersonalMasterDrawer({
               <DataItem label="Retiro" value={formatDate(activeExpediente.vinculacion.fecha_fin)} />
               <DataItem label="Estado" value={activeExpediente.vinculacion.estado_vinculacion} />
               <DataItem label="Método de pago" value={displayValue(activeExpediente.vinculacion.metodo_pago)} />
+              <DataItem label="Cotiza pensión" value={activeExpediente.vinculacion.cotiza_pension ? 'Sí' : 'No'} />
             </div>
           )}
         </section>

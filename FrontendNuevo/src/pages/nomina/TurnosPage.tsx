@@ -124,8 +124,8 @@ const RECARGO_TYPES = new Set<NominaMovimientoTipo>([
   "FESTIVO",
 ]);
 
-function formatCOP(value: number) {
-  return `$${value.toLocaleString("es-CO")}`;
+function formatCOP(value: number | null) {
+  return value === null ? "" : `$${value.toLocaleString("es-CO")}`;
 }
 
 function formatNumber(value: number) {
@@ -1455,18 +1455,18 @@ export default function TurnosPage() {
                 {canSeeEconomic ? <div className="np-external-actions">
                   <label className="np-btn">
                     {externo.cedula ? "Reemplazar cédula" : "Subir cédula"}
-                    <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden disabled={externalBusy !== null} onChange={(event) => { void handleExternalDocument(externo.id, 'CEDULA_EXTERNO_COBERTURA', event.target.files?.[0]); event.currentTarget.value = ''; }} />
+                    <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden disabled={externalBusy !== null && !externalBusy.includes(externo.id)} onChange={(event) => { void handleExternalDocument(externo.id, 'CEDULA_EXTERNO_COBERTURA', event.target.files?.[0]); event.currentTarget.value = ''; }} />
                   </label>
-                  {externo.cedula ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleViewExternalDocument(externo.id, 'CEDULA_EXTERNO_COBERTURA'); }}>Ver cédula</button> : null}
+                  {externo.cedula ? <button type="button" className="np-btn" disabled={externalBusy !== null && !externalBusy.includes(externo.id)} onClick={() => { void handleViewExternalDocument(externo.id, 'CEDULA_EXTERNO_COBERTURA'); }}>Ver cédula</button> : null}
                   <label className="np-btn">
                     {externo.banco_doc ? "Reemplazar banco" : "Subir banco"}
-                    <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden disabled={externalBusy !== null} onChange={(event) => { void handleExternalDocument(externo.id, 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA', event.target.files?.[0]); event.currentTarget.value = ''; }} />
+                    <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" hidden disabled={externalBusy !== null && !externalBusy.includes(externo.id)} onChange={(event) => { void handleExternalDocument(externo.id, 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA', event.target.files?.[0]); event.currentTarget.value = ''; }} />
                   </label>
-                  {externo.banco_doc ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleViewExternalDocument(externo.id, 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA'); }}>Ver certificación</button> : null}
-                  {externo.cuenta_estado === 'PENDIENTE' && externo.turnos > 0 ? <button type="button" className="np-btn primary" disabled={externalBusy !== null || !selectedPeriod?.contrato_id} onClick={() => { void handleGenerateExternalAccount(externo.id); }}>Generar cuenta</button> : null}
-                  {externo.cuenta_id && externo.cuenta_estado !== 'PENDIENTE' ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleDownloadExternalAccount(externo.cuenta_id as string); }}>Descargar cuenta</button> : null}
-                  {externo.cuenta_id && externo.cuenta_estado === 'GENERADA' ? <label className="np-btn">Subir firmada<input type="file" accept="application/pdf" hidden disabled={externalBusy !== null} onChange={(event) => { void handleSignedExternalAccount(externo.cuenta_id as string, event.target.files?.[0]); event.currentTarget.value = ''; }} /></label> : null}
-                  {externo.cuenta_id && externo.cuenta_estado === 'FIRMADA' ? <button type="button" className="np-btn" disabled={externalBusy !== null} onClick={() => { void handleViewSignedAccount(externo.cuenta_id as string); }}>Ver firmada</button> : null}
+                  {externo.banco_doc ? <button type="button" className="np-btn" disabled={externalBusy !== null && !externalBusy.includes(externo.id)} onClick={() => { void handleViewExternalDocument(externo.id, 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA'); }}>Ver certificación</button> : null}
+                  {externo.cuenta_estado === 'PENDIENTE' && externo.turnos > 0 ? <button type="button" className="np-btn primary" disabled={(externalBusy !== null && !externalBusy.includes(externo.id)) || !selectedPeriod?.contrato_id} onClick={() => { void handleGenerateExternalAccount(externo.id); }}>{externalBusy === `account:${externo.id}` ? 'Generando...' : 'Generar cuenta'}</button> : null}
+                  {externo.cuenta_id && externo.cuenta_estado !== 'PENDIENTE' ? <button type="button" className="np-btn" disabled={externalBusy !== null && !externalBusy.includes(externo.cuenta_id)} onClick={() => { void handleDownloadExternalAccount(externo.cuenta_id as string); }}>Descargar cuenta</button> : null}
+                  {externo.cuenta_id && externo.cuenta_estado === 'GENERADA' ? <label className="np-btn">Subir firmada<input type="file" accept="application/pdf" hidden disabled={externalBusy !== null && !externalBusy.includes(externo.cuenta_id)} onChange={(event) => { void handleSignedExternalAccount(externo.cuenta_id as string, event.target.files?.[0]); event.currentTarget.value = ''; }} /></label> : null}
+                  {externo.cuenta_id && externo.cuenta_estado === 'FIRMADA' ? <button type="button" className="np-btn" disabled={externalBusy !== null && !externalBusy.includes(externo.cuenta_id)} onClick={() => { void handleViewSignedAccount(externo.cuenta_id as string); }}>Ver firmada</button> : null}
                 </div> : null}
               </article>
             ))}
@@ -1540,6 +1540,10 @@ export default function TurnosPage() {
                     : "Pendiente";
               const diasEfectivos = countInclusiveDays(turnRelation?.fecha_inicio ?? movimiento.fecha, turnRelation?.fecha_fin ?? movimiento.fecha) || movimiento.cantidad || 0;
               const modalidad = turnRelation?.modalidad ?? movimiento.contexto_operativo?.modalidad ?? "No disponible";
+              const tarifaPendiente = movimiento.valor_unitario === null || movimiento.valor_unitario <= 0 || movimiento.tarifa_config_id === null;
+              const tarifaCausa = movimiento.tarifa_config_id === null
+                ? (modalidad === "No disponible" ? "modalidad histórica no normalizada" : "tarifa inexistente o snapshot faltante")
+                : "";
 
               return (
               <div
@@ -1565,14 +1569,14 @@ export default function TurnosPage() {
                 <span>{formatDate(turnRelation?.fecha_inicio ?? movimiento.fecha)}</span>
                 <span>{formatDate(turnRelation?.fecha_fin ?? movimiento.fecha)}</span>
                 <span><strong>{formatNumber(diasEfectivos)}</strong> días</span>
-                <span>{canSeeEconomic && movimiento.valor_unitario !== null ? `${formatCOP(movimiento.valor_unitario)}/día` : "No disponible"}</span>
-                <span>{canSeeEconomic ? formatCOP(movimiento.valor_total) : "No disponible"}</span>
+                <span title={tarifaPendiente ? tarifaCausa : undefined}>{canSeeEconomic && !tarifaPendiente ? `${formatCOP(movimiento.valor_unitario)}/día` : "SIN TARIFA"}</span>
+                <span>{canSeeEconomic && !tarifaPendiente ? formatCOP(movimiento.valor_total) : "TARIFA PENDIENTE"}</span>
                 <span className="np-table-text np-table-ellipsis" title={turnRelation?.motivo ?? movimiento.descripcion ?? "No disponible"}>
                   {turnRelation?.motivo ?? movimiento.descripcion ?? "No disponible"}
                 </span>
                 <div className="np-turn-status-actions">
-                  <span className={`np-badge ${getMovementStatusTone(movimiento)}`}>
-                    {turnRelation?.estado ?? getMovementStatusLabel(movimiento)}
+                  <span className={`np-badge ${tarifaPendiente ? "danger" : getMovementStatusTone(movimiento)}`} title={tarifaPendiente ? tarifaCausa : undefined}>
+                    {tarifaPendiente ? "SIN TARIFA · " : ""}{turnRelation?.estado ?? getMovementStatusLabel(movimiento)}
                   </span>
                   <small title="Estado documental">Cuenta: {documentosLabel}</small>
                   <span className="np-row-status">

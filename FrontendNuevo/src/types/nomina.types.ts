@@ -286,6 +286,7 @@ export interface NominaMovimientosQuery {
 }
 
 export interface NominaMovimientoApi {
+  externo_id: string | null;
   activo: boolean;
   afecta_seguridad_social: boolean;
   alertas_validacion: Array<{
@@ -493,6 +494,15 @@ export interface CoberturaExternoResumenApi {
   cuenta_estado: 'PENDIENTE' | 'GENERADA' | 'FIRMADA' | string;
 }
 
+export type AjusteManualTipo = 'ADICION' | 'DEDUCCION';
+export interface AjusteManualApi {
+  id: string; empresa_id: string; contrato_id: string; periodo_id: string; nomina_empleado_id: string;
+  tipo: AjusteManualTipo; concepto: string; observacion: string | null; valor: number;
+  documento_soporte_id: string | null; activo: boolean; created_by: string; created_at: string;
+  updated_at: string; anulado_by: string | null; anulado_at: string | null; motivo_anulacion: string | null;
+  empleado: string; numero_documento: string | null;
+}
+
 export const NOMINA_TURNO_OPERATIVO_TIPOS = ['TURNO_INTERNO', 'TURNO_EXTERNO'] as const;
 export const NOMINA_TURNO_MOVIMIENTO_TIPO = 'TURNO_EXTERNO' as const;
 
@@ -554,6 +564,7 @@ export interface NominaVinculacionResumenApi {
   fecha_fin: string | null;
   fecha_inicio: string | null;
   metodo_pago: string | null;
+  cotiza_pension: boolean;
 }
 
 export interface NominaCargoApi {

@@ -214,7 +214,8 @@ export const createVinculacionSchema = z.object({
   fecha_fin: nullableDateSchema.optional().default(null),
   estado_vinculacion: vinculacionEstadoSchema.optional().default('ACTIVA'),
   cuenta_como_experiencia: nullableBooleanSchema.optional().default(true),
-  metodo_pago: nullableMetodoPagoSchema.optional().default(null)
+  metodo_pago: nullableMetodoPagoSchema.optional().default(null),
+  cotiza_pension: z.boolean().optional()
 });
 
 export const updateVinculacionSchema = z
@@ -229,6 +230,7 @@ export const updateVinculacionSchema = z
     estado_vinculacion: vinculacionEstadoSchema.optional(),
     cuenta_como_experiencia: nullableBooleanSchema.optional(),
     metodo_pago: nullableMetodoPagoSchema.optional(),
+    cotiza_pension: z.boolean().optional(),
     motivo_cambio: nullableTrimmedString.optional()
   })
   .refine(

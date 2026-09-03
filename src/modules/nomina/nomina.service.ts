@@ -238,6 +238,7 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   vinculacion_estado: string | null;
   vinculacion_id: string;
   vinculacion_metodo_pago: string | null;
+  vinculacion_cotiza_pension: boolean;
 }
 
 interface ContratoScopeRow extends QueryResultRow {
@@ -799,6 +800,7 @@ export interface NominaEmpleado {
     fecha_inicio: string | null;
     id: string;
     metodo_pago: string | null;
+    cotiza_pension: boolean;
   };
   vinculacion_id: string;
   auxilio_transporte_snapshot?: number;
@@ -1964,6 +1966,7 @@ const getNominaEmpleadosRealSelect = (): string => {
       v.fecha_fin AS fecha_fin_vinculacion,
       v.estado_vinculacion AS vinculacion_estado,
       v.metodo_pago AS vinculacion_metodo_pago,
+      COALESCE(v.cotiza_pension, TRUE) AS vinculacion_cotiza_pension,
       p.numero_documento AS persona_numero_documento,
       p.primer_nombre,
       p.segundo_nombre,
@@ -2636,7 +2639,8 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
       fecha_inicio: toDateString(row.fecha_inicio_vinculacion),
       fecha_fin: toDateString(row.fecha_fin_vinculacion),
       estado_vinculacion: row.vinculacion_estado,
-      metodo_pago: row.vinculacion_metodo_pago
+      metodo_pago: row.vinculacion_metodo_pago,
+      cotiza_pension: row.vinculacion_cotiza_pension
     },
     cargo:
       row.cargo_id || row.cargo_nombre || row.cargo_operativo_id || row.cargo_operativo_nombre
@@ -6818,7 +6822,7 @@ export const importNominaEmpleados = async (
 
 export const recalculateNominaPeriodo = async (
   periodoId: string,
-  options: { force?: boolean } | undefined,
+  options: { force?: boolean; nomina_empleado_id?: string } | undefined,
   actorUserId: string,
   tenant?: TenantAccessContext,
   auditMeta?: AuditRequestMeta
@@ -6836,7 +6840,7 @@ export const recalculateNominaPeriodo = async (
     );
 
     const empleadosResult = {
-      rows: await loadNominaEmpleadoRowsForPeriodo(periodoId, {}, tenant, client)
+      rows: await loadNominaEmpleadoRowsForPeriodo(periodoId, { nomina_empleado_id: options?.nomina_empleado_id }, tenant, client)
     };
 
     const novedadesResult = await client.query<NominaNovedadRealRow>(
@@ -6942,6 +6946,16 @@ export const recalculateNominaPeriodo = async (
       [periodoId]
     );
 
+    const ajustesManualesResult = await client.query<{
+      id: string; nomina_empleado_id: string; tipo: 'ADICION' | 'DEDUCCION'; concepto: string;
+      observacion: string | null; valor: number | string;
+    }>(
+      `SELECT id::text AS id, nomina_empleado_id::text AS nomina_empleado_id, tipo, concepto, observacion, valor
+       FROM nomina_ajustes_manuales
+       WHERE periodo_id = $1::bigint AND activo = TRUE
+       ORDER BY id ASC`, [periodoId]
+    );
+
     const novedadesByEmpleado = new Map<string, NominaNovedadRealRow[]>();
     const asistenciaByVinculacion = new Map(
       asistenciaResult.rows.map((row) => [row.vinculacion_id, row])
@@ -6949,6 +6963,12 @@ export const recalculateNominaPeriodo = async (
     const movimientosByEmpleado = new Map(
       movimientosResult.rows.map((row) => [row.nomina_empleado_id, row])
     );
+    const ajustesByEmpleado = new Map<string, typeof ajustesManualesResult.rows>();
+    for (const ajuste of ajustesManualesResult.rows) {
+      const items = ajustesByEmpleado.get(ajuste.nomina_empleado_id) ?? [];
+      items.push(ajuste);
+      ajustesByEmpleado.set(ajuste.nomina_empleado_id, items);
+    }
     const contextosBaseResult = await client.query<{
       contexto: Record<string, unknown> | null;
       nomina_empleado_id: string;
@@ -7306,6 +7326,17 @@ export const recalculateNominaPeriodo = async (
       const totalTurnosInternosSsDevengados = toNumberValue(
         movimientosEmpleado?.movimientos_turnos_internos_ss_devengados
       );
+      const ajustesManuales = ajustesByEmpleado.get(empleadoRow.id) ?? [];
+      const ajustesAdiciones = ajustesManuales.filter((item) => item.tipo === 'ADICION');
+      const ajustesDeducciones = ajustesManuales.filter((item) => item.tipo === 'DEDUCCION');
+      const totalAdicionesManuales = ajustesAdiciones.reduce((sum, item) => sum + toNumberValue(item.valor), 0);
+      const totalDeduccionesManuales = ajustesDeducciones.reduce((sum, item) => sum + toNumberValue(item.valor), 0);
+      const detalleAjustesManuales = {
+        adiciones: ajustesAdiciones.map(({ id, concepto, valor, observacion }) => ({ id, concepto, valor: toNumberValue(valor), observacion })),
+        deducciones: ajustesDeducciones.map(({ id, concepto, valor, observacion }) => ({ id, concepto, valor: toNumberValue(valor), observacion })),
+        total_adiciones_manuales: totalAdicionesManuales,
+        total_deducciones_manuales: totalDeduccionesManuales
+      };
 
       const projectedCanonicals = projectNominaCanonicalEventsToPeriodo({
         canonicalEvents: (canonicalByVinculacion.get(empleadoRow.vinculacion_id) ?? []).map(
@@ -7598,7 +7629,9 @@ export const recalculateNominaPeriodo = async (
             fecha_fin: turnoRow.fecha_fin,
             observacion: turnoRow.observacion,
             contexto: turnoContexto,
-            aporta_pension: resolveAportaPension(empleadoRow.vinculacion_id, turnoRow.fecha_inicio),
+            aporta_pension:
+              empleadoRow.vinculacion_cotiza_pension &&
+              resolveAportaPension(empleadoRow.vinculacion_id, turnoRow.fecha_inicio),
             afecta_seguridad_social: turnoRow.movimiento_afecta_seguridad_social,
             valor_aplicado: toOptionalNumberValue(turnoRow.movimiento_valor_aplicado),
             valor_unitario: toOptionalNumberValue(turnoRow.movimiento_valor_unitario),
@@ -7612,19 +7645,21 @@ export const recalculateNominaPeriodo = async (
           },
           tramos: tramosCobertura,
           dias_efectos: effectResolution.days,
-          aporta_pension: resolveAportaPension(empleadoRow.vinculacion_id, employmentRange.start),
+          aporta_pension:
+            empleadoRow.vinculacion_cotiza_pension &&
+            resolveAportaPension(empleadoRow.vinculacion_id, employmentRange.start),
           porcentaje_salud: parametrosCobertura.porcentaje_salud_empleado,
           porcentaje_pension: parametrosCobertura.porcentaje_pension_empleado,
           descuentos_autorizados: deduccionesNovedadManual,
-          otras_deducciones_reales: totalMovimientosDeducciones,
-          otros_devengos_reales: Math.max(0, otrosDevengos) + totalMovimientosDevengados,
+          otras_deducciones_reales: totalMovimientosDeducciones + totalDeduccionesManuales,
+          otros_devengos_reales: Math.max(0, otrosDevengos) + totalMovimientosDevengados + totalAdicionesManuales,
           adiciones_internas: adicionesInternasCobertura
         });
         const totalAdicionesInternasDevengado = coberturaResult.adiciones_internas.reduce(
           (accumulator, item) => accumulator + item.devengado_turno,
           0
         );
-        const detalleCalculoCobertura = {
+        const detalleCalculoCobertura: Record<string, unknown> = {
           motor: 'COBERTURA_V1_0',
           periodo: periodoRange,
           empleo: {
@@ -7666,15 +7701,24 @@ export const recalculateNominaPeriodo = async (
             resumen: resumenNovedadesEconomicas,
             items: novedadesEconomicas
           },
-          adiciones_internas: coberturaResult.adiciones_internas
+          adiciones_internas: coberturaResult.adiciones_internas,
+          ajustes_manuales: detalleAjustesManuales
         };
         const saludTotal = coberturaResult.salud_ordinaria + coberturaResult.salud_adiciones_internas;
-        const pensionTotal =
-          coberturaResult.pension_ordinaria + coberturaResult.pension_adiciones_internas;
+        const pensionTotal = empleadoRow.vinculacion_cotiza_pension
+          ? coberturaResult.pension_ordinaria + coberturaResult.pension_adiciones_internas
+          : 0;
         const devengadoOtros =
           coberturaResult.recargos_ordinarios +
           coberturaResult.otros_devengos_reales +
           totalAdicionesInternasDevengado;
+        detalleCalculoCobertura.seguridad_social = {
+          cotiza_pension: empleadoRow.vinculacion_cotiza_pension,
+          base_salud: coberturaResult.salario_ordinario,
+          aporte_salud: saludTotal,
+          base_pension: coberturaResult.salario_ordinario,
+          aporte_pension: pensionTotal
+        };
 
         await client.query(
           `
@@ -7740,12 +7784,14 @@ export const recalculateNominaPeriodo = async (
         ).toFixed(2)
       );
       const salud = Number((baseSeguridadSocial * 0.04).toFixed(2));
-      const pension = Number((baseSeguridadSocial * 0.04).toFixed(2));
+      const pension = empleadoRow.vinculacion_cotiza_pension
+        ? Number((baseSeguridadSocial * 0.04).toFixed(2))
+        : 0;
       const totalAdiciones = Number(
-        (devengadoBasico + devengadoTransporte + devengadoOtros + adicionesNovedad).toFixed(2)
+        (devengadoBasico + devengadoTransporte + devengadoOtros + adicionesNovedad + totalAdicionesManuales).toFixed(2)
       );
       const totalDeducciones = Number(
-        (salud + pension + deduccionesNovedadManual + totalMovimientosDeducciones).toFixed(2)
+        (salud + pension + deduccionesNovedadManual + totalMovimientosDeducciones + totalDeduccionesManuales).toFixed(2)
       );
       const netoPagar = Number((totalAdiciones - totalDeducciones).toFixed(2));
       const detalleCalculo = {
@@ -7791,7 +7837,7 @@ export const recalculateNominaPeriodo = async (
           total_deducciones: totalDeducciones,
           neto_pagar: netoPagar
         },
-        novedades: {
+          novedades: {
           cantidad_novedades: novedadesEconomicas.length,
           dias_novedad: novedadesEconomicas.reduce((sum, item) => sum + item.dias_periodo, 0),
           descuentos_salario: diasDescuentoSalario,
@@ -7804,6 +7850,14 @@ export const recalculateNominaPeriodo = async (
           adiciones_manuales: adicionesNovedad,
           deducciones_manuales: deduccionesNovedadManual,
           items: novedadesEconomicas
+        },
+        ajustes_manuales: detalleAjustesManuales,
+        seguridad_social: {
+          cotiza_pension: empleadoRow.vinculacion_cotiza_pension,
+          base_salud: baseSeguridadSocial,
+          aporte_salud: salud,
+          base_pension: baseSeguridadSocial,
+          aporte_pension: pension
         }
       };
 
@@ -7841,13 +7895,11 @@ export const recalculateNominaPeriodo = async (
       );
     }
 
-    await syncCoberturaCuentasCobroExternasPeriodo(
-      Number(periodoId),
-      actorUserId,
-      tenant,
-      auditMeta,
-      client
-    );
+    if (!options?.nomina_empleado_id) {
+      await syncCoberturaCuentasCobroExternasPeriodo(
+        Number(periodoId), actorUserId, tenant, auditMeta, client
+      );
+    }
 
     const recalculationPayload = {
       empleados_procesados: empleadosResult.rows.length,

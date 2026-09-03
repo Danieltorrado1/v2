@@ -1,0 +1,13 @@
+import type { Request, Response } from 'express';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { successResponse } from '../../utils/apiResponse';
+import { getAuditRequestMeta } from '../auditoria/auditoria.helper';
+import { ajusteManualAnularSchema, ajusteManualIdParamSchema, ajusteManualSchema, ajusteManualUpdateSchema, periodoIdParamSchema } from './nomina.schemas';
+import { annulAjusteManual, createAjusteManual, listAjustesManuales, updateAjusteManual, uploadAjusteManualSoporte } from './ajustes-manuales.service';
+const actor = (req: Request) => { if (!req.user?.userId) throw new Error('Authentication required'); return String(req.user.userId); };
+const periodId = (req: Request) => req.params.periodoId as string;
+export const listAjustesManualesHandler = asyncHandler(async (req, res) => successResponse(res, { data: await listAjustesManuales(periodId(req), req.tenant), message: 'Manual payroll adjustments retrieved successfully' }));
+export const createAjusteManualHandler = asyncHandler(async (req, res) => successResponse(res, { statusCode: 201, data: await createAjusteManual(periodId(req), ajusteManualSchema.parse(req.body), actor(req), req.tenant, getAuditRequestMeta(req)), message: 'Manual payroll adjustment created successfully' }));
+export const updateAjusteManualHandler = asyncHandler(async (req, res) => successResponse(res, { data: await updateAjusteManual(ajusteManualIdParamSchema.parse(req.params).id, ajusteManualUpdateSchema.parse(req.body), actor(req), req.tenant, getAuditRequestMeta(req)), message: 'Manual payroll adjustment updated successfully' }));
+export const annulAjusteManualHandler = asyncHandler(async (req, res) => successResponse(res, { data: await annulAjusteManual(ajusteManualIdParamSchema.parse(req.params).id, ajusteManualAnularSchema.parse(req.body).motivo, actor(req), req.tenant, getAuditRequestMeta(req)), message: 'Manual payroll adjustment annulled successfully' }));
+export const uploadAjusteManualSoporteHandler = asyncHandler(async (req, res) => { if (!req.file) throw new Error('Archivo requerido'); return successResponse(res, { data: await uploadAjusteManualSoporte(ajusteManualIdParamSchema.parse(req.params).id, req.file, actor(req), req.tenant), message: 'Manual payroll adjustment support uploaded successfully' }); });
