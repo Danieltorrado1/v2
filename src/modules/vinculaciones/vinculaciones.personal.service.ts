@@ -182,7 +182,7 @@ export interface VinculacionPersonalContext {
   presentada_licitacion_actual: PresentacionLicitacionItem | null;
 }
 
-const TODAY_ISO = '2026-08-21';
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 const toNumber = (value: string | number): number => {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -547,10 +547,8 @@ export const replaceAsignacionOperativaPersonal = async (
     const target=await client.query<any>(`SELECT ff.*,COALESCE(mu.nombre_municipio,ff.municipio_texto) municipio_nombre FROM focalizacion_final ff LEFT JOIN municipios mu ON mu.id=ff.municipio_id WHERE ff.id=$1::bigint AND ff.contrato_id=$2::bigint AND COALESCE(ff.activo,TRUE)=TRUE`,[focalizacionFinalId,vinculacion.contrato_id]);
     if(!target.rows[0])throw new AppError('La sede no pertenece al municipio, institucion o contrato seleccionado',409,'ASIGNACION_OPERATIVA_CONTEXTO_INVALIDO');
     const fechaDesde = input.fecha_desde ?? new Date().toISOString().slice(0, 10);
-    const hoy = new Date().toISOString().slice(0, 10);
-    if (fechaDesde !== hoy) {
-      throw new AppError('Los cambios con fecha distinta de hoy deben registrarse en Cambio Operativo',409,'ASIGNACION_OPERATIVA_FECHA_REQUIERE_CAMBIO_OPERATIVO');
-    }
+    const cierres = await client.query<{ estado: string }>(`SELECT estado FROM nomina_periodos WHERE contrato_id=$1::bigint AND fecha_inicio <= $2::date AND fecha_fin >= $2::date AND estado <> 'ABIERTO'`, [vinculacion.contrato_id, fechaDesde]);
+    if (cierres.rows.length) throw new AppError('La fecha efectiva afecta un periodo cerrado; registre una correccion explicita de nomina',409,'ASIGNACION_OPERATIVA_PERIODO_CERRADO');
     if (tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('GESTOR') && !tenant.roleNames.includes('TALENTO_HUMANO')) {
       throw new AppError('El Gestor no puede modificar la asignacion administrativa del trabajador',403,'VINCULACION_SCOPE_FORBIDDEN');
     }
@@ -567,11 +565,14 @@ export const replaceAsignacionOperativaPersonal = async (
         throw new AppError('El municipio esta fuera del alcance autorizado',403,'VINCULACION_SCOPE_FORBIDDEN');
       }
     }
-    const current=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND activo=TRUE AND fecha_inicio<= $2::date AND (fecha_fin IS NULL OR fecha_fin>= $2::date) ORDER BY fecha_inicio DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId,fechaDesde]);
+    const current=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND fecha_inicio<= $2::date AND (fecha_fin IS NULL OR fecha_fin>= $2::date) ORDER BY fecha_inicio DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId,fechaDesde]);
+    const next=await client.query<{ fecha_inicio: string }>(`SELECT fecha_inicio::text FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND fecha_inicio>$2::date ORDER BY fecha_inicio ASC,id ASC LIMIT 1`,[vinculacionId,fechaDesde]);
     if(String(current.rows[0]?.focalizacion_final_id)===String(focalizacionFinalId)){await client.query('COMMIT');return current.rows[0];}
-    if(current.rows[0])await client.query(`UPDATE cobertura_asignaciones SET activo=FALSE,fecha_fin=GREATEST(fecha_inicio,CURRENT_DATE-1),observacion=CONCAT_WS(' · ',observacion,'Corregida desde Personal') WHERE id=$1::bigint`,[current.rows[0].id]);
+    if(current.rows[0])await client.query(`UPDATE cobertura_asignaciones SET activo=FALSE,fecha_fin=GREATEST(fecha_inicio,$2::date-1),observacion=CONCAT_WS(' · ',observacion,'Corregida desde Personal') WHERE id=$1::bigint`,[current.rows[0].id,fechaDesde]);
     const f=target.rows[0];
-    const inserted=await client.query<any>(`INSERT INTO cobertura_asignaciones(contrato_id,municipio_id,focalizacion_final_id,vinculacion_id,institucion,sede,consecutivo_sede,modalidad,categoria_cobertura,tipo_asignacion,porcentaje_cobertura,fecha_inicio,fecha_fin,observacion,activo) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,'PRINCIPAL'),COALESCE($11,1),$12::date,NULL,$13,TRUE) RETURNING *`,[vinculacion.contrato_id,f.municipio_id,focalizacionFinalId,vinculacionId,f.institucion_final,f.sede_final,f.consecutivo_final,f.modalidad_final,f.categoria_cobertura,current.rows[0]?.tipo_asignacion,current.rows[0]?.porcentaje_cobertura,fechaDesde,input.observacion ?? 'Correccion operativa desde Personal']);
+    const nextFechaFin = next.rows[0]?.fecha_inicio ? new Date(`${next.rows[0].fecha_inicio}T00:00:00Z`) : null;
+    if (nextFechaFin) nextFechaFin.setUTCDate(nextFechaFin.getUTCDate() - 1);
+    const inserted=await client.query<any>(`INSERT INTO cobertura_asignaciones(contrato_id,municipio_id,focalizacion_final_id,vinculacion_id,institucion,sede,consecutivo_sede,modalidad,categoria_cobertura,tipo_asignacion,porcentaje_cobertura,fecha_inicio,fecha_fin,observacion,activo) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,'PRINCIPAL'),COALESCE($11::numeric,1::numeric),$12::date,$13::date,$14,TRUE) RETURNING *`,[vinculacion.contrato_id,f.municipio_id,focalizacionFinalId,vinculacionId,f.institucion_final,f.sede_final,f.consecutivo_final,f.modalidad_final,f.categoria_cobertura,current.rows[0]?.tipo_asignacion,current.rows[0]?.porcentaje_cobertura,fechaDesde,nextFechaFin?.toISOString().slice(0,10) ?? null,input.observacion ?? 'Correccion operativa desde Personal']);
     if (String(current.rows[0]?.municipio_id ?? '') !== String(f.municipio_id ?? '')) {
       await client.query(
         `UPDATE gestor_personal_asignaciones gpa

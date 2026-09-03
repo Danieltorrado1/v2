@@ -24,7 +24,7 @@ import {
   getRevisionOperativa,
   listarTiposNovedad,
   markNominaAsistencia,
-  markNominaAsistenciaRango,
+  markNominaAsistenciaMasiva,
   reopenNominaEmpleadoOperativo,
   updateNominaNovedad,
   updateRevisionOperativa,
@@ -462,6 +462,7 @@ export default function PlanillaOperativaPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [query, setQuery] = useState(initialFilters.current.query);
   const [municipio, setMunicipio] = useState(initialFilters.current.municipio);
   const [gestorFilter, setGestorFilter] = useState(initialFilters.current.gestor);
@@ -695,6 +696,7 @@ export default function PlanillaOperativaPage() {
     setHours("");
     setManualValue("");
     setError("");
+    setSuccessMessage("");
   }, [empresaId]);
 
   const period = periods.find((item) => String(item.id) === periodId);
@@ -1300,10 +1302,18 @@ export default function PlanillaOperativaPage() {
         invalidateReviewLocally(noveltyCell.employee, editingNovelty ? "NOVEDAD_EDITADA" : "NOVEDAD_CREADA");
       }
 
+      const recalculationWarning = "recalculate_warning" in response ? response.recalculate_warning : null;
+      setSuccessMessage(
+        recalculationWarning
+          ? `Novedad registrada correctamente. No se pudo actualizar completamente el cálculo: ${recalculationWarning}`
+          : editingNovelty ? "Novedad actualizada correctamente." : "Novedad registrada correctamente.",
+      );
+
       closeNoveltyModal();
       setRangeSelection(null);
     } catch (value) {
       setError(formatPlanillaErrorMessage(value, editingNovelty ? "No fue posible corregir la novedad" : "No fue posible registrar la novedad", { date: noveltyCell.date }));
+      setSuccessMessage("");
     } finally {
       noveltySaveInFlightRef.current = false;
       setSaving(false);
@@ -1323,12 +1333,18 @@ export default function PlanillaOperativaPage() {
       : rangeSelection.start;
 
     try {
-      const result = (await markNominaAsistenciaRango(
+      const bulkResult = await markNominaAsistenciaMasiva(
         periodId,
-        selected.employee.vinculacion_id,
+        [selected.employee.vinculacion_id],
         from,
         to,
-      )) as AttendanceRangeResult;
+      );
+      const result = (bulkResult.resultados?.[0] ?? {
+        marcados: [],
+        omitidos: [{ fecha: from, motivo: "No se pudo marcar el rango" }],
+        total_marcados: 0,
+        total_omitidos: 1,
+      }) as AttendanceRangeResult;
 
       setAttendance((current) => {
         let next = current;
@@ -1555,6 +1571,14 @@ export default function PlanillaOperativaPage() {
           <button type="button" onClick={() => setError("")}>
             <X size={14} />
           </button>
+        </div>
+      ) : null}
+
+      {successMessage ? (
+        <div className="op-success" role="status">
+          <Check size={16} />
+          {successMessage}
+          <button type="button" onClick={() => setSuccessMessage("")}><X size={14} /></button>
         </div>
       ) : null}
 

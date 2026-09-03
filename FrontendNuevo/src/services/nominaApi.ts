@@ -904,7 +904,19 @@ export async function closeNominaEmpleadoOperativo(periodoId:string,empleadoId:s
 export async function reopenNominaEmpleadoOperativo(periodoId:string,empleadoId:string,motivo:string) { const response=await apiClient.post<ApiResponse<NominaEmpleadoOperativoStateApi>>(`/nomina/periodos/${periodoId}/reapertura-operativa/${empleadoId}`,{motivo}); return response.data; }
 export async function markNominaAsistencia(periodoId:string,vinculacionId:string,fecha:string,presente:boolean) { const response=await apiClient.post<ApiResponse<unknown>>(`/nomina/periodos/${periodoId}/asistencia/marcar`,{vinculacion_id:vinculacionId,fecha,presente}); return response.data; }
 export async function markNominaAsistenciaRango(periodoId:string,vinculacionId:string,fecha_inicio:string,fecha_fin:string) { const response=await apiClient.post<ApiResponse<unknown>>(`/nomina/periodos/${periodoId}/asistencia/rango`,{vinculacion_id:vinculacionId,fecha_inicio,fecha_fin}); return response.data; }
-export async function markNominaAsistenciaMasiva(periodoId:string,vinculacion_ids:string[],fecha_inicio:string,fecha_fin:string) { const response=await apiClient.post<ApiResponse<unknown>>(`/nomina/periodos/${periodoId}/asistencia/masiva`,{vinculacion_ids,fecha_inicio,fecha_fin}); return response.data; }
+type NominaAsistenciaMasivaResult = {
+  trabajadores_procesados: number;
+  dias_marcados: number;
+  dias_omitidos: number;
+  resultados: Array<{
+    vinculacion_id: string;
+    marcados: string[];
+    omitidos: Array<{ fecha: string; motivo: string }>;
+    total_marcados: number;
+    total_omitidos: number;
+  }>;
+};
+export async function markNominaAsistenciaMasiva(periodoId:string,vinculacion_ids:string[],fecha_inicio:string,fecha_fin:string) { const response=await apiClient.post<ApiResponse<NominaAsistenciaMasivaResult>>(`/nomina/periodos/${periodoId}/asistencia/masiva`,{vinculacion_ids,fecha_inicio,fecha_fin}); return response.data; }
 
 export async function createNominaMovimiento(
   input: CreateNominaMovimientoApi,

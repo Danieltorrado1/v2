@@ -2016,7 +2016,7 @@ const getNominaEmpleadosRealSelect = (): string => {
     LEFT JOIN LATERAL (
       SELECT ca1.focalizacion_final_id
       FROM cobertura_asignaciones ca1
-      WHERE ca1.vinculacion_id = v.id AND ca1.activo = TRUE
+      WHERE ca1.vinculacion_id = v.id
         AND ca1.fecha_inicio <= np_context.fecha_fin
         AND (ca1.fecha_fin IS NULL OR ca1.fecha_fin >= np_context.fecha_inicio)
       ORDER BY ca1.fecha_inicio DESC, ca1.id DESC LIMIT 1
@@ -2046,7 +2046,6 @@ const getNominaEmpleadosRealSelect = (): string => {
       LEFT JOIN municipios muo ON muo.id = ff.municipio_id
       LEFT JOIN modalidades mo ON mo.id = ff.modalidad_id
       WHERE ca.vinculacion_id = v.id
-        AND COALESCE(ca.activo, TRUE) = TRUE
         AND ca.fecha_inicio <= np.fecha_fin
         AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= np.fecha_inicio)
       ORDER BY ca.fecha_inicio DESC, ca.id DESC
@@ -10902,8 +10901,23 @@ export const createNominaNovedadConTurno = async (
     }
     await registerAuditEntry({ client, usuario_id: actorUserId, accion: 'NOMINA_NOVEDAD_TURNO_CREATE', tabla: 'nomina_novedad_turnos', registro_id: turnoRow.id, descripcion: 'Relacion de novedad con turno operativo', before: null, after: { novedad_id: novedad.id, tipo: turno.tipo }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
     await client.query('COMMIT');
-    await recalculateNominaPeriodo(input.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
-    return { novedad, turno_id: turnoRow.id, turno };
+
+    // A novelty with coverage affects at most the covered employee and the
+    // beneficiary of an internal turn. Recalculate those employees only so
+    // the POST response is not held by an unnecessary period-wide rebuild.
+    const affectedEmployeeIds = Array.from(
+      new Set([input.nomina_empleado_id, turnoEmpleadoId].filter(Boolean)),
+    );
+    let recalculateWarning: string | null = null;
+    for (const affectedEmployeeId of affectedEmployeeIds) {
+      try {
+        await recalculateNominaPeriodo(input.periodo_id, { force: true, nomina_empleado_id: affectedEmployeeId }, actorUserId, tenant, auditMeta);
+      } catch (error) {
+        recalculateWarning = error instanceof Error ? error.message : 'No se pudo actualizar el cálculo afectado';
+        break;
+      }
+    }
+    return { novedad, turno_id: turnoRow.id, turno, recalculate_warning: recalculateWarning };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

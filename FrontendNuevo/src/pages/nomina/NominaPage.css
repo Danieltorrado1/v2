@@ -1021,6 +1021,13 @@
 .payroll-person-groups dl div { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
 .payroll-person-groups dt { font-size:11px; color:var(--text-secondary); }
 .payroll-person-groups dd { margin:0; font-size:12px; font-weight:800; text-align:right; }
+.payroll-internal-turns-detail { grid-column: 1 / -1; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 14px; background: color-mix(in srgb, var(--color-success) 5%, transparent); }
+.payroll-internal-turns-detail h4 { margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--color-success); }
+.payroll-internal-turns-detail dl { margin:0 0 8px; }
+.payroll-internal-turn-list { display:grid; gap:7px; }
+.payroll-internal-turn-list > div { display:grid; gap:2px; padding-top:7px; border-top:1px solid var(--border-color); }
+.payroll-internal-turn-list strong { font-size:11px; }
+.payroll-internal-turn-list span,.payroll-internal-turn-list small { color:var(--text-secondary); font-size:10px; }
 .payroll-person-summary > footer { border-top:1px solid var(--border-color); padding-top:10px; }
 .payroll-person-summary > footer strong { color:var(--color-primary); font-size:16px; }
 

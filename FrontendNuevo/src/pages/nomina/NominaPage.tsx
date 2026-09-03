@@ -93,6 +93,28 @@ type KpiCard = {
   caption: string;
 };
 
+function InternalTurnsDetail({ empleado }: { empleado: NominaEmpleadoApi }) {
+  const detail = empleado.detalle_calculo as { adiciones_internas?: Array<Record<string, unknown>> } | null | undefined;
+  const turns = detail?.adiciones_internas ?? [];
+  if (turns.length === 0) return null;
+  const total = turns.reduce((sum, turn) => sum + Number(turn.devengado_turno ?? turn.valor_aplicado ?? 0), 0);
+  return (
+    <section className="payroll-internal-turns-detail">
+      <h4>Turnos internos</h4>
+      <dl><div><dt>Total</dt><dd>{formatCOP(total)}</dd></div></dl>
+      <div className="payroll-internal-turn-list">
+        {turns.map((turn, index) => (
+          <div key={String(turn.id ?? index)}>
+            <strong>{String(turn.fecha_inicio ?? "Fecha no disponible")} → {String(turn.fecha_fin ?? turn.fecha_inicio ?? "")}</strong>
+            <span>{String(turn.titular_nombre ?? "Persona cubierta no disponible")} · {String(turn.contexto && typeof turn.contexto === "object" ? (turn.contexto as Record<string, unknown>).institucion ?? "Institución no disponible" : "Institución no disponible")}</span>
+            <small>{String(turn.contexto && typeof turn.contexto === "object" ? (turn.contexto as Record<string, unknown>).sede ?? "Sede no disponible" : "Sede no disponible")} · {String(turn.contexto && typeof turn.contexto === "object" ? (turn.contexto as Record<string, unknown>).modalidad ?? "Modalidad no disponible" : "Modalidad no disponible")} · {String(turn.dias_turno ?? 1)} día(s) · {formatCOP(Number(turn.valor_unitario ?? 0))}/día · subtotal {formatCOP(Number(turn.devengado_turno ?? turn.valor_aplicado ?? 0))}</small>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 type NovedadFormState = {
   nomina_empleado_id: string;
   tipo_novedad_id: string;
@@ -2975,7 +2997,7 @@ export default function NominaPage() {
                                         </header>
                                         <div className="payroll-person-groups">
                                           <section><h4>Dias pagados</h4><dl><div><dt>Salario</dt><dd>{salarioDias.paid}/{salarioDias.base}</dd></div><div><dt>Transporte</dt><dd>{transporteDias.paid}/{transporteDias.base}</dd></div><div><dt>Recargo</dt><dd>{recargoDias.paid}/{recargoDias.base}</dd></div></dl></section>
-                                          <section><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Otros</dt><dd>{formatCOP(empleado.devengado_otros)}</dd></div></dl></section>
+                                          <section><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Recargo / otros</dt><dd>{formatCOP(empleado.devengado_otros)}</dd></div></dl></section><InternalTurnsDetail empleado={empleado} />
                                           <section><h4>Deducciones</h4><dl><div><dt>Salud</dt><dd>{formatCOP(empleado.salud)}</dd></div><div><dt>Pension</dt><dd>{formatCOP(empleado.pension)}</dd></div><div><dt>Total</dt><dd>{formatCOP(empleado.total_deducciones)}</dd></div></dl></section>
                                           <section><h4>Novedades y turnos</h4><dl><div><dt>Novedades</dt><dd>{formatNumber(novedadesCountByEmpleadoId.get(empleado.id) ?? getEmployeeTotalNovedades(empleado))}</dd></div><div><dt>Modalidad</dt><dd title={getEmployeeModalidadDescription(empleado)}>{getEmployeeModalidadCode(empleado)}</dd></div><div><dt>Documentos</dt><dd>{getEmployeeDocumentStatusLabel(empleado)}{documentStatusPercentage ? ` · ${documentStatusPercentage}` : ""}</dd></div></dl></section>
                                         </div>

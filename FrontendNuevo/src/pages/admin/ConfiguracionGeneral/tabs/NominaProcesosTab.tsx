@@ -516,6 +516,7 @@ export function NominaProcesosTab() {
                   <span>
                     <strong>{user.name}</strong>
                     <small>{user.email}</small>
+                    <small>{user.roles.length ? user.roles.map((role) => role.replace(/_/g, ' ')).join(' · ') : 'Sin rol'}</small>
                   </span>
 
                   <span className="nomina-process-chips">
@@ -702,6 +703,7 @@ export function NominaProcesosTab() {
                 >
                   <strong>{user.name}</strong>
                   <small>{user.email}</small>
+                  <small>{user.roles.length ? user.roles.map((role) => role.replace(/_/g, ' ')).join(' · ') : 'Sin rol'}</small>
                 </button>
               ))
             ) : (
