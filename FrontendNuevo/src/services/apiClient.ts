@@ -9,11 +9,12 @@ export class ApiClientError extends Error {
   readonly code: string | undefined;
   readonly details: unknown;
   readonly originalError: unknown;
+  readonly retryAfterMs: number | null;
 
   constructor(
     message: string,
     status: number,
-    options?: { code?: string; details?: unknown; originalError?: unknown },
+    options?: { code?: string; details?: unknown; originalError?: unknown; retryAfterMs?: number | null },
   ) {
     super(message);
     this.name = 'ApiClientError';
@@ -21,6 +22,7 @@ export class ApiClientError extends Error {
     this.code = options?.code;
     this.details = options?.details;
     this.originalError = options?.originalError;
+    this.retryAfterMs = options?.retryAfterMs ?? null;
   }
 }
 
@@ -123,9 +125,14 @@ async function request<T>(
       // body is not JSON — use default message
     }
 
+    const retryAfter = response.headers.get('retry-after');
+    const retryAfterSeconds = retryAfter ? Number(retryAfter) : NaN;
     throw new ApiClientError(serverMessage ?? defaultMessage, response.status, {
       code: serverCode,
       details,
+      retryAfterMs: response.status === 429 && Number.isFinite(retryAfterSeconds)
+        ? Math.max(0, retryAfterSeconds * 1000)
+        : null,
     });
   }
 

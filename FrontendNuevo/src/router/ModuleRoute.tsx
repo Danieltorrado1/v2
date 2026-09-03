@@ -46,10 +46,14 @@ export default function ModuleRoute({
   denyRoles?: readonly string[];
 }) {
   const { user } = useAuth();
-  const { empresaId, capabilities, capabilitiesLoading, hasModule } = useCompanyContext();
+  const { empresaId, capabilities, capabilitiesLoading, hasModule, error, retryBootstrap } = useCompanyContext();
   const permissions = user?.permissions ?? [];
   const roles = user?.roles ?? [];
   const dashboardDenied = code === 'DASHBOARD' && (!canAccessDashboard(user) || isGestorOnly(user));
+
+  if (error) {
+    return <div className="adm-empty"><p>{error.includes('429') || error.toLowerCase().includes('límite') || error.toLowerCase().includes('limite') ? 'Se alcanzó temporalmente el límite de solicitudes. Intenta nuevamente.' : error}</p><button type="button" className="adm-btn primary" onClick={retryBootstrap}>Reintentar</button></div>;
+  }
 
   if (!empresaId || capabilitiesLoading || !capabilities) {
     return <div className="adm-empty">Cargando configuracion empresarial...</div>;
