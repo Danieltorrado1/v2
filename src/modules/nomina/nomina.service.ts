@@ -67,12 +67,13 @@ import {
   normalizeNominaNovedadLabel,
   resolveNominaNovedadTypeSelection
 } from './nomina.novedades';
-import { buildCsv, buildSectionedCsv } from './nomina.exporter';
+import { buildCsv, buildPayrollXlsx, buildSectionedCsv } from './nomina.exporter';
 import {
   COBERTURA_PORCENTAJE_PENSION,
   COBERTURA_PORCENTAJE_SALUD,
   COBERTURA_DIAS_BASE_NOMINA,
-  calculateCoberturaPayroll
+  calculateCoberturaPayroll,
+  roundUpToHundreds
 } from './nomina.cobertura';
 import { syncCoberturaCuentasCobroExternasPeriodo } from './cobertura.externos.service';
 import {
@@ -1239,7 +1240,8 @@ export interface NominaRecalculateResult {
 }
 
 export interface NominaExportResult {
-  csv: string;
+  file?: Buffer;
+  csv?: string;
   file_name: string;
 }
 
@@ -8141,9 +8143,9 @@ export const recalculateNominaPeriodo = async (
           totalMovimientosSsDevengados
         ).toFixed(2)
       );
-      const salud = Number((baseSeguridadSocial * 0.04).toFixed(2));
+      const salud = roundUpToHundreds(baseSeguridadSocial * 0.04);
       const pension = empleadoRow.vinculacion_cotiza_pension
-        ? Number((baseSeguridadSocial * 0.04).toFixed(2))
+        ? roundUpToHundreds(baseSeguridadSocial * 0.04)
         : 0;
       const totalAdiciones = Number(
         (devengadoBasico + devengadoTransporte + devengadoOtros + adicionesNovedad + totalAdicionesManuales).toFixed(2)
@@ -13469,92 +13471,71 @@ export const exportNominaPeriodo = async (
 ): Promise<NominaExportResult> => {
   const periodo = await loadRealPeriodoOrThrow(periodoId, tenant);
   const normalizedTipo = tipo ?? 'todo';
-
-  const resumenRows = async (): Promise<Array<Record<string, string | number | boolean | null>>> =>
-    getNominaResumenExportRows(periodoId);
-  const empleadosRows = async (): Promise<Array<Record<string, string | number | boolean | null>>> =>
-    getNominaEmpleadosExportRows(periodoId, tenant);
-  const dashboardRows = async (): Promise<Array<Record<string, string | number | boolean | null>>> =>
-    getNominaDashboardExportRows(periodoId, tenant);
-  const planoBancarioRows = async (): Promise<Array<Record<string, string | number | boolean | null>>> =>
-    getNominaPlanoBancarioExportRows(periodoId, tenant);
-  const novedadesRows = async (): Promise<Array<Record<string, string | number | boolean | null>>> =>
-    getNominaNovedadesExportRows(periodoId, tenant);
-  const movimientosRows = async (): Promise<Array<Record<string, string | number | boolean | null>>> =>
-    getNominaMovimientosExportRows(periodoId, tenant);
-  const desprendiblesRows = async (): Promise<Array<Record<string, string | number | boolean | null>>> =>
-    getNominaDesprendiblesExportRows(periodoId, includeVersions, tenant);
-  const liquidacionesRows = async (): Promise<Array<Record<string, string | number | boolean | null>>> =>
-    getNominaLiquidacionesExportRows(periodoId, tenant);
-
-  let csv = '';
-
-  switch (normalizedTipo) {
-    case 'resumen':
-      csv = buildCsv(NOMINA_RESUMEN_EXPORT_HEADERS, await resumenRows());
-      break;
-    case 'dashboard':
-      csv = buildCsv(NOMINA_DASHBOARD_SECTION_EXPORT_HEADERS, await dashboardRows());
-      break;
-    case 'plano_bancario':
-      csv = buildCsv(NOMINA_PLANO_BANCARIO_HEADERS, await planoBancarioRows());
-      break;
-    case 'empleados':
-      csv = buildCsv(NOMINA_EMPLEADOS_EXPORT_HEADERS, await empleadosRows());
-      break;
-    case 'novedades':
-      csv = buildCsv(NOMINA_NOVEDADES_EXPORT_HEADERS, await novedadesRows());
-      break;
-    case 'movimientos':
-      csv = buildCsv(NOMINA_MOVIMIENTOS_EXPORT_HEADERS, await movimientosRows());
-      break;
-    case 'desprendibles':
-      csv = buildCsv(NOMINA_DESPRENDIBLES_EXPORT_HEADERS, await desprendiblesRows());
-      break;
-    case 'liquidaciones':
-      csv = buildCsv(NOMINA_LIQUIDACIONES_EXPORT_HEADERS, await liquidacionesRows());
-      break;
-    case 'todo':
-    default:
-      csv = buildSectionedCsv([
-        {
-          title: 'RESUMEN',
-          headers: NOMINA_RESUMEN_EXPORT_HEADERS,
-          rows: await resumenRows()
-        },
-        {
-          title: 'DASHBOARD',
-          headers: NOMINA_DASHBOARD_SECTION_EXPORT_HEADERS,
-          rows: await dashboardRows()
-        },
-        {
-          title: 'EMPLEADOS',
-          headers: NOMINA_EMPLEADOS_EXPORT_HEADERS,
-          rows: await empleadosRows()
-        },
-        {
-          title: 'NOVEDADES',
-          headers: NOMINA_NOVEDADES_EXPORT_HEADERS,
-          rows: await novedadesRows()
-        },
-        {
-          title: 'MOVIMIENTOS',
-          headers: NOMINA_MOVIMIENTOS_EXPORT_HEADERS,
-          rows: await movimientosRows()
-        },
-        {
-          title: 'DESPRENDIBLES',
-          headers: NOMINA_DESPRENDIBLES_EXPORT_HEADERS,
-          rows: await desprendiblesRows()
-        },
-        {
-          title: 'LIQUIDACIONES',
-          headers: NOMINA_LIQUIDACIONES_EXPORT_HEADERS,
-          rows: await liquidacionesRows()
-        }
-      ]);
-      break;
+  const empleados = (await listNominaEmpleados(periodoId, { page: 1, limit: 5000 }, tenant)).items;
+  const novedades = (await listNominaNovedades(
+    { periodo_id: periodoId, page: 1, limit: 5000, activo: true },
+    tenant
+  )).items;
+  const nominaHeaders = [
+    'CÉDULA', 'NOMBRE COMPLETO', 'MUNICIPIO', 'MODALIDAD', 'SALARIO BASE',
+    'TRANSPORTE', 'RECARGOS', 'OTROS PAGOS', 'TOTAL DEVENGADO', 'SALUD',
+    'PENSIÓN', 'TOTAL DEDUCCIONES', 'NETO A PAGAR'
+  ];
+  const noveltyCode = (item: NominaNovedad): string =>
+    (item.tipo_novedad.codigo_operativo_registrado ?? item.tipo_novedad.codigo_operativo ?? item.tipo_novedad.nombre ?? 'NOVEDAD')
+      .trim().toUpperCase();
+  const noveltyDays = (item: NominaNovedad): number => {
+    if (item.dias !== null && Number.isFinite(item.dias) && item.dias > 0) return Math.round(item.dias);
+    if (item.fecha_inicio && item.fecha_fin) {
+      const start = maxDateString(item.fecha_inicio, toDateString(periodo.fecha_inicio) ?? item.fecha_inicio);
+      const end = minDateString(item.fecha_fin, toDateString(periodo.fecha_fin) ?? item.fecha_fin);
+      return start <= end ? inclusiveDaysBetween(start, end) : 0;
+    }
+    return 1;
+  };
+  const codes = [...new Set(novedades.map(noveltyCode))].sort();
+  const noveltyByEmployee = new Map<string, Map<string, number>>();
+  for (const novelty of novedades) {
+    const byCode = noveltyByEmployee.get(novelty.nomina_empleado_id) ?? new Map<string, number>();
+    byCode.set(noveltyCode(novelty), (byCode.get(noveltyCode(novelty)) ?? 0) + noveltyDays(novelty));
+    noveltyByEmployee.set(novelty.nomina_empleado_id, byCode);
   }
+  const novedadesHeaders = ['CÉDULA', 'NOMBRE COMPLETO', 'MUNICIPIO', 'MODALIDAD', ...codes, 'TIENE NOVEDAD'];
+  const novedadesExportRows = empleados.map((employee) => {
+    const byCode = noveltyByEmployee.get(employee.id) ?? new Map<string, number>();
+    const row: Record<string, string | number | boolean | null> = {
+      'CÉDULA': employee.persona.numero_documento,
+      'NOMBRE COMPLETO': employee.persona.nombre_completo,
+      'MUNICIPIO': employee.municipio ?? employee.contexto_operativo?.municipio ?? employee.sede?.municipio ?? null,
+      'MODALIDAD': employee.modalidad ?? employee.contexto_operativo?.modalidad_codigo ?? null,
+      'TIENE NOVEDAD': codes.some((code) => (byCode.get(code) ?? 0) > 0) ? 'SÍ' : 'NO'
+    };
+    for (const code of codes) row[code] = byCode.get(code) ?? 0;
+    return row;
+  });
+  const nominaExportRows = empleados.map((employee) => ({
+    'CÉDULA': employee.persona.numero_documento,
+    'NOMBRE COMPLETO': employee.persona.nombre_completo,
+    'MUNICIPIO': employee.municipio ?? employee.contexto_operativo?.municipio ?? employee.sede?.municipio ?? null,
+    'MODALIDAD': employee.modalidad ?? employee.contexto_operativo?.modalidad_codigo ?? null,
+    'SALARIO BASE': employee.devengado_basico,
+    'TRANSPORTE': employee.devengado_transporte,
+    'RECARGOS': employee.detalle_calculo?.componentes && typeof employee.detalle_calculo.componentes === 'object'
+      ? (employee.detalle_calculo.componentes as Record<string, unknown>).recargos_ordinarios as number ?? employee.devengado_otros
+      : employee.devengado_otros,
+    'OTROS PAGOS': employee.detalle_calculo?.componentes && typeof employee.detalle_calculo.componentes === 'object'
+      ? (employee.detalle_calculo.componentes as Record<string, unknown>).turnos_internos as number ?? 0
+      : 0,
+    'TOTAL DEVENGADO': employee.total_adiciones,
+    'SALUD': employee.salud,
+    'PENSIÓN': employee.pension,
+    'TOTAL DEDUCCIONES': employee.total_deducciones,
+    'NETO A PAGAR': employee.neto_pagar
+  }));
+  const file = buildPayrollXlsx([
+    { name: 'NOVEDADES', headers: novedadesHeaders, rows: novedadesExportRows, integerHeaders: codes },
+    { name: 'NOMINA', headers: nominaHeaders, rows: nominaExportRows, currencyHeaders: nominaHeaders.slice(4) }
+  ]);
 
   await registerAuditEvent({
     accion: 'NOMINA_EXPORT',
@@ -13564,7 +13545,7 @@ export const exportNominaPeriodo = async (
       periodo_id: periodoId,
       tipo: normalizedTipo
     },
-    descripcion: 'Exportacion CSV de nomina',
+    descripcion: 'Exportacion XLSX de nomina con hojas NOVEDADES y NOMINA',
     entidad: 'nomina_periodos',
     entidad_id: periodoId,
     empresa_id: periodo.contrato?.empresa_id ?? null,
@@ -13575,7 +13556,7 @@ export const exportNominaPeriodo = async (
   });
 
   return {
-    csv,
-    file_name: `nomina-${normalizedTipo}-periodo-${periodoId}.csv`
+    file,
+    file_name: `nomina-${normalizedTipo}-periodo-${periodoId}.xlsx`
   };
 };

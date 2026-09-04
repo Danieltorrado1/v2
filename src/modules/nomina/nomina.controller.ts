@@ -770,9 +770,9 @@ export const exportNominaPeriodoHandler = asyncHandler(async (req: Request, res:
     getAuditRequestMeta(req)
   );
 
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${result.file_name}"`);
-  res.status(200).send(result.csv);
+  res.status(200).send(result.file);
 });
 
 export const getNominaPlanoBancarioHandler = asyncHandler(async (req: Request, res: Response) => {
