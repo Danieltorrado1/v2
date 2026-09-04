@@ -387,6 +387,12 @@ export const calculateCoberturaPayroll = (
     0
   );
 
+  // Los turnos internos son un pago adicional directo al trabajador. No
+  // constituyen IBC ni generan salud/pension; se conservan en el detalle para
+  // trazabilidad, pero nunca en las deducciones de seguridad social.
+  const saludTurnosInternos = 0;
+  const pensionTurnosInternos = 0;
+
   const otrosDevengosReales = normalizeAmount(input.otros_devengos_reales);
   const descuentosAutorizados = normalizeAmount(input.descuentos_autorizados);
   const otrasDeduccionesReales = normalizeAmount(input.otras_deducciones_reales);
@@ -399,8 +405,8 @@ export const calculateCoberturaPayroll = (
   const totalDeducciones =
     saludOrdinaria +
     pensionOrdinaria +
-    saludAdicionesInternas +
-    pensionAdicionesInternas +
+    saludTurnosInternos +
+    pensionTurnosInternos +
     descuentosAutorizados +
     otrasDeduccionesReales;
 
@@ -420,8 +426,8 @@ export const calculateCoberturaPayroll = (
     porcentaje_pension: porcentajePension,
     aporta_pension: input.aporta_pension,
     adiciones_internas: adicionesInternas,
-    salud_adiciones_internas: saludAdicionesInternas,
-    pension_adiciones_internas: pensionAdicionesInternas,
+    salud_adiciones_internas: saludTurnosInternos,
+    pension_adiciones_internas: pensionTurnosInternos,
     descuentos_autorizados: descuentosAutorizados,
     otros_devengos_reales: otrosDevengosReales,
     otras_deducciones_reales: otrasDeduccionesReales,

@@ -4500,7 +4500,7 @@ const insertNominaTurnMovementSnapshot = async (
       snapshot.contexto.contexto_sede,
       snapshot.contexto.contexto_modalidad,
       snapshot.tarifa.id,
-      input.tipo_movimiento === 'TURNO_INTERNO',
+      false,
       input.actorUserId
     ]
   );
@@ -4608,7 +4608,7 @@ const refreshNominaTurnMovementSnapshot = async (
       snapshot.contexto.contexto_sede,
       snapshot.contexto.contexto_modalidad,
       snapshot.tarifa.id,
-      input.tipo_movimiento === 'TURNO_INTERNO',
+      false,
       input.actorUserId
     ]
   );
@@ -4681,6 +4681,7 @@ const repairMissingNominaTurnMovementSnapshots = async (
           OR nm.valor_unitario IS NULL
           OR nm.valor_total IS NULL
           OR nm.valor_total <= 0
+          OR nm.afecta_seguridad_social IS DISTINCT FROM FALSE
         )
       ORDER BY nnt.id ASC
     `,
@@ -7951,8 +7952,7 @@ export const recalculateNominaPeriodo = async (
         (
           devengadoBasico +
           otrosDevengosProrrateado +
-          totalMovimientosSsDevengados +
-          totalTurnosInternosSsDevengados
+          totalMovimientosSsDevengados
         ).toFixed(2)
       );
       const salud = Number((baseSeguridadSocial * 0.04).toFixed(2));
@@ -12957,7 +12957,9 @@ const NOMINA_EMPLEADOS_EXPORT_HEADERS = [
   'total_deducciones',
   'neto_pagar',
   'revisado',
-  'estado'
+  'estado',
+  'total_novedades',
+  '¿Tuvo novedades?'
 ];
 
 const NOMINA_NOVEDADES_EXPORT_HEADERS = [
@@ -13098,7 +13100,9 @@ const getNominaEmpleadosExportRows = async (
     total_deducciones: item.total_deducciones,
     neto_pagar: item.neto_pagar,
     revisado: item.revisado,
-    estado: item.estado
+    estado: item.estado,
+    total_novedades: item.total_novedades,
+    '¿Tuvo novedades?': item.total_novedades > 0 ? 'SÍ' : 'NO'
   }));
 };
 
