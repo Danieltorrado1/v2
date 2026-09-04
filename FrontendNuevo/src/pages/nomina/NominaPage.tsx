@@ -618,6 +618,15 @@ function getEmployeeConceptDays(empleado: NominaEmpleadoApi, concept: "salario" 
   };
 }
 
+function getEmployeeRecargo(empleado: NominaEmpleadoApi) {
+  const componentes = empleado.detalle_calculo?.componentes;
+  if (componentes && typeof componentes === "object") {
+    const recargo = (componentes as Record<string, unknown>).recargos_ordinarios;
+    if (typeof recargo === "number" && Number.isFinite(recargo)) return recargo;
+  }
+  return empleado.devengado_otros;
+}
+
 function getEmployeeDocumentSummary(empleado: NominaEmpleadoApi) {
   return `${getEmployeeDocumentLabel(empleado)} • Contrato ${getEmployeeContractLabel(empleado)}`;
 }
@@ -1921,7 +1930,7 @@ export default function NominaPage() {
   const finalAdjustmentsByEmployee = useMemo(
     () => new Map(
       ajustesManuales
-        .filter((item) => item.activo && item.concepto === FINAL_DEDUCTION_CONCEPT)
+        .filter((item) => item.activo && item.concepto === FINAL_DEDUCTION_CONCEPT && Number(item.valor) > 0)
         .map((item) => [item.nomina_empleado_id, item] as const),
     ),
     [ajustesManuales],
@@ -3120,7 +3129,7 @@ export default function NominaPage() {
                                         </header>
                                         <div className="payroll-person-groups">
                                           <section><h4>Dias pagados</h4><dl><div><dt>Salario</dt><dd>{salarioDias.paid}/{salarioDias.base}</dd></div><div><dt>Transporte</dt><dd>{transporteDias.paid}/{transporteDias.base}</dd></div><div><dt>Recargo</dt><dd>{recargoDias.paid}/{recargoDias.base}</dd></div></dl></section>
-                                          <section><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Recargo / otros</dt><dd>{formatCOP(empleado.devengado_otros)}</dd></div></dl></section><InternalTurnsDetail empleado={empleado} />
+                                          <section><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Recargos</dt><dd>{formatCOP(getEmployeeRecargo(empleado))}</dd></div><div><dt>Otros pagos</dt><dd>{formatCOP(empleado.detalle_calculo?.componentes && typeof empleado.detalle_calculo.componentes === "object" ? Number((empleado.detalle_calculo.componentes as Record<string, unknown>).otros_devengos_reales ?? 0) : 0)}</dd></div></dl></section><InternalTurnsDetail empleado={empleado} />
                                           {(() => {
                                             const draft = getManualFinalDraft(empleado);
                                             const existing = finalAdjustmentsByEmployee.get(empleado.id);

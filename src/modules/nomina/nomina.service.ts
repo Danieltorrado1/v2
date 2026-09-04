@@ -68,6 +68,7 @@ import {
   resolveNominaNovedadTypeSelection
 } from './nomina.novedades';
 import { buildCsv, buildPayrollXlsx, buildSectionedCsv } from './nomina.exporter';
+import { listAjustesManuales } from './ajustes-manuales.service';
 import {
   COBERTURA_PORCENTAJE_PENSION,
   COBERTURA_PORCENTAJE_SALUD,
@@ -8021,7 +8022,11 @@ export const recalculateNominaPeriodo = async (
           porcentaje_pension: parametrosCobertura.porcentaje_pension_empleado,
           descuentos_autorizados: deduccionesNovedadManual,
           otras_deducciones_reales: totalMovimientosDeducciones + totalDeduccionesManuales,
-          otros_devengos_reales: Math.max(0, otrosDevengos) + totalMovimientosDevengados + totalAdicionesManuales,
+          // The category surcharge is already represented by
+          // `recargos_ordinarios` in the coverage result. Keep this input
+          // limited to independent additional devengos so it cannot be
+          // counted twice in total_devengado.
+          otros_devengos_reales: totalMovimientosDevengados + totalAdicionesManuales,
           adiciones_internas: adicionesInternasCobertura
         });
         const totalAdicionesInternasDevengado = coberturaResult.adiciones_internas.reduce(
@@ -8077,10 +8082,24 @@ export const recalculateNominaPeriodo = async (
         const pensionTotal = empleadoRow.vinculacion_cotiza_pension && !ajustePensionManual
           ? coberturaResult.pension_ordinaria + coberturaResult.pension_adiciones_internas
           : 0;
+        // `coberturaResult.total_deducciones` contains the calculated pension
+        // before the period-level exclusion is applied. Persist the final
+        // amount from the same pensionTotal used by the employee row.
+        const totalDeduccionesFinal = Number(
+          (
+            saludTotal +
+            pensionTotal +
+            coberturaResult.descuentos_autorizados +
+            coberturaResult.otras_deducciones_reales
+          ).toFixed(2)
+        );
+        const netoFinal = Number((coberturaResult.total_devengado - totalDeduccionesFinal).toFixed(2));
         const devengadoOtros =
-          coberturaResult.recargos_ordinarios +
           coberturaResult.otros_devengos_reales +
           totalAdicionesInternasDevengado;
+        const componentesCobertura = detalleCalculoCobertura.componentes as Record<string, unknown>;
+        componentesCobertura.total_deducciones = totalDeduccionesFinal;
+        componentesCobertura.neto_nomina = netoFinal;
         detalleCalculoCobertura.seguridad_social = {
           cotiza_pension: empleadoRow.vinculacion_cotiza_pension && !ajustePensionManual,
           cotiza_pension_vinculacion: empleadoRow.vinculacion_cotiza_pension,
@@ -8122,8 +8141,8 @@ export const recalculateNominaPeriodo = async (
             saludTotal,
             pensionTotal,
             coberturaResult.total_devengado,
-            coberturaResult.total_deducciones,
-            coberturaResult.neto_nomina,
+            totalDeduccionesFinal,
+            netoFinal,
             JSON.stringify(detalleCalculoCobertura)
           ]
         );
@@ -13496,10 +13515,19 @@ export const exportNominaPeriodo = async (
     { periodo_id: periodoId, page: 1, limit: 5000, activo: true },
     tenant
   )).items;
+  const ajustesManuales = await listAjustesManuales(periodoId, tenant);
+  const deduccionManualByEmployee = new Map<string, number>();
+  for (const ajuste of ajustesManuales) {
+    if (!ajuste.activo || ajuste.concepto !== 'DEDUCCION_ADICIONAL_FINAL') continue;
+    deduccionManualByEmployee.set(
+      ajuste.nomina_empleado_id,
+      (deduccionManualByEmployee.get(ajuste.nomina_empleado_id) ?? 0) + Number(ajuste.valor ?? 0),
+    );
+  }
   const nominaHeaders = [
     'CÉDULA', 'NOMBRE COMPLETO', 'MUNICIPIO', 'MODALIDAD', 'SALARIO BASE',
     'TRANSPORTE', 'RECARGOS', 'OTROS PAGOS', 'TOTAL DEVENGADO', 'SALUD',
-    'PENSIÓN', 'TOTAL DEDUCCIONES', 'NETO A PAGAR'
+    'PENSIÓN', 'DEDUCCIÓN MANUAL', 'TOTAL DEDUCCIONES', 'NETO A PAGAR'
   ];
   const noveltyCode = (item: NominaNovedad): string =>
     (item.tipo_novedad.codigo_operativo_registrado ?? item.tipo_novedad.codigo_operativo ?? item.tipo_novedad.nombre ?? 'NOVEDAD')
@@ -13549,6 +13577,7 @@ export const exportNominaPeriodo = async (
     'TOTAL DEVENGADO': employee.total_adiciones,
     'SALUD': employee.salud,
     'PENSIÓN': employee.pension,
+    'DEDUCCIÓN MANUAL': deduccionManualByEmployee.get(employee.id) ?? 0,
     'TOTAL DEDUCCIONES': employee.total_deducciones,
     'NETO A PAGAR': employee.neto_pagar
   }));
