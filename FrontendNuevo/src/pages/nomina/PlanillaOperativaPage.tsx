@@ -74,6 +74,7 @@ const ROW_HEIGHT = 78;
 const VIEWPORT_HEIGHT = 620;
 const MAX_PAGE = 100;
 const ATTENDANCE_BATCH_LIMIT = 5000;
+const ATTENDANCE_SAVE_BATCH_SIZE = 25;
 const CANONICAL_RANGE_MODEL = "EVENTO_CANONICO_RANGO";
 const REVIEW_WIDTH = 56;
 const DOCUMENT_WIDTH = 112;
@@ -1095,19 +1096,23 @@ export default function PlanillaOperativaPage() {
     if (!periodId || !changes.length || attendanceSaveState === "saving") return;
     setAttendanceSaveState("saving");
     try {
-      const response = await markNominaAsistenciaBulk(periodId, changes);
-      const confirmed = new Set((response.confirmados ?? []).map((item) => `${item.vinculacion_id}|${item.fecha}`));
-      const next = new Map(pendingAttendanceChangesRef.current);
-      for (const item of changes) {
-        const key = `${item.vinculacion_id}|${item.fecha}`;
-        const current = next.get(key);
-        if (confirmed.has(key) && current?.presente === item.presente) next.delete(key);
+      for (let offset = 0; offset < changes.length; offset += ATTENDANCE_SAVE_BATCH_SIZE) {
+        const batch = changes.slice(offset, offset + ATTENDANCE_SAVE_BATCH_SIZE);
+        const response = await markNominaAsistenciaBulk(periodId, batch);
+        const confirmed = new Set((response.confirmados ?? []).map((item) => `${item.vinculacion_id}|${item.fecha}`));
+        const next = new Map(pendingAttendanceChangesRef.current);
+        for (const item of batch) {
+          const key = `${item.vinculacion_id}|${item.fecha}`;
+          const current = next.get(key);
+          if (confirmed.has(key) && current?.presente === item.presente) next.delete(key);
+        }
+        pendingAttendanceChangesRef.current = next;
+        setPendingAttendanceChanges(next);
+        setPendingAttendance(new Set(next.keys()));
       }
-      pendingAttendanceChangesRef.current = next;
-      setPendingAttendanceChanges(next);
-      setPendingAttendance(new Set(next.keys()));
-      setAttendanceSaveState(next.size ? "error" : "saved");
-      if (next.size) setError("Algunos cambios no fueron confirmados. Revisa y reintenta.");
+      const remaining = pendingAttendanceChangesRef.current.size;
+      setAttendanceSaveState(remaining ? "error" : "saved");
+      if (remaining) setError("Algunos cambios no fueron confirmados. Revisa y reintenta.");
     } catch (value) {
       setAttendanceSaveState("error");
       setError(formatPlanillaErrorMessage(value, "Error al guardar asistencia. Los cambios siguen pendientes."));
