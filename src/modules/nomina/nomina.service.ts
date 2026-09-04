@@ -7689,14 +7689,22 @@ export const recalculateNominaPeriodo = async (
       );
       const ajustesManuales = ajustesByEmpleado.get(empleadoRow.id) ?? [];
       const ajustesAdiciones = ajustesManuales.filter((item) => item.tipo === 'ADICION');
-      const ajustesDeducciones = ajustesManuales.filter((item) => item.tipo === 'DEDUCCION');
+      const ajustePensionManual = ajustesManuales.find(
+        (item) => item.tipo === 'DEDUCCION' && item.concepto === 'EXCLUIR_PENSION_FINAL'
+      ) ?? null;
+      const ajustesDeducciones = ajustesManuales.filter(
+        (item) => item.tipo === 'DEDUCCION' && item.concepto !== 'EXCLUIR_PENSION_FINAL'
+      );
       const totalAdicionesManuales = ajustesAdiciones.reduce((sum, item) => sum + toNumberValue(item.valor), 0);
       const totalDeduccionesManuales = ajustesDeducciones.reduce((sum, item) => sum + toNumberValue(item.valor), 0);
       const detalleAjustesManuales = {
         adiciones: ajustesAdiciones.map(({ id, concepto, valor, observacion }) => ({ id, concepto, valor: toNumberValue(valor), observacion })),
         deducciones: ajustesDeducciones.map(({ id, concepto, valor, observacion }) => ({ id, concepto, valor: toNumberValue(valor), observacion })),
         total_adiciones_manuales: totalAdicionesManuales,
-        total_deducciones_manuales: totalDeduccionesManuales
+        total_deducciones_manuales: totalDeduccionesManuales,
+        ajuste_manual_pension: ajustePensionManual
+          ? { id: ajustePensionManual.id, concepto: ajustePensionManual.concepto, valor: toNumberValue(ajustePensionManual.valor) }
+          : null
       };
 
       const projectedCanonicals = projectNominaCanonicalEventsToPeriodo({
@@ -8066,7 +8074,7 @@ export const recalculateNominaPeriodo = async (
           ajustes_manuales: detalleAjustesManuales
         };
         const saludTotal = coberturaResult.salud_ordinaria + coberturaResult.salud_adiciones_internas;
-        const pensionTotal = empleadoRow.vinculacion_cotiza_pension
+        const pensionTotal = empleadoRow.vinculacion_cotiza_pension && !ajustePensionManual
           ? coberturaResult.pension_ordinaria + coberturaResult.pension_adiciones_internas
           : 0;
         const devengadoOtros =
@@ -8074,11 +8082,17 @@ export const recalculateNominaPeriodo = async (
           coberturaResult.otros_devengos_reales +
           totalAdicionesInternasDevengado;
         detalleCalculoCobertura.seguridad_social = {
-          cotiza_pension: empleadoRow.vinculacion_cotiza_pension,
+          cotiza_pension: empleadoRow.vinculacion_cotiza_pension && !ajustePensionManual,
+          cotiza_pension_vinculacion: empleadoRow.vinculacion_cotiza_pension,
+          ajuste_manual_pension: ajustePensionManual
+            ? { id: ajustePensionManual.id, concepto: ajustePensionManual.concepto }
+            : null,
           base_salud: coberturaResult.salario_ordinario,
           aporte_salud: saludTotal,
           base_pension: coberturaResult.salario_ordinario,
-          aporte_pension: pensionTotal
+          pension_calculada: roundUpToHundreds(coberturaResult.salario_ordinario * coberturaResult.porcentaje_pension),
+          aporte_pension: pensionTotal,
+          pension_aplicada_final: pensionTotal
         };
 
         await client.query(
@@ -8144,7 +8158,7 @@ export const recalculateNominaPeriodo = async (
         ).toFixed(2)
       );
       const salud = roundUpToHundreds(baseSeguridadSocial * 0.04);
-      const pension = empleadoRow.vinculacion_cotiza_pension
+      const pension = empleadoRow.vinculacion_cotiza_pension && !ajustePensionManual
         ? roundUpToHundreds(baseSeguridadSocial * 0.04)
         : 0;
       const totalAdiciones = Number(
@@ -8213,11 +8227,17 @@ export const recalculateNominaPeriodo = async (
         },
         ajustes_manuales: detalleAjustesManuales,
         seguridad_social: {
-          cotiza_pension: empleadoRow.vinculacion_cotiza_pension,
+          cotiza_pension: empleadoRow.vinculacion_cotiza_pension && !ajustePensionManual,
+          cotiza_pension_vinculacion: empleadoRow.vinculacion_cotiza_pension,
           base_salud: baseSeguridadSocial,
           aporte_salud: salud,
           base_pension: baseSeguridadSocial,
-          aporte_pension: pension
+          pension_calculada: roundUpToHundreds(baseSeguridadSocial * 0.04),
+          aporte_pension: pension,
+          pension_aplicada_final: pension,
+          ajuste_manual_pension: ajustePensionManual
+            ? { id: ajustePensionManual.id, concepto: ajustePensionManual.concepto }
+            : null
         }
       };
 

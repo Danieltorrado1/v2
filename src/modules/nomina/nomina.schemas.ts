@@ -195,7 +195,8 @@ export const listNominaPeriodosQuerySchema = paginationSchema.extend({
 });
 
 export const nominaPeriodoActionSchema = z.object({
-  force: z.coerce.boolean().optional().default(false)
+  force: z.coerce.boolean().optional().default(false),
+  nomina_empleado_id: identifierSchema.optional()
 });
 
 const createNominaPeriodoBaseSchema = z.object({

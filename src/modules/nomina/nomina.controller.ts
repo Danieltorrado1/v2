@@ -283,10 +283,12 @@ export const updateNominaEmpleadoHandler = asyncHandler(async (req: Request, res
 
 export const recalculateNominaPeriodoHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = periodoIdParamSchema.parse(req.params);
+  const action = nominaPeriodoActionSchema.parse(req.body ?? {});
   const result = await recalculateNominaPeriodo(
     id,
     {
-      force: resolveForceFlag(req)
+      force: action.force || resolveForceFlag(req),
+      nomina_empleado_id: action.nomina_empleado_id
     },
     getActorUserId(req),
     req.tenant,

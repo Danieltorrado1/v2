@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import {
   createNominaNovedad,
+  createAjusteManual,
   deactivateNominaNovedad,
   exportNomina,
   generateNominaDesprendibles,
@@ -36,12 +37,15 @@ import {
   getNominaDesprendibles,
   getNominaPeriodo,
   getNominaPeriodoDashboard,
+  getAjustesManuales,
   getNovedadSupport,
   getNominaPeriodos,
   listarTiposNovedad,
   openNominaDesprendible,
   recalculateNominaPeriodo,
   updateNominaNovedad,
+  updateAjusteManual,
+  annulAjusteManual,
   uploadNovedadDocumento,
   uploadNovedadSupport,
 } from "../../services/nominaApi";
@@ -69,6 +73,7 @@ import type {
   PaginatedNominaEmpleadosApi,
   PaginatedNominaNovedadesApi,
   PaginatedNominaPeriodosApi,
+  AjusteManualApi,
 } from "../../types/nomina.types";
 import "./NominaPage.css";
 
@@ -141,6 +146,15 @@ type FeedbackState = {
   message: string;
   tone: "success" | "error";
 } | null;
+
+type ManualFinalDraft = {
+  cotizaPension: boolean;
+  tieneDeduccion: boolean;
+  valorDeduccion: string;
+};
+
+const FINAL_DEDUCTION_CONCEPT = "DEDUCCION_ADICIONAL_FINAL";
+const PENSION_EXCLUSION_CONCEPT = "EXCLUIR_PENSION_FINAL";
 
 type NovedadTipoDisplay = Omit<NominaTipoNovedad, "created_at"> & {
   created_at?: string;
@@ -846,6 +860,9 @@ export default function NominaPage() {
   const [supportBusyId, setSupportBusyId] = useState<string | null>(null);
   const [expandedNovedadId, setExpandedNovedadId] = useState<string | null>(null);
   const [novedadDocumentosById, setNovedadDocumentosById] = useState<Record<string, NominaNovedadDocumentosApi>>({});
+  const [ajustesManuales, setAjustesManuales] = useState<AjusteManualApi[]>([]);
+  const [manualFinalDrafts, setManualFinalDrafts] = useState<Record<string, ManualFinalDraft>>({});
+  const [savingManualFinalId, setSavingManualFinalId] = useState<string | null>(null);
 
   const [periodsState, setPeriodsState] = useState<AsyncState<PaginatedNominaPeriodosApi>>({
     ...EMPTY_ASYNC_STATE,
@@ -1192,11 +1209,20 @@ export default function NominaPage() {
     }
   }, []);
 
+  const loadAjustesManuales = useCallback(async (periodId: string) => {
+    try {
+      setAjustesManuales(await getAjustesManuales(periodId));
+    } catch (error) {
+      setActionFeedback({ tone: "error", message: toMessage(error) });
+    }
+  }, []);
+
   const refreshSelectedPeriodData = useCallback(async (periodId: string) => {
     if (isOperationalCoverageView) {
       await Promise.all([
         loadEmployees(periodId),
         loadNovedades(periodId),
+        loadAjustesManuales(periodId),
       ]);
       return;
     }
@@ -1206,8 +1232,9 @@ export default function NominaPage() {
       loadDashboard(periodId),
       loadEmployees(periodId),
       loadNovedades(periodId),
+      loadAjustesManuales(periodId),
     ]);
-  }, [isOperationalCoverageView, loadDashboard, loadEmployees, loadNovedades, loadPeriod]);
+  }, [isOperationalCoverageView, loadAjustesManuales, loadDashboard, loadEmployees, loadNovedades, loadPeriod]);
 
   const syncLocalNovedadState = useCallback((nextNovedad: NominaNovedadApi) => {
     setNovedadesState((current) => {
@@ -1308,6 +1335,8 @@ export default function NominaPage() {
       setEmployeesDataId(null);
       setNovedadesState({ ...EMPTY_ASYNC_STATE });
       setNovedadesDataId(null);
+      setAjustesManuales([]);
+      setManualFinalDrafts({});
       setDesprendiblesState({ ...EMPTY_ASYNC_STATE });
       setDesprendiblesDataId(null);
       setIsNovedadModalOpen(false);
@@ -1888,6 +1917,100 @@ export default function NominaPage() {
   };
   const handleToggleEmployeeDetail = (employeeId: string) => {
     setExpandedEmployeeId((current) => (current === employeeId ? null : employeeId));
+  };
+  const finalAdjustmentsByEmployee = useMemo(
+    () => new Map(
+      ajustesManuales
+        .filter((item) => item.activo && item.concepto === FINAL_DEDUCTION_CONCEPT)
+        .map((item) => [item.nomina_empleado_id, item] as const),
+    ),
+    [ajustesManuales],
+  );
+  const pensionExclusionsByEmployee = useMemo(
+    () => new Map(
+      ajustesManuales
+        .filter((item) => item.activo && item.concepto === PENSION_EXCLUSION_CONCEPT)
+        .map((item) => [item.nomina_empleado_id, item] as const),
+    ),
+    [ajustesManuales],
+  );
+  const canSaveManualFinal = Boolean(
+    user?.permissions.some((permission) => ["nomina.movimientos.create", "nomina.movimientos.update"].includes(permission)) &&
+    user?.permissions.some((permission) => ["vinculaciones.update", "vinculacion.editar"].includes(permission)),
+  );
+  const getManualFinalDraft = (empleado: NominaEmpleadoApi): ManualFinalDraft => {
+    const existing = finalAdjustmentsByEmployee.get(empleado.id);
+    const pensionExclusion = pensionExclusionsByEmployee.get(empleado.id);
+    return manualFinalDrafts[empleado.id] ?? {
+      cotizaPension: empleado.vinculacion.cotiza_pension && !pensionExclusion,
+      tieneDeduccion: Boolean(existing),
+      valorDeduccion: existing ? String(existing.valor) : "",
+    };
+  };
+  const updateManualFinalDraft = (employeeId: string, patch: Partial<ManualFinalDraft>) => {
+    setManualFinalDrafts((current) => ({
+      ...current,
+      [employeeId]: { ...getManualFinalDraft(allEmployees.find((item) => item.id === employeeId)!), ...patch },
+    }));
+  };
+  const handleSaveManualFinal = async (empleado: NominaEmpleadoApi) => {
+    if (!selectedPeriodId || savingManualFinalId || !canSaveManualFinal) return;
+    const draft = getManualFinalDraft(empleado);
+    const valor = draft.tieneDeduccion && draft.valorDeduccion.trim() !== "" ? Number(draft.valorDeduccion) : 0;
+    if (!Number.isFinite(valor) || valor < 0) {
+      setActionFeedback({ tone: "error", message: "El valor de deducción adicional debe ser numérico y no negativo." });
+      return;
+    }
+    if (draft.cotizaPension && !empleado.vinculacion.cotiza_pension) {
+      setActionFeedback({ tone: "error", message: "La vinculación base no cotiza pensión; este ajuste no puede activarla." });
+      return;
+    }
+    const pensionExclusion = pensionExclusionsByEmployee.get(empleado.id);
+    const currentEffectivePension = empleado.vinculacion.cotiza_pension && !pensionExclusion;
+    if (draft.cotizaPension !== currentEffectivePension) {
+      const message = draft.cotizaPension
+        ? "Este cambio volverá a activar el cálculo de pensión para esta vinculación. ¿Deseas continuar?"
+        : "Este cambio hará que la vinculación no genere deducción por pensión en los recálculos de nómina. ¿Deseas continuar?";
+      if (!window.confirm(message)) return;
+    }
+    setSavingManualFinalId(empleado.id);
+    setActionFeedback(null);
+    try {
+      if (draft.cotizaPension && pensionExclusion) {
+        await annulAjusteManual(pensionExclusion.id, "Reactivar pensión para este periodo");
+      } else if (!draft.cotizaPension && !pensionExclusion) {
+        await createAjusteManual(selectedPeriodId, {
+          nomina_empleado_id: empleado.id,
+          tipo: "DEDUCCION",
+          concepto: PENSION_EXCLUSION_CONCEPT,
+          valor: 1,
+          observacion: "Exclusión manual de pensión para este periodo",
+        });
+      }
+      const existing = finalAdjustmentsByEmployee.get(empleado.id);
+      if (draft.tieneDeduccion && valor > 0) {
+        if (existing) {
+          await updateAjusteManual(existing.id, { valor, concepto: FINAL_DEDUCTION_CONCEPT, tipo: "DEDUCCION" });
+        } else {
+          await createAjusteManual(selectedPeriodId, {
+            nomina_empleado_id: empleado.id,
+            tipo: "DEDUCCION",
+            concepto: FINAL_DEDUCTION_CONCEPT,
+            valor,
+            observacion: "Deducción adicional final de nómina",
+          });
+        }
+      } else if (existing) {
+        await annulAjusteManual(existing.id, "Deducción adicional final retirada");
+      }
+      await recalculateNominaPeriodo(selectedPeriodId, { force: true, nomina_empleado_id: empleado.id });
+      await Promise.all([loadEmployees(selectedPeriodId), loadAjustesManuales(selectedPeriodId)]);
+      setActionFeedback({ tone: "success", message: "Ajustes manuales guardados y aplicados al empleado." });
+    } catch (error) {
+      setActionFeedback({ tone: "error", message: toMessage(error) });
+    } finally {
+      setSavingManualFinalId(null);
+    }
   };
   const handleRetry = () => {
     if (!selectedPeriodId) {
@@ -2998,6 +3121,41 @@ export default function NominaPage() {
                                         <div className="payroll-person-groups">
                                           <section><h4>Dias pagados</h4><dl><div><dt>Salario</dt><dd>{salarioDias.paid}/{salarioDias.base}</dd></div><div><dt>Transporte</dt><dd>{transporteDias.paid}/{transporteDias.base}</dd></div><div><dt>Recargo</dt><dd>{recargoDias.paid}/{recargoDias.base}</dd></div></dl></section>
                                           <section><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Recargo / otros</dt><dd>{formatCOP(empleado.devengado_otros)}</dd></div></dl></section><InternalTurnsDetail empleado={empleado} />
+                                          {(() => {
+                                            const draft = getManualFinalDraft(empleado);
+                                            const existing = finalAdjustmentsByEmployee.get(empleado.id);
+                                            const pensionExclusion = pensionExclusionsByEmployee.get(empleado.id);
+                                            const detalleSeguridad = empleado.detalle_calculo?.seguridad_social as Record<string, unknown> | undefined;
+                                            return (
+                                              <section className="payroll-manual-final-panel">
+                                                <h4>Ajustes manuales {existing || pensionExclusion ? <span className="manual-final-badge">AJUSTE MANUAL</span> : null}</h4>
+                                                <dl>
+                                                  <div><dt>Total devengado</dt><dd>{formatCOP(empleado.total_adiciones)}</dd></div>
+                                                  <div><dt>Salud</dt><dd>{formatCOP(empleado.salud)}</dd></div>
+                                                  <div><dt>Pensión actual</dt><dd>{formatCOP(empleado.pension)}</dd></div>
+                                                  <div><dt>Total deducciones</dt><dd>{formatCOP(empleado.total_deducciones)}</dd></div>
+                                                  <div><dt>Neto a pagar</dt><dd>{formatCOP(empleado.neto_pagar)}</dd></div>
+                                                </dl>
+                                                <label>¿Cotiza pensión?
+                                                  <select value={draft.cotizaPension ? "true" : "false"} onChange={(event) => updateManualFinalDraft(empleado.id, { cotizaPension: event.target.value === "true" })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
+                                                    <option value="true">SÍ</option><option value="false">NO</option>
+                                                  </select>
+                                                </label>
+                                                <label>¿Tiene deducción adicional?
+                                                  <select value={draft.tieneDeduccion ? "true" : "false"} onChange={(event) => updateManualFinalDraft(empleado.id, { tieneDeduccion: event.target.value === "true" })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
+                                                    <option value="false">NO</option><option value="true">SÍ</option>
+                                                  </select>
+                                                </label>
+                                                {draft.tieneDeduccion ? <label>Valor deducción adicional
+                                                  <input type="number" min="0" step="100" value={draft.valorDeduccion} onChange={(event) => updateManualFinalDraft(empleado.id, { valorDeduccion: event.target.value })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id} placeholder="$ 0" />
+                                                </label> : null}
+                                                <small>Pensión calculada original: {formatCOP(Number(detalleSeguridad?.pension_calculada ?? empleado.pension))} · Pensión aplicada: {formatCOP(empleado.pension)}</small>
+                                                <button type="button" className="manual-final-save" onClick={() => void handleSaveManualFinal(empleado)} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
+                                                  {savingManualFinalId === empleado.id ? "Guardando..." : "GUARDAR AJUSTES"}
+                                                </button>
+                                              </section>
+                                            );
+                                          })()}
                                           <section><h4>Deducciones</h4><dl><div><dt>Salud</dt><dd>{formatCOP(empleado.salud)}</dd></div><div><dt>Pension</dt><dd>{formatCOP(empleado.pension)}</dd></div><div><dt>Total</dt><dd>{formatCOP(empleado.total_deducciones)}</dd></div></dl></section>
                                           <section><h4>Novedades y turnos</h4><dl><div><dt>Novedades</dt><dd>{formatNumber(novedadesCountByEmpleadoId.get(empleado.id) ?? getEmployeeTotalNovedades(empleado))}</dd></div><div><dt>Modalidad</dt><dd title={getEmployeeModalidadDescription(empleado)}>{getEmployeeModalidadCode(empleado)}</dd></div><div><dt>Documentos</dt><dd>{getEmployeeDocumentStatusLabel(empleado)}{documentStatusPercentage ? ` · ${documentStatusPercentage}` : ""}</dd></div></dl></section>
                                         </div>

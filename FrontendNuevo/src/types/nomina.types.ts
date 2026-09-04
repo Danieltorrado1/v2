@@ -251,6 +251,7 @@ export interface NominaPeriodoDashboardApi {
 
 export interface NominaPeriodoActionApi {
   force?: boolean;
+  nomina_empleado_id?: string;
 }
 
 export interface NominaPeriodoActionResultApi {
