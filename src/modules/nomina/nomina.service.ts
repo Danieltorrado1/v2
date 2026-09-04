@@ -4037,18 +4037,47 @@ const resolveNominaMovimientoContext = async (
       )
     : null;
 
+  let modalidadId = input.modalidad_id ?? replacementContext?.modalidad_id ?? null;
+  const modalidadTexto = input.contexto_modalidad ?? replacementContext?.contexto_modalidad ?? null;
+
+  // Los turnos históricos pueden conservar únicamente el código/nombre de
+  // modalidad. Resolverlo contra el catálogo evita perder una tarifa vigente,
+  // pero no inventa una modalidad si el texto es ambiguo.
+  if (!modalidadId && modalidadTexto) {
+    const modalidadResult = await client.query<{ id: string }>(
+      `
+        SELECT id::text AS id
+        FROM modalidades
+        WHERE COALESCE(activo, TRUE) = TRUE
+          AND (
+            UPPER(BTRIM(codigo_base)) = UPPER(BTRIM($1))
+            OR UPPER(BTRIM(codigo_original)) = UPPER(BTRIM($1))
+            OR UPPER(BTRIM(nombre_modalidad)) = UPPER(BTRIM($1))
+          )
+        ORDER BY
+          CASE WHEN UPPER(BTRIM(nombre_modalidad)) = UPPER(BTRIM($1)) THEN 0 ELSE 1 END,
+          CASE WHEN UPPER(BTRIM(codigo_original)) = UPPER(BTRIM($1)) THEN 0 ELSE 1 END,
+          id ASC
+        LIMIT 1
+      `,
+      [modalidadTexto]
+    );
+    if (modalidadResult.rows.length === 1) {
+      modalidadId = modalidadResult.rows[0]!.id;
+    }
+  }
+
   return {
     municipio_id: input.municipio_id ?? replacementContext?.municipio_id ?? null,
     institucion_id: input.institucion_id ?? replacementContext?.institucion_id ?? null,
     sede_id: input.sede_id ?? replacementContext?.sede_id ?? null,
-    modalidad_id: input.modalidad_id ?? replacementContext?.modalidad_id ?? null,
+    modalidad_id: modalidadId,
     contexto_municipio:
       input.contexto_municipio ?? replacementContext?.contexto_municipio ?? null,
     contexto_institucion:
       input.contexto_institucion ?? replacementContext?.contexto_institucion ?? null,
     contexto_sede: input.contexto_sede ?? replacementContext?.contexto_sede ?? null,
-    contexto_modalidad:
-      input.contexto_modalidad ?? replacementContext?.contexto_modalidad ?? null
+    contexto_modalidad: modalidadTexto
   };
 };
 
@@ -4583,6 +4612,140 @@ const refreshNominaTurnMovementSnapshot = async (
       input.actorUserId
     ]
   );
+};
+
+/**
+ * Rehidrata movimientos de turnos históricos que fueron creados antes de que
+ * existiera una tarifa/snapshot resoluble. Es deliberadamente idempotente:
+ * solo toca turnos activos cuyo movimiento está ausente o tiene valor cero,
+ * y nunca crea un segundo movimiento para un turno ya enlazado.
+ */
+const repairMissingNominaTurnMovementSnapshots = async (
+  periodoId: string,
+  actorUserId: string,
+  client: PoolClient,
+  nominaEmpleadoIds?: string[],
+): Promise<void> => {
+  const employeeFilter = nominaEmpleadoIds?.length
+    ? 'AND nnt.nomina_empleado_id = ANY($2::bigint[])'
+    : '';
+  const queryParams: unknown[] = nominaEmpleadoIds?.length
+    ? [periodoId, nominaEmpleadoIds]
+    : [periodoId];
+  const result = await client.query<{
+    contexto_operativo: Record<string, unknown> | null;
+    contrato_id: string;
+    empresa_id: string | null;
+    estado: string | null;
+    externo_id: string | null;
+    fecha_fin: string;
+    fecha_inicio: string;
+    movimiento_id: string | null;
+    movimiento_valor_total: number | string | null;
+    nomina_empleado_id: string;
+    nnt_id: string;
+    persona_reemplazada_id: string | null;
+    tipo_turno: 'INTERNO' | 'EXTERNO';
+    vinculacion_id: string;
+    vinculacion_reemplazada_id: string | null;
+  }>(
+    `
+      SELECT
+        nnt.id::text AS nnt_id,
+        nnt.tipo_turno,
+        nnt.nomina_empleado_id::text AS nomina_empleado_id,
+        nnt.vinculacion_id::text AS vinculacion_id,
+        nnt.persona_reemplazada_id::text AS persona_reemplazada_id,
+        nnt.externo_id::text AS externo_id,
+        nnt.contexto_operativo,
+        COALESCE(nn.fecha_inicio, np.fecha_inicio)::text AS fecha_inicio,
+        COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin)::text AS fecha_fin,
+        np.contrato_id::text AS contrato_id,
+        c.empresa_id::text AS empresa_id,
+        nm.id::text AS movimiento_id,
+        nm.vinculacion_reemplazada_id::text AS vinculacion_reemplazada_id,
+        nm.estado,
+        nm.valor_total AS movimiento_valor_total
+      FROM nomina_novedad_turnos nnt
+      INNER JOIN nomina_novedades nn ON nn.id = nnt.nomina_novedad_id
+      INNER JOIN nomina_periodos np ON np.id = nnt.periodo_id
+      INNER JOIN contratos c ON c.id = np.contrato_id
+      LEFT JOIN nomina_movimientos nm ON nm.id = nnt.movimiento_id
+      WHERE nnt.periodo_id = $1::bigint
+        AND COALESCE(nnt.activo, TRUE) = TRUE
+        AND COALESCE(nn.activo, TRUE) = TRUE
+        ${employeeFilter}
+        AND (
+          nm.id IS NULL
+          OR nm.tarifa_config_id IS NULL
+          OR nm.valor_unitario IS NULL
+          OR nm.valor_total IS NULL
+          OR nm.valor_total <= 0
+        )
+      ORDER BY nnt.id ASC
+    `,
+    queryParams,
+  );
+
+  for (const row of result.rows) {
+    const fecha = row.fecha_inicio;
+    const fechaFin = row.fecha_fin;
+    const cantidad = countInclusiveDays(fecha, fechaFin);
+    const estado = row.tipo_turno === 'INTERNO' ? 'APROBADO' : (row.estado === 'APROBADO' ? 'APROBADO' : 'PENDIENTE');
+    const rawContext = row.contexto_operativo ?? {};
+    const input = {
+      actorUserId,
+      cantidad,
+      contrato_id: row.contrato_id,
+      contexto: {
+        contexto_institucion: typeof rawContext.institucion === 'string' ? rawContext.institucion : null,
+        contexto_modalidad:
+          typeof rawContext.contexto_modalidad === 'string'
+            ? rawContext.contexto_modalidad
+            : typeof rawContext.modalidad_codigo === 'string'
+              ? rawContext.modalidad_codigo
+              : typeof rawContext.modalidad === 'string'
+                ? rawContext.modalidad
+                : null,
+        contexto_municipio: typeof rawContext.municipio === 'string' ? rawContext.municipio : null,
+        contexto_sede: typeof rawContext.sede === 'string' ? rawContext.sede : null,
+        institucion_id: typeof rawContext.institucion_id === 'string' ? rawContext.institucion_id : null,
+        modalidad_id: typeof rawContext.modalidad_id === 'string' ? rawContext.modalidad_id : null,
+        municipio_id: typeof rawContext.municipio_id === 'string' ? rawContext.municipio_id : null,
+        sede_id: typeof rawContext.sede_id === 'string' ? rawContext.sede_id : null,
+      } as Partial<NominaMovimientoContextRow>,
+      descripcion: row.tipo_turno === 'INTERNO' ? 'Turno interno de cobertura' : 'Turno externo de cobertura',
+      empresa_id: row.empresa_id,
+      estado: estado as 'APROBADO' | 'PENDIENTE',
+      externo_id: row.externo_id,
+      fecha,
+      nomina_empleado_id: row.nomina_empleado_id,
+      periodo_id: periodoId,
+      persona_reemplazada_id: row.persona_reemplazada_id,
+      tipo_movimiento: (row.tipo_turno === 'INTERNO' ? 'TURNO_INTERNO' : 'TURNO_EXTERNO') as 'TURNO_INTERNO' | 'TURNO_EXTERNO',
+      vinculacion_id: row.vinculacion_id,
+      vinculacion_reemplazada_id: row.vinculacion_reemplazada_id,
+    };
+
+    try {
+      if (row.movimiento_id) {
+        await refreshNominaTurnMovementSnapshot(row.movimiento_id, input, client);
+      } else {
+        const movimientoId = await insertNominaTurnMovementSnapshot(input, client);
+        await client.query(
+          `UPDATE nomina_novedad_turnos SET movimiento_id = $2::bigint WHERE id = $1::bigint`,
+          [row.nnt_id, movimientoId],
+        );
+      }
+    } catch (error) {
+      if (error instanceof AppError && ['TURNO_TARIFA_NO_CONFIGURADA', 'TURNO_MODALIDAD_NO_RESUELTA'].includes(error.code ?? '')) {
+        // La ausencia real de tarifa sigue siendo una incidencia operativa;
+        // no se inventa valor ni se bloquea el recálculo del periodo.
+        continue;
+      }
+      throw error;
+    }
+  }
 };
 
 const validateNovedadInputAgainstTipo = (
@@ -6897,6 +7060,13 @@ export const recalculateNominaPeriodo = async (
         GROUP BY vinculacion_id
       `,
       [periodoId]
+    );
+
+    await repairMissingNominaTurnMovementSnapshots(
+      periodoId,
+      actorUserId,
+      client,
+      options?.nomina_empleado_id ? [options.nomina_empleado_id] : undefined,
     );
 
     const movimientosResult = await client.query<{
