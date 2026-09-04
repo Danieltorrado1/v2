@@ -87,7 +87,7 @@ export function NominaProcesosTab() {
 
   const [stateFilter, setStateFilter] = useState<
     'ACTIVO' | 'SIN_ASIGNACION' | 'TODOS'
-  >('ACTIVO');
+  >('TODOS');
 
   const [drawer, setDrawer] = useState(false);
   const [areaModal, setAreaModal] = useState(false);
@@ -560,6 +560,12 @@ export function NominaProcesosTab() {
                 </div>
               );
             })}
+
+            {!usersLoading && !usersError && visible.length === 0 ? (
+              <div className="nomina-assignment-empty">
+                No se encontraron usuarios con los filtros actuales.
+              </div>
+            ) : null}
           </div>
         </div>
       )}
