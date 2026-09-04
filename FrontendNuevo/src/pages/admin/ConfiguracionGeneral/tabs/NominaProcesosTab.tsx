@@ -537,11 +537,11 @@ export function NominaProcesosTab() {
 
           <div className="nomina-assignment-table">
             <div className="nomina-assignment-head">
-              <span>USUARIO</span>
+              <span>USUARIO / ROL</span>
               <span>PROCESO</span>
               <span>ASIGNACIÓN</span>
               <span>ESTADO</span>
-              <span>ACCIONES</span>
+              <span>ACCIÃ“N</span>
             </div>
 
             {visible.map((user) => {
@@ -554,7 +554,7 @@ export function NominaProcesosTab() {
                   className="nomina-assignment-row"
                   key={user.id}
                 >
-                  <span>
+                  <span className="nomina-assignment-user">
                     <strong>{user.name}</strong>
                     <small>{user.email}</small>
                     <small>{user.roles.length ? user.roles.map((role) => role.replace(/_/g, ' ')).join(' · ') : 'Sin rol'}</small>
@@ -568,14 +568,14 @@ export function NominaProcesosTab() {
                     ))}
                   </span>
 
-                  <span>
+                  <span className="nomina-assignment-scope">
                     {active
                       .map(assignmentLabel)
                       .filter(Boolean)
-                      .join(' / ') || 'Sin alcance asignado'}
+                      .join(' / ') || 'Sin asignar'}
                   </span>
 
-                  <span>
+                  <span className={active.length ? 'nomina-assignment-status-badge active' : 'nomina-assignment-status-badge'}>
                     {active.length
                       ? 'Activo'
                       : 'Sin asignación'}
@@ -690,7 +690,7 @@ export function NominaProcesosTab() {
 
       {drawer && (
         <div className="nomina-drawer-backdrop">
-          <aside className="nomina-drawer">
+          <aside className="nomina-drawer nomina-assignment-drawer">
             <button
               className="nomina-close"
               onClick={() => setDrawer(false)}
@@ -698,12 +698,16 @@ export function NominaProcesosTab() {
               ×
             </button>
 
+            <div className="nomina-drawer-header">
             <h3>
               {selected
                 ? 'Editar asignación'
                 : 'Asignar usuario'}
             </h3>
+            <p>Configura los procesos y el alcance operativo del usuario.</p>
+            </div>
 
+            <div className="nomina-drawer-content">
             <label>
               Usuario
 
@@ -771,6 +775,7 @@ export function NominaProcesosTab() {
                 onCancel={() => setDrawer(false)}
               />
             )}
+            </div>
           </aside>
         </div>
       )}
@@ -852,11 +857,11 @@ function AssignmentForm(props: {
 
   return (
     <>
-      <fieldset>
+      <fieldset className="nomina-process-selector">
         <legend>¿Qué proceso gestionará?</legend>
 
         {processes.map((process) => (
-          <label key={process}>
+          <label className="nomina-process-card" key={process}>
             <input
               type="checkbox"
               checked={props.selectedProcesses.includes(
@@ -870,16 +875,32 @@ function AssignmentForm(props: {
               }
             />
 
-            {process}
+            <span>
+              <strong>{process}</strong>
+              <small>
+                {process === 'COBERTURA'
+                  ? 'AsignaciÃ³n por municipios'
+                  : process === 'ASISTENCIA'
+                    ? 'AsignaciÃ³n por Ã¡reas'
+                    : 'Alcance operativo segÃºn configuraciÃ³n'}
+              </small>
+            </span>
           </label>
         ))}
       </fieldset>
 
       {props.selectedProcesses.includes('COBERTURA') && (
-        <fieldset>
+        <fieldset className="nomina-scope-fieldset">
           <legend>
             Municipios que puede gestionar
           </legend>
+
+          <div className="nomina-scope-summary">
+            <strong>
+              {props.municipalityIds.length} municipio{props.municipalityIds.length === 1 ? '' : 's'} seleccionado{props.municipalityIds.length === 1 ? '' : 's'}
+            </strong>
+            <span>Define el alcance territorial de COBERTURA</span>
+          </div>
 
           <input
             placeholder="Buscar municipio..."
@@ -915,8 +936,9 @@ function AssignmentForm(props: {
             </button>
           </div>
 
+          <div className="nomina-scope-grid">
           {props.municipalities.map((item) => (
-            <label key={item.id}>
+            <label className="nomina-scope-option" key={item.id}>
               <input
                 type="checkbox"
                 checked={props.municipalityIds.includes(
@@ -934,24 +956,30 @@ function AssignmentForm(props: {
                 }
               />
 
-              {item.nombre_municipio ?? item.nombre}
+              <span>{item.nombre_municipio ?? item.nombre}</span>
             </label>
           ))}
+          </div>
         </fieldset>
       )}
 
       {props.selectedProcesses.includes(
         'ASISTENCIA',
       ) && (
-        <fieldset>
+        <fieldset className="nomina-scope-fieldset">
           <legend>
             Áreas que puede gestionar
           </legend>
 
+          <div className="nomina-scope-summary">
+            <strong>{props.areaIds.length} Ã¡rea{props.areaIds.length === 1 ? '' : 's'} seleccionada{props.areaIds.length === 1 ? '' : 's'}</strong>
+            <span>Define el alcance de ASISTENCIA</span>
+          </div>
+
           {props.areas
             .filter((item) => item.activo)
             .map((item) => (
-              <label key={item.id}>
+              <label className="nomina-scope-option" key={item.id}>
                 <input
                   type="checkbox"
                   checked={props.areaIds.includes(
@@ -972,7 +1000,7 @@ function AssignmentForm(props: {
                   }
                 />
 
-                {item.nombre}
+                <span>{item.nombre}</span>
               </label>
             ))}
         </fieldset>
