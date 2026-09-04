@@ -31,6 +31,13 @@ type Municipality = {
   id: number;
   nombre_municipio?: string;
   nombre?: string;
+  departamento_id?: number;
+};
+
+type Department = {
+  id: number;
+  label?: string;
+  nombre?: string;
 };
 
 type AssignableUser = {
@@ -82,6 +89,27 @@ async function loadAllMunicipalities(): Promise<Municipality[]> {
   );
 }
 
+async function loadAllDepartments(): Promise<Department[]> {
+  const firstPage = await configuracionApi.listarDepartamentos({
+    page: 1,
+    limit: MUNICIPALITY_PAGE_SIZE,
+  });
+  const totalPages = Math.max(1, firstPage.pagination?.total_pages ?? 1);
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      configuracionApi.listarDepartamentos({
+        page: index + 2,
+        limit: MUNICIPALITY_PAGE_SIZE,
+      }),
+    ),
+  );
+  const departments = [
+    ...(firstPage.items ?? []),
+    ...remainingPages.flatMap((page) => page.items ?? []),
+  ];
+  return Array.from(new Map(departments.map((department) => [department.id, department])).values());
+}
+
 const slug = (value: string) =>
   value
     .normalize('NFD')
@@ -102,6 +130,7 @@ export function NominaProcesosTab() {
 
   const [areas, setAreas] = useState<Area[]>([]);
   const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
 
   const [selected, setSelected] = useState<AssignableUser | null>(null);
   const [selectedProcesses, setSelectedProcesses] = useState<Process[]>([]);
@@ -111,6 +140,7 @@ export function NominaProcesosTab() {
   const [search, setSearch] = useState('');
   const [pickerSearch, setPickerSearch] = useState('');
   const [municipalitySearch, setMunicipalitySearch] = useState('');
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
 
   const [processFilter, setProcessFilter] = useState<'TODOS' | Process>(
     'TODOS',
@@ -138,7 +168,7 @@ export function NominaProcesosTab() {
     setUsersError('');
 
     try {
-      const [usersResult, areaResult, municipalityResult] = await Promise.allSettled([
+      const [usersResult, areaResult, municipalityResult, departmentResult] = await Promise.allSettled([
         apiClient.get<{ data: AssignableUser[] }>(
           '/nomina/procesos/usuarios-asignables',
           {
@@ -155,6 +185,7 @@ export function NominaProcesosTab() {
         }),
 
         loadAllMunicipalities(),
+        loadAllDepartments(),
       ]);
 
       if (usersResult.status === 'rejected') {
@@ -183,13 +214,16 @@ export function NominaProcesosTab() {
         result.status === 'fulfilled' ? [result.value] : [],
       );
 
-      const secondaryErrors = [areaResult, municipalityResult, ...responsibilityResults]
+      const secondaryErrors = [areaResult, municipalityResult, departmentResult, ...responsibilityResults]
         .some((result) => result.status === 'rejected');
 
       setUsers(companyUsers);
       setAreas(areaResult.status === 'fulfilled' ? areaResult.value.data : []);
       setMunicipalities(
         municipalityResult.status === 'fulfilled' ? municipalityResult.value : [],
+      );
+      setDepartments(
+        departmentResult.status === 'fulfilled' ? departmentResult.value : [],
       );
       setResponsibilities(Object.fromEntries(rows));
 
@@ -228,6 +262,9 @@ export function NominaProcesosTab() {
     setMunicipalityIds(
       rows.find((row) => row.proceso === 'COBERTURA')?.municipio_ids ?? [],
     );
+    const existingMunicipalityIds = rows.find((row) => row.proceso === 'COBERTURA')?.municipio_ids ?? [];
+    const existingDepartment = municipalities.find((item) => existingMunicipalityIds.includes(item.id))?.departamento_id;
+    setSelectedDepartmentId(existingDepartment ?? null);
 
     setAreaIds(
       rows.find((row) => row.proceso === 'ASISTENCIA')?.area_ids ?? [],
@@ -241,6 +278,7 @@ export function NominaProcesosTab() {
     setSelected(null);
     setSelectedProcesses([]);
     setMunicipalityIds([]);
+    setSelectedDepartmentId(null);
     setAreaIds([]);
     setPickerSearch('');
     setDrawer(true);
@@ -374,6 +412,7 @@ export function NominaProcesosTab() {
   );
 
   const shownMunicipalities = municipalities.filter((item) =>
+    item.departamento_id === selectedDepartmentId &&
     (item.nombre_municipio ?? item.nombre ?? '')
       .toLowerCase()
       .includes(municipalitySearch.toLowerCase()),
@@ -766,6 +805,9 @@ export function NominaProcesosTab() {
                 areaIds={areaIds}
                 setAreaIds={setAreaIds}
                 municipalities={shownMunicipalities}
+                departments={departments}
+                selectedDepartmentId={selectedDepartmentId}
+                setSelectedDepartmentId={setSelectedDepartmentId}
                 areas={areas}
                 municipalitySearch={municipalitySearch}
                 setMunicipalitySearch={
@@ -839,6 +881,9 @@ function AssignmentForm(props: {
     React.SetStateAction<number[]>
   >;
   municipalities: Municipality[];
+  departments: Department[];
+  selectedDepartmentId: number | null;
+  setSelectedDepartmentId: (value: number | null) => void;
   areas: Area[];
   municipalitySearch: string;
   setMunicipalitySearch: (value: string) => void;
@@ -891,18 +936,41 @@ function AssignmentForm(props: {
 
       {props.selectedProcesses.includes('COBERTURA') && (
         <fieldset className="nomina-scope-fieldset">
+          <label className="nomina-department-field">
+            Departamento
+            <select
+              value={props.selectedDepartmentId ?? ''}
+              onChange={(event) =>
+                props.setSelectedDepartmentId(
+                  event.target.value ? Number(event.target.value) : null,
+                )
+              }
+            >
+              <option value="">Seleccionar departamento</option>
+              {props.departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.label ?? department.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <legend>
             Municipios que puede gestionar
           </legend>
 
+          {props.selectedDepartmentId === null ? (
+            <p className="nomina-scope-empty">Selecciona un departamento para ver sus municipios.</p>
+          ) : (
           <div className="nomina-scope-summary">
             <strong>
               {props.municipalityIds.length} municipio{props.municipalityIds.length === 1 ? '' : 's'} seleccionado{props.municipalityIds.length === 1 ? '' : 's'}
             </strong>
             <span>Define el alcance territorial de COBERTURA</span>
           </div>
+          )}
 
-          <input
+          {props.selectedDepartmentId !== null && <input
             placeholder="Buscar municipio..."
             value={props.municipalitySearch}
             onChange={(event) =>
@@ -910,9 +978,9 @@ function AssignmentForm(props: {
                 event.target.value,
               )
             }
-          />
+          />}
 
-          <div className="nomina-scope-tools">
+          {props.selectedDepartmentId !== null && <div className="nomina-scope-tools">
             <button
               type="button"
               onClick={() =>
@@ -934,9 +1002,9 @@ function AssignmentForm(props: {
             >
               Limpiar selección
             </button>
-          </div>
+          </div>}
 
-          <div className="nomina-scope-grid">
+          {props.selectedDepartmentId !== null && <div className="nomina-scope-grid">
           {props.municipalities.map((item) => (
             <label className="nomina-scope-option" key={item.id}>
               <input
@@ -959,7 +1027,7 @@ function AssignmentForm(props: {
               <span>{item.nombre_municipio ?? item.nombre}</span>
             </label>
           ))}
-          </div>
+          </div>}
         </fieldset>
       )}
 

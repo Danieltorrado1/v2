@@ -1002,6 +1002,9 @@ select.np-form-control {
 .nomina-assignment-drawer .nomina-process-card span { display:flex; flex-direction:column; gap:2px; }
 .nomina-assignment-drawer .nomina-process-card small, .nomina-assignment-drawer .nomina-scope-summary span { color:var(--text-secondary); font-size:11px; }
 .nomina-assignment-drawer .nomina-scope-fieldset { gap:9px!important; }
+.nomina-assignment-drawer .nomina-department-field { margin:0!important; }
+.nomina-assignment-drawer .nomina-department-field select { min-height:38px; padding:0 10px; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-primary); color:var(--text-primary); }
+.nomina-assignment-drawer .nomina-scope-empty { margin:0; padding:12px; border:1px dashed var(--border-color); border-radius:8px; color:var(--text-secondary); font-size:12px; }
 .nomina-assignment-drawer .nomina-scope-summary { display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; }
 .nomina-assignment-drawer .nomina-scope-summary strong { color:var(--text-primary); font-size:12px; }
 .nomina-assignment-drawer .nomina-scope-tools { justify-content:space-between; }
