@@ -5635,6 +5635,168 @@ const recordNominaAudit = async (
   });
 };
 
+/**
+ * Resuelve la categoria salarial de los empleados CAARES del periodo.
+ *
+ * La regla es deliberadamente operativa y deterministica: una manipuladora
+ * CAARES sola en municipio+institucion+sede es CAARES1 (32); dos o mas son
+ * CAARES3 (33). La ubicacion se obtiene de la cobertura vigente que
+ * intersecta el periodo, nunca de la persona global ni de TODAY.
+ */
+export const resolveAndAssignCaaresCategoriesForPeriodo = async (
+  periodoId: string,
+  actorUserId: string,
+  tenant?: TenantAccessContext,
+  auditMeta?: AuditRequestMeta
+): Promise<{
+  total: number;
+  groups: number;
+  singletonGroups: number;
+  multipleGroups: number;
+  expectedCaares1: number;
+  expectedCaares3: number;
+  changed: number;
+  unchanged: number;
+  unresolved: string[];
+  changedEmployeeIds: string[];
+}> => {
+  const client = await dbPool.connect();
+
+  try {
+    await client.query('BEGIN');
+    const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
+    await assertNominaPeriodoCoberturaScope(periodoId, tenant, client);
+
+    const result = await client.query<{
+      nomina_empleado_id: string;
+      categoria_actual_id: string | null;
+      categoria_esperada_id: string | null;
+      municipio_id: string | null;
+      institucion_id: string | null;
+      sede_id: string | null;
+      grupo_cantidad: number | null;
+    }>(
+      `
+        WITH caares AS (
+          SELECT
+            ne.id::text AS nomina_empleado_id,
+            ne.categoria_salarial_id::text AS categoria_actual_id,
+            ff.municipio_id::text AS municipio_id,
+            ff.institucion_id::text AS institucion_id,
+            ff.sede_id::text AS sede_id
+          FROM nomina_empleados ne
+          JOIN vinculaciones v ON v.id = ne.vinculacion_id
+          JOIN LATERAL (
+            SELECT ca.focalizacion_final_id
+            FROM cobertura_asignaciones ca
+            WHERE ca.vinculacion_id = v.id
+              AND COALESCE(ca.activo, TRUE) = TRUE
+              AND ca.fecha_inicio <= $2::date
+              AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $3::date)
+            ORDER BY ca.fecha_inicio DESC, ca.id DESC
+            LIMIT 1
+          ) ca ON TRUE
+          JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+          JOIN modalidades m ON m.id = ff.modalidad_id
+          WHERE ne.periodo_id = $1::bigint
+            AND COALESCE(ne.activo, TRUE) = TRUE
+            AND m.codigo_base = 'CAARES'
+        ), grouped AS (
+          SELECT municipio_id, institucion_id, sede_id, COUNT(*)::int AS grupo_cantidad
+          FROM caares
+          GROUP BY municipio_id, institucion_id, sede_id
+        )
+        SELECT
+          c.nomina_empleado_id,
+          c.categoria_actual_id,
+          CASE
+            WHEN c.municipio_id IS NULL
+              OR c.institucion_id IS NULL
+              OR c.sede_id IS NULL
+              OR g.grupo_cantidad IS NULL THEN NULL
+            WHEN g.grupo_cantidad = 1 THEN '32'
+            ELSE '33'
+          END AS categoria_esperada_id,
+          c.municipio_id,
+          c.institucion_id,
+          c.sede_id,
+          g.grupo_cantidad
+        FROM caares c
+        LEFT JOIN grouped g USING (municipio_id, institucion_id, sede_id)
+        ORDER BY c.nomina_empleado_id
+      `,
+      [periodoId, toDateString(periodo.fecha_fin), toDateString(periodo.fecha_inicio)]
+    );
+
+    const unresolved = result.rows
+      .filter((row) => !row.categoria_esperada_id)
+      .map((row) => row.nomina_empleado_id);
+    if (unresolved.length > 0) {
+      throw new AppError(
+        'No fue posible resolver la categoria CAARES por municipio, institucion y sede',
+        409,
+        'NOMINA_CATEGORIA_CAARES_NO_RESUELTA',
+        { periodo_id: periodoId, nomina_empleado_ids: unresolved }
+      );
+    }
+
+    const changedRows = result.rows.filter(
+      (row) => row.categoria_esperada_id !== row.categoria_actual_id
+    );
+    if (changedRows.length > 0) {
+      await client.query(
+        `
+          UPDATE nomina_empleados ne
+          SET categoria_salarial_id = cambios.categoria_esperada_id::bigint
+          FROM UNNEST($1::bigint[], $2::bigint[]) AS cambios(id, categoria_esperada_id)
+          WHERE ne.id = cambios.id
+            AND ne.periodo_id = $3::bigint
+        `,
+        [
+          changedRows.map((row) => row.nomina_empleado_id),
+          changedRows.map((row) => row.categoria_esperada_id),
+          periodoId
+        ]
+      );
+      await registerAuditEntry({
+        client,
+        usuario_id: actorUserId,
+        accion: 'NOMINA_CATEGORIA_CAARES_RESOLVE',
+        tabla: 'nomina_empleados',
+        registro_id: periodoId,
+        descripcion: 'Resolucion deterministica de categorias CAARES por municipio, institucion y sede',
+        before: { cambios: changedRows.map((row) => ({ nomina_empleado_id: row.nomina_empleado_id, categoria_salarial_id: row.categoria_actual_id })) },
+        after: { cambios: changedRows.map((row) => ({ nomina_empleado_id: row.nomina_empleado_id, categoria_salarial_id: row.categoria_esperada_id })) },
+        ip: auditMeta?.ip ?? null,
+        user_agent: auditMeta?.user_agent ?? null
+      });
+    }
+
+    await client.query('COMMIT');
+    const groups = new Map(result.rows.map((row) => [
+      `${row.municipio_id ?? 'NULL'}|${row.institucion_id ?? 'NULL'}|${row.sede_id ?? 'NULL'}`,
+      Number(row.grupo_cantidad ?? 0)
+    ]));
+    return {
+      total: result.rows.length,
+      groups: groups.size,
+      singletonGroups: [...groups.values()].filter((count) => count === 1).length,
+      multipleGroups: [...groups.values()].filter((count) => count > 1).length,
+      expectedCaares1: result.rows.filter((row) => row.categoria_esperada_id === '32').length,
+      expectedCaares3: result.rows.filter((row) => row.categoria_esperada_id === '33').length,
+      changed: changedRows.length,
+      unchanged: result.rows.length - changedRows.length,
+      unresolved: [],
+      changedEmployeeIds: changedRows.map((row) => row.nomina_empleado_id)
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 const loadNominaPeriodoEmployeesSummary = async (
   client: PoolClient,
   periodoId: string
@@ -7456,6 +7618,30 @@ export const recalculateNominaPeriodo = async (
       const categoriaEmpleado = empleadoRow.categoria_id
         ? categoriasCoberturaById.get(String(empleadoRow.categoria_id)) ?? null
         : null;
+      const modalidadOperativa = [
+        empleadoRow.modalidad_codigo,
+        empleadoRow.modalidad_nombre,
+        empleadoRow.contexto_modalidad_nombre
+      ]
+        .filter((value): value is string => Boolean(value))
+        .join(' ')
+        .toUpperCase();
+      const categoriaCodigo = categoriaEmpleado?.codigo_categoria?.trim().toUpperCase() ?? null;
+      if (
+        modalidadOperativa.includes('CAARES') &&
+        !['CAARES1', 'CAARES3'].includes(categoriaCodigo ?? '')
+      ) {
+        throw new AppError(
+          'CAARES requiere una categoria salarial explicita CAARES1 o CAARES3 antes de recalcular',
+          409,
+          'NOMINA_CATEGORIA_CAARES_REQUERIDA',
+          {
+            nomina_empleado_id: empleadoRow.id,
+            categoria_salarial_id: empleadoRow.categoria_id,
+            modalidad: modalidadOperativa
+          }
+        );
+      }
       const salarioBase = toNumberValue(categoriaEmpleado?.salario_base ?? empleadoRow.salario_base);
       const auxilioTransporte = toNumberValue(
         categoriaEmpleado?.auxilio_transporte ?? empleadoRow.auxilio_transporte
