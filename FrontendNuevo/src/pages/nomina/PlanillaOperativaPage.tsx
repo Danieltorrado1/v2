@@ -432,13 +432,34 @@ function resolveOperativeState(employee: NominaEmpleadoApi, review?: RevisionOpe
 }
 
 async function loadAttendance(periodId: string) {
-  const response = await apiClient.get<
-    ApiResponse<{ items: Attendance[]; pagination?: { total_pages?: number } }>
-  >(`/nomina/periodos/${periodId}/asistencia`, {
-    params: { activo: true, limit: ATTENDANCE_BATCH_LIMIT, page: 1 },
-  });
+  type AttendancePage = { items: Attendance[]; pagination?: { total_pages?: number } };
+  const loadPage = async (page: number) => {
+    const response = await apiClient.get<ApiResponse<AttendancePage>>(
+      `/nomina/periodos/${periodId}/asistencia`,
+      { params: { activo: true, limit: ATTENDANCE_BATCH_LIMIT, page } },
+    );
+    return response.data;
+  };
 
-  return response.data?.items ?? [];
+  // La primera respuesta define cuántas páginas existen. No se usa un límite
+  // artificial que pueda dejar fuera los últimos días del periodo.
+  const firstPage = await loadPage(1);
+  const totalPages = Math.max(1, firstPage.pagination?.total_pages ?? 1);
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) => loadPage(index + 2)),
+  );
+  const allItems = [firstPage, ...remainingPages].flatMap((page) => page?.items ?? []);
+
+  // El backend ya evita duplicados lógicos, pero la deduplicación aquí protege
+  // la representación de Planilla ante reintentos o respuestas repetidas.
+  return Array.from(
+    new Map(
+      allItems.map((item) => [
+        `${item.vinculacion_id}|${item.fecha}`,
+        item,
+      ]),
+    ).values(),
+  );
 }
 
 export default function PlanillaOperativaPage() {
