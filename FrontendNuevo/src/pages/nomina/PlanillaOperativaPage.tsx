@@ -432,19 +432,46 @@ function resolveOperativeState(employee: NominaEmpleadoApi, review?: RevisionOpe
 }
 
 async function loadAttendance(periodId: string) {
-  type AttendancePage = { items: Attendance[]; pagination?: { total_pages?: number } };
+  type AttendancePage = {
+    items: Attendance[];
+    pagination?: { total_pages?: number; totalPages?: number };
+  };
+  const isAttendancePage = (value: unknown): value is AttendancePage => {
+    if (!value || typeof value !== "object") return false;
+    const candidate = value as { items?: unknown; pagination?: unknown };
+    return Array.isArray(candidate.items) && Boolean(candidate.pagination && typeof candidate.pagination === "object");
+  };
+
   const loadPage = async (page: number) => {
     const response = await apiClient.get<ApiResponse<AttendancePage>>(
       `/nomina/periodos/${periodId}/asistencia`,
       { params: { activo: true, limit: ATTENDANCE_BATCH_LIMIT, page } },
     );
-    return response.data;
+    const raw = response as unknown as { data?: unknown };
+    const nested = raw.data as { data?: unknown } | undefined;
+    const pageData = [raw, raw.data, nested?.data].find(isAttendancePage);
+    if (!pageData) {
+      throw new Error(`Respuesta de asistencia inválida para la página ${page}`);
+    }
+    if (import.meta.env.DEV) {
+      console.debug(`[Planilla] asistencia page=${page}`, {
+        items: pageData.items.length,
+        total_pages: pageData.pagination?.total_pages ?? pageData.pagination?.totalPages,
+      });
+    }
+    return pageData;
   };
 
   // La primera respuesta define cuántas páginas existen. No se usa un límite
   // artificial que pueda dejar fuera los últimos días del periodo.
   const firstPage = await loadPage(1);
-  const totalPages = Math.max(1, firstPage.pagination?.total_pages ?? 1);
+  const totalPages = Math.max(
+    1,
+    firstPage.pagination?.total_pages ?? firstPage.pagination?.totalPages ?? 1,
+  );
+  if (import.meta.env.DEV) {
+    console.debug(`[Planilla] asistencia total_pages=${totalPages}; solicitando páginas restantes`);
+  }
   const remainingPages = await Promise.all(
     Array.from({ length: totalPages - 1 }, (_, index) => loadPage(index + 2)),
   );
