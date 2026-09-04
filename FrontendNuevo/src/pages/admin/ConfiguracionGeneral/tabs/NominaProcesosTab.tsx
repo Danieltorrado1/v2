@@ -50,6 +50,37 @@ type NominaConfigTab =
   | 'areas';
 
 const processes: Process[] = ['COBERTURA', 'ASISTENCIA', 'OPS'];
+const MUNICIPALITY_PAGE_SIZE = 100;
+
+async function loadAllMunicipalities(): Promise<Municipality[]> {
+  const firstPage = await configuracionApi.listarMunicipios({
+    page: 1,
+    limit: MUNICIPALITY_PAGE_SIZE,
+  });
+  const totalPages = Math.max(1, firstPage.pagination?.total_pages ?? 1);
+
+  if (totalPages === 1) {
+    return firstPage.items ?? [];
+  }
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      configuracionApi.listarMunicipios({
+        page: index + 2,
+        limit: MUNICIPALITY_PAGE_SIZE,
+      }),
+    ),
+  );
+
+  const municipalities = [
+    ...(firstPage.items ?? []),
+    ...remainingPages.flatMap((page) => page.items ?? []),
+  ];
+
+  return Array.from(
+    new Map(municipalities.map((municipality) => [municipality.id, municipality])).values(),
+  );
+}
 
 const slug = (value: string) =>
   value
@@ -107,7 +138,7 @@ export function NominaProcesosTab() {
     setUsersError('');
 
     try {
-      const [usersResult, areaResult, municipalityResult] = await Promise.all([
+      const [usersResult, areaResult, municipalityResult] = await Promise.allSettled([
         apiClient.get<{ data: AssignableUser[] }>(
           '/nomina/procesos/usuarios-asignables',
           {
@@ -123,38 +154,48 @@ export function NominaProcesosTab() {
           },
         }),
 
-        configuracionApi.listarMunicipios({
-          page: 1,
-          limit: 500,
-        }),
+        loadAllMunicipalities(),
       ]);
 
-      const companyUsers = usersResult.data.filter((user) => user.active);
+      if (usersResult.status === 'rejected') {
+        throw usersResult.reason;
+      }
 
-      const rows = await Promise.all(
-        companyUsers.map(
-          async (user) =>
-            [
-              user.id,
-              (
-                await apiClient.get<{ data: Responsibility[] }>(
-                  '/nomina/procesos/responsabilidades',
-                  {
-                    params: {
-                      usuario_id: user.id,
-                      empresa_id: empresaActual.id,
-                    },
-                  },
-                )
-              ).data,
-            ] as const,
-        ),
+      const companyUsers = usersResult.value.data.filter((user) => user.active);
+
+      const responsibilityResults = await Promise.allSettled(
+        companyUsers.map(async (user) => {
+          const response = await apiClient.get<{ data: Responsibility[] }>(
+            '/nomina/procesos/responsabilidades',
+            {
+              params: {
+                usuario_id: user.id,
+                empresa_id: empresaActual.id,
+              },
+            },
+          );
+
+          return [user.id, response.data] as const;
+        }),
       );
 
+      const rows = responsibilityResults.flatMap((result) =>
+        result.status === 'fulfilled' ? [result.value] : [],
+      );
+
+      const secondaryErrors = [areaResult, municipalityResult, ...responsibilityResults]
+        .some((result) => result.status === 'rejected');
+
       setUsers(companyUsers);
-      setAreas(areaResult.data);
-      setMunicipalities(municipalityResult.items ?? []);
+      setAreas(areaResult.status === 'fulfilled' ? areaResult.value.data : []);
+      setMunicipalities(
+        municipalityResult.status === 'fulfilled' ? municipalityResult.value : [],
+      );
       setResponsibilities(Object.fromEntries(rows));
+
+      if (secondaryErrors) {
+        setUsersError('Usuarios cargados. Algunas asignaciones o catálogos no pudieron actualizarse; intente recargar.');
+      }
     } catch (error) {
       console.error('No fue posible cargar la configuración de nómina', error);
 
