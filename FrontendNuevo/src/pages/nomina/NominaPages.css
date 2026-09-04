@@ -1014,3 +1014,21 @@ select.np-form-control {
 .nomina-assignment-drawer .nomina-drawer-actions { position:sticky; bottom:0; margin:16px -4px 0 0; padding:14px 0 0; border-top:1px solid var(--border-color); background:var(--bg-primary); z-index:2; }
 .nomina-assignment-drawer .nomina-drawer-actions .adm-btn { min-width:130px; }
 @media (max-width:520px) { .nomina-assignment-drawer .nomina-scope-grid { grid-template-columns:1fr; } .nomina-assignment-drawer .nomina-drawer-actions .adm-btn { min-width:0; flex:1; } }
+.nomina-turnos-legacy-table { display:none; }
+.nomina-turnos-consolidated-list { border:1px solid var(--border-color); border-radius:12px; overflow:hidden; }
+.nomina-turnos-consolidated-head, .nomina-turnos-person-row { display:grid; grid-template-columns:minmax(130px,1.4fr) minmax(70px,.8fr) 50px 95px minmax(100px,1fr) minmax(95px,1fr) 100px; gap:8px; align-items:center; padding:12px 14px; }
+.nomina-turnos-consolidated-head { background:var(--bg-secondary); color:var(--text-secondary); font-size:10px; font-weight:800; letter-spacing:.04em; }
+.nomina-turnos-person-card + .nomina-turnos-person-card { border-top:1px solid var(--border-color); }
+.nomina-turnos-person-row:hover, .nomina-turnos-person-card.is-expanded .nomina-turnos-person-row { background:color-mix(in srgb,var(--color-primary) 6%,var(--bg-panel)); }
+.nomina-turnos-type-badges, .nomina-turnos-actions, .nomina-turnos-history-actions { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.nomina-turnos-status-summary { display:flex; flex-direction:column; gap:2px; color:var(--text-secondary); }
+.nomina-turnos-history { margin:0 14px 12px; padding:12px; border:1px solid var(--border-color); border-radius:9px; background:var(--bg-secondary); overflow:visible; }
+.nomina-turnos-history-title { margin-bottom:9px; color:var(--text-primary); font-size:12px; font-weight:800; }
+.nomina-turnos-history-head, .nomina-turnos-history-row { display:grid; grid-template-columns:88px 65px minmax(75px,1fr) minmax(100px,1.2fr) 90px 85px 90px 60px; gap:7px; align-items:center; padding:8px 0; font-size:11px; }
+.nomina-turnos-history-head { color:var(--text-secondary); font-size:9px; font-weight:800; }
+.nomina-turnos-history-row { border-top:1px solid color-mix(in srgb,var(--border-color) 70%,transparent); color:var(--text-primary); }
+.nomina-turnos-history-row > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nomina-turnos-history-actions { justify-content:flex-end; }
+.nomina-turnos-consolidated-list .np-icon-button:disabled { opacity:.45; cursor:not-allowed; }
+@media(max-width:900px) { .nomina-turnos-consolidated-head, .nomina-turnos-person-row { grid-template-columns:minmax(115px,1.4fr) 75px 45px 85px minmax(85px,1fr) 90px 92px; padding:10px; gap:6px; } }
+@media(max-width:680px) { .nomina-turnos-consolidated-head { display:none; } .nomina-turnos-person-row { grid-template-columns:1fr auto; gap:8px; padding:12px; } .nomina-turnos-person-row > span:nth-child(2), .nomina-turnos-person-row > strong:nth-child(3), .nomina-turnos-person-row > span:nth-child(4), .nomina-turnos-person-row > span:nth-child(5), .nomina-turnos-person-row > strong:nth-child(6) { font-size:11px; } .nomina-turnos-actions { grid-column:2; grid-row:1 / span 2; } .nomina-turnos-history-head { display:none; } .nomina-turnos-history-row { grid-template-columns:1fr 1fr; gap:7px; } .nomina-turnos-history-row > span { white-space:normal; overflow:visible; } .nomina-turnos-history-row > span:nth-child(4), .nomina-turnos-history-row > span:nth-child(8) { grid-column:1 / -1; } }

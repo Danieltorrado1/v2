@@ -11,6 +11,8 @@ import {
   Edit3,
   Eye,
   Plus,
+  Paperclip,
+  Printer,
   Search,
   Trash2,
   Users,
@@ -83,6 +85,17 @@ type FeedbackState = {
 
 type ExternalSummaryState = AsyncState<CoberturaExternoResumenApi[]>;
 type TurnoView = "todos" | "internos" | "externos";
+type TurnoSort = "name_asc" | "name_desc" | "count_desc" | "count_asc";
+
+type TurnoGroup = {
+  key: string;
+  personName: string;
+  document: string | null;
+  movements: NominaTurno[];
+  types: string[];
+  lastDate: string | null;
+  total: number;
+};
 
 type TurnoFormState = {
   activo: boolean;
@@ -347,6 +360,87 @@ function StateCard({
   );
 }
 
+function TurnosConsolidatedTable({
+  groups,
+  relationByMovementId,
+  expandedKey,
+  onToggle,
+  canSeeEconomic,
+  canEdit,
+  canMutatePeriod,
+  isSubmitting,
+  employeesLoading,
+  employeesCount,
+  onEdit,
+  onDeactivate,
+}: {
+  groups: TurnoGroup[];
+  relationByMovementId: Map<string, NominaNovedadTurnoOperativoApi>;
+  expandedKey: string | null;
+  onToggle: (key: string) => void;
+  canSeeEconomic: boolean;
+  canEdit: boolean;
+  canMutatePeriod: boolean;
+  isSubmitting: boolean;
+  employeesLoading: boolean;
+  employeesCount: number;
+  onEdit: (movement: NominaTurno) => void;
+  onDeactivate: (movement: NominaTurno) => void;
+}) {
+  return (
+    <div className="nomina-turnos-consolidated-list">
+      <div className="nomina-turnos-consolidated-head">
+        <span>PERSONA</span><span>TIPO(S)</span><span>TURNOS</span><span>ÃšLTIMO TURNO</span>
+        <span>ESTADO GENERAL</span><span>VALOR TOTAL DEL MES</span><span>ACCIONES</span>
+      </div>
+      {groups.map((group) => {
+        const isExpanded = expandedKey === group.key;
+        const statusCounts = new Map<string, number>();
+        group.movements.forEach((movement) => {
+          const status = getMovementStatusLabel(movement);
+          statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+        });
+
+        return (
+          <div className={`nomina-turnos-person-card${isExpanded ? " is-expanded" : ""}`} key={group.key}>
+            <div className="nomina-turnos-person-row">
+              <span className="np-table-stack"><strong>{group.personName}</strong><small>CC {group.document ?? "Sin documento"}</small></span>
+              <span className="nomina-turnos-type-badges">{group.types.map((type) => <b className={`np-badge ${type === "INTERNO" ? "info" : "primary"}`} key={type}>{type}</b>)}</span>
+              <strong>{formatNumber(group.movements.length)}</strong>
+              <span>{group.lastDate ? formatDate(group.lastDate) : "No disponible"}</span>
+              <span className="nomina-turnos-status-summary">{Array.from(statusCounts.entries()).map(([status, count]) => <small key={status}>{count} {status.toLowerCase()}</small>)}</span>
+              <strong>{canSeeEconomic ? formatCOP(group.total) : "No disponible"}</strong>
+              <span className="nomina-turnos-actions">
+                <button type="button" className="np-icon-button" title="Ver detalle" aria-label={`Ver detalle de ${group.personName}`} onClick={() => onToggle(group.key)}><Eye size={14} /></button>
+                <button type="button" className="np-icon-button" title="Subir documentos (disponible en el detalle externo)" aria-label={`Subir documentos de ${group.personName}`} disabled><Paperclip size={14} /></button>
+                <button type="button" className="np-icon-button" title="Imprimir historial" aria-label={`Imprimir historial de ${group.personName}`} onClick={() => window.print()}><Printer size={14} /></button>
+              </span>
+            </div>
+            {isExpanded ? (
+              <div className="nomina-turnos-history" aria-label={`Historial de turnos de ${group.personName}`}>
+                <div className="nomina-turnos-history-title">Historial del mes · {group.movements.length} turno{group.movements.length === 1 ? "" : "s"}</div>
+                <div className="nomina-turnos-history-head"><span>FECHA</span><span>TIPO</span><span>MODALIDAD</span><span>PERSONA CUBIERTA</span><span>TARIFA DIARIA</span><span>SUBTOTAL</span><span>ESTADO</span><span>ACCIONES</span></div>
+                {group.movements.map((movement) => {
+                  const relation = relationByMovementId.get(movement.id) ?? null;
+                  const type = movement.tipo_movimiento === "TURNO_INTERNO" ? "INTERNO" : "EXTERNO";
+                  const modality = relation?.modalidad ?? movement.contexto_operativo?.modalidad ?? "No disponible";
+                  const unpriced = movement.valor_unitario === null || movement.valor_unitario <= 0 || movement.tarifa_config_id === null;
+                  return (
+                    <div className="nomina-turnos-history-row" key={movement.id}>
+                      <span>{formatDate(relation?.fecha_inicio ?? movement.fecha)}</span><span><b className={`np-badge ${type === "INTERNO" ? "info" : "primary"}`}>{type}</b></span><span>{modality}</span><span>{relation?.trabajador_reemplazado ?? movement.persona_reemplazada?.nombre_completo ?? "No disponible"}</span><span>{canSeeEconomic && !unpriced ? `${formatCOP(movement.valor_unitario)}/día` : "SIN TARIFA"}</span><span>{canSeeEconomic && !unpriced ? formatCOP(movement.valor_total) : "—"}</span><span className={unpriced ? "np-text-danger" : ""}>{unpriced ? "SIN TARIFA" : relation?.estado ?? getMovementStatusLabel(movement)}</span>
+                      <span className="nomina-turnos-history-actions"><button type="button" className="np-icon-button" title="Editar" aria-label={`Editar turno de ${group.personName}`} hidden={!canEdit} onClick={() => onEdit(movement)} disabled={movement.tipo_movimiento !== "TURNO_EXTERNO" || !movement.activo || !canMutatePeriod || isSubmitting || employeesLoading || employeesCount === 0}><Edit3 size={13} /></button><button type="button" className="np-icon-button" title="Desactivar" aria-label={`Desactivar turno de ${group.personName}`} hidden={!canEdit} onClick={() => onDeactivate(movement)} disabled={movement.tipo_movimiento !== "TURNO_EXTERNO" || !movement.activo || !canMutatePeriod || isSubmitting}><Trash2 size={13} /></button></span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function TurnosPage() {
   const [searchParams] = useSearchParams();
   const { empresaId } = useCompanyContext();
@@ -380,6 +474,8 @@ export default function TurnosPage() {
   });
   const [externalBusy, setExternalBusy] = useState<string | null>(null);
   const [turnoView, setTurnoView] = useState<TurnoView>("todos");
+  const [turnoSort, setTurnoSort] = useState<TurnoSort>("name_asc");
+  const [expandedPersonKey, setExpandedPersonKey] = useState<string | null>(null);
   const periodsRequestRef = useRef(0);
   const movementsRequestRef = useRef(0);
   const employeesRequestRef = useRef(0);
@@ -523,6 +619,43 @@ export default function TurnosPage() {
       return haystack.includes(normalizedSearch);
     });
   }, [employeeByNominaId, movimientos, municipioFilter, searchTerm, turnoView, turnRelationByMovementId]);
+
+  const groupedMovimientos = useMemo<TurnoGroup[]>(() => {
+    const groups = new Map<string, TurnoGroup>();
+
+    for (const movimiento of displayedMovimientos) {
+      const key = movimiento.nomina_empleado_id || movimiento.persona.id;
+      const tipo = movimiento.tipo_movimiento === "TURNO_INTERNO" ? "INTERNO" : "EXTERNO";
+      const current = groups.get(key) ?? {
+        key,
+        personName: movimiento.persona.nombre_completo,
+        document: movimiento.persona.numero_documento ?? null,
+        movements: [],
+        types: [],
+        lastDate: null,
+        total: 0,
+      };
+
+      current.movements.push(movimiento);
+      if (!current.types.includes(tipo)) current.types.push(tipo);
+      current.total += movimiento.valor_total;
+      const movementDate = (movimiento.fecha ?? "").slice(0, 10);
+      if (movementDate && (!current.lastDate || movementDate > current.lastDate)) {
+        current.lastDate = movementDate;
+      }
+      groups.set(key, current);
+    }
+
+    const compareName = (left: TurnoGroup, right: TurnoGroup) =>
+      left.personName.localeCompare(right.personName, "es-CO");
+
+    return Array.from(groups.values()).sort((left, right) => {
+      if (turnoSort === "name_desc") return compareName(right, left);
+      if (turnoSort === "count_desc") return right.movements.length - left.movements.length || compareName(left, right);
+      if (turnoSort === "count_asc") return left.movements.length - right.movements.length || compareName(left, right);
+      return compareName(left, right);
+    });
+  }, [displayedMovimientos, turnoSort]);
 
   const kpis = useMemo<Kpi[]>(() => {
     const total = displayedMovimientos.length;
@@ -1376,7 +1509,7 @@ export default function TurnosPage() {
           <div className="np-search">
             <Search size={16} />
             <input
-              placeholder="Buscar colaborador, documento, cargo, modalidad o descripcion"
+              placeholder="Buscar por nombre o cédula..."
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               disabled={!selectedPeriodId || movementsState.loading}
@@ -1402,6 +1535,18 @@ export default function TurnosPage() {
             onChange={setMunicipioFilter}
             options={municipioOptions}
             disabled={!selectedPeriodId || municipioOptions.length === 0}
+          />
+          <NpSelect
+            label="Ordenar"
+            value={turnoSort}
+            onChange={(value) => setTurnoSort(value as TurnoSort)}
+            options={[
+              { value: "name_asc", label: "Nombre A–Z" },
+              { value: "name_desc", label: "Nombre Z–A" },
+              { value: "count_desc", label: "Más turnos → menos" },
+              { value: "count_asc", label: "Menos turnos → más" },
+            ]}
+            disabled={!selectedPeriodId}
           />
         </div>
         <div className="np-toolbar-right">
@@ -1513,7 +1658,22 @@ export default function TurnosPage() {
             }
           />
         ) : (
-          <div className="np-table-scroll np-turns-table-scroll">
+          <>
+          <TurnosConsolidatedTable
+            groups={groupedMovimientos}
+            relationByMovementId={turnRelationByMovementId}
+            expandedKey={expandedPersonKey}
+            onToggle={(key) => setExpandedPersonKey((current) => current === key ? null : key)}
+            canSeeEconomic={canSeeEconomic}
+            canEdit={canSeeEconomic}
+            canMutatePeriod={canMutatePeriod}
+            isSubmitting={isSubmitting}
+            employeesLoading={employeesState.loading}
+            employeesCount={empleados.length}
+            onEdit={openEditEditor}
+            onDeactivate={(movement) => void handleDeactivate(movement)}
+          />
+          <div className="np-table-scroll np-turns-table-scroll nomina-turnos-legacy-table">
             <div
               className="np-table-head np-turns-table-grid"
             >
@@ -1626,6 +1786,7 @@ export default function TurnosPage() {
               );
             })}
           </div>
+          </>
         )}
       </div>
 
