@@ -233,6 +233,7 @@ export default function MainLayout() {
       )}
 
       <main className="content content--workspace">
+        {globalAdmin && !adminScope && empresaActual && <div className="global-tenant-banner"><strong>MODO ADMINISTRADOR GLOBAL</strong><span>EMPRESA: {empresaActual.nombre_empresa}</span><Link to="/admin-global/empresas">VOLVER A EMPIRIA ADMIN</Link></div>}
         {!adminScope && activeModule && <nav className="workspace-secondary-nav" aria-label={`Submódulos de ${activeModule.label}`}>
           <span className="workspace-scope">{activeModule.label}</span>
           {activeModule.children.map(item => <Link key={item.code} to={item.route} aria-current={current?.entry.code === item.code ? 'page' : undefined}

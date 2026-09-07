@@ -103,6 +103,51 @@ export async function listCompanySaasSummaries(tenant:TenantAccessContext){
     LEFT JOIN planes p ON p.id=es.plan_id ${where} ORDER BY e.nombre_empresa`,params)).rows;
 }
 
+export type GlobalCompanyControlQuery = {
+  page: number; limit: number; search?: string; estado?: string;
+  plan?: string; has_plan?: boolean; has_modules?: boolean; has_contracts?: boolean;
+};
+
+export async function listGlobalCompanyControl(query: GlobalCompanyControlQuery, tenant: TenantAccessContext) {
+  if (!tenant.isGlobalAdmin) throw new AppError('Global administrator required', 403, 'FORBIDDEN');
+  const params: unknown[] = [];
+  const clauses: string[] = [];
+  if (query.search) { params.push(`%${query.search}%`); clauses.push(`(e.nombre_empresa ILIKE $${params.length} OR e.nit ILIKE $${params.length})`); }
+  if (query.estado) { params.push(query.estado); clauses.push(`CASE WHEN COALESCE(e.activo, TRUE) THEN COALESCE(es.estado, 'LEGACY') ELSE 'INACTIVA' END = $${params.length}`); }
+  if (query.plan === 'none' || query.has_plan === false) clauses.push('es.id IS NULL');
+  if (query.plan && query.plan !== 'none') { params.push(query.plan); clauses.push(`p.codigo = $${params.length}`); }
+  if (query.has_modules === true) clauses.push('COALESCE(module_counts.modulos_activos, 0) > 0');
+  if (query.has_modules === false) clauses.push('COALESCE(module_counts.modulos_activos, 0) = 0');
+  if (query.has_contracts === true) clauses.push('COALESCE(contract_counts.contratos, 0) > 0');
+  if (query.has_contracts === false) clauses.push('COALESCE(contract_counts.contratos, 0) = 0');
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  const base = `FROM empresas e
+    LEFT JOIN LATERAL (SELECT x.* FROM empresa_suscripciones x WHERE x.empresa_id=e.id AND x.fecha_inicio<=CURRENT_DATE AND (x.fecha_fin IS NULL OR x.fecha_fin>=CURRENT_DATE) ORDER BY x.fecha_inicio DESC,x.id DESC LIMIT 1) es ON TRUE
+    LEFT JOIN planes p ON p.id=es.plan_id
+    LEFT JOIN LATERAL (SELECT COUNT(*)::int contratos FROM contratos c WHERE c.empresa_id=e.id) contract_counts ON TRUE
+    LEFT JOIN LATERAL (SELECT COUNT(DISTINCT v.persona_id)::int personal FROM vinculaciones v INNER JOIN contratos c ON c.id=v.contrato_id WHERE c.empresa_id=e.id AND v.estado_vinculacion='ACTIVA') personal_counts ON TRUE
+    LEFT JOIN LATERAL (SELECT COUNT(DISTINCT ue.usuario_id)::int usuarios FROM usuario_empresas ue WHERE ue.empresa_id=e.id AND COALESCE(ue.activo, TRUE)) user_counts ON TRUE
+    LEFT JOIN LATERAL (SELECT COUNT(*)::int modulos_activos FROM modulos m WHERE m.activo=TRUE AND COALESCE((SELECT emo.habilitado FROM empresa_modulo_overrides emo WHERE emo.empresa_id=e.id AND emo.modulo_id=m.id AND emo.fecha_inicio<=CURRENT_DATE AND emo.fecha_fin IS NULL ORDER BY emo.fecha_inicio DESC,emo.id DESC LIMIT 1),(SELECT pm.habilitado FROM plan_modulos pm WHERE pm.plan_id=es.plan_id AND pm.modulo_id=m.id),FALSE)=TRUE) module_counts ON TRUE`;
+  const totalResult = await dbQuery<{ total: number }>(`SELECT COUNT(*)::int total ${base} ${where}`, params);
+  const total = totalResult.rows[0]?.total ?? 0;
+  const offset = (query.page - 1) * query.limit;
+  const listParams = [...params, query.limit, offset];
+  const rows = await dbQuery(`SELECT e.id::int empresa_id,e.nombre_empresa empresa,e.nit,COALESCE(p.nombre,'LEGACY / SIN PLAN CONFIGURADO') plan,CASE WHEN COALESCE(e.activo, TRUE) THEN COALESCE(es.estado,'LEGACY') ELSE 'INACTIVA' END estado,es.fecha_inicio::text fecha_inicio,es.fecha_fin::text fecha_renovacion,COALESCE(contract_counts.contratos,0)::int contratos,COALESCE(user_counts.usuarios,0)::int usuarios,COALESCE(personal_counts.personal,0)::int personal,COALESCE(module_counts.modulos_activos,0)::int modulos,(SELECT MAX(a.fecha_evento)::text FROM auditoria_eventos a WHERE a.empresa_id=e.id) ultima_actividad ${base} ${where} ORDER BY e.nombre_empresa ASC,e.id ASC LIMIT $${listParams.length-1}::int OFFSET $${listParams.length}::int`, listParams);
+  return { items: rows.rows, pagination: { page: query.page, limit: query.limit, total, total_pages: total ? Math.ceil(total / query.limit) : 0 } };
+}
+
+export async function getGlobalCompanyUsage(empresaId: number, tenant: TenantAccessContext) {
+  assertTenantAccessForEmpresaId(tenant, empresaId);
+  const [users, personnel, contracts, documents, modules] = await Promise.all([
+    dbQuery<{ total: number }>('SELECT COUNT(DISTINCT usuario_id)::int total FROM usuario_empresas WHERE empresa_id=$1 AND COALESCE(activo,TRUE)', [empresaId]),
+    dbQuery<{ total: number }>(`SELECT COUNT(DISTINCT v.persona_id)::int total FROM vinculaciones v INNER JOIN contratos c ON c.id=v.contrato_id WHERE c.empresa_id=$1 AND v.estado_vinculacion='ACTIVA'`, [empresaId]),
+    dbQuery<{ total: number }>('SELECT COUNT(*)::int total FROM contratos WHERE empresa_id=$1', [empresaId]),
+    dbQuery<{ total: number }>(`SELECT (SELECT COUNT(*) FROM documentos_persona dp INNER JOIN vinculaciones v ON v.persona_id=dp.persona_id INNER JOIN contratos c ON c.id=v.contrato_id WHERE c.empresa_id=$1)+(SELECT COUNT(*) FROM documentos_vinculacion dv INNER JOIN vinculaciones v ON v.id=dv.vinculacion_id INNER JOIN contratos c ON c.id=v.contrato_id WHERE c.empresa_id=$1)::int total`, [empresaId]),
+    getEmpresaCapabilities(empresaId, tenant)
+  ]);
+  return { usuarios: users.rows[0]?.total ?? 0, personal: personnel.rows[0]?.total ?? 0, contratos: contracts.rows[0]?.total ?? 0, documentos: documents.rows[0]?.total ?? 0, modulos_habilitados: modules.modulos_habilitados.length };
+}
+
 export async function getCompanySaasHistory(empresaId:number,tenant?:TenantAccessContext){
   assertTenantAccessForEmpresaId(tenant,empresaId);
   const [subscriptions,overrides]=await Promise.all([

@@ -50,6 +50,16 @@
 
 .workspace-company-dialog { padding: 0; margin: auto 16px auto auto; color: var(--text-primary); height: calc(100dvh - 32px); }
 .workspace-company-dialog::backdrop { background: var(--overlay-backdrop, #0007); }
+.global-tenant-banner { display:flex; gap:14px; align-items:center; flex-wrap:wrap; padding:8px 14px; margin-bottom:10px; border:1px solid #99f6e4; border-radius:10px; background:#ecfeff; color:#115e59; font-size:12px; }
+.global-tenant-banner a { margin-left:auto; color:inherit; font-weight:700; }
+.company-detail-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:0; }
+.company-detail-list div { padding-bottom:9px; border-bottom:1px solid var(--border-color); }
+.company-detail-list dt { color:var(--text-muted); font-size:11px; text-transform:uppercase; }
+.company-detail-list dd { margin:4px 0 0; font-weight:600; }
+.workspace-note { color:var(--text-muted); font-size:12px; }
+.company-profile-logo { display:flex; align-items:center; justify-content:center; gap:8px; min-height:72px; margin-bottom:14px; border:1px dashed var(--border-color); border-radius:10px; color:var(--text-muted); }
+.company-profile-logo img { max-width:180px; max-height:64px; object-fit:contain; }
+@media(max-width:700px){.company-detail-list{grid-template-columns:1fr}.global-tenant-banner a{margin-left:0}}
 .workspace-companies .adm-history { width: 100%; table-layout: fixed; }
 .workspace-companies .adm-history th, .workspace-companies .adm-history td { padding: 9px 6px; overflow-wrap: anywhere; white-space: normal; }
 .workspace-companies .adm-history th:first-child { width: 16%; }
