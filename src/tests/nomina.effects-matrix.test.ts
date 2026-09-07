@@ -133,11 +133,25 @@ const resolveSingle = (matrix: NominaNovedadEffectMatrix, start: string, end = s
     ]
   });
 
-test('DNC un dia descuenta transporte y recargos sin descontar salario', () => {
+test('DNC un dia descuenta transporte, pero no recargos', () => {
   const result = resolveSingle(MATRICES.DNC, '2026-08-12');
   assert.equal(result.dias_salario_descuento, 0);
   assert.equal(result.dias_transporte_descuento, 1);
-  assert.equal(result.dias_recargo_excluido, 1);
+  assert.equal(result.dias_recargo_excluido, 0);
+});
+
+test('DNC por tres dias descuenta transporte, pero no recargos', () => {
+  const result = resolveSingle(MATRICES.DNC, '2026-08-12', '2026-08-14');
+  assert.equal(result.dias_salario_descuento, 0);
+  assert.equal(result.dias_transporte_descuento, 3);
+  assert.equal(result.dias_recargo_excluido, 0);
+});
+
+test('DNC por cuatro dias descuenta transporte y recargos por los cuatro dias', () => {
+  const result = resolveSingle(MATRICES.DNC, '2026-08-12', '2026-08-15');
+  assert.equal(result.dias_salario_descuento, 0);
+  assert.equal(result.dias_transporte_descuento, 4);
+  assert.equal(result.dias_recargo_excluido, 4);
 });
 
 test('PR1 solo descuenta transporte', () => {

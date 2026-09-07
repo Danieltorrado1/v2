@@ -257,8 +257,12 @@ export const resolveNominaEffectEventImpact = (input: {
   });
   const diasEvento = inclusiveDaysBetween(fechaInicio, fechaFin);
   const diasPeriodo = projectedRange?.dias ?? 0;
-  const aplicaReglaRecargoMayorTresDias = diasEvento > 3;
-  const recargoExcluidoPorConfiguracion = input.event.matrix.efecto_recargos === 'EXCLUIR_DIA';
+  const esDnc = input.event.matrix.codigo_operativo === 'DNC';
+  const aplicaReglaRecargoMayorTresDias = esDnc ? diasPeriodo > 3 : diasEvento > 3;
+  // DNC has a specific threshold: its configured EXCLUIR_DIA flag must not
+  // discount recargos for one to three affected days.
+  const recargoExcluidoPorConfiguracion =
+    !esDnc && input.event.matrix.efecto_recargos === 'EXCLUIR_DIA';
 
   return {
     fecha_inicio: fechaInicio,
