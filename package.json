@@ -49,6 +49,7 @@
     "db:migrate:planes-modulos-saas": "tsx src/scripts/migrate-planes-modulos-saas.ts",
     "db:migrate:configuracion-empresarial": "tsx src/scripts/migrate-configuracion-empresarial.ts",
     "seed:nomina-movimientos-permisos": "node --experimental-strip-types src/scripts/seed-nomina-movimientos-permisos.ts",
+    "test:nomina-population": "tsx --test src/tests/nomina.population-sync.test.ts src/tests/nomina.population.test.ts",
     "test:nomina-correcciones": "npm run build && node dist/scripts/test-nomina-correcciones.js",
     "db:migrate:administracion-catalogos": "node --experimental-strip-types src/scripts/migrate-administracion-catalogos.ts",
     "db:migrate:admin-2d-gestor-role": "tsx src/scripts/migrate-admin-2d-gestor-role.ts",
@@ -80,6 +81,7 @@
     "zod": "^4.1.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",

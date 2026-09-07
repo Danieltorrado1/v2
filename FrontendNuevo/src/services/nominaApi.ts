@@ -258,7 +258,7 @@ function normalizeNominaPeriodosResponse(
 ): PaginatedNominaPeriodosApi {
   if (Array.isArray(data)) {
     return {
-      items: data,
+      items: data.map(period => ({ ...period, id: String(period.id) })),
       pagination: {
         page: 1,
         limit: data.length,
@@ -268,7 +268,7 @@ function normalizeNominaPeriodosResponse(
     };
   }
 
-  return data;
+  return { ...data, items: data.items.map(period => ({ ...period, id: String(period.id) })) };
 }
 
 export async function getNominaPeriodos(
@@ -1118,4 +1118,16 @@ export async function exportNominaLiquidacionesCsv(
   return exportNomina(periodoId, {
     tipo: 'liquidaciones',
   });
+}
+
+export async function importNominaEmpleados(periodId: string) {
+  const response = await apiClient.post<ApiResponse<{
+    reactivated: number;
+    imported: number;
+    excluded: number;
+    skipped_duplicates: number;
+    skipped_requires_review?: number;
+    requires_review: string[];
+  }>>(`/nomina/periodos/${periodId}/importar-empleados`, {});
+  return response.data;
 }

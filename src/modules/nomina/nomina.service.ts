@@ -58,6 +58,8 @@ import {
   type NominaNovedadRegistroTipo
 } from './nomina.novedad-records';
 import {
+  effectiveRetirementSql,
+  POPULATION_EXCLUSION,
   classifyNominaMultipleLinks,
   intersectsNominaPeriodo,
   resolveNominaMetodoLiquidacion,
@@ -1226,6 +1228,9 @@ export interface PaginatedResponse<T> {
 }
 
 export interface NominaImportEmployeesResult {
+  reactivated: number;
+  excluded: number;
+  requires_review: string[];
   imported: number;
   periodo: NominaPeriodo;
   skipped_duplicates: number;
@@ -1277,6 +1282,8 @@ export interface NominaDashboard {
   empleados_revisados: number;
   empleados_total: number;
   empleados_disponibles: number;
+  ingresos: number;
+  retiros: number;
   estado_periodo: string;
   total_deducciones: number;
   total_desprendibles: number;
@@ -7137,6 +7144,7 @@ export const importNominaEmpleados = async (
 
   try {
     await client.query('BEGIN');
+    await client.query('SELECT id FROM nomina_periodos WHERE id = $1::bigint FOR UPDATE', [periodoId]);
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
     await assertNominaPeriodoCoberturaScope(periodoId, tenant, client);
 
@@ -7148,7 +7156,7 @@ export const importNominaEmpleados = async (
           v.id::text AS vinculacion_id,
           v.persona_id::text AS persona_id,
           v.fecha_inicio,
-          v.fecha_fin,
+          ${effectiveRetirementSql} AS fecha_fin,
           v.metodo_pago,
           tv.codigo AS tipo_vinculacion_codigo,
           v.contrato_cargo_id::text AS cargo_id,
@@ -7159,23 +7167,49 @@ export const importNominaEmpleados = async (
         LEFT JOIN tipos_vinculacion tv ON tv.id = v.tipo_vinculacion_id
         WHERE v.contrato_id = $1::bigint
           AND v.fecha_inicio <= $2::date
-          AND COALESCE(v.fecha_fin, $2::date) >= $3::date
+          AND COALESCE(${effectiveRetirementSql}, $2::date) >= $3::date
         ORDER BY v.id ASC
       `,
       [periodo.contrato_id, toDateString(periodo.fecha_fin), toDateString(periodo.fecha_inicio)]
     );
 
-    const existingResult = await client.query<{ vinculacion_id: string }>(
+    // Logical exclusion only: all related rows and all economic columns remain intact.
+    const excludedResult = await client.query<{ id: string; has_activity: boolean }>(`
+      WITH excluded AS (
+        UPDATE nomina_empleados ne SET activo = FALSE,
+          motivo_caso_especial = concat_ws(' | ', NULLIF(ne.motivo_caso_especial, ''), $4::text)
+        FROM vinculaciones v
+        WHERE ne.periodo_id = $1::bigint AND v.id = ne.vinculacion_id
+          AND COALESCE(ne.activo, TRUE)
+          AND (v.contrato_id <> $5::bigint OR v.fecha_inicio > $3::date
+            OR ${effectiveRetirementSql} < $2::date)
+        RETURNING ne.id, ne.vinculacion_id, ne.revisado, ne.detalle_calculo
+      ) SELECT e.id::text, (
+        e.revisado OR e.detalle_calculo IS NOT NULL
+        OR EXISTS (SELECT 1 FROM nomina_asistencia_diaria a WHERE a.periodo_id = $1::bigint AND a.vinculacion_id = e.vinculacion_id)
+        OR EXISTS (SELECT 1 FROM nomina_novedades n WHERE n.nomina_empleado_id = e.id)
+        OR EXISTS (SELECT 1 FROM nomina_novedad_turnos t WHERE t.nomina_empleado_id = e.id)
+        OR EXISTS (SELECT 1 FROM nomina_movimientos m WHERE m.nomina_empleado_id = e.id)
+        OR EXISTS (SELECT 1 FROM nomina_ajustes_manuales j WHERE j.nomina_empleado_id = e.id)
+        OR EXISTS (SELECT 1 FROM nomina_revision_operativa r WHERE r.nomina_empleado_id = e.id)
+      ) AS has_activity FROM excluded e
+    `, [periodoId, toDateString(periodo.fecha_inicio), toDateString(periodo.fecha_fin), POPULATION_EXCLUSION, periodo.contrato_id]);
+    const excluded = excludedResult.rows.length;
+    const requiresReview = excludedResult.rows.filter(row => row.has_activity).map(row => row.id);
+
+    const existingResult = await client.query<{ vinculacion_id: string; activo: boolean; motivo_caso_especial: string | null }>(
       `
-        SELECT vinculacion_id::text AS vinculacion_id
+        SELECT vinculacion_id::text AS vinculacion_id, COALESCE(activo, TRUE) AS activo, motivo_caso_especial
         FROM nomina_empleados
         WHERE periodo_id = $1::bigint
       `,
       [periodoId]
     );
 
-    const existingVinculacionIds = new Set(existingResult.rows.map((row) => row.vinculacion_id));
+    const existingByVinculacionId = new Map(existingResult.rows.map(row => [row.vinculacion_id, row]));
+    const existingVinculacionIds = new Set(existingByVinculacionId.keys());
 
+    let reactivated = 0;
     let imported = 0;
     let skippedDuplicates = 0;
     let skippedRequiresReview = 0;
@@ -7190,7 +7224,17 @@ export const importNominaEmpleados = async (
 
     for (const candidate of candidatesResult.rows) {
       if (existingVinculacionIds.has(candidate.vinculacion_id)) {
-        skippedDuplicates += 1;
+        const existing = existingByVinculacionId.get(candidate.vinculacion_id);
+        if (!existing?.activo && existing?.motivo_caso_especial?.split(' | ').includes(POPULATION_EXCLUSION)
+          && !reviewVinculacionIds.has(candidate.vinculacion_id)) {
+          await client.query(`UPDATE nomina_empleados SET activo = TRUE,
+            motivo_caso_especial = NULLIF($3::text, '')
+            WHERE periodo_id = $1::bigint AND vinculacion_id = $2::bigint`,
+            [periodoId, candidate.vinculacion_id, existing.motivo_caso_especial.split(' | ').filter(reason => reason !== POPULATION_EXCLUSION).join(' | ')]);
+          reactivated += 1;
+        } else {
+          skippedDuplicates += 1;
+        }
         continue;
       }
 
@@ -7304,6 +7348,10 @@ export const importNominaEmpleados = async (
       'NOMINA_EMPLEADOS_IMPORT',
       {
         after: {
+          reactivated,
+          excluded,
+          requires_review: requiresReview,
+          excluded_employee_ids: excludedResult.rows.map(row => row.id),
           imported,
           skipped_duplicates: skippedDuplicates,
           skipped_requires_review: skippedRequiresReview
@@ -7315,6 +7363,9 @@ export const importNominaEmpleados = async (
     await client.query('COMMIT');
 
     return {
+      reactivated,
+      excluded,
+      requires_review: requiresReview,
       imported,
       skipped_duplicates: skippedDuplicates,
       skipped_requires_review: skippedRequiresReview,
@@ -12944,14 +12995,12 @@ const loadNominaDashboardData = async (
   );
 
   const empleados = empleadosResult.rows[0];
-  const disponiblesResult = await executor.query<{ empleados_disponibles: number }>(
-    `
-      SELECT COUNT(DISTINCT v.id)::int AS empleados_disponibles
-      FROM vinculaciones v
-      WHERE v.contrato_id = $1::bigint
-        AND v.fecha_inicio <= $2::date
-        AND (v.fecha_fin IS NULL OR v.fecha_fin >= $3::date)
-    `,
+  const disponiblesResult = await executor.query<{ empleados_disponibles: number; ingresos: number; retiros: number }>(
+    `SELECT
+      COUNT(DISTINCT v.id) FILTER (WHERE v.fecha_inicio <= $2::date AND (${effectiveRetirementSql} IS NULL OR ${effectiveRetirementSql} >= $3::date))::int AS empleados_disponibles,
+      COUNT(DISTINCT v.id) FILTER (WHERE v.fecha_inicio BETWEEN $3::date AND $2::date)::int AS ingresos,
+      COUNT(DISTINCT v.id) FILTER (WHERE ${effectiveRetirementSql} BETWEEN $3::date AND $2::date)::int AS retiros
+    FROM vinculaciones v WHERE v.contrato_id = $1::bigint`,
     [periodo.contrato_id, toDateString(periodo.fecha_fin), toDateString(periodo.fecha_inicio)]
   );
   const disponibles = disponiblesResult.rows[0];
@@ -12963,6 +13012,8 @@ const loadNominaDashboardData = async (
     empleados_revisados: empleados?.empleados_revisados ?? 0,
     empleados_pendientes: empleados?.empleados_pendientes ?? 0,
     empleados_disponibles: disponibles?.empleados_disponibles ?? 0,
+    ingresos: disponibles?.ingresos ?? 0,
+    retiros: disponibles?.retiros ?? 0,
     total_devengado: toNumberValue(empleados?.total_devengado),
     total_deducciones: toNumberValue(empleados?.total_deducciones),
     total_neto: toNumberValue(empleados?.total_neto),

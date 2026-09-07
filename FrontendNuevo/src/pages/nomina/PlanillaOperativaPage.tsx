@@ -723,7 +723,7 @@ export default function PlanillaOperativaPage() {
         }
 
         if (!cancelled) {
-          setEmployees(employeeResult.value.items);
+          setEmployees(employeeResult.value.items.filter(employee => employee.activo !== false));
         }
 
         if (cancelled) {

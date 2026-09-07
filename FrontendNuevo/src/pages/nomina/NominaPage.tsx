@@ -18,12 +18,13 @@ import {
   Lock,
   Plus,
   Search,
-  Upload,
+  RefreshCw,
   Users,
   Wallet,
   X,
 } from "lucide-react";
 import {
+  importNominaEmpleados,
   createNominaNovedad,
   createAjusteManual,
   deactivateNominaNovedad,
@@ -94,7 +95,6 @@ type KpiCard = {
   icon: ComponentType<{ size?: number }>;
   label: string;
   value: string;
-  caption: string;
 };
 
 function InternalTurnsDetail({ empleado }: { empleado: NominaEmpleadoApi }) {
@@ -773,58 +773,55 @@ function buildKpis(
     {
       tone: "primary",
       icon: Users,
-      label: "Empleados del periodo",
+      label: "EMPLEADOS",
       value: hasAvailableOnly
-        ? `${formatNumber(dashboard?.empleados_disponibles ?? 0)} disponibles`
+        ? formatNumber(dashboard?.empleados_disponibles ?? 0)
         : countValue(dashboard?.empleados_total),
-      caption: hasSelectedPeriod ? "Base real del periodo seleccionado" : "Selecciona un periodo",
     },
     {
       tone: "success",
       icon: CheckCircle2,
-      label: "Revisadas",
+      label: "REVISADAS",
       value: reviewValue(),
-      caption: "Empleados revisados",
     },
     {
       tone: "warning",
       icon: AlertTriangle,
-      label: "Pendientes",
+      label: "PENDIENTES",
       value: pendingValue(),
-      caption: "Pendientes por revisar",
     },
     {
       tone: "info",
       icon: FileText,
-      label: "Novedades registradas",
+      label: "NOVEDADES",
       value: countValue(totalNovedadesOverride ?? dashboard?.total_novedades),
-      caption: "Cantidad de registros administrativos",
     },
     {
       tone: "info",
       icon: CalendarRange,
-      label: "Días de novedades",
+      label: "DÍAS NOVEDAD",
       value: countValue(dashboard?.total_dias_novedades),
-      caption: "Días efectivos aplicables al periodo",
     },
+    { tone: "success", icon: Users, label: "INGRESOS", value: countValue(dashboard?.ingresos) },
+    { tone: "danger", icon: Users, label: "RETIROS", value: countValue(dashboard?.retiros) },
     {
       tone: "primary",
       icon: Wallet,
-      label: "Devengado",
+      label: "DEVENGADO",
       value: calculatedMoneyValue(dashboard?.total_devengado),
-      caption: "Total reportado por backend",
     },
     {
       tone: "danger",
       icon: Banknote,
-      label: "Neto",
+      label: "NETO",
       value: calculatedMoneyValue(dashboard?.total_neto),
-      caption: "Neto total del periodo",
     },
   ];
 }
 
-export default function NominaPage() {
+type NominaPageProps = { embeddedPeriodId?: string; onPopulationChanged?: (id: string) => void };
+
+export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: NominaPageProps = {}) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { empresaId } = useCompanyContext();
@@ -837,6 +834,7 @@ export default function NominaPage() {
   const canUpdateNovedad = user?.permissions.includes("nomina.novedades.update") === true;
   const canDeactivateNovedad = user?.permissions.includes("nomina.novedades.deactivate") === true;
   const canGenerateDesprendibles = user?.permissions.includes("nomina.desprendibles.generate") === true;
+  const [isSyncingPopulation, setIsSyncingPopulation] = useState(false);
   const [activeTab, setActiveTab] = useState("nomina");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [expandedPeriodIds, setExpandedPeriodIds] = useState<Set<string>>(new Set());
@@ -983,7 +981,7 @@ export default function NominaPage() {
       });
 
       setSelectedPeriodId((current) => {
-        const nextId = pickAvailableScopedId(data.items, preferredPeriodId, current) ??
+        const nextId = embeddedPeriodId ?? pickAvailableScopedId(data.items, preferredPeriodId, current) ??
           pickDefaultNominaPeriod(data.items)?.id ??
           null;
         setExpandedPeriodIds((expanded) => expanded.size > 0 || !nextId ? expanded : new Set([nextId]));
@@ -1000,7 +998,7 @@ export default function NominaPage() {
         error: toMessage(error),
       }));
     }
-  }, [empresaId]);
+  }, [empresaId, embeddedPeriodId]);
 
   const loadPeriod = useCallback(async (periodId: string) => {
     const requestId = ++periodRequestRef.current;
@@ -1098,9 +1096,11 @@ export default function NominaPage() {
       const employeeLoader = isOperationalCoverageView
         ? getAllNominaPeriodoEmpleadosOperativos
         : getAllNominaPeriodoEmpleados;
-      const data = await employeeLoader(periodId, {
+      const response = await employeeLoader(periodId, {
         empresa_id: empresaId ? String(empresaId) : undefined,
       });
+
+      const data = { ...response, items: response.items.filter(employee => employee.activo !== false) };
 
       if (requestId !== employeesRequestRef.current) {
         return;
@@ -1340,8 +1340,8 @@ export default function NominaPage() {
       return;
     }
 
-    writeCompanyScopedStorage(window.sessionStorage, "nomina.periodo_id", empresaId, selectedPeriodId);
-  }, [empresaId, selectedPeriodId]);
+    if (!embeddedPeriodId) writeCompanyScopedStorage(window.sessionStorage, "nomina.periodo_id", empresaId, selectedPeriodId);
+  }, [empresaId, selectedPeriodId, embeddedPeriodId]);
 
   useEffect(() => {
     if (empresaId) {
@@ -1382,7 +1382,7 @@ export default function NominaPage() {
   }, [isOperationalCoverageView, refreshSelectedPeriodData, selectedPeriodId]);
 
   useEffect(() => {
-    if (!empresaId || isOperationalCoverageView) {
+    if (!empresaId || isOperationalCoverageView || embeddedPeriodId) {
       return;
     }
 
@@ -1391,7 +1391,7 @@ export default function NominaPage() {
         void loadDashboard(periodo.id, false);
       }
     }
-  }, [empresaId, isOperationalCoverageView, loadDashboard, periodos, selectedPeriodId]);
+  }, [empresaId, isOperationalCoverageView, embeddedPeriodId, loadDashboard, periodos, selectedPeriodId]);
 
   useEffect(() => {
     if (!selectedPeriodId || isOperationalCoverageView || !isSupportsTab) {
@@ -1924,6 +1924,23 @@ export default function NominaPage() {
     allEmployees.length > 0 &&
     !catalogPermissionDenied &&
     canCreateNovedad;
+
+  const handleSyncPopulation = async () => {
+    if (!selectedPeriodId || isSyncingPopulation) return;
+    const periodId = selectedPeriodId;
+    setIsSyncingPopulation(true);
+    try {
+      const result = await importNominaEmpleados(periodId);
+      await Promise.all([loadPeriods(periodId), refreshSelectedPeriodData(periodId)]);
+      onPopulationChanged?.(periodId);
+      const review = result.requires_review ?? [];
+      setActionFeedback({ tone: "success", message: `Personal actualizado. Nuevos: ${result.imported}. Reactivados: ${result.reactivated ?? 0}. Retirados/excluidos: ${result.excluded}. Sin cambios: ${result.skipped_duplicates}. Requieren revisión: ${review.length + (result.skipped_requires_review ?? 0)}.${review.length ? ` Historial preservado en registros: ${review.join(", ")}.` : ""}` });
+    } catch (error) {
+      setActionFeedback({ tone: "error", message: toMessage(error) });
+    } finally {
+      setIsSyncingPopulation(false);
+    }
+  };
 
   const handleSelectPeriod = (periodId: string) => {
     setSelectedPeriodId(periodId);
@@ -2657,11 +2674,11 @@ export default function NominaPage() {
     !catalogPermissionDenied;
 
   return (
-    <div className={`nomina-page ${isOperationalCoverageView ? "nomina-page--novedades" : "nomina-page--gestion"}`}>
-      <CoberturaFlowNav periodId={selectedPeriodId} />
-      {!isOperationalCoverageView ? (
+    <div className={`nomina-page ${embeddedPeriodId ? "nomina-page--embedded" : ""} ${!embeddedPeriodId && activeTab === "nomina" ? "nomina-page--period-host" : ""} ${isOperationalCoverageView ? "nomina-page--novedades" : "nomina-page--gestion"}`}>
+      {!embeddedPeriodId ? <CoberturaFlowNav periodId={selectedPeriodId} /> : null}
+      {!isOperationalCoverageView && !embeddedPeriodId ? (
         <div className="payroll-kpis">
-          {kpis.filter((kpi) => !gestorOperationalOnly || kpi.label === "Novedades").map((kpi) => {
+          {kpis.filter((kpi) => !gestorOperationalOnly || kpi.label === "NOVEDADES").map((kpi) => {
             const Icon = kpi.icon;
 
             return (
@@ -2672,8 +2689,10 @@ export default function NominaPage() {
 
                 <div className="payroll-kpi-body">
                   <span>{kpi.label}</span>
-                  <strong>{kpi.value}</strong>
-                  <small>{kpi.caption}</small>
+                  <strong>{kpi.label === "DEVENGADO" || kpi.label === "NETO"
+                    ? kpi.value.split(".").map((part, index, parts) => <Fragment key={index}>{part}{index < parts.length - 1 ? <>.<wbr /></> : null}</Fragment>)
+                    : kpi.value}</strong>
+
                 </div>
               </div>
             );
@@ -2861,11 +2880,11 @@ export default function NominaPage() {
             <button
               type="button"
               className="payroll-action"
-              disabled
-              title="No existe un endpoint real para cargar personal desde esta pantalla."
+              onClick={() => void handleSyncPopulation()}
+              disabled={!selectedPeriodId || selectedPeriod?.estado !== "ABIERTO" || isSyncingPopulation || !user?.permissions.includes("nomina.empleados.import")}
             >
-              <Upload size={18} />
-              Cargar personal
+              <RefreshCw size={18} />
+              {isSyncingPopulation ? "Actualizando..." : ((employeesDataId === selectedPeriodId ? employeesState.data?.pagination.total : undefined) ?? selectedDashboard?.empleados_total ?? 0) > 0 ? "ACTUALIZAR PERSONAL" : "CARGAR PERSONAL"}
             </button>
 
             <button
@@ -2953,8 +2972,8 @@ export default function NominaPage() {
             />
           ) : (
             <div className="payroll-periods">
-              {periodos.map((periodo) => {
-                const isOpen = expandedPeriodIds.has(periodo.id);
+              {periodos.filter(periodo => !embeddedPeriodId || periodo.id === embeddedPeriodId).map((periodo) => {
+                const isOpen = Boolean(embeddedPeriodId) || expandedPeriodIds.has(periodo.id);
                 const isSelected = selectedPeriodId === periodo.id;
                 const summaryDashboard =
                   (isSelected ? selectedDashboard : null) ?? dashboardCache[periodo.id] ?? null;
@@ -3020,13 +3039,12 @@ export default function NominaPage() {
                     </button>
 
                     {isOpen ? (
-                      <div className="payroll-period-detail">
-                        {!isSelected ? (
-                          <div className="payroll-period-collapsed-note">
-                            Este período está abierto visualmente. Selecciónalo para consultar sus filtros y empleados.
-                          </div>
+                      <div className="payroll-period-detail" onFocusCapture={() => setSelectedPeriodId(periodo.id)} onClickCapture={() => setSelectedPeriodId(periodo.id)}>
+                        {!embeddedPeriodId ? (
+                          <NominaPage key={`${empresaId}:${periodo.id}`} embeddedPeriodId={periodo.id}
+                            onPopulationChanged={(id) => { void loadDashboard(id); }} />
                         ) : null}
-                        {isSelected ? (
+                        {embeddedPeriodId && isSelected ? (
                           <>
                         <div className="payroll-table-scroll">
                           <div className="payroll-table-head">

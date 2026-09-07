@@ -236,6 +236,8 @@ export interface NominaPeriodoDashboardApi {
   empleados_revisados: number;
   empleados_total: number;
   empleados_disponibles: number;
+  ingresos: number;
+  retiros: number;
   estado_periodo: string;
   total_deducciones: number;
   total_desprendibles: number;
