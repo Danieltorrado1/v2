@@ -753,6 +753,8 @@ function buildKpis(
   totalNovedadesOverride?: number | null,
 ): KpiCard[] {
   const unavailable = hasSelectedPeriod && !loading && !dashboard && Boolean(error);
+  const hasMaterializedEmployees = (dashboard?.empleados_total ?? 0) > 0;
+  const hasAvailableOnly = Boolean(dashboard && !hasMaterializedEmployees && dashboard.empleados_disponibles > 0);
   const countValue = (value?: number) => {
     if (loading) return "—";
     if (unavailable && value === undefined) return "No disponible";
@@ -763,27 +765,32 @@ function buildKpis(
     if (unavailable && value === undefined) return "No disponible";
     return formatCOP(value ?? 0);
   };
+  const reviewValue = () => hasAvailableOnly ? "—" : countValue(dashboard?.empleados_revisados);
+  const pendingValue = () => hasAvailableOnly ? "—" : countValue(dashboard?.empleados_pendientes);
+  const calculatedMoneyValue = (value?: number) => hasAvailableOnly ? "No calculado" : moneyValue(value);
 
   return [
     {
       tone: "primary",
       icon: Users,
       label: "Empleados del periodo",
-      value: countValue(dashboard?.empleados_total),
+      value: hasAvailableOnly
+        ? `${formatNumber(dashboard?.empleados_disponibles ?? 0)} disponibles`
+        : countValue(dashboard?.empleados_total),
       caption: hasSelectedPeriod ? "Base real del periodo seleccionado" : "Selecciona un periodo",
     },
     {
       tone: "success",
       icon: CheckCircle2,
       label: "Revisadas",
-      value: countValue(dashboard?.empleados_revisados),
+      value: reviewValue(),
       caption: "Empleados revisados",
     },
     {
       tone: "warning",
       icon: AlertTriangle,
       label: "Pendientes",
-      value: countValue(dashboard?.empleados_pendientes),
+      value: pendingValue(),
       caption: "Pendientes por revisar",
     },
     {
@@ -804,14 +811,14 @@ function buildKpis(
       tone: "primary",
       icon: Wallet,
       label: "Devengado",
-      value: moneyValue(dashboard?.total_devengado),
+      value: calculatedMoneyValue(dashboard?.total_devengado),
       caption: "Total reportado por backend",
     },
     {
       tone: "danger",
       icon: Banknote,
       label: "Neto",
-      value: moneyValue(dashboard?.total_neto),
+      value: calculatedMoneyValue(dashboard?.total_neto),
       caption: "Neto total del periodo",
     },
   ];
@@ -900,7 +907,7 @@ export default function NominaPage() {
 
   const periodsRequestRef = useRef(0);
   const periodRequestRef = useRef(0);
-  const dashboardRequestRef = useRef(0);
+  const dashboardRequestRef = useRef<Record<string, number>>({});
   const employeesRequestRef = useRef(0);
   const novedadesRequestRef = useRef(0);
   const tiposNovedadRequestRef = useRef(0);
@@ -1030,21 +1037,23 @@ export default function NominaPage() {
     }
   }, []);
 
-  const loadDashboard = useCallback(async (periodId: string) => {
-    const requestId = ++dashboardRequestRef.current;
+  const loadDashboard = useCallback(async (periodId: string, updateSelectedState = true) => {
+    const requestId = (dashboardRequestRef.current[periodId] ?? 0) + 1;
+    dashboardRequestRef.current[periodId] = requestId;
     const cachedDashboard = dashboardCacheRef.current[periodId] ?? null;
-    setDashboardDataId(periodId);
-
-    setDashboardState({
-      data: cachedDashboard,
-      loading: true,
-      error: null,
-    });
+    if (updateSelectedState) {
+      setDashboardDataId(periodId);
+      setDashboardState({
+        data: cachedDashboard,
+        loading: true,
+        error: null,
+      });
+    }
 
     try {
       const data = await getNominaPeriodoDashboard(periodId);
 
-      if (requestId !== dashboardRequestRef.current) {
+      if (requestId !== dashboardRequestRef.current[periodId]) {
         return;
       }
 
@@ -1053,21 +1062,25 @@ export default function NominaPage() {
         [periodId]: data,
       };
       setDashboardCache(dashboardCacheRef.current);
-      setDashboardState({
-        data,
-        loading: false,
-        error: null,
-      });
+      if (updateSelectedState) {
+        setDashboardState({
+          data,
+          loading: false,
+          error: null,
+        });
+      }
     } catch (error) {
-      if (requestId !== dashboardRequestRef.current) {
+      if (requestId !== dashboardRequestRef.current[periodId]) {
         return;
       }
 
-      setDashboardState({
-        data: cachedDashboard,
-        loading: false,
-        error: toMessage(error),
-      });
+      if (updateSelectedState) {
+        setDashboardState({
+          data: cachedDashboard,
+          loading: false,
+          error: toMessage(error),
+        });
+      }
     }
   }, []);
 
@@ -1367,6 +1380,18 @@ export default function NominaPage() {
     }
     void refreshSelectedPeriodData(selectedPeriodId);
   }, [isOperationalCoverageView, refreshSelectedPeriodData, selectedPeriodId]);
+
+  useEffect(() => {
+    if (!empresaId || isOperationalCoverageView) {
+      return;
+    }
+
+    for (const periodo of periodos) {
+      if (periodo.id !== selectedPeriodId && !dashboardCacheRef.current[periodo.id]) {
+        void loadDashboard(periodo.id, false);
+      }
+    }
+  }, [empresaId, isOperationalCoverageView, loadDashboard, periodos, selectedPeriodId]);
 
   useEffect(() => {
     if (!selectedPeriodId || isOperationalCoverageView || !isSupportsTab) {
@@ -2656,6 +2681,7 @@ export default function NominaPage() {
         </div>
       ) : null}
 
+      <main className="nomina-payroll-main">
       {globalInlineError ? (
         <div className="payroll-inline-state error" role="alert">
           <AlertTriangle size={16} />
@@ -2932,6 +2958,10 @@ export default function NominaPage() {
                 const isSelected = selectedPeriodId === periodo.id;
                 const summaryDashboard =
                   (isSelected ? selectedDashboard : null) ?? dashboardCache[periodo.id] ?? null;
+                const hasMaterializedSummary = (summaryDashboard?.empleados_total ?? 0) > 0;
+                const hasAvailableOnlySummary = Boolean(
+                  summaryDashboard && !hasMaterializedSummary && summaryDashboard.empleados_disponibles > 0,
+                );
 
                 return (
                   <div className={`payroll-period-card ${isOpen ? "open" : ""}`} key={periodo.id}>
@@ -2952,9 +2982,9 @@ export default function NominaPage() {
                         <span>{formatPeriodRange(periodo.fecha_inicio, periodo.fecha_fin)}</span>
                         <span>
                           {summaryDashboard
-                            ? summaryDashboard.empleados_total > 0
+                            ? hasMaterializedSummary
                               ? `${formatNumber(summaryDashboard.empleados_total)} empleados`
-                              : summaryDashboard.empleados_disponibles > 0
+                              : hasAvailableOnlySummary
                                 ? `${formatNumber(summaryDashboard.empleados_disponibles)} empleados disponibles`
                                 : "Empleados no disponibles"
                             : "Empleados no disponibles"}
@@ -2965,13 +2995,21 @@ export default function NominaPage() {
                         <div>
                           <span>Devengado</span>
                           <strong>
-                            {summaryDashboard ? formatCOP(summaryDashboard.total_devengado) : "No disponible"}
+                            {hasMaterializedSummary
+                              ? formatCOP(summaryDashboard?.total_devengado ?? 0)
+                              : hasAvailableOnlySummary
+                                ? "No calculado"
+                                : "No disponible"}
                           </strong>
                         </div>
                         <div>
                           <span>Neto</span>
                           <strong>
-                            {summaryDashboard ? formatCOP(summaryDashboard.total_neto) : "No disponible"}
+                            {hasMaterializedSummary
+                              ? formatCOP(summaryDashboard?.total_neto ?? 0)
+                              : hasAvailableOnlySummary
+                                ? "No calculado"
+                                : "No disponible"}
                           </strong>
                         </div>
                       </div>
@@ -3762,6 +3800,8 @@ export default function NominaPage() {
           </div>
         </div>
       ) : null}
+
+      </main>
 
       {isNovedadModalOpen ? (
         <div className="payroll-modal-overlay" onClick={closeNovedadModal}>
