@@ -6,6 +6,7 @@ import MainLayout from "../layouts/MainLayout";
 import DashboardPage from "../pages/dashboard/DashboardPage";
 import OperationalPersonalPage from "../pages/personal/OperationalPersonalPage";
 import ContractPersonalPage from "../pages/personal/ContractPersonalPage";
+import NominaEmpleadoDetallePage from "../pages/nomina/NominaEmpleadoDetallePage";
 import NominaPage from "../pages/nomina/NominaPage";
 import CalculadoraSalarioPage from "../pages/herramientas/CalculadoraSalarioPage";
 import CalculadoraCoberturaPage from "../pages/herramientas/CalculadoraCoberturaPage";
@@ -58,6 +59,7 @@ export default function AppRouter() {
             <Route path="nomina/correccion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.correcciones.read"]} denyRoles={["GESTOR"]}><CorreccionNominaPage /></ModuleRoute>} />
             <Route path="nomina/cambios-operativos" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.movimientos.read"]} denyRoles={["GESTOR"]}><CambiosOperativosPage /></ModuleRoute>} />
             <Route path="nomina/planilla-operativa" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.operativa.read", "nomina.read"]}><PlanillaOperativaPage /></ModuleRoute>} />
+            <Route path="nomina/gestion/:periodoId/empleado/:nominaEmpleadoId" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaEmpleadoDetallePage /></ModuleRoute>} />
             <Route path="nomina/gestion" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
             <Route path="nomina/ajustes-manuales" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.economico.read"]} denyRoles={["GESTOR"]}><AjustesManualesPage /></ModuleRoute>} />
             <Route path="nomina/cuentas-cobro" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.movimientos.read"]}><CuentasCobroPage /></ModuleRoute>} />

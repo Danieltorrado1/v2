@@ -2292,3 +2292,15 @@
   .nomina-page--gestion .payroll-period-totals { flex: 0 0 100%; }
   .nomina-page--gestion .payroll-period-totals strong { overflow-wrap: anywhere; }
 }
+
+/* The application content area is the only vertical scroller for payroll management. */
+.page-scroll--nomina-gestion:has(> .page-content > .nomina-page--period-host) { display: block; }
+.page-content--nomina-gestion:has(> .nomina-page--period-host) { height: auto; min-height: 100%; margin-inline: auto; }
+.page-content--nomina-gestion > .nomina-page--period-host { height: auto; min-height: 0; overflow: visible; grid-template-rows: auto auto; padding-bottom: 28px; }
+.nomina-page--period-host > .nomina-payroll-main,
+.nomina-page--period-host > .nomina-payroll-main > .payroll-periods { height: auto; overflow: visible; flex: none; }
+.nomina-page--period-host > .payroll-kpis { overflow: visible; }
+.nomina-page--gestion .payroll-kpi { gap: 8px; }
+.nomina-page--gestion .payroll-kpi-icon { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; }
+.nomina-page--gestion .payroll-kpi-icon svg { width: 17px; height: 17px; }
+.nomina-page--gestion .payroll-kpi-body { flex: 1; min-width: 0; }

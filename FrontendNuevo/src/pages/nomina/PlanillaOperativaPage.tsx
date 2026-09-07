@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AlertTriangle, Check, Plus, Search, X } from "lucide-react";
+import { AlertTriangle, Check, Plus, RefreshCw, Search, X } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
 import { useCompanyContext } from "../../context/CompanyContext";
@@ -11,6 +11,8 @@ import {
 } from "../../context/companyScope";
 import { ApiClientError, apiClient } from "../../services/apiClient";
 import {
+  getNominaPeriodoDashboard,
+  importNominaEmpleados,
   createNominaNovedad,
   createNominaNovedadConTurno,
   closeNominaEmpleadoOperativo,
@@ -516,6 +518,11 @@ export default function PlanillaOperativaPage() {
   const [types, setTypes] = useState<NominaTipoNovedad[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [periodsLoading, setPeriodsLoading] = useState(true);
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const [isSyncingPersonal, setIsSyncingPersonal] = useState(false);
+  const [availableEmployees, setAvailableEmployees] = useState<number | null>(null);
+  const [availabilityError, setAvailabilityError] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [query, setQuery] = useState(initialFilters.current.query);
@@ -561,6 +568,7 @@ export default function PlanillaOperativaPage() {
   const canUpdate = user?.permissions.includes("nomina.novedades.update") === true;
   const canClose = user?.permissions.includes("nomina.periodos.close") === true;
   const canReopen = user?.permissions.includes("nomina.periodos.reopen") === true;
+  const canReadPopulationDashboard = user?.permissions.includes("nomina.dashboard.read") === true;
   const canSeeEconomic = user?.permissions.includes("nomina.economico.read") === true;
   const selectedEmploymentMessage = selected ? getEmploymentStatusMessage(selected.employee, selected.date) : null;
   const actorUserId = user?.id ? String(user.id) : null;
@@ -659,11 +667,14 @@ export default function PlanillaOperativaPage() {
 
   useEffect(() => {
     if (!empresaId) {
+      setPeriodsLoading(false);
       setPeriods([]);
       setPeriodId("");
       return;
     }
 
+    let cancelled = false;
+    setPeriodsLoading(true);
     const preferredPeriodId =
       searchParams.get("period_id") ??
       (typeof window !== "undefined"
@@ -675,6 +686,7 @@ export default function PlanillaOperativaPage() {
       listarTiposNovedad({ activo: true, page: 1, limit: MAX_PAGE, empresa_id: String(empresaId) }),
     ])
       .then(([periodResponse, typeResponse]) => {
+        if (cancelled) return;
         const availablePeriods = periodResponse.items;
         setPeriods(availablePeriods);
         setTypes(typeResponse.items);
@@ -684,9 +696,12 @@ export default function PlanillaOperativaPage() {
         );
       })
       .catch((value) => {
+        if (cancelled) return;
+        setLoading(false);
         setError(value instanceof Error ? value.message : "No fue posible cargar la configuracion de nomina");
-      });
-  }, [empresaId, searchParams]);
+      }).finally(() => { if (!cancelled) setPeriodsLoading(false); });
+    return () => { cancelled = true; };
+  }, [empresaId, searchParams, reloadVersion]);
 
   useEffect(() => {
     if (!periodId) {
@@ -779,7 +794,7 @@ export default function PlanillaOperativaPage() {
     return () => {
       cancelled = true;
     };
-  }, [empresaId, periodId]);
+  }, [empresaId, periodId, reloadVersion]);
 
   useEffect(() => {
     const persistedFilters = readPersistedFilters(empresaId);
@@ -809,6 +824,34 @@ export default function PlanillaOperativaPage() {
     setError("");
     setSuccessMessage("");
   }, [empresaId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAvailableEmployees(null);
+    setAvailabilityError("");
+    if (periodId && canReadPopulationDashboard) {
+      void getNominaPeriodoDashboard(periodId).then(data => {
+        if (!cancelled) setAvailableEmployees(data.empleados_disponibles);
+      }).catch(value => {
+        if (!cancelled) setAvailabilityError(value instanceof Error ? value.message : "No fue posible consultar el personal disponible");
+      });
+    }
+    return () => { cancelled = true; };
+  }, [periodId, empresaId, reloadVersion, canReadPopulationDashboard]);
+
+  const syncPersonal = async () => {
+    if (!periodId || isSyncingPersonal) return;
+    setIsSyncingPersonal(true);
+    try {
+      const result = await importNominaEmpleados(periodId);
+      setSuccessMessage(`Personal actualizado. Nuevos: ${result.imported}. Excluidos: ${result.excluded}. Sin cambios: ${result.skipped_duplicates}. Requieren revision: ${(result.requires_review?.length ?? 0) + (result.skipped_requires_review ?? 0)}.`);
+      setReloadVersion(value => value + 1);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : "No fue posible cargar el personal");
+    } finally {
+      setIsSyncingPersonal(false);
+    }
+  };
 
   const period = periods.find((item) => String(item.id) === periodId);
   const editable = period?.estado === "ABIERTO" && canCreate;
@@ -1559,7 +1602,7 @@ export default function PlanillaOperativaPage() {
         <div className="op-period-picker">
           <label>
             Periodo
-            <select value={periodId} onChange={(event) => setPeriodId(event.target.value)}>
+            <select value={periodId} disabled={isSyncingPersonal} onChange={(event) => setPeriodId(event.target.value)}>
               {periods.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre_periodo} | {item.tipo_periodo}
@@ -1678,7 +1721,7 @@ export default function PlanillaOperativaPage() {
         </div>
       ) : null}
 
-      {period?.estado !== "ABIERTO" ? (
+      {period && period.estado !== "ABIERTO" ? (
         <div className="op-locked">
           <AlertTriangle size={16} />
           Periodo cerrado: consulta habilitada; edicion ordinaria bloqueada.
@@ -1686,9 +1729,10 @@ export default function PlanillaOperativaPage() {
       ) : null}
 
       {error ? (
-        <div className="op-error">
+        <div className="op-error" role="alert">
           <AlertTriangle size={16} />
           {error}
+          <button type="button" onClick={() => setReloadVersion(value => value + 1)}>Reintentar</button>
           <button type="button" onClick={() => setError("")}>
             <X size={14} />
           </button>
@@ -1707,9 +1751,18 @@ export default function PlanillaOperativaPage() {
         </div>
       ) : null}
 
-      {loading ? (
-        <div className="op-loading">Cargando trabajadores y eventos...</div>
-      ) : (
+      {employees.length > 0 && period?.estado === "ABIERTO" && user?.permissions.includes("nomina.empleados.import") ?
+        <div className="op-population-actions"><button type="button" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={17} />{isSyncingPersonal ? "Actualizando..." : "ACTUALIZAR PERSONAL"}</button></div> : null}
+      {(Boolean(periodId) && loading) || periodsLoading ? (
+        <div className="op-loading" role="status">Cargando trabajadores y eventos...</div>
+      ) : !periodId ? <div className="op-population-empty" role="status"><h2>Sin periodo disponible</h2><p>Selecciona una empresa y un periodo para consultar la planilla.</p><button type="button" onClick={() => setReloadVersion(value => value + 1)}>Reintentar</button></div>
+      : employees.length === 0 ? <div className="op-population-empty" role="status">
+        <h2>{error ? "No fue posible mostrar el personal" : availableEmployees === 0 ? "No existen empleados elegibles" : "Sin personal materializado"}</h2>
+        <p>{error ? "Reintenta la consulta del periodo." : availableEmployees === null ? "Este periodo aun no tiene personal operativo cargado." : availableEmployees === 0 ? "No hay personal elegible para las fechas de este periodo." : `Este periodo tiene ${availableEmployees} empleados disponibles, pero aun no se ha cargado el personal operativo.`}</p>
+        {availabilityError ? <p role="alert">{availabilityError}</p> : null}
+        {!error && availableEmployees !== 0 && period?.estado === "ABIERTO" ? user?.permissions.includes("nomina.empleados.import") ? <button type="button" onClick={() => void syncPersonal()} disabled={isSyncingPersonal}><RefreshCw size={17} />{isSyncingPersonal ? "Cargando personal..." : "CARGAR PERSONAL"}</button> : <p>Solicita la carga a un usuario con permiso para importar personal.</p> : null}
+        <button type="button" onClick={() => setReloadVersion(value => value + 1)} disabled={isSyncingPersonal}>Reintentar</button>
+      </div> : ordered.length === 0 ? <div className="op-population-empty" role="status"><h2>Sin coincidencias</h2><p>No hay trabajadores que coincidan con los filtros actuales.</p></div> : (
         <div
           ref={viewport}
           className="op-viewport"

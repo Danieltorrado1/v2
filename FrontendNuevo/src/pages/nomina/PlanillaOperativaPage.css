@@ -816,3 +816,9 @@
 [data-theme="dark"] .op-sheet-page select:disabled,
 [data-theme="dark"] .op-sheet-page input:disabled { color: #536779; opacity: 1; background: #e7edf2; }
 [data-theme="dark"] .op-sheet-page option { background: #f8fbfd; color: #172033; }
+
+.op-population-empty { padding: 32px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--bg-secondary); text-align: center; }
+.op-population-empty h2 { font-size: 18px; }
+.op-population-empty p { color: var(--text-secondary); margin: 12px 0; }
+.op-population-empty button, .op-population-actions button { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; margin: 6px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; }
+.op-population-empty button:disabled, .op-population-actions button:disabled { opacity: .6; cursor: wait; }

@@ -1,7 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, FormEvent } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  ArrowLeft,
   AlertTriangle,
   Banknote,
   Calculator,
@@ -76,6 +77,8 @@ import type {
   AjusteManualApi,
 } from "../../types/nomina.types";
 import "./NominaPage.css";
+import "./NominaEmpleadoDetallePage.css";
+import NominaEmpleadoDetalleSections from "./NominaEmpleadoDetalleSections";
 
 type Tone = "primary" | "success" | "warning" | "danger" | "info" | "neutral" | "purple";
 
@@ -819,13 +822,18 @@ function buildKpis(
   ];
 }
 
-type NominaPageProps = { embeddedPeriodId?: string; onPopulationChanged?: (id: string) => void };
+const payrollViewContexts = new Map<string, Record<string, string | number | string[] | null>>();
 
-export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: NominaPageProps = {}) {
+type NominaPageProps = { detailEmployeeId?: string; embeddedPeriodId?: string; onPopulationChanged?: (id: string) => void };
+
+export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopulationChanged }: NominaPageProps = {}) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { empresaId } = useCompanyContext();
   const { user } = useAuth();
+  const viewContextKey = `${user?.id ?? "anonymous"}:${empresaId}:${embeddedPeriodId ?? "list"}`;
+  const savedView = !detailEmployeeId ? payrollViewContexts.get(viewContextKey) : undefined;
   const gestorOperationalOnly = user?.roles.includes("GESTOR") === true && user?.roles.includes("TALENTO_HUMANO") !== true;
   const isCoverageNovedadesRoute = location.pathname.endsWith("/novedades");
   const canReadOperationalCoverage = user?.permissions.includes("nomina.operativa.read") === true;
@@ -836,21 +844,20 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
   const canGenerateDesprendibles = user?.permissions.includes("nomina.desprendibles.generate") === true;
   const [isSyncingPopulation, setIsSyncingPopulation] = useState(false);
   const [activeTab, setActiveTab] = useState("nomina");
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
-  const [expandedPeriodIds, setExpandedPeriodIds] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState("");
-  const [estadoFilter, setEstadoFilter] = useState("");
-  const [clasificacionFilter, setClasificacionFilter] = useState("");
-  const [municipioFilter, setMunicipioFilter] = useState("");
-  const [gestorFilter, setGestorFilter] = useState("");
-  const [modalidadFilter, setModalidadFilter] = useState("");
-  const [revisionFilter, setRevisionFilter] = useState("");
-  const [novedadesFilter, setNovedadesFilter] = useState("");
-  const [tipoNovedadFilter, setTipoNovedadFilter] = useState("");
-  const [sortBy, setSortBy] = useState("nombre_asc");
-  const [expandedEmployeeId, setExpandedEmployeeId] = useState<string | null>(null);
-  const [tablePage, setTablePage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(savedView?.selectedPeriodId as string ?? embeddedPeriodId ?? null);
+  const [expandedPeriodIds, setExpandedPeriodIds] = useState<Set<string>>(new Set(savedView?.expandedPeriodIds as string[] ?? []));
+  const [searchTerm, setSearchTerm] = useState((savedView?.searchTerm as string) ?? "");
+  const [estadoFilter, setEstadoFilter] = useState((savedView?.estadoFilter as string) ?? "");
+  const [clasificacionFilter, setClasificacionFilter] = useState((savedView?.clasificacionFilter as string) ?? "");
+  const [municipioFilter, setMunicipioFilter] = useState((savedView?.municipioFilter as string) ?? "");
+  const [gestorFilter, setGestorFilter] = useState((savedView?.gestorFilter as string) ?? "");
+  const [modalidadFilter, setModalidadFilter] = useState((savedView?.modalidadFilter as string) ?? "");
+  const [revisionFilter, setRevisionFilter] = useState((savedView?.revisionFilter as string) ?? "");
+  const [novedadesFilter, setNovedadesFilter] = useState((savedView?.novedadesFilter as string) ?? "");
+  const [tipoNovedadFilter, setTipoNovedadFilter] = useState((savedView?.tipoNovedadFilter as string) ?? "");
+  const [sortBy, setSortBy] = useState((savedView?.sortBy as string) ?? "nombre_asc");
+  const [tablePage, setTablePage] = useState((savedView?.tablePage as number) ?? 1);
+  const [pageSize, setPageSize] = useState((savedView?.pageSize as number) ?? 25);
   const [isNovedadModalOpen, setIsNovedadModalOpen] = useState(false);
   const [editingNovedad, setEditingNovedad] = useState<NominaNovedadApi | null>(null);
   const [novedadForm, setNovedadForm] = useState<NovedadFormState>(createInitialNovedadForm());
@@ -874,6 +881,7 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
   const [supportBusyId, setSupportBusyId] = useState<string | null>(null);
   const [expandedNovedadId, setExpandedNovedadId] = useState<string | null>(null);
   const [novedadDocumentosById, setNovedadDocumentosById] = useState<Record<string, NominaNovedadDocumentosApi>>({});
+  const [ajustesError, setAjustesError] = useState<string | null>(null);
   const [ajustesManuales, setAjustesManuales] = useState<AjusteManualApi[]>([]);
   const [manualFinalDrafts, setManualFinalDrafts] = useState<Record<string, ManualFinalDraft>>({});
   const [savingManualFinalId, setSavingManualFinalId] = useState<string | null>(null);
@@ -1100,7 +1108,7 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
         empresa_id: empresaId ? String(empresaId) : undefined,
       });
 
-      const data = { ...response, items: response.items.filter(employee => employee.activo !== false) };
+      const data = { ...response, items: response.items.filter(employee => detailEmployeeId || employee.activo !== false) };
 
       if (requestId !== employeesRequestRef.current) {
         return;
@@ -1122,7 +1130,7 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
         error: toMessage(error),
       });
     }
-  }, [empresaId, isOperationalCoverageView]);
+  }, [empresaId, isOperationalCoverageView, detailEmployeeId]);
 
   const loadNovedades = useCallback(async (periodId: string) => {
     const requestId = ++novedadesRequestRef.current;
@@ -1234,9 +1242,11 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
   }, []);
 
   const loadAjustesManuales = useCallback(async (periodId: string) => {
+    setAjustesError(null);
     try {
       setAjustesManuales(await getAjustesManuales(periodId));
     } catch (error) {
+      setAjustesError(toMessage(error));
       setActionFeedback({ tone: "error", message: toMessage(error) });
     }
   }, []);
@@ -1367,8 +1377,7 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
       return;
     }
 
-    setTablePage(1);
-    setExpandedEmployeeId(null);
+    if (savedView?.selectedPeriodId !== selectedPeriodId) setTablePage(1);
     setNovedadActionError(null);
     if (isOperationalCoverageView) {
       setPeriodState({ ...EMPTY_ASYNC_STATE });
@@ -1401,7 +1410,9 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
     void loadDesprendibles(selectedPeriodId, includeDesprendibleVersions);
   }, [includeDesprendibleVersions, isOperationalCoverageView, isSupportsTab, loadDesprendibles, selectedPeriodId]);
 
+  const firstPageFilterEffect = useRef(true);
   useEffect(() => {
+    if (firstPageFilterEffect.current) { firstPageFilterEffect.current = false; return; }
     setTablePage(1);
   }, [
     activeTab,
@@ -1892,10 +1903,11 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
   const showingTo = Math.min(pageStart + pageSize, totalFilteredRecords);
 
   useEffect(() => {
+    if (isNominaTab && (!employeesState.data || employeesState.loading || employeesDataId !== selectedPeriodId)) return;
     if (tablePage > totalPages) {
       setTablePage(totalPages);
     }
-  }, [tablePage, totalPages]);
+  }, [tablePage, totalPages, isNominaTab, employeesState.data, employeesState.loading, employeesDataId, selectedPeriodId]);
 
   const kpis = buildKpis(
     selectedDashboard,
@@ -1925,6 +1937,12 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
     !catalogPermissionDenied &&
     canCreateNovedad;
 
+  useEffect(() => {
+    if (!detailEmployeeId && empresaId) {
+      payrollViewContexts.set(viewContextKey, { selectedPeriodId, searchTerm, estadoFilter, clasificacionFilter, municipioFilter, gestorFilter, modalidadFilter, revisionFilter, novedadesFilter, tipoNovedadFilter, sortBy, tablePage, pageSize, expandedPeriodIds: [...expandedPeriodIds] });
+    }
+  }, [detailEmployeeId, empresaId, viewContextKey, expandedPeriodIds, selectedPeriodId, searchTerm, estadoFilter, clasificacionFilter, municipioFilter, gestorFilter, modalidadFilter, revisionFilter, novedadesFilter, tipoNovedadFilter, sortBy, tablePage, pageSize]);
+
   const handleSyncPopulation = async () => {
     if (!selectedPeriodId || isSyncingPopulation) return;
     const periodId = selectedPeriodId;
@@ -1953,7 +1971,6 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
       }
       return next;
     });
-    setExpandedEmployeeId(null);
     setRecalculateError(null);
     setNovedadActionError(null);
     setActionFeedback(null);
@@ -1969,11 +1986,13 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
     setNovedadesFilter("");
     setTipoNovedadFilter("");
     setSortBy("nombre_asc");
-    setExpandedEmployeeId(null);
     setTablePage(1);
   };
-  const handleToggleEmployeeDetail = (employeeId: string) => {
-    setExpandedEmployeeId((current) => (current === employeeId ? null : employeeId));
+  const handleOpenEmployeeDetail = (employeeId: string) => {
+    if (!selectedPeriodId) return;
+    navigate(`/nomina/gestion/${selectedPeriodId}/empleado/${employeeId}`, {
+      state: { fromPayroll: true, returnPath: `${location.pathname}?period_id=${selectedPeriodId}` },
+    });
   };
   const finalAdjustmentsByEmployee = useMemo(
     () => new Map(
@@ -2673,6 +2692,90 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
     !catalogIsEmpty &&
     !catalogPermissionDenied;
 
+  const renderEmployeeFinancialDetail = (empleado: NominaEmpleadoApi) => {
+    const salarioDias = getEmployeeConceptDays(empleado, "salario");
+    const transporteDias = getEmployeeConceptDays(empleado, "transporte");
+    const recargoDias = getEmployeeConceptDays(empleado, "recargos");
+    const documentStatusPercentage = formatOptionalPercentage(getEmployeeDocumentStatusSummary(empleado)?.porcentajeCumplimiento ?? null);
+    return (<div className="payroll-person-summary">
+                                        <header>
+                                          <div><strong>{empleado.persona.nombre_completo}</strong><span>{getEmployeeDocumentLabel(empleado)}</span></div>
+                                          <div><span>{getEmployeeCargoLabel(empleado)}</span><small>{getEmployeeMunicipioLabel(empleado)} · {getEmployeeSedeLabel(empleado)}</small></div>
+                                        </header>
+                                        <div className="payroll-person-groups">
+                                          <section className="nomina-employee-detail-days"><h4>Dias pagados</h4><dl><div><dt>Salario</dt><dd>{salarioDias.paid}/{salarioDias.base}</dd></div><div><dt>Transporte</dt><dd>{transporteDias.paid}/{transporteDias.base}</dd></div><div><dt>Recargo</dt><dd>{recargoDias.paid}/{recargoDias.base}</dd></div></dl></section>
+                                          <section className="nomina-employee-detail-earnings"><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Recargos</dt><dd>{formatCOP(getEmployeeRecargo(empleado))}</dd></div><div><dt>Otros pagos</dt><dd>{formatCOP(empleado.detalle_calculo?.componentes && typeof empleado.detalle_calculo.componentes === "object" ? Number((empleado.detalle_calculo.componentes as Record<string, unknown>).otros_devengos_reales ?? 0) : 0)}</dd></div></dl></section><InternalTurnsDetail empleado={empleado} />
+                                          {(() => {
+                                            const draft = getManualFinalDraft(empleado);
+                                            const existing = finalAdjustmentsByEmployee.get(empleado.id);
+                                            const pensionExclusion = pensionExclusionsByEmployee.get(empleado.id);
+                                            const detalleSeguridad = empleado.detalle_calculo?.seguridad_social as Record<string, unknown> | undefined;
+                                            return (
+                                              <section className="payroll-manual-final-panel">
+                                                <h4>Ajustes manuales {existing || pensionExclusion ? <span className="manual-final-badge">AJUSTE MANUAL</span> : null}</h4>
+                                                <dl>
+                                                  <div><dt>Total devengado</dt><dd>{formatCOP(empleado.total_adiciones)}</dd></div>
+                                                  <div><dt>Salud</dt><dd>{formatCOP(empleado.salud)}</dd></div>
+                                                  <div><dt>Pensión actual</dt><dd>{formatCOP(empleado.pension)}</dd></div>
+                                                  <div><dt>Total deducciones</dt><dd>{formatCOP(empleado.total_deducciones)}</dd></div>
+                                                  <div><dt>Neto a pagar</dt><dd>{formatCOP(empleado.neto_pagar)}</dd></div>
+                                                </dl>
+                                                <label>¿Cotiza pensión?
+                                                  <select value={draft.cotizaPension ? "true" : "false"} onChange={(event) => updateManualFinalDraft(empleado.id, { cotizaPension: event.target.value === "true" })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
+                                                    <option value="true">SÍ</option><option value="false">NO</option>
+                                                  </select>
+                                                </label>
+                                                <label>¿Tiene deducción adicional?
+                                                  <select value={draft.tieneDeduccion ? "true" : "false"} onChange={(event) => updateManualFinalDraft(empleado.id, { tieneDeduccion: event.target.value === "true" })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
+                                                    <option value="false">NO</option><option value="true">SÍ</option>
+                                                  </select>
+                                                </label>
+                                                {draft.tieneDeduccion ? <label>Valor deducción adicional
+                                                  <input type="number" min="0" step="100" value={draft.valorDeduccion} onChange={(event) => updateManualFinalDraft(empleado.id, { valorDeduccion: event.target.value })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id} placeholder="$ 0" />
+                                                </label> : null}
+                                                <small>Pensión calculada original: {formatCOP(Number(detalleSeguridad?.pension_calculada ?? empleado.pension))} · Pensión aplicada: {formatCOP(empleado.pension)}</small>
+                                                <button type="button" className="manual-final-save" onClick={() => void handleSaveManualFinal(empleado)} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
+                                                  {savingManualFinalId === empleado.id ? "Guardando..." : "GUARDAR AJUSTES"}
+                                                </button>
+                                              </section>
+                                            );
+                                          })()}
+                                          <section className="nomina-employee-detail-deductions"><h4>Deducciones</h4><dl><div><dt>Salud</dt><dd>{formatCOP(empleado.salud)}</dd></div><div><dt>Pension</dt><dd>{formatCOP(empleado.pension)}</dd></div><div><dt>Total</dt><dd>{formatCOP(empleado.total_deducciones)}</dd></div></dl></section>
+                                          <section><h4>Novedades y turnos</h4><dl><div><dt>Novedades</dt><dd>{formatNumber(novedadesCountByEmpleadoId.get(empleado.id) ?? getEmployeeTotalNovedades(empleado))}</dd></div><div><dt>Modalidad</dt><dd title={getEmployeeModalidadDescription(empleado)}>{getEmployeeModalidadCode(empleado)}</dd></div><div><dt>Documentos</dt><dd>{getEmployeeDocumentStatusLabel(empleado)}{documentStatusPercentage ? ` · ${documentStatusPercentage}` : ""}</dd></div></dl></section>
+                                        </div>
+                                        <footer><span>{getEmployeeContractLabel(empleado)} · {getEmployeeMetodoLiquidacionLabel(empleado)}</span><strong>Neto {formatCOP(empleado.neto_pagar)}</strong></footer>
+                                      </div>);
+  };
+
+  if (detailEmployeeId) {
+    const employee = allEmployees.find(item => String(item.id) === detailEmployeeId && String(item.periodo_id) === embeddedPeriodId);
+    const back = () => location.state?.fromPayroll
+      ? navigate(-1)
+      : navigate(`/nomina/gestion?period_id=${embeddedPeriodId}`);
+    const detailError = periodsState.error ?? periodState.error ?? employeesState.error;
+    const loadingDetail = periodsState.loading || periodState.loading || employeesState.loading || employeesDataId !== embeddedPeriodId;
+    return <article className="nomina-employee-detail">
+      <nav><button type="button" onClick={back}><ArrowLeft size={18} /> Volver a nomina</button></nav>
+      {detailError ? <StateCard title="No fue posible cargar la ficha" message={detailError} tone="error" actionLabel="Reintentar" onAction={handleRetry} />
+        : loadingDetail ? <StateCard title="Cargando ficha" message="Consultando la nomina del trabajador..." />
+        : !employee || !selectedPeriod ? <StateCard title="Nomina no encontrada" message="El trabajador no pertenece al periodo indicado o no esta disponible." />
+        : <>
+          <header className="nomina-employee-detail-heading"><div><span>{selectedPeriod.nombre_periodo}</span><h1>{employee.persona.nombre_completo}</h1><p>{getEmployeeDocumentLabel(employee)}</p></div><strong>{getEmployeeStatusLabel(employee)}</strong></header>
+          <dl className="nomina-employee-detail-context">
+            {[["Cargo", getEmployeeCargoLabel(employee)], ["Modalidad", getEmployeeModalidadDescription(employee)], ["Municipio", getEmployeeMunicipioLabel(employee)], ["Institucion", getEmployeeInstitucionLabel(employee)], ["Sede", getEmployeeSedeLabel(employee)]].map(([label,value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>
+          {actionFeedback ? <p role="status">{actionFeedback.message}</p> : null}
+          <div className="nomina-employee-detail-totals">
+            <div><span>Total devengado</span><strong>{formatCOP(employee.total_adiciones)}</strong></div>
+            <div><span>Total deducciones</span><strong>{formatCOP(employee.total_deducciones)}</strong></div>
+            <div><span>NETO A PAGAR</span><strong>{formatCOP(employee.neto_pagar)}</strong></div>
+          </div>
+          {renderEmployeeFinancialDetail(employee)}
+          <NominaEmpleadoDetalleSections employee={employee} period={selectedPeriod} novedades={allNovedades.filter(item => String(item.nomina_empleado_id) === detailEmployeeId)} novedadesLoading={novedadesState.loading} novedadesError={novedadesState.error} ajustesError={ajustesError} ajustes={ajustesManuales.filter(item => String(item.nomina_empleado_id) === detailEmployeeId)} onRetry={handleRetry} onViewSupport={handleViewSupport} />
+        </>}
+    </article>;
+  }
+
   return (
     <div className={`nomina-page ${embeddedPeriodId ? "nomina-page--embedded" : ""} ${!embeddedPeriodId && activeTab === "nomina" ? "nomina-page--period-host" : ""} ${isOperationalCoverageView ? "nomina-page--novedades" : "nomina-page--gestion"}`}>
       {!embeddedPeriodId ? <CoberturaFlowNav periodId={selectedPeriodId} /> : null}
@@ -2684,7 +2787,7 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
             return (
               <div className={`payroll-kpi ${kpi.tone}`} key={kpi.label}>
                 <div className="payroll-kpi-icon">
-                  <Icon size={20} />
+                  <Icon size={17} />
                 </div>
 
                 <div className="payroll-kpi-body">
@@ -3072,18 +3175,13 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
                             </div>
                           ) : (
                             visibleEmployees.map((empleado) => {
-                              const isExpanded = expandedEmployeeId === empleado.id;
-                              const documentStatusSummary = getEmployeeDocumentStatusSummary(empleado);
-                              const documentStatusPercentage = formatOptionalPercentage(
-                                documentStatusSummary?.porcentajeCumplimiento ?? null,
-                              );
                               const salarioDias = getEmployeeConceptDays(empleado, "salario");
                               const transporteDias = getEmployeeConceptDays(empleado, "transporte");
                               const recargoDias = getEmployeeConceptDays(empleado, "recargos");
 
                               return (
                                 <Fragment key={empleado.id}>
-                                  <div className={`payroll-table-row ${isExpanded ? "expanded" : ""}`}>
+                                  <div className="payroll-table-row">
                                     <div className="cell-employee cell-employee-context">
                                       <div className={`avatar ${getAvatarTone(empleado.id)}`}>
                                         {getInitials(empleado.persona.nombre_completo)}
@@ -3142,10 +3240,9 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
                                     <div className="cell-row-actions">
                                       <button
                                         type="button"
-                                        title={isExpanded ? "Ocultar detalle" : "Ver detalle"}
-                                        aria-label={`${isExpanded ? "Ocultar detalle" : "Ver detalle"} de ${empleado.persona.nombre_completo}`}
-                                        aria-expanded={isExpanded}
-                                        onClick={() => handleToggleEmployeeDetail(empleado.id)}
+                                        title="Ver detalle"
+                                        aria-label={`Ver detalle de ${empleado.persona.nombre_completo}`}
+                                        onClick={() => handleOpenEmployeeDetail(empleado.id)}
                                       >
                                         <Eye size={16} />
                                       </button>
@@ -3177,58 +3274,7 @@ export default function NominaPage({ embeddedPeriodId, onPopulationChanged }: No
                                     </div>
                                   </div>
 
-                                  {isExpanded ? (
-                                    <div className="payroll-table-row-detail">
-                                      <div className="payroll-person-summary">
-                                        <header>
-                                          <div><strong>{empleado.persona.nombre_completo}</strong><span>{getEmployeeDocumentLabel(empleado)}</span></div>
-                                          <div><span>{getEmployeeCargoLabel(empleado)}</span><small>{getEmployeeMunicipioLabel(empleado)} · {getEmployeeSedeLabel(empleado)}</small></div>
-                                        </header>
-                                        <div className="payroll-person-groups">
-                                          <section><h4>Dias pagados</h4><dl><div><dt>Salario</dt><dd>{salarioDias.paid}/{salarioDias.base}</dd></div><div><dt>Transporte</dt><dd>{transporteDias.paid}/{transporteDias.base}</dd></div><div><dt>Recargo</dt><dd>{recargoDias.paid}/{recargoDias.base}</dd></div></dl></section>
-                                          <section><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Recargos</dt><dd>{formatCOP(getEmployeeRecargo(empleado))}</dd></div><div><dt>Otros pagos</dt><dd>{formatCOP(empleado.detalle_calculo?.componentes && typeof empleado.detalle_calculo.componentes === "object" ? Number((empleado.detalle_calculo.componentes as Record<string, unknown>).otros_devengos_reales ?? 0) : 0)}</dd></div></dl></section><InternalTurnsDetail empleado={empleado} />
-                                          {(() => {
-                                            const draft = getManualFinalDraft(empleado);
-                                            const existing = finalAdjustmentsByEmployee.get(empleado.id);
-                                            const pensionExclusion = pensionExclusionsByEmployee.get(empleado.id);
-                                            const detalleSeguridad = empleado.detalle_calculo?.seguridad_social as Record<string, unknown> | undefined;
-                                            return (
-                                              <section className="payroll-manual-final-panel">
-                                                <h4>Ajustes manuales {existing || pensionExclusion ? <span className="manual-final-badge">AJUSTE MANUAL</span> : null}</h4>
-                                                <dl>
-                                                  <div><dt>Total devengado</dt><dd>{formatCOP(empleado.total_adiciones)}</dd></div>
-                                                  <div><dt>Salud</dt><dd>{formatCOP(empleado.salud)}</dd></div>
-                                                  <div><dt>Pensión actual</dt><dd>{formatCOP(empleado.pension)}</dd></div>
-                                                  <div><dt>Total deducciones</dt><dd>{formatCOP(empleado.total_deducciones)}</dd></div>
-                                                  <div><dt>Neto a pagar</dt><dd>{formatCOP(empleado.neto_pagar)}</dd></div>
-                                                </dl>
-                                                <label>¿Cotiza pensión?
-                                                  <select value={draft.cotizaPension ? "true" : "false"} onChange={(event) => updateManualFinalDraft(empleado.id, { cotizaPension: event.target.value === "true" })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
-                                                    <option value="true">SÍ</option><option value="false">NO</option>
-                                                  </select>
-                                                </label>
-                                                <label>¿Tiene deducción adicional?
-                                                  <select value={draft.tieneDeduccion ? "true" : "false"} onChange={(event) => updateManualFinalDraft(empleado.id, { tieneDeduccion: event.target.value === "true" })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
-                                                    <option value="false">NO</option><option value="true">SÍ</option>
-                                                  </select>
-                                                </label>
-                                                {draft.tieneDeduccion ? <label>Valor deducción adicional
-                                                  <input type="number" min="0" step="100" value={draft.valorDeduccion} onChange={(event) => updateManualFinalDraft(empleado.id, { valorDeduccion: event.target.value })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id} placeholder="$ 0" />
-                                                </label> : null}
-                                                <small>Pensión calculada original: {formatCOP(Number(detalleSeguridad?.pension_calculada ?? empleado.pension))} · Pensión aplicada: {formatCOP(empleado.pension)}</small>
-                                                <button type="button" className="manual-final-save" onClick={() => void handleSaveManualFinal(empleado)} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
-                                                  {savingManualFinalId === empleado.id ? "Guardando..." : "GUARDAR AJUSTES"}
-                                                </button>
-                                              </section>
-                                            );
-                                          })()}
-                                          <section><h4>Deducciones</h4><dl><div><dt>Salud</dt><dd>{formatCOP(empleado.salud)}</dd></div><div><dt>Pension</dt><dd>{formatCOP(empleado.pension)}</dd></div><div><dt>Total</dt><dd>{formatCOP(empleado.total_deducciones)}</dd></div></dl></section>
-                                          <section><h4>Novedades y turnos</h4><dl><div><dt>Novedades</dt><dd>{formatNumber(novedadesCountByEmpleadoId.get(empleado.id) ?? getEmployeeTotalNovedades(empleado))}</dd></div><div><dt>Modalidad</dt><dd title={getEmployeeModalidadDescription(empleado)}>{getEmployeeModalidadCode(empleado)}</dd></div><div><dt>Documentos</dt><dd>{getEmployeeDocumentStatusLabel(empleado)}{documentStatusPercentage ? ` · ${documentStatusPercentage}` : ""}</dd></div></dl></section>
-                                        </div>
-                                        <footer><span>{getEmployeeContractLabel(empleado)} · {getEmployeeMetodoLiquidacionLabel(empleado)}</span><strong>Neto {formatCOP(empleado.neto_pagar)}</strong></footer>
-                                      </div>
-                                    </div>
-                                  ) : null}
+
                                 </Fragment>
                               );
                             })
