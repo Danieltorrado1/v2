@@ -1767,6 +1767,271 @@
   .payroll-person-groups section:last-child { border-bottom:0; }
 }
 
+/* NOMINA GESTION: compact workspace scoped to this module only. */
+.nomina-page--gestion {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 14px;
+  row-gap: 10px;
+  overflow: hidden;
+}
+
+.nomina-page--gestion > .np-flow-nav {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.nomina-page--gestion > .payroll-kpis {
+  grid-column: 1;
+  grid-row: 2 / span 20;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.nomina-page--gestion > .payroll-kpi {
+  min-height: 0;
+}
+
+.nomina-page--gestion > .payroll-inline-state,
+.nomina-page--gestion > .payroll-filterbar,
+.nomina-page--gestion > .payroll-actionbar,
+.nomina-page--gestion > .payroll-operational-legend,
+.nomina-page--gestion > .payroll-periods,
+.nomina-page--gestion > .payroll-placeholder,
+.nomina-page--gestion > .payroll-pagination,
+.nomina-page--gestion > .payroll-state-card {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.nomina-page--gestion > .payroll-filterbar {
+  align-self: start;
+  padding: 8px 10px;
+  border-radius: 14px;
+  gap: 8px;
+}
+
+.nomina-page--gestion .payroll-filter-group {
+  min-width: 0;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+
+.nomina-page--gestion .payroll-filter-select-wrap,
+.nomina-page--gestion .payroll-search {
+  min-width: 0;
+  height: 36px;
+  flex: 1 1 0;
+}
+
+.nomina-page--gestion .payroll-search {
+  flex: 1.8 1 0;
+}
+
+.nomina-page--gestion .payroll-filter-select,
+.nomina-page--gestion .payroll-search input {
+  min-width: 0;
+  font-size: 11px;
+}
+
+.nomina-page--gestion .payroll-clear-button {
+  height: 36px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.nomina-page--gestion .payroll-actionbar {
+  gap: 6px;
+}
+
+.nomina-page--gestion .payroll-actionbar .payroll-action,
+.nomina-page--gestion .payroll-actionbar .payroll-filter-select-wrap {
+  height: 34px;
+  min-width: 0;
+  padding-left: 10px;
+  padding-right: 10px;
+  font-size: 11px;
+}
+
+.nomina-page--gestion .payroll-periods {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  gap: 8px;
+}
+
+.nomina-page--gestion .payroll-period-card.open {
+  flex: 0 0 auto;
+}
+
+.nomina-page--gestion .payroll-period-summary {
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.nomina-page--gestion .payroll-period-main {
+  flex: 0 1 210px;
+  min-width: 0;
+  gap: 7px;
+}
+
+.nomina-page--gestion .payroll-period-main h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 15px;
+}
+
+.nomina-page--gestion .payroll-period-meta {
+  min-width: 0;
+  font-size: 11px;
+}
+
+.nomina-page--gestion .payroll-period-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nomina-page--gestion .payroll-period-totals {
+  gap: 12px;
+}
+
+.nomina-page--gestion .payroll-period-totals strong {
+  font-size: 12px;
+}
+
+.nomina-page--gestion .payroll-expand-button {
+  width: 30px;
+  height: 30px;
+}
+
+.nomina-page--gestion .payroll-period-detail {
+  padding: 8px 10px 10px;
+}
+
+.nomina-page--gestion .payroll-period-collapsed-note {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--bg-primary));
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.nomina-page--gestion .payroll-table-scroll {
+  overflow-x: hidden;
+}
+
+.nomina-page--gestion .payroll-table-head,
+.nomina-page--gestion .payroll-table-row {
+  min-width: 0;
+  grid-template-columns: minmax(130px, 2.25fr) minmax(75px, 1.05fr) minmax(75px, 1fr)
+    minmax(68px, .85fr) minmax(78px, .9fr) minmax(66px, .75fr) minmax(68px, .8fr)
+    minmax(42px, .45fr) minmax(34px, .4fr) minmax(92px, 1fr);
+  gap: 8px;
+}
+
+.nomina-page--gestion .payroll-table-head {
+  padding: 0 6px 7px;
+  font-size: 9px;
+}
+
+.nomina-page--gestion .payroll-table-row {
+  padding: 8px 6px;
+}
+
+.nomina-page--gestion .cell-employee-meta strong,
+.nomina-page--gestion .cell-employee-meta p,
+.nomina-page--gestion .cell-employee-meta small,
+.nomina-page--gestion .cell-stack strong,
+.nomina-page--gestion .cell-stack small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nomina-page--gestion .cell-row-actions {
+  gap: 3px;
+}
+
+.nomina-page--gestion .cell-row-actions button {
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+}
+
+.nomina-page--gestion .payroll-review-icon {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+}
+
+.nomina-page--gestion > .payroll-pagination {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+}
+
+@media (max-width: 900px) {
+  .nomina-page--gestion {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    overflow-y: auto;
+  }
+
+  .nomina-page--gestion > .payroll-kpis,
+  .nomina-page--gestion > .payroll-inline-state,
+  .nomina-page--gestion > .payroll-filterbar,
+  .nomina-page--gestion > .payroll-actionbar,
+  .nomina-page--gestion > .payroll-operational-legend,
+  .nomina-page--gestion > .payroll-periods,
+  .nomina-page--gestion > .payroll-placeholder,
+  .nomina-page--gestion > .payroll-pagination,
+  .nomina-page--gestion > .payroll-state-card {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .nomina-page--gestion > .payroll-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+  }
+}
+
+@media (max-width: 700px) {
+  .nomina-page--gestion .payroll-filter-group {
+    flex-wrap: wrap;
+  }
+
+  .nomina-page--gestion .payroll-filter-select-wrap,
+  .nomina-page--gestion .payroll-search {
+    flex: 1 1 145px;
+  }
+
+  .nomina-page--gestion > .payroll-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nomina-page--gestion .payroll-period-summary {
+    flex-wrap: wrap;
+  }
+
+  .nomina-page--gestion .payroll-period-main,
+  .nomina-page--gestion .payroll-period-meta,
+  .nomina-page--gestion .payroll-period-totals {
+    flex: 1 1 100%;
+  }
+}
+
 
 
 

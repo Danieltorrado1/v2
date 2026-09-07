@@ -19,8 +19,7 @@ export default function CoberturaFlowNav({ periodId }: { periodId?: string | nul
   const query = periodId ? `?period_id=${encodeURIComponent(periodId)}` : "";
 
   return (
-    <nav className="np-flow-nav" aria-label="Flujo de Cobertura">
-      <span className="np-flow-nav-title">Cobertura</span>
+    <nav className="np-flow-nav" aria-label="Flujo de Nómina">
       {ITEMS.filter((item) => item.permissions.some((permission) => permissions.has(permission)) && (!gestorOperationalOnly || ["/nomina/planilla-operativa", "/nomina/turnos", "/nomina/novedades"].includes(item.path))).map((item) => {
         const active = location.pathname === item.path || item.aliases.includes(location.pathname);
         return <NavLink className={active ? "active" : ""} key={item.path} to={`${item.path}${query}`}>{item.label}</NavLink>;

@@ -4,7 +4,6 @@ import { useLocation, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Banknote,
-  Building2,
   Calculator,
   CalendarRange,
   CheckCircle2,
@@ -833,6 +832,7 @@ export default function NominaPage() {
   const canGenerateDesprendibles = user?.permissions.includes("nomina.desprendibles.generate") === true;
   const [activeTab, setActiveTab] = useState("nomina");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
+  const [expandedPeriodIds, setExpandedPeriodIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("");
   const [clasificacionFilter, setClasificacionFilter] = useState("");
@@ -975,11 +975,13 @@ export default function NominaPage() {
         error: null,
       });
 
-      setSelectedPeriodId((current) =>
-        pickAvailableScopedId(data.items, preferredPeriodId, current) ??
-        pickDefaultNominaPeriod(data.items)?.id ??
-        null,
-      );
+      setSelectedPeriodId((current) => {
+        const nextId = pickAvailableScopedId(data.items, preferredPeriodId, current) ??
+          pickDefaultNominaPeriod(data.items)?.id ??
+          null;
+        setExpandedPeriodIds((expanded) => expanded.size > 0 || !nextId ? expanded : new Set([nextId]));
+        return nextId;
+      });
     } catch (error) {
       if (requestId !== periodsRequestRef.current) {
         return;
@@ -1870,11 +1872,6 @@ export default function NominaPage() {
     }
   }, [tablePage, totalPages]);
 
-  const periodOptions: FilterOption[] = periodos.map((periodo) => ({
-    value: periodo.id,
-    label: periodo.nombre_periodo,
-  }));
-
   const kpis = buildKpis(
     selectedDashboard,
     dashboardState.loading,
@@ -1905,6 +1902,15 @@ export default function NominaPage() {
 
   const handleSelectPeriod = (periodId: string) => {
     setSelectedPeriodId(periodId);
+    setExpandedPeriodIds((current) => {
+      const next = new Set(current);
+      if (next.has(periodId)) {
+        next.delete(periodId);
+      } else {
+        next.add(periodId);
+      }
+      return next;
+    });
     setExpandedEmployeeId(null);
     setRecalculateError(null);
     setNovedadActionError(null);
@@ -2672,24 +2678,6 @@ export default function NominaPage() {
 
       <div className="payroll-filterbar">
         <div className="payroll-filter-group">
-          <FilterSelect
-            label="Periodo"
-            icon={CalendarRange}
-            value={selectedPeriodId ?? ""}
-            onChange={handleSelectPeriod}
-            options={periodOptions}
-            disabled={periodsState.loading || periodOptions.length === 0}
-          />
-
-          <FilterSelect
-            label="Contrato / Municipio / Area"
-            icon={Building2}
-            value=""
-            onChange={() => undefined}
-            options={[]}
-            disabled
-          />
-
           <div className="payroll-search">
             <Search size={18} />
             <input
@@ -2940,9 +2928,10 @@ export default function NominaPage() {
           ) : (
             <div className="payroll-periods">
               {periodos.map((periodo) => {
-                const isOpen = selectedPeriodId === periodo.id;
+                const isOpen = expandedPeriodIds.has(periodo.id);
+                const isSelected = selectedPeriodId === periodo.id;
                 const summaryDashboard =
-                  (isOpen ? selectedDashboard : null) ?? dashboardCache[periodo.id] ?? null;
+                  (isSelected ? selectedDashboard : null) ?? dashboardCache[periodo.id] ?? null;
 
                 return (
                   <div className={`payroll-period-card ${isOpen ? "open" : ""}`} key={periodo.id}>
@@ -2990,6 +2979,13 @@ export default function NominaPage() {
 
                     {isOpen ? (
                       <div className="payroll-period-detail">
+                        {!isSelected ? (
+                          <div className="payroll-period-collapsed-note">
+                            Este período está abierto visualmente. Selecciónalo para consultar sus filtros y empleados.
+                          </div>
+                        ) : null}
+                        {isSelected ? (
+                          <>
                         <div className="payroll-table-scroll">
                           <div className="payroll-table-head">
                             <span>Trabajador y contexto</span>
@@ -3059,9 +3055,6 @@ export default function NominaPage() {
 
                                     <div className="cell-stack">
                                       <strong title={getEmployeeMetodoLiquidacionLabel(empleado)}>{getEmployeeMetodoLiquidacionLabel(empleado)}</strong>
-                                      <small title={getEmployeeContractLabel(empleado)}>
-                                        Contrato {getEmployeeContractLabel(empleado)}
-                                      </small>
                                     </div>
 
                                     <span className="cell-devengado" title={`Total adiciones: ${formatCOP(empleado.total_adiciones)} ï¿½ Devengado transporte: ${formatCOP(empleado.devengado_transporte)}`}><strong>{formatCOP(empleado.total_adiciones)}</strong><small>Transporte {formatCOP(empleado.devengado_transporte)}</small></span>
@@ -3078,8 +3071,12 @@ export default function NominaPage() {
                                       )}
                                     </span>
 
-                                    <span className={`payroll-status-badge ${getEmployeeStatusTone(empleado)}`}>
-                                      {getEmployeeStatusLabel(empleado)}
+                                    <span
+                                      className={`payroll-status-badge payroll-review-icon ${getEmployeeStatusTone(empleado)}`}
+                                      title={getEmployeeStatusLabel(empleado)}
+                                      aria-label={`Revision: ${getEmployeeStatusLabel(empleado)}`}
+                                    >
+                                      {empleado.revisado ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
                                     </span>
 
                                     <div className="cell-row-actions">
@@ -3177,6 +3174,24 @@ export default function NominaPage() {
                             })
                           )}
                         </div>
+                        {isNominaTab ? (
+                          <PayrollPagination
+                            showingFrom={showingFrom}
+                            showingTo={showingTo}
+                            total={totalFilteredRecords}
+                            pageSize={pageSize}
+                            onPageSizeChange={setPageSize}
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            pageNumbers={pageNumbers}
+                            onPrevious={() => setTablePage((page) => Math.max(1, page - 1))}
+                            onNext={() => setTablePage((page) => Math.min(totalPages, page + 1))}
+                            onPage={setTablePage}
+                            label="empleados"
+                          />
+                        ) : null}
+                          </>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
@@ -3693,7 +3708,7 @@ export default function NominaPage() {
         </div>
       )}
 
-      {isRecordsTab ? (
+      {isRecordsTab && !isNominaTab ? (
         <div className="payroll-pagination">
           <span>
             Mostrando {showingFrom}-{showingTo} de {formatNumber(totalFilteredRecords)}{" "}
@@ -4262,6 +4277,56 @@ function FilterSelect({
         ))}
       </select>
       <ChevronDown size={14} />
+    </div>
+  );
+}
+
+function PayrollPagination({
+  showingFrom,
+  showingTo,
+  total,
+  pageSize,
+  onPageSizeChange,
+  currentPage,
+  totalPages,
+  pageNumbers,
+  onPrevious,
+  onNext,
+  onPage,
+  label,
+}: {
+  showingFrom: number;
+  showingTo: number;
+  total: number;
+  pageSize: number;
+  onPageSizeChange: (size: number) => void;
+  currentPage: number;
+  totalPages: number;
+  pageNumbers: number[];
+  onPrevious: () => void;
+  onNext: () => void;
+  onPage: (page: number) => void;
+  label: string;
+}) {
+  return (
+    <div className="payroll-pagination">
+      <span>Mostrando {showingFrom}-{showingTo} de {formatNumber(total)} {label}</span>
+      <div>
+        <select value={String(pageSize)} onChange={(event) => onPageSizeChange(Number(event.target.value))} disabled={total === 0}>
+          {EMPLOYEE_PAGE_SIZE_OPTIONS.map((size) => <option key={size} value={size}>{size} por página</option>)}
+        </select>
+        <button type="button" onClick={onPrevious} disabled={currentPage <= 1 || total === 0} aria-label="Página anterior">
+          <ChevronLeft size={16} />
+        </button>
+        {pageNumbers.map((pageNumber) => (
+          <button key={pageNumber} type="button" className={pageNumber === currentPage ? "active-page" : ""} onClick={() => onPage(pageNumber)} disabled={total === 0}>
+            {pageNumber}
+          </button>
+        ))}
+        <button type="button" onClick={onNext} disabled={currentPage >= totalPages || total === 0} aria-label="Página siguiente">
+          <ChevronRight size={16} />
+        </button>
+      </div>
     </div>
   );
 }

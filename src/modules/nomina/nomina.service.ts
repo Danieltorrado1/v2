@@ -6034,6 +6034,169 @@ const findExistingNominaPeriodoByContractAndRange = async (
   return mapRealPeriodo(row);
 };
 
+const lockNominaPeriodoIdentity = async (
+  client: PoolClient,
+  input: { contrato_id: string; fecha_inicio: string; fecha_fin: string; tipo_periodo: string }
+): Promise<void> => {
+  const identity = [input.contrato_id, input.fecha_inicio, input.fecha_fin, input.tipo_periodo].join('|');
+  await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [identity]);
+};
+
+const NOMINA_MONTH_NAMES = [
+  'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+  'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
+] as const;
+
+type EnsureCurrentNominaPeriodsInput = {
+  tenant?: TenantAccessContext;
+  empresa_id?: string | null;
+  contrato_id?: string | null;
+};
+
+/**
+ * Makes the current monthly period available without closing any previous period.
+ * This deliberately creates only the period shell; employee population and payroll
+ * calculations remain separate operations in the existing workflow.
+ */
+export const ensureCurrentNominaPeriods = async ({
+  tenant,
+  empresa_id: empresaId,
+  contrato_id: contratoId
+}: EnsureCurrentNominaPeriodsInput): Promise<NominaPeriodo[]> => {
+  if (!tenant?.userId) {
+    return [];
+  }
+
+  const client = await dbPool.connect();
+  const createdOrExisting: NominaPeriodo[] = [];
+
+  try {
+    await client.query('BEGIN');
+
+    const monthResult = await client.query<{
+      fecha_inicio: string;
+      fecha_fin: string;
+      anio: number;
+      mes: number;
+    }>(`
+      SELECT
+        date_trunc('month', CURRENT_DATE)::date::text AS fecha_inicio,
+        (date_trunc('month', CURRENT_DATE) + interval '1 month - 1 day')::date::text AS fecha_fin,
+        extract(year FROM CURRENT_DATE)::int AS anio,
+        extract(month FROM CURRENT_DATE)::int AS mes
+    `);
+    const month = monthResult.rows[0];
+
+    if (!month) {
+      throw new AppError('Unable to resolve current payroll month', 500, 'NOMINA_PERIODO_CURRENT_MONTH_UNRESOLVED');
+    }
+
+    const contractConditions = [
+      'c.activo = TRUE',
+      'c.fecha_inicio <= $1::date',
+      '(c.fecha_finalizacion IS NULL OR c.fecha_finalizacion >= $2::date)'
+    ];
+    const contractParams: unknown[] = [month.fecha_fin, month.fecha_inicio];
+
+    if (contratoId) {
+      contractParams.push(contratoId);
+      contractConditions.push(`c.id = $${contractParams.length}::bigint`);
+    }
+
+    if (empresaId) {
+      contractParams.push(empresaId);
+      contractConditions.push(`c.empresa_id = $${contractParams.length}::bigint`);
+    }
+
+    if (!tenant.isGlobalAdmin) {
+      if (tenant.contratoIds.length > 0) {
+        contractParams.push(tenant.contratoIds);
+        contractConditions.push(`c.id = ANY($${contractParams.length}::bigint[])`);
+      } else if (tenant.empresaIds.length > 0) {
+        contractParams.push(tenant.empresaIds);
+        contractConditions.push(`c.empresa_id = ANY($${contractParams.length}::bigint[])`);
+      } else {
+        await client.query('COMMIT');
+        return [];
+      }
+    }
+
+    const contracts = await client.query<{
+      id: string;
+      requiere_asistencia: boolean | null;
+    }>(
+      `
+        SELECT c.id::text AS id,
+          COALESCE(latest.requiere_asistencia, TRUE) AS requiere_asistencia
+        FROM contratos c
+        LEFT JOIN LATERAL (
+          SELECT np.requiere_asistencia
+          FROM nomina_periodos np
+          WHERE np.contrato_id = c.id
+            AND np.tipo_periodo = 'MENSUAL'
+          ORDER BY np.fecha_inicio DESC, np.id DESC
+          LIMIT 1
+        ) latest ON TRUE
+        WHERE ${contractConditions.join(' AND ')}
+        ORDER BY c.id
+      `,
+      contractParams
+    );
+
+    const nombrePeriodo = `${NOMINA_MONTH_NAMES[month.mes - 1] ?? month.mes} ${month.anio}`;
+
+    for (const contract of contracts.rows) {
+      const identity = {
+        contrato_id: contract.id,
+        fecha_inicio: month.fecha_inicio,
+        fecha_fin: month.fecha_fin,
+        tipo_periodo: 'MENSUAL'
+      };
+      await lockNominaPeriodoIdentity(client, identity);
+
+      const existing = await findExistingNominaPeriodoByContractAndRange(identity, tenant, client);
+      if (existing) {
+        createdOrExisting.push(existing);
+        continue;
+      }
+
+      const inserted = await client.query<{ id: string }>(
+        `
+          INSERT INTO nomina_periodos (
+            contrato_id, nombre_periodo, fecha_inicio, fecha_fin,
+            tipo_periodo, requiere_asistencia, estado, activo
+          )
+          VALUES ($1::bigint, $2, $3::date, $4::date, 'MENSUAL', $5, 'ABIERTO', TRUE)
+          RETURNING id::text AS id
+        `,
+        [contract.id, nombrePeriodo, month.fecha_inicio, month.fecha_fin, contract.requiere_asistencia]
+      );
+      const insertedRow = inserted.rows[0];
+      if (!insertedRow) {
+        throw new AppError('Failed to ensure current payroll period', 500, 'NOMINA_PERIODO_ENSURE_FAILED');
+      }
+
+      const created = mapRealPeriodo(await loadRealPeriodoOrThrow(insertedRow.id, tenant, client));
+      await recordNominaAudit(
+        client,
+        created.id,
+        String(tenant.userId),
+        'NOMINA_PERIODO_CREATE_AUTOMATICO',
+        { after: created, origen: 'ensureCurrentNominaPeriods' }
+      );
+      createdOrExisting.push(created);
+    }
+
+    await client.query('COMMIT');
+    return createdOrExisting;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 const buildImportCandidateReviewSet = (
   candidates: ImportCandidateRow[],
   periodoFechaInicio: string,
@@ -6079,6 +6242,12 @@ export const listNominaPeriodos = async (
   query: ListNominaPeriodosQuery,
   tenant?: TenantAccessContext
 ): Promise<PaginatedResponse<NominaPeriodo>> => {
+  await ensureCurrentNominaPeriods({
+    tenant,
+    empresa_id: query.empresa_id,
+    contrato_id: query.contrato_id
+  });
+
   const conditions: string[] = [];
   const params: unknown[] = [];
 
@@ -6172,6 +6341,13 @@ export const createNominaPeriodo = async (
     await client.query('BEGIN');
     await ensureContratoExists(input.contrato_id, client);
     await assertTenantAccessForContrato(input.contrato_id, tenant, client);
+
+    await lockNominaPeriodoIdentity(client, {
+      contrato_id: input.contrato_id,
+      fecha_inicio: input.fecha_inicio,
+      fecha_fin: input.fecha_fin,
+      tipo_periodo: input.tipo_periodo
+    });
 
     const existing = await findExistingNominaPeriodoByContractAndRange(
       {
