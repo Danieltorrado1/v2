@@ -72,7 +72,7 @@ test('ADMIN-2D protege contrato, departamento y tenant tambien en backend', () =
 test('rol, asignacion general y responsabilidad de nomina permanecen separados', () => {
   assert.ok(gestorService.includes('gestor_municipio_asignaciones'));
   assert.ok(nominaService.includes('nomina_responsabilidad_municipios'));
-  assert.ok(nominaService.includes('alcance_personal'));
+  assert.ok(gestorService.includes('alcance_personal'));
   assert.ok(nominaService.includes('gestor_personal_asignaciones'));
   assert.ok(usersUi.includes('responsabilidad de Nomina se configura aparte'));
 });
