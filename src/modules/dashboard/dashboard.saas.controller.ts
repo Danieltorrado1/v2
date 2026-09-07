@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import { AppError } from '../../utils/AppError';
 import { successResponse } from '../../utils/apiResponse';
 import { asyncHandler } from '../../utils/asyncHandler';
-import { getDashboardSaas } from './dashboard.saas.service';
+import { getDashboardSaas, getGlobalAdminDashboard } from './dashboard.saas.service';
 
 const ensureAuthenticated = (req: Request): void => {
   if (!req.user?.userId) {
@@ -24,4 +24,10 @@ export const getDashboardSaasHandler = asyncHandler(async (req: Request, res: Re
     message: 'SaaS dashboard retrieved successfully',
     data
   });
+});
+
+export const getGlobalAdminDashboardHandler = asyncHandler(async (req: Request, res: Response) => {
+  ensureAuthenticated(req);
+  if (!req.tenant?.isGlobalAdmin || req.user?.roles.includes('ADMINISTRADOR') !== true) throw new AppError('Global administrator required', 403, 'FORBIDDEN');
+  return successResponse(res, { message: 'Global administrator dashboard retrieved successfully', data: await getGlobalAdminDashboard(req.tenant) });
 });

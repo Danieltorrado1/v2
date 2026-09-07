@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
 import { requirePermissions } from '../../middlewares/roleMiddleware';
-import { getDashboardSaasHandler } from './dashboard.saas.controller';
+import { getDashboardSaasHandler, getGlobalAdminDashboardHandler } from './dashboard.saas.controller';
 import {
   getDashboardAlertasHandler,
   getDashboardCoberturaHandler,
@@ -18,6 +18,7 @@ const dashboardRoutes = Router();
 
 dashboardRoutes.use(authMiddleware);
 dashboardRoutes.use('/saas', tenantMiddleware);
+dashboardRoutes.get('/admin-global', tenantMiddleware, getGlobalAdminDashboardHandler);
 
 dashboardRoutes.get('/resumen', requirePermissions('dashboard.read'), getDashboardResumenHandler);
 dashboardRoutes.get(

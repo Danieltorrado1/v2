@@ -57,6 +57,29 @@ export interface DashboardSaasResult {
   };
 }
 
+export interface GlobalAdminDashboardResult {
+  kpis: { empresas_total: number; empresas_activas: number; empresas_inactivas: number; usuarios_activos: number; personal_total: number; contratos_activos: number; modulos_activos: number };
+  clientes: Array<{ empresa_id: number; empresa: string; nit: string | null; plan: string; estado: string; usuarios: number; personal: number; contratos: number; ultima_actividad: string | null }>;
+  alertas: Array<{ codigo: string; cantidad: number; descripcion: string }>;
+}
+
+interface GlobalKpiRow extends QueryResultRow { empresas_total: number; empresas_activas: number; usuarios_activos: number; personal_total: number; contratos_activos: number; modulos_activos: number; }
+interface GlobalClientRow extends QueryResultRow { empresa_id: string; empresa: string; nit: string | null; plan: string; estado: string; usuarios: number; personal: number; contratos: number; ultima_actividad: string | null; }
+interface GlobalCountRow extends QueryResultRow { cantidad: number; }
+
+export const getGlobalAdminDashboard = async (tenant: TenantAccessContext): Promise<GlobalAdminDashboardResult> => {
+  if (!tenant.isGlobalAdmin) throw new Error('Global administrator required');
+  const [kpiResult, clientsResult, noPlan, noModules, emptyPlans] = await Promise.all([
+    dbQuery<GlobalKpiRow>(`SELECT COUNT(*)::int empresas_total, COUNT(*) FILTER (WHERE COALESCE(e.activo, TRUE))::int empresas_activas, (SELECT COUNT(*)::int FROM usuarios WHERE COALESCE(activo, TRUE)) usuarios_activos, (SELECT COUNT(DISTINCT v.persona_id)::int FROM vinculaciones v INNER JOIN contratos c ON c.id=v.contrato_id WHERE v.estado_vinculacion='ACTIVA') personal_total, (SELECT COUNT(*)::int FROM contratos c WHERE COALESCE(c.activo, TRUE) AND (c.fecha_finalizacion IS NULL OR c.fecha_finalizacion >= CURRENT_DATE)) contratos_activos, (SELECT COUNT(*)::int FROM modulos WHERE activo=TRUE) modulos_activos FROM empresas e`),
+    dbQuery<GlobalClientRow>(`SELECT e.id::text empresa_id,e.nombre_empresa empresa,e.nit,COALESCE(p.nombre,'LEGACY / SIN PLAN CONFIGURADO') plan,COALESCE(es.estado,'LEGACY') estado,(SELECT COUNT(DISTINCT ue.usuario_id)::int FROM usuario_empresas ue WHERE ue.empresa_id=e.id AND COALESCE(ue.activo, TRUE)) usuarios,(SELECT COUNT(DISTINCT v.persona_id)::int FROM vinculaciones v INNER JOIN contratos vc ON vc.id=v.contrato_id WHERE vc.empresa_id=e.id AND v.estado_vinculacion='ACTIVA') personal,(SELECT COUNT(*)::int FROM contratos c WHERE c.empresa_id=e.id) contratos,(SELECT MAX(a.fecha_evento)::text FROM auditoria_eventos a WHERE a.empresa_id=e.id) ultima_actividad FROM empresas e LEFT JOIN LATERAL (SELECT x.* FROM empresa_suscripciones x WHERE x.empresa_id=e.id AND x.fecha_inicio<=CURRENT_DATE AND (x.fecha_fin IS NULL OR x.fecha_fin>=CURRENT_DATE) ORDER BY x.fecha_inicio DESC,x.id DESC LIMIT 1) es ON TRUE LEFT JOIN planes p ON p.id=es.plan_id ORDER BY e.nombre_empresa ASC`),
+    dbQuery<GlobalCountRow>(`SELECT COUNT(*)::int cantidad FROM empresas e WHERE NOT EXISTS (SELECT 1 FROM empresa_suscripciones es WHERE es.empresa_id=e.id AND es.fecha_fin IS NULL)`),
+    dbQuery<GlobalCountRow>(`SELECT COUNT(*)::int cantidad FROM empresas e WHERE NOT EXISTS (SELECT 1 FROM empresa_modulo_overrides emo WHERE emo.empresa_id=e.id AND emo.fecha_fin IS NULL) AND NOT EXISTS (SELECT 1 FROM empresa_suscripciones es INNER JOIN plan_modulos pm ON pm.plan_id=es.plan_id AND pm.habilitado=TRUE WHERE es.empresa_id=e.id AND es.fecha_fin IS NULL)`),
+    dbQuery<GlobalCountRow>(`SELECT COUNT(*)::int cantidad FROM planes p WHERE NOT EXISTS (SELECT 1 FROM plan_modulos pm WHERE pm.plan_id=p.id AND pm.habilitado=TRUE)`)
+  ]);
+  const kpi = kpiResult.rows[0];
+  return { kpis: { empresas_total: kpi?.empresas_total ?? 0, empresas_activas: kpi?.empresas_activas ?? 0, empresas_inactivas: Math.max(0,(kpi?.empresas_total ?? 0)-(kpi?.empresas_activas ?? 0)), usuarios_activos: kpi?.usuarios_activos ?? 0, personal_total: kpi?.personal_total ?? 0, contratos_activos: kpi?.contratos_activos ?? 0, modulos_activos: kpi?.modulos_activos ?? 0 }, clientes: clientsResult.rows.map((row) => ({ ...row, empresa_id: Number(row.empresa_id) })), alertas: [{ codigo:'EMPRESAS_SIN_PLAN',cantidad:noPlan.rows[0]?.cantidad ?? 0,descripcion:'Empresas sin suscripción vigente' },{ codigo:'EMPRESAS_SIN_MODULOS',cantidad:noModules.rows[0]?.cantidad ?? 0,descripcion:'Empresas sin módulos habilitados' },{ codigo:'PLANES_SIN_MODULOS',cantidad:emptyPlans.rows[0]?.cantidad ?? 0,descripcion:'Planes sin módulos incluidos' }].filter((item) => item.cantidad > 0) };
+};
+
 const buildTenantWhereClause = (
   tenant: TenantAccessContext,
   options: {
