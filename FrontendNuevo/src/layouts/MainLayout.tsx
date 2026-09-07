@@ -1,58 +1,24 @@
 ﻿import { useEffect, useRef, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { Bell, Building2, ChevronDown, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { useCompanyContext } from "../context/CompanyContext";
-import { NavDropdown } from "./NavDropdown";
 import { NotificationsPanel } from "../components/notifications/NotificationsPanel";
 import { notificacionesApi } from "../services/notificacionesApi";
 import "./MainLayout.css";
-import { canAccessDashboard, isGestorOnly } from "../router/roleNavigation";
-
-const nominaLinks = [
-  { to: "/nomina", label: "Centro de nómina", requiredPermissions: ["nomina.read"] },
-  { to: "/nomina/cobertura", label: "Planilla operativa", requiredPermissions: ["nomina.operativa.read", "nomina.read"] },
-  { to: "/nomina/liquidacion", label: "Liquidación", requiredPermissions: ["nomina.liquidaciones.generate", "nomina.liquidaciones.finalize"] },
-  { to: "/nomina/turnos", label: "Turnos", requiredPermissions: ["nomina.operativa.read"] },
-  { to: "/nomina/novedades", label: "Novedades", requiredPermissions: ["nomina.operativa.read", "nomina.read"] },
-  { to: "/nomina/cambios-operativos", label: "Cambios operativos", requiredPermissions: ["nomina.movimientos.read"] },
-  { to: "/nomina/personal-ops", label: "Personal OPS", requiredPermissions: ["nomina.cuentas_cobro_ops.read"] },
-  { to: "/nomina/correccion", label: "Corrección Nómina", requiredPermissions: ["nomina.correcciones.read"] },
-  { to: "/nomina/ajustes-manuales", label: "Ajustes manuales", requiredPermissions: ["nomina.economico.read"] },
-  { to: "/nomina/cuentas-cobro", label: "Cuentas de cobro", requiredPermissions: ["nomina.movimientos.read"] },
-] as const;
-
-const herramientasLinks = [
-  { to: "/herramientas/calculadora-salario", label: "Calculadora de salario" },
-  { to: "/herramientas/calculadora-cobertura", label: "Calculadora de cobertura" },
-  { to: "/herramientas/cobertura", label: "Cobertura" },
-];
-
-const sstLinks = [
-  { to: "/sst?tab=resumen", label: "Resumen SST" },
-  { to: "/sst?tab=eventos", label: "Eventos" },
-  { to: "/sst?tab=planes", label: "Planes de acción" },
-  { to: "/sst?tab=inspecciones", label: "Inspecciones" },
-  { to: "/sst?tab=hallazgos", label: "Hallazgos y acciones" },
-  { to: "/sst?tab=accidentes", label: "Accidentes" },
-  { to: "/sst?tab=indicadores", label: "Indicadores" },
-];
-
-const repositorioLinks = [
-  { to: "/repositorio", label: "Ver documentos" },
-  { to: "/repositorio/subir", label: "Subir documentos" },
-];
-
-function hasAnyPermission(permissions: string[] | undefined, required: readonly string[]) {
-  return required.some((permission) => permissions?.includes(permission) === true);
-}
+import { adminModules } from "../architecture/moduleCatalog";
+import { isGlobalAdministrator, resolveCatalogLocation, visibleTenantModules } from "../architecture/moduleAccess";
+import { WorkspaceAccess } from "../architecture/WorkspaceAccess";
+import { visiblePayrollLinks } from "../architecture/payrollNavigation";
+import { NavDropdown } from './NavDropdown';
+import "../architecture/Workspace.css";
 
 export default function MainLayout() {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
-  const { empresasDisponibles, empresaId, empresaActual, organizacionActual, isLoading, setEmpresaActual, hasModule } = useCompanyContext();
+  const { empresasDisponibles, empresaId, empresaActual, organizacionActual, isLoading, setEmpresaActual, capabilities, hasModule } = useCompanyContext();
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [logoFallback, setLogoFallback] = useState(false);
@@ -60,33 +26,25 @@ export default function MainLayout() {
   const accountRef = useRef<HTMLDivElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [accountDetailsOpen, setAccountDetailsOpen] = useState(false);
-  const canAccessAdmin = user?.roles.includes("ADMINISTRADOR") === true;
+  const globalAdmin = isGlobalAdministrator(user);
+  // Keep the legacy capability adapter available while all navigation is catalog-driven.
+  const legacyNavigation = {
+    PERSONAL: hasModule("PERSONAL"),
+    NOMINA: hasModule("NOMINA"),
+    COBERTURA: hasModule("COBERTURA"),
+    SST: hasModule("SST"),
+    REPOSITORIO: hasModule("REPOSITORIO"),
+  };
+  const adminScope = location.pathname.startsWith('/admin-global');
+  const modules = adminScope ? (globalAdmin ? adminModules : []) : visibleTenantModules(user, capabilities, empresaId);
+  const current = resolveCatalogLocation(location.pathname, location.search);
+  const activeModule = adminScope ? [...adminModules].reverse().find(item => location.pathname === item.route || location.pathname.startsWith(`${item.route}/`)) : modules.find(item => item.code === current?.module.code);
+  const homePath = adminScope ? '/admin-global' : modules[0]?.route ?? (legacyNavigation.PERSONAL ? '/personal' : '/');
   const displayName = user?.name ?? "Usuario";
   const roleLabel = user?.roles?.[0] ?? "Usuario";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "US";
   const permissions = user?.permissions ?? [];
-  const gestorOperationalOnly = isGestorOnly(user);
-  const canSeeDashboard = hasModule("DASHBOARD") && canAccessDashboard(user);
-  const canSeePersonal = hasModule("PERSONAL") && permissions.includes("vinculaciones.read");
-  const visibleNominaLinks = nominaLinks.filter((link) => {
-    if (gestorOperationalOnly && !["/nomina/cobertura", "/nomina/turnos", "/nomina/novedades"].includes(link.to)) return false;
-    return hasAnyPermission(permissions, link.requiredPermissions);
-  });
-  const canSeeNomina = hasModule("NOMINA") && visibleNominaLinks.length > 0;
-  const canSeeCobertura = hasModule("COBERTURA") && (permissions.includes("cobertura.read") || permissions.includes("cobertura.update"));
-  const canSeeNotifications = permissions.includes("notificaciones.read");
-  const canSeeSst = hasModule("SST") && permissions.some((permission) => permission.startsWith("sst."));
-  const canSeePortal = hasModule("PORTAL_COLABORADOR");
-  const canSeeRepositorio = hasModule("REPOSITORIO") && permissions.some((permission) => permission.startsWith("documentos."));
-  const homePath = canSeeDashboard
-    ? "/dashboard"
-    : canSeeNomina
-      ? (user?.roles.includes("GESTOR") && permissions.includes("nomina.operativa.read") ? "/nomina/cobertura" : "/nomina")
-      : canSeePersonal
-        ? "/personal"
-        : canSeePortal
-          ? "/portal"
-          : "/dashboard";
+  const canSeeNotifications = !adminScope && permissions.includes("notificaciones.read");
   const logoSrc =
     theme === "dark"
       ? "/branding/empiria-logo-horizontal-dark-web.png"
@@ -165,37 +123,9 @@ export default function MainLayout() {
           )}
         </Link>
 
-        <nav className="menu">
-          {canSeeDashboard && <NavLink
-            to="/dashboard"
-            className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
-          >
-            Dashboard
-          </NavLink>}
-          {canSeePersonal && <NavLink
-            to="/personal"
-            className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
-          >
-            Personal
-          </NavLink>}
-          {canSeeNomina && <NavDropdown label={"Nómina"} links={visibleNominaLinks} />}
-          {canSeeCobertura && <NavDropdown label="Herramientas" links={herramientasLinks} />}
-          {canSeeSst && <NavDropdown label="SST" links={sstLinks} />}
-          {canSeePortal && <NavLink
-            to="/portal"
-            className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
-          >
-            Portal
-          </NavLink>}
-          {canSeeRepositorio && <NavDropdown label="Repositorio" links={repositorioLinks} />}
-          {canAccessAdmin && (
-            <NavLink
-              to="/admin"
-              className={({ isActive }) => `menu-navlink${isActive ? " active" : ""}`}
-            >
-              Administración
-            </NavLink>
-          )}
+        <nav className="menu workspace-primary-nav" aria-label={adminScope ? 'Empiria Admin' : 'Empiria Empresa'}>
+          {modules.map(item => <Link key={item.code} to={item.route} aria-current={activeModule?.code === item.code ? 'page' : undefined}
+            className={`menu-navlink${activeModule?.code === item.code ? ' active' : ''}`}>{item.label}</Link>)}
         </nav>
 
         <div className="right-side">
@@ -225,7 +155,7 @@ export default function MainLayout() {
             {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
           </button>
 
-          {empresasDisponibles.length > 1 && (
+          {!adminScope && empresasDisponibles.length > 1 && (
             <label className="company-context-control" title={empresaActual?.nombre_empresa ?? "Empresa activa"}>
               <Building2 size={16} aria-hidden="true" />
               <select
@@ -240,7 +170,7 @@ export default function MainLayout() {
             </label>
           )}
 
-          {empresasDisponibles.length === 1 && empresaActual && (
+          {!adminScope && empresasDisponibles.length === 1 && empresaActual && (
             <div
               className="company-context-control"
               title={organizacionActual?.nombre ?? empresaActual.nombre_empresa}
@@ -273,6 +203,9 @@ export default function MainLayout() {
                   <span className="account-avatar account-avatar-large" aria-hidden="true">{initials}</span>
                   <div><strong>{displayName}</strong><small>{roleLabel}</small></div>
                 </div>
+                {globalAdmin && <Link className="account-menu-item" role="menuitem" to={adminScope ? '/empresa' : '/admin-global'} onClick={() => setAccountOpen(false)}>
+                  <Building2 size={16} />{adminScope ? 'Entrar a empresa' : 'Empiria Admin'}
+                </Link>}
                 {accountDetailsOpen && (
                   <div className="account-details">
                     <span>Correo</span><strong>{user?.email ?? "No disponible"}</strong>
@@ -299,10 +232,17 @@ export default function MainLayout() {
         />
       )}
 
-      <main className="content">
+      <main className="content content--workspace">
+        {!adminScope && activeModule && <nav className="workspace-secondary-nav" aria-label={`Submódulos de ${activeModule.label}`}>
+          <span className="workspace-scope">{activeModule.label}</span>
+          {activeModule.children.map(item => <Link key={item.code} to={item.route} aria-current={current?.entry.code === item.code ? 'page' : undefined}
+            className={current?.entry.code === item.code ? 'active' : ''}>{item.label}</Link>)}
+          {current?.entry.code === 'PERSONAL_NOMINA' && activeModule.children.some(item => item.code === 'PERSONAL_NOMINA') &&
+            <NavDropdown label="Opciones de nómina" links={visiblePayrollLinks(user)} />}
+        </nav>}
         <div className={`page-scroll${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-scroll--nomina-gestion" : ""}`}>
           <div className={`page-content${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-content--nomina-gestion" : ""}`}>
-            <Outlet />
+            <WorkspaceAccess><Outlet /></WorkspaceAccess>
           </div>
         </div>
       </main>

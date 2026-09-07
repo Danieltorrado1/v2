@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Building2, Edit2, Eye, Plus, Power, Search, Settings } from 'lucide-react';
+import { AlertTriangle, Building2, Edit2, Eye, Plus, Power, Search, Settings, LogIn, Users, FileText } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { configuracionApi } from '../../../../services/configuracionApi';
 import { saasApi, type CompanySaasSummary } from '../../../../services/saasApi';
@@ -91,7 +91,7 @@ function getEstadoLabel(activo: boolean): string {
   return activo ? 'Activa' : 'Inactiva';
 }
 
-export function EmpresasTab({onConfigureSaas}:{onConfigureSaas:(empresaId:number)=>void}) {
+export function EmpresasTab({onConfigureSaas, onOpenProfile, onEnterCompany}:{onConfigureSaas:(empresaId:number)=>void; onOpenProfile?: (id:number, tab:string)=>void; onEnterCompany?: (id:number)=>void}) {
   const { user } = useAuth();
   const permissions = user?.permissions ?? [];
   const canRead = hasAnyPermission(permissions, ['configuracion.read', 'empresas.read']);
@@ -467,20 +467,21 @@ export function EmpresasTab({onConfigureSaas}:{onConfigureSaas:(empresaId:number
                 <th>Plan / suscripción</th>
                 <th>Módulos</th>
                 <th>Estado</th>
+                {onOpenProfile && <><th>Contratos</th><th>Usuarios</th><th>Personal</th><th>Fecha inicio</th><th>Renovación</th></>}
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="cg-table-empty">Sin resultados</td>
+                  <td colSpan={onOpenProfile ? 11 : 6} className="cg-table-empty">Sin resultados</td>
                 </tr>
               )}
               {items.map((empresa) => (
                 <tr
                   key={empresa.id}
                   className={selectedId === empresa.id ? 'cg-row-selected' : ''}
-                  onClick={() => void handleSelect(empresa.id)}
+                  onClick={() => onOpenProfile ? onOpenProfile(empresa.id, "GENERAL") : void handleSelect(empresa.id)}
                 >
                   <td>
                     <div className="cg-primary-cell" title={empresa.nombre_empresa}>{empresa.nombre_empresa}</div>
@@ -490,8 +491,8 @@ export function EmpresasTab({onConfigureSaas}:{onConfigureSaas:(empresaId:number
                   </td>
                   <td className="cg-mono-cell">{empresa.nit}</td>
                   <td>
-                    <div className="cg-primary-cell">{saasSummaries[empresa.id]?.plan_nombre??'LEGACY / SIN PLAN CONFIGURADO'}</div>
-                    <div className="cg-secondary-cell">{saasSummaries[empresa.id]?.estado_suscripcion??'LEGACY'}</div>
+                    <div className="cg-primary-cell">{saasSummaries[empresa.id]?.plan_nombre??'No disponible'}</div>
+                    <div className="cg-secondary-cell">{saasSummaries[empresa.id]?.estado_suscripcion??'No disponible'}</div>
                   </td>
                   <td><span className="adm-badge active">{saasSummaries[empresa.id]?.modulos_activos??'—'} activos</span></td>
                   <td>
@@ -499,13 +500,16 @@ export function EmpresasTab({onConfigureSaas}:{onConfigureSaas:(empresaId:number
                       {getEstadoLabel(empresa.activo)}
                     </span>
                   </td>
+                  {onOpenProfile && Array.from({ length: 5 }, (_, index) => <td key={index}>No disponible</td>)}
                   <td>
                     <div className="cg-actions">
+                      {onEnterCompany && <button type="button" className="adm-btn ghost sm" title="Entrar a empresa" onClick={event => { event.stopPropagation(); onEnterCompany(empresa.id); }}><LogIn size={13} /></button>}
+                      {onOpenProfile && <><button type="button" className="adm-btn ghost sm" title="Usuarios" onClick={event => { event.stopPropagation(); onOpenProfile(empresa.id, 'USUARIOS'); }}><Users size={13} /></button><button type="button" className="adm-btn ghost sm" title="Contratos" onClick={event => { event.stopPropagation(); onOpenProfile(empresa.id, 'CONTRATOS'); }}><FileText size={13} /></button></>}
                       <button
                         className="adm-btn ghost sm"
                         onClick={(event) => {
                           event.stopPropagation();
-                          void handleSelect(empresa.id);
+                          if (onOpenProfile) onOpenProfile(empresa.id, "GENERAL"); else void handleSelect(empresa.id);
                         }}
                         title="Ver detalle"
                         type="button"
@@ -573,7 +577,7 @@ export function EmpresasTab({onConfigureSaas}:{onConfigureSaas:(empresaId:number
         </div>
       </div>
 
-      <div className="adm-card">
+      {!onOpenProfile && <div className="adm-card">
         <h4 className="adm-card-title"><Building2 size={15} /> Detalle de empresa</h4>
         {detailLoading ? (
           <div className="adm-empty"><p>Cargando detalle...</p></div>
@@ -595,7 +599,7 @@ export function EmpresasTab({onConfigureSaas}:{onConfigureSaas:(empresaId:number
             <div className="cg-detail-full"><span className="cg-detail-label">Direccion</span><strong>{selectedEmpresa.direccion ?? 'No disponible'}</strong></div>
           </div>
         )}
-      </div>
+      </div>}
 
       {modal && (
         <FormModal

@@ -11,10 +11,6 @@ export function canAccessDashboard(user: NavigationUser | null | undefined): boo
 }
 
 export function resolveAuthenticatedHome(user: NavigationUser): string {
-  if (isGestorOnly(user) && user.permissions.includes("nomina.operativa.read")) return GESTOR_HOME_PATH;
-  if (canAccessDashboard(user)) return "/dashboard";
-  if (user.permissions.includes("nomina.read")) return "/nomina";
-  if (user.permissions.includes("nomina.operativa.read")) return GESTOR_HOME_PATH;
-  if (user.permissions.includes("vinculaciones.read")) return "/personal";
-  return "/portal";
+  if (user.roles.includes("ADMINISTRADOR")) return "/admin-global";
+  return "/empresa";
 }

@@ -53,7 +53,7 @@ function companyBootstrapError(value: unknown, fallback: string): string {
 }
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [empresasDisponibles, setEmpresasDisponibles] = useState<TenantContextEmpresa[]>([]);
   const [empresaId, setEmpresaIdState] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -65,7 +65,9 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const retryTimer = useRef<number | null>(null);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!isAuthenticated) {
+      window.localStorage.removeItem(STORAGE_KEY);
       setEmpresasDisponibles([]);
       setEmpresaIdState(null);
       setCapabilities(null);
@@ -112,11 +114,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, bootstrapAttempt]);
+  }, [isAuthenticated, authLoading, bootstrapAttempt]);
 
   useEffect(() => {
     if (empresaId === null) {
-      window.localStorage.removeItem(STORAGE_KEY);
+      // During hydration there is no selected company yet. Keep the stored,
+      // authorized preference until /tenant/me has resolved it.
       return;
     }
 
@@ -125,11 +128,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setCapabilities(null);
-    if (empresaId === null) return;
+    if (empresaId === null) { setCapabilitiesLoading(false); return; }
     let cancelled = false;
     setCapabilitiesLoading(true);
     void loadCapabilitiesOnce(empresaId)
-      .then((value) => { if (!cancelled) setCapabilities(value); })
+      .then((value) => { if (!cancelled) { setCapabilities(value); setError(null); } })
       .catch((value: unknown) => { if (!cancelled) { setError(companyBootstrapError(value, "No fue posible cargar módulos.")); const retryAfterMs = typeof value === 'object' && value !== null && 'retryAfterMs' in value ? Number((value as { retryAfterMs?: unknown }).retryAfterMs) : 0; if (Number.isFinite(retryAfterMs) && retryAfterMs > 0) setRetryAfterUntil(Date.now() + retryAfterMs); } })
       .finally(() => { if (!cancelled) setCapabilitiesLoading(false); });
     return () => { cancelled = true; };
@@ -150,12 +153,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     error,
     setEmpresaActual: (nextEmpresaId: number | null) => {
       if (nextEmpresaId === null) {
+        window.localStorage.removeItem(STORAGE_KEY);
         setCapabilities(null);
         setEmpresaIdState(null);
         return;
       }
 
       if (empresasDisponibles.some((empresa) => empresa.id === nextEmpresaId)) {
+        if (nextEmpresaId === empresaId) return;
         setCapabilities(null);
         setEmpresaIdState(nextEmpresaId);
       }
@@ -166,12 +171,14 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     isLoading: loading,
     setEmpresaId: (nextEmpresaId: number | null) => {
       if (nextEmpresaId === null) {
+        window.localStorage.removeItem(STORAGE_KEY);
         setCapabilities(null);
         setEmpresaIdState(null);
         return;
       }
 
       if (empresasDisponibles.some((empresa) => empresa.id === nextEmpresaId)) {
+        if (nextEmpresaId === empresaId) return;
         setCapabilities(null);
         setEmpresaIdState(nextEmpresaId);
       }

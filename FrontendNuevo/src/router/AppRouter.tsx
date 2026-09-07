@@ -23,15 +23,21 @@ import AjustesManualesPage from "../pages/nomina/AjustesManualesPage";
 import CuentasCobroPage from "../pages/nomina/CuentasCobroPage";
 import SstPage from "../pages/sst/SstPage";
 import PortalPage from "../pages/portal/PortalPage";
-import AdminPage from "../pages/admin/AdminPage";
 import VerDocumentosPage from "../pages/repositorio/VerDocumentosPage";
 import SubirDocumentosPage from "../pages/repositorio/SubirDocumentosPage";
 import { useAuth } from "../context/AuthContext";
-import { resolveAuthenticatedHome } from "./roleNavigation";
+import { isGlobalAdministrator } from '../architecture/moduleAccess';
+import { tenantEntries } from '../architecture/moduleCatalog';
+import { WorkspacePage, TenantHome } from '../pages/workspace/WorkspacePage';
+import { AdminDashboardPage } from '../pages/workspace/AdminDashboardPage';
+import { CompaniesPage } from '../pages/workspace/CompaniesPage';
+import { ModuleCatalogPage } from '../pages/workspace/ModuleCatalogPage';
+import { ProductConfigurationPage } from '../pages/workspace/ProductConfigurationPage';
+import { PlanesModulosTab } from '../pages/admin/ConfiguracionGeneral/tabs/PlanesModulosTab';
 
 function HomeRedirect() {
   const { user } = useAuth();
-  return <Navigate to={user ? resolveAuthenticatedHome(user) : "/login"} replace />;
+  return isGlobalAdministrator(user) ? <Navigate to="/admin-global" replace /> : <TenantHome />;
 }
 
 export default function AppRouter() {
@@ -43,6 +49,16 @@ export default function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<MainLayout />}>
             <Route index element={<HomeRedirect />} />
+            <Route path="empresa" element={<TenantHome />} />
+            <Route path="admin-global" element={<AdminDashboardPage />} />
+            <Route path="admin-global/empresas" element={<CompaniesPage />} />
+            <Route path="admin-global/planes" element={<section className="workspace-page"><PlanesModulosTab initialCompanyId={null} catalogOnly /></section>} />
+            <Route path="admin-global/modulos" element={<ModuleCatalogPage />} />
+            <Route path="admin-global/configuracion" element={<ProductConfigurationPage />} />
+            {tenantEntries.filter(entry => !entry.children.length).map(entry => <Route key={entry.code} path={entry.route.slice(1)} element={<WorkspacePage entry={entry} />} />)}
+            <Route path="operacion" element={<TenantHome moduleCode="OPERACION" />} />
+            <Route path="logistica" element={<TenantHome moduleCode="LOGISTICA" />} />
+            <Route path="configuracion" element={<TenantHome moduleCode="CONFIGURACION_EMPRESA" />} />
             <Route path="dashboard" element={<ModuleRoute code="DASHBOARD" requiredPermissions={["dashboard.read"]}><DashboardPage /></ModuleRoute>} />
             <Route path="personal" element={<ModuleRoute code="PERSONAL" requiredPermissions={["vinculaciones.read"]}><OperationalPersonalPage /></ModuleRoute>} />
             <Route path="nomina" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaHubPage /></ModuleRoute>} />
@@ -79,7 +95,7 @@ export default function AppRouter() {
             <Route path="vinculaciones" element={<Navigate to="/administracion/vinculaciones" replace />} />
             <Route path="repositorio" element={<ModuleRoute code="REPOSITORIO"><VerDocumentosPage /></ModuleRoute>} />
             <Route path="repositorio/subir" element={<ModuleRoute code="REPOSITORIO"><SubirDocumentosPage /></ModuleRoute>} />
-            <Route path="admin" element={<AdminPage />} />
+            <Route path="admin" element={<Navigate to="/admin-global/empresas" replace />} />
           </Route>
         </Route>
 

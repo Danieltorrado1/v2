@@ -251,7 +251,7 @@ function summarizeTerritorialSelection(catalog: TerritorialScopeCatalog, selecte
     .map(([departamento, total]) => departamento + " - " + total);
 }
 
-export function UsuariosTab() {
+export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}) {
   const { user } = useAuth();
   const isAdmin = user?.roles.includes(ADMIN_ROLE_NAME) === true;
 
@@ -325,7 +325,7 @@ export function UsuariosTab() {
           return;
         }
 
-        setUsers(usersResponse);
+        setUsers(companyScopeId ? usersResponse.filter(item => item.empresas.some(company => company.empresa_id === companyScopeId)) : usersResponse);
         setRoles(rolesResponse);
         setEmpresas(empresasResponse);
         setContratos(contratosResponse);
@@ -345,7 +345,7 @@ export function UsuariosTab() {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin]);
+  }, [isAdmin, companyScopeId]);
 
   const contratosById = useMemo(() => buildContratoLookup(contratos), [contratos]);
   const isGlobalAdminTarget = useMemo(() => isAdminRoleSelected(form.roleIds, roles), [form.roleIds, roles]);
@@ -691,7 +691,7 @@ export function UsuariosTab() {
 
   async function reloadUsers(targetUserId?: string | null) {
     const usersResponse = await configuracionApi.listarUsuariosAdmin();
-    setUsers(usersResponse);
+    setUsers(companyScopeId ? usersResponse.filter(item => item.empresas.some(company => company.empresa_id === companyScopeId)) : usersResponse);
     setSelectedUserId(targetUserId ?? null);
   }
 

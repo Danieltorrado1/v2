@@ -79,7 +79,7 @@ function buildPayload(form: ContratoForm): CreateContratoPayload {
   };
 }
 
-export function ContratosTab() {
+export function ContratosTab({ companyScopeId }: { companyScopeId?: number } = {}) {
   const { user } = useAuth();
   const permissions = user?.permissions ?? [];
   const canRead = hasAnyPermission(permissions, ['configuracion.read', 'contratos.read', 'contracts.read']);
@@ -95,7 +95,7 @@ export function ContratosTab() {
   const [search, setSearch] = useState('');
   const [estado, setEstado] = useState<EstadoFiltro>('all');
   const [estadoContractual, setEstadoContractual] = useState('');
-  const [empresaFiltro, setEmpresaFiltro] = useState('');
+  const [empresaFiltro, setEmpresaFiltro] = useState(companyScopeId ? String(companyScopeId) : '');
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([]);
   const [page, setPage] = useState(1);
@@ -134,7 +134,7 @@ export function ContratosTab() {
     configuracionApi.listarContratos({
       page, limit: PAGE_SIZE, search: search.trim() || undefined,
       activo: estado === 'all' ? undefined : estado === 'active',
-      empresa_id: empresaFiltro ? Number(empresaFiltro) : undefined,
+      empresa_id: companyScopeId ?? (empresaFiltro ? Number(empresaFiltro) : undefined),
       estado_contractual: estadoContractual || undefined,
     }).then((response) => {
       if (cancelled) return;
@@ -146,7 +146,7 @@ export function ContratosTab() {
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [canRead, empresaFiltro, estado, estadoContractual, page, search, selectedId]);
+  }, [canRead, companyScopeId, empresaFiltro, estado, estadoContractual, page, search, selectedId]);
 
   async function handleSelect(id: number) {
     setSelectedId(id); setDetailTab('resumen');
@@ -168,7 +168,7 @@ export function ContratosTab() {
       const response = await configuracionApi.listarContratos({
         page, limit: PAGE_SIZE, search: search.trim() || undefined,
         activo: estado === 'all' ? undefined : estado === 'active',
-        empresa_id: empresaFiltro ? Number(empresaFiltro) : undefined,
+        empresa_id: companyScopeId ?? (empresaFiltro ? Number(empresaFiltro) : undefined),
         estado_contractual: estadoContractual || undefined,
       });
       setItems(response.items); setPagination(response.pagination);
@@ -188,7 +188,7 @@ export function ContratosTab() {
   }
 
   function openCreate() {
-    setForm({ ...blankForm(), empresa_id: empresas[0] ? String(empresas[0].id) : '' });
+    setForm({ ...blankForm(), empresa_id: companyScopeId ? String(companyScopeId) : empresas[0] ? String(empresas[0].id) : '' });
     setFormError(''); setModal({ mode: 'create' });
   }
 
@@ -259,7 +259,7 @@ export function ContratosTab() {
 
       <div className="cg-filters">
         <div className="cg-search"><Search size={14} /><input placeholder="Buscar por numero, objeto o entidad" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /></div>
-        <select className="adm-select cg-filter-select" value={empresaFiltro} onChange={(event) => { setEmpresaFiltro(event.target.value); setPage(1); }}><option value="">Todas las empresas</option>{empresas.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}</select>
+        <select disabled={companyScopeId !== undefined} className="adm-select cg-filter-select" value={empresaFiltro} onChange={(event) => { setEmpresaFiltro(event.target.value); setPage(1); }}><option value="">Todas las empresas</option>{empresas.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}</select>
         <select className="adm-select cg-filter-select" value={estadoContractual} onChange={(event) => { setEstadoContractual(event.target.value); setPage(1); }}><option value="">Todos los estados</option>{CONTRACT_STATES.map((state) => <option key={state} value={state}>{state}</option>)}</select>
         <select className="adm-select cg-filter-select" value={estado} onChange={(event) => { setEstado(event.target.value as EstadoFiltro); setPage(1); }}><option value="all">Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select>
       </div>
@@ -322,7 +322,7 @@ export function ContratosTab() {
 
       {modal && <FormModal title={modal.mode === 'create' ? 'Nuevo contrato' : `Editar: ${modal.contrato.numero_contrato}`} onClose={() => setModal(null)} onSave={handleSave} saving={saving} wide>
         <div className="adm-form-grid">
-          <div className="adm-field"><label className="adm-label">Empresa juridica *</label><select className="adm-select" value={form.empresa_id} onChange={(event) => setForm((current) => ({ ...current, empresa_id: event.target.value }))}><option value="">Seleccionar</option>{empresas.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}</select></div>
+          <div className="adm-field"><label className="adm-label">Empresa juridica *</label><select disabled={companyScopeId !== undefined} className="adm-select" value={form.empresa_id} onChange={(event) => setForm((current) => ({ ...current, empresa_id: event.target.value }))}><option value="">Seleccionar</option>{empresas.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}</select></div>
           <div className="adm-field"><label className="adm-label">Numero de contrato *</label><input className="adm-input" value={form.numero_contrato} onChange={(event) => setForm((current) => ({ ...current, numero_contrato: event.target.value }))} /></div>
           <div className="adm-field"><label className="adm-label">Numero de licitacion</label><input className="adm-input" value={form.numero_licitacion} onChange={(event) => setForm((current) => ({ ...current, numero_licitacion: event.target.value }))} /></div>
           <div className="adm-field"><label className="adm-label">Entidad contratante *</label><input className="adm-input" value={form.entidad_contratante} onChange={(event) => setForm((current) => ({ ...current, entidad_contratante: event.target.value }))} /></div>

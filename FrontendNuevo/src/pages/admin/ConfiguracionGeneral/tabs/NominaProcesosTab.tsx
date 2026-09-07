@@ -118,10 +118,10 @@ const slug = (value: string) =>
     .replace(/[^A-Z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
 
-export function NominaProcesosTab() {
+export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?: NominaConfigTab } = {}) {
   const { empresaActual } = useCompanyContext();
 
-  const [tab, setTab] = useState<NominaConfigTab>('asignaciones');
+  const [tab, setTab] = useState<NominaConfigTab>(initialTab);
 
   const [users, setUsers] = useState<AssignableUser[]>([]);
   const [responsibilities, setResponsibilities] = useState<

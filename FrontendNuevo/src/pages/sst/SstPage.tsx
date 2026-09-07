@@ -119,6 +119,7 @@ import {
   toInputTime,
 } from "./sstPage.helpers";
 import { useCompanyContext } from "../../context/CompanyContext";
+import { canAccessEntry, resolveCatalogLocation } from "../../architecture/moduleAccess";
 import "./SstPages.css";
 
 type SstTab = "resumen" | "eventos" | "planes" | "inspecciones" | "hallazgos" | "accidentes" | "indicadores";
@@ -417,7 +418,7 @@ const EMPTY_ACCION_ACCIDENTE_FORM: AccionAccidenteFormState = {
 
 export default function SstPage() {
   const { user } = useAuth();
-  const { empresaActiva, empresaId } = useCompanyContext();
+  const { empresaActiva, empresaId, capabilities } = useCompanyContext();
   const permissions = user?.permissions ?? [];
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = getSafeTab(searchParams.get("tab"));
@@ -2492,7 +2493,10 @@ const selectedPeriodo = periodosState.data?.items.find((item) => String(item.id)
       </div>
 
       <div className="sst-tabs" role="tablist" aria-label="Tabs SST">
-        {TABS.map((tab) => (
+        {TABS.filter(tab => {
+          const current = resolveCatalogLocation('/sst', `?tab=${tab.id}`);
+          return !!current && canAccessEntry(current.entry, user, capabilities?.modulos ?? {}, current.module);
+        }).map((tab) => (
           <button key={tab.id} type="button" className={`sst-tab${activeTab === tab.id ? " active" : ""}`} onClick={() => setTab(tab.id)}>
             {tab.label}
           </button>
