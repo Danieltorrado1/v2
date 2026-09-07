@@ -1276,6 +1276,7 @@ export interface NominaDashboard {
   empleados_pendientes: number;
   empleados_revisados: number;
   empleados_total: number;
+  empleados_disponibles: number;
   estado_periodo: string;
   total_deducciones: number;
   total_desprendibles: number;
@@ -12943,6 +12944,17 @@ const loadNominaDashboardData = async (
   );
 
   const empleados = empleadosResult.rows[0];
+  const disponiblesResult = await executor.query<{ empleados_disponibles: number }>(
+    `
+      SELECT COUNT(DISTINCT v.id)::int AS empleados_disponibles
+      FROM vinculaciones v
+      WHERE v.contrato_id = $1::bigint
+        AND v.fecha_inicio <= $2::date
+        AND (v.fecha_fin IS NULL OR v.fecha_fin >= $3::date)
+    `,
+    [periodo.contrato_id, toDateString(periodo.fecha_fin), toDateString(periodo.fecha_inicio)]
+  );
+  const disponibles = disponiblesResult.rows[0];
   const conteos = conteosResult.rows[0];
   const asistencia = asistenciaResult.rows[0];
 
@@ -12950,6 +12962,7 @@ const loadNominaDashboardData = async (
     empleados_total: empleados?.empleados_total ?? 0,
     empleados_revisados: empleados?.empleados_revisados ?? 0,
     empleados_pendientes: empleados?.empleados_pendientes ?? 0,
+    empleados_disponibles: disponibles?.empleados_disponibles ?? 0,
     total_devengado: toNumberValue(empleados?.total_devengado),
     total_deducciones: toNumberValue(empleados?.total_deducciones),
     total_neto: toNumberValue(empleados?.total_neto),

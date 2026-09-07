@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Bell, Building2, ChevronDown, LogOut, Moon, Sun, UserRound } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -49,6 +49,7 @@ function hasAnyPermission(permissions: string[] | undefined, required: readonly 
 }
 
 export default function MainLayout() {
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const { empresasDisponibles, empresaId, empresaActual, organizacionActual, isLoading, setEmpresaActual, hasModule } = useCompanyContext();
@@ -299,8 +300,8 @@ export default function MainLayout() {
       )}
 
       <main className="content">
-        <div className="page-scroll">
-          <div className="page-content">
+        <div className={`page-scroll${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-scroll--nomina-gestion" : ""}`}>
+          <div className={`page-content${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-content--nomina-gestion" : ""}`}>
             <Outlet />
           </div>
         </div>

@@ -2952,7 +2952,11 @@ export default function NominaPage() {
                         <span>{formatPeriodRange(periodo.fecha_inicio, periodo.fecha_fin)}</span>
                         <span>
                           {summaryDashboard
-                            ? `${formatNumber(summaryDashboard.empleados_total)} empleados`
+                            ? summaryDashboard.empleados_total > 0
+                              ? `${formatNumber(summaryDashboard.empleados_total)} empleados`
+                              : summaryDashboard.empleados_disponibles > 0
+                                ? `${formatNumber(summaryDashboard.empleados_disponibles)} empleados disponibles`
+                                : "Empleados no disponibles"
                             : "Empleados no disponibles"}
                         </span>
                       </div>

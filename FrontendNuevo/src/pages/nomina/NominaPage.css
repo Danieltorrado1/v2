@@ -2032,6 +2032,175 @@
   }
 }
 
+/* Nomina uses the full available workspace without changing the shared layout. */
+.page-content--nomina-gestion {
+  max-width: none;
+}
+
+.page-scroll--nomina-gestion {
+  padding-inline: 16px;
+}
+
+.nomina-page--gestion {
+  grid-template-columns: minmax(145px, 170px) minmax(0, 1fr);
+  column-gap: 16px;
+}
+
+.nomina-page--gestion > .payroll-kpis {
+  overflow-x: hidden;
+  padding-right: 0;
+}
+
+.nomina-page--gestion .payroll-kpi {
+  min-width: 0;
+  overflow: hidden;
+  padding: 9px 10px;
+}
+
+.nomina-page--gestion .payroll-kpi-body {
+  min-width: 0;
+}
+
+.nomina-page--gestion .payroll-kpi-body span,
+.nomina-page--gestion .payroll-kpi-body strong,
+.nomina-page--gestion .payroll-kpi-body small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nomina-page--gestion .payroll-kpi-body strong {
+  font-size: clamp(12px, 1.05vw, 17px);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.nomina-page--gestion > .payroll-filterbar,
+.nomina-page--gestion > .payroll-actionbar,
+.nomina-page--gestion > .payroll-periods,
+.nomina-page--gestion > .payroll-inline-state,
+.nomina-page--gestion > .payroll-state-card,
+.nomina-page--gestion > .payroll-placeholder,
+.nomina-page--gestion > .payroll-operational-legend,
+.nomina-page--gestion > .payroll-pagination {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.nomina-page--gestion > .payroll-filterbar {
+  gap: 10px;
+}
+
+.nomina-page--gestion > .payroll-filterbar .payroll-filter-group {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.nomina-page--gestion .payroll-search {
+  flex: 2 1 220px;
+}
+
+.nomina-page--gestion .payroll-filter-select-wrap {
+  flex: 1 1 118px;
+}
+
+.nomina-page--gestion .payroll-table-scroll,
+.nomina-page--gestion .payroll-period-card,
+.nomina-page--gestion .payroll-period-detail {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.nomina-page--gestion .payroll-period-card {
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .page-scroll--nomina-gestion {
+    padding-inline: 12px;
+  }
+
+  .nomina-page--gestion {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .page-scroll--nomina-gestion {
+    padding-inline: 12px;
+  }
+
+  .nomina-page--gestion {
+    grid-template-columns: 1fr;
+  }
+
+  .nomina-page--gestion > .payroll-kpis {
+    grid-column: 1;
+    grid-row: auto;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+  }
+}
+
+@media (max-width: 760px) {
+  .nomina-page--gestion > .payroll-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nomina-page--gestion .payroll-table-head {
+    display: none;
+  }
+
+  .nomina-page--gestion .payroll-table-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .nomina-page--gestion .payroll-table-row > .cell-employee {
+    grid-column: 1 / -1;
+  }
+
+  .nomina-page--gestion .payroll-table-row > .cell-employee,
+  .nomina-page--gestion .payroll-table-row > .cell-stack,
+  .nomina-page--gestion .payroll-table-row > .cell-devengado,
+  .nomina-page--gestion .payroll-table-row > .cell-pay-days,
+  .nomina-page--gestion .payroll-table-row > .cell-deduccion,
+  .nomina-page--gestion .payroll-table-row > .cell-neto,
+  .nomina-page--gestion .payroll-table-row > .cell-novedades,
+  .nomina-page--gestion .payroll-table-row > .payroll-review-icon,
+  .nomina-page--gestion .payroll-table-row > .cell-row-actions {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .nomina-page--gestion .payroll-table-row > .cell-stack::before,
+  .nomina-page--gestion .payroll-table-row > .cell-devengado::before,
+  .nomina-page--gestion .payroll-table-row > .cell-pay-days::before,
+  .nomina-page--gestion .payroll-table-row > .cell-deduccion::before,
+  .nomina-page--gestion .payroll-table-row > .cell-neto::before,
+  .nomina-page--gestion .payroll-table-row > .cell-novedades::before,
+  .nomina-page--gestion .payroll-table-row > .payroll-review-icon::before {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .nomina-page--gestion .payroll-table-row > .cell-stack:nth-child(2)::before { content: "Cargo"; }
+  .nomina-page--gestion .payroll-table-row > .cell-stack:nth-child(3)::before { content: "Liquidación"; }
+  .nomina-page--gestion .payroll-table-row > .cell-devengado::before { content: "Devengado"; }
+  .nomina-page--gestion .payroll-table-row > .cell-pay-days::before { content: "Días"; }
+  .nomina-page--gestion .payroll-table-row > .cell-deduccion::before { content: "Deducciones"; }
+  .nomina-page--gestion .payroll-table-row > .cell-neto::before { content: "Neto"; }
+  .nomina-page--gestion .payroll-table-row > .cell-novedades::before { content: "Novedades"; }
+  .nomina-page--gestion .payroll-table-row > .payroll-review-icon::before { content: "Revisión"; }
+}
+
 
 
 
