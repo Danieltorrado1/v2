@@ -2293,45 +2293,66 @@
   .nomina-page--gestion .payroll-period-totals strong { overflow-wrap: anywhere; }
 }
 
-/* The application content area is the only vertical scroller for payroll management. */
-.page-scroll--nomina-gestion:has(> .page-content > .nomina-page--period-host) { display: block; }
-.page-content--nomina-gestion:has(> .nomina-page--period-host) { height: auto; min-height: 100%; margin-inline: auto; }
-.page-content--nomina-gestion > .nomina-page--period-host { height: auto; min-height: 0; overflow: visible; grid-template-rows: auto auto; padding-bottom: 28px; }
-.nomina-page--period-host > .nomina-payroll-main,
-.nomina-page--period-host > .nomina-payroll-main > .payroll-periods { height: auto; overflow: visible; flex: none; }
-.nomina-page--period-host > .payroll-kpis { overflow: visible; }
-.nomina-page--gestion .payroll-kpi { gap: 8px; }
-.nomina-page--gestion .payroll-kpi-icon { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; }
-.nomina-page--gestion .payroll-kpi-icon svg { width: 17px; height: 17px; }
-.nomina-page--gestion .payroll-kpi-body { flex: 1; min-width: 0; }
-
-/* The management shell keeps the module at the available height.  Each open
-   period owns the vertical list scroll; the browser page itself stays still. */
+/* Only management's employee rows scroll; every ancestor has a bounded height. */
+.page-scroll--nomina-gestion:has(> .page-content > .nomina-page--period-host) {
+  overflow: hidden;
+}
+.page-content--nomina-gestion:has(> .nomina-page--period-host) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
 .page-content--nomina-gestion > .nomina-page--period-host {
   height: 100%;
   min-height: 0;
   overflow: hidden;
   grid-template-rows: auto minmax(0, 1fr);
 }
-.nomina-page--period-host > .nomina-payroll-main {
+.nomina-page--period-host > .nomina-payroll-main,
+.nomina-page--period-host .nomina-page--embedded,
+.nomina-page--period-host .nomina-page--embedded > .nomina-payroll-main,
+.nomina-page--period-host .nomina-page--embedded > .nomina-payroll-main > .payroll-periods,
+.nomina-page--period-host > .nomina-payroll-main > .payroll-periods,
+.nomina-page--period-host .payroll-period-detail {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
+  flex: 1 1 0;
   overflow: hidden;
-  flex: 1 1 auto;
 }
-.nomina-page--period-host > .nomina-payroll-main > .payroll-periods {
-  height: 100%;
+.nomina-page--period-host .payroll-period-card { flex: 0 0 auto; }
+.nomina-page--period-host .payroll-period-card.open {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
-  overflow: hidden;
-  flex: 1 1 auto;
+  flex: 1 1 0;
 }
-.nomina-page--period-host .payroll-period-card.open { min-height: 0; }
-.nomina-page--period-host .payroll-period-detail { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; }
-.nomina-page--embedded.nomina-page--gestion { height: 100%; min-height: 0; overflow: hidden; display: flex; }
-.nomina-page--embedded > .nomina-payroll-main { height: 100%; min-height: 0; overflow: hidden; flex: 1 1 auto; }
-.nomina-page--embedded > .nomina-payroll-main > .payroll-periods { height: 100%; min-height: 0; overflow: hidden; flex: 1 1 auto; }
-.nomina-page--embedded > .nomina-payroll-main > .payroll-periods > .payroll-period-card { height: 100%; min-height: 0; display: flex; flex-direction: column; }
-.nomina-page--embedded .payroll-period-detail > .payroll-table-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; overflow-x: auto; }
+.nomina-page--period-host .payroll-period-summary,
+.nomina-page--period-host .payroll-filterbar,
+.nomina-page--period-host .payroll-actionbar,
+.nomina-page--period-host .payroll-table-head,
+.nomina-page--period-host .payroll-pagination { flex: 0 0 auto; }
+.nomina-page--period-host .payroll-table-head { position: static; scrollbar-gutter: stable; overflow: hidden; }
+.nomina-page--period-host .payroll-period-detail > .nomina-payroll-rows-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+}
+.nomina-page--period-host > .payroll-kpis { min-height: 0; max-height: 100%; overflow: visible; }
+.nomina-page--period-host .payroll-kpi { gap: 8px; }
+.nomina-page--period-host .payroll-kpi-icon { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; }
+.nomina-page--period-host .payroll-kpi-icon svg { width: 17px; height: 17px; }
+.nomina-page--period-host .payroll-kpi-body { flex: 1; min-width: 0; }
+@media (max-height: 800px) {
+  .nomina-page--period-host > .payroll-kpis { gap: 6px; }
+  .nomina-page--period-host .payroll-kpi { min-height: 0; padding-block: 7px; }
+}
+@media (max-width: 1100px) {
+  .page-content--nomina-gestion > .nomina-page--period-host { grid-template-rows: auto auto minmax(0, 1fr); }
+}
 
 .nomina-detail-overlay {
   position: fixed;

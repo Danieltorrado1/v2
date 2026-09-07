@@ -845,7 +845,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
   const [isSyncingPopulation, setIsSyncingPopulation] = useState(false);
   const [activeTab, setActiveTab] = useState("nomina");
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(savedView?.selectedPeriodId as string ?? embeddedPeriodId ?? null);
-  const [expandedPeriodIds, setExpandedPeriodIds] = useState<Set<string>>(new Set(savedView?.expandedPeriodIds as string[] ?? []));
+  const [expandedPeriodIds, setExpandedPeriodIds] = useState<Set<string>>(new Set((savedView?.expandedPeriodIds as string[] ?? []).slice(-1)));
   const [searchTerm, setSearchTerm] = useState((savedView?.searchTerm as string) ?? "");
   const [estadoFilter, setEstadoFilter] = useState((savedView?.estadoFilter as string) ?? "");
   const [clasificacionFilter, setClasificacionFilter] = useState((savedView?.clasificacionFilter as string) ?? "");
@@ -1977,15 +1977,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
 
   const handleSelectPeriod = (periodId: string) => {
     setSelectedPeriodId(periodId);
-    setExpandedPeriodIds((current) => {
-      const next = new Set(current);
-      if (next.has(periodId)) {
-        next.delete(periodId);
-      } else {
-        next.add(periodId);
-      }
-      return next;
-    });
+    setExpandedPeriodIds((current) => current.has(periodId) ? new Set() : new Set([periodId]));
     setRecalculateError(null);
     setNovedadActionError(null);
     setActionFeedback(null);
@@ -3162,8 +3154,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
                         ) : null}
                         {embeddedPeriodId && isSelected ? (
                           <>
-                        <div className="payroll-table-scroll">
-                          <div className="payroll-table-head">
+                        <div className="payroll-table-head">
                             <span>Trabajador y contexto</span>
                             <span>Cargo / clasificacion</span>
                             <span>Liquidacion</span>
@@ -3176,6 +3167,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
                             <span>Acciones</span>
                           </div>
 
+                        <div className="payroll-table-scroll nomina-payroll-rows-scroll">
                           {employeesState.loading && allEmployees.length === 0 ? (
                             <div className="payroll-table-state">Cargando empleados del periodo...</div>
                           ) : employeesState.error ? (
