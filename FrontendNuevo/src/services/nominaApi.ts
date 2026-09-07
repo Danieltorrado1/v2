@@ -1129,5 +1129,12 @@ export async function importNominaEmpleados(periodId: string) {
     skipped_requires_review?: number;
     requires_review: string[];
   }>>(`/nomina/periodos/${periodId}/importar-empleados`, {});
+  // Accept both the canonical { success, data } envelope and the legacy
+  // direct payload returned by older deployments.  The caller must receive
+  // the import summary itself so it can refresh the population reliably.
+  const payload = response.data as unknown;
+  if (payload && typeof payload === "object" && "data" in payload) {
+    return (payload as { data: NonNullable<typeof response.data> }).data;
+  }
   return response.data;
 }

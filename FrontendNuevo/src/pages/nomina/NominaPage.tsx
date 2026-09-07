@@ -885,6 +885,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
   const [ajustesManuales, setAjustesManuales] = useState<AjusteManualApi[]>([]);
   const [manualFinalDrafts, setManualFinalDrafts] = useState<Record<string, ManualFinalDraft>>({});
   const [savingManualFinalId, setSavingManualFinalId] = useState<string | null>(null);
+  const [selectedDetailEmployeeId, setSelectedDetailEmployeeId] = useState<string | null>(null);
 
   const [periodsState, setPeriodsState] = useState<AsyncState<PaginatedNominaPeriodosApi>>({
     ...EMPTY_ASYNC_STATE,
@@ -924,6 +925,20 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
     const path = location.pathname;
     setActiveTab(path.endsWith("/novedades") ? "novedades" : path.endsWith("/documentos") ? "soportes" : "nomina");
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!selectedDetailEmployeeId || typeof window === "undefined") return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedDetailEmployeeId(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [selectedDetailEmployeeId]);
 
   const periodos = useMemo(() => periodsState.data?.items ?? [], [periodsState.data]);
   const selectedPeriodFromList = periodos.find((periodo) => periodo.id === selectedPeriodId) ?? null;
@@ -1990,9 +2005,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
   };
   const handleOpenEmployeeDetail = (employeeId: string) => {
     if (!selectedPeriodId) return;
-    navigate(`/nomina/gestion/${selectedPeriodId}/empleado/${employeeId}`, {
-      state: { fromPayroll: true, returnPath: `${location.pathname}?period_id=${selectedPeriodId}` },
-    });
+    setSelectedDetailEmployeeId(employeeId);
   };
   const finalAdjustmentsByEmployee = useMemo(
     () => new Map(
@@ -4320,6 +4333,42 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
           </div>
         </div>
       ) : null}
+
+      {selectedDetailEmployeeId ? (() => {
+        const detailEmployee = allEmployees.find((item) => String(item.id) === selectedDetailEmployeeId) ?? null;
+        return (
+          <div className="nomina-detail-overlay" role="presentation" onClick={() => setSelectedDetailEmployeeId(null)}>
+            <aside className="nomina-detail-drawer" role="dialog" aria-modal="true" aria-label="Detalle de nómina" onClick={(event) => event.stopPropagation()}>
+              <div className="nomina-detail-drawer-header">
+                <div>
+                  <span>Expediente de nómina</span>
+                  <h2>{detailEmployee?.persona.nombre_completo ?? "Detalle de nómina"}</h2>
+                  <p>{selectedPeriod?.nombre_periodo ?? "Periodo no disponible"}{detailEmployee ? ` · ${getEmployeeDocumentLabel(detailEmployee)}` : ""}</p>
+                </div>
+                <button type="button" onClick={() => setSelectedDetailEmployeeId(null)} aria-label="Cerrar detalle" title="Cerrar"><X size={20} /></button>
+              </div>
+              <div className="nomina-detail-drawer-scroll">
+                {!detailEmployee || !selectedPeriod ? (
+                  <StateCard title="Nómina no encontrada" message="El trabajador no pertenece al periodo seleccionado." />
+                ) : (
+                  <>
+                    <dl className="nomina-employee-detail-context">
+                      {[["Cargo", getEmployeeCargoLabel(detailEmployee)], ["Modalidad", getEmployeeModalidadDescription(detailEmployee)], ["Municipio", getEmployeeMunicipioLabel(detailEmployee)], ["Institución", getEmployeeInstitucionLabel(detailEmployee)], ["Sede", getEmployeeSedeLabel(detailEmployee)], ["Revisión", getEmployeeStatusLabel(detailEmployee)]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+                    </dl>
+                    <div className="nomina-employee-detail-totals">
+                      <div><span>Total devengado</span><strong>{formatCOP(detailEmployee.total_adiciones)}</strong></div>
+                      <div><span>Total deducciones</span><strong>{formatCOP(detailEmployee.total_deducciones)}</strong></div>
+                      <div><span>NETO A PAGAR</span><strong>{formatCOP(detailEmployee.neto_pagar)}</strong></div>
+                    </div>
+                    {renderEmployeeFinancialDetail(detailEmployee)}
+                    <NominaEmpleadoDetalleSections employee={detailEmployee} period={selectedPeriod} novedades={allNovedades.filter(item => String(item.nomina_empleado_id) === selectedDetailEmployeeId)} novedadesLoading={novedadesState.loading} novedadesError={novedadesState.error} ajustesError={ajustesError} ajustes={ajustesManuales.filter(item => String(item.nomina_empleado_id) === selectedDetailEmployeeId)} onRetry={handleRetry} onViewSupport={handleViewSupport} />
+                  </>
+                )}
+              </div>
+            </aside>
+          </div>
+        );
+      })() : null}
     </div>
   );
 }

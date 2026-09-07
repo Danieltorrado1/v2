@@ -2304,3 +2304,66 @@
 .nomina-page--gestion .payroll-kpi-icon { width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; }
 .nomina-page--gestion .payroll-kpi-icon svg { width: 17px; height: 17px; }
 .nomina-page--gestion .payroll-kpi-body { flex: 1; min-width: 0; }
+
+/* The management shell keeps the module at the available height.  Each open
+   period owns the vertical list scroll; the browser page itself stays still. */
+.page-content--nomina-gestion > .nomina-page--period-host {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.nomina-page--period-host > .nomina-payroll-main {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+.nomina-page--period-host > .nomina-payroll-main > .payroll-periods {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+.nomina-page--period-host .payroll-period-card.open { min-height: 0; }
+.nomina-page--period-host .payroll-period-detail { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; overflow: hidden; }
+.nomina-page--embedded.nomina-page--gestion { height: 100%; min-height: 0; overflow: hidden; display: flex; }
+.nomina-page--embedded > .nomina-payroll-main { height: 100%; min-height: 0; overflow: hidden; flex: 1 1 auto; }
+.nomina-page--embedded > .nomina-payroll-main > .payroll-periods { height: 100%; min-height: 0; overflow: hidden; flex: 1 1 auto; }
+.nomina-page--embedded > .nomina-payroll-main > .payroll-periods > .payroll-period-card { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+.nomina-page--embedded .payroll-period-detail > .payroll-table-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; overflow-x: auto; }
+
+.nomina-detail-overlay {
+  position: fixed;
+  inset: 76px 0 0;
+  z-index: 75;
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px;
+  background: color-mix(in srgb, var(--overlay-backdrop) 76%, transparent);
+}
+.nomina-detail-drawer {
+  width: min(78vw, 1120px);
+  max-width: calc(100vw - 28px);
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 22px;
+  background: var(--bg-primary);
+  box-shadow: var(--shadow-soft);
+}
+.nomina-detail-drawer-header { flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 22px 24px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); }
+.nomina-detail-drawer-header span { color: var(--text-secondary); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.nomina-detail-drawer-header h2 { margin: 6px 0 4px; font-size: clamp(20px, 2.4vw, 28px); overflow-wrap: anywhere; }
+.nomina-detail-drawer-header p { margin: 0; color: var(--text-secondary); }
+.nomina-detail-drawer-header button { flex: 0 0 auto; display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-primary); color: var(--text-secondary); cursor: pointer; }
+.nomina-detail-drawer-scroll { min-height: 0; flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding: 20px 24px 30px; }
+.nomina-detail-drawer-scroll .nomina-employee-detail-context { margin-top: 0; }
+@media (max-width: 700px) {
+  .nomina-detail-overlay { inset: 64px 0 0; padding: 0; }
+  .nomina-detail-drawer { width: 100%; max-width: none; border-radius: 16px 16px 0 0; }
+  .nomina-detail-drawer-header, .nomina-detail-drawer-scroll { padding-inline: 16px; }
+}
