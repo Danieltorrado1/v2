@@ -543,7 +543,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
             className={tab === 'asignaciones' ? 'active' : ''}
             onClick={() => setTab('asignaciones')}
           >
-            ASIGNACIONES
+            ASIGNACIONES DE NÓMINA
           </button>
 
           <button

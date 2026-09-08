@@ -91,7 +91,7 @@ export const moduleCatalog: ModuleEntry[] = [
   entry({ code: 'CONFIGURACION_EMPRESA', label: 'Configuración', icon: Settings, route: '/configuracion/empresa', children: children('CONFIG_EMPRESA', '/configuracion', [
     ['GENERAL', 'Empresa', 'empresa', { permission: ['configuracion.read', 'empresas.read'], view: 'company-settings' }],
     ['CONTRATOS', 'Contratos', 'contratos', { permission: ['configuracion.read', 'contratos.read', 'contracts.read'], view: 'contracts' }],
-    ['NOMINA', 'Nómina', 'nomina', { permission: ['nomina.economico.read', 'nomina.periodos.update'], globalOnly: true, view: 'payroll-settings' }],
+    ['NOMINA', 'Nómina', 'nomina/asignaciones', { permission: ['nomina.periodos.update'], aliases: ['/configuracion/nomina'], view: 'payroll-settings', sections: ['Asignaciones', 'Parámetros', 'Procesos'] }],
     ['REQUISITOS_DOCUMENTALES', 'Requisitos documentales', 'requisitos-documentales', { permission: ['configuracion.read', 'contratos.read'], view: 'requirements', sections: ['Cargo', 'Tipo de contrato', 'Proceso', 'Modalidad'] }],
     ['CARGOS', 'Cargos', 'cargos', { permission: ['configuracion.read', 'cargos.read'], view: 'positions' }],
     ['AREAS', 'Áreas', 'areas', { permission: ['nomina.periodos.update'], globalOnly: true, view: 'areas', sections: ['Áreas', 'Responsables', 'Procesos'] }],

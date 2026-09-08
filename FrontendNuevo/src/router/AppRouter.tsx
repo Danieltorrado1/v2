@@ -56,6 +56,7 @@ export default function AppRouter() {
             <Route path="admin-global/modulos" element={<ModuleCatalogPage />} />
             <Route path="admin-global/configuracion" element={<ProductConfigurationPage />} />
             {tenantEntries.filter(entry => !entry.children.length).map(entry => <Route key={entry.code} path={entry.route.slice(1)} element={<WorkspacePage entry={entry} />} />)}
+            <Route path="configuracion/nomina" element={<Navigate to="/configuracion/nomina/asignaciones" replace />} />
             <Route path="operacion" element={<TenantHome moduleCode="OPERACION" />} />
             <Route path="logistica" element={<TenantHome moduleCode="LOGISTICA" />} />
             <Route path="configuracion" element={<TenantHome moduleCode="CONFIGURACION_EMPRESA" />} />
