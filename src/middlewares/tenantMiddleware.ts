@@ -78,18 +78,7 @@ export const loadTenantAccess = async (
         [numericUserId]
       );
 
-  const isGlobalAdmin = rolesResult.rows.some((row) => row.nombre_rol === 'ADMINISTRADOR');
   const roleNames = Array.from(new Set(rolesResult.rows.map((row) => row.nombre_rol)));
-
-  if (isGlobalAdmin) {
-    return {
-      userId: numericUserId,
-      isGlobalAdmin: true,
-      empresaIds: [],
-      contratoIds: [],
-      roleNames
-    };
-  }
 
   const empresasQuery = `
         SELECT ue.empresa_id::text AS id
@@ -115,9 +104,17 @@ export const loadTenantAccess = async (
         dbQuery<TenantIdRow>(contratosQuery, [numericUserId])
       ]);
 
+  // ADMINISTRADOR is also the tenant-administrator role. Global scope is
+  // represented by the absence of any active tenant assignment; a company
+  // or contract assignment always makes the user tenant-scoped.
+  const isGlobalAdmin =
+    rolesResult.rows.some((row) => row.nombre_rol === 'ADMINISTRADOR') &&
+    empresasResult.rows.length === 0 &&
+    contratosResult.rows.length === 0;
+
   return {
     userId: numericUserId,
-    isGlobalAdmin: false,
+    isGlobalAdmin,
     empresaIds: toUniqueNumbers(empresasResult.rows),
     contratoIds: toUniqueNumbers(contratosResult.rows),
     roleNames

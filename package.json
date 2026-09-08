@@ -39,6 +39,7 @@
       "db:migrate:nomina-captura-operativa": "tsx src/scripts/migrate-nomina-captura-operativa.ts",
     "db:migrate:nomina-4a-cobertura": "tsx src/scripts/migrate-nomina-4a-cobertura.ts",
     "db:migrate:nomina-4b-procesos": "tsx src/scripts/migrate-nomina-4b-procesos.ts",
+    "db:migrate:nomina-4b1-contrato": "tsx src/scripts/migrate-nomina-4b1-contrato.ts",
     "db:migrate:nomina-planilla-operativa-fixes": "tsx src/scripts/migrate-nomina-planilla-operativa-fixes.ts",
     "db:migrate:nomina-5b1-cobertura-externos": "tsx src/scripts/migrate-nomina-5b1-cobertura-externos.ts",
     "db:migrate:nomina-cobertura-cuentas-sync": "tsx src/scripts/migrate-nomina-cobertura-cuentas-sync.ts",

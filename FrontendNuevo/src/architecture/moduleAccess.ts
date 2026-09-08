@@ -3,7 +3,7 @@ import { tenantModules, type ModuleEntry } from './moduleCatalog';
 import { visiblePayrollLinks } from './payrollNavigation';
 
 export type AccessUser = { roles: string[]; permissions: string[] };
-export const isGlobalAdministrator = (user: AccessUser | null | undefined) => user?.roles.includes('ADMINISTRADOR') === true;
+export const isGlobalAdministrator = (user: AccessUser | null | undefined) => (user as (AccessUser & { isGlobalAdmin?: boolean }) | null | undefined)?.isGlobalAdmin === true;
 export function hasPermission(user: AccessUser | null | undefined, required: string[]) {
   return !!user && (!required.length || required.some(code => code.endsWith('.*')
     ? user.permissions.some(permission => permission.startsWith(code.slice(0, -1)))

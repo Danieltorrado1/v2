@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
-import { loadTenantAccess } from '../../middlewares/tenantMiddleware';
+import { loadTenantAccess, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import {
   CreateAdminUserInput,
@@ -21,6 +21,7 @@ interface UserProfileRow extends QueryResultRow {
   permissions: string[] | null;
   roles: string[] | null;
   updatedAt: Date;
+  isGlobalAdmin?: boolean;
 }
 
 interface UserRoleRow extends QueryResultRow {
@@ -43,6 +44,7 @@ export interface UserMutationActor {
   ip: string | null;
   userAgent: string | null;
   userId: string;
+  tenant?: TenantAccessContext;
 }
 
 interface UserAuthRow extends QueryResultRow {
@@ -128,6 +130,7 @@ export interface UserProfile {
   permissions: string[];
   roles: string[];
   updatedAt: string;
+  isGlobalAdmin: boolean;
 }
 
 export interface UserAuthRecord extends UserProfile {
@@ -186,6 +189,7 @@ const mapUserProfile = (row: UserProfileRow): UserProfile => {
       : [],
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString()
+    ,isGlobalAdmin: row.isGlobalAdmin === true
   };
 };
 
@@ -233,6 +237,11 @@ const getUserProfileSelect = (): string => {
         ),
         ARRAY[]::text[]
       ) AS permissions
+      ,(
+        EXISTS (SELECT 1 FROM usuario_roles ur_global INNER JOIN roles r_global ON r_global.id = ur_global.rol_id WHERE ur_global.usuario_id = u.id AND r_global.nombre_rol = 'ADMINISTRADOR' AND COALESCE(ur_global.activo, TRUE) = TRUE AND COALESCE(r_global.activo, TRUE) = TRUE)
+        AND NOT EXISTS (SELECT 1 FROM usuario_empresas ue_global WHERE ue_global.usuario_id = u.id AND COALESCE(ue_global.activo, TRUE) = TRUE)
+        AND NOT EXISTS (SELECT 1 FROM usuario_contratos uc_global WHERE uc_global.usuario_id = u.id AND COALESCE(uc_global.activo, TRUE) = TRUE)
+      ) AS "isGlobalAdmin"
     FROM usuarios u
   `;
 };
@@ -275,6 +284,11 @@ const getUserAuthQuery = (): string => {
         ),
         ARRAY[]::text[]
       ) AS permissions
+      ,(
+        EXISTS (SELECT 1 FROM usuario_roles ur_global INNER JOIN roles r_global ON r_global.id = ur_global.rol_id WHERE ur_global.usuario_id = u.id AND r_global.nombre_rol = 'ADMINISTRADOR' AND COALESCE(ur_global.activo, TRUE) = TRUE AND COALESCE(r_global.activo, TRUE) = TRUE)
+        AND NOT EXISTS (SELECT 1 FROM usuario_empresas ue_global WHERE ue_global.usuario_id = u.id AND COALESCE(ue_global.activo, TRUE) = TRUE)
+        AND NOT EXISTS (SELECT 1 FROM usuario_contratos uc_global WHERE uc_global.usuario_id = u.id AND COALESCE(uc_global.activo, TRUE) = TRUE)
+      ) AS "isGlobalAdmin"
     FROM usuarios u
     INNER JOIN auth.users au ON au.id = u.auth_user_id
   `;
@@ -440,7 +454,10 @@ const normalizeTenantSelection = async (
   const empresaIds = uniqueNumberIds(input.empresaIds ?? []);
   const contratoIds = uniqueNumberIds(input.contratoIds ?? []);
   const roles = await loadRoleReferences(client, roleIds);
-  const isGlobalAdmin = roles.some((role) => role.nombre_rol === 'ADMINISTRADOR');
+  const isGlobalAdmin =
+    roles.some((role) => role.nombre_rol === 'ADMINISTRADOR') &&
+    empresaIds.length === 0 &&
+    contratoIds.length === 0;
   const empresas = await loadEmpresaReferences(client, empresaIds);
   const contratos = await loadContratoReferences(client, contratoIds);
 
@@ -611,6 +628,8 @@ const isActiveGlobalAdmin = async (client: PoolClient, userId: string | number):
           AND r.nombre_rol = 'ADMINISTRADOR'
           AND COALESCE(ur.activo, TRUE) = TRUE
           AND COALESCE(r.activo, TRUE) = TRUE
+          AND NOT EXISTS (SELECT 1 FROM usuario_empresas ue WHERE ue.usuario_id = ur.usuario_id AND COALESCE(ue.activo, TRUE) = TRUE)
+          AND NOT EXISTS (SELECT 1 FROM usuario_contratos uc WHERE uc.usuario_id = ur.usuario_id AND COALESCE(uc.activo, TRUE) = TRUE)
       ) AS "isGlobalAdmin"
     `,
     [toUserIdText(userId)]
@@ -641,6 +660,8 @@ const getLockedUser = async (client: PoolClient, userId: string | number): Promi
             AND COALESCE(ur.activo, TRUE) = TRUE
             AND COALESCE(r.activo, TRUE) = TRUE
             AND r.nombre_rol = 'ADMINISTRADOR'
+            AND NOT EXISTS (SELECT 1 FROM usuario_empresas ue WHERE ue.usuario_id = u.id AND COALESCE(ue.activo, TRUE) = TRUE)
+            AND NOT EXISTS (SELECT 1 FROM usuario_contratos uc WHERE uc.usuario_id = u.id AND COALESCE(uc.activo, TRUE) = TRUE)
         ) AS "isGlobalAdmin"
       FROM usuarios u
       LEFT JOIN auth.users au ON au.id = u.auth_user_id
@@ -671,6 +692,8 @@ const assertLastGlobalAdminProtected = async (client: PoolClient, userId: string
         AND COALESCE(u.activo, TRUE) = TRUE
         AND COALESCE(ur.activo, TRUE) = TRUE
         AND COALESCE(r.activo, TRUE) = TRUE
+        AND NOT EXISTS (SELECT 1 FROM usuario_empresas ue WHERE ue.usuario_id = u.id AND COALESCE(ue.activo, TRUE) = TRUE)
+        AND NOT EXISTS (SELECT 1 FROM usuario_contratos uc WHERE uc.usuario_id = u.id AND COALESCE(uc.activo, TRUE) = TRUE)
     `
   );
 
@@ -1346,14 +1369,18 @@ export const setUserActiveState = async (
   return user;
 };
 
-export const listAdminUsers = async (): Promise<AdminUserRecord[]> => {
+export const listAdminUsers = async (tenant?: TenantAccessContext): Promise<AdminUserRecord[]> => {
   const users = await listUsers();
-  return Promise.all(users.map((user) => enrichAdminUserProfile(user)));
+  const enriched = await Promise.all(users.map((user) => enrichAdminUserProfile(user)));
+  if (!tenant || tenant.isGlobalAdmin) return enriched;
+  return enriched.filter((user) => user.empresas.some((empresa) => tenant.empresaIds.includes(empresa.empresa_id)));
 };
 
-export const findAdminUserById = async (userId: string | number): Promise<AdminUserRecord | null> => {
+export const findAdminUserById = async (userId: string | number, tenant?: TenantAccessContext): Promise<AdminUserRecord | null> => {
   const user = await findUserProfileById(userId);
-  return user ? enrichAdminUserProfile(user) : null;
+  const enriched = user ? await enrichAdminUserProfile(user) : null;
+  if (!enriched || !tenant || tenant.isGlobalAdmin || enriched.empresas.some((empresa) => tenant.empresaIds.includes(empresa.empresa_id))) return enriched;
+  return null;
 };
 
 export const createAdminUser = async (input: CreateAdminUserInput, actor: UserMutationActor): Promise<AdminUserRecord> => {
@@ -1368,6 +1395,9 @@ export const createAdminUser = async (input: CreateAdminUserInput, actor: UserMu
       empresaIds: input.empresaIds,
       contratoIds: input.contratoIds
     });
+    if (actor.tenant && !actor.tenant.isGlobalAdmin && (normalizedSelection.empresaIds.length === 0 || normalizedSelection.empresaIds.some((id) => !actor.tenant?.empresaIds.includes(id)))) {
+      throw createHttpError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+    }
 
     const passwordHash = await hashPassword(input.password);
     const authUserId = randomUUID();
@@ -1440,6 +1470,9 @@ export const updateAdminUser = async (
       empresaIds: nextEmpresaIds,
       contratoIds: nextContratoIds
     });
+    if (actor.tenant && !actor.tenant.isGlobalAdmin && (normalizedSelection.empresaIds.length === 0 || normalizedSelection.empresaIds.some((id) => !actor.tenant?.empresaIds.includes(id)))) {
+      throw createHttpError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+    }
 
     if (existingUser.authUserId && (nextEmail !== existingUser.email || nextName !== existingUser.name)) {
       await updateAuthUser(client, existingUser.authUserId, {

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import { authMiddleware } from '../../middlewares/authMiddleware';
+import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
 import { requireRoles } from '../../middlewares/roleMiddleware';
 import {
   createAdminUserHandler,
@@ -14,7 +15,7 @@ import {
 
 const adminUsersRouter = Router();
 
-adminUsersRouter.use(authMiddleware);
+adminUsersRouter.use(authMiddleware, tenantMiddleware);
 adminUsersRouter.use(requireRoles('ADMINISTRADOR'));
 
 adminUsersRouter.get('/', getAdminUsers);

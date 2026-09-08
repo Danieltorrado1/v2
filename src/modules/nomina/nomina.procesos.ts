@@ -17,6 +17,7 @@ export interface NominaProcessAccess {
 }
 
 export type NominaResponsibility = {
+  contrato_id?: number | string | null;
   proceso: NominaProceso;
   municipios?: number[];
   areas?: number[];
@@ -159,6 +160,7 @@ const buildNominaCoberturaScopeSql = (
       WHERE nru.usuario_id = ${userParamSql}::bigint
         AND nru.empresa_id = ${empresaSql}
         AND nru.proceso = 'COBERTURA'
+        AND nru.contrato_id = ${contratoSql}
         AND nru.activo = TRUE
         AND cff.municipio_id = nrm.municipio_id
         AND cas.fecha_inicio <= ${periodoFinSql}
@@ -233,9 +235,14 @@ const buildNominaCoberturaScopeSql = (
 export async function getNominaProcessAccess(
   userId: string | number,
   empresaId: string | number,
-  tenant?: TenantAccessContext
+  tenant?: TenantAccessContext,
+  contratoId?: string | number
 ): Promise<NominaProcessAccess[]> {
   const empresa = Number(empresaId);
+
+  if (tenant && !tenant.isGlobalAdmin && contratoId === undefined) {
+    throw new AppError('contrato_id es requerido para consultar alcance de Nómina', 400, 'NOMINA_CONTRATO_REQUIRED');
+  }
 
   if (!tenant?.isGlobalAdmin && tenant) {
     const allowedByContract =
@@ -299,10 +306,11 @@ export async function getNominaProcessAccess(
       FROM nomina_responsabilidades_usuario r
       WHERE r.usuario_id = $1::bigint
         AND r.empresa_id = $2::bigint
+        AND ($3::bigint IS NULL OR r.contrato_id = $3::bigint)
         AND r.activo = TRUE
       ORDER BY r.proceso
     `,
-    [userId, empresa]
+    [userId, empresa, contratoId === undefined ? null : Number(contratoId)]
   );
 
   return evaluateNominaProcessAccess(
@@ -316,8 +324,12 @@ export async function getNominaProcessAccess(
 export async function listNominaResponsibilities(
   userId: string | number,
   empresaId: string | number,
-  tenant?: TenantAccessContext
+  tenant?: TenantAccessContext,
+  contratoId?: string | number
 ) {
+  if (tenant && !tenant.isGlobalAdmin && contratoId === undefined) {
+    throw new AppError('contrato_id es requerido para consultar responsabilidades de Nómina', 400, 'NOMINA_CONTRATO_REQUIRED');
+  }
   if (
     tenant &&
     !tenant.isGlobalAdmin &&
@@ -335,6 +347,7 @@ export async function listNominaResponsibilities(
       `
         SELECT
           r.id::text,
+          r.contrato_id::text AS contrato_id,
           r.proceso,
           r.activo,
           COALESCE(
@@ -362,9 +375,10 @@ export async function listNominaResponsibilities(
         FROM nomina_responsabilidades_usuario r
         WHERE r.usuario_id = $1::bigint
           AND r.empresa_id = $2::bigint
+          AND ($3::bigint IS NULL OR r.contrato_id = $3::bigint)
         ORDER BY r.proceso
       `,
-      [userId, empresaId]
+      [userId, empresaId, contratoId === undefined ? null : Number(contratoId)]
     )
   ).rows;
 
@@ -469,9 +483,13 @@ export async function setNominaMunicipalVisibility(
 export async function getNominaMunicipalScope(
   userId: string | number,
   empresaId: string | number,
-  tenant?: TenantAccessContext
+  tenant?: TenantAccessContext,
+  contratoId?: string | number
 ): Promise<NominaMunicipalScope> {
   const empresa = Number(empresaId);
+  if (tenant && !tenant.isGlobalAdmin && contratoId === undefined) {
+    throw new AppError('contrato_id es requerido para consultar alcance municipal', 400, 'NOMINA_CONTRATO_REQUIRED');
+  }
   if (tenant && !tenant.isGlobalAdmin && !tenant.empresaIds.includes(empresa)) {
     throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
   }
@@ -482,6 +500,7 @@ export async function getNominaMunicipalScope(
           FROM nomina_responsabilidades_usuario nru
           JOIN nomina_responsabilidad_municipios nrm ON nrm.responsabilidad_id = nru.id
           WHERE nru.usuario_id = $1::bigint AND nru.empresa_id = $2::bigint
+            AND ($3::bigint IS NULL OR nru.contrato_id = $3::bigint)
             AND nru.proceso = 'COBERTURA' AND nru.activo = TRUE), '{}') AS municipios_nomina_ids,
         COALESCE((SELECT array_agg(umv.municipio_id ORDER BY umv.municipio_id)
           FROM usuario_municipio_visibilidad umv
@@ -490,7 +509,7 @@ export async function getNominaMunicipalScope(
             AND umv.vigencia_desde <= CURRENT_DATE
             AND (umv.vigencia_hasta IS NULL OR umv.vigencia_hasta >= CURRENT_DATE)), '{}') AS municipios_visibles_ids
     `,
-    [userId, empresa]
+    [userId, empresa, contratoId === undefined ? null : Number(contratoId)]
   );
   const row = result.rows[0] ?? { municipios_nomina_ids: [], municipios_visibles_ids: [] };
   const nomina = row.municipios_nomina_ids.map(Number);
@@ -552,6 +571,15 @@ export async function listNominaAssignableUsers(
           ON r.id = ur.rol_id
          AND COALESCE(r.activo, TRUE) = TRUE
         WHERE COALESCE(u.activo, TRUE) = TRUE
+          AND EXISTS (
+            SELECT 1
+            FROM usuario_roles ur_scope
+            JOIN rol_permisos rp_scope ON rp_scope.rol_id = ur_scope.rol_id AND COALESCE(rp_scope.activo, TRUE) = TRUE
+            JOIN permisos p_scope ON p_scope.id = rp_scope.permiso_id AND COALESCE(p_scope.activo, TRUE) = TRUE
+            WHERE ur_scope.usuario_id = u.id
+              AND COALESCE(ur_scope.activo, TRUE) = TRUE
+              AND p_scope.modulo = 'nomina'
+          )
         GROUP BY
           u.id,
           u.nombre_completo,
@@ -963,6 +991,7 @@ export async function replaceNominaResponsibility(
   input: {
     usuarioId: string | number;
     empresaId: string | number;
+    contratoId?: string | number;
     proceso: string;
     municipioIds?: Array<string | number>;
     areaIds?: Array<string | number>;
@@ -971,6 +1000,11 @@ export async function replaceNominaResponsibility(
 ) {
   const proceso = normalize(input.proceso);
   const empresaId = Number(input.empresaId);
+  const contratoId = input.contratoId === undefined || input.contratoId === null ? null : Number(input.contratoId);
+
+  if (tenant && !tenant.isGlobalAdmin && contratoId === null) {
+    throw new AppError('contrato_id es requerido para guardar responsabilidades de Nómina', 400, 'NOMINA_CONTRATO_REQUIRED');
+  }
 
   if (
     tenant &&
@@ -982,6 +1016,16 @@ export async function replaceNominaResponsibility(
       403,
       'TENANT_FORBIDDEN'
     );
+  }
+
+  if (contratoId !== null) {
+    const contract = await dbPool.query<{ empresa_id: string }>(
+      'SELECT empresa_id::text FROM contratos WHERE id = $1::bigint AND COALESCE(activo, TRUE) = TRUE LIMIT 1',
+      [contratoId],
+    );
+    if (!contract.rows[0] || Number(contract.rows[0].empresa_id) !== empresaId) {
+      throw new AppError('Contrato fuera de la empresa seleccionada', 400, 'NOMINA_CONTRATO_EMPRESA_MISMATCH');
+    }
   }
 
   const client = await dbPool.connect();
@@ -1001,29 +1045,33 @@ export async function replaceNominaResponsibility(
         INSERT INTO nomina_responsabilidades_usuario(
           usuario_id,
           empresa_id,
+          contrato_id,
           proceso,
           activo
         )
         VALUES(
           $1::bigint,
           $2::bigint,
-          $3,
-          $4
+          $3::bigint,
+          $4,
+          $5
         )
         ON CONFLICT(
           usuario_id,
           empresa_id,
-          proceso
+          proceso,
+          (COALESCE(contrato_id, 0))
         )
         DO UPDATE
         SET
-          activo = $4,
+          activo = $5,
           updated_at = NOW()
         RETURNING id::text
       `,
       [
         input.usuarioId,
         empresaId,
+        contratoId,
         proceso,
         activo
       ]
@@ -1112,7 +1160,8 @@ export async function replaceNominaResponsibility(
     return {
       id,
       proceso,
-      empresa_id: empresaId
+      empresa_id: empresaId,
+      contrato_id: contratoId
     };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -1177,6 +1226,7 @@ export async function assertNominaScope(input: {
   proceso: string;
   municipioId?: string | number;
   areaId?: string | number;
+  contratoId?: string | number;
   tenant?: TenantAccessContext;
 }): Promise<void> {
   const proceso = normalize(input.proceso);
@@ -1195,11 +1245,19 @@ export async function assertNominaScope(input: {
     );
   }
 
+  if (input.contratoId !== undefined && input.tenant && !input.tenant.isGlobalAdmin) {
+    const contract = await dbPool.query<{ empresa_id: string }>('SELECT empresa_id::text FROM contratos WHERE id = $1::bigint LIMIT 1', [input.contratoId]);
+    if (!contract.rows[0] || Number(contract.rows[0].empresa_id) !== Number(input.empresaId)) {
+      throw new AppError('Contrato fuera de la empresa seleccionada', 403, 'NOMINA_CONTRATO_EMPRESA_MISMATCH');
+    }
+  }
+
   const access = (
     await getNominaProcessAccess(
       input.userId,
       input.empresaId,
-      input.tenant
+      input.tenant,
+      input.contratoId
     )
   ).find(
     (item) => item.proceso === proceso

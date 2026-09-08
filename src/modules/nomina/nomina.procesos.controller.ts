@@ -5,7 +5,7 @@ import { successResponse } from '../../utils/apiResponse';
 export async function getNominaProcessAccessHandler(req: Request, res: Response) {
   const empresaId = String(req.query.empresa_id ?? '');
   if (!empresaId || !req.user) return res.status(400).json({ success: false, message: 'empresa_id es requerido' });
-  const data = await getNominaProcessAccess(req.user.userId, empresaId, req.tenant);
+  const data = await getNominaProcessAccess(req.user.userId, empresaId, req.tenant, typeof req.query.contrato_id === 'string' ? req.query.contrato_id : undefined);
   return successResponse(res, { data });
 }
 

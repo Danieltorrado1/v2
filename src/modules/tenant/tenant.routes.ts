@@ -34,7 +34,7 @@ tenantRoutes.delete(
 
 function hasTenantAccessPermission(req: import('express').Request, permission: 'tenant.access.read' | 'tenant.access.update'): boolean {
   return (
-    req.user?.roles.includes('ADMINISTRADOR') === true ||
+    req.tenant?.isGlobalAdmin === true ||
     req.user?.permissions.includes(permission) === true ||
     (permission === 'tenant.access.read' && req.user?.permissions.includes('tenant.access.update') === true)
   );

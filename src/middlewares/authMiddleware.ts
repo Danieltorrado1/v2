@@ -11,6 +11,7 @@ export interface AuthenticatedUser {
   roles: string[];
   tokenPayload: JwtPayload;
   userId: string;
+  isGlobalAdmin: boolean;
 }
 
 declare global {
@@ -34,6 +35,7 @@ interface AuthUserRow extends QueryResultRow {
   id: string;
   permissions: string[] | null;
   roles: string[] | null;
+  isGlobalAdmin: boolean;
 }
 
 export const AUTH_USER_LOOKUP_QUERY = `
@@ -69,6 +71,11 @@ export const AUTH_USER_LOOKUP_QUERY = `
       ),
       ARRAY[]::text[]
     ) AS permissions
+    ,(
+      EXISTS (SELECT 1 FROM usuario_roles ur_global INNER JOIN roles r_global ON r_global.id = ur_global.rol_id WHERE ur_global.usuario_id = u.id AND r_global.nombre_rol = 'ADMINISTRADOR' AND COALESCE(ur_global.activo, TRUE) = TRUE AND COALESCE(r_global.activo, TRUE) = TRUE)
+      AND NOT EXISTS (SELECT 1 FROM usuario_empresas ue_global WHERE ue_global.usuario_id = u.id AND COALESCE(ue_global.activo, TRUE) = TRUE)
+      AND NOT EXISTS (SELECT 1 FROM usuario_contratos uc_global WHERE uc_global.usuario_id = u.id AND COALESCE(uc_global.activo, TRUE) = TRUE)
+    ) AS "isGlobalAdmin"
   FROM usuarios u
   WHERE u.id = $1
   LIMIT 1
@@ -176,6 +183,7 @@ export const authMiddleware = (
         roles: toStringArray(currentUser.roles),
         permissions: toStringArray(currentUser.permissions),
         tokenPayload: payload
+        ,isGlobalAdmin: currentUser.isGlobalAdmin === true
       };
 
       next();

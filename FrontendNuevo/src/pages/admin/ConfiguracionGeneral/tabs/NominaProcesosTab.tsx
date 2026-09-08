@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../../../../services/apiClient';
 import { configuracionApi } from '../../../../services/configuracionApi';
 import { useCompanyContext } from '../../../../context/CompanyContext';
+import type { Contrato } from '../../../../types/configuracion.types';
 import {
   PayrollParametersTab,
   SalaryCategoriesTab,
@@ -13,6 +14,7 @@ type Process = 'COBERTURA' | 'ASISTENCIA' | 'OPS';
 
 type Responsibility = {
   id: string;
+  contrato_id?: string | null;
   proceso: Process;
   activo: boolean;
   municipio_ids: number[];
@@ -130,6 +132,8 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
   const [tab, setTab] = useState<NominaConfigTab>(initialTab);
 
   const [users, setUsers] = useState<AssignableUser[]>([]);
+  const [contracts, setContracts] = useState<Contrato[]>([]);
+  const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
   const [responsibilities, setResponsibilities] = useState<
     Record<string, Responsibility[]>
   >({});
@@ -175,7 +179,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
     setUsersError('');
 
     try {
-      const [usersResult, areaResult, municipalityResult, departmentResult] = await Promise.allSettled([
+      const [usersResult, areaResult, municipalityResult, departmentResult, contractsResult] = await Promise.allSettled([
         apiClient.get<{ data: AssignableUser[] }>(
           '/nomina/procesos/usuarios-asignables',
           {
@@ -193,6 +197,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
 
         loadAllMunicipalities(),
         loadAllDepartments(),
+        configuracionApi.listarContratos({ empresa_id: empresaActual.id, activo: true, page: 1, limit: 100 }),
       ]);
 
       if (usersResult.status === 'rejected') {
@@ -200,6 +205,9 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
       }
 
       const companyUsers = usersResult.value.data.filter((user) => user.active);
+      const companyContracts = contractsResult.status === 'fulfilled' ? contractsResult.value.items ?? [] : [];
+      setContracts(companyContracts);
+      setSelectedContractId((current) => current && companyContracts.some((contract) => contract.id === current) ? current : companyContracts[0]?.id ?? null);
 
       const responsibilityResults = await Promise.allSettled(
         companyUsers.map(async (user) => {
@@ -209,6 +217,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
               params: {
                 usuario_id: user.id,
                 empresa_id: empresaActual.id,
+                contrato_id: selectedContractId ?? undefined,
               },
             },
           );
@@ -261,7 +270,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
     } finally {
       setUsersLoading(false);
     }
-  }, [empresaActual]);
+  }, [empresaActual, selectedContractId]);
 
   useEffect(() => {
     void reload();
@@ -269,10 +278,16 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
 
   const open = async (user: AssignableUser) => {
     if (!empresaActual) return;
-    const rows = responsibilities[user.id] ?? [];
+    if (!selectedContractId) return;
+    const responsibilityResponse = await apiClient.get<{ data: Responsibility[] }>(
+      '/nomina/procesos/responsabilidades',
+      { params: { usuario_id: user.id, empresa_id: empresaActual.id, contrato_id: selectedContractId } },
+    );
+    const rows = responsibilityResponse.data.map((row) => ({ ...row, municipio_ids: (row.municipio_ids ?? []).map(municipalityId), area_ids: (row.area_ids ?? []).map(Number) }));
+    setResponsibilities((current) => ({ ...current, [user.id]: rows }));
     const scopeResponse = await apiClient.get<{ data: { municipios_visibles_ids: number[]; municipios_nomina_ids: number[] } }>(
       '/nomina/procesos/alcance-municipal',
-      { params: { usuario_id: user.id, empresa_id: empresaActual.id } },
+      { params: { usuario_id: user.id, empresa_id: empresaActual.id, contrato_id: selectedContractId } },
     );
     const scope = scopeResponse.data;
 
@@ -314,7 +329,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
   };
 
   const save = async () => {
-    if (!empresaActual || !selected) {
+    if (!empresaActual || !selected || !selectedContractId) {
       return;
     }
 
@@ -323,6 +338,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
         ...processes.map((proceso) => apiClient.put('/nomina/procesos/responsabilidades', {
           usuario_id: selected.id,
           empresa_id: empresaActual.id,
+          contrato_id: selectedContractId,
           proceso,
 
           municipio_ids:
@@ -354,6 +370,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
   const remove = async (user: AssignableUser) => {
     if (
       !empresaActual ||
+      !selectedContractId ||
       !window.confirm(
         'Este usuario dejará de tener asignaciones operativas de nómina para esta empresa.',
       )
@@ -366,6 +383,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
         apiClient.put('/nomina/procesos/responsabilidades', {
           usuario_id: user.id,
           empresa_id: empresaActual.id,
+          contrato_id: selectedContractId,
           proceso,
           municipio_ids: [],
           area_ids: [],
@@ -496,6 +514,29 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
           Empresa activa:{' '}
           <strong>{empresaActual.nombre_empresa}</strong>
         </p>
+
+        <label className="adm-field" style={{ maxWidth: 420 }}>
+          <span className="adm-label">Contrato de asignación</span>
+          <select
+            className="adm-select"
+            value={selectedContractId ?? ''}
+            onChange={(event) => {
+              setDrawer(false);
+              setSelected(null);
+              setMunicipalityIds([]);
+              setVisibleMunicipalityIds([]);
+              setSelectedProcesses([]);
+              setSelectedContractId(event.target.value ? Number(event.target.value) : null);
+            }}
+          >
+            <option value="">Seleccione un contrato</option>
+            {contracts.map((contract) => (
+              <option key={contract.id} value={contract.id}>
+                {contract.numero_contrato || `Contrato ${contract.id}`}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <div className="cg-cat-tabs">
           <button
@@ -777,7 +818,8 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
                 ? 'Editar asignación'
                 : 'Asignar usuario'}
             </h3>
-            <p>Configura los procesos y el alcance operativo del usuario.</p>
+            <p>Configura los procesos y el alcance operativo del usuario para el contrato seleccionado.</p>
+            <strong>{contracts.find((contract) => contract.id === selectedContractId)?.numero_contrato ?? 'Sin contrato'}</strong>
             </div>
 
             <div className="nomina-drawer-content">
@@ -1020,6 +1062,7 @@ function AssignmentForm(props: {
 
       {props.selectedProcesses.includes('COBERTURA') && (
         <fieldset className="nomina-scope-fieldset">
+          <legend>RESPONSABLE DE NÓMINA</legend>
           <label className="nomina-department-field">
             Departamento
             <select
@@ -1037,9 +1080,7 @@ function AssignmentForm(props: {
             </select>
           </label>
 
-        <legend>
-            Municipios a cargo de Nómina
-          </legend>
+          <h4 className="nomina-scope-subheading">Municipios a cargo de Nómina</h4>
 
           {props.selectedDepartmentId === null ? (
             <p className="nomina-scope-empty">Selecciona un departamento para ver sus municipios.</p>

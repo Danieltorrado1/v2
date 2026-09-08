@@ -8,6 +8,7 @@ export interface AuthUser {
   active: boolean;
   roles: UserRole[];
   permissions: Permission[];
+  isGlobalAdmin: boolean;
   createdAt: string;
   updatedAt: string;
 }

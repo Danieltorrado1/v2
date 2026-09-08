@@ -21,6 +21,7 @@ export interface AuthLoginResult {
     name: string;
     permissions: string[];
     roles: string[];
+    isGlobalAdmin: boolean;
     updatedAt: string;
   };
 }
@@ -66,6 +67,7 @@ export const loginUser = async (
     {
       email: user.email,
       permissions: user.permissions,
+      isGlobalAdmin: user.isGlobalAdmin,
       roles: user.roles
     },
     env.JWT_SECRET,
@@ -96,6 +98,7 @@ export const loginUser = async (
       active: user.active,
       roles: user.roles,
       permissions: user.permissions,
+      isGlobalAdmin: user.isGlobalAdmin,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     }

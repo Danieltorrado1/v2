@@ -15,10 +15,10 @@ const planSchema=z.object({codigo:z.string().trim().min(2).max(64),nombre:z.stri
 const subscriptionSchema=z.object({plan_id:id,estado:z.enum(['ACTIVA','PRUEBA','SUSPENDIDA','VENCIDA','CANCELADA']),fecha_inicio:z.iso.date(),fecha_fin:z.iso.date().nullable().optional()});
 const overrideSchema=z.object({modulo_id:id,habilitado:z.boolean(),motivo:z.string().trim().min(3).max(500),fecha_inicio:z.iso.date(),fecha_fin:z.iso.date().nullable().optional()});
 const companyStatusSchema=z.object({activo:z.boolean(),observacion:z.string().trim().max(500).nullable().optional()});
-function globalAdmin(req:import('express').Request){if(req.user?.roles.includes('ADMINISTRADOR')!==true)throw new AppError('Global administrator required',403,'FORBIDDEN');}
+function globalAdmin(req:import('express').Request){if(req.tenant?.isGlobalAdmin!==true)throw new AppError('Global administrator required',403,'FORBIDDEN');}
 
-router.get('/modules',asyncHandler(async(_req,res)=>res.json({data:await listModules()})));
-router.get('/plans',asyncHandler(async(_req,res)=>res.json({data:await listPlans()})));
+router.get('/modules',asyncHandler(async(req,res)=>{globalAdmin(req);res.json({data:await listModules()});}));
+router.get('/plans',asyncHandler(async(req,res)=>{globalAdmin(req);res.json({data:await listPlans()});}));
 router.get('/companies-summary',asyncHandler(async(req,res)=>{globalAdmin(req);const query={page:z.coerce.number().int().min(1).default(1).parse(req.query.page),limit:z.coerce.number().int().min(1).max(100).default(25).parse(req.query.limit),search:typeof req.query.search==='string'?req.query.search.trim()||undefined:undefined,estado:typeof req.query.estado==='string'?req.query.estado||undefined:undefined,plan:typeof req.query.plan==='string'?req.query.plan||undefined:undefined,has_plan:typeof req.query.has_plan==='string'?req.query.has_plan==='true':undefined,has_modules:typeof req.query.has_modules==='string'?req.query.has_modules==='true':undefined,has_contracts:typeof req.query.has_contracts==='string'?req.query.has_contracts==='true':undefined};res.json({data:await listGlobalCompanyControl(query,req.tenant!)});}));
 router.post('/plans',asyncHandler(async(req,res)=>{globalAdmin(req);res.status(201).json({data:await savePlan(null,planSchema.parse(req.body),req.user!.userId)});}));
 router.put('/plans/:planId',asyncHandler(async(req,res)=>{globalAdmin(req);res.json({data:await savePlan(id.parse(req.params.planId),planSchema.parse(req.body),req.user!.userId)});}));

@@ -7,6 +7,7 @@ import { apiClient } from '../../services/apiClient';
 import { companySettingsApi, type CompanySettings } from '../../services/companySettingsApi';
 import { configuracionApi } from '../../services/configuracionApi';
 import { saasApi, type CompanyUsage, type EmpresaCapabilities, type GlobalCompanyRow, type SaasPlan } from '../../services/saasApi';
+import { isGlobalAdministrator } from '../../architecture/moduleAccess';
 import type { Empresa } from '../../types/configuracion.types';
 import { ContratosTab } from '../admin/ConfiguracionGeneral/tabs/ContratosTab';
 import { UsuariosTab } from '../admin/ConfiguracionGeneral/tabs/UsuariosTab';
@@ -40,7 +41,7 @@ export function CompaniesPage() {
   const [selection, setSelection] = useState<{ id: number; tab: Tab } | null>(null);
 
   useEffect(() => {
-    if (!user?.roles.includes('ADMINISTRADOR')) return;
+    if (!isGlobalAdministrator(user)) return;
     let live = true;
     setPlansLoading(true);
     void saasApi.plans().then((value) => { if (live) setPlans(value); }).catch(() => { if (live) setError('No fue posible cargar el catálogo de planes.'); }).finally(() => { if (live) setPlansLoading(false); });
@@ -48,7 +49,7 @@ export function CompaniesPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user?.roles.includes('ADMINISTRADOR')) return;
+    if (!isGlobalAdministrator(user)) return;
     let live = true;
     setLoading(true);
     setError('');
@@ -73,7 +74,7 @@ export function CompaniesPage() {
   const updateRow = (updated: Empresa) => setRows((current) => current.map((row) => row.empresa_id === updated.id ? { ...row, estado: updated.activo ? (row.estado === 'LEGACY' ? 'LEGACY' : 'ACTIVA') : 'INACTIVA' } : row));
   const handleStatusChanged = (updated: Empresa) => { updateRow(updated); if (!updated.activo && empresaId === updated.id) { setEmpresaActual(null); navigate('/admin-global/empresas'); } };
 
-  if (!user?.roles.includes('ADMINISTRADOR')) return <div className="adm-notice warning">Acceso exclusivo para ADMINISTRADOR.</div>;
+  if (!isGlobalAdministrator(user)) return <div className="adm-notice warning">Acceso exclusivo para ADMINISTRADOR global.</div>;
   return <section className="workspace-page workspace-companies">
     <WorkspaceHeading title="Empresas / Clientes" description="Centro de control de clientes, planes, módulos y actividad." scope="Empiria Admin" />
     <div className="cg-filters company-control-filters">

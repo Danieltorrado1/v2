@@ -92,6 +92,7 @@ const ADMIN_ROLE_NAME = 'ADMINISTRADOR';
 const CATALOG_BATCH_LIMIT = 100;
 
 function humanizeRole(role: string): string {
+  if (role === ADMIN_ROLE_NAME) return 'Administrador de empresa';
   return role
     .toLowerCase()
     .split('_')
@@ -348,7 +349,10 @@ export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}
   }, [isAdmin, companyScopeId]);
 
   const contratosById = useMemo(() => buildContratoLookup(contratos), [contratos]);
-  const isGlobalAdminTarget = useMemo(() => isAdminRoleSelected(form.roleIds, roles), [form.roleIds, roles]);
+  const isGlobalAdminTarget = useMemo(
+    () => isAdminRoleSelected(form.roleIds, roles) && form.empresaIds.length === 0 && form.contratoIds.length === 0,
+    [form.contratoIds.length, form.empresaIds.length, form.roleIds, roles],
+  );
   const isGestorTarget = useMemo(() => isGestorRoleSelected(form.roleIds, roles), [form.roleIds, roles]);
   const isTerritorialTarget = useMemo(() => isTerritorialRoleSelected(form.roleIds, roles), [form.roleIds, roles]);
   const selectedEmpresaSet = useMemo(() => new Set(form.empresaIds), [form.empresaIds]);

@@ -38,7 +38,7 @@ const getActor = (req: Request) => {
   }
 
   const auditMeta = getAuditRequestMeta(req);
-  return { userId, ip: auditMeta.ip ?? null, userAgent: auditMeta.user_agent ?? null };
+  return { userId, ip: auditMeta.ip ?? null, userAgent: auditMeta.user_agent ?? null, tenant: req.tenant };
 };
 
 export const getUsers = asyncHandler(async (_req: Request, res: Response) => {
@@ -109,8 +109,8 @@ export const deactivateUser = asyncHandler(async (req: Request, res: Response) =
   });
 });
 
-export const getAdminUsers = asyncHandler(async (_req: Request, res: Response) => {
-  const users = await listAdminUsers();
+export const getAdminUsers = asyncHandler(async (req: Request, res: Response) => {
+  const users = await listAdminUsers(req.tenant);
 
   return successResponse(res, {
     message: 'Admin users retrieved successfully',
@@ -120,7 +120,7 @@ export const getAdminUsers = asyncHandler(async (_req: Request, res: Response) =
 
 export const getAdminUserById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = userIdParamSchema.parse(req.params);
-  const user = await findAdminUserById(id);
+  const user = await findAdminUserById(id, req.tenant);
 
   if (!user) {
     throw Object.assign(new Error('User not found'), {

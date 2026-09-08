@@ -28,6 +28,6 @@ export const getDashboardSaasHandler = asyncHandler(async (req: Request, res: Re
 
 export const getGlobalAdminDashboardHandler = asyncHandler(async (req: Request, res: Response) => {
   ensureAuthenticated(req);
-  if (!req.tenant?.isGlobalAdmin || req.user?.roles.includes('ADMINISTRADOR') !== true) throw new AppError('Global administrator required', 403, 'FORBIDDEN');
+  if (!req.tenant?.isGlobalAdmin) throw new AppError('Global administrator required', 403, 'FORBIDDEN');
   return successResponse(res, { message: 'Global administrator dashboard retrieved successfully', data: await getGlobalAdminDashboard(req.tenant) });
 });
