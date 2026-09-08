@@ -12,7 +12,19 @@ export interface CompanySaasHistory {suscripciones:Array<{id:string;plan_codigo:
 export const saasApi={
   modules:async()=> (await apiClient.get<ApiResponse<SaasModule[]>>('/saas/modules')).data,
   plans:async()=> (await apiClient.get<ApiResponse<SaasPlan[]>>('/saas/plans')).data,
-  companySummaries:async()=> (await apiClient.get<ApiResponse<CompanySaasSummary[]>>('/saas/companies-summary')).data,
+  companySummaries:async()=> {
+    const response = await apiClient.get<ApiResponse<CompanySaasSummary[]|GlobalCompanyList>>('/saas/companies-summary');
+    if (Array.isArray(response.data)) return response.data;
+    return response.data.items.map((row) => ({
+      empresa_id: String(row.empresa_id),
+      nombre_empresa: row.empresa,
+      nit: row.nit ?? '',
+      organizacion_nombre: '',
+      plan_nombre: row.plan,
+      estado_suscripcion: row.estado,
+      modulos_activos: row.modulos,
+    }));
+  },
   globalCompanies:async(params:Record<string, string|number|boolean|undefined>={})=>(await apiClient.get<ApiResponse<GlobalCompanyList>>('/saas/companies-summary',{params})).data,
   history:async(empresaId:number)=> (await apiClient.get<ApiResponse<CompanySaasHistory>>(`/saas/companies/${empresaId}/history`)).data,
   capabilities:async(empresaId:number)=> (await apiClient.get<ApiResponse<EmpresaCapabilities>>(`/saas/companies/${empresaId}/capabilities`)).data,
