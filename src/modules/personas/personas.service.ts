@@ -3,6 +3,7 @@
 import { dbPool, dbQuery } from '../../config/db';
 import { assertTenantAccessForPersonaId, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { AppError } from '../../utils/AppError';
+import { appendVisiblePersonScope } from '../users/municipal-scope.service';
 import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditoria.helper';
 import {
   buildPersonaIdentificationCore,
@@ -1062,6 +1063,8 @@ export const listPersonas = async (
       )
     `);
   }
+
+  appendVisiblePersonScope(conditions, params, tenant, 'p.id');
 
   if (filters.numero_documento) {
     params.push(filters.numero_documento);

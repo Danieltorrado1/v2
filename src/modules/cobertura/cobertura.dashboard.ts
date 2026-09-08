@@ -1,10 +1,11 @@
 ﻿import { getCoberturaResumen, type CoberturaDashboardResponse } from './cobertura.service';
 import type { CoberturaResumenQuery } from './cobertura.schemas';
+import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 
-export const getCoberturaDashboard = async (filters: CoberturaResumenQuery): Promise<CoberturaDashboardResponse> => {
-  const first = await getCoberturaResumen({ ...filters, page: 1, limit: 100 });
+export const getCoberturaDashboard = async (filters: CoberturaResumenQuery, tenant?: TenantAccessContext): Promise<CoberturaDashboardResponse> => {
+  const first = await getCoberturaResumen({ ...filters, page: 1, limit: 100 }, tenant);
   const pages = [first];
-  for (let page = 2; page <= first.pagination.total_pages; page += 1) pages.push(await getCoberturaResumen({ ...filters, page, limit: 100 }));
+  for (let page = 2; page <= first.pagination.total_pages; page += 1) pages.push(await getCoberturaResumen({ ...filters, page, limit: 100 }, tenant));
   const items = pages.flatMap((page) => page.items);
   const result = first;
   const modalities = new Map<string, { sedes: Set<string>; sede_modalidades: number; asignadas: number; requeridas: number }>();

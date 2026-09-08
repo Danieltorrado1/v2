@@ -145,7 +145,7 @@ import {
 import { closeNominaEmpleadoOperativoHandler, listRevisionOperativaHandler, reopenNominaEmpleadoOperativoHandler, updateRevisionOperativaHandler } from './revision-operativa.controller';
 import { getNominaProcessAccessHandler, listNominaAsistenciaPersonalHandler } from './nomina.procesos.controller';
 import { annulAjusteManualHandler, createAjusteManualHandler, listAjustesManualesHandler, updateAjusteManualHandler, uploadAjusteManualSoporteHandler } from './ajustes-manuales.controller';
-import { createNominaAreaHandler, listNominaAreasHandler, listNominaAssignableUsersHandler, listNominaResponsibilitiesHandler, replaceNominaResponsibilityHandler, updateNominaAreaHandler } from './nomina.procesos.admin.controller';
+import { createNominaAreaHandler, getNominaMunicipalScopeHandler, listNominaAreasHandler, listNominaAssignableUsersHandler, listNominaResponsibilitiesHandler, replaceNominaResponsibilityHandler, setNominaMunicipalVisibilityHandler, updateNominaAreaHandler } from './nomina.procesos.admin.controller';
 import { downloadCoberturaCuentaFirmadaHandler, downloadCoberturaCuentaHandler, downloadCoberturaExternoDocumentoHandler, generateCoberturaCuentaHandler, listCoberturaExternoDocumentosHandler, listCoberturaExternosHandler, listCoberturaExternosOperativosHandler, uploadCoberturaCuentaFirmadaHandler, upsertCoberturaExternoHandler, uploadCoberturaExternoDocumentoHandler } from './cobertura.externos.controller';
 import {
   getNovedadDocumentHandler,
@@ -165,11 +165,13 @@ nominaRoutes.use(requireModule('NOMINA'));
 nominaRoutes.get('/procesos/acceso', requirePermissions('nomina.read'), getNominaProcessAccessHandler);
 nominaRoutes.get('/procesos/areas', requirePermissions('nomina.read'), listNominaAreasHandler);
 nominaRoutes.get('/procesos/responsabilidades', requirePermissions('nomina.read'), listNominaResponsibilitiesHandler);
+nominaRoutes.get('/procesos/alcance-municipal', requirePermissions('nomina.read'), getNominaMunicipalScopeHandler);
 nominaRoutes.get('/procesos/usuarios-asignables', requirePermissions('nomina.periodos.update'), listNominaAssignableUsersHandler);
 nominaRoutes.post('/procesos/areas', requirePermissions('nomina.periodos.update'), createNominaAreaHandler);
 nominaRoutes.patch('/procesos/areas/:area_id', requirePermissions('nomina.periodos.update'), updateNominaAreaHandler);
 nominaRoutes.get('/procesos/asistencia/areas/:area_id/personal', requirePermissions('nomina.read'), listNominaAsistenciaPersonalHandler);
 nominaRoutes.put('/procesos/responsabilidades', requirePermissions('nomina.periodos.update'), replaceNominaResponsibilityHandler);
+nominaRoutes.put('/procesos/alcance-municipal', requirePermissions('nomina.periodos.update'), setNominaMunicipalVisibilityHandler);
 
 // External coverage accounts remain separate from the OPS domain.
 nominaRoutes.get('/cobertura/externos', requirePermissions('nomina.movimientos.read'), listCoberturaExternosHandler);

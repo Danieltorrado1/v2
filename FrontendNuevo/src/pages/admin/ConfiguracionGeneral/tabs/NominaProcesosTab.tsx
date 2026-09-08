@@ -29,6 +29,7 @@ type Area = {
 
 type Municipality = {
   id: number;
+  label?: string;
   nombre_municipio?: string;
   nombre?: string;
   departamento_id?: number;
@@ -58,6 +59,11 @@ type NominaConfigTab =
 
 const processes: Process[] = ['COBERTURA', 'ASISTENCIA', 'OPS'];
 const MUNICIPALITY_PAGE_SIZE = 100;
+
+const municipalityName = (municipality: Municipality): string =>
+  municipality.label ?? municipality.nombre_municipio ?? municipality.nombre ?? '';
+
+const municipalityId = (value: number | string): number => Number(value);
 
 async function loadAllMunicipalities(): Promise<Municipality[]> {
   const firstPage = await configuracionApi.listarMunicipios({
@@ -135,6 +141,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
   const [selected, setSelected] = useState<AssignableUser | null>(null);
   const [selectedProcesses, setSelectedProcesses] = useState<Process[]>([]);
   const [municipalityIds, setMunicipalityIds] = useState<number[]>([]);
+  const [visibleMunicipalityIds, setVisibleMunicipalityIds] = useState<number[]>([]);
   const [areaIds, setAreaIds] = useState<number[]>([]);
 
   const [search, setSearch] = useState('');
@@ -206,7 +213,17 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
             },
           );
 
-          return [user.id, response.data] as const;
+          const normalized = response.data.map((row) => ({
+            ...row,
+            municipio_ids: (row.municipio_ids ?? [])
+              .map(municipalityId)
+              .filter(Number.isInteger),
+            area_ids: (row.area_ids ?? [])
+              .map(Number)
+              .filter(Number.isInteger),
+          }));
+
+          return [user.id, normalized] as const;
         }),
       );
 
@@ -250,8 +267,14 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
     void reload();
   }, [reload]);
 
-  const open = (user: AssignableUser) => {
+  const open = async (user: AssignableUser) => {
+    if (!empresaActual) return;
     const rows = responsibilities[user.id] ?? [];
+    const scopeResponse = await apiClient.get<{ data: { municipios_visibles_ids: number[]; municipios_nomina_ids: number[] } }>(
+      '/nomina/procesos/alcance-municipal',
+      { params: { usuario_id: user.id, empresa_id: empresaActual.id } },
+    );
+    const scope = scopeResponse.data;
 
     setSelected(user);
 
@@ -259,10 +282,13 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
       rows.filter((row) => row.activo).map((row) => row.proceso),
     );
 
-    setMunicipalityIds(
-      rows.find((row) => row.proceso === 'COBERTURA')?.municipio_ids ?? [],
-    );
-    const existingMunicipalityIds = rows.find((row) => row.proceso === 'COBERTURA')?.municipio_ids ?? [];
+    const existingMunicipalityIds = (scope.municipios_nomina_ids.length > 0
+      ? scope.municipios_nomina_ids
+      : (rows.find((row) => row.proceso === 'COBERTURA')?.municipio_ids ?? []))
+      .map(municipalityId)
+      .filter(Number.isInteger);
+    setMunicipalityIds(existingMunicipalityIds);
+    setVisibleMunicipalityIds([...new Set(scope.municipios_visibles_ids.map(municipalityId).concat(existingMunicipalityIds))]);
     const existingDepartment = municipalities.find((item) => existingMunicipalityIds.includes(item.id))?.departamento_id;
     setSelectedDepartmentId(existingDepartment ?? null);
 
@@ -271,6 +297,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
     );
 
     setPickerSearch('');
+    setMunicipalitySearch('');
     setDrawer(true);
   };
 
@@ -278,9 +305,11 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
     setSelected(null);
     setSelectedProcesses([]);
     setMunicipalityIds([]);
+    setVisibleMunicipalityIds([]);
     setSelectedDepartmentId(null);
     setAreaIds([]);
     setPickerSearch('');
+    setMunicipalitySearch('');
     setDrawer(true);
   };
 
@@ -290,8 +319,8 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
     }
 
     await Promise.all(
-      processes.map((proceso) =>
-        apiClient.put('/nomina/procesos/responsabilidades', {
+      [
+        ...processes.map((proceso) => apiClient.put('/nomina/procesos/responsabilidades', {
           usuario_id: selected.id,
           empresa_id: empresaActual.id,
           proceso,
@@ -299,7 +328,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
           municipio_ids:
             proceso === 'COBERTURA' &&
             selectedProcesses.includes(proceso)
-              ? municipalityIds
+              ? [...new Set(municipalityIds.map(municipalityId).filter(Number.isInteger))]
               : [],
 
           area_ids:
@@ -307,8 +336,13 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
             selectedProcesses.includes(proceso)
               ? areaIds
               : [],
+        })),
+        apiClient.put('/nomina/procesos/alcance-municipal', {
+          usuario_id: selected.id,
+          empresa_id: empresaActual.id,
+          municipios_visibles_ids: [...new Set(visibleMunicipalityIds.concat(municipalityIds))],
         }),
-      ),
+      ],
     );
 
     setDrawer(false);
@@ -413,7 +447,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
 
   const shownMunicipalities = municipalities.filter((item) =>
     item.departamento_id === selectedDepartmentId &&
-    (item.nombre_municipio ?? item.nombre ?? '')
+    municipalityName(item)
       .toLowerCase()
       .includes(municipalitySearch.toLowerCase()),
   );
@@ -430,7 +464,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
             (item) => item.id === id,
           );
 
-          return municipality?.nombre_municipio ?? municipality?.nombre;
+          return municipality ? municipalityName(municipality) : undefined;
         })
         .filter(Boolean)
         .join(' · ');
@@ -802,9 +836,12 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
                 setSelectedProcesses={setSelectedProcesses}
                 municipalityIds={municipalityIds}
                 setMunicipalityIds={setMunicipalityIds}
+                visibleMunicipalityIds={visibleMunicipalityIds}
+                setVisibleMunicipalityIds={setVisibleMunicipalityIds}
                 areaIds={areaIds}
                 setAreaIds={setAreaIds}
                 municipalities={shownMunicipalities}
+                departmentMunicipalities={municipalities.filter((item) => item.departamento_id === selectedDepartmentId)}
                 departments={departments}
                 selectedDepartmentId={selectedDepartmentId}
                 setSelectedDepartmentId={setSelectedDepartmentId}
@@ -876,11 +913,14 @@ function AssignmentForm(props: {
   setMunicipalityIds: React.Dispatch<
     React.SetStateAction<number[]>
   >;
+  visibleMunicipalityIds: number[];
+  setVisibleMunicipalityIds: React.Dispatch<React.SetStateAction<number[]>>;
   areaIds: number[];
   setAreaIds: React.Dispatch<
     React.SetStateAction<number[]>
   >;
   municipalities: Municipality[];
+  departmentMunicipalities: Municipality[];
   departments: Department[];
   selectedDepartmentId: number | null;
   setSelectedDepartmentId: (value: number | null) => void;
@@ -890,6 +930,24 @@ function AssignmentForm(props: {
   onSave: () => void;
   onCancel: () => void;
 }) {
+  const departmentMunicipalityIds = props.departmentMunicipalities.map((item) => item.id);
+  const updateDepartmentSelection = (ids: number[]): void => {
+    props.setMunicipalityIds((current) => [
+      ...new Set([...current.filter((id) => !departmentMunicipalityIds.includes(id)), ...ids]),
+    ]);
+    if (ids.length > 0) {
+      props.setVisibleMunicipalityIds((current) => [...new Set([...current, ...ids])]);
+    }
+  };
+
+  const updateVisibleSelection = (ids: number[]) =>
+    props.setVisibleMunicipalityIds((current) => [
+      ...new Set([
+        ...current.filter((id) => !departmentMunicipalityIds.includes(id)),
+        ...ids,
+      ]),
+    ]);
+
   const toggleProcess = (
     process: Process,
     checked: boolean,
@@ -934,6 +992,32 @@ function AssignmentForm(props: {
         ))}
       </fieldset>
 
+      <fieldset className="nomina-scope-fieldset nomina-visibility-fieldset">
+        <legend>Municipios visibles en plataforma</legend>
+        <label className="nomina-department-field">
+          Departamento
+          <select value={props.selectedDepartmentId ?? ''} onChange={(event) => props.setSelectedDepartmentId(event.target.value ? Number(event.target.value) : null)}>
+            <option value="">Seleccionar departamento</option>
+            {props.departments.map((department) => <option key={department.id} value={department.id}>{department.label ?? department.nombre}</option>)}
+          </select>
+        </label>
+        {props.selectedDepartmentId === null ? <p className="nomina-scope-empty">Selecciona un departamento para ver sus municipios.</p> : <>
+          <div className="nomina-scope-summary"><strong>{props.visibleMunicipalityIds.length} municipio{props.visibleMunicipalityIds.length === 1 ? '' : 's'} visible{props.visibleMunicipalityIds.length === 1 ? '' : 's'}</strong><span>Puede consultar información territorial</span></div>
+          <input placeholder="Buscar municipio" value={props.municipalitySearch} onChange={(event) => props.setMunicipalitySearch(event.target.value)} />
+          <div className="nomina-scope-tools"><button type="button" onClick={() => updateVisibleSelection(departmentMunicipalityIds)}>Seleccionar todos</button><button type="button" onClick={() => updateVisibleSelection([])}>Limpiar</button></div>
+          <div className="nomina-scope-grid">
+            {props.municipalities.map((item) => {
+              const requiredByNomina = props.municipalityIds.includes(item.id);
+              return <label className="nomina-scope-option" key={`visible-${item.id}`} title={requiredByNomina ? 'Este municipio está asignado a Nómina y debe permanecer visible.' : undefined}>
+                <input type="checkbox" checked={props.visibleMunicipalityIds.includes(item.id)} disabled={requiredByNomina} onChange={(event) => props.setVisibleMunicipalityIds((current) => event.target.checked ? [...new Set([...current, item.id])] : current.filter((id) => id !== item.id))} />
+                <span title={municipalityName(item)}>{municipalityName(item)}</span>
+              </label>;
+            })}
+          </div>
+          {props.municipalities.length === 0 && <p className="nomina-scope-empty">No hay municipios que coincidan con la búsqueda.</p>}
+        </>}
+      </fieldset>
+
       {props.selectedProcesses.includes('COBERTURA') && (
         <fieldset className="nomina-scope-fieldset">
           <label className="nomina-department-field">
@@ -941,9 +1025,7 @@ function AssignmentForm(props: {
             <select
               value={props.selectedDepartmentId ?? ''}
               onChange={(event) =>
-                props.setSelectedDepartmentId(
-                  event.target.value ? Number(event.target.value) : null,
-                )
+                props.setSelectedDepartmentId(event.target.value ? Number(event.target.value) : null)
               }
             >
               <option value="">Seleccionar departamento</option>
@@ -955,8 +1037,8 @@ function AssignmentForm(props: {
             </select>
           </label>
 
-          <legend>
-            Municipios que puede gestionar
+        <legend>
+            Municipios a cargo de Nómina
           </legend>
 
           {props.selectedDepartmentId === null ? (
@@ -984,11 +1066,7 @@ function AssignmentForm(props: {
             <button
               type="button"
               onClick={() =>
-                props.setMunicipalityIds(
-                  props.municipalities.map(
-                    (item) => item.id,
-                  ),
-                )
+                updateDepartmentSelection(departmentMunicipalityIds)
               }
             >
               Seleccionar todos
@@ -997,7 +1075,7 @@ function AssignmentForm(props: {
             <button
               type="button"
               onClick={() =>
-                props.setMunicipalityIds([])
+                updateDepartmentSelection([])
               }
             >
               Limpiar selección
@@ -1005,29 +1083,37 @@ function AssignmentForm(props: {
           </div>}
 
           {props.selectedDepartmentId !== null && <div className="nomina-scope-grid">
-          {props.municipalities.map((item) => (
+              {props.municipalities.map((item) => (
             <label className="nomina-scope-option" key={item.id}>
               <input
                 type="checkbox"
                 checked={props.municipalityIds.includes(
                   item.id,
                 )}
-                onChange={(event) =>
-                  props.setMunicipalityIds(
-                    (current) =>
-                      event.target.checked
-                        ? [...current, item.id]
-                        : current.filter(
-                            (id) => id !== item.id,
-                          ),
-                  )
-                }
+                onChange={(event) => {
+                  props.setMunicipalityIds((current) =>
+                    event.target.checked
+                      ? [...new Set([...current, item.id])]
+                      : current.filter((id) => id !== item.id),
+                  );
+                  if (event.target.checked) {
+                    props.setVisibleMunicipalityIds((current) => [...new Set([...current, item.id])]);
+                  }
+                }}
               />
 
-              <span>{item.nombre_municipio ?? item.nombre}</span>
+              <span title={municipalityName(item)}>{municipalityName(item)}</span>
             </label>
           ))}
           </div>}
+
+          {props.selectedDepartmentId !== null && props.municipalities.length === 0 && (
+            <p className="nomina-scope-empty">
+              {props.municipalitySearch
+                ? 'No hay municipios que coincidan con la búsqueda.'
+                : 'Este departamento no tiene municipios en el catálogo.'}
+            </p>
+          )}
         </fieldset>
       )}
 

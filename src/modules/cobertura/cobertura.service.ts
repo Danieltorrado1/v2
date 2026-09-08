@@ -23,6 +23,8 @@ import {
   ensureVinculacionActivaManipulador
 } from './cobertura.validator';
 import { resolveCoberturaFechaConsulta } from './cobertura.temporal';
+import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
+import { appendVisibleMunicipalityScope } from '../users/municipal-scope.service';
 
 interface CoberturaBaseRow extends QueryResultRow {
   activo: boolean;
@@ -398,7 +400,8 @@ const recordCoberturaAudit = async (input: {
 };
 
 const buildBaseWhereClause = (
-  filters: CoberturaResumenQuery
+  filters: CoberturaResumenQuery,
+  tenant?: TenantAccessContext
 ): { params: unknown[]; whereSql: string } => {
   const conditions: string[] = ['COALESCE(ff.activo, TRUE) = TRUE'];
   const params: unknown[] = [];
@@ -428,6 +431,8 @@ const buildBaseWhereClause = (
     conditions.push(`ff.categoria_cobertura = $${params.length}`);
   }
 
+  appendVisibleMunicipalityScope(conditions, params, tenant, 'ff.municipio_id', 'c.empresa_id');
+
   return {
     params,
     whereSql: `WHERE ${conditions.join(' AND ')}`
@@ -435,9 +440,10 @@ const buildBaseWhereClause = (
 };
 
 const getCoberturaBaseRows = async (
-  filters: CoberturaResumenQuery
+  filters: CoberturaResumenQuery,
+  tenant?: TenantAccessContext
 ): Promise<{ fechaConsulta: string; items: CoberturaResumenItem[] }> => {
-  const { params, whereSql } = buildBaseWhereClause(filters);
+  const { params, whereSql } = buildBaseWhereClause(filters, tenant);
   const fechaConsulta = resolveCoberturaFechaConsulta(filters.fecha ?? null);
   const datePlaceholder = `$${params.length + 1}`;
 
@@ -591,15 +597,17 @@ const getCoberturaAsignacionByIdForUpdate = async (
 };
 
 export const getCoberturaResumen = async (
-  filters: CoberturaResumenQuery
+  filters: CoberturaResumenQuery,
+  tenant?: TenantAccessContext
 ): Promise<CoberturaResumenResponse> => {
-  const { fechaConsulta, items } = await getCoberturaBaseRows(filters);
+  const { fechaConsulta, items } = await getCoberturaBaseRows(filters, tenant);
   const filtered = applyFilters(items, filters);
   return paginate(filtered, filters.page, filters.limit, fechaConsulta);
 };
 
 export const getCoberturaContratoDetalle = async (
-  contratoId: string
+  contratoId: string,
+  tenant?: TenantAccessContext
 ): Promise<CoberturaContratoDetalle> => {
   await ensureContratoAplicaCobertura(contratoId);
 
@@ -617,7 +625,7 @@ export const getCoberturaContratoDetalle = async (
     contrato_id: contratoId,
     page: 1,
     limit: 1000
-  });
+  }, tenant);
 
   const resumen = getCoverageSummaryTotals(items);
 
@@ -631,8 +639,12 @@ export const getCoberturaContratoDetalle = async (
 };
 
 export const getCoberturaSedeModalidadDetalle = async (
-  focalizacionFinalId: string
+  focalizacionFinalId: string,
+  tenant?: TenantAccessContext
 ): Promise<CoberturaSedeModalidadDetalle> => {
+  const scopeConditions = ['ff.id::text = $1'];
+  const scopeParams: unknown[] = [focalizacionFinalId];
+  appendVisibleMunicipalityScope(scopeConditions, scopeParams, tenant, 'ff.municipio_id', 'c.empresa_id');
   const summaryResult = await dbQuery<CoberturaBaseRow>(
     `
       WITH asignadas AS (
@@ -669,10 +681,10 @@ export const getCoberturaSedeModalidadDetalle = async (
       LEFT JOIN instituciones i ON i.id = ff.institucion_id
       LEFT JOIN modalidades m ON m.id = ff.modalidad_id AND COALESCE(m.activo, TRUE) = TRUE
       LEFT JOIN asignadas ON asignadas.focalizacion_final_id = ff.id::text
-      WHERE ff.id::text = $1
+      WHERE ${scopeConditions.join(' AND ')}
       LIMIT 1
     `,
-    [focalizacionFinalId]
+    scopeParams
   );
 
   const summaryRow = summaryResult.rows[0];
@@ -719,9 +731,10 @@ export const getCoberturaSedeModalidadDetalle = async (
 };
 
 export const getCoberturaFaltantes = async (
-  filters: CoberturaResumenQuery
+  filters: CoberturaResumenQuery,
+  tenant?: TenantAccessContext
 ): Promise<CoberturaResumenResponse> => {
-  const { fechaConsulta, items } = await getCoberturaBaseRows(filters);
+  const { fechaConsulta, items } = await getCoberturaBaseRows(filters, tenant);
   const filtered = applyFilters(items, {
     ...filters,
     estado_cobertura: 'FALTANTE'
@@ -731,9 +744,10 @@ export const getCoberturaFaltantes = async (
 };
 
 export const getCoberturaSobrecobertura = async (
-  filters: CoberturaResumenQuery
+  filters: CoberturaResumenQuery,
+  tenant?: TenantAccessContext
 ): Promise<CoberturaResumenResponse> => {
-  const { fechaConsulta, items } = await getCoberturaBaseRows(filters);
+  const { fechaConsulta, items } = await getCoberturaBaseRows(filters, tenant);
   const filtered = applyFilters(items, {
     ...filters,
     estado_cobertura: 'SOBRECOBERTURA'

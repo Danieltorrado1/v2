@@ -38,7 +38,7 @@ const getActorUserId = (req: Request): string => {
 
 export const getCoberturaResumenHandler = asyncHandler(async (req: Request, res: Response) => {
   const query = coberturaResumenQuerySchema.parse(req.query);
-  const result = await getCoberturaResumen(query);
+  const result = await getCoberturaResumen(query, req.tenant);
 
   return successResponse(res, {
     message: 'Cobertura summary retrieved successfully',
@@ -48,12 +48,12 @@ export const getCoberturaResumenHandler = asyncHandler(async (req: Request, res:
 
 export const getCoberturaDashboardHandler = asyncHandler(async (req: Request, res: Response) => {
   const query = coberturaResumenQuerySchema.parse(req.query);
-  const result = await getCoberturaDashboard(query);
+  const result = await getCoberturaDashboard(query, req.tenant);
   return successResponse(res, { message: 'Cobertura dashboard retrieved successfully', data: result });
 });
 export const getCoberturaContratoHandler = asyncHandler(async (req: Request, res: Response) => {
   const { contrato_id } = contratoIdParamSchema.parse(req.params);
-  const result = await getCoberturaContratoDetalle(contrato_id);
+  const result = await getCoberturaContratoDetalle(contrato_id, req.tenant);
 
   return successResponse(res, {
     message: 'Cobertura contract detail retrieved successfully',
@@ -63,7 +63,7 @@ export const getCoberturaContratoHandler = asyncHandler(async (req: Request, res
 
 export const getCoberturaSedeModalidadHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = sedeModalidadIdParamSchema.parse(req.params);
-  const result = await getCoberturaSedeModalidadDetalle(id);
+  const result = await getCoberturaSedeModalidadDetalle(id, req.tenant);
 
   return successResponse(res, {
     message: 'Cobertura sede-modalidad detail retrieved successfully',
@@ -73,7 +73,7 @@ export const getCoberturaSedeModalidadHandler = asyncHandler(async (req: Request
 
 export const getCoberturaFaltantesHandler = asyncHandler(async (req: Request, res: Response) => {
   const query = coberturaResumenQuerySchema.parse(req.query);
-  const result = await getCoberturaFaltantes(query);
+  const result = await getCoberturaFaltantes(query, req.tenant);
 
   return successResponse(res, {
     message: 'Cobertura faltantes retrieved successfully',
@@ -83,7 +83,7 @@ export const getCoberturaFaltantesHandler = asyncHandler(async (req: Request, re
 
 export const getCoberturaSobrecoberturaHandler = asyncHandler(async (req: Request, res: Response) => {
   const query = coberturaResumenQuerySchema.parse(req.query);
-  const result = await getCoberturaSobrecobertura(query);
+  const result = await getCoberturaSobrecobertura(query, req.tenant);
 
   return successResponse(res, {
     message: 'Cobertura sobrecobertura retrieved successfully',

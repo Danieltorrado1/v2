@@ -22,6 +22,11 @@ export type NominaResponsibility = {
   areas?: number[];
 };
 
+export type NominaMunicipalScope = {
+  municipios_visibles_ids: number[];
+  municipios_nomina_ids: number[];
+};
+
 export function evaluateNominaProcessAccess(
   assignments: NominaResponsibility[]
 ): NominaProcessAccess[] {
@@ -325,7 +330,7 @@ export async function listNominaResponsibilities(
     );
   }
 
-  return (
+  const responsibilities = (
     await dbPool.query(
       `
         SELECT
@@ -362,6 +367,137 @@ export async function listNominaResponsibilities(
       [userId, empresaId]
     )
   ).rows;
+
+  const visible = await dbPool.query<{ municipio_id: number | string }>(
+    `
+      SELECT municipio_id
+      FROM usuario_municipio_visibilidad
+      WHERE usuario_id = $1::bigint
+        AND empresa_id = $2::bigint
+        AND COALESCE(activo, TRUE) = TRUE
+        AND vigencia_desde <= CURRENT_DATE
+        AND (vigencia_hasta IS NULL OR vigencia_hasta >= CURRENT_DATE)
+      ORDER BY municipio_id
+    `,
+    [userId, empresaId]
+  );
+
+  return responsibilities.map((row) => ({
+    ...row,
+    municipio_ids: (row.municipio_ids ?? []).map(Number),
+    area_ids: (row.area_ids ?? []).map(Number),
+    municipios_visibles_ids: visible.rows.map((item) => Number(item.municipio_id))
+  }));
+}
+
+export async function setNominaMunicipalVisibility(
+  input: {
+    usuarioId: string | number;
+    empresaId: string | number;
+    municipioIds?: Array<string | number>;
+  },
+  tenant?: TenantAccessContext
+): Promise<NominaMunicipalScope> {
+  const empresaId = Number(input.empresaId);
+  let municipioIds = [...new Set((input.municipioIds ?? []).map(Number))]
+    .filter((id) => Number.isInteger(id) && id > 0);
+
+  if (tenant && !tenant.isGlobalAdmin && !tenant.empresaIds.includes(empresaId)) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+  }
+
+  const client = await dbPool.connect();
+  try {
+    await client.query('BEGIN');
+    const required = await client.query<{ municipio_id: string | number }>(
+      `
+        SELECT nrm.municipio_id
+        FROM nomina_responsabilidades_usuario nru
+        JOIN nomina_responsabilidad_municipios nrm ON nrm.responsabilidad_id = nru.id
+        WHERE nru.usuario_id = $1::bigint AND nru.empresa_id = $2::bigint
+          AND nru.proceso = 'COBERTURA' AND nru.activo = TRUE
+      `,
+      [input.usuarioId, empresaId]
+    );
+    municipioIds = [...new Set([...municipioIds, ...required.rows.map((row) => Number(row.municipio_id))])];
+    const valid = await client.query<{ id: string }>(
+      `SELECT id::text AS id FROM municipios WHERE id = ANY($1::bigint[])`,
+      [municipioIds]
+    );
+    const validIds = valid.rows.map((row) => Number(row.id));
+    const invalidIds = municipioIds.filter((id) => !validIds.includes(id));
+    if (invalidIds.length > 0) {
+      throw new AppError('Uno o más municipios no existen en el catálogo.', 400, 'INVALID_MUNICIPALITY_ID', { invalidIds });
+    }
+
+    await client.query(
+      `
+        UPDATE usuario_municipio_visibilidad
+        SET activo = FALSE, vigencia_hasta = CURRENT_DATE - 1,
+            updated_by_user_id = $3::bigint, updated_at = NOW()
+        WHERE usuario_id = $1::bigint AND empresa_id = $2::bigint
+          AND COALESCE(activo, TRUE) = TRUE
+      `,
+      [input.usuarioId, empresaId, tenant?.userId ?? null]
+    );
+
+    if (validIds.length > 0) {
+      await client.query(
+        `
+          INSERT INTO usuario_municipio_visibilidad
+            (usuario_id, empresa_id, municipio_id, vigencia_desde, activo,
+             created_by_user_id, updated_by_user_id)
+          SELECT $1::bigint, $2::bigint, x, CURRENT_DATE, TRUE, $3::bigint, $3::bigint
+          FROM unnest($4::bigint[]) AS x
+          ON CONFLICT (usuario_id, empresa_id, municipio_id)
+          DO UPDATE SET activo = TRUE, vigencia_hasta = NULL,
+            updated_by_user_id = EXCLUDED.updated_by_user_id, updated_at = NOW()
+        `,
+        [input.usuarioId, empresaId, tenant?.userId ?? null, validIds]
+      );
+    }
+    await client.query('COMMIT');
+    return { municipios_visibles_ids: validIds, municipios_nomina_ids: [] };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getNominaMunicipalScope(
+  userId: string | number,
+  empresaId: string | number,
+  tenant?: TenantAccessContext
+): Promise<NominaMunicipalScope> {
+  const empresa = Number(empresaId);
+  if (tenant && !tenant.isGlobalAdmin && !tenant.empresaIds.includes(empresa)) {
+    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
+  }
+  const result = await dbPool.query<{ municipios_nomina_ids: number[]; municipios_visibles_ids: number[] }>(
+    `
+      SELECT
+        COALESCE((SELECT array_agg(nrm.municipio_id ORDER BY nrm.municipio_id)
+          FROM nomina_responsabilidades_usuario nru
+          JOIN nomina_responsabilidad_municipios nrm ON nrm.responsabilidad_id = nru.id
+          WHERE nru.usuario_id = $1::bigint AND nru.empresa_id = $2::bigint
+            AND nru.proceso = 'COBERTURA' AND nru.activo = TRUE), '{}') AS municipios_nomina_ids,
+        COALESCE((SELECT array_agg(umv.municipio_id ORDER BY umv.municipio_id)
+          FROM usuario_municipio_visibilidad umv
+          WHERE umv.usuario_id = $1::bigint AND umv.empresa_id = $2::bigint
+            AND COALESCE(umv.activo, TRUE) = TRUE
+            AND umv.vigencia_desde <= CURRENT_DATE
+            AND (umv.vigencia_hasta IS NULL OR umv.vigencia_hasta >= CURRENT_DATE)), '{}') AS municipios_visibles_ids
+    `,
+    [userId, empresa]
+  );
+  const row = result.rows[0] ?? { municipios_nomina_ids: [], municipios_visibles_ids: [] };
+  const nomina = row.municipios_nomina_ids.map(Number);
+  return {
+    municipios_nomina_ids: nomina,
+    municipios_visibles_ids: [...new Set([...row.municipios_visibles_ids.map(Number), ...nomina])]
+  };
 }
 
 export async function listNominaAssignableUsers(
@@ -930,6 +1066,22 @@ export async function replaceNominaResponsibility(
           id,
           input.municipioIds.map(Number)
         ]
+      );
+
+      // Regla de integridad: todo municipio operativo de Nómina también
+      // queda habilitado para lectura territorial.
+      await client.query(
+        `
+          INSERT INTO usuario_municipio_visibilidad
+            (usuario_id, empresa_id, municipio_id, vigencia_desde, activo,
+             created_by_user_id, updated_by_user_id)
+          SELECT $1::bigint, $2::bigint, x, CURRENT_DATE, TRUE, $3::bigint, $3::bigint
+          FROM unnest($4::bigint[]) AS x
+          ON CONFLICT (usuario_id, empresa_id, municipio_id)
+          DO UPDATE SET activo = TRUE, vigencia_hasta = NULL,
+            updated_by_user_id = EXCLUDED.updated_by_user_id, updated_at = NOW()
+        `,
+        [input.usuarioId, empresaId, tenant?.userId ?? null, [...new Set(input.municipioIds.map(Number))]]
       );
     }
 
