@@ -169,6 +169,9 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
 
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
+  const [catalogError, setCatalogError] = useState('');
+  const [assignmentError, setAssignmentError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const reload = useCallback(async () => {
     if (!empresaActual) {
@@ -177,6 +180,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
 
     setUsersLoading(true);
     setUsersError('');
+    setCatalogError('');
 
     try {
       const [usersResult, areaResult, municipalityResult, departmentResult, contractsResult] = await Promise.allSettled([
@@ -205,19 +209,25 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
       }
 
       const companyUsers = usersResult.value.data.filter((user) => user.active);
-      const companyContracts = contractsResult.status === 'fulfilled' ? contractsResult.value.items ?? [] : [];
+      const companyContracts = contractsResult.status === 'fulfilled'
+        ? contractsResult.value.items ?? []
+        : [];
+      const resolvedContractId = selectedContractId && companyContracts.some((contract) => contract.id === selectedContractId)
+        ? selectedContractId
+        : companyContracts[0]?.id ?? null;
       setContracts(companyContracts);
-      setSelectedContractId((current) => current && companyContracts.some((contract) => contract.id === current) ? current : companyContracts[0]?.id ?? null);
+      setSelectedContractId(resolvedContractId);
 
-      const responsibilityResults = await Promise.allSettled(
-        companyUsers.map(async (user) => {
+      const responsibilityResults = resolvedContractId
+        ? await Promise.allSettled(
+            companyUsers.map(async (user) => {
           const response = await apiClient.get<{ data: Responsibility[] }>(
             '/nomina/procesos/responsabilidades',
             {
               params: {
                 usuario_id: user.id,
                 empresa_id: empresaActual.id,
-                contrato_id: selectedContractId ?? undefined,
+                contrato_id: resolvedContractId,
               },
             },
           );
@@ -233,15 +243,24 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
           }));
 
           return [user.id, normalized] as const;
-        }),
-      );
+            }),
+          )
+        : [];
 
       const rows = responsibilityResults.flatMap((result) =>
         result.status === 'fulfilled' ? [result.value] : [],
       );
 
-      const secondaryErrors = [areaResult, municipalityResult, departmentResult, ...responsibilityResults]
-        .some((result) => result.status === 'rejected');
+      const failedResources = [
+        contractsResult.status === 'rejected' ? 'contratos' : null,
+        areaResult.status === 'rejected' ? 'áreas' : null,
+        municipalityResult.status === 'rejected' ? 'municipios' : null,
+        departmentResult.status === 'rejected' ? 'departamentos' : null,
+        responsibilityResults.some((result) => result.status === 'rejected')
+          ? 'responsabilidades'
+          : null,
+        !resolvedContractId ? 'contrato activo' : null,
+      ].filter((resource): resource is string => Boolean(resource));
 
       setUsers(companyUsers);
       setAreas(areaResult.status === 'fulfilled' ? areaResult.value.data : []);
@@ -253,8 +272,8 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
       );
       setResponsibilities(Object.fromEntries(rows));
 
-      if (secondaryErrors) {
-        setUsersError('Usuarios cargados. Algunas asignaciones o catálogos no pudieron actualizarse; intente recargar.');
+      if (failedResources.length > 0) {
+        setCatalogError(`No fue posible cargar ${failedResources.join(', ')}. Los usuarios sí fueron cargados; intenta recargar.`);
       }
     } catch (error) {
       console.error('No fue posible cargar la configuración de nómina', error);
@@ -267,6 +286,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
           ? error.message
           : 'Error inesperado del servidor.',
       );
+      setCatalogError('No fue posible cargar los usuarios.');
     } finally {
       setUsersLoading(false);
     }
@@ -277,43 +297,53 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
   }, [reload]);
 
   const open = async (user: AssignableUser) => {
-    if (!empresaActual) return;
-    if (!selectedContractId) return;
-    const responsibilityResponse = await apiClient.get<{ data: Responsibility[] }>(
-      '/nomina/procesos/responsabilidades',
-      { params: { usuario_id: user.id, empresa_id: empresaActual.id, contrato_id: selectedContractId } },
-    );
-    const rows = responsibilityResponse.data.map((row) => ({ ...row, municipio_ids: (row.municipio_ids ?? []).map(municipalityId), area_ids: (row.area_ids ?? []).map(Number) }));
-    setResponsibilities((current) => ({ ...current, [user.id]: rows }));
-    const scopeResponse = await apiClient.get<{ data: { municipios_visibles_ids: number[]; municipios_nomina_ids: number[] } }>(
-      '/nomina/procesos/alcance-municipal',
-      { params: { usuario_id: user.id, empresa_id: empresaActual.id, contrato_id: selectedContractId } },
-    );
-    const scope = scopeResponse.data;
+    if (!empresaActual || !selectedContractId) {
+      setAssignmentError('Selecciona un contrato activo antes de asignar un usuario.');
+      return;
+    }
 
+    setAssignmentError('');
     setSelected(user);
 
-    setSelectedProcesses(
-      rows.filter((row) => row.activo).map((row) => row.proceso),
-    );
+    try {
+      const [responsibilityResponse, scopeResponse] = await Promise.all([
+        apiClient.get<{ data: Responsibility[] }>(
+          '/nomina/procesos/responsabilidades',
+          { params: { usuario_id: user.id, empresa_id: empresaActual.id, contrato_id: selectedContractId } },
+        ),
+        apiClient.get<{ data: { municipios_visibles_ids: number[]; municipios_nomina_ids: number[] } }>(
+          '/nomina/procesos/alcance-municipal',
+          { params: { usuario_id: user.id, empresa_id: empresaActual.id, contrato_id: selectedContractId } },
+        ),
+      ]);
+      const rows = responsibilityResponse.data.map((row) => ({
+        ...row,
+        municipio_ids: (row.municipio_ids ?? []).map(municipalityId),
+        area_ids: (row.area_ids ?? []).map(Number),
+      }));
+      setResponsibilities((current) => ({ ...current, [user.id]: rows }));
+      const scope = scopeResponse.data;
 
-    const existingMunicipalityIds = (scope.municipios_nomina_ids.length > 0
-      ? scope.municipios_nomina_ids
-      : (rows.find((row) => row.proceso === 'COBERTURA')?.municipio_ids ?? []))
-      .map(municipalityId)
-      .filter(Number.isInteger);
-    setMunicipalityIds(existingMunicipalityIds);
-    setVisibleMunicipalityIds([...new Set(scope.municipios_visibles_ids.map(municipalityId).concat(existingMunicipalityIds))]);
-    const existingDepartment = municipalities.find((item) => existingMunicipalityIds.includes(item.id))?.departamento_id;
-    setSelectedDepartmentId(existingDepartment ?? null);
+      setSelectedProcesses(rows.filter((row) => row.activo).map((row) => row.proceso));
 
-    setAreaIds(
-      rows.find((row) => row.proceso === 'ASISTENCIA')?.area_ids ?? [],
-    );
+      const existingMunicipalityIds = (scope.municipios_nomina_ids.length > 0
+        ? scope.municipios_nomina_ids
+        : (rows.find((row) => row.proceso === 'COBERTURA')?.municipio_ids ?? []))
+        .map(municipalityId)
+        .filter(Number.isInteger);
+      setMunicipalityIds(existingMunicipalityIds);
+      setVisibleMunicipalityIds([...new Set(scope.municipios_visibles_ids.map(municipalityId).concat(existingMunicipalityIds))]);
+      const existingDepartment = municipalities.find((item) => existingMunicipalityIds.includes(item.id))?.departamento_id;
+      setSelectedDepartmentId(existingDepartment ?? null);
 
-    setPickerSearch('');
-    setMunicipalitySearch('');
-    setDrawer(true);
+      setAreaIds(rows.find((row) => row.proceso === 'ASISTENCIA')?.area_ids ?? []);
+      setPickerSearch('');
+      setMunicipalitySearch('');
+      setDrawer(true);
+    } catch (error) {
+      console.error('No fue posible cargar las asignaciones del usuario', error);
+      setAssignmentError('No fue posible cargar las asignaciones territoriales. Intenta recargar.');
+    }
   };
 
   const start = () => {
@@ -333,7 +363,10 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
       return;
     }
 
-    await Promise.all(
+    setSaving(true);
+    setAssignmentError('');
+    try {
+      await Promise.all(
       [
         ...processes.map((proceso) => apiClient.put('/nomina/procesos/responsabilidades', {
           usuario_id: selected.id,
@@ -361,10 +394,16 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
       ],
     );
 
-    setDrawer(false);
-    setMessage('Asignación guardada correctamente.');
+      setDrawer(false);
+      setMessage('Asignación guardada correctamente.');
 
-    await reload();
+      await reload();
+    } catch (error) {
+      console.error('No fue posible guardar las asignaciones', error);
+      setAssignmentError('No fue posible guardar las asignaciones. Verifica el contrato y los permisos.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const remove = async (user: AssignableUser) => {
@@ -597,6 +636,8 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
               + Asignar usuario
             </button>
           </div>
+
+          {catalogError ? <p role="alert">{catalogError}</p> : null}
 
           <div className="nomina-assignment-filters">
             <input
@@ -851,6 +892,10 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
               </p>
             ) : null}
 
+            {selected && assignmentError ? (
+              <p role="alert">{assignmentError}</p>
+            ) : null}
+
             {!selected &&
             !usersLoading &&
             !usersError &&
@@ -873,7 +918,14 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
                 </button>
               ))
             ) : (
-              <AssignmentForm
+              <>
+                <div className="nomina-selected-user-summary">
+                  <strong>USUARIO SELECCIONADO</strong>
+                  <span>Rol: {selected.roles.length ? selected.roles.join(' · ') : 'Sin rol'}</span>
+                  <span>Empresa: {empresaActual.nombre_empresa}</span>
+                  <span>Contrato: {contracts.find((contract) => contract.id === selectedContractId)?.numero_contrato ?? selectedContractId}</span>
+                </div>
+                <AssignmentForm
                 selectedProcesses={selectedProcesses}
                 setSelectedProcesses={setSelectedProcesses}
                 municipalityIds={municipalityIds}
@@ -894,7 +946,9 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
                 }
                 onSave={() => void save()}
                 onCancel={() => setDrawer(false)}
-              />
+                saveDisabled={saving || Boolean(assignmentError) || !selectedContractId || departments.length === 0 || municipalities.length === 0}
+                />
+              </>
             )}
             </div>
           </aside>
@@ -971,6 +1025,7 @@ function AssignmentForm(props: {
   setMunicipalitySearch: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
+  saveDisabled: boolean;
 }) {
   const departmentMunicipalityIds = props.departmentMunicipalities.map((item) => item.id);
   const updateDepartmentSelection = (ids: number[]): void => {
@@ -1220,6 +1275,7 @@ function AssignmentForm(props: {
           type="button"
           className="adm-btn primary"
           onClick={props.onSave}
+          disabled={props.saveDisabled}
         >
           Guardar asignación
         </button>

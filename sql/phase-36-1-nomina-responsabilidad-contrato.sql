@@ -21,6 +21,10 @@ WHERE r.id = candidates.id;
 ALTER TABLE nomina_responsabilidades_usuario
   DROP CONSTRAINT IF EXISTS nomina_responsabilidades_usuario_usuario_id_empresa_id_proceso_key;
 
+-- PostgreSQL truncates the legacy constraint name to 63 characters.
+ALTER TABLE nomina_responsabilidades_usuario
+  DROP CONSTRAINT IF EXISTS nomina_responsabilidades_usua_usuario_id_empresa_id_proceso_key;
+
 CREATE UNIQUE INDEX IF NOT EXISTS uq_nomina_responsabilidad_contexto
   ON nomina_responsabilidades_usuario(usuario_id, empresa_id, proceso, COALESCE(contrato_id, 0));
 
