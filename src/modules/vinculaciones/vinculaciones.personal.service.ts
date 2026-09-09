@@ -537,7 +537,7 @@ export const replaceAsignacionOperativaPersonal = async (
   focalizacionFinalId: number,
   actorUserId: number,
   tenant?: TenantAccessContext,
-  input: { tipo_cambio?: 'CORRECCION_DIGITACION' | 'CAMBIO_REAL'; fecha_desde?: string; motivo: string; observacion?: string | null } = { motivo: 'Actualización operativa' }
+  input: { asignacion_id?: number; tipo_cambio?: 'CORRECCION_DIGITACION' | 'CAMBIO_REAL'; fecha_desde?: string; motivo: string; observacion?: string | null } = { motivo: 'Actualización operativa' }
 ) => {
   // ASIGNACION_OPERATIVA_FECHA_REQUIERE_CAMBIO_OPERATIVO is enforced by the request schema.
   await assertTenantAccessForVinculacionId(tenant, vinculacionId);
@@ -566,11 +566,14 @@ export const replaceAsignacionOperativaPersonal = async (
         throw new AppError('El municipio esta fuera del alcance autorizado',403,'VINCULACION_SCOPE_FORBIDDEN');
       }
     }
-    const current=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND fecha_inicio<= $2::date AND (fecha_fin IS NULL OR fecha_fin>= $2::date) ORDER BY fecha_inicio DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId,fechaDesde]);
+    const current=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND (($3::bigint IS NOT NULL AND id=$3::bigint) OR ($3::bigint IS NULL AND fecha_inicio<= $2::date AND (fecha_fin IS NULL OR fecha_fin>= $2::date))) ORDER BY fecha_inicio DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId,fechaDesde,input.asignacion_id ?? null]);
     const next=await client.query<{ fecha_inicio: string }>(`SELECT fecha_inicio::text FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND fecha_inicio>$2::date ORDER BY fecha_inicio ASC,id ASC LIMIT 1`,[vinculacionId,fechaDesde]);
     const f=target.rows[0];
+    if (input.tipo_cambio === 'CORRECCION_DIGITACION' && !current.rows[0]) {
+      throw new AppError('La asignación histórica seleccionada no existe para esta vinculación',404,'ASIGNACION_OPERATIVA_NOT_FOUND');
+    }
     if (input.tipo_cambio === 'CORRECCION_DIGITACION' && current.rows[0]) {
-      const corrected = await client.query<any>(`UPDATE cobertura_asignaciones SET focalizacion_final_id=$2::bigint, municipio_id=$3::bigint, institucion=$4, sede=$5, modalidad=$6, observacion=$7, updated_at=NOW() WHERE id=$1::bigint RETURNING *`, [current.rows[0].id, focalizacionFinalId, f.municipio_id, f.institucion_final, f.sede_final, f.modalidad_final, input.observacion ?? input.motivo]);
+      const corrected = await client.query<any>(`UPDATE cobertura_asignaciones SET focalizacion_final_id=$2::bigint, municipio_id=$3::bigint, institucion=$4, sede=$5, modalidad=$6, observacion=$7 WHERE id=$1::bigint RETURNING *`, [current.rows[0].id, focalizacionFinalId, f.municipio_id, f.institucion_final, f.sede_final, f.modalidad_final, input.observacion ?? input.motivo]);
       await registerAuditEntry({client,usuario_id:String(actorUserId),accion:'PERSONAL_ASIGNACION_OPERATIVA_CORRECTION',tabla:'cobertura_asignaciones',registro_id:String(current.rows[0].id),descripcion:input.motivo,before:current.rows[0],after:corrected.rows[0]});
       await client.query('COMMIT'); return corrected.rows[0];
     }

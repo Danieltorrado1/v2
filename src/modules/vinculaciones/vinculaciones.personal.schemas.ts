@@ -56,6 +56,7 @@ export const vinculacionPresentacionLicitacionParamSchema = z.object({
 });
 
 export const updateAsignacionOperativaPersonalSchema = z.object({
+  asignacion_id: z.coerce.number().int().positive().optional(),
   focalizacion_final_id: z.coerce.number().int().positive(),
   tipo_cambio: z.enum(['CORRECCION_DIGITACION', 'CAMBIO_REAL']).default('CAMBIO_REAL'),
   fecha_desde: z.string().date().optional(),
