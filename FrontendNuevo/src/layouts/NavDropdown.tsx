@@ -5,9 +5,10 @@ import { ChevronDown } from "lucide-react";
 export type NavDropdownLink = {
   to: string;
   label: string;
+  active?: boolean;
 };
 
-export function NavDropdown({ label, links }: { label: string; links: NavDropdownLink[] }) {
+export function NavDropdown({ label, links, active = false }: { label: string; links: NavDropdownLink[]; active?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -37,7 +38,7 @@ export function NavDropdown({ label, links }: { label: string; links: NavDropdow
     <div className="menu-dropdown" ref={ref}>
       <button
         type="button"
-        className={`menu-dropdown-trigger ${isOpen ? "open" : ""}`}
+        className={`menu-dropdown-trigger ${isOpen ? "open" : ""}${active ? " active" : ""}`}
         onClick={() => setIsOpen((value) => !value)}
         aria-haspopup="true"
         aria-expanded={isOpen}
@@ -49,7 +50,7 @@ export function NavDropdown({ label, links }: { label: string; links: NavDropdow
       {isOpen && (
         <div className="menu-dropdown-panel" role="menu">
           {links.map((link) => (
-            <Link key={link.to} to={link.to} role="menuitem" onClick={() => setIsOpen(false)}>
+            <Link key={link.to} to={link.to} role="menuitem" onClick={() => setIsOpen(false)} className={link.active ? 'active' : undefined}>
               {link.label}
             </Link>
           ))}

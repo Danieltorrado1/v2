@@ -28,6 +28,69 @@ export type NominaMunicipalScope = {
   municipios_nomina_ids: number[];
 };
 
+const isTalentoHumanoUser = async (userId: string | number): Promise<boolean> => {
+  const result = await dbPool.query(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM usuario_roles ur
+        JOIN roles r ON r.id = ur.rol_id
+        WHERE ur.usuario_id = $1::bigint
+          AND r.nombre_rol = 'TALENTO_HUMANO'
+          AND COALESCE(ur.activo, TRUE) = TRUE
+          AND COALESCE(r.activo, TRUE) = TRUE
+      ) AS is_th
+    `,
+    [userId],
+  );
+  return result.rows[0]?.is_th === true;
+};
+
+/**
+ * Resolución canónica del alcance efectivo de Nómina.
+ * TH hereda sus municipios territoriales; los demás usuarios usan
+ * responsabilidades explícitas de Nómina. GESTOR no hereda TH.
+ */
+export async function getEffectivePayrollMunicipalityIds(
+  userId: string | number,
+  empresaId: string | number,
+  contratoId: string | number,
+): Promise<number[]> {
+  if (await isTalentoHumanoUser(userId)) {
+    const result = await dbPool.query<{ municipio_id: string | number }>(
+      `
+        SELECT DISTINCT gma.municipio_id
+        FROM gestor_municipio_asignaciones gma
+        WHERE gma.usuario_id = $1::bigint
+          AND gma.contrato_id = $2::bigint
+          AND COALESCE(gma.activo, TRUE) = TRUE
+          AND gma.vigencia_desde <= CURRENT_DATE
+          AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
+        ORDER BY gma.municipio_id
+      `,
+      [userId, contratoId],
+    );
+    return result.rows.map((row) => Number(row.municipio_id));
+  }
+
+  const result = await dbPool.query<{ municipio_id: string | number }>(
+    `
+      SELECT DISTINCT nrm.municipio_id
+      FROM nomina_responsabilidades_usuario nru
+      JOIN nomina_responsabilidad_municipios nrm
+        ON nrm.responsabilidad_id = nru.id
+      WHERE nru.usuario_id = $1::bigint
+        AND nru.empresa_id = $2::bigint
+        AND nru.contrato_id = $3::bigint
+        AND nru.proceso = 'COBERTURA'
+        AND nru.activo = TRUE
+      ORDER BY nrm.municipio_id
+    `,
+    [userId, empresaId, contratoId],
+  );
+  return result.rows.map((row) => Number(row.municipio_id));
+}
+
 export function evaluateNominaProcessAccess(
   assignments: NominaResponsibility[]
 ): NominaProcessAccess[] {
@@ -240,7 +303,13 @@ export async function getNominaProcessAccess(
 ): Promise<NominaProcessAccess[]> {
   const empresa = Number(empresaId);
 
-  if (tenant && !tenant.isGlobalAdmin && contratoId === undefined) {
+  const effectiveContratoId = contratoId ?? (
+    tenant && !tenant.isGlobalAdmin && tenant.contratoIds.length === 1
+      ? tenant.contratoIds[0]
+      : undefined
+  );
+
+  if (tenant && !tenant.isGlobalAdmin && effectiveContratoId === undefined) {
     throw new AppError('contrato_id es requerido para consultar alcance de Nómina', 400, 'NOMINA_CONTRATO_REQUIRED');
   }
 
@@ -310,11 +379,26 @@ export async function getNominaProcessAccess(
         AND r.activo = TRUE
       ORDER BY r.proceso
     `,
-    [userId, empresa, contratoId === undefined ? null : Number(contratoId)]
+    [userId, empresa, effectiveContratoId === undefined ? null : Number(effectiveContratoId)]
   );
 
+  const effectiveMunicipalities = effectiveContratoId === undefined
+    ? []
+    : await getEffectivePayrollMunicipalityIds(userId, empresa, effectiveContratoId);
+  const targetIsTalentoHumano = await isTalentoHumanoUser(userId);
+  const accessRows = targetIsTalentoHumano
+    ? [
+        ...result.rows.map((row) => row.proceso === 'COBERTURA'
+          ? { ...row, municipios: effectiveMunicipalities }
+          : row),
+        ...(effectiveMunicipalities.length > 0 && !result.rows.some((row) => row.proceso === 'COBERTURA')
+          ? [{ proceso: 'COBERTURA' as const, municipios: effectiveMunicipalities, areas: [] }]
+          : []),
+      ]
+    : result.rows;
+
   return evaluateNominaProcessAccess(
-    result.rows
+    accessRows
   ).map((item) => ({
     ...item,
     administrative: Boolean(tenant?.isGlobalAdmin)
@@ -327,7 +411,12 @@ export async function listNominaResponsibilities(
   tenant?: TenantAccessContext,
   contratoId?: string | number
 ) {
-  if (tenant && !tenant.isGlobalAdmin && contratoId === undefined) {
+  const effectiveContratoId = contratoId ?? (
+    tenant && !tenant.isGlobalAdmin && tenant.contratoIds.length === 1
+      ? tenant.contratoIds[0]
+      : undefined
+  );
+  if (tenant && !tenant.isGlobalAdmin && effectiveContratoId === undefined) {
     throw new AppError('contrato_id es requerido para consultar responsabilidades de Nómina', 400, 'NOMINA_CONTRATO_REQUIRED');
   }
   if (
@@ -378,7 +467,7 @@ export async function listNominaResponsibilities(
           AND ($3::bigint IS NULL OR r.contrato_id = $3::bigint)
         ORDER BY r.proceso
       `,
-      [userId, empresaId, contratoId === undefined ? null : Number(contratoId)]
+      [userId, empresaId, effectiveContratoId === undefined ? null : Number(effectiveContratoId)]
     )
   ).rows;
 
@@ -396,12 +485,34 @@ export async function listNominaResponsibilities(
     [userId, empresaId]
   );
 
-  return responsibilities.map((row) => ({
+  const effectiveMunicipalities = effectiveContratoId === undefined
+    ? []
+    : await getEffectivePayrollMunicipalityIds(userId, empresaId, effectiveContratoId);
+  const talentoHumano = await isTalentoHumanoUser(userId);
+
+  const mappedResponsibilities = responsibilities.map((row) => ({
     ...row,
-    municipio_ids: (row.municipio_ids ?? []).map(Number),
+    activo: talentoHumano && row.proceso === 'COBERTURA'
+      ? effectiveMunicipalities.length > 0
+      : row.activo,
+    municipio_ids: talentoHumano && row.proceso === 'COBERTURA'
+      ? effectiveMunicipalities
+      : (row.municipio_ids ?? []).map(Number),
     area_ids: (row.area_ids ?? []).map(Number),
     municipios_visibles_ids: visible.rows.map((item) => Number(item.municipio_id))
   }));
+  if (talentoHumano && effectiveMunicipalities.length > 0 && !mappedResponsibilities.some((row) => row.proceso === 'COBERTURA')) {
+    mappedResponsibilities.push({
+      id: `th-${userId}-${empresaId}-${effectiveContratoId}`,
+      contrato_id: effectiveContratoId,
+      proceso: 'COBERTURA',
+      activo: true,
+      municipio_ids: effectiveMunicipalities,
+      area_ids: [],
+      municipios_visibles_ids: visible.rows.map((item) => Number(item.municipio_id)),
+    });
+  }
+  return mappedResponsibilities;
 }
 
 export async function setNominaMunicipalVisibility(
@@ -430,6 +541,15 @@ export async function setNominaMunicipalVisibility(
         JOIN nomina_responsabilidad_municipios nrm ON nrm.responsabilidad_id = nru.id
         WHERE nru.usuario_id = $1::bigint AND nru.empresa_id = $2::bigint
           AND nru.proceso = 'COBERTURA' AND nru.activo = TRUE
+        UNION
+        SELECT gma.municipio_id
+        FROM gestor_municipio_asignaciones gma
+        JOIN usuario_roles ur ON ur.usuario_id = gma.usuario_id AND COALESCE(ur.activo, TRUE) = TRUE
+        JOIN roles r ON r.id = ur.rol_id AND r.nombre_rol = 'TALENTO_HUMANO' AND COALESCE(r.activo, TRUE) = TRUE
+        WHERE gma.usuario_id = $1::bigint
+          AND COALESCE(gma.activo, TRUE) = TRUE
+          AND gma.vigencia_desde <= CURRENT_DATE
+          AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
       `,
       [input.usuarioId, empresaId]
     );
@@ -487,32 +607,33 @@ export async function getNominaMunicipalScope(
   contratoId?: string | number
 ): Promise<NominaMunicipalScope> {
   const empresa = Number(empresaId);
-  if (tenant && !tenant.isGlobalAdmin && contratoId === undefined) {
+  const effectiveContratoId = contratoId ?? (
+    tenant && !tenant.isGlobalAdmin && tenant.contratoIds.length === 1
+      ? tenant.contratoIds[0]
+      : undefined
+  );
+  if (tenant && !tenant.isGlobalAdmin && effectiveContratoId === undefined) {
     throw new AppError('contrato_id es requerido para consultar alcance municipal', 400, 'NOMINA_CONTRATO_REQUIRED');
   }
   if (tenant && !tenant.isGlobalAdmin && !tenant.empresaIds.includes(empresa)) {
     throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
   }
-  const result = await dbPool.query<{ municipios_nomina_ids: number[]; municipios_visibles_ids: number[] }>(
+  const effectiveMunicipalities = effectiveContratoId === undefined
+    ? []
+    : await getEffectivePayrollMunicipalityIds(userId, empresa, effectiveContratoId);
+  const result = await dbPool.query<{ municipios_visibles_ids: number[] }>(
     `
-      SELECT
-        COALESCE((SELECT array_agg(nrm.municipio_id ORDER BY nrm.municipio_id)
-          FROM nomina_responsabilidades_usuario nru
-          JOIN nomina_responsabilidad_municipios nrm ON nrm.responsabilidad_id = nru.id
-          WHERE nru.usuario_id = $1::bigint AND nru.empresa_id = $2::bigint
-            AND ($3::bigint IS NULL OR nru.contrato_id = $3::bigint)
-            AND nru.proceso = 'COBERTURA' AND nru.activo = TRUE), '{}') AS municipios_nomina_ids,
-        COALESCE((SELECT array_agg(umv.municipio_id ORDER BY umv.municipio_id)
+      SELECT COALESCE((SELECT array_agg(umv.municipio_id ORDER BY umv.municipio_id)
           FROM usuario_municipio_visibilidad umv
           WHERE umv.usuario_id = $1::bigint AND umv.empresa_id = $2::bigint
             AND COALESCE(umv.activo, TRUE) = TRUE
             AND umv.vigencia_desde <= CURRENT_DATE
             AND (umv.vigencia_hasta IS NULL OR umv.vigencia_hasta >= CURRENT_DATE)), '{}') AS municipios_visibles_ids
     `,
-    [userId, empresa, contratoId === undefined ? null : Number(contratoId)]
+    [userId, empresa]
   );
-  const row = result.rows[0] ?? { municipios_nomina_ids: [], municipios_visibles_ids: [] };
-  const nomina = row.municipios_nomina_ids.map(Number);
+  const row = result.rows[0] ?? { municipios_visibles_ids: [] };
+  const nomina = effectiveMunicipalities;
   return {
     municipios_nomina_ids: nomina,
     municipios_visibles_ids: [...new Set([...row.municipios_visibles_ids.map(Number), ...nomina])]
@@ -995,6 +1116,7 @@ export async function replaceNominaResponsibility(
     proceso: string;
     municipioIds?: Array<string | number>;
     areaIds?: Array<string | number>;
+    activo?: boolean;
   },
   tenant?: TenantAccessContext
 ) {
@@ -1038,7 +1160,7 @@ export async function replaceNominaResponsibility(
         ? proceso === 'COBERTURA'
           ? Boolean(input.municipioIds?.length)
           : Boolean(input.areaIds?.length)
-        : true;
+        : input.activo === true;
 
     const row = await client.query<{ id: string }>(
       `

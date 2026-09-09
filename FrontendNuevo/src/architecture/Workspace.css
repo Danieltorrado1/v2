@@ -1,9 +1,6 @@
 .content--workspace { display: flex; flex-direction: column; }
 .content--workspace > .page-scroll { flex: 1 1 0; min-height: 0; }
 .workspace-primary-nav { min-width: 0; }
-.workspace-secondary-nav { flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); }
-.workspace-secondary-nav a { color: var(--text-secondary); text-decoration: none; font-size: 12px; padding: 6px 0; border-bottom: 2px solid transparent; }
-.workspace-secondary-nav a.active { color: var(--color-primary); border-color: var(--color-primary); font-weight: 700; }
 .workspace-scope { color: var(--text-primary); font-size: 11px; font-weight: 800; margin-right: 8px; }
 .workspace-page { min-width: 0; display: flex; flex-direction: column; gap: 20px; color: var(--text-primary); padding-bottom: 12px; }
 .workspace-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -46,7 +43,7 @@
 .workspace-status-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .workspace-preview-color { display: inline-block; width: 18px; height: 18px; border-radius: 4px; vertical-align: middle; margin-right: 8px; border: 1px solid var(--border-color); }
 @media (max-width: 1100px) { .workspace-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workspace-primary-nav { flex-wrap: wrap; gap: 4px 8px; } }
-@media (max-width: 700px) { .workspace-secondary-nav { padding: 6px 12px; gap: 2px 10px; } .workspace-heading h1 { font-size: 20px; } .workspace-card { padding: 14px; } .workspace-table { table-layout: auto; } .workspace-table th, .workspace-table td { padding: 8px 5px; } .workspace-overlay { padding: 6px; } }
+@media (max-width: 700px) { .workspace-heading h1 { font-size: 20px; } .workspace-card { padding: 14px; } .workspace-table { table-layout: auto; } .workspace-table th, .workspace-table td { padding: 8px 5px; } .workspace-overlay { padding: 6px; } }
 
 .workspace-company-dialog { padding: 0; margin: auto 16px auto auto; color: var(--text-primary); height: calc(100dvh - 32px); }
 .workspace-company-dialog::backdrop { background: var(--overlay-backdrop, #0007); }

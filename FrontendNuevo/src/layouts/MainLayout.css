@@ -122,7 +122,8 @@
   transform: rotate(180deg);
 }
 
-.menu-dropdown-trigger.open {
+.menu-dropdown-trigger.open,
+.menu-dropdown-trigger.active {
   color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 10%, transparent);
   border-color: color-mix(in srgb, var(--color-primary) 24%, transparent);
@@ -158,6 +159,11 @@
 .menu-dropdown-panel a:hover {
   color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.menu-dropdown-panel a.active {
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--bg-secondary));
 }
 
 .menu-navlink {

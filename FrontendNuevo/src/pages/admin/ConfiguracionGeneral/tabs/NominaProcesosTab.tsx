@@ -366,13 +366,17 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
     setSaving(true);
     setAssignmentError('');
     try {
+      const talentoHumano = selected.roles.some((role) => role === 'TALENTO_HUMANO');
       await Promise.all(
-      [
-        ...processes.map((proceso) => apiClient.put('/nomina/procesos/responsabilidades', {
+        [
+          ...processes
+            .filter((proceso) => !(talentoHumano && proceso === 'COBERTURA'))
+            .map((proceso) => apiClient.put('/nomina/procesos/responsabilidades', {
           usuario_id: selected.id,
           empresa_id: empresaActual.id,
           contrato_id: selectedContractId,
           proceso,
+          activo: selectedProcesses.includes(proceso),
 
           municipio_ids:
             proceso === 'COBERTURA' &&
@@ -417,13 +421,17 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
       return;
     }
 
+    const talentoHumano = user.roles.some((role) => role === 'TALENTO_HUMANO');
     await Promise.all(
-      processes.map((proceso) =>
+      processes
+        .filter((proceso) => !(talentoHumano && proceso === 'COBERTURA'))
+        .map((proceso) =>
         apiClient.put('/nomina/procesos/responsabilidades', {
           usuario_id: user.id,
           empresa_id: empresaActual.id,
           contrato_id: selectedContractId,
           proceso,
+          activo: false,
           municipio_ids: [],
           area_ids: [],
         }),
@@ -721,6 +729,9 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
                         {row.proceso}
                       </b>
                     ))}
+                    {user.roles.some((role) => role === 'TALENTO_HUMANO') && active.some((row) => row.proceso === 'COBERTURA') && (
+                      <b>NÓMINA · TH</b>
+                    )}
                   </span>
 
                   <span className="nomina-assignment-scope">
@@ -940,6 +951,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
                 selectedDepartmentId={selectedDepartmentId}
                 setSelectedDepartmentId={setSelectedDepartmentId}
                 areas={areas}
+                talentoHumano={selected.roles.some((role) => role === 'TALENTO_HUMANO')}
                 municipalitySearch={municipalitySearch}
                 setMunicipalitySearch={
                   setMunicipalitySearch
@@ -1026,6 +1038,7 @@ function AssignmentForm(props: {
   onSave: () => void;
   onCancel: () => void;
   saveDisabled: boolean;
+  talentoHumano: boolean;
 }) {
   const departmentMunicipalityIds = props.departmentMunicipalities.map((item) => item.id);
   const updateDepartmentSelection = (ids: number[]): void => {
@@ -1115,7 +1128,17 @@ function AssignmentForm(props: {
         </>}
       </fieldset>
 
-      {props.selectedProcesses.includes('COBERTURA') && (
+      {props.talentoHumano && props.selectedProcesses.includes('COBERTURA') && (
+        <fieldset className="nomina-scope-fieldset">
+          <legend>NÓMINA</legend>
+          <div className="nomina-scope-summary">
+            <strong>Mismo alcance de Talento Humano</strong>
+            <span>Nómina: automática por asignación TH · {props.municipalityIds.length} municipio{props.municipalityIds.length === 1 ? '' : 's'}</span>
+          </div>
+        </fieldset>
+      )}
+
+      {!props.talentoHumano && props.selectedProcesses.includes('COBERTURA') && (
         <fieldset className="nomina-scope-fieldset">
           <legend>RESPONSABLE DE NÓMINA</legend>
           <label className="nomina-department-field">

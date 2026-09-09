@@ -609,6 +609,10 @@ export interface NominaEmpleadoApi {
     nombre_completo: string;
     origen: 'PERSONAL' | 'MUNICIPIO' | 'MUNICIPIO_AMBIGUO';
   } | null;
+  responsable_th?: {
+    id: string;
+    nombre_completo: string;
+  } | null;
   contexto_operativo?: {
     municipio: string | null;
     institucion: string | null;

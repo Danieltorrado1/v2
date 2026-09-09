@@ -56,6 +56,7 @@
     "db:migrate:admin-2d-gestor-role": "tsx src/scripts/migrate-admin-2d-gestor-role.ts",
     "db:migrate:admin-2e-territorial-scope": "tsx src/scripts/migrate-admin-2e-user-territorial-scope.ts",
     "db:migrate:municipal-visibility-scope": "tsx src/scripts/migrate-municipal-visibility-scope.ts",
+    "db:migrate:nomina-4b2-th-effective-scope": "tsx src/scripts/migrate-nomina-4b2-th-effective-scope.ts",
     "seed:admin-2e-operational-permissions": "node --experimental-strip-types src/scripts/seed-admin-2e-operational-permissions.ts",
     "seed:administracion-permisos": "node --experimental-strip-types src/scripts/seed-administracion-permisos.ts",
     "test:administracion-catalogos": "tsx src/scripts/test-administracion-catalogos.ts",

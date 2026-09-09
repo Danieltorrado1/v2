@@ -10,7 +10,6 @@ import "./MainLayout.css";
 import { adminModules } from "../architecture/moduleCatalog";
 import { isGlobalAdministrator, resolveCatalogLocation, visibleTenantModules } from "../architecture/moduleAccess";
 import { WorkspaceAccess } from "../architecture/WorkspaceAccess";
-import { visiblePayrollLinks } from "../architecture/payrollNavigation";
 import { NavDropdown } from './NavDropdown';
 import "../architecture/Workspace.css";
 
@@ -124,8 +123,21 @@ export default function MainLayout() {
         </Link>
 
         <nav className="menu workspace-primary-nav" aria-label={adminScope ? 'Empiria Admin' : 'Empiria Empresa'}>
-          {modules.map(item => <Link key={item.code} to={item.route} aria-current={activeModule?.code === item.code ? 'page' : undefined}
-            className={`menu-navlink${activeModule?.code === item.code ? ' active' : ''}`}>{item.label}</Link>)}
+          {modules.map(item => item.children.length > 0 ? (
+            <NavDropdown
+              key={item.code}
+              label={item.label}
+              active={activeModule?.code === item.code}
+              links={item.children.map(child => ({
+                to: child.route,
+                label: child.label,
+                active: current?.entry.code === child.code,
+              }))}
+            />
+          ) : (
+            <Link key={item.code} to={item.route} aria-current={activeModule?.code === item.code ? 'page' : undefined}
+              className={`menu-navlink${activeModule?.code === item.code ? ' active' : ''}`}>{item.label}</Link>
+          ))}
         </nav>
 
         <div className="right-side">
@@ -234,13 +246,6 @@ export default function MainLayout() {
 
       <main className="content content--workspace">
         {globalAdmin && !adminScope && empresaActual && <div className="global-tenant-banner"><strong>MODO ADMINISTRADOR GLOBAL</strong><span>EMPRESA: {empresaActual.nombre_empresa}</span><Link to="/admin-global/empresas">VOLVER A EMPIRIA ADMIN</Link></div>}
-        {!adminScope && activeModule && <nav className="workspace-secondary-nav" aria-label={`Submódulos de ${activeModule.label}`}>
-          <span className="workspace-scope">{activeModule.label}</span>
-          {activeModule.children.map(item => <Link key={item.code} to={item.route} aria-current={current?.entry.code === item.code ? 'page' : undefined}
-            className={current?.entry.code === item.code ? 'active' : ''}>{item.label}</Link>)}
-          {current?.entry.code === 'PERSONAL_NOMINA' && activeModule.children.some(item => item.code === 'PERSONAL_NOMINA') &&
-            <NavDropdown label="Opciones de nómina" links={visiblePayrollLinks(user)} />}
-        </nav>}
         <div className={`page-scroll${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-scroll--nomina-gestion" : ""}`}>
           <div className={`page-content${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-content--nomina-gestion" : ""}`}>
             <WorkspaceAccess><Outlet /></WorkspaceAccess>

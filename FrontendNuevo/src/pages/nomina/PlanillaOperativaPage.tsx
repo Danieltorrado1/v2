@@ -200,6 +200,10 @@ function getEmployeeGestorId(employee: NominaEmpleadoApi) {
   return employee.gestor?.id ?? null;
 }
 
+function getEmployeeThLabel(employee: NominaEmpleadoApi) {
+  return normalizeLabel(employee.responsable_th?.nombre_completo) ?? null;
+}
+
 function getEmployeeModalidadCode(employee: NominaEmpleadoApi) {
   return (
     normalizeLabel(employee.contexto_operativo?.modalidad_codigo) ??
@@ -209,18 +213,10 @@ function getEmployeeModalidadCode(employee: NominaEmpleadoApi) {
   );
 }
 
-function getEmployeeModalidadDescription(employee: NominaEmpleadoApi) {
-  return (
-    normalizeLabel(employee.contexto_operativo?.modalidad_descripcion) ??
-    normalizeLabel(employee.categoria_salarial?.modalidad) ??
-    normalizeLabel(employee.modalidad) ??
-    "No disponible"
-  );
-}
-
 function buildVisibleContext(employee: NominaEmpleadoApi, context: PlanillaContexto) {
   return {
     gestor: getEmployeeGestorLabel(employee),
+    responsableTh: getEmployeeThLabel(employee),
     institucion: normalizeLabel(context.institucion) ?? getEmployeeInstitucionLabel(employee),
     modalidad: normalizeLabel(context.modalidad) ?? getEmployeeModalidadCode(employee),
     municipio: normalizeLabel(context.municipio) ?? getEmployeeMunicipioLabel(employee),
@@ -234,7 +230,8 @@ function buildContextTitle(employee: NominaEmpleadoApi, context: PlanillaContext
     visible.municipio,
     visible.institucion,
     visible.sede,
-    `${visible.modalidad} | Gestor: ${visible.gestor}`,
+    visible.responsableTh ? `Responsable TH: ${visible.responsableTh}` : null,
+    `Gestor: ${visible.gestor}`,
   ]
     .filter(Boolean)
     .join(" | ");
@@ -1833,8 +1830,8 @@ export default function PlanillaOperativaPage() {
                     <small>{visible.municipio}</small>
                     <small>{visible.institucion}</small>
                     <small>{visible.sede}</small>
-                    <small className="op-context-accent" title={`${getEmployeeModalidadDescription(employee)} | Gestor: ${visible.gestor}`}>
-                      {visible.modalidad} | Gestor: {visible.gestor}
+                    <small className="op-context-accent" title={buildContextTitle(employee, baseContext)}>
+                      {visible.modalidad}{visible.responsableTh ? ` | Responsable TH: ${visible.responsableTh}` : ''} | Gestor: {visible.gestor}
                     </small>
                   </button>
 
@@ -1923,6 +1920,7 @@ export default function PlanillaOperativaPage() {
             <span>Institucion: {text(buildVisibleContext(selected.employee, selected.context).institucion)}</span>
             <span>Sede: {text(buildVisibleContext(selected.employee, selected.context).sede)}</span>
             <span>Modalidad: {text(buildVisibleContext(selected.employee, selected.context).modalidad)}</span>
+            <span>Responsable TH: {text(getEmployeeThLabel(selected.employee))}</span>
             <span>Gestor: {text(getEmployeeGestorLabel(selected.employee))}</span>
             <span>Estado: {resolveOperativeState(selected.employee, reviewByEmployee.get(selected.employee.id) ?? null)}</span>
           </div>

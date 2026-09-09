@@ -225,6 +225,8 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   gestor_usuario_id: string | null;
   gestor_nombre_completo: string | null;
   gestor_origen: string | null;
+  responsable_th_usuario_id: string | null;
+  responsable_th_nombre_completo: string | null;
   institucion_nombre: string | null;
   modalidad_codigo: string | null;
   modalidad_id: string | null;
@@ -748,6 +750,10 @@ export interface NominaEmpleado {
     id: string;
     nombre_completo: string;
     origen: 'PERSONAL' | 'MUNICIPIO' | 'MUNICIPIO_AMBIGUO';
+  } | null;
+  responsable_th: {
+    id: string;
+    nombre_completo: string;
   } | null;
   contexto_operativo: {
     institucion: string | null;
@@ -1998,6 +2004,8 @@ const getNominaEmpleadosRealSelect = (): string => {
       gestor_actual.gestor_usuario_id,
       gestor_actual.gestor_nombre_completo,
       gestor_actual.gestor_origen,
+      responsable_th.responsable_th_usuario_id,
+      responsable_th.responsable_th_nombre_completo,
       c.numero_contrato AS contrato_numero,
       cc.nombre_cargo AS cargo_nombre,
       co.nombre_cargo AS cargo_operativo_nombre,
@@ -2082,6 +2090,14 @@ const getNominaEmpleadosRealSelect = (): string => {
           AND COALESCE(gpa.activo, TRUE) = TRUE
           AND gpa.vigencia_desde <= CURRENT_DATE
           AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= CURRENT_DATE)
+          AND EXISTS (
+            SELECT 1 FROM usuario_roles ur_gestor
+            JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
+            WHERE ur_gestor.usuario_id = gpa.usuario_id
+              AND r_gestor.nombre_rol = 'GESTOR'
+              AND COALESCE(ur_gestor.activo, TRUE) = TRUE
+              AND COALESCE(r_gestor.activo, TRUE) = TRUE
+          )
         UNION ALL
         SELECT
           CASE WHEN COUNT(DISTINCT gma.usuario_id) = 1 THEN MIN(gma.usuario_id)::text ELSE 'MULTIPLE' END AS gestor_usuario_id,
@@ -2104,11 +2120,41 @@ const getNominaEmpleadosRealSelect = (): string => {
           AND COALESCE(gma.activo, TRUE) = TRUE
           AND gma.vigencia_desde <= CURRENT_DATE
           AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
+          AND EXISTS (
+            SELECT 1 FROM usuario_roles ur_gestor
+            JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
+            WHERE ur_gestor.usuario_id = gma.usuario_id
+              AND r_gestor.nombre_rol = 'GESTOR'
+              AND COALESCE(ur_gestor.activo, TRUE) = TRUE
+              AND COALESCE(r_gestor.activo, TRUE) = TRUE
+          )
         HAVING COUNT(DISTINCT gma.usuario_id) > 0
       ) scope
       ORDER BY scope.prioridad ASC, scope.vigencia_desde DESC, scope.id DESC
       LIMIT 1
     ) gestor_actual ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        CASE WHEN COUNT(DISTINCT gma_th.usuario_id) = 1 THEN MIN(gma_th.usuario_id)::text ELSE 'MULTIPLE' END AS responsable_th_usuario_id,
+        CASE WHEN COUNT(DISTINCT gma_th.usuario_id) = 1 THEN MIN(u_th.nombre_completo) ELSE 'Múltiples responsables TH' END AS responsable_th_nombre_completo
+      FROM gestor_municipio_asignaciones gma_th
+      INNER JOIN usuarios u_th ON u_th.id = gma_th.usuario_id
+      INNER JOIN usuario_roles ur_th ON ur_th.usuario_id = gma_th.usuario_id AND COALESCE(ur_th.activo, TRUE) = TRUE
+      INNER JOIN roles r_th ON r_th.id = ur_th.rol_id AND r_th.nombre_rol = 'TALENTO_HUMANO' AND COALESCE(r_th.activo, TRUE) = TRUE
+      INNER JOIN cobertura_asignaciones ca_th
+        ON ca_th.vinculacion_id = v.id
+       AND COALESCE(ca_th.activo, TRUE) = TRUE
+       AND ca_th.fecha_inicio <= np.fecha_fin
+       AND (ca_th.fecha_fin IS NULL OR ca_th.fecha_fin >= np.fecha_inicio)
+      INNER JOIN focalizacion_final ff_th
+        ON ff_th.id = ca_th.focalizacion_final_id
+       AND ff_th.municipio_id = gma_th.municipio_id
+      WHERE gma_th.contrato_id = v.contrato_id
+        AND COALESCE(gma_th.activo, TRUE) = TRUE
+        AND gma_th.vigencia_desde <= CURRENT_DATE
+        AND (gma_th.vigencia_hasta IS NULL OR gma_th.vigencia_hasta >= CURRENT_DATE)
+      HAVING COUNT(DISTINCT gma_th.usuario_id) > 0
+    ) responsable_th ON TRUE
     LEFT JOIN LATERAL (
       SELECT
         COUNT(*)::int AS total_novedades,
@@ -2602,6 +2648,12 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
           id: row.gestor_usuario_id,
           nombre_completo: row.gestor_nombre_completo ?? '',
           origen: (row.gestor_origen ?? 'PERSONAL') as 'PERSONAL' | 'MUNICIPIO' | 'MUNICIPIO_AMBIGUO'
+        }
+      : null,
+    responsable_th: row.responsable_th_usuario_id
+      ? {
+          id: row.responsable_th_usuario_id,
+          nombre_completo: row.responsable_th_nombre_completo ?? '',
         }
       : null,
     contexto_operativo: contextoOperativo,

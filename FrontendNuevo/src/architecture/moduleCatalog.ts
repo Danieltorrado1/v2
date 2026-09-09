@@ -43,7 +43,7 @@ export const moduleCatalog: ModuleEntry[] = [
     ['ADMIN_MODULOS', 'Módulos', '/admin-global/modulos', Boxes],
     ['ADMIN_CONFIGURACION', 'Configuración general', '/admin-global/configuracion', Settings],
   ].map(([code, label, route, icon], order) => entry({ code: code as string, label: label as string, route: route as string, icon: icon as LucideIcon, scope: 'GLOBAL', state: 'PRODUCCION' }, order)),
-  entry({ code: 'AGENDA_OPERATIVA', label: 'Agenda operativa', icon: CalendarDays, route: '/agenda', permission: ['agenda.read'],
+  entry({ code: 'AGENDA_OPERATIVA', label: 'AGENDA', icon: CalendarDays, route: '/agenda', permission: ['agenda.read'],
     description: 'Organiza las tareas y los pendientes de tu operación.', sections: ['Hoy', 'Mi semana', 'Tareas', 'Pendientes', 'Recordatorios', 'Actividad próxima', 'Pendientes por módulo'] }, 0),
   entry({ code: 'PERSONAL', label: 'Personal', icon: Users, route: '/personal/estadisticas', legacyCodes: ['PERSONAL', 'NOMINA', 'COBERTURA', 'REPOSITORIO', 'PORTAL_COLABORADOR', 'DASHBOARD'],
     children: children('PERSONAL', '/personal', [
