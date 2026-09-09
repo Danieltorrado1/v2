@@ -3,7 +3,7 @@ import { PoolClient, QueryResultRow } from 'pg';
 import { dbPool, dbQuery } from '../../config/db';
 import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import { AppError } from '../../utils/AppError';
-import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
+import { isTenantAdmin, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { getVinculacionChecklist } from '../documentos/documentos.service';
 import {
   getVinculacionPersonalContext,
@@ -1303,7 +1303,7 @@ const appendContractOperationalScopeConditions = (
     endDateSql: string;
   }
 ): void => {
-  if (!tenant || tenant.isGlobalAdmin) {
+  if (!tenant || tenant.isGlobalAdmin || isTenantAdmin(tenant)) {
     return;
   }
 
@@ -1843,6 +1843,7 @@ export interface ContractPersonalFilterOptions {
   sedes: Array<{ id: number; nombre: string; institucion_id: number | null }>;
   modalidades: Array<{ id: number; codigo: string | null; nombre: string }>;
   ubicaciones_laborales: Array<{ id: number; nombre: string }>;
+  asignaciones_operativas: Array<{ id: number; municipio_id: number; municipio: string; institucion_id: number | null; institucion: string; sede_id: number | null; sede: string; modalidad_id: number | null; modalidad: string }>;
 }
 
 interface GestorUserRow extends QueryResultRow {
@@ -2311,13 +2312,20 @@ export const getContractPersonalFilterOptions = async (
           fecha
         ]
       : [contratoId, filters.municipio_id ?? null, filters.institucion_id ?? null, filters.sede_id ?? null];
-    const [gestores, municipios, instituciones, sedes, modalidades, ubicaciones] = await Promise.all([
+    const [gestores, municipios, instituciones, sedes, modalidades, ubicaciones, asignacionesOperativas] = await Promise.all([
       listGestorAssignableUsers(client, tenant, contratoId),
       client.query<{ id: number; nombre: string; departamento_id: number | null; departamento_nombre: string | null }>(`SELECT DISTINCT mu.id::int AS id, mu.nombre_municipio AS nombre, mu.departamento_id::int AS departamento_id, dep.nombre_departamento AS departamento_nombre ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string; municipio_id: number | null }>(`SELECT DISTINCT ins.id::int AS id, ins.nombre_institucion AS nombre, ins.municipio_id::int AS municipio_id ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string; institucion_id: number | null }>(`SELECT DISTINCT se.id::int AS id, se.nombre_sede AS nombre, se.institucion_id::int AS institucion_id ${base} ORDER BY nombre`, params),
       client.query<{ id: number; codigo: string | null; nombre: string }>(`SELECT DISTINCT mo.id::int AS id, COALESCE(mo.codigo_base, mo.codigo_original) AS codigo, mo.nombre_modalidad AS nombre ${base} ORDER BY nombre`, params),
-      client.query<{ id: number; nombre: string }>(`SELECT id::int AS id, nombre_ubicacion AS nombre FROM contrato_ubicaciones_laborales WHERE contrato_id = $1::bigint AND activo = TRUE ORDER BY nombre`, [contratoId])
+      client.query<{ id: number; nombre: string }>(`SELECT id::int AS id, nombre_ubicacion AS nombre FROM contrato_ubicaciones_laborales WHERE contrato_id = $1::bigint AND activo = TRUE ORDER BY nombre`, [contratoId]),
+      client.query<{ id: number; municipio_id: number; municipio: string; institucion_id: number | null; institucion: string; sede_id: number | null; sede: string; modalidad_id: number | null; modalidad: string }>(
+        `SELECT ff.id::int AS id, ff.municipio_id::int AS municipio_id,
+                COALESCE(mu.nombre_municipio, ff.municipio_texto) AS municipio,
+                ff.institucion_id::int AS institucion_id, COALESCE(ins.nombre_institucion, ff.institucion_final) AS institucion,
+                ff.sede_id::int AS sede_id, COALESCE(se.nombre_sede, ff.sede_final) AS sede,
+                ff.modalidad_id::int AS modalidad_id, COALESCE(mo.nombre_modalidad, ff.modalidad_final) AS modalidad
+         ${base} ORDER BY municipio, institucion, sede, modalidad`, params)
     ]);
     const departamentos = Array.from(
       new Map(
@@ -2344,6 +2352,7 @@ export const getContractPersonalFilterOptions = async (
       sedes: sedes.rows,
       modalidades: modalidades.rows,
       ubicaciones_laborales: ubicaciones.rows
+      ,asignaciones_operativas: asignacionesOperativas.rows
     };
   } finally {
     client.release();
@@ -3357,6 +3366,40 @@ export const createVinculacion = async (
     }
 
     const createdVinculacion = mapVinculacion(created);
+
+    const cargoCoverage = await client.query<{ aplica_cobertura: boolean }>(
+      'SELECT COALESCE(aplica_cobertura, FALSE) AS aplica_cobertura FROM contrato_cargos WHERE id = $1::bigint',
+      [input.contrato_cargo_id]
+    );
+    if (cargoCoverage.rows[0]?.aplica_cobertura && !input.focalizacion_final_id) {
+      throw new AppError(
+        'La asignación operativa es obligatoria para cargos de cobertura.',
+        400,
+        'ASIGNACION_OPERATIVA_REQUIRED'
+      );
+    }
+    if (input.focalizacion_final_id) {
+      const assignment = await client.query<any>(
+        `SELECT ff.*, COALESCE(mu.nombre_municipio, ff.municipio_texto) AS municipio_nombre
+         FROM focalizacion_final ff LEFT JOIN municipios mu ON mu.id = ff.municipio_id
+         WHERE ff.id = $1::bigint AND ff.contrato_id = $2::bigint AND COALESCE(ff.activo, TRUE) = TRUE`,
+        [input.focalizacion_final_id, input.contrato_id]
+      );
+      const target = assignment.rows[0];
+      if (!target) {
+        throw new AppError('La asignación operativa no pertenece al contrato seleccionado.', 409, 'ASIGNACION_OPERATIVA_CONTEXTO_INVALIDO');
+      }
+      await client.query(
+        `INSERT INTO cobertura_asignaciones
+          (contrato_id, municipio_id, focalizacion_final_id, vinculacion_id, institucion, sede,
+           consecutivo_sede, modalidad, categoria_cobertura, tipo_asignacion, porcentaje_cobertura,
+           fecha_inicio, fecha_fin, observacion, activo)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'PRINCIPAL',1,$10::date,NULL,'Asignación inicial',TRUE)`,
+        [input.contrato_id, target.municipio_id, target.id, createdVinculacion.id,
+          target.institucion_final, target.sede_final, target.consecutivo_final,
+          target.modalidad_final, target.categoria_cobertura, input.fecha_inicio]
+      );
+    }
 
     await recordAudit(client, createdVinculacion.id, {
       action: 'VINCULACION_CREATE',

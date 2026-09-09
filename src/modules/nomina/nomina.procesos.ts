@@ -1,6 +1,6 @@
 import { dbPool } from '../../config/db';
 import { AppError } from '../../utils/AppError';
-import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
+import { isTenantAdmin, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
 
 export const NOMINA_PROCESOS = ['COBERTURA', 'ASISTENCIA', 'OPS'] as const;
 export type NominaProceso = (typeof NOMINA_PROCESOS)[number];
@@ -46,6 +46,20 @@ const isTalentoHumanoUser = async (userId: string | number): Promise<boolean> =>
   return result.rows[0]?.is_th === true;
 };
 
+const isTenantAdminUser = async (userId: string | number, empresaId: string | number, contratoId: string | number): Promise<boolean> => {
+  const result = await dbPool.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM usuario_roles ur JOIN roles r ON r.id = ur.rol_id
+       WHERE ur.usuario_id=$1::bigint AND r.nombre_rol='ADMINISTRADOR'
+         AND COALESCE(ur.activo,TRUE)=TRUE AND COALESCE(r.activo,TRUE)=TRUE
+         AND (EXISTS (SELECT 1 FROM usuario_empresas ue WHERE ue.usuario_id=$1::bigint AND ue.empresa_id=$2::bigint AND COALESCE(ue.activo,TRUE)=TRUE)
+           OR EXISTS (SELECT 1 FROM usuario_contratos uc WHERE uc.usuario_id=$1::bigint AND uc.contrato_id=$3::bigint AND COALESCE(uc.activo,TRUE)=TRUE))
+     ) AS is_tenant_admin`,
+    [userId, empresaId, contratoId]
+  );
+  return result.rows[0]?.is_tenant_admin === true;
+};
+
 /**
  * Resolución canónica del alcance efectivo de Nómina.
  * TH hereda sus municipios territoriales; los demás usuarios usan
@@ -56,6 +70,13 @@ export async function getEffectivePayrollMunicipalityIds(
   empresaId: string | number,
   contratoId: string | number,
 ): Promise<number[]> {
+  if (await isTenantAdminUser(userId, empresaId, contratoId)) {
+    const result = await dbPool.query<{ municipio_id: string | number }>(
+      `SELECT DISTINCT municipio_id FROM focalizacion_final WHERE contrato_id=$1::bigint AND COALESCE(activo,TRUE)=TRUE ORDER BY municipio_id`,
+      [contratoId]
+    );
+    return result.rows.map((row) => Number(row.municipio_id));
+  }
   if (await isTalentoHumanoUser(userId)) {
     const result = await dbPool.query<{ municipio_id: string | number }>(
       `
@@ -238,6 +259,10 @@ const buildNominaCoberturaScopeSql = (
    * Usuarios que no son Gestor ni TH continúan utilizando
    * las responsabilidades operativas de Nómina.
    */
+  if (isTenantAdmin(tenant)) {
+    return 'TRUE';
+  }
+
   if (!isScopedGestorTenant(tenant)) {
     /*
      * Para Talento Humano el alcance territorial se resuelve
@@ -401,7 +426,7 @@ export async function getNominaProcessAccess(
     accessRows
   ).map((item) => ({
     ...item,
-    administrative: Boolean(tenant?.isGlobalAdmin)
+    administrative: Boolean(tenant?.isGlobalAdmin || isTenantAdmin(tenant))
   }));
 }
 
@@ -725,7 +750,7 @@ export function appendNominaCoberturaScope(
     periodo: 'np'
   }
 ) {
-  if (!tenant || tenant.isGlobalAdmin) {
+  if (!tenant || tenant.isGlobalAdmin || isTenantAdmin(tenant)) {
     return;
   }
 
@@ -756,7 +781,7 @@ export async function assertNominaEmpleadoCoberturaScope(
   tenant?: TenantAccessContext,
   client: any = dbPool
 ): Promise<void> {
-  if (!tenant || tenant.isGlobalAdmin) {
+  if (!tenant || tenant.isGlobalAdmin || isTenantAdmin(tenant)) {
     return;
   }
 
@@ -806,7 +831,7 @@ export async function assertNominaPeriodoCoberturaScope(
   tenant?: TenantAccessContext,
   client: any = dbPool
 ): Promise<void> {
-  if (!tenant || tenant.isGlobalAdmin) {
+  if (!tenant || tenant.isGlobalAdmin || isTenantAdmin(tenant)) {
     return;
   }
 

@@ -1,4 +1,4 @@
-import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
+import { isTenantAdmin, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
 
 export const appendVisibleMunicipalityScope = (
   conditions: string[],
@@ -7,7 +7,7 @@ export const appendVisibleMunicipalityScope = (
   municipalitySql: string,
   empresaSql: string
 ): void => {
-  if (!tenant || tenant.isGlobalAdmin) return;
+  if (!tenant || tenant.isGlobalAdmin || isTenantAdmin(tenant)) return;
   if (!tenant.userId) {
     conditions.push('1=0');
     return;
@@ -46,7 +46,7 @@ export const appendVisiblePersonScope = (
   tenant: TenantAccessContext | undefined,
   personSql: string
 ): void => {
-  if (!tenant || tenant.isGlobalAdmin) return;
+  if (!tenant || tenant.isGlobalAdmin || isTenantAdmin(tenant)) return;
   if (!tenant.userId) {
     conditions.push('1=0');
     return;

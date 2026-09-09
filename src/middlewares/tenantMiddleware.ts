@@ -12,6 +12,12 @@ export interface TenantAccessContext {
   roleNames: string[];
 }
 
+/** Administrador con asociación activa a un tenant; no es administrador global. */
+export const isTenantAdmin = (tenant?: TenantAccessContext): boolean => Boolean(
+  tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('ADMINISTRADOR') &&
+  (tenant.empresaIds.length > 0 || tenant.contratoIds.length > 0)
+);
+
 interface RoleRow extends QueryResultRow {
   nombre_rol: string;
 }
