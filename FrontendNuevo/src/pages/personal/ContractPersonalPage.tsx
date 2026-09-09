@@ -52,6 +52,7 @@ const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
   sedes: [],
   modalidades: [],
   ubicaciones_laborales: [],
+  asignaciones_operativas: [],
 };
 
 type PersonaNuevaForm = {
@@ -195,7 +196,7 @@ export default function ContractPersonalPage() {
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
 
   const [contratos, setContratos] = useState<Contrato[]>([]);
-  const [cargos, setCargos] = useState<CatalogoItem[]>([]);
+  const [cargos, setCargos] = useState<Array<CatalogoItem & { aplica_cobertura?: boolean }>>([]);
   const [tiposVinculacion, setTiposVinculacion] = useState<CatalogoItem[]>([]);
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([]);
   const [tiposIdentificacion, setTiposIdentificacion] = useState<CatalogoItem[]>([]);
@@ -224,6 +225,7 @@ export default function ContractPersonalPage() {
   const [requiresCreation, setRequiresCreation] = useState(false);
   const [personaForm, setPersonaForm] = useState<PersonaNuevaForm>(createBlankPersona());
   const [vinculacionForm, setVinculacionForm] = useState<VinculacionForm>(createBlankVinculacion());
+  const [asignacionOperativaId, setAsignacionOperativaId] = useState("");
   const [savingWorker, setSavingWorker] = useState(false);
   const [editingPersona, setEditingPersona] = useState<PersonaEditForm | null>(null);
   const [assignmentOptions, setAssignmentOptions] = useState<Array<{ id: string; institucion: string; sede: string; modalidad: string }>>([]);
@@ -357,6 +359,7 @@ export default function ContractPersonalPage() {
         if (!cancelled) {
           setCargos(
             response.items.map((item) => ({
+              ...item,
               id: item.id,
               label: item.nombre_cargo,
             }))
@@ -586,6 +589,7 @@ export default function ContractPersonalPage() {
     setVinculacionForm(
       createBlankVinculacion(String(cargos[0]?.id ?? ""), String(tiposVinculacion[0]?.id ?? ""))
     );
+    setAsignacionOperativaId("");
     setSavingWorker(false);
   }, [cargos, tiposIdentificacion, tiposVinculacion]);
 
@@ -674,6 +678,12 @@ export default function ContractPersonalPage() {
       return;
     }
 
+    const selectedCargo = cargos.find((cargo) => cargo.id === Number(vinculacionForm.contrato_cargo_id));
+    if (selectedCargo?.aplica_cobertura && !asignacionOperativaId) {
+      setLookupError("Para este cargo debes seleccionar municipio, institución, sede y modalidad.");
+      return;
+    }
+
     if (requiresCreation) {
       if (!personaForm.tipo_documento_id || !personaForm.primer_nombre.trim() || !personaForm.primer_apellido.trim()) {
         setLookupError("Completa los datos minimos de la persona nueva.");
@@ -714,6 +724,7 @@ export default function ContractPersonalPage() {
         fecha_fin: null,
         estado_vinculacion: vinculacionForm.estado_vinculacion,
         metodo_pago: vinculacionForm.metodo_pago ? (vinculacionForm.metodo_pago as never) : null,
+        ...(asignacionOperativaId ? { focalizacion_final_id: Number(asignacionOperativaId) } : {}),
       });
 
       const expediente = await getVinculacionExpediente(vinculacion.id);
@@ -723,7 +734,7 @@ export default function ContractPersonalPage() {
       setShowModal(false);
       setFeedback({
         tone: "success",
-        text: "Vinculacion creada. Ya puedes cargar documentos y continuar con el siguiente trabajador.",
+        text: "Trabajador creado correctamente.",
       });
       setPage(1);
       setPersonalSearch("");
@@ -1271,6 +1282,7 @@ export default function ContractPersonalPage() {
               )}
 
               {(foundPersona || requiresCreation) && (
+                <>
                 <section className="cp-modal-section">
                   <div className="cp-modal-section-head">
                     <span className="cp-modal-section-eyebrow">{requiresCreation ? "3" : "2"}</span>
@@ -1375,6 +1387,26 @@ export default function ContractPersonalPage() {
                     </div>
                   )}
                 </section>
+
+                <section className="cp-modal-section">
+                  <div className="cp-modal-section-head">
+                    <span className="cp-modal-section-eyebrow">{requiresCreation ? "4" : "3"}</span>
+                    <div>
+                      <h3 className="cp-subtitle">Asignación operativa</h3>
+                      <p className="cp-modal-helper">Para cargos de cobertura, selecciona una combinación válida del contrato.</p>
+                    </div>
+                  </div>
+                  <label className="cp-label">
+                    Municipio / institución / sede / modalidad
+                    <select className="cp-select" value={asignacionOperativaId} onChange={(event) => setAsignacionOperativaId(event.target.value)}>
+                      <option value="">{cargos.find((cargo) => cargo.id === Number(vinculacionForm.contrato_cargo_id))?.aplica_cobertura ? "Seleccionar asignación obligatoria" : "Sin asignación operativa"}</option>
+                      {filterOptions.asignaciones_operativas.map((item) => (
+                        <option key={item.id} value={item.id}>{item.municipio} · {item.institucion} · {item.sede} · {item.modalidad}</option>
+                      ))}
+                    </select>
+                  </label>
+                </section>
+                </>
               )}
             </div>
 

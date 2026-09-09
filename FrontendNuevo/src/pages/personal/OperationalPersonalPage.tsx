@@ -48,6 +48,7 @@ const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
   sedes: [],
   modalidades: [],
   ubicaciones_laborales: [],
+  asignaciones_operativas: [],
 };
 
 const DEFAULT_PAGE_SIZE = 50;

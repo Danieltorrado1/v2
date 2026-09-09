@@ -215,7 +215,8 @@ export const createVinculacionSchema = z.object({
   estado_vinculacion: vinculacionEstadoSchema.optional().default('ACTIVA'),
   cuenta_como_experiencia: nullableBooleanSchema.optional().default(true),
   metodo_pago: nullableMetodoPagoSchema.optional().default(null),
-  cotiza_pension: z.boolean().optional()
+  cotiza_pension: z.boolean().optional(),
+  focalizacion_final_id: numericIdSchema.transform((value) => Number(value)).optional()
 });
 
 export const updateVinculacionSchema = z

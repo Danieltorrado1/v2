@@ -107,6 +107,7 @@ export interface CreateVinculacionPayload {
   cuenta_como_experiencia?: boolean;
   metodo_pago?: MetodoPago | null;
   cotiza_pension?: boolean;
+  focalizacion_final_id?: number;
 }
 
 export interface UpdateVinculacionPayload {
@@ -148,6 +149,7 @@ export interface ContractPersonalFilterOptions {
   sedes: Array<{ id: number; nombre: string; institucion_id: number | null }>;
   modalidades: Array<{ id: number; codigo: string | null; nombre: string }>;
   ubicaciones_laborales: Array<{ id: number; nombre: string }>;
+  asignaciones_operativas: Array<{ id: number; municipio_id: number; municipio: string; institucion_id: number | null; institucion: string; sede_id: number | null; sede: string; modalidad_id: number | null; modalidad: string }>;
 }
 
 export interface GestorAssignmentUser {
