@@ -21,13 +21,15 @@ import { useAuth } from "../../context/AuthContext";
 import { useCompanyContext } from "../../context/CompanyContext";
 import { ApiClientError } from "../../services/apiClient";
 import { configuracionApi } from "../../services/configuracionApi";
-import { createPersona, getPersonaByDocumento } from "../../services/personasApi";
+import { createPersona, getPersonaByDocumento, updatePersona } from "../../services/personasApi";
 import {
   createVinculacion,
   getContractPersonal,
   getPersonalResumen,
   getContractPersonalFilterOptions,
   getVinculacionExpediente,
+  getOperativeAssignmentOptions,
+  updateOperativeAssignment,
 } from "../../services/vinculacionesApi";
 import type {
   CatalogoItem,
@@ -70,6 +72,9 @@ type VinculacionForm = {
   metodo_pago: string;
   estado_vinculacion: VinculacionEstado;
 };
+
+type PersonaEditForm = { tipo_documento_id: string; numero_documento: string; primer_nombre: string; segundo_nombre: string; primer_apellido: string; segundo_apellido: string; fecha_nacimiento: string; telefono: string; correo: string; direccion: string; motivo: string };
+type AssignmentChangeType = "CORRECCION_DIGITACION" | "CAMBIO_REAL";
 
 const PAGE_SIZE = 20;
 
@@ -220,11 +225,48 @@ export default function ContractPersonalPage() {
   const [personaForm, setPersonaForm] = useState<PersonaNuevaForm>(createBlankPersona());
   const [vinculacionForm, setVinculacionForm] = useState<VinculacionForm>(createBlankVinculacion());
   const [savingWorker, setSavingWorker] = useState(false);
+  const [editingPersona, setEditingPersona] = useState<PersonaEditForm | null>(null);
+  const [assignmentOptions, setAssignmentOptions] = useState<Array<{ id: string; institucion: string; sede: string; modalidad: string }>>([]);
+  const [assignmentTarget, setAssignmentTarget] = useState("");
+  const [assignmentType, setAssignmentType] = useState<AssignmentChangeType>("CAMBIO_REAL");
+  const [assignmentDate, setAssignmentDate] = useState(todayIso());
+  const [assignmentReason, setAssignmentReason] = useState("");
+  const [assignmentObservation, setAssignmentObservation] = useState("");
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
 
   const selectedContrato = useMemo(
     () => contratos.find((contrato) => contrato.id === contratoId) ?? null,
     [contratoId, contratos]
   );
+
+  const canEditPersonal = permissions.includes("personas.update") || permissions.includes("persona.editar") || permissions.includes("vinculaciones.update");
+
+  function openPersonalEdit() {
+    if (!selectedExpediente) return;
+    const p = selectedExpediente.persona;
+    setEditingPersona({ tipo_documento_id: String(p.tipo_documento_id ?? ''), numero_documento: p.numero_documento, primer_nombre: p.primer_nombre, segundo_nombre: p.segundo_nombre ?? '', primer_apellido: p.primer_apellido, segundo_apellido: p.segundo_apellido ?? '', fecha_nacimiento: p.fecha_nacimiento ?? '', telefono: p.telefono ?? '', correo: p.correo ?? '', direccion: p.direccion ?? '', motivo: '' });
+  }
+  async function openAssignmentEdit() {
+    if (!selectedExpediente) return;
+    try {
+      const options = await getOperativeAssignmentOptions(selectedExpediente.vinculacion.id);
+      setAssignmentOptions(options);
+      setAssignmentTarget(String(selectedExpediente.personal_contexto.asignacion_operativa_actual?.focalizacion_final_id ?? ''));
+      setAssignmentDate(todayIso());
+      setAssignmentReason('');
+      setAssignmentType('CAMBIO_REAL');
+    } catch (error) { setFeedback({ tone: 'error', text: getErrorMessage(error, 'No fue posible cargar las opciones operativas.') }); }
+  }
+  async function savePersonalEdit() {
+    if (!editingPersona || !editingPersona.motivo.trim()) { setFeedback({ tone: 'error', text: 'El motivo del cambio es obligatorio.' }); return; }
+    try { await updatePersona(selectedExpediente!.persona.id, { ...editingPersona, tipo_documento_id: Number(editingPersona.tipo_documento_id), fecha_nacimiento: editingPersona.fecha_nacimiento || null, motivo_cambio: editingPersona.motivo }); setEditingPersona(null); setRefreshIndex((value) => value + 1); setFeedback({ tone: 'success', text: 'Información personal actualizada.' }); if (selectedVinculacionId) setSelectedExpediente(await getVinculacionExpediente(selectedVinculacionId)); } catch (error) { setFeedback({ tone: 'error', text: getErrorMessage(error, 'No fue posible actualizar la persona.') }); }
+  }
+  async function saveAssignmentEdit() {
+    if (!selectedExpediente || !assignmentTarget || !assignmentReason.trim() || (assignmentType === 'CAMBIO_REAL' && !assignmentDate)) { setFeedback({ tone: 'error', text: 'Selecciona destino y registra fecha y motivo del cambio.' }); return; }
+    if (!window.confirm(assignmentType === 'CAMBIO_REAL' ? `Se modificará el histórico operativo desde ${assignmentDate}. Los cálculos de Nómina cerrados no serán recalculados automáticamente.` : 'Se corregirá el dato histórico sin crear un traslado operativo.')) return;
+    setAssignmentSaving(true);
+    try { await updateOperativeAssignment(selectedExpediente.vinculacion.id, Number(assignmentTarget), { tipo_cambio: assignmentType, ...(assignmentType === 'CAMBIO_REAL' ? { fecha_desde: assignmentDate } : {}), motivo: assignmentReason, observacion: assignmentObservation || null }); setAssignmentOptions([]); setRefreshIndex((value) => value + 1); setFeedback({ tone: 'success', text: 'Asignación operativa actualizada con histórico y auditoría.' }); if (selectedVinculacionId) setSelectedExpediente(await getVinculacionExpediente(selectedVinculacionId)); } catch (error) { setFeedback({ tone: 'error', text: getErrorMessage(error, 'No fue posible actualizar la asignación operativa.') }); } finally { setAssignmentSaving(false); }
+  }
 
   useEffect(() => {
     if (!Number.isFinite(requestedEmpresaId) || requestedEmpresaId <= 0 || empresas.length === 0) {
@@ -1019,7 +1061,10 @@ export default function ContractPersonalPage() {
                 </div>
               </div>
 
+              <section className="cp-card" style={{ marginTop: 16 }}><div className="cp-card-header"><h3>Historial de asignación</h3></div><div className="cp-table-wrap"><table className="cp-table"><thead><tr><th>Desde</th><th>Hasta</th><th>Institución</th><th>Sede</th><th>Modalidad</th><th>Motivo / observación</th></tr></thead><tbody>{selectedExpediente.personal_contexto.historial_asignacion_operativa.map((item) => <tr key={item.id}><td>{item.fecha_inicio}</td><td>{item.fecha_fin ?? 'Actual'}</td><td>{item.institucion}</td><td>{item.sede}</td><td>{item.modalidad}</td><td>{item.observacion ?? '—'}</td></tr>)}</tbody></table></div></section>
+
               <div className="cp-next-worker">
+                {canEditPersonal && <><button type="button" className="cp-button" onClick={openPersonalEdit}>Editar información</button><button type="button" className="cp-button" onClick={() => void openAssignmentEdit()}>Cambiar asignación</button></>}
                 <button type="button" className="cp-button primary" onClick={openWorkerModal}>
                   <Plus size={15} />
                   Guardar y agregar siguiente
@@ -1035,6 +1080,14 @@ export default function ContractPersonalPage() {
           )}
         </section>
       </div>
+
+      {editingPersona && (
+        <div className="cp-modal-backdrop" onClick={() => setEditingPersona(null)}><div className="cp-modal" onClick={(event) => event.stopPropagation()}><div className="cp-modal-header"><div><span className="cp-eyebrow">Editar información</span><h2>Datos personales</h2></div><button type="button" className="cp-modal-close" onClick={() => setEditingPersona(null)}><X size={18} /></button></div><div className="cp-modal-body"><div className="cp-modal-grid">{([['primer_nombre','Primer nombre'],['segundo_nombre','Segundo nombre'],['primer_apellido','Primer apellido'],['segundo_apellido','Segundo apellido'],['numero_documento','Número de documento'],['fecha_nacimiento','Fecha de nacimiento'],['telefono','Teléfono'],['correo','Correo'],['direccion','Dirección']] as const).map(([field,label]) => <label className="cp-label" key={field}>{label}<input className="cp-input cp-input-solid" type={field === 'fecha_nacimiento' ? 'date' : field === 'correo' ? 'email' : 'text'} value={editingPersona[field]} onChange={(event) => setEditingPersona((current) => current ? ({ ...current, [field]: event.target.value }) : current)} /></label>)}<label className="cp-label">Motivo del cambio *<textarea className="cp-input cp-input-solid" value={editingPersona.motivo} onChange={(event) => setEditingPersona((current) => current ? ({ ...current, motivo: event.target.value }) : current)} /></label></div><div className="cp-modal-actions"><button type="button" className="cp-button" onClick={() => setEditingPersona(null)}>Cancelar</button><button type="button" className="cp-button primary" onClick={() => void savePersonalEdit()}>Guardar cambios</button></div></div></div></div>
+      )}
+
+      {assignmentOptions.length > 0 && (
+        <div className="cp-modal-backdrop" onClick={() => setAssignmentOptions([])}><div className="cp-modal" onClick={(event) => event.stopPropagation()}><div className="cp-modal-header"><div><span className="cp-eyebrow">Asignación operativa</span><h2>Institución, sede y modalidad</h2></div><button type="button" className="cp-modal-close" onClick={() => setAssignmentOptions([])}><X size={18} /></button></div><div className="cp-modal-body"><label className="cp-label">Tipo de cambio<select className="cp-select" value={assignmentType} onChange={(event) => setAssignmentType(event.target.value as AssignmentChangeType)}><option value="CORRECCION_DIGITACION">Corrección de dato mal digitado</option><option value="CAMBIO_REAL">Cambio real desde una fecha</option></select></label><label className="cp-label">Información correcta / nueva asignación<select className="cp-select" value={assignmentTarget} onChange={(event) => setAssignmentTarget(event.target.value)}><option value="">Seleccionar</option>{assignmentOptions.map((option) => <option key={option.id} value={option.id}>{option.institucion} · {option.sede} · {option.modalidad}</option>)}</select></label>{assignmentType === 'CAMBIO_REAL' && <label className="cp-label">Fecha efectiva<input className="cp-input cp-input-solid" type="date" value={assignmentDate} onChange={(event) => setAssignmentDate(event.target.value)} /></label>}<label className="cp-label">Motivo *<input className="cp-input cp-input-solid" value={assignmentReason} onChange={(event) => setAssignmentReason(event.target.value)} placeholder="Traslado, corrección, cambio operativo..." /></label><label className="cp-label">Observación<textarea className="cp-input cp-input-solid" value={assignmentObservation} onChange={(event) => setAssignmentObservation(event.target.value)} /></label><div className="cp-modal-actions"><button type="button" className="cp-button" onClick={() => setAssignmentOptions([])}>Cancelar</button><button type="button" className="cp-button primary" disabled={assignmentSaving} onClick={() => void saveAssignmentEdit()}>{assignmentSaving ? 'Guardando...' : 'Guardar histórico'}</button></div></div></div></div>
+      )}
 
       {showModal && (
         <div className="cp-modal-backdrop" onClick={closeWorkerModal}>

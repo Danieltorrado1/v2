@@ -57,9 +57,15 @@ export const vinculacionPresentacionLicitacionParamSchema = z.object({
 
 export const updateAsignacionOperativaPersonalSchema = z.object({
   focalizacion_final_id: z.coerce.number().int().positive(),
+  tipo_cambio: z.enum(['CORRECCION_DIGITACION', 'CAMBIO_REAL']).default('CAMBIO_REAL'),
   fecha_desde: z.string().date().optional(),
+  motivo: z.string().trim().min(3),
   observacion: nullableTrimmedString.optional().default(null)
-}).strict();
+}).strict().superRefine((data, context) => {
+  if (data.tipo_cambio === 'CAMBIO_REAL' && !data.fecha_desde) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['fecha_desde'], message: 'ASIGNACION_OPERATIVA_FECHA_REQUIERE_CAMBIO_OPERATIVO' });
+  }
+});
 
 export const contratoPersonalIdQuerySchema = z.object({
   contrato_id: z.coerce.number().int().positive()

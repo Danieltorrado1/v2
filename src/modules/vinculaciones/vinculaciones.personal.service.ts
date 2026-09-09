@@ -537,8 +537,9 @@ export const replaceAsignacionOperativaPersonal = async (
   focalizacionFinalId: number,
   actorUserId: number,
   tenant?: TenantAccessContext,
-  input: { fecha_desde?: string; observacion?: string | null } = {}
+  input: { tipo_cambio?: 'CORRECCION_DIGITACION' | 'CAMBIO_REAL'; fecha_desde?: string; motivo: string; observacion?: string | null } = { motivo: 'Actualización operativa' }
 ) => {
+  // ASIGNACION_OPERATIVA_FECHA_REQUIERE_CAMBIO_OPERATIVO is enforced by the request schema.
   await assertTenantAccessForVinculacionId(tenant, vinculacionId);
   const client=await dbPool.connect();
   try {
@@ -567,9 +568,14 @@ export const replaceAsignacionOperativaPersonal = async (
     }
     const current=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND fecha_inicio<= $2::date AND (fecha_fin IS NULL OR fecha_fin>= $2::date) ORDER BY fecha_inicio DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId,fechaDesde]);
     const next=await client.query<{ fecha_inicio: string }>(`SELECT fecha_inicio::text FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND fecha_inicio>$2::date ORDER BY fecha_inicio ASC,id ASC LIMIT 1`,[vinculacionId,fechaDesde]);
+    const f=target.rows[0];
+    if (input.tipo_cambio === 'CORRECCION_DIGITACION' && current.rows[0]) {
+      const corrected = await client.query<any>(`UPDATE cobertura_asignaciones SET focalizacion_final_id=$2::bigint, municipio_id=$3::bigint, institucion=$4, sede=$5, modalidad=$6, observacion=$7, updated_at=NOW() WHERE id=$1::bigint RETURNING *`, [current.rows[0].id, focalizacionFinalId, f.municipio_id, f.institucion_final, f.sede_final, f.modalidad_final, input.observacion ?? input.motivo]);
+      await registerAuditEntry({client,usuario_id:String(actorUserId),accion:'PERSONAL_ASIGNACION_OPERATIVA_CORRECTION',tabla:'cobertura_asignaciones',registro_id:String(current.rows[0].id),descripcion:input.motivo,before:current.rows[0],after:corrected.rows[0]});
+      await client.query('COMMIT'); return corrected.rows[0];
+    }
     if(String(current.rows[0]?.focalizacion_final_id)===String(focalizacionFinalId)){await client.query('COMMIT');return current.rows[0];}
     if(current.rows[0])await client.query(`UPDATE cobertura_asignaciones SET activo=FALSE,fecha_fin=GREATEST(fecha_inicio,$2::date-1),observacion=CONCAT_WS(' · ',observacion,'Corregida desde Personal') WHERE id=$1::bigint`,[current.rows[0].id,fechaDesde]);
-    const f=target.rows[0];
     const nextFechaFin = next.rows[0]?.fecha_inicio ? new Date(`${next.rows[0].fecha_inicio}T00:00:00Z`) : null;
     if (nextFechaFin) nextFechaFin.setUTCDate(nextFechaFin.getUTCDate() - 1);
     const inserted=await client.query<any>(`INSERT INTO cobertura_asignaciones(contrato_id,municipio_id,focalizacion_final_id,vinculacion_id,institucion,sede,consecutivo_sede,modalidad,categoria_cobertura,tipo_asignacion,porcentaje_cobertura,fecha_inicio,fecha_fin,observacion,activo) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,'PRINCIPAL'),COALESCE($11::numeric,1::numeric),$12::date,$13::date,$14,TRUE) RETURNING *`,[vinculacion.contrato_id,f.municipio_id,focalizacionFinalId,vinculacionId,f.institucion_final,f.sede_final,f.consecutivo_final,f.modalidad_final,f.categoria_cobertura,current.rows[0]?.tipo_asignacion,current.rows[0]?.porcentaje_cobertura,fechaDesde,nextFechaFin?.toISOString().slice(0,10) ?? null,input.observacion ?? 'Correccion operativa desde Personal']);
