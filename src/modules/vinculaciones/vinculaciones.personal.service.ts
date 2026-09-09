@@ -40,6 +40,7 @@ interface AsignacionOperativaRow extends QueryResultRow {
   fecha_inicio: Date | string;
   focalizacion_final_id: string;
   id: string;
+  vinculacion_id: string;
   institucion: string;
   modalidad: string;
   municipio_id: string | null;
@@ -109,6 +110,7 @@ export interface AsignacionOperativaItem {
   fecha_inicio: string;
   focalizacion_final_id: number;
   id: number;
+  vinculacion_id: number;
   institucion: string;
   modalidad: string;
   municipio_id: number | null;
@@ -263,6 +265,7 @@ const getVinculacionContextRow = async (
 
 const mapAsignacionOperativa = (row: AsignacionOperativaRow): AsignacionOperativaItem => ({
   id: toNumber(row.id),
+  vinculacion_id: toNumber(row.vinculacion_id),
   focalizacion_final_id: toNumber(row.focalizacion_final_id),
   institucion: row.institucion,
   sede: row.sede,
@@ -502,6 +505,7 @@ export const listAsignacionesOperativasByVinculacion = async (
     `
       SELECT
         id::text AS id,
+        vinculacion_id::text AS vinculacion_id,
         focalizacion_final_id::text AS focalizacion_final_id,
         institucion,
         sede,

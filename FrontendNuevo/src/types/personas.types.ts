@@ -342,6 +342,7 @@ export interface VinculacionExpedienteApi {
 
 export interface AsignacionOperativaApi {
   id: number;
+  vinculacion_id: number;
   focalizacion_final_id: number;
   institucion: string;
   sede: string;

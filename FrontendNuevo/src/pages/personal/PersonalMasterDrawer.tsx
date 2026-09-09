@@ -336,6 +336,7 @@ export default function PersonalMasterDrawer({
   const [isEditingAll, setIsEditingAll] = useState(false);
   const [assignmentOptions, setAssignmentOptions] = useState<OperativeAssignmentOption[]>([]);
   const [assignmentId, setAssignmentId] = useState('');
+  const [currentAssignmentId, setCurrentAssignmentId] = useState('');
   const [assignmentInstitution, setAssignmentInstitution] = useState('');
   const [assignmentSite, setAssignmentSite] = useState('');
   const [assignmentModality, setAssignmentModality] = useState('');
@@ -425,17 +426,38 @@ export default function PersonalMasterDrawer({
     setPersonalError('');
     setLaboralError('');
     setBankError('');
+    setAssignmentId('');
+    setCurrentAssignmentId('');
+    setAssignmentInstitution('');
+    setAssignmentSite('');
+    setAssignmentModality('');
+    setAssignmentType('CORRECCION_DIGITACION');
+    setAssignmentReason('');
+    setAssignmentObservation('');
+    setAssignmentDate('');
+    setAllEditError('');
   }, [expediente?.vinculacion.id]);
 
   useEffect(() => {
     if (!expediente || !canUpdateAssignment) {
       setAssignmentOptions([]);
+      setAssignmentId('');
+      setCurrentAssignmentId('');
+      setAssignmentInstitution('');
+      setAssignmentSite('');
+      setAssignmentModality('');
       return;
     }
+    const currentAssignment = expediente.personal_contexto.asignacion_operativa_actual;
+    setCurrentAssignmentId(currentAssignment?.id ? String(currentAssignment.id) : '');
+    setAssignmentId(currentAssignment?.focalizacion_final_id ? String(currentAssignment.focalizacion_final_id) : '');
+    setAssignmentType(currentAssignment?.id ? 'CORRECCION_DIGITACION' : 'CAMBIO_REAL');
     void getOperativeAssignmentOptions(expediente.vinculacion.id)
       .then((options) => {
         setAssignmentOptions(options);
         const current = expediente.personal_contexto.asignacion_operativa_actual?.focalizacion_final_id;
+        const currentRecordId = expediente.personal_contexto.asignacion_operativa_actual?.id;
+        setCurrentAssignmentId(currentRecordId ? String(currentRecordId) : '');
         setAssignmentId(current ? String(current) : '');
         const currentOption = options.find((item) => Number(item.id) === current);
         setAssignmentInstitution(currentOption?.institucion_id ?? '');
@@ -681,7 +703,10 @@ export default function PersonalMasterDrawer({
     setPersonalForm(buildPersonalForm(personaDetail));
     setLaboralForm(buildLaboralForm(activeExpediente));
     const current = activeExpediente.personal_contexto.asignacion_operativa_actual?.focalizacion_final_id;
+    const currentRecordId = activeExpediente.personal_contexto.asignacion_operativa_actual?.id;
     const currentOption = assignmentOptions.find((item) => Number(item.id) === current);
+    setCurrentAssignmentId(currentRecordId ? String(currentRecordId) : '');
+    setAssignmentType(currentRecordId ? 'CORRECCION_DIGITACION' : 'CAMBIO_REAL');
     setAssignmentId(current ? String(current) : '');
     setAssignmentInstitution(currentOption?.institucion_id ?? '');
     setAssignmentSite(currentOption?.sede_id ?? '');
@@ -712,6 +737,10 @@ export default function PersonalMasterDrawer({
       return;
     }
     const selectedAssignment = assignmentOptions.find((item) => item.id === assignmentId);
+    if (assignmentChanged && assignmentType === 'CORRECCION_DIGITACION' && !currentAssignmentId) {
+      setAllEditError('No existe una asignación operativa vigente para corregir. Usa el flujo de crear asignación operativa.');
+      return;
+    }
     if (assignmentChanged && (!selectedAssignment || !assignmentReason.trim())) {
       setAllEditError('Asignación operativa: selecciona una combinación válida e indica el motivo.');
       return;
@@ -723,7 +752,18 @@ export default function PersonalMasterDrawer({
 
     setSavingAll(true);
     setAllEditError('');
+    const savedSections: string[] = [];
     try {
+      if (assignmentChanged && selectedAssignment) {
+        await updateOperativeAssignment(activeExpediente.vinculacion.id, Number(selectedAssignment.id), {
+          ...(currentAssignmentId ? { asignacion_id: Number(currentAssignmentId) } : {}),
+          tipo_cambio: assignmentType,
+          ...(assignmentType === 'CAMBIO_REAL' ? { fecha_desde: assignmentDate } : {}),
+          motivo: assignmentReason.trim(),
+          observacion: assignmentObservation.trim() || null,
+        });
+        savedSections.push('asignación operativa');
+      }
       if (personalChanged) {
         await updatePersona(personaDetail.id, {
           primer_nombre: personalForm.primer_nombre.trim(),
@@ -744,6 +784,7 @@ export default function PersonalMasterDrawer({
             ? { nombre_contacto: personalForm.contacto_nombre.trim() || null, parentesco: personalForm.contacto_parentesco.trim() || null, telefono: personalForm.contacto_telefono.trim() || null, direccion: personalForm.contacto_direccion.trim() || null, activo: true }
             : null,
         });
+        savedSections.push('datos personales');
       }
       if (laboralChanged) {
         await updateVinculacion(activeExpediente.vinculacion.id, {
@@ -755,15 +796,7 @@ export default function PersonalMasterDrawer({
           cotiza_pension: laboralForm.cotiza_pension,
           motivo_cambio: laboralForm.motivo_cambio.trim(),
         });
-      }
-      if (assignmentChanged && selectedAssignment) {
-        await updateOperativeAssignment(activeExpediente.vinculacion.id, Number(selectedAssignment.id), {
-          asignacion_id: Number(selectedAssignment.id),
-          tipo_cambio: assignmentType,
-          ...(assignmentType === 'CAMBIO_REAL' ? { fecha_desde: assignmentDate } : {}),
-          motivo: assignmentReason.trim(),
-          observacion: assignmentObservation.trim() || null,
-        });
+        savedSections.push('datos laborales');
       }
       setIsEditingAll(false);
       setIsEditingPersonal(false);
@@ -775,7 +808,8 @@ export default function PersonalMasterDrawer({
     } catch (saveError) {
       const message = saveError instanceof Error ? saveError.message : 'Error no identificado.';
       const failedSection = assignmentChanged ? 'asignación operativa' : laboralChanged ? 'datos laborales' : 'datos personales';
-      setAllEditError(`Los cambios anteriores pueden haberse guardado, pero no fue posible actualizar ${failedSection}: ${message}`);
+      const completed = savedSections.length ? ` Se guardó: ${savedSections.join(', ')}.` : ' No se realizaron cambios.';
+      setAllEditError(`No fue posible actualizar ${failedSection}.${completed} ${message}`);
     } finally {
       setSavingAll(false);
     }
@@ -807,7 +841,7 @@ export default function PersonalMasterDrawer({
         {!canUpdateAssignment ? <p className="pmd-readonly-note">No tienes permiso para editar institución, sede o modalidad. Estos datos se muestran solo como lectura.</p> : <>
           <div className="pmd-info-grid compact-three"><DataItem label="Institución actual" value={displayValue(currentAssignment?.institucion)} /><DataItem label="Sede actual" value={displayValue(currentAssignment?.sede)} /><DataItem label="Modalidad actual" value={displayValue(currentAssignment?.modalidad)} /></div>
           <div className="pmd-grid two"><Field label="Institución"><select value={assignmentInstitution} onChange={(e) => { setAssignmentInstitution(e.target.value); setAssignmentSite(''); setAssignmentModality(''); setAssignmentId(''); }}><option value="">Seleccionar</option>{institutions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field><Field label="Sede"><select value={assignmentSite} disabled={!assignmentInstitution} onChange={(e) => { setAssignmentSite(e.target.value); setAssignmentModality(''); setAssignmentId(''); }}><option value="">Seleccionar</option>{sites.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field><Field label="Modalidad"><select value={assignmentModality} disabled={!assignmentSite} onChange={(e) => { const modality = e.target.value; setAssignmentModality(modality); const option = assignmentOptions.find((item) => item.institucion_id === assignmentInstitution && item.sede_id === assignmentSite && item.modalidad_id === modality); setAssignmentId(option?.id ?? ''); }}><option value="">Seleccionar</option>{modalities.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field></div>
-          {assignmentChanged && <div className="pmd-subcard"><strong>TIPO DE CAMBIO</strong><label className="pmd-radio"><input type="radio" checked={assignmentType === 'CORRECCION_DIGITACION'} onChange={() => setAssignmentType('CORRECCION_DIGITACION')} /> Corrección de dato mal digitado</label><label className="pmd-radio"><input type="radio" checked={assignmentType === 'CAMBIO_REAL'} onChange={() => setAssignmentType('CAMBIO_REAL')} /> Cambio real desde una fecha</label>{assignmentType === 'CAMBIO_REAL' && <Field label="Fecha efectiva *"><input type="date" value={assignmentDate} onChange={(e) => setAssignmentDate(e.target.value)} /></Field>}<Field label="Motivo *"><textarea value={assignmentReason} onChange={(e) => setAssignmentReason(e.target.value)} /></Field><Field label="Observación"><textarea value={assignmentObservation} onChange={(e) => setAssignmentObservation(e.target.value)} /></Field></div>}
+          {assignmentChanged && <div className="pmd-subcard"><strong>TIPO DE CAMBIO</strong>{currentAssignment?.id ? <label className="pmd-radio"><input type="radio" checked={assignmentType === 'CORRECCION_DIGITACION'} onChange={() => setAssignmentType('CORRECCION_DIGITACION')} /> Corrección de dato mal digitado</label> : <p className="pmd-readonly-note">Esta vinculación no tiene una asignación histórica vigente; se registrará una nueva asignación operativa.</p>}<label className="pmd-radio"><input type="radio" checked={assignmentType === 'CAMBIO_REAL'} onChange={() => setAssignmentType('CAMBIO_REAL')} /> Cambio real desde una fecha</label>{assignmentType === 'CAMBIO_REAL' && <Field label="Fecha efectiva *"><input type="date" value={assignmentDate} onChange={(e) => setAssignmentDate(e.target.value)} /></Field>}<Field label="Motivo *"><textarea value={assignmentReason} onChange={(e) => setAssignmentReason(e.target.value)} /></Field><Field label="Observación"><textarea value={assignmentObservation} onChange={(e) => setAssignmentObservation(e.target.value)} /></Field></div>}
         </>}
       </section>
       {allEditError && <StateBlock tone="error" message={allEditError} compact />}
