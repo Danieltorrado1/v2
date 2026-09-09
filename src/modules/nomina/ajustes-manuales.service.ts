@@ -5,6 +5,7 @@ import { assertTenantAccessForEmpresaId } from '../../middlewares/tenantMiddlewa
 import { AppError } from '../../utils/AppError';
 import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditoria.helper';
 import { uploadPersonaDocumento } from '../documentos/documentos.service';
+import { assertNominaEmpleadoCoberturaScope } from './nomina.procesos';
 import type { ajusteManualSchema, ajusteManualUpdateSchema } from './nomina.schemas';
 import type { z } from 'zod';
 
@@ -36,6 +37,9 @@ const assertScopeAndEmployee = async (client: PoolClient, periodoId: string, emp
   if (tenant && !tenant.isGlobalAdmin && tenant.contratoIds.length > 0 && !tenant.contratoIds.includes(Number(row.contrato_id))) {
     throw new AppError('Contrato fuera del alcance del usuario', 403, 'TENANT_CONTRACT_FORBIDDEN');
   }
+  // La deducción se puede registrar únicamente sobre empleados del alcance
+  // territorial efectivo de Nómina (incluye TH heredando su alcance TH).
+  await assertNominaEmpleadoCoberturaScope(employeeId, tenant, client);
   if (row.estado !== 'ABIERTO') throw new AppError('El periodo debe estar ABIERTO', 409, 'NOMINA_PERIODO_NO_ABIERTO');
   return row;
 };
@@ -70,6 +74,7 @@ export const updateAjusteManual = async (id: string, input: AjusteManualUpdate, 
     const current = (await client.query(`${rowSelect} WHERE a.id=$1::bigint FOR UPDATE`, [id])).rows[0];
     if (!current) throw new AppError('Ajuste manual no encontrado', 404, 'NOMINA_AJUSTE_NOT_FOUND');
     await assertTenantAccessForEmpresaId(tenant, current.empresa_id);
+    await assertNominaEmpleadoCoberturaScope(current.nomina_empleado_id, tenant, client);
     if (!current.activo) throw new AppError('No se puede editar un ajuste anulado', 409, 'NOMINA_AJUSTE_INACTIVO');
     const period = await client.query<{ estado: string }>('SELECT estado FROM nomina_periodos WHERE id=$1::bigint', [current.periodo_id]);
     if (period.rows[0]?.estado !== 'ABIERTO') throw new AppError('El periodo debe estar ABIERTO', 409, 'NOMINA_PERIODO_NO_ABIERTO');
@@ -83,7 +88,7 @@ export const updateAjusteManual = async (id: string, input: AjusteManualUpdate, 
 
 export const annulAjusteManual = async (id: string, motivo: string, actor: string, tenant?: TenantAccessContext, meta?: AuditRequestMeta) => {
   const client = await dbPool.connect();
-  try { await client.query('BEGIN'); const current = (await client.query(`${rowSelect} WHERE a.id=$1::bigint FOR UPDATE`, [id])).rows[0]; if (!current) throw new AppError('Ajuste manual no encontrado', 404, 'NOMINA_AJUSTE_NOT_FOUND'); await assertTenantAccessForEmpresaId(tenant, current.empresa_id); if (!current.activo) return current; const period = await client.query<{ estado: string }>('SELECT estado FROM nomina_periodos WHERE id=$1::bigint', [current.periodo_id]); if (period.rows[0]?.estado !== 'ABIERTO') throw new AppError('El periodo debe estar ABIERTO', 409, 'NOMINA_PERIODO_NO_ABIERTO'); await client.query('UPDATE nomina_ajustes_manuales SET activo=FALSE, anulado_by=$2, anulado_at=NOW(), motivo_anulacion=$3, updated_at=NOW() WHERE id=$1::bigint', [id, actor, motivo]); const row = (await client.query(`${rowSelect} WHERE a.id=$1::bigint`, [id])).rows[0]; await registerAuditEntry({ client, usuario_id: actor, accion: 'NOMINA_AJUSTE_MANUAL_ANNUL', tabla: 'nomina_ajustes_manuales', registro_id: id, descripcion: 'Anulación de ajuste manual', before: current, after: row, ip: meta?.ip, user_agent: meta?.user_agent }); await client.query('COMMIT'); return row; } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+  try { await client.query('BEGIN'); const current = (await client.query(`${rowSelect} WHERE a.id=$1::bigint FOR UPDATE`, [id])).rows[0]; if (!current) throw new AppError('Ajuste manual no encontrado', 404, 'NOMINA_AJUSTE_NOT_FOUND'); await assertTenantAccessForEmpresaId(tenant, current.empresa_id); await assertNominaEmpleadoCoberturaScope(current.nomina_empleado_id, tenant, client); if (!current.activo) return current; const period = await client.query<{ estado: string }>('SELECT estado FROM nomina_periodos WHERE id=$1::bigint', [current.periodo_id]); if (period.rows[0]?.estado !== 'ABIERTO') throw new AppError('El periodo debe estar ABIERTO', 409, 'NOMINA_PERIODO_NO_ABIERTO'); await client.query('UPDATE nomina_ajustes_manuales SET activo=FALSE, anulado_by=$2, anulado_at=NOW(), motivo_anulacion=$3, updated_at=NOW() WHERE id=$1::bigint', [id, actor, motivo]); const row = (await client.query(`${rowSelect} WHERE a.id=$1::bigint`, [id])).rows[0]; await registerAuditEntry({ client, usuario_id: actor, accion: 'NOMINA_AJUSTE_MANUAL_ANNUL', tabla: 'nomina_ajustes_manuales', registro_id: id, descripcion: 'Anulación de ajuste manual', before: current, after: row, ip: meta?.ip, user_agent: meta?.user_agent }); await client.query('COMMIT'); return row; } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 };
 
 export const uploadAjusteManualSoporte = async (id: string, file: Express.Multer.File, actor: string, tenant?: TenantAccessContext) => {

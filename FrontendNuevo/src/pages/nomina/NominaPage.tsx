@@ -2015,10 +2015,16 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
     ),
     [ajustesManuales],
   );
-  const canSaveManualFinal = Boolean(
-    user?.permissions.some((permission) => ["nomina.movimientos.create", "nomina.movimientos.update"].includes(permission)) &&
+  // Deducciones adicionales son movimientos de Nómina; no requieren permiso
+  // de edición de vinculaciones. Pensión conserva su protección específica.
+  const canCreateManualDeduction = user?.permissions.includes("nomina.movimientos.create") === true;
+  const canUpdateManualDeduction = user?.permissions.includes("nomina.movimientos.update") === true;
+  const canSaveManualDeduction = canCreateManualDeduction || canUpdateManualDeduction;
+  const canSaveManualPension = Boolean(
+    canUpdateManualDeduction &&
     user?.permissions.some((permission) => ["vinculaciones.update", "vinculacion.editar"].includes(permission)),
   );
+  const canSaveManualFinal = canSaveManualDeduction || canSaveManualPension;
   const getManualFinalDraft = (empleado: NominaEmpleadoApi): ManualFinalDraft => {
     const existing = finalAdjustmentsByEmployee.get(empleado.id);
     const pensionExclusion = pensionExclusionsByEmployee.get(empleado.id);
@@ -2049,6 +2055,10 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
     const pensionExclusion = pensionExclusionsByEmployee.get(empleado.id);
     const currentEffectivePension = empleado.vinculacion.cotiza_pension && !pensionExclusion;
     if (draft.cotizaPension !== currentEffectivePension) {
+      if (!canSaveManualPension) {
+        setActionFeedback({ tone: "error", message: "No tienes permisos para modificar la configuración de pensión." });
+        return;
+      }
       const message = draft.cotizaPension
         ? "Este cambio volverá a activar el cálculo de pensión para esta vinculación. ¿Deseas continuar?"
         : "Este cambio hará que la vinculación no genere deducción por pensión en los recálculos de nómina. ¿Deseas continuar?";
@@ -2071,8 +2081,14 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
       const existing = finalAdjustmentsByEmployee.get(empleado.id);
       if (draft.tieneDeduccion && valor > 0) {
         if (existing) {
+          if (!canUpdateManualDeduction) {
+            throw new Error("No tienes permisos para editar esta deducción adicional.");
+          }
           await updateAjusteManual(existing.id, { valor, concepto: FINAL_DEDUCTION_CONCEPT, tipo: "DEDUCCION" });
         } else {
+          if (!canCreateManualDeduction) {
+            throw new Error("No tienes permisos para registrar una deducción adicional.");
+          }
           await createAjusteManual(selectedPeriodId, {
             nomina_empleado_id: empleado.id,
             tipo: "DEDUCCION",
@@ -2082,6 +2098,9 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
           });
         }
       } else if (existing) {
+        if (!canUpdateManualDeduction) {
+          throw new Error("No tienes permisos para retirar esta deducción adicional.");
+        }
         await annulAjusteManual(existing.id, "Deducción adicional final retirada");
       }
       await recalculateNominaPeriodo(selectedPeriodId, { force: true, nomina_empleado_id: empleado.id });
@@ -2726,17 +2745,17 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
                                                   <div><dt>Neto a pagar</dt><dd>{formatCOP(empleado.neto_pagar)}</dd></div>
                                                 </dl>
                                                 <label>¿Cotiza pensión?
-                                                  <select value={draft.cotizaPension ? "true" : "false"} onChange={(event) => updateManualFinalDraft(empleado.id, { cotizaPension: event.target.value === "true" })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
+                                                  <select value={draft.cotizaPension ? "true" : "false"} onChange={(event) => updateManualFinalDraft(empleado.id, { cotizaPension: event.target.value === "true" })} disabled={!canSaveManualPension || savingManualFinalId === empleado.id}>
                                                     <option value="true">SÍ</option><option value="false">NO</option>
                                                   </select>
                                                 </label>
                                                 <label>¿Tiene deducción adicional?
-                                                  <select value={draft.tieneDeduccion ? "true" : "false"} onChange={(event) => updateManualFinalDraft(empleado.id, { tieneDeduccion: event.target.value === "true" })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>
+                                                  <select value={draft.tieneDeduccion ? "true" : "false"} onChange={(event) => updateManualFinalDraft(empleado.id, { tieneDeduccion: event.target.value === "true" })} disabled={!canSaveManualDeduction || savingManualFinalId === empleado.id}>
                                                     <option value="false">NO</option><option value="true">SÍ</option>
                                                   </select>
                                                 </label>
                                                 {draft.tieneDeduccion ? <label>Valor deducción adicional
-                                                  <input type="number" min="0" step="100" value={draft.valorDeduccion} onChange={(event) => updateManualFinalDraft(empleado.id, { valorDeduccion: event.target.value })} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id} placeholder="$ 0" />
+                                                  <input type="number" min="0" step="100" value={draft.valorDeduccion} onChange={(event) => updateManualFinalDraft(empleado.id, { valorDeduccion: event.target.value })} disabled={!canSaveManualDeduction || savingManualFinalId === empleado.id} placeholder="$ 0" />
                                                 </label> : null}
                                                 <small>Pensión calculada original: {formatCOP(Number(detalleSeguridad?.pension_calculada ?? empleado.pension))} · Pensión aplicada: {formatCOP(empleado.pension)}</small>
                                                 <button type="button" className="manual-final-save" onClick={() => void handleSaveManualFinal(empleado)} disabled={!canSaveManualFinal || savingManualFinalId === empleado.id}>

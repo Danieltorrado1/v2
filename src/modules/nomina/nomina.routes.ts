@@ -255,7 +255,7 @@ nominaRoutes.post(
   requirePermissions('nomina.recalculate'),
   recalculateNominaPeriodoHandler
 );
-nominaRoutes.get('/periodos/:periodoId/ajustes-manuales', requirePermissions('nomina.economico.read'), listAjustesManualesHandler);
+nominaRoutes.get('/periodos/:periodoId/ajustes-manuales', requireAnyPermissions('nomina.movimientos.read', 'nomina.economico.read'), listAjustesManualesHandler);
 nominaRoutes.post('/periodos/:periodoId/ajustes-manuales', requirePermissions('nomina.movimientos.create'), createAjusteManualHandler);
 nominaRoutes.patch('/ajustes-manuales/:id', requirePermissions('nomina.movimientos.update'), updateAjusteManualHandler);
 nominaRoutes.patch('/ajustes-manuales/:id/anular', requirePermissions('nomina.movimientos.update'), annulAjusteManualHandler);
