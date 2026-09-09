@@ -70,6 +70,24 @@
   white-space: nowrap;
 }
 
+.pmd-readonly-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--border-color) 28%, transparent);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.pmd-radio {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+}
+
 .pmd-button.primary {
   background: linear-gradient(
     135deg,

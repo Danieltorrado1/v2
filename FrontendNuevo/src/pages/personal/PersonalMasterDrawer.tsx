@@ -25,7 +25,12 @@ import {
   updatePersona,
   updatePersonaCuentaBancaria,
 } from '../../services/personasApi';
-import { updateVinculacion } from '../../services/vinculacionesApi';
+import {
+  getOperativeAssignmentOptions,
+  updateOperativeAssignment,
+  updateVinculacion,
+} from '../../services/vinculacionesApi';
+import type { OperativeAssignmentOption } from '../../services/vinculacionesApi';
 import type {
   CatalogoItem,
   Contrato,
@@ -328,6 +333,18 @@ export default function PersonalMasterDrawer({
   const [historyRetry, setHistoryRetry] = useState(0);
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isEditingLaboral, setIsEditingLaboral] = useState(false);
+  const [isEditingAll, setIsEditingAll] = useState(false);
+  const [assignmentOptions, setAssignmentOptions] = useState<OperativeAssignmentOption[]>([]);
+  const [assignmentId, setAssignmentId] = useState('');
+  const [assignmentInstitution, setAssignmentInstitution] = useState('');
+  const [assignmentSite, setAssignmentSite] = useState('');
+  const [assignmentModality, setAssignmentModality] = useState('');
+  const [assignmentType, setAssignmentType] = useState<'CORRECCION_DIGITACION' | 'CAMBIO_REAL'>('CORRECCION_DIGITACION');
+  const [assignmentDate, setAssignmentDate] = useState('');
+  const [assignmentReason, setAssignmentReason] = useState('');
+  const [assignmentObservation, setAssignmentObservation] = useState('');
+  const [allEditError, setAllEditError] = useState('');
+  const [savingAll, setSavingAll] = useState(false);
   const [isEditingBank, setIsEditingBank] = useState(false);
   const [showIdentificationModal, setShowIdentificationModal] = useState(false);
   const [savingPersonal, setSavingPersonal] = useState(false);
@@ -359,6 +376,10 @@ export default function PersonalMasterDrawer({
     'vinculacion.editar_cargo',
     'vinculacion.editar_fechas',
     'vinculacion.editar_estado',
+  ]);
+  const canUpdateAssignment = hasAnyPermission(permissions, [
+    'vinculaciones.update',
+    'vinculacion.editar',
   ]);
   const canReadBank = hasAnyPermission(permissions, [
     'personas.update',
@@ -398,12 +419,31 @@ export default function PersonalMasterDrawer({
     setActiveTab('personal');
     setIsEditingPersonal(false);
     setIsEditingLaboral(false);
+    setIsEditingAll(false);
     setIsEditingBank(false);
     setShowIdentificationModal(false);
     setPersonalError('');
     setLaboralError('');
     setBankError('');
   }, [expediente?.vinculacion.id]);
+
+  useEffect(() => {
+    if (!expediente || !canUpdateAssignment) {
+      setAssignmentOptions([]);
+      return;
+    }
+    void getOperativeAssignmentOptions(expediente.vinculacion.id)
+      .then((options) => {
+        setAssignmentOptions(options);
+        const current = expediente.personal_contexto.asignacion_operativa_actual?.focalizacion_final_id;
+        setAssignmentId(current ? String(current) : '');
+        const currentOption = options.find((item) => Number(item.id) === current);
+        setAssignmentInstitution(currentOption?.institucion_id ?? '');
+        setAssignmentSite(currentOption?.sede_id ?? '');
+        setAssignmentModality(currentOption?.modalidad_id ?? '');
+      })
+      .catch(() => setAssignmentOptions([]));
+  }, [canUpdateAssignment, expediente]);
 
   useEffect(() => {
     setLaboralForm(buildLaboralForm(expediente));
@@ -631,6 +671,148 @@ export default function PersonalMasterDrawer({
 
   function setBankField<K extends keyof BankFormState>(field: K, value: BankFormState[K]) {
     setBankForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function assignmentSelectionChanged(): boolean {
+    return assignmentId !== String(activeExpediente.personal_contexto.asignacion_operativa_actual?.focalizacion_final_id ?? '');
+  }
+
+  function resetUnifiedEdit() {
+    setPersonalForm(buildPersonalForm(personaDetail));
+    setLaboralForm(buildLaboralForm(activeExpediente));
+    const current = activeExpediente.personal_contexto.asignacion_operativa_actual?.focalizacion_final_id;
+    const currentOption = assignmentOptions.find((item) => Number(item.id) === current);
+    setAssignmentId(current ? String(current) : '');
+    setAssignmentInstitution(currentOption?.institucion_id ?? '');
+    setAssignmentSite(currentOption?.sede_id ?? '');
+    setAssignmentModality(currentOption?.modalidad_id ?? '');
+    setAssignmentReason('');
+    setAssignmentObservation('');
+    setAssignmentDate('');
+    setAllEditError('');
+    setIsEditingAll(false);
+  }
+
+  async function handleSaveAll() {
+    if (!personaDetail) return;
+    const personalChanged = JSON.stringify({ ...buildPersonalForm(personaDetail), motivo_cambio: '' }) !== JSON.stringify({ ...personalForm, motivo_cambio: '' });
+    const laboralBaseline = buildLaboralForm(activeExpediente);
+    const laboralChanged = JSON.stringify({ ...laboralBaseline, motivo_cambio: '' }) !== JSON.stringify({ ...laboralForm, motivo_cambio: '' });
+    const assignmentChanged = assignmentSelectionChanged();
+    if (!personalChanged && !laboralChanged && !assignmentChanged) {
+      setIsEditingAll(false);
+      return;
+    }
+    if (personalChanged && !personalForm.motivo_cambio.trim()) {
+      setAllEditError('Datos personales: el motivo del cambio es obligatorio.');
+      return;
+    }
+    if (laboralChanged && !laboralForm.motivo_cambio.trim()) {
+      setAllEditError('Datos laborales: el motivo del cambio es obligatorio.');
+      return;
+    }
+    const selectedAssignment = assignmentOptions.find((item) => item.id === assignmentId);
+    if (assignmentChanged && (!selectedAssignment || !assignmentReason.trim())) {
+      setAllEditError('Asignación operativa: selecciona una combinación válida e indica el motivo.');
+      return;
+    }
+    if (assignmentChanged && assignmentType === 'CAMBIO_REAL' && !assignmentDate) {
+      setAllEditError('Asignación operativa: la fecha efectiva es obligatoria para un cambio real.');
+      return;
+    }
+
+    setSavingAll(true);
+    setAllEditError('');
+    try {
+      if (personalChanged) {
+        await updatePersona(personaDetail.id, {
+          primer_nombre: personalForm.primer_nombre.trim(),
+          segundo_nombre: personalForm.segundo_nombre.trim() || null,
+          primer_apellido: personalForm.primer_apellido.trim(),
+          segundo_apellido: personalForm.segundo_apellido.trim() || null,
+          fecha_nacimiento: personalForm.fecha_nacimiento || null,
+          sexo_id: personalForm.sexo_id ? Number(personalForm.sexo_id) : null,
+          estado_civil_id: personalForm.estado_civil_id ? Number(personalForm.estado_civil_id) : null,
+          telefono: personalForm.telefono.trim() || null,
+          correo: personalForm.correo.trim() || null,
+          direccion: personalForm.direccion.trim() || null,
+          barrio: personalForm.barrio.trim() || null,
+          municipio_residencia_id: personalForm.municipio_residencia_id ? Number(personalForm.municipio_residencia_id) : null,
+          pais_nacimiento: personalForm.pais_nacimiento.trim() || null,
+          motivo_cambio: personalForm.motivo_cambio.trim(),
+          contacto_emergencia: personalForm.contacto_nombre.trim() || personalForm.contacto_parentesco.trim() || personalForm.contacto_telefono.trim() || personalForm.contacto_direccion.trim()
+            ? { nombre_contacto: personalForm.contacto_nombre.trim() || null, parentesco: personalForm.contacto_parentesco.trim() || null, telefono: personalForm.contacto_telefono.trim() || null, direccion: personalForm.contacto_direccion.trim() || null, activo: true }
+            : null,
+        });
+      }
+      if (laboralChanged) {
+        await updateVinculacion(activeExpediente.vinculacion.id, {
+          contrato_cargo_id: Number(laboralForm.contrato_cargo_id),
+          tipo_vinculacion_id: Number(laboralForm.tipo_vinculacion_id),
+          fecha_inicio: laboralForm.fecha_inicio,
+          fecha_fin: laboralForm.fecha_fin || null,
+          estado_vinculacion: laboralForm.estado_vinculacion,
+          cotiza_pension: laboralForm.cotiza_pension,
+          motivo_cambio: laboralForm.motivo_cambio.trim(),
+        });
+      }
+      if (assignmentChanged && selectedAssignment) {
+        await updateOperativeAssignment(activeExpediente.vinculacion.id, Number(selectedAssignment.id), {
+          asignacion_id: Number(selectedAssignment.id),
+          tipo_cambio: assignmentType,
+          ...(assignmentType === 'CAMBIO_REAL' ? { fecha_desde: assignmentDate } : {}),
+          motivo: assignmentReason.trim(),
+          observacion: assignmentObservation.trim() || null,
+        });
+      }
+      setIsEditingAll(false);
+      setIsEditingPersonal(false);
+      setIsEditingLaboral(false);
+      onRefresh();
+      setDatosRetry((value) => value + 1);
+      setVinculacionRetry((value) => value + 1);
+      setHistoryRetry((value) => value + 1);
+    } catch (saveError) {
+      const message = saveError instanceof Error ? saveError.message : 'Error no identificado.';
+      const failedSection = assignmentChanged ? 'asignación operativa' : laboralChanged ? 'datos laborales' : 'datos personales';
+      setAllEditError(`Los cambios anteriores pueden haberse guardado, pero no fue posible actualizar ${failedSection}: ${message}`);
+    } finally {
+      setSavingAll(false);
+    }
+  }
+
+  function renderUnifiedEditor() {
+    const currentAssignment = activeExpediente.personal_contexto.asignacion_operativa_actual;
+    const assignmentChanged = assignmentSelectionChanged();
+    const institutions = Array.from(new Map(assignmentOptions.map((item) => [item.institucion_id, item.institucion])).entries());
+    const sites = Array.from(new Map(assignmentOptions.filter((item) => item.institucion_id === assignmentInstitution).map((item) => [item.sede_id, item.sede])).entries());
+    const modalities = Array.from(new Map(assignmentOptions.filter((item) => item.institucion_id === assignmentInstitution && item.sede_id === assignmentSite).map((item) => [item.modalidad_id, item.modalidad])).entries());
+    return <div className="pmd-stack">
+      <section className="pmd-card"><div className="pmd-card-header"><div><h3>Datos personales</h3><p>Campos de persona y contacto. El motivo es obligatorio si hay cambios.</p></div></div>
+        <div className="pmd-grid two">
+          <Field label="Documento (solo lectura)"><input value={personaDetail?.numero_documento ?? ''} readOnly title="Para cambiar la identificación usa el historial de identificaciones." /></Field>
+          <Field label="Fecha de nacimiento"><input type="date" value={personalForm.fecha_nacimiento} onChange={(e) => setPersonalField('fecha_nacimiento', e.target.value)} /></Field>
+          <Field label="Primer nombre *"><input value={personalForm.primer_nombre} onChange={(e) => setPersonalField('primer_nombre', e.target.value)} /></Field><Field label="Segundo nombre"><input value={personalForm.segundo_nombre} onChange={(e) => setPersonalField('segundo_nombre', e.target.value)} /></Field>
+          <Field label="Primer apellido *"><input value={personalForm.primer_apellido} onChange={(e) => setPersonalField('primer_apellido', e.target.value)} /></Field><Field label="Segundo apellido"><input value={personalForm.segundo_apellido} onChange={(e) => setPersonalField('segundo_apellido', e.target.value)} /></Field>
+          <Field label="Teléfono"><input value={personalForm.telefono} onChange={(e) => setPersonalField('telefono', e.target.value)} /></Field><Field label="Correo"><input type="email" value={personalForm.correo} onChange={(e) => setPersonalField('correo', e.target.value)} /></Field>
+          <Field label="Dirección"><input value={personalForm.direccion} onChange={(e) => setPersonalField('direccion', e.target.value)} /></Field><Field label="Barrio"><input value={personalForm.barrio} onChange={(e) => setPersonalField('barrio', e.target.value)} /></Field>
+        </div>
+        <Field label="Motivo de cambios personales"><textarea value={personalForm.motivo_cambio} onChange={(e) => setPersonalField('motivo_cambio', e.target.value)} /></Field>
+      </section>
+      <section className="pmd-card"><div className="pmd-card-header"><div><h3>Datos laborales</h3><p>Cargo, tipo, fechas y cotización.</p></div></div>
+        <div className="pmd-grid two"><Field label="Cargo"><select value={laboralForm.contrato_cargo_id} onChange={(e) => setLaboralField('contrato_cargo_id', e.target.value)}><option value="">Seleccionar</option>{cargoOptions.map((item) => <option key={item.id} value={item.id}>{item.nombre_cargo}</option>)}</select></Field><Field label="Tipo de vinculación"><select value={laboralForm.tipo_vinculacion_id} onChange={(e) => setLaboralField('tipo_vinculacion_id', e.target.value)}><option value="">Seleccionar</option>{tiposVinculacion.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></Field><Field label="Fecha ingreso"><input type="date" value={laboralForm.fecha_inicio} onChange={(e) => setLaboralField('fecha_inicio', e.target.value)} /></Field><Field label="Fecha retiro"><input type="date" value={laboralForm.fecha_fin} onChange={(e) => setLaboralField('fecha_fin', e.target.value)} /></Field><Field label="Cotiza pensión"><select value={laboralForm.cotiza_pension ? 'true' : 'false'} onChange={(e) => setLaboralField('cotiza_pension', e.target.value === 'true')}><option value="true">Sí</option><option value="false">No</option></select></Field></div>
+        <Field label="Motivo de cambios laborales"><textarea value={laboralForm.motivo_cambio} onChange={(e) => setLaboralField('motivo_cambio', e.target.value)} /></Field>
+      </section>
+      <section className="pmd-card"><div className="pmd-card-header"><div><h3>Asignación operativa</h3><p>Catálogos reales dependientes; la modalidad se limita a combinaciones válidas.</p></div></div>
+        {!canUpdateAssignment ? <p className="pmd-readonly-note">No tienes permiso para editar institución, sede o modalidad. Estos datos se muestran solo como lectura.</p> : <>
+          <div className="pmd-info-grid compact-three"><DataItem label="Institución actual" value={displayValue(currentAssignment?.institucion)} /><DataItem label="Sede actual" value={displayValue(currentAssignment?.sede)} /><DataItem label="Modalidad actual" value={displayValue(currentAssignment?.modalidad)} /></div>
+          <div className="pmd-grid two"><Field label="Institución"><select value={assignmentInstitution} onChange={(e) => { setAssignmentInstitution(e.target.value); setAssignmentSite(''); setAssignmentModality(''); setAssignmentId(''); }}><option value="">Seleccionar</option>{institutions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field><Field label="Sede"><select value={assignmentSite} disabled={!assignmentInstitution} onChange={(e) => { setAssignmentSite(e.target.value); setAssignmentModality(''); setAssignmentId(''); }}><option value="">Seleccionar</option>{sites.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field><Field label="Modalidad"><select value={assignmentModality} disabled={!assignmentSite} onChange={(e) => { const modality = e.target.value; setAssignmentModality(modality); const option = assignmentOptions.find((item) => item.institucion_id === assignmentInstitution && item.sede_id === assignmentSite && item.modalidad_id === modality); setAssignmentId(option?.id ?? ''); }}><option value="">Seleccionar</option>{modalities.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field></div>
+          {assignmentChanged && <div className="pmd-subcard"><strong>TIPO DE CAMBIO</strong><label className="pmd-radio"><input type="radio" checked={assignmentType === 'CORRECCION_DIGITACION'} onChange={() => setAssignmentType('CORRECCION_DIGITACION')} /> Corrección de dato mal digitado</label><label className="pmd-radio"><input type="radio" checked={assignmentType === 'CAMBIO_REAL'} onChange={() => setAssignmentType('CAMBIO_REAL')} /> Cambio real desde una fecha</label>{assignmentType === 'CAMBIO_REAL' && <Field label="Fecha efectiva *"><input type="date" value={assignmentDate} onChange={(e) => setAssignmentDate(e.target.value)} /></Field>}<Field label="Motivo *"><textarea value={assignmentReason} onChange={(e) => setAssignmentReason(e.target.value)} /></Field><Field label="Observación"><textarea value={assignmentObservation} onChange={(e) => setAssignmentObservation(e.target.value)} /></Field></div>}
+        </>}
+      </section>
+      {allEditError && <StateBlock tone="error" message={allEditError} compact />}
+      <div className="pmd-actions-row"><button type="button" className="pmd-button secondary" onClick={resetUnifiedEdit}>Cancelar</button><button type="button" className="pmd-button primary" onClick={() => { void handleSaveAll(); }} disabled={savingAll}>{savingAll ? <Loader2 size={15} className="spin" /> : <CheckCircle2 size={15} />} Guardar cambios</button></div>
+    </div>;
   }
 
   async function handleSavePersonal() {
@@ -1261,6 +1443,9 @@ export default function PersonalMasterDrawer({
           </div>
 
           <div className="pmd-header-actions">
+            {isEditingAll ? null : (canUpdatePersona || canUpdateVinculacion || canUpdateAssignment) && <button type="button" className="pmd-button primary" onClick={() => { resetUnifiedEdit(); setIsEditingAll(true); setIsEditingPersonal(true); setIsEditingLaboral(true); setActiveTab('personal'); }}>
+              <PencilLine size={15} /> Editar
+            </button>}
             <button type="button" className="pmd-close" onClick={onClose} aria-label="Cerrar ficha">
               <X size={16} />
             </button>
@@ -1289,6 +1474,8 @@ export default function PersonalMasterDrawer({
             <StateBlock tone="error" message={error} />
           ) : loading && !expediente ? (
             <StateBlock message="Abriendo ficha..." />
+          ) : isEditingAll ? (
+            renderUnifiedEditor()
           ) : activeTab === 'personal' ? (
             renderPersonalTab()
           ) : activeTab === 'sst' ? (
