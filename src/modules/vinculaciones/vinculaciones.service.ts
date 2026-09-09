@@ -1312,10 +1312,9 @@ const appendContractOperationalScopeConditions = (
     return;
   }
 
-  params.push(tenant.userId);
-  const userParamSql = `$${params.length}`;
-
   if (isScopedGestorTenant(tenant)) {
+    params.push(tenant.userId);
+    const userParamSql = `$${params.length}`;
     conditions.push(
       buildGestorScopeExistsSql(
         userParamSql,
@@ -1329,6 +1328,8 @@ const appendContractOperationalScopeConditions = (
   }
 
   if (isScopedTalentoHumanoTenant(tenant)) {
+    params.push(tenant.userId);
+    const userParamSql = `$${params.length}`;
     conditions.push(
       buildManagedMunicipioScopeExistsSql(
         userParamSql,

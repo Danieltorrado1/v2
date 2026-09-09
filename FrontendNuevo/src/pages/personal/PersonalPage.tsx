@@ -798,7 +798,7 @@ function QuickEmployeeView({
 }) {
   const navigate = useNavigate();
   const {user}=useAuth();
-  const canEditPersonal=user?.permissions.some(permission=>['personas.update','vinculaciones.update','vinculacion.editar'].includes(permission))===true;
+  const canEditPersonal=user?.permissions.some(permission=>['personas.update','persona.editar','persona.editar_identidad','persona.editar_contacto'].includes(permission))===true;
   const [showMasAcciones, setShowMasAcciones] = useState(false);
   const [showEditarModal, setShowEditarModal] = useState(false);
   const [showCambiarIdentificacionModal, setShowCambiarIdentificacionModal] = useState(false);
@@ -1827,6 +1827,7 @@ function EditarEmpleadoModal({
     direccion: persona.direccion ?? "",
     barrio: persona.barrio ?? "",
   });
+  const [motivoPersonal, setMotivoPersonal] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [options,setOptions]=useState<OperativeAssignmentOption[]>([]);
@@ -1852,6 +1853,10 @@ function EditarEmpleadoModal({
       setApiError("Nombre y apellido son obligatorios.");
       return;
     }
+    if (!motivoPersonal.trim()) {
+      setApiError("El motivo del cambio es obligatorio.");
+      return;
+    }
     setSubmitting(true);
     setApiError(null);
     try {
@@ -1864,6 +1869,7 @@ function EditarEmpleadoModal({
         telefono: form.telefono.trim() || null,
         direccion: form.direccion.trim() || null,
         barrio: form.barrio.trim() || null,
+        motivo_cambio: motivoPersonal.trim(),
       });
       if(vinculacion&&sede&&modalidad){const target=options.find(x=>x.municipio_id===municipio&&x.institucion_id===institucion&&x.sede_id===sede&&x.modalidad_id===modalidad);if(!target)throw new Error('La institución, sede y modalidad no corresponden a una combinación válida.');const changed=target.municipio!==expediente?.asignacion_actual.municipio||target.institucion!==expediente?.asignacion_actual.institucion||target.sede!==expediente?.asignacion_actual.sede||target.modalidad!==expediente?.asignacion_actual.modalidad;if(changed){if(!motivoCambio.trim())throw new Error('El motivo del cambio operativo es obligatorio.');await updateOperativeAssignment(vinculacion.id,Number(target.id),{tipo_cambio:tipoCambio,...(tipoCambio==='CAMBIO_REAL'?{fecha_desde:fechaEfectiva}:{}),motivo:motivoCambio.trim()});}}
       onSuccess();
@@ -1930,6 +1936,12 @@ function EditarEmpleadoModal({
               Barrio
               <input type="text" style={FIELD_INPUT} value={form.barrio}
                 onChange={(e) => set("barrio", e.target.value)} />
+            </label>
+
+            <label style={FIELD_LABEL}>
+              Motivo del cambio *
+              <textarea style={FIELD_INPUT} required value={motivoPersonal}
+                onChange={(e) => setMotivoPersonal(e.target.value)} />
             </label>
             {vinculacion?<><strong>ASIGNACIÓN OPERATIVA</strong><label style={FIELD_LABEL}>Municipio<select style={FIELD_INPUT} value={municipio} onChange={e=>{setMunicipio(e.target.value);setInstitucion('');setSede('');setModalidad('')}}><option value="">Seleccionar</option>{municipalities.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><label style={FIELD_LABEL}>Buscar institución<input style={FIELD_INPUT} placeholder="Buscar institución..." value={institutionSearch} onChange={e=>setInstitutionSearch(e.target.value)}/></label><label style={FIELD_LABEL}>Institución<select style={FIELD_INPUT} value={institucion} disabled={!municipio} onChange={e=>{setInstitucion(e.target.value);setSede('');setModalidad('')}}><option value="">Seleccionar</option>{institutions.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><label style={FIELD_LABEL}>Buscar sede<input style={FIELD_INPUT} placeholder="Buscar sede..." value={siteSearch} onChange={e=>setSiteSearch(e.target.value)}/></label><label style={FIELD_LABEL}>Sede<select style={FIELD_INPUT} value={sede} disabled={!institucion} onChange={e=>{setSede(e.target.value);setModalidad('')}}><option value="">Seleccionar</option>{sites.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><label style={FIELD_LABEL}>Modalidad<select style={FIELD_INPUT} value={modalidad} disabled={!sede} onChange={e=>setModalidad(e.target.value)}><option value="">Seleccionar</option>{modalities.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label><p style={{fontSize:12,color:'var(--text-secondary)'}}>La modalidad se selecciona del catálogo válido para la institución y sede.</p></>:null}
           </div>

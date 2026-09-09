@@ -239,7 +239,8 @@ export default function ContractPersonalPage() {
     [contratoId, contratos]
   );
 
-  const canEditPersonal = permissions.includes("personas.update") || permissions.includes("persona.editar") || permissions.includes("vinculaciones.update");
+  const canEditPersonal = hasAnyPermission(permissions, ["personas.update", "persona.editar", "persona.editar_identidad", "persona.editar_contacto"]);
+  const canEditAssignment = hasAnyPermission(permissions, ["vinculaciones.update", "vinculacion.editar"]);
 
   function openPersonalEdit() {
     if (!selectedExpediente) return;
@@ -1064,7 +1065,8 @@ export default function ContractPersonalPage() {
               <section className="cp-card" style={{ marginTop: 16 }}><div className="cp-card-header"><h3>Historial de asignación</h3></div><div className="cp-table-wrap"><table className="cp-table"><thead><tr><th>Desde</th><th>Hasta</th><th>Institución</th><th>Sede</th><th>Modalidad</th><th>Motivo / observación</th></tr></thead><tbody>{selectedExpediente.personal_contexto.historial_asignacion_operativa.map((item) => <tr key={item.id}><td>{item.fecha_inicio}</td><td>{item.fecha_fin ?? 'Actual'}</td><td>{item.institucion}</td><td>{item.sede}</td><td>{item.modalidad}</td><td>{item.observacion ?? '—'}</td></tr>)}</tbody></table></div></section>
 
               <div className="cp-next-worker">
-                {canEditPersonal && <><button type="button" className="cp-button" onClick={openPersonalEdit}>Editar información</button><button type="button" className="cp-button" onClick={() => void openAssignmentEdit()}>Cambiar asignación</button></>}
+                {canEditPersonal && <button type="button" className="cp-button" onClick={openPersonalEdit}>Editar información</button>}
+                {canEditAssignment && <button type="button" className="cp-button" onClick={() => void openAssignmentEdit()}>Cambiar asignación</button>}
                 <button type="button" className="cp-button primary" onClick={openWorkerModal}>
                   <Plus size={15} />
                   Guardar y agregar siguiente
