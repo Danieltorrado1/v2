@@ -732,7 +732,7 @@ export default function TurnosPage() {
         caption: "Solo metodo_pago de vinculacion",
       },
     ];
-    return items.filter((kpi) => canSeeEconomic || !["Valor total", "Metodo OPS cuenta cobro"].includes(kpi.label));
+    return items.slice(0, 4);
   }, [canSeeEconomic, displayedMovimientos, employeeByNominaId, selectedPeriod, turnRelationByMovementId]);
 
   const byTypeSummary = useMemo(() => {
@@ -1145,6 +1145,18 @@ export default function TurnosPage() {
     }
   };
 
+  const handleViewExternalAccount = async (cuentaId: string) => {
+    setExternalBusy(`view-account:${cuentaId}`);
+    try {
+      const result = await descargarCoberturaCuenta(cuentaId);
+      window.open(result.url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      setFeedback({ tone: 'error', message: toMessage(error) });
+    } finally {
+      setExternalBusy(null);
+    }
+  };
+
   const handleSignedExternalAccount = async (cuentaId: string, file: File | undefined) => {
     if (!file) return;
     setExternalBusy(`signed:${cuentaId}`);
@@ -1417,14 +1429,12 @@ export default function TurnosPage() {
     !movementsState.error &&
     selectedPeriodId !== null &&
     displayedMovimientos.length === 0;
-  const showSummaryRow =
-    byTypeSummary.length > 0 ||
-    topEmployees.length > 0 ||
-    (canSeeEconomic &&
-      (valueByNature.devengados !== 0 ||
-        valueByNature.deducciones !== 0 ||
-        valueByNature.sinNaturaleza !== 0));
-
+  // Se conservan solo como compatibilidad interna; la pantalla ya no los
+  // renderiza y queda enfocada en la operación de turnos.
+  void byTypeSummary;
+  void byPersonModalitySummary;
+  void valueByNature;
+  void topEmployees;
   return (
     <div className="np-page turnos-page-shell">
       <CoberturaFlowNav periodId={selectedPeriodId} />
@@ -1612,7 +1622,10 @@ export default function TurnosPage() {
                   </label>
                   {externo.banco_doc ? <button type="button" className="np-btn" disabled={externalBusy !== null && !externalBusy.includes(externo.id)} onClick={() => { void handleViewExternalDocument(externo.id, 'CERTIFICACION_BANCARIA_EXTERNO_COBERTURA'); }}>Ver certificación</button> : null}
                   {externo.cuenta_estado === 'PENDIENTE' && externo.turnos > 0 ? <button type="button" className="np-btn primary" disabled={(externalBusy !== null && !externalBusy.includes(externo.id)) || !selectedPeriod?.contrato_id} onClick={() => { void handleGenerateExternalAccount(externo.id); }}>{externalBusy === `account:${externo.id}` ? 'Generando...' : 'Generar cuenta'}</button> : null}
-                  {externo.cuenta_id && externo.cuenta_estado !== 'PENDIENTE' ? <button type="button" className="np-btn" disabled={externalBusy !== null && !externalBusy.includes(externo.cuenta_id)} onClick={() => { void handleDownloadExternalAccount(externo.cuenta_id as string); }}>Descargar cuenta</button> : null}
+                  {externo.cuenta_id ? <>
+                    <button type="button" className="np-btn" disabled={externalBusy !== null && !externalBusy.includes(externo.cuenta_id)} onClick={() => { void handleViewExternalAccount(externo.cuenta_id as string); }}>Ver cuenta</button>
+                    <button type="button" className="np-btn" disabled={externalBusy !== null && !externalBusy.includes(externo.cuenta_id)} onClick={() => { void handleDownloadExternalAccount(externo.cuenta_id as string); }}>Descargar cuenta</button>
+                  </> : null}
                   {externo.cuenta_id && externo.cuenta_estado === 'GENERADA' ? <label className="np-btn">Subir firmada<input type="file" accept="application/pdf" hidden disabled={externalBusy !== null && !externalBusy.includes(externo.cuenta_id)} onChange={(event) => { void handleSignedExternalAccount(externo.cuenta_id as string, event.target.files?.[0]); event.currentTarget.value = ''; }} /></label> : null}
                   {externo.cuenta_id && externo.cuenta_estado === 'FIRMADA' ? <button type="button" className="np-btn" disabled={externalBusy !== null && !externalBusy.includes(externo.cuenta_id)} onClick={() => { void handleViewSignedAccount(externo.cuenta_id as string); }}>Ver firmada</button> : null}
                 </div> : null}
@@ -2238,62 +2251,6 @@ export default function TurnosPage() {
         </div>
       ) : null}
 
-      {showSummaryRow ? (
-        <div className="np-summary-row">
-          <div className="np-summary-card np-turn-person-summary">
-            <h4>Resumen por persona y modalidad</h4>
-            {byPersonModalitySummary.map((item) => (
-              <div key={`${item.person}-${item.modality}`} className="np-summary-item">
-                <span>{item.person} · {item.modality}<small>{formatNumber(item.days)} días · {item.daily === null ? "Sin tarifa" : `${formatCOP(item.daily)}/día`}</small></span>
-                <strong>{canSeeEconomic ? formatCOP(item.total) : "Operativo"}</strong>
-              </div>
-            ))}
-            {Array.from(new Set(byPersonModalitySummary.map((item) => item.person))).map((person) => (
-              <div key={`${person}-total`} className="np-summary-item np-summary-total"><strong>Total días · {person}</strong><strong>{formatNumber(byPersonModalitySummary.filter((item) => item.person === person).reduce((sum, item) => sum + item.days, 0))}</strong></div>
-            ))}
-            {byPersonModalitySummary.length === 0 ? <span className="np-empty">Sin resumen disponible</span> : null}
-          </div>
-          <div className="np-summary-card">
-            <h4>Turnos por tipo</h4>
-            {byTypeSummary.map((item) => (
-              <div key={item.label} className="np-summary-item">
-                <span>{item.label}</span>
-                <strong>
-                  {formatNumber(item.count)}{canSeeEconomic ? ` · ${formatCOP(item.total)}` : ""}
-                </strong>
-              </div>
-            ))}
-          </div>
-
-          {canSeeEconomic ? <div className="np-summary-card">
-            <h4>Valor por naturaleza</h4>
-            <div className="np-summary-item">
-              <span>Devengados</span>
-              <strong>{formatCOP(valueByNature.devengados)}</strong>
-            </div>
-            <div className="np-summary-item">
-              <span>Deducciones</span>
-              <strong>{formatCOP(valueByNature.deducciones)}</strong>
-            </div>
-            <div className="np-summary-item">
-              <span>Sin naturaleza</span>
-              <strong>{formatCOP(valueByNature.sinNaturaleza)}</strong>
-            </div>
-          </div> : null}
-
-          <div className="np-summary-card">
-            <h4>Top 5 · mas turnos</h4>
-            {topEmployees.map((item, index) => (
-              <div key={item.name} className="np-summary-item">
-                <span>
-                  {index + 1}. {item.name}
-                </span>
-                <strong>{formatNumber(item.count)}</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
