@@ -1,6 +1,7 @@
 import type { EmpresaCapabilities } from '../services/saasApi';
 import { tenantModules, type ModuleEntry } from './moduleCatalog';
 import { visiblePayrollLinks } from './payrollNavigation';
+import { getEffectiveConfig } from '../services/moduleVisibilityStore';
 
 export type AccessUser = { roles: string[]; permissions: string[] };
 export const isGlobalAdministrator = (user: AccessUser | null | undefined) => (user as (AccessUser & { isGlobalAdmin?: boolean }) | null | undefined)?.isGlobalAdmin === true;
@@ -35,9 +36,11 @@ export function canAccessEntry(item: ModuleEntry, user: AccessUser | null | unde
 export function visibleTenantModules(user: AccessUser | null | undefined, capabilities: EmpresaCapabilities | null, empresaId: number | null): ModuleEntry[] {
   if (!empresaId || !capabilities || Number(capabilities.empresa.id) !== empresaId) return [];
   const flags = capabilities.modulos;
+  const visual = getEffectiveConfig(user, empresaId);
   return tenantModules.flatMap(parent => {
+    if (visual.modules[parent.code] === false) return [];
     if (!featureEnabled(parent, flags)) return [];
-    const children = parent.children.filter(child => canAccessEntry(child, user, flags, parent));
+    const children = parent.children.filter(child => visual.children[child.code] !== false && canAccessEntry(child, user, flags, parent));
     if (parent.children.length && !children.length) return [];
     if (!parent.children.length && !canAccessEntry(parent, user, flags)) return [];
     return [{ ...parent, children, route: children[0]?.route ?? parent.route }];

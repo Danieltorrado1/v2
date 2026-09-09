@@ -12,6 +12,7 @@ import { isGlobalAdministrator, resolveCatalogLocation, visibleTenantModules } f
 import { WorkspaceAccess } from "../architecture/WorkspaceAccess";
 import { NavDropdown } from './NavDropdown';
 import "../architecture/Workspace.css";
+import { subscribeModuleVisibility } from '../services/moduleVisibilityStore';
 
 export default function MainLayout() {
   const location = useLocation();
@@ -25,6 +26,7 @@ export default function MainLayout() {
   const accountRef = useRef<HTMLDivElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const [accountDetailsOpen, setAccountDetailsOpen] = useState(false);
+  const [, setVisibilityVersion] = useState(0);
   const globalAdmin = isGlobalAdministrator(user);
   // Keep the legacy capability adapter available while all navigation is catalog-driven.
   const legacyNavigation = {
@@ -36,6 +38,7 @@ export default function MainLayout() {
   };
   const adminScope = location.pathname.startsWith('/admin-global');
   const modules = adminScope ? (globalAdmin ? adminModules : []) : visibleTenantModules(user, capabilities, empresaId);
+  useEffect(() => subscribeModuleVisibility(() => setVisibilityVersion((version) => version + 1)), [empresaId]);
   const current = resolveCatalogLocation(location.pathname, location.search);
   const activeModule = adminScope ? [...adminModules].reverse().find(item => location.pathname === item.route || location.pathname.startsWith(`${item.route}/`)) : modules.find(item => item.code === current?.module.code);
   const homePath = adminScope ? '/admin-global' : modules[0]?.route ?? (legacyNavigation.PERSONAL ? '/personal' : '/');

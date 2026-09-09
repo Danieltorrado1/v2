@@ -16,6 +16,7 @@ import { UsuariosTab } from '../admin/ConfiguracionGeneral/tabs/UsuariosTab';
 import { NominaProcesosTab } from '../admin/ConfiguracionGeneral/tabs/NominaProcesosTab';
 import PortalPage from '../portal/PortalPage';
 import { visiblePayrollLinks } from '../../architecture/payrollNavigation';
+import { RoleModuleVisibility } from './RoleModuleVisibility';
 
 export function TenantHome({ moduleCode }: { moduleCode?: string } = {}) {
   const { user } = useAuth();
@@ -30,6 +31,10 @@ export function WorkspacePage({ entry }: { entry: ModuleEntry }) {
   const { empresaId } = useCompanyContext();
   const { user } = useAuth();
   const location = useLocation();
+  const { capabilities } = useCompanyContext();
+  const visible = visibleTenantModules(user, capabilities, empresaId);
+  const entryVisible = visible.some((module) => module.children.some((child) => child.code === entry.code));
+  if (!entryVisible && entry.scope === 'TENANT') return <Navigate to={visible[0]?.children[0]?.route ?? '/empresa'} replace />;
   if (entry.target) {
     const target = entry.code === 'PERSONAL_NOMINA' ? visiblePayrollLinks(user)[0]?.to ?? '/empresa' : entry.target;
     const [pathname, query] = target.split('?');
@@ -41,7 +46,7 @@ export function WorkspacePage({ entry }: { entry: ModuleEntry }) {
   if (entry.view === 'institutions') return <ContractOverview key={empresaId} institutions />;
   if (entry.view === 'tools') return <ToolsPage />;
   if (entry.view === 'portal') return <PortalPage />;
-  if (entry.view === 'roles') return <RolesOverview />;
+  if (entry.view === 'roles') return <RoleModuleVisibility />;
   const reused = entry.view === 'company-settings' ? <fieldset className="workspace-readonly-group" disabled={!isGlobalAdministrator(user) && !hasPermission(user, ['empresas.update', 'configuracion.update'])}><legend>Datos de empresa</legend><EmpresaConfiguracionTab /></fieldset>
     : entry.view === 'contracts' ? <ContratosTab companyScopeId={empresaId ?? undefined} />
     : entry.view === 'positions' ? <CargosTab />
@@ -60,3 +65,5 @@ function RolesOverview() {
   useEffect(() => { let live = true; void configuracionApi.listarRoles().then(value => { if (live) setRoles(value); }).catch(() => { if (live) setError('No fue posible consultar los roles.'); }); return () => { live = false; }; }, []);
   return <section className="workspace-page"><WorkspaceHeading title="Roles y permisos" description="Consulta del catálogo real de roles. La edición centralizada está en configuración." />{error && <p role="alert">{error}</p>}<div className="workspace-grid">{roles.map(role => <section className="workspace-card" key={role.id}><h2>{role.nombre_rol}</h2><p>{role.descripcion ?? 'Sin descripción'}</p><span className="workspace-badge">{role.activo ? 'Activo' : 'Inactivo'}</span><details><summary>Permisos ({role.permissions.length})</summary><ul>{role.permissions.map(permission => <li key={permission}>{permission}</li>)}</ul></details></section>)}</div>{!roles.length && !error && <p className="workspace-empty">Sin roles disponibles.</p>}</section>;
 }
+
+void RolesOverview;

@@ -32,6 +32,7 @@ import type {
 } from '../../../../types/configuracion.types';
 import type { GestorAssignmentWorkspace } from '../../../../types/vinculaciones.types';
 import { FormModal } from '../components/FormModal';
+import { getEffectiveConfig, getUserOverride, moduleVisibilityEntries, clearUserOverride, setUserOverride, type ModuleVisibilityConfig } from '../../../../services/moduleVisibilityStore';
 import {
   getErrorMessage,
   mapKnownError
@@ -288,6 +289,8 @@ export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}
   const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<number[]>([]);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const [useRoleVisibility, setUseRoleVisibility] = useState(true);
+  const [userVisibility, setUserVisibility] = useState<ModuleVisibilityConfig | null>(null);
 
   useEffect(() => {
     if (!feedback) {
@@ -457,6 +460,8 @@ export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}
     setAssignmentWorkspace(null);
     setSelectedAssignmentIds([]);
     setAssignmentSearch('');
+    setUseRoleVisibility(true);
+    setUserVisibility(null);
   }
 
   async function openAssignmentModal(contratoId: number, municipioId: number, municipioNombre: string, departamentoId: number | null) {
@@ -523,6 +528,9 @@ export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}
     setForm(mapUserToForm(targetUser));
     setFormError('');
     setUserModal({ mode: 'edit', user: targetUser });
+    const override = companyScopeId ? getUserOverride(targetUser.id, companyScopeId) : null;
+    setUseRoleVisibility(!override);
+    setUserVisibility(override ?? (companyScopeId ? getEffectiveConfig(targetUser, companyScopeId) : null));
     void loadGestorScopes(targetUser.id, targetUser.contratoIds);
   }
 
@@ -744,6 +752,10 @@ export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}
         };
 
         const updated = await configuracionApi.actualizarUsuarioAdmin(userModal.user.id, payload);
+        if (companyScopeId && userVisibility) {
+          if (useRoleVisibility) clearUserOverride(userModal.user.id, companyScopeId);
+          else setUserOverride(userModal.user.id, userVisibility, companyScopeId);
+        }
         setFeedback({ tone: 'success', text: 'Usuario actualizado correctamente.' });
         setUserModal(null);
         resetForm();
@@ -1058,6 +1070,14 @@ export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}
               })}
             </div>
           </div>
+
+          {userModal.mode === 'edit' && companyScopeId && userVisibility && (
+            <div className="cg-user-form-block">
+              <div className="cg-role-selector-header"><span><ShieldCheck size={14} /> VISIBILIDAD DE MÓDULOS</span></div>
+              <label className="cg-role-checkbox"><input type="checkbox" checked={useRoleVisibility} onChange={(event) => { setUseRoleVisibility(event.target.checked); if (!event.target.checked) setUserVisibility(getEffectiveConfig(userModal.user, companyScopeId)); }} /> Usar configuración del rol</label>
+              {!useRoleVisibility && <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{moduleVisibilityEntries().map((module) => <div key={module.code}><label><input type="checkbox" checked={userVisibility.modules[module.code] !== false} onChange={() => setUserVisibility((current) => current ? ({ ...current, modules: { ...current.modules, [module.code]: !current.modules[module.code] } }) : current)} /> <strong>{module.label}</strong></label>{module.children.map((child) => <label key={child.code} style={{ display: 'block', marginLeft: 24 }}><input type="checkbox" checked={userVisibility.children[child.code] !== false} onChange={() => setUserVisibility((current) => current ? ({ ...current, children: { ...current.children, [child.code]: !current.children[child.code] } }) : current)} /> {child.label}</label>)}</div>)}</div>}
+            </div>
+          )}
 
           {isTerritorialTarget && (
             <div className="cg-user-form-block">

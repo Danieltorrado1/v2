@@ -1,9 +1,10 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 
 import { useAuth } from '../context/AuthContext';
 import { useCompanyContext } from '../context/CompanyContext';
 import { canAccessDashboard, isGestorOnly } from './roleNavigation';
+import { resolveCatalogLocation, visibleTenantModules } from '../architecture/moduleAccess';
 
 function canAny(permissions: string[], required: readonly string[]): boolean {
   return required.length === 0 || required.some((permission) => permissions.includes(permission));
@@ -46,6 +47,7 @@ export default function ModuleRoute({
   denyRoles?: readonly string[];
 }) {
   const { user } = useAuth();
+  const location = useLocation();
   const { empresaId, capabilities, capabilitiesLoading, hasModule, error, retryBootstrap } = useCompanyContext();
   const permissions = user?.permissions ?? [];
   const roles = user?.roles ?? [];
@@ -59,8 +61,11 @@ export default function ModuleRoute({
     return <div className="adm-empty">Cargando configuracion empresarial...</div>;
   }
 
-  if (dashboardDenied || !hasModule(code) || !canAny(permissions, requiredPermissions) || denyRoles.some((role) => roles.includes(role))) {
-    return <Navigate to={resolveFallbackPath({ hasModule, permissions, roles })} replace />;
+  const catalogLocation = resolveCatalogLocation(location.pathname, location.search);
+  const visible = visibleTenantModules(user, capabilities, empresaId);
+  const visualHidden = Boolean(catalogLocation && !visible.some((module) => module.code === catalogLocation.module.code && module.children.some((entry) => entry.code === catalogLocation.entry.code)));
+  if (dashboardDenied || visualHidden || !hasModule(code) || !canAny(permissions, requiredPermissions) || denyRoles.some((role) => roles.includes(role))) {
+    return <Navigate to={visualHidden ? (visible[0]?.children[0]?.route ?? '/empresa') : resolveFallbackPath({ hasModule, permissions, roles })} replace />;
   }
 
   return children;
