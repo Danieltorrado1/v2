@@ -95,6 +95,7 @@ import {
   ListNominaTiposNovedadQuery,
   ListNominaAsistenciaQuery,
   NominaExportTipo,
+  ExportNominaTurnosQuery,
   NominaRecargoTipo,
   ListNominaMovimientosQuery,
   NominaNovedadCoberturaInput,
@@ -9028,6 +9029,48 @@ export const getNominaMovimientos = async (
       total_pages: total === 0 ? 0 : Math.ceil(total / query.limit)
     }
   };
+};
+
+export const exportNominaTurnos = async (
+  periodoId: string,
+  query: ExportNominaTurnosQuery,
+  actorUserId: string,
+  tenant?: TenantAccessContext,
+  auditMeta?: AuditRequestMeta,
+): Promise<{ file: Buffer; file_name: string }> => {
+  const periodo = await loadRealPeriodoOrThrow(periodoId, tenant);
+  const firstPage = await getNominaMovimientos({ periodo_id: periodoId, page: 1, limit: 100, activo: query.activo }, tenant);
+  const pages = firstPage.pagination.total_pages > 1
+    ? await Promise.all(Array.from({ length: firstPage.pagination.total_pages - 1 }, (_, index) => getNominaMovimientos({ periodo_id: periodoId, page: index + 2, limit: 100, activo: query.activo }, tenant)))
+    : [];
+  const allMovements = [firstPage, ...pages].flatMap((page) => page.items);
+  const search = query.busqueda?.toLocaleLowerCase('es-CO') ?? '';
+  const rows = allMovements
+    .filter((item) => query.tipo === 'TODOS' || item.tipo_movimiento === `TURNO_${query.tipo}`)
+    .filter((item) => !query.municipio || item.contexto_operativo?.municipio === query.municipio)
+    .filter((item) => !search || [item.persona.nombre_completo, item.persona.numero_documento, item.tipo_movimiento, item.contexto_operativo?.municipio, item.contexto_operativo?.modalidad, item.descripcion].filter(Boolean).join(' ').toLocaleLowerCase('es-CO').includes(search))
+    .sort((left, right) => (left.fecha ?? '').localeCompare(right.fecha ?? '') || left.persona.nombre_completo.localeCompare(right.persona.nombre_completo, 'es-CO') || left.tipo_movimiento.localeCompare(right.tipo_movimiento));
+  if (rows.length === 0) {
+    const label = query.tipo === 'INTERNO' ? 'internos' : query.tipo === 'EXTERNO' ? 'externos' : '';
+    throw new AppError(`No hay turnos ${label} para exportar en este periodo.`.replace('turnos  ', 'turnos '), 404, 'NOMINA_TURNOS_EXPORT_EMPTY');
+  }
+  const headers = ['CÉDULA', 'NOMBRE COMPLETO', 'FECHA', 'TIPO DE TURNO', 'MODALIDAD', 'CANTIDAD', 'VALOR UNITARIO', 'VALOR TOTAL', 'MUNICIPIO', 'OBSERVACIÓN'];
+  const rowsForExport = rows.map((item) => ({
+    'CÉDULA': item.persona.numero_documento,
+    'NOMBRE COMPLETO': item.persona.nombre_completo,
+    'FECHA': item.fecha,
+    'TIPO DE TURNO': item.tipo_movimiento === 'TURNO_INTERNO' ? 'INTERNO' : 'EXTERNO',
+    'MODALIDAD': item.contexto_operativo?.modalidad ?? '',
+    'CANTIDAD': item.cantidad,
+    'VALOR UNITARIO': item.valor_unitario,
+    'VALOR TOTAL': item.valor_total,
+    'MUNICIPIO': item.contexto_operativo?.municipio ?? '',
+    'OBSERVACIÓN': item.descripcion ?? '',
+  }));
+  const file = buildPayrollXlsx([{ name: 'TURNOS', headers, rows: rowsForExport, currencyHeaders: ['VALOR UNITARIO', 'VALOR TOTAL'] }]);
+  await registerAuditEvent({ accion: 'NOMINA_TURNOS_EXPORT', contrato_id: periodo.contrato_id, datos_nuevos: { periodo_id: periodoId, tipo: query.tipo, registros: rows.length }, descripcion: 'Exportación XLSX de turnos', entidad: 'nomina_periodos', entidad_id: periodoId, empresa_id: periodo.contrato?.empresa_id ?? null, ip_address: auditMeta?.ip ?? null, modulo: 'NOMINA', user_agent: auditMeta?.user_agent ?? null, usuario_id: actorUserId });
+  const safePeriod = periodo.nombre_periodo.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || periodoId;
+  return { file, file_name: `turnos-${safePeriod}-${query.tipo.toLowerCase()}.xlsx` };
 };
 
 export const getNominaMovimientoById = async (

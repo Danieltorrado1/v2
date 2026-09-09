@@ -1112,6 +1112,15 @@ export async function exportNominaMovimientosCsv(
   });
 }
 
+export async function exportNominaTurnosXlsx(
+  periodoId: string,
+  query: { tipo: 'TODOS' | 'INTERNO' | 'EXTERNO'; activo?: boolean; busqueda?: string; municipio?: string },
+): Promise<NominaExportMetadata> {
+  const { blob, metadata } = await fetchNominaFile(`/nomina/export-turnos/${encodeURIComponent(periodoId)}`, toParams(query));
+  triggerBrowserDownload(blob, metadata.file_name);
+  return metadata;
+}
+
 export async function exportNominaLiquidacionesCsv(
   periodoId: string,
 ): Promise<NominaExportMetadata> {

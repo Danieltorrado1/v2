@@ -11,6 +11,7 @@ import {
   createNominaNovedadConTurnoSchema,
   createNominaPeriodoSchema,
   exportNominaPeriodoQuerySchema,
+  exportNominaTurnosQuerySchema,
   listNominaAsistenciaQuerySchema,
   listNominaEmpleadosQuerySchema,
   listNominaLiquidacionesQuerySchema,
@@ -48,6 +49,7 @@ import {
   deactivateNominaMovimiento,
   deactivateNominaNovedad,
   exportNominaPeriodo,
+  exportNominaTurnos,
   finalizeNominaDesprendibles,
   finalizeNominaLiquidaciones,
   generateNominaAsistencia,
@@ -772,6 +774,15 @@ export const exportNominaPeriodoHandler = asyncHandler(async (req: Request, res:
     getAuditRequestMeta(req)
   );
 
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${result.file_name}"`);
+  res.status(200).send(result.file);
+});
+
+export const exportNominaTurnosHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { periodo_id } = periodoLiquidacionParamSchema.parse(req.params);
+  const query = exportNominaTurnosQuerySchema.parse(req.query);
+  const result = await exportNominaTurnos(periodo_id, query, getActorUserId(req), req.tenant, getAuditRequestMeta(req));
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${result.file_name}"`);
   res.status(200).send(result.file);

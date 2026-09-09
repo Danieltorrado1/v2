@@ -92,6 +92,7 @@ import {
   deactivateNominaMovimientoHandler,
   deactivateNominaNovedadHandler,
   exportNominaPeriodoHandler,
+  exportNominaTurnosHandler,
   finalizeNominaDesprendiblesHandler,
   finalizeNominaLiquidacionesHandler,
   generateNominaAsistenciaHandler,
@@ -423,6 +424,11 @@ nominaRoutes.get(
   getNominaDesprendiblesHandler
 );
 
+nominaRoutes.get(
+  '/export-turnos/:periodo_id',
+  requirePermissions('nomina.export'),
+  exportNominaTurnosHandler
+);
 nominaRoutes.get(
   '/export/:periodo_id',
   requirePermissions('nomina.export'),

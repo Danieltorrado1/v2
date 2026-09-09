@@ -330,6 +330,13 @@ export const listNominaMovimientosQuerySchema = paginationSchema.extend({
   activo: z.coerce.boolean().optional()
 });
 
+export const exportNominaTurnosQuerySchema = z.object({
+  tipo: z.enum(['TODOS', 'INTERNO', 'EXTERNO']).default('TODOS'),
+  activo: z.coerce.boolean().optional(),
+  busqueda: z.string().trim().optional(),
+  municipio: z.string().trim().optional()
+}).strict();
+
 export const listNominaMovimientosOperativosQuerySchema = payrollDatasetPaginationSchema.extend({
   periodo_id: identifierSchema.nullable().optional(),
   nomina_empleado_id: identifierSchema.nullable().optional(),
@@ -685,6 +692,7 @@ export type ListNominaLiquidacionesQuery = z.infer<typeof listNominaLiquidacione
 export type ListNominaNovedadesQuery = z.infer<typeof listNominaNovedadesQuerySchema>;
 export type ListNominaTiposNovedadQuery = z.infer<typeof listNominaTiposNovedadQuerySchema>;
 export type ExportNominaPeriodoQuery = z.infer<typeof exportNominaPeriodoQuerySchema>;
+export type ExportNominaTurnosQuery = z.infer<typeof exportNominaTurnosQuerySchema>;
 export type ListNominaMovimientosQuery = z.infer<typeof listNominaMovimientosQuerySchema>;
 export type ListNominaMovimientosOperativosQuery = z.infer<typeof listNominaMovimientosOperativosQuerySchema>;
 export type ListNominaAsistenciaQuery = z.infer<typeof listNominaAsistenciaQuerySchema>;

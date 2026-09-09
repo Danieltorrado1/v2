@@ -22,7 +22,7 @@ import {
   approveNominaTurno,
   createNominaTurno,
   deactivateNominaTurno,
-  exportNominaMovimientosCsv,
+  exportNominaTurnosXlsx,
   getAllNominaTurnosOperativos,
   getNominaNovedadTurnosOperativos,
   getAllNominaTurnos,
@@ -468,6 +468,7 @@ export default function TurnosPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [form, setForm] = useState<TurnoFormState>(emptyForm());
   const [externalSummaryState, setExternalSummaryState] = useState<ExternalSummaryState>({
     ...EMPTY_ASYNC_STATE,
@@ -499,6 +500,7 @@ export default function TurnosPage() {
     ? employeeByNominaId.get(form.nomina_empleado_id) ?? null
     : null;
   const canSeeEconomic = user?.permissions.includes("nomina.economico.read") === true;
+  const canExport = user?.permissions.includes("nomina.export") === true;
   const internalTurns = internalTurnsState.data?.items ?? [];
   const turnRelationByMovementId = useMemo(
     () =>
@@ -1378,7 +1380,7 @@ export default function TurnosPage() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (type: "TODOS" | "INTERNO" | "EXTERNO") => {
     if (!selectedPeriodId || isExporting) {
       return;
     }
@@ -1387,7 +1389,7 @@ export default function TurnosPage() {
     setFeedback(null);
 
     try {
-      const metadata = await exportNominaMovimientosCsv(selectedPeriodId);
+      const metadata = await exportNominaTurnosXlsx(selectedPeriodId, { tipo: type, activo: backendActiveFilter, busqueda: searchTerm, municipio: municipioFilter });
       setFeedback({
         tone: "success",
         message: `Se exportó el consolidado real de movimientos del período: ${metadata.file_name}.`,
@@ -1453,16 +1455,17 @@ export default function TurnosPage() {
           <button
             type="button"
             className="np-btn"
-            onClick={handleExport}
-            disabled={!selectedPeriodId || isExporting || displayedMovimientos.length === 0}
+            onClick={() => setExportMenuOpen((open) => !open)}
+            disabled={!canExport || !selectedPeriodId || isExporting}
             title={
               displayedMovimientos.length === 0
                 ? "No hay movimientos cargados para exportar en el período seleccionado."
                 : "Exportar movimientos del período"
             }
           >
-            <Download size={16} /> {isExporting ? "Exportando..." : "Exportar movimientos"}
+            <Download size={16} /> {isExporting ? "Generando archivo..." : "Exportar"}
           </button>
+          {exportMenuOpen ? <div className="np-export-menu-panel" role="menu"><strong>Tipo de turno</strong>{(['TODOS', 'INTERNO', 'EXTERNO'] as const).map((type) => <button key={type} type="button" role="menuitem" disabled={isExporting} onClick={() => { setExportMenuOpen(false); void handleExport(type); }}>{type === 'INTERNO' ? 'INTERNOS' : type === 'EXTERNO' ? 'EXTERNOS' : 'TODOS'}</button>)}</div> : null}
         </div>
       </header>
 
