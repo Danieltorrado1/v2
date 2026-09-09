@@ -20,6 +20,7 @@ import type {
   SuspenderVinculacionPayload,
   ReactivarVinculacionPayload,
 } from '../types/vinculaciones.types';
+import { emitPersonalInvalidation } from '../events/personalInvalidation';
 
 function toParams(f: VinculacionFilters): Record<string, string | number | boolean | undefined> {
   const p: Record<string, string | number | boolean | undefined> = {};
@@ -207,10 +208,11 @@ export async function getVinculacionExpediente(id: number): Promise<VinculacionE
 
 export type OperativeAssignmentOption={id:string;municipio_id:string;municipio:string;institucion_id:string;institucion:string;sede_id:string;sede:string;modalidad_id:string;modalidad:string};
 export async function getOperativeAssignmentOptions(id:number):Promise<OperativeAssignmentOption[]>{const res=await apiClient.get<ApiResponse<OperativeAssignmentOption[]>>(`/vinculaciones/${id}/asignacion-operativa/opciones`);return res.data;}
-export async function updateOperativeAssignment(id:number,focalizacionFinalId:number,input:{asignacion_id?:number;tipo_cambio:'CORRECCION_DIGITACION'|'CAMBIO_REAL';fecha_desde?:string;motivo:string;observacion?:string|null} | string):Promise<unknown>{const payload=typeof input==='string'?{tipo_cambio:'CAMBIO_REAL' as const,fecha_desde:input,motivo:'Cambio operativo desde Personal'}:input;const res=await apiClient.patch<ApiResponse<unknown>>(`/vinculaciones/${id}/asignacion-operativa`,{focalizacion_final_id:focalizacionFinalId,...payload});return res.data;}
+export async function updateOperativeAssignment(id:number,focalizacionFinalId:number,input:{asignacion_id?:number;tipo_cambio:'CORRECCION_DIGITACION'|'CAMBIO_REAL';fecha_desde?:string;motivo:string;observacion?:string|null} | string):Promise<unknown>{const payload=typeof input==='string'?{tipo_cambio:'CAMBIO_REAL' as const,fecha_desde:input,motivo:'Cambio operativo desde Personal'}:input;const res=await apiClient.patch<ApiResponse<unknown>>(`/vinculaciones/${id}/asignacion-operativa`,{focalizacion_final_id:focalizacionFinalId,...payload});emitPersonalInvalidation({kind:'ASIGNACION_OPERATIVA',vinculacionId:id});return res.data;}
 
 export async function createVinculacion(payload: CreateVinculacionPayload): Promise<VinculacionApi> {
   const res = await apiClient.post<ApiResponse<VinculacionApi>>('/vinculaciones', payload);
+  emitPersonalInvalidation({ kind: 'POBLACION', personaId: payload.persona_id, vinculacionId: res.data.id });
   return res.data;
 }
 
@@ -219,6 +221,7 @@ export async function updateVinculacion(
   payload: UpdateVinculacionPayload
 ): Promise<VinculacionApi> {
   const res = await apiClient.patch<ApiResponse<VinculacionApi>>(`/vinculaciones/${id}`, payload);
+  emitPersonalInvalidation({ kind: 'VINCULACION', vinculacionId: id, personaId: payload.persona_id });
   return res.data;
 }
 
@@ -230,6 +233,7 @@ export async function retirarVinculacion(
     `/vinculaciones/${id}/retirar`,
     payload
   );
+  emitPersonalInvalidation({ kind: 'VINCULACION', vinculacionId: id });
   return res.data;
 }
 
@@ -241,6 +245,7 @@ export async function suspenderVinculacion(
     `/vinculaciones/${id}/suspender`,
     payload
   );
+  emitPersonalInvalidation({ kind: 'VINCULACION', vinculacionId: id });
   return res.data;
 }
 
@@ -252,5 +257,6 @@ export async function reactivarVinculacion(
     `/vinculaciones/${id}/reactivar`,
     payload
   );
+  emitPersonalInvalidation({ kind: 'POBLACION', vinculacionId: id });
   return res.data;
 }

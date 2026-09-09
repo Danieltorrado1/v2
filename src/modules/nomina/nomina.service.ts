@@ -7191,7 +7191,9 @@ export const importNominaEmpleados = async (
   periodoId: string,
   actorUserId: string,
   tenant?: TenantAccessContext,
-  auditMeta?: AuditRequestMeta
+  auditMeta?: AuditRequestMeta,
+  personaId?: string,
+  vinculacionId?: string
 ): Promise<NominaImportEmployeesResult> => {
   const client = await dbPool.connect();
 
@@ -7203,6 +7205,12 @@ export const importNominaEmpleados = async (
 
     assertPeriodoAllowsOpenMutations(periodo.estado, 'importing payroll employees');
 
+    const candidateParams: unknown[] = [periodo.contrato_id, toDateString(periodo.fecha_fin), toDateString(periodo.fecha_inicio)];
+    const candidateScopeCondition = personaId
+      ? (candidateParams.push(personaId), `AND v.persona_id = $${candidateParams.length}::bigint`)
+      : vinculacionId
+        ? (candidateParams.push(vinculacionId), `AND v.id = $${candidateParams.length}::bigint`)
+        : '';
     const candidatesResult = await client.query<ImportCandidateRow>(
       `
         SELECT
@@ -7221,9 +7229,10 @@ export const importNominaEmpleados = async (
         WHERE v.contrato_id = $1::bigint
           AND v.fecha_inicio <= $2::date
           AND COALESCE(${effectiveRetirementSql}, $2::date) >= $3::date
+          ${candidateScopeCondition}
         ORDER BY v.id ASC
       `,
-      [periodo.contrato_id, toDateString(periodo.fecha_fin), toDateString(periodo.fecha_inicio)]
+      candidateParams
     );
 
     // Logical exclusion only: all related rows and all economic columns remain intact.
@@ -7232,7 +7241,8 @@ export const importNominaEmpleados = async (
         UPDATE nomina_empleados ne SET activo = FALSE,
           motivo_caso_especial = concat_ws(' | ', NULLIF(ne.motivo_caso_especial, ''), $4::text)
         FROM vinculaciones v
-        WHERE ne.periodo_id = $1::bigint AND v.id = ne.vinculacion_id
+      WHERE ne.periodo_id = $1::bigint AND v.id = ne.vinculacion_id
+          ${personaId ? 'AND v.persona_id = $6::bigint' : vinculacionId ? 'AND v.id = $6::bigint' : ''}
           AND COALESCE(ne.activo, TRUE)
           AND (v.contrato_id <> $5::bigint OR v.fecha_inicio > $3::date
             OR ${effectiveRetirementSql} < $2::date)
@@ -7246,7 +7256,9 @@ export const importNominaEmpleados = async (
         OR EXISTS (SELECT 1 FROM nomina_ajustes_manuales j WHERE j.nomina_empleado_id = e.id)
         OR EXISTS (SELECT 1 FROM nomina_revision_operativa r WHERE r.nomina_empleado_id = e.id)
       ) AS has_activity FROM excluded e
-    `, [periodoId, toDateString(periodo.fecha_inicio), toDateString(periodo.fecha_fin), POPULATION_EXCLUSION, periodo.contrato_id]);
+    `, personaId || vinculacionId
+      ? [periodoId, toDateString(periodo.fecha_inicio), toDateString(periodo.fecha_fin), POPULATION_EXCLUSION, periodo.contrato_id, personaId ?? vinculacionId]
+      : [periodoId, toDateString(periodo.fecha_inicio), toDateString(periodo.fecha_fin), POPULATION_EXCLUSION, periodo.contrato_id]);
     const excluded = excludedResult.rows.length;
     const requiresReview = excludedResult.rows.filter(row => row.has_activity).map(row => row.id);
 
@@ -7255,8 +7267,9 @@ export const importNominaEmpleados = async (
         SELECT vinculacion_id::text AS vinculacion_id, COALESCE(activo, TRUE) AS activo, motivo_caso_especial
         FROM nomina_empleados
         WHERE periodo_id = $1::bigint
+          ${personaId ? 'AND vinculacion_id IN (SELECT id FROM vinculaciones WHERE persona_id = $2::bigint)' : vinculacionId ? 'AND vinculacion_id = $2::bigint' : ''}
       `,
-      [periodoId]
+      personaId || vinculacionId ? [periodoId, personaId ?? vinculacionId] : [periodoId]
     );
 
     const existingByVinculacionId = new Map(existingResult.rows.map(row => [row.vinculacion_id, row]));

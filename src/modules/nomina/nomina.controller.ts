@@ -14,6 +14,7 @@ import {
   exportNominaTurnosQuerySchema,
   listNominaAsistenciaQuerySchema,
   listNominaEmpleadosQuerySchema,
+  importNominaEmpleadosSchema,
   listNominaLiquidacionesQuerySchema,
   listNominaMovimientosOperativosQuerySchema,
   listNominaMovimientosQuerySchema,
@@ -253,11 +254,14 @@ export const getNominaPeriodoEmpleadosOperativosHandler = asyncHandler(async (re
 
 export const importNominaPeriodoEmpleadosHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = periodoIdParamSchema.parse(req.params);
+  const { persona_id: personaId, vinculacion_id: vinculacionId } = importNominaEmpleadosSchema.parse(req.body ?? {});
   const result = await importNominaEmpleados(
     id,
     getActorUserId(req),
     req.tenant,
-    getAuditRequestMeta(req)
+    getAuditRequestMeta(req),
+    personaId,
+    vinculacionId
   );
 
   return successResponse(res, {

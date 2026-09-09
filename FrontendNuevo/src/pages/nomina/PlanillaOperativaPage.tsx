@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Plus, RefreshCw, Search, X } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
+import { onPersonalInvalidation } from "../../events/personalInvalidation";
 import { useCompanyContext } from "../../context/CompanyContext";
 import {
   pickAvailableScopedId,
@@ -786,6 +787,19 @@ export default function PlanillaOperativaPage() {
       cancelled = true;
     };
   }, [empresaId, periodId, reloadVersion]);
+
+  useEffect(() => onPersonalInvalidation((change) => {
+    if (!periodId) return;
+    if (change.kind === 'POBLACION' && periods.find((item) => String(item.id) === periodId)?.estado === 'ABIERTO' && user?.permissions.includes('nomina.empleados.import')) {
+      void importNominaEmpleados(periodId, { personaId: change.personaId, vinculacionId: change.vinculacionId }).then(() => {
+        setReloadVersion((value) => value + 1);
+      }).catch(() => {
+        setError('El trabajador cambió en Personal, pero la población operativa requiere revisión.');
+      });
+      return;
+    }
+    setReloadVersion((value) => value + 1);
+  }), [periodId, periods, user?.permissions]);
 
   useEffect(() => {
     const persistedFilters = readPersistedFilters(empresaId);
@@ -1745,7 +1759,7 @@ export default function PlanillaOperativaPage() {
       ) : null}
 
       {employees.length > 0 && period?.estado === "ABIERTO" && user?.permissions.includes("nomina.empleados.import") ?
-        <div className="op-population-actions"><button type="button" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={17} />{isSyncingPersonal ? "Actualizando..." : "ACTUALIZAR PERSONAL"}</button></div> : null}
+        <div className="op-population-actions"><button type="button" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={17} />{isSyncingPersonal ? "Sincronizando..." : "SINCRONIZAR AHORA"}</button></div> : null}
       {(Boolean(periodId) && loading) || periodsLoading ? (
         <div className="op-loading" role="status">Cargando trabajadores y eventos...</div>
       ) : !periodId ? <div className="op-population-empty" role="status"><h2>Sin periodo disponible</h2><p>Selecciona una empresa y un periodo para consultar la planilla.</p><button type="button" onClick={() => setReloadVersion(value => value + 1)}>Reintentar</button></div>

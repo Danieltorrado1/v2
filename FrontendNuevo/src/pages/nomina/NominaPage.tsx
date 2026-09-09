@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { onPersonalInvalidation } from "../../events/personalInvalidation";
 import type { ComponentType, FormEvent } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -886,6 +887,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
   const [manualFinalDrafts, setManualFinalDrafts] = useState<Record<string, ManualFinalDraft>>({});
   const [savingManualFinalId, setSavingManualFinalId] = useState<string | null>(null);
   const [selectedDetailEmployeeId, setSelectedDetailEmployeeId] = useState<string | null>(null);
+  const [reloadVersion, setReloadVersion] = useState(0);
 
   const [periodsState, setPeriodsState] = useState<AsyncState<PaginatedNominaPeriodosApi>>({
     ...EMPTY_ASYNC_STATE,
@@ -944,6 +946,19 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
   const selectedPeriodFromList = periodos.find((periodo) => periodo.id === selectedPeriodId) ?? null;
   const selectedPeriod =
     periodState.data && periodDataId === selectedPeriodId ? periodState.data : selectedPeriodFromList;
+
+  useEffect(() => onPersonalInvalidation((change) => {
+    if (!selectedPeriodId) return;
+    if (change.kind === 'POBLACION' && selectedPeriod?.estado === 'ABIERTO' && user?.permissions.includes('nomina.empleados.import')) {
+      void importNominaEmpleados(selectedPeriodId, { personaId: change.personaId, vinculacionId: change.vinculacionId }).then(() => {
+        setReloadVersion((value) => value + 1);
+      }).catch(() => {
+        setActionFeedback({ tone: 'error', message: 'El trabajador cambió en Personal, pero la población de Nómina requiere revisión.' });
+      });
+      return;
+    }
+    setReloadVersion((value) => value + 1);
+  }), [selectedPeriodId, selectedPeriod?.estado, user?.permissions]);
   const selectedDashboard =
     selectedPeriodId && dashboardDataId === selectedPeriodId && dashboardState.data
       ? dashboardState.data
@@ -1403,7 +1418,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
       setDesprendiblesDataId(null);
     }
     void refreshSelectedPeriodData(selectedPeriodId);
-  }, [isOperationalCoverageView, refreshSelectedPeriodData, selectedPeriodId]);
+  }, [isOperationalCoverageView, refreshSelectedPeriodData, selectedPeriodId, reloadVersion]);
 
   useEffect(() => {
     if (!empresaId || isOperationalCoverageView || embeddedPeriodId) {
@@ -3011,7 +3026,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
               disabled={!selectedPeriodId || selectedPeriod?.estado !== "ABIERTO" || isSyncingPopulation || !user?.permissions.includes("nomina.empleados.import")}
             >
               <RefreshCw size={18} />
-              {isSyncingPopulation ? "Actualizando..." : ((employeesDataId === selectedPeriodId ? employeesState.data?.pagination.total : undefined) ?? selectedDashboard?.empleados_total ?? 0) > 0 ? "ACTUALIZAR PERSONAL" : "CARGAR PERSONAL"}
+              {isSyncingPopulation ? "Sincronizando..." : ((employeesDataId === selectedPeriodId ? employeesState.data?.pagination.total : undefined) ?? selectedDashboard?.empleados_total ?? 0) > 0 ? "SINCRONIZAR AHORA" : "CARGAR PERSONAL"}
             </button>
 
             <button

@@ -27,6 +27,7 @@ import type {
   PersonaFilters,
 } from '../types/personas.types';
 import type { VinculacionFilters } from '../types/vinculaciones.types';
+import { emitPersonalInvalidation } from '../events/personalInvalidation';
 
 export interface CreatePersonaPayload {
   tipo_documento_id: number;
@@ -459,6 +460,8 @@ export async function createPersona(payload: CreatePersonaPayload): Promise<Pers
 
 export async function updatePersona(id: number, payload: UpdatePersonaPayload): Promise<PersonaApi> {
   const res = await apiClient.patch<ApiResponse<PersonaApi>>(`/personas/${id}`, payload);
+  const affectsPayrollContext = ['primer_nombre', 'segundo_nombre', 'primer_apellido', 'segundo_apellido', 'numero_documento'].some((field) => field in payload);
+  if (affectsPayrollContext) emitPersonalInvalidation({ kind: 'PERSONA', personaId: id });
   return res.data;
 }
 

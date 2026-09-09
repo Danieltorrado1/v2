@@ -1129,7 +1129,7 @@ export async function exportNominaLiquidacionesCsv(
   });
 }
 
-export async function importNominaEmpleados(periodId: string) {
+export async function importNominaEmpleados(periodId: string, scope?: number | { personaId?: number; vinculacionId?: number }) {
   const response = await apiClient.post<ApiResponse<{
     reactivated: number;
     imported: number;
@@ -1137,7 +1137,7 @@ export async function importNominaEmpleados(periodId: string) {
     skipped_duplicates: number;
     skipped_requires_review?: number;
     requires_review: string[];
-  }>>(`/nomina/periodos/${periodId}/importar-empleados`, {});
+  }>>(`/nomina/periodos/${periodId}/importar-empleados`, typeof scope === 'number' ? { persona_id: scope } : scope ? { persona_id: scope.personaId, vinculacion_id: scope.vinculacionId } : {});
   // Accept both the canonical { success, data } envelope and the legacy
   // direct payload returned by older deployments.  The caller must receive
   // the import summary itself so it can refresh the population reliably.

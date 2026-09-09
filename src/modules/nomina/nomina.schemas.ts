@@ -330,6 +330,13 @@ export const listNominaMovimientosQuerySchema = paginationSchema.extend({
   activo: z.coerce.boolean().optional()
 });
 
+export const importNominaEmpleadosSchema = z.object({
+  persona_id: identifierSchema.optional(),
+  vinculacion_id: identifierSchema.optional(),
+}).refine((input) => Object.keys(input).length === 0 || Boolean(input.persona_id || input.vinculacion_id), {
+  message: 'persona_id or vinculacion_id is required for an incremental import',
+});
+
 export const exportNominaTurnosQuerySchema = z.object({
   tipo: z.enum(['TODOS', 'INTERNO', 'EXTERNO']).default('TODOS'),
   activo: z.coerce.boolean().optional(),
