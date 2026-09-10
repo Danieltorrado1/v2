@@ -9172,7 +9172,14 @@ export const exportNominaTurnos = async (
       : { document: null, name: null };
     return { performer, replaced };
   };
-  const rows = allMovements
+  const incompleteZeroMovements = allMovements.filter((item) =>
+    !item.activo &&
+    (item.cantidad === null || item.cantidad === 0) &&
+    (item.valor_unitario === null || item.valor_unitario === 0) &&
+    item.valor_total === 0,
+  );
+  const exportableMovements = allMovements.filter((item) => !incompleteZeroMovements.includes(item));
+  const rows = exportableMovements
     .filter((item) => query.tipo === 'TODOS' || item.tipo_movimiento === `TURNO_${query.tipo}`)
     .filter((item) => !query.municipio || item.contexto_operativo?.municipio === query.municipio)
     .filter((item) => {
@@ -9184,6 +9191,18 @@ export const exportNominaTurnos = async (
     const label = query.tipo === 'INTERNO' ? 'internos' : query.tipo === 'EXTERNO' ? 'externos' : '';
     throw new AppError(`No hay turnos ${label} para exportar en este periodo.`.replace('turnos  ', 'turnos '), 404, 'NOMINA_TURNOS_EXPORT_EMPTY');
   }
+  const unresolvedReplaced = rows.filter((item) => !movementPeople(item).replaced.name).length;
+  const unresolvedPerformer = rows.filter((item) => !movementPeople(item).performer.name).length;
+  console.info('[nomina.export-turnos]', {
+    periodo_id: periodoId,
+    tipo: query.tipo,
+    total_movimientos: allMovements.length,
+    movimientos_exportables: rows.length,
+    reemplazados_resueltos: rows.length - unresolvedReplaced,
+    reemplazados_sin_resolver: unresolvedReplaced,
+    reemplazantes_sin_resolver: unresolvedPerformer,
+    movimientos_cero_excluidos: incompleteZeroMovements.length,
+  });
   const headers = ['FECHA', 'TIPO DE TURNO', 'MUNICIPIO', 'INSTITUCIÓN', 'SEDE', 'MODALIDAD', 'CÉDULA REEMPLAZADO', 'NOMBRE REEMPLAZADO', 'CÉDULA REEMPLAZANTE', 'NOMBRE REEMPLAZANTE', 'TIPO REEMPLAZANTE', 'CANTIDAD', 'VALOR UNITARIO', 'VALOR TOTAL', 'OBSERVACIÓN'];
   const rowsForExport = rows.map((item) => ({
     'FECHA': item.fecha,
