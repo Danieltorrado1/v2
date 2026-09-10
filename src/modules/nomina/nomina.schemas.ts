@@ -338,10 +338,26 @@ export const importNominaEmpleadosSchema = z.object({
 });
 
 export const exportNominaTurnosQuerySchema = z.object({
-  tipo: z.enum(['TODOS', 'INTERNO', 'EXTERNO']).default('TODOS'),
-  activo: z.coerce.boolean().optional(),
-  busqueda: z.string().trim().optional(),
-  municipio: z.string().trim().optional()
+  tipo: z.enum(['TODOS', 'INTERNO', 'EXTERNO'], {
+    error: 'tipo debe ser TODOS, INTERNO o EXTERNO',
+  }).default('TODOS'),
+  activo: z.preprocess((value) => {
+    if (typeof value !== 'string') return value;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true' || normalized === '1') return true;
+    if (normalized === 'false' || normalized === '0') return false;
+    return value;
+  }, z.boolean()).optional(),
+  busqueda: z.preprocess((value) => {
+    if (typeof value !== 'string') return value;
+    const normalized = value.trim();
+    return normalized || undefined;
+  }, z.string().min(1).optional()),
+  municipio: z.preprocess((value) => {
+    if (typeof value !== 'string') return value;
+    const normalized = value.trim();
+    return !normalized || normalized.toLowerCase() === 'todos' ? undefined : normalized;
+  }, z.string().min(1).optional())
 }).strict();
 
 export const listNominaMovimientosOperativosQuerySchema = payrollDatasetPaginationSchema.extend({

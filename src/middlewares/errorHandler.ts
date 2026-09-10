@@ -21,9 +21,14 @@ export const errorHandler = (
   _next: NextFunction
 ): Response => {
   if (error instanceof ZodError) {
+    const firstIssue = error.issues[0];
+    const field = firstIssue?.path.length ? firstIssue.path.join('.') : 'solicitud';
+    const message = firstIssue
+      ? `${field}: ${firstIssue.message}`
+      : 'La solicitud no cumple el contrato esperado.';
     return errorResponse(res, {
       statusCode: 400,
-      message: 'Validation error',
+      message,
       errorCode: 'VALIDATION_ERROR',
       details: error.flatten()
     });

@@ -1116,7 +1116,27 @@ export async function exportNominaTurnosXlsx(
   periodoId: string,
   query: { tipo: 'TODOS' | 'INTERNO' | 'EXTERNO'; activo?: boolean; busqueda?: string; municipio?: string },
 ): Promise<NominaExportMetadata> {
-  const { blob, metadata } = await fetchNominaFile(`/nomina/export-turnos/${encodeURIComponent(periodoId)}`, toParams(query));
+  const normalizedPeriodId = periodoId.trim();
+  if (!normalizedPeriodId || !/^\d+$/.test(normalizedPeriodId)) {
+    throw new ApiClientError('El periodo seleccionado no es válido.', 400, {
+      code: 'NOMINA_EXPORT_PERIOD_INVALID',
+    });
+  }
+
+  const normalizedSearch = query.busqueda?.trim();
+  const normalizedMunicipio = query.municipio?.trim();
+  const params = toParams({
+    tipo: query.tipo,
+    activo: query.activo,
+    busqueda: normalizedSearch || undefined,
+    municipio: !normalizedMunicipio || normalizedMunicipio.toLocaleLowerCase('es-CO') === 'todos'
+      ? undefined
+      : normalizedMunicipio,
+  });
+  const { blob, metadata } = await fetchNominaFile(
+    `/nomina/export-turnos/${encodeURIComponent(normalizedPeriodId)}`,
+    params,
+  );
   triggerBrowserDownload(blob, metadata.file_name);
   return metadata;
 }

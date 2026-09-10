@@ -163,7 +163,7 @@ function countInclusiveDays(start: string | null, end: string | null) {
 }
 
 function toMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Error desconocido";
+  return error instanceof Error ? error.message : "No fue posible completar la solicitud.";
 }
 
 function titleCase(value: string) {
@@ -1401,7 +1401,12 @@ export default function TurnosPage() {
     setFeedback(null);
 
     try {
-      const metadata = await exportNominaTurnosXlsx(selectedPeriodId, { tipo: type, activo: backendActiveFilter, busqueda: searchTerm, municipio: municipioFilter });
+      const metadata = await exportNominaTurnosXlsx(selectedPeriodId, {
+        tipo: type,
+        activo: backendActiveFilter,
+        busqueda: searchTerm.trim() || undefined,
+        municipio: municipioFilter.trim() || undefined,
+      });
       setFeedback({
         tone: "success",
         message: `Se exportó el consolidado real de movimientos del período: ${metadata.file_name}.`,
