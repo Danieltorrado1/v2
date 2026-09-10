@@ -500,7 +500,7 @@ export default function TurnosPage() {
     ? employeeByNominaId.get(form.nomina_empleado_id) ?? null
     : null;
   const canSeeEconomic = user?.permissions.includes("nomina.economico.read") === true;
-  const canExport = user?.permissions.includes("nomina.export") === true;
+  const canExport = user?.permissions.includes("nomina.export") === true && Boolean(selectedPeriodId) && !isExporting;
   const internalTurns = internalTurnsState.data?.items ?? [];
   const turnRelationByMovementId = useMemo(
     () =>
@@ -1466,7 +1466,7 @@ export default function TurnosPage() {
             type="button"
             className="np-btn"
             onClick={() => setExportMenuOpen((open) => !open)}
-            disabled={!canExport || !selectedPeriodId || isExporting}
+            disabled={!canExport}
             title={
               displayedMovimientos.length === 0
                 ? "No hay movimientos cargados para exportar en el período seleccionado."
