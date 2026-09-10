@@ -1036,10 +1036,8 @@ select.np-form-control {
 @media(max-width:900px) { .nomina-turnos-consolidated-head, .nomina-turnos-person-row { grid-template-columns:minmax(115px,1.4fr) 75px 45px 85px minmax(85px,1fr) 90px 92px; padding:10px; gap:6px; } }
 @media(max-width:680px) { .nomina-turnos-consolidated-head { display:none; } .nomina-turnos-person-row { grid-template-columns:1fr auto; gap:8px; padding:12px; } .nomina-turnos-person-row > span:nth-child(2), .nomina-turnos-person-row > strong:nth-child(3), .nomina-turnos-person-row > span:nth-child(4), .nomina-turnos-person-row > span:nth-child(5), .nomina-turnos-person-row > strong:nth-child(6) { font-size:11px; } .nomina-turnos-actions { grid-column:2; grid-row:1 / span 2; } .nomina-turnos-history-head { display:none; } .nomina-turnos-history-row { grid-template-columns:1fr 1fr; gap:7px; } .nomina-turnos-history-row > span { white-space:normal; overflow:visible; } .nomina-turnos-history-row > span:nth-child(4), .nomina-turnos-history-row > span:nth-child(8) { grid-column:1 / -1; } }
 .np-export-menu-panel {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 20;
+  position: fixed;
+  z-index: 2000;
   min-width: 170px;
   display: grid;
   gap: 4px;

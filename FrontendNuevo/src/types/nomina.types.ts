@@ -291,6 +291,8 @@ export interface NominaMovimientosQuery {
 
 export interface NominaMovimientoApi {
   externo_id: string | null;
+  externo_nombre: string | null;
+  externo_numero_documento: string | null;
   activo: boolean;
   afecta_seguridad_social: boolean;
   alertas_validacion: Array<{

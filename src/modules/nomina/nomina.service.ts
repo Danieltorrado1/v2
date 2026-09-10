@@ -451,6 +451,9 @@ interface NominaMovimientoRealRow extends QueryResultRow {
   created_at: Date | string;
   descripcion: string | null;
   documento_persona_id: string | null;
+  externo_id: string | null;
+  externo_nombre: string | null;
+  externo_numero_documento: string | null;
   es_deduccion: boolean | null;
   es_devengado: boolean | null;
   estado: string | null;
@@ -1036,6 +1039,9 @@ export interface NominaMovimiento {
   created_at: string;
   descripcion: string | null;
   documento_persona_id: string | null;
+  externo_id: string | null;
+  externo_nombre: string | null;
+  externo_numero_documento: string | null;
   es_deduccion: boolean;
   es_devengado: boolean;
   estado: NominaMovimientoEstado;
@@ -2394,6 +2400,7 @@ const getNominaMovimientosRealSelect = (): string => {
       COALESCE(nm.afecta_seguridad_social, TRUE) AS afecta_seguridad_social,
       COALESCE(nm.activo, TRUE) AS activo,
       nm.documento_persona_id::text AS documento_persona_id,
+      nm.externo_id::text AS externo_id,
       nm.persona_reemplazada_id::text AS persona_reemplazada_id,
       nm.vinculacion_reemplazada_id::text AS vinculacion_reemplazada_id,
       nm.municipio_id::text AS municipio_id,
@@ -2432,11 +2439,14 @@ const getNominaMovimientosRealSelect = (): string => {
       pr.segundo_nombre AS persona_reemplazada_segundo_nombre,
       pr.primer_apellido AS persona_reemplazada_primer_apellido,
       pr.segundo_apellido AS persona_reemplazada_segundo_apellido
+      ,ce.nombre_completo AS externo_nombre
+      ,ce.numero_documento AS externo_numero_documento
     FROM nomina_movimientos nm
     INNER JOIN nomina_periodos np ON np.id = nm.periodo_id
     INNER JOIN vinculaciones v ON v.id = nm.vinculacion_id
     INNER JOIN personas p ON p.id = v.persona_id
     LEFT JOIN personas pr ON pr.id = nm.persona_reemplazada_id
+    LEFT JOIN cobertura_externos ce ON ce.id = nm.externo_id
   `;
 };
 
@@ -3020,6 +3030,9 @@ const mapRealMovimiento = (row: NominaMovimientoRealRow): NominaMovimiento => {
     afecta_seguridad_social: toBooleanValue(row.afecta_seguridad_social),
     activo: toBooleanValue(row.activo),
     documento_persona_id: row.documento_persona_id,
+    externo_id: row.externo_id,
+    externo_nombre: row.externo_nombre,
+    externo_numero_documento: row.externo_numero_documento,
     motivo_ajuste_valor: row.motivo_ajuste_valor,
     motivo_estado: row.motivo_estado,
     posible_duplicado: toBooleanValue(row.posible_duplicado),
@@ -9150,26 +9163,43 @@ export const exportNominaTurnos = async (
     : [];
   const allMovements = [firstPage, ...pages].flatMap((page) => page.items);
   const search = query.busqueda?.toLocaleLowerCase('es-CO') ?? '';
+  const movementPeople = (item: NominaMovimiento) => {
+    const performer = item.tipo_movimiento === 'TURNO_EXTERNO'
+      ? { document: item.externo_numero_documento, name: item.externo_nombre, type: 'EXTERNO' }
+      : { document: item.persona.numero_documento, name: item.persona.nombre_completo, type: 'INTERNO' };
+    const replaced = item.persona_reemplazada
+      ? { document: item.persona_reemplazada.numero_documento, name: item.persona_reemplazada.nombre_completo }
+      : { document: null, name: null };
+    return { performer, replaced };
+  };
   const rows = allMovements
     .filter((item) => query.tipo === 'TODOS' || item.tipo_movimiento === `TURNO_${query.tipo}`)
     .filter((item) => !query.municipio || item.contexto_operativo?.municipio === query.municipio)
-    .filter((item) => !search || [item.persona.nombre_completo, item.persona.numero_documento, item.tipo_movimiento, item.contexto_operativo?.municipio, item.contexto_operativo?.modalidad, item.descripcion].filter(Boolean).join(' ').toLocaleLowerCase('es-CO').includes(search))
+    .filter((item) => {
+      const people = movementPeople(item);
+      return !search || [people.performer.name, people.performer.document, people.replaced.name, people.replaced.document, item.tipo_movimiento, item.contexto_operativo?.municipio, item.contexto_operativo?.modalidad, item.descripcion].filter(Boolean).join(' ').toLocaleLowerCase('es-CO').includes(search);
+    })
     .sort((left, right) => (left.fecha ?? '').localeCompare(right.fecha ?? '') || left.persona.nombre_completo.localeCompare(right.persona.nombre_completo, 'es-CO') || left.tipo_movimiento.localeCompare(right.tipo_movimiento));
   if (rows.length === 0) {
     const label = query.tipo === 'INTERNO' ? 'internos' : query.tipo === 'EXTERNO' ? 'externos' : '';
     throw new AppError(`No hay turnos ${label} para exportar en este periodo.`.replace('turnos  ', 'turnos '), 404, 'NOMINA_TURNOS_EXPORT_EMPTY');
   }
-  const headers = ['CÉDULA', 'NOMBRE COMPLETO', 'FECHA', 'TIPO DE TURNO', 'MODALIDAD', 'CANTIDAD', 'VALOR UNITARIO', 'VALOR TOTAL', 'MUNICIPIO', 'OBSERVACIÓN'];
+  const headers = ['FECHA', 'TIPO DE TURNO', 'MUNICIPIO', 'INSTITUCIÓN', 'SEDE', 'MODALIDAD', 'CÉDULA REEMPLAZADO', 'NOMBRE REEMPLAZADO', 'CÉDULA REEMPLAZANTE', 'NOMBRE REEMPLAZANTE', 'TIPO REEMPLAZANTE', 'CANTIDAD', 'VALOR UNITARIO', 'VALOR TOTAL', 'OBSERVACIÓN'];
   const rowsForExport = rows.map((item) => ({
-    'CÉDULA': item.persona.numero_documento,
-    'NOMBRE COMPLETO': item.persona.nombre_completo,
     'FECHA': item.fecha,
     'TIPO DE TURNO': item.tipo_movimiento === 'TURNO_INTERNO' ? 'INTERNO' : 'EXTERNO',
+    'MUNICIPIO': item.contexto_operativo?.municipio ?? '',
+    'INSTITUCIÓN': item.contexto_operativo?.institucion ?? '',
+    'SEDE': item.contexto_operativo?.sede ?? '',
     'MODALIDAD': item.contexto_operativo?.modalidad ?? '',
+    'CÉDULA REEMPLAZADO': movementPeople(item).replaced.document,
+    'NOMBRE REEMPLAZADO': movementPeople(item).replaced.name,
+    'CÉDULA REEMPLAZANTE': movementPeople(item).performer.document,
+    'NOMBRE REEMPLAZANTE': movementPeople(item).performer.name,
+    'TIPO REEMPLAZANTE': movementPeople(item).performer.type,
     'CANTIDAD': item.cantidad,
     'VALOR UNITARIO': item.valor_unitario,
     'VALOR TOTAL': item.valor_total,
-    'MUNICIPIO': item.contexto_operativo?.municipio ?? '',
     'OBSERVACIÓN': item.descripcion ?? '',
   }));
   const file = buildPayrollXlsx([{ name: 'TURNOS', headers, rows: rowsForExport, currencyHeaders: ['VALOR UNITARIO', 'VALOR TOTAL'] }]);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -469,6 +470,9 @@ export default function TurnosPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportButtonRef = useRef<HTMLButtonElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [exportMenuPosition, setExportMenuPosition] = useState({ top: 0, left: 0 });
   const [form, setForm] = useState<TurnoFormState>(emptyForm());
   const [externalSummaryState, setExternalSummaryState] = useState<ExternalSummaryState>({
     ...EMPTY_ASYNC_STATE,
@@ -518,6 +522,50 @@ export default function TurnosPage() {
   const backendActiveFilter =
     activeFilter === "" ? undefined : activeFilter === "true" ? true : false;
   const canMutatePeriod = isEditablePeriodState(selectedPeriod?.estado);
+
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+
+    const repositionExportMenu = () => {
+      const button = exportButtonRef.current;
+      const menu = exportMenuRef.current;
+      if (!button || !menu) return;
+
+      const buttonRect = button.getBoundingClientRect();
+      const menuRect = menu.getBoundingClientRect();
+      const gap = 6;
+      const margin = 8;
+      const top = buttonRect.bottom + gap + menuRect.height <= window.innerHeight - margin
+        ? buttonRect.bottom + gap
+        : Math.max(margin, buttonRect.top - gap - menuRect.height);
+      const left = buttonRect.right - menuRect.width >= margin
+        ? buttonRect.right - menuRect.width
+        : Math.min(buttonRect.left, window.innerWidth - menuRect.width - margin);
+
+      setExportMenuPosition({ top, left: Math.max(margin, left) });
+    };
+
+    repositionExportMenu();
+    window.addEventListener("resize", repositionExportMenu);
+    window.addEventListener("scroll", repositionExportMenu, true);
+    const closeOnOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!exportButtonRef.current?.contains(target) && !exportMenuRef.current?.contains(target)) {
+        setExportMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExportMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("resize", repositionExportMenu);
+      window.removeEventListener("scroll", repositionExportMenu, true);
+      document.removeEventListener("mousedown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [exportMenuOpen]);
 
   const periodOptions = useMemo<FilterOption[]>(
     () =>
@@ -1470,6 +1518,7 @@ export default function TurnosPage() {
           <button
             type="button"
             className="np-btn"
+            ref={exportButtonRef}
             onClick={() => setExportMenuOpen((open) => !open)}
             disabled={!canExport}
             title={
@@ -1480,9 +1529,31 @@ export default function TurnosPage() {
           >
             <Download size={16} /> {isExporting ? "Generando archivo..." : "Exportar"}
           </button>
-          {exportMenuOpen ? <div className="np-export-menu-panel" role="menu"><strong>Tipo de turno</strong>{(['TODOS', 'INTERNO', 'EXTERNO'] as const).map((type) => <button key={type} type="button" role="menuitem" disabled={isExporting} onClick={() => { setExportMenuOpen(false); void handleExport(type); }}>{type === 'INTERNO' ? 'INTERNOS' : type === 'EXTERNO' ? 'EXTERNOS' : 'TODOS'}</button>)}</div> : null}
         </div>
       </header>
+
+      {exportMenuOpen ? createPortal(
+        <div
+          ref={exportMenuRef}
+          className="np-export-menu-panel"
+          role="menu"
+          style={{ top: exportMenuPosition.top, left: exportMenuPosition.left }}
+        >
+          <strong>Tipo de turno</strong>
+          {(['TODOS', 'INTERNO', 'EXTERNO'] as const).map((type) => (
+            <button
+              key={type}
+              type="button"
+              role="menuitem"
+              disabled={isExporting}
+              onClick={() => { setExportMenuOpen(false); void handleExport(type); }}
+            >
+              {type === 'INTERNO' ? 'INTERNOS' : type === 'EXTERNO' ? 'EXTERNOS' : 'TODOS'}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      ) : null}
 
       {feedback ? (
         <div className={`np-inline-state ${feedback.tone}`} role={feedback.tone === "error" ? "alert" : "status"}>
