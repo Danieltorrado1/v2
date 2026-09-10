@@ -1133,6 +1133,9 @@ export async function importNominaEmpleados(periodId: string, scope?: number | {
   const response = await apiClient.post<ApiResponse<{
     reactivated: number;
     imported: number;
+    nuevos: number;
+    actualizados_contexto: number;
+    sin_cambios: number;
     excluded: number;
     skipped_duplicates: number;
     skipped_requires_review?: number;

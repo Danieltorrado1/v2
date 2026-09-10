@@ -851,7 +851,7 @@ export default function PlanillaOperativaPage() {
     setSuccessMessage("");
     try {
       const result = await importNominaEmpleados(periodId);
-      setSuccessMessage(`Personal cargado correctamente. Cargados: ${result.imported}. Excluidos: ${result.excluded}. Sin cambios: ${result.skipped_duplicates}. Requieren revision: ${(result.requires_review?.length ?? 0) + (result.skipped_requires_review ?? 0)}.`);
+      setSuccessMessage(`Sincronización completada. Nuevos: ${result.nuevos ?? result.imported}. Actualizados: ${result.actualizados_contexto ?? 0}. Excluidos: ${result.excluded}. Sin cambios: ${result.sin_cambios ?? result.skipped_duplicates}. Requieren revisión: ${(result.requires_review?.length ?? 0) + (result.skipped_requires_review ?? 0)}.`);
       setReloadVersion(value => value + 1);
     } catch (value) {
       setError(value instanceof Error ? value.message : "No fue posible cargar el personal");

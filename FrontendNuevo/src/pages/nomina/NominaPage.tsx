@@ -1982,7 +1982,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
       await Promise.all([loadPeriods(periodId), refreshSelectedPeriodData(periodId)]);
       onPopulationChanged?.(periodId);
       const review = result.requires_review ?? [];
-      setActionFeedback({ tone: "success", message: `Personal actualizado. Nuevos: ${result.imported}. Reactivados: ${result.reactivated ?? 0}. Retirados/excluidos: ${result.excluded}. Sin cambios: ${result.skipped_duplicates}. Requieren revisión: ${review.length + (result.skipped_requires_review ?? 0)}.${review.length ? ` Historial preservado en registros: ${review.join(", ")}.` : ""}` });
+      setActionFeedback({ tone: "success", message: `Personal actualizado. Nuevos: ${result.nuevos ?? result.imported}. Contexto actualizado: ${result.actualizados_contexto ?? 0}. Reactivados: ${result.reactivated ?? 0}. Retirados/excluidos: ${result.excluded}. Sin cambios: ${result.sin_cambios ?? result.skipped_duplicates}. Requieren revisión: ${review.length + (result.skipped_requires_review ?? 0)}.${review.length ? ` Historial preservado en registros: ${review.join(", ")}.` : ""}` });
     } catch (error) {
       setActionFeedback({ tone: "error", message: toMessage(error) });
     } finally {

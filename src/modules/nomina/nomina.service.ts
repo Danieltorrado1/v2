@@ -1239,6 +1239,9 @@ export interface NominaImportEmployeesResult {
   excluded: number;
   requires_review: string[];
   imported: number;
+  nuevos: number;
+  actualizados_contexto: number;
+  sin_cambios: number;
   periodo: NominaPeriodo;
   skipped_duplicates: number;
   skipped_requires_review?: number;
@@ -7274,6 +7277,7 @@ export const importNominaEmpleados = async (
 
     const existingByVinculacionId = new Map(existingResult.rows.map(row => [row.vinculacion_id, row]));
     const existingVinculacionIds = new Set(existingByVinculacionId.keys());
+    const preexistingVinculacionIds = new Set(existingVinculacionIds);
 
     let reactivated = 0;
     let imported = 0;
@@ -7405,6 +7409,88 @@ export const importNominaEmpleados = async (
       imported += 1;
     }
 
+    // Legacy repair: nomina_empleados intentionally has no descriptive context
+    // columns.  Keep its economic snapshot untouched and repair only the
+    // operational snapshot used by change derivation, when the source
+    // assignment overlaps this payroll period.
+    let actualizadosContexto = 0;
+    const snapshotTableResult = await client.query<{ exists: boolean }>(
+      `SELECT to_regclass('public.nomina_contextos_operativos_base') IS NOT NULL AS exists`
+    );
+    if (snapshotTableResult.rows[0]?.exists) {
+      const snapshotParams: unknown[] = [
+        periodoId,
+        periodoFechaInicio,
+        periodoFechaFin,
+        actorUserId
+      ];
+      const snapshotScopeCondition = personaId
+        ? (snapshotParams.push(personaId), `AND v.persona_id = $${snapshotParams.length}::bigint`)
+        : vinculacionId
+          ? (snapshotParams.push(vinculacionId), `AND v.id = $${snapshotParams.length}::bigint`)
+          : '';
+      const snapshotResult = await client.query<{ vinculacion_id: string }>(
+        `
+          WITH source_context AS (
+            SELECT
+              ne.id AS nomina_empleado_id,
+              ne.vinculacion_id,
+              jsonb_strip_nulls(jsonb_build_object(
+                'municipio_id', COALESCE(ff.municipio_id, ca.municipio_id)::text,
+                'municipio', COALESCE(ff.municipio_texto, mu.nombre_municipio),
+                'institucion_id', ff.institucion_id::text,
+                'institucion', COALESCE(ff.institucion_final, ca.institucion),
+                'sede_id', ff.sede_id::text,
+                'sede', COALESCE(ff.sede_final, ca.sede),
+                'modalidad_id', ff.modalidad_id::text,
+                'modalidad', ff.modalidad_final,
+                'cargo_operativo_id', v.cargo_operativo_id::text,
+                'cobertura_asignacion_id', ca.id::text
+              )) AS contexto
+            FROM nomina_empleados ne
+            INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
+            INNER JOIN nomina_periodos np ON np.id = ne.periodo_id
+            INNER JOIN LATERAL (
+              SELECT ca1.*
+              FROM cobertura_asignaciones ca1
+              WHERE ca1.vinculacion_id = v.id
+                AND ca1.fecha_inicio <= np.fecha_fin
+                AND (ca1.fecha_fin IS NULL OR ca1.fecha_fin >= np.fecha_inicio)
+              ORDER BY ca1.fecha_inicio DESC, ca1.id DESC
+              LIMIT 1
+            ) ca ON TRUE
+            LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+            LEFT JOIN municipios mu ON mu.id = COALESCE(ff.municipio_id, ca.municipio_id)
+            WHERE ne.periodo_id = $1::bigint
+              AND v.contrato_id = np.contrato_id
+              AND COALESCE(ne.activo, TRUE)
+              ${snapshotScopeCondition}
+          ), repaired AS (
+            INSERT INTO nomina_contextos_operativos_base (
+              periodo_id, nomina_empleado_id, vinculacion_id, contexto, fuente, created_by
+            )
+            SELECT $1::bigint, nomina_empleado_id, vinculacion_id, contexto,
+              'SINCRONIZACION_PERSONAL', $4::bigint
+            FROM source_context
+            ON CONFLICT (periodo_id, nomina_empleado_id) DO UPDATE
+              SET vinculacion_id = EXCLUDED.vinculacion_id,
+                  contexto = EXCLUDED.contexto,
+                  fuente = EXCLUDED.fuente,
+                  created_by = EXCLUDED.created_by
+              WHERE nomina_contextos_operativos_base.contexto IS DISTINCT FROM EXCLUDED.contexto
+            RETURNING vinculacion_id::text
+          )
+          SELECT vinculacion_id FROM repaired
+        `,
+        snapshotParams
+      );
+      actualizadosContexto = snapshotResult.rows.filter(row =>
+        preexistingVinculacionIds.has(row.vinculacion_id)
+      ).length;
+    }
+
+    const sinCambios = Math.max(0, skippedDuplicates - actualizadosContexto);
+
     const updatedPeriodo = mapRealPeriodo(await loadRealPeriodoOrThrow(periodoId, tenant, client));
 
     await recordNominaAudit(
@@ -7419,6 +7505,9 @@ export const importNominaEmpleados = async (
           requires_review: requiresReview,
           excluded_employee_ids: excludedResult.rows.map(row => row.id),
           imported,
+          nuevos: imported,
+          actualizados_contexto: actualizadosContexto,
+          sin_cambios: sinCambios,
           skipped_duplicates: skippedDuplicates,
           skipped_requires_review: skippedRequiresReview
         }
@@ -7433,6 +7522,9 @@ export const importNominaEmpleados = async (
       excluded,
       requires_review: requiresReview,
       imported,
+      nuevos: imported,
+      actualizados_contexto: actualizadosContexto,
+      sin_cambios: sinCambios,
       skipped_duplicates: skippedDuplicates,
       skipped_requires_review: skippedRequiresReview,
       periodo: updatedPeriodo
