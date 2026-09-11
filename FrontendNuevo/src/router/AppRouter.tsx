@@ -34,6 +34,12 @@ import { CompaniesPage } from '../pages/workspace/CompaniesPage';
 import { ModuleCatalogPage } from '../pages/workspace/ModuleCatalogPage';
 import { ProductConfigurationPage } from '../pages/workspace/ProductConfigurationPage';
 import { PlanesModulosTab } from '../pages/admin/ConfiguracionGeneral/tabs/PlanesModulosTab';
+import { LogisticaShellPage } from '../pages/operacion/OperacionPages';
+import OperacionInstitucionesFinalPage from '../pages/operacion/OperacionInstitucionesFinalPage';
+import LogisticaManagementPage from '../pages/logistica/LogisticaManagementPage';
+import OperacionStatsPage from '../pages/operacion/OperacionStatsPage';
+import OperacionSimatFinalPage from '../pages/operacion/OperacionSimatFinalPage';
+import LogisticaRemisionesFinalPage from '../pages/logistica/LogisticaRemisionesFinalPage';
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -59,6 +65,14 @@ export default function AppRouter() {
             <Route path="configuracion/nomina" element={<Navigate to="/configuracion/nomina/asignaciones" replace />} />
             <Route path="operacion" element={<TenantHome moduleCode="OPERACION" />} />
             <Route path="logistica" element={<TenantHome moduleCode="LOGISTICA" />} />
+            <Route path="operacion/instituciones" element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.read", "vinculaciones.read"]}><OperacionInstitucionesFinalPage /></ModuleRoute>} />
+            <Route path="operacion/simat" element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.read"]}><OperacionSimatFinalPage /></ModuleRoute>} />
+            <Route path="operacion/estadisticas" element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.read"]}><OperacionStatsPage /></ModuleRoute>} />
+            {['reporte-diario','descuentos-semanales','planilla-final','evaluacion'].map(path => <Route key={path} path={`operacion/${path}`} element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.read"]}><LogisticaShellPage /></ModuleRoute>} />)}
+            <Route path="logistica/remisiones" element={<ModuleRoute code="LOGISTICA" requiredPermissions={["logistica.read"]}><LogisticaRemisionesFinalPage /></ModuleRoute>} />
+            <Route path="logistica/estadisticas" element={<ModuleRoute code="LOGISTICA" requiredPermissions={["logistica.read"]}><LogisticaManagementPage /></ModuleRoute>} />
+            <Route path="logistica/historial" element={<ModuleRoute code="LOGISTICA" requiredPermissions={["logistica.read"]}><LogisticaRemisionesFinalPage /></ModuleRoute>} />
+            {['historial-remisiones','inventario','bodegas','rutas','conductores','conductores-vehiculos'].map(path => <Route key={`log-${path}`} path={`logistica/${path}`} element={<ModuleRoute code="LOGISTICA" requiredPermissions={["logistica.read"]}><LogisticaManagementPage /></ModuleRoute>} />)}
             <Route path="configuracion" element={<TenantHome moduleCode="CONFIGURACION_EMPRESA" />} />
             <Route path="dashboard" element={<ModuleRoute code="DASHBOARD" requiredPermissions={["dashboard.read"]}><DashboardPage /></ModuleRoute>} />
             <Route path="personal" element={<ModuleRoute code="PERSONAL" requiredPermissions={["vinculaciones.read"]}><OperationalPersonalPage /></ModuleRoute>} />
