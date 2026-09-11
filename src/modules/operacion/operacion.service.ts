@@ -22,23 +22,64 @@ function tenantContractWhere(tenant: TenantAccessContext, alias = 'c', start = 1
 }
 
 export async function listInstitutions(tenant: TenantAccessContext, query: Record<string, unknown>) {
-  const page = Number(query.page ?? 1), limit = Number(query.limit ?? 50), offset = (page - 1) * limit;
-  const scope = tenantContractWhere(tenant);
-  const params: unknown[] = [...scope.params]; const where = [scope.sql];
-  const add = (sql: string, value: unknown) => { params.push(value); where.push(sql.replace(/\$X/g, `$${params.length}`)); };
-  const search = String(query.search ?? '').trim(); if (search) add(`(i.nombre_institucion ILIKE '%' || $X || '%' OR i.codigo_dane ILIKE '%' || $X || '%' OR EXISTS (SELECT 1 FROM sedes sx WHERE sx.institucion_id=i.id AND (sx.nombre_sede ILIKE '%' || $X || '%' OR sx.codigo_dane ILIKE '%' || $X || '%')))`, search);
-  if (query.municipio_id) add('i.municipio_id = $X::bigint', query.municipio_id);
-  if (query.zona) add(`EXISTS (SELECT 1 FROM sedes sz WHERE sz.institucion_id=i.id AND sz.zona_sede ILIKE $X)`, query.zona);
-  if (query.estado) add('COALESCE(i.activo,TRUE) = ($X = \'ACTIVO\')', query.estado);
-  if (query.etc) add('FALSE', null); // ETC belongs to source SIMAT rows, not the institutional catalog.
-  if (query.contrato_id) add('i.contrato_id = $X::bigint', query.contrato_id);
-  const joins = `JOIN contratos c ON c.id=i.contrato_id LEFT JOIN municipios m ON m.id=i.municipio_id LEFT JOIN sedes s ON s.institucion_id=i.id LEFT JOIN LATERAL (SELECT COALESCE(SUM(x.matricula),0)::int matricula, COALESCE(SUM(x.focalizados),0)::int focalizados FROM (SELECT sx.id, COUNT(r.id) matricula, COUNT(r.id) FILTER (WHERE NULLIF(r.focalizacion,'') IS NOT NULL) focalizados FROM sedes sx LEFT JOIN operacion_simat_registros r ON r.sede_id=sx.id AND r.empresa_id=c.empresa_id WHERE sx.institucion_id=i.id GROUP BY sx.id) x) a ON TRUE`;
-  const base = `FROM instituciones i ${joins} WHERE ${where.join(' AND ')}`;
-  const result = await dbQuery(`SELECT i.id::text, i.municipio_id::text, m.nombre_municipio municipio, i.nombre_institucion institucion, i.codigo_dane dane, COUNT(DISTINCT s.id)::int sedes, COALESCE(a.matricula,0)::int matricula, COALESCE(a.focalizados,0)::int focalizados, BOOL_AND(COALESCE(s.zona_sede,'') ILIKE 'RURAL') FILTER (WHERE s.id IS NOT NULL) rural, BOOL_AND(COALESCE(i.activo,TRUE)) estado ${base} GROUP BY i.id,m.nombre_municipio,a.matricula,a.focalizados ORDER BY i.nombre_institucion LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, [...params, limit, offset]);
-  const count = await dbQuery<{ total: string }>(`SELECT COUNT(*)::text total ${base}`, params);
-  return { items: result.rows, page, limit, total: Number(count.rows[0]?.total ?? 0) };
-}
+  const page = Math.max(1, Number(query.page ?? 1));
+  const pageSize = Math.min(200, Math.max(1, Number(query.page_size ?? query.limit ?? 50)));
+  const requestedContract = query.contrato_id ? Number(query.contrato_id) : null;
+  const allowedContracts = tenant.isGlobalAdmin ? null : tenant.contratoIds;
 
+  if (allowedContracts && allowedContracts.length === 0) {
+    return { items: [], page, page_size: pageSize, limit: pageSize, total: 0, total_pages: 0, summary: { instituciones: 0, sedes: 0, cupos: 0 }, options: { municipios: [], instituciones: [], sedes: [], modalidades: [] } };
+  }
+  if (requestedContract && allowedContracts && !allowedContracts.includes(requestedContract)) {
+    throw new AppError('Contrato fuera del alcance autorizado.', 403, 'CONTRATO_FUERA_DE_TENANT');
+  }
+
+  const params: unknown[] = [];
+  const where: string[] = ['COALESCE(i.activo, TRUE) = TRUE', 'COALESCE(s.activo, TRUE) = TRUE', `(ff.id IS NULL OR (COALESCE(ff.activo, TRUE) = TRUE AND COALESCE(ff.estado_validacion, 'APROBADO') = 'APROBADO'))`];
+  const add = (sql: string, value: unknown) => { params.push(value); where.push(sql.replace(/\$X/g, `$${params.length}`)); };
+  if (requestedContract) add('c.id = $X::bigint', requestedContract);
+  else if (allowedContracts) add('c.id = ANY($X::bigint[])', allowedContracts);
+
+  const search = String(query.q ?? query.search ?? '').trim();
+  if (search) add(`(i.nombre_institucion ILIKE '%' || $X || '%' OR COALESCE(i.codigo_dane, '') ILIKE '%' || $X || '%' OR s.nombre_sede ILIKE '%' || $X || '%' OR COALESCE(s.codigo_dane, '') ILIKE '%' || $X || '%' OR COALESCE(m.nombre_municipio, '') ILIKE '%' || $X || '%' OR COALESCE(ff.modalidad_final, '') ILIKE '%' || $X || '%')`, search);
+  if (query.municipio_id) add('COALESCE(ff.municipio_id, s.municipio_id, i.municipio_id) = $X::bigint', query.municipio_id);
+  if (query.institucion_id) add('i.id = $X::bigint', query.institucion_id);
+  if (query.sede_id) add('s.id = $X::bigint', query.sede_id);
+  if (query.modalidad_id) add('ff.modalidad_id = $X::bigint', query.modalidad_id);
+
+  const from = `FROM instituciones i JOIN contratos c ON c.id=i.contrato_id LEFT JOIN sedes s ON s.institucion_id=i.id LEFT JOIN focalizacion_final ff ON ff.contrato_id=c.id AND ff.institucion_id=i.id AND ff.sede_id=s.id LEFT JOIN municipios m ON m.id=COALESCE(ff.municipio_id,s.municipio_id,i.municipio_id)`;
+  const whereSql = where.join(' AND ');
+  const rowSql = `SELECT i.id::text id, i.id::text institucion_id, i.nombre_institucion institucion, i.codigo_dane dane, s.id::text sede_id, s.nombre_sede sede, s.codigo_dane codigo_dane_sede, COALESCE(ff.municipio_id,s.municipio_id,i.municipio_id)::text municipio_id, COALESCE(ff.municipio_texto,m.nombre_municipio) municipio, ff.modalidad_id::text modalidad_id, ff.modalidad_final modalidad, ff.cupos_aprobados::int cupos, COALESCE(s.zona_sede, zone.zona) zona, jornada.jornada, COALESCE(ff.activo,s.activo,i.activo,TRUE) estado ${from} LEFT JOIN LATERAL (SELECT MAX(NULLIF(r.jornada,'')) jornada FROM operacion_simat_registros r WHERE r.contrato_id=c.id AND r.sede_id=s.id) jornada ON TRUE LEFT JOIN LATERAL (SELECT MAX(NULLIF(r.zona_sede,'')) zona FROM operacion_simat_registros r WHERE r.contrato_id=c.id AND r.sede_id=s.id) zone ON TRUE WHERE ${whereSql} ORDER BY i.nombre_institucion,s.nombre_sede,ff.modalidad_final`;
+  const countSql = `SELECT COUNT(*)::int total, COUNT(DISTINCT i.id)::int instituciones, COUNT(DISTINCT s.id)::int sedes, COALESCE(SUM(ff.cupos_aprobados),0)::int cupos ${from} LEFT JOIN LATERAL (SELECT 1) noop ON TRUE WHERE ${whereSql}`;
+  const [itemsResult, summaryResult] = await Promise.all([
+    dbQuery(`${rowSql} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, [...params, pageSize, (page - 1) * pageSize]),
+    dbQuery<{ total: number; instituciones: number; sedes: number; cupos: number }>(countSql, params)
+  ]);
+
+  const optionParams: unknown[] = [];
+  const optionWhere = ['COALESCE(i.activo, TRUE) = TRUE', 'COALESCE(s.activo, TRUE) = TRUE'];
+  const optionAdd = (sql: string, value: unknown) => { optionParams.push(value); optionWhere.push(sql.replace(/\$X/g, `$${optionParams.length}`)); };
+  if (requestedContract) optionAdd('c.id = $X::bigint', requestedContract);
+  else if (allowedContracts) optionAdd('c.id = ANY($X::bigint[])', allowedContracts);
+  const optionScope = optionWhere.join(' AND ');
+  const [municipios, instituciones, sedes, modalidades] = await Promise.all([
+    dbQuery(`SELECT DISTINCT COALESCE(i.municipio_id,s.municipio_id)::text id, m.nombre_municipio nombre FROM instituciones i JOIN contratos c ON c.id=i.contrato_id LEFT JOIN sedes s ON s.institucion_id=i.id LEFT JOIN municipios m ON m.id=COALESCE(i.municipio_id,s.municipio_id) WHERE ${optionScope} AND COALESCE(i.municipio_id,s.municipio_id) IS NOT NULL ORDER BY nombre`, optionParams),
+    dbQuery(`SELECT DISTINCT i.id::text id,i.nombre_institucion nombre,i.municipio_id::text municipio_id FROM instituciones i JOIN contratos c ON c.id=i.contrato_id WHERE ${optionScope.replace('COALESCE(s.activo, TRUE) = TRUE', 'TRUE')} ORDER BY nombre`, optionParams),
+    dbQuery(`SELECT DISTINCT s.id::text id,s.nombre_sede nombre,s.institucion_id::text institucion_id,s.municipio_id::text municipio_id FROM sedes s JOIN instituciones i ON i.id=s.institucion_id JOIN contratos c ON c.id=i.contrato_id WHERE ${optionScope} ORDER BY nombre`, optionParams),
+    dbQuery(`SELECT DISTINCT ff.modalidad_id::text id,ff.modalidad_final nombre FROM focalizacion_final ff JOIN contratos c ON c.id=ff.contrato_id WHERE ${requestedContract ? 'c.id = $1::bigint' : allowedContracts ? 'c.id = ANY($1::bigint[])' : 'TRUE'} AND COALESCE(ff.activo, TRUE) = TRUE AND COALESCE(ff.estado_validacion, 'APROBADO') = 'APROBADO' AND ff.modalidad_id IS NOT NULL ORDER BY nombre`, requestedContract ? [requestedContract] : allowedContracts ? [allowedContracts] : [])
+  ]);
+  const summary = summaryResult.rows[0] ?? { total: 0, instituciones: 0, sedes: 0, cupos: 0 };
+  return {
+    items: itemsResult.rows,
+    page,
+    page_size: pageSize,
+    limit: pageSize,
+    total: Number(summary.total),
+    total_pages: Math.ceil(Number(summary.total) / pageSize),
+    summary: { instituciones: Number(summary.instituciones), sedes: Number(summary.sedes), cupos: Number(summary.cupos) },
+    options: { municipios: municipios.rows, instituciones: instituciones.rows, sedes: sedes.rows, modalidades: modalidades.rows }
+  };
+}
 export async function getInstitution(id: number, tenant: TenantAccessContext) {
   const scope = tenantContractWhere(tenant, 'c', 2);
   const result = await dbQuery(`SELECT i.id::text, i.contrato_id::text, i.municipio_id::text, m.nombre_municipio municipio, i.nombre_institucion institucion, i.codigo_dane dane, i.activo, c.empresa_id::text FROM instituciones i JOIN contratos c ON c.id=i.contrato_id LEFT JOIN municipios m ON m.id=i.municipio_id WHERE i.id=$1::bigint AND ${scope.sql}`, [id, ...scope.params]);

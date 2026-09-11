@@ -1,9 +1,10 @@
 import { apiClient } from './apiClient';
 import type { ApiResponse } from '../types/api.types';
 import { env } from '../config/env'; import { getAuthToken } from './tokenStorage';
-export type Institution = { id: string; municipio: string | null; institucion: string; dane: string | null; sedes: number; matricula: number; focalizados: number; estado: boolean };
+export type Institution = { id: string; institucion_id: string; institucion: string; dane: string | null; sede_id: string | null; sede: string | null; codigo_dane_sede: string | null; municipio_id: string | null; municipio: string | null; modalidad_id: string | null; modalidad: string | null; cupos: number | null; jornada: string | null; zona: string | null; estado: boolean; sedes?: number; matricula?: number; focalizados?: number };
+export type InstitutionOption = { id: string; nombre: string; municipio_id?: string | null; institucion_id?: string | null };
+export type InstitutionResult = { items: Institution[]; total: number; page: number; page_size: number; total_pages: number; summary: { instituciones: number; sedes: number; cupos: number }; options: { municipios: InstitutionOption[]; instituciones: InstitutionOption[]; sedes: InstitutionOption[]; modalidades: InstitutionOption[] } };
 export type SimatResult = { items: Record<string, unknown>[]; total: number; page: number; limit: number };
-export type InstitutionResult = { items: Institution[]; total: number; page: number; limit: number };
 export const operacionApi = {
   institutions: (params: Record<string, string | number | undefined>) => apiClient.get<ApiResponse<InstitutionResult>>('/operacion/instituciones', { params }),
   institution: (id: string) => apiClient.get<ApiResponse<Institution & { sedes?: Array<{ id:string; nombre:string; codigo_dane_sede:string|null; consecutivo:string|null; zona_sede:string|null; activo:boolean }> }>>(`/operacion/instituciones/${id}`),
