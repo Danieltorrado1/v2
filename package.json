@@ -49,6 +49,7 @@
     "db:migrate:organizaciones-contexto-empresarial": "tsx src/scripts/migrate-organizaciones-contexto-empresarial.ts",
     "db:migrate:planes-modulos-saas": "tsx src/scripts/migrate-planes-modulos-saas.ts",
     "db:migrate:configuracion-empresarial": "tsx src/scripts/migrate-configuracion-empresarial.ts",
+    "db:migrate:tenant-operation-logistica": "tsx src/scripts/migrate-tenant-operation-logistica.ts",
     "seed:nomina-movimientos-permisos": "node --experimental-strip-types src/scripts/seed-nomina-movimientos-permisos.ts",
     "test:nomina-population": "tsx --test src/tests/nomina.population-sync.test.ts src/tests/nomina.population.test.ts",
     "test:nomina-correcciones": "npm run build && node dist/scripts/test-nomina-correcciones.js",

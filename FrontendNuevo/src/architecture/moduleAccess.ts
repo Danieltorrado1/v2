@@ -21,6 +21,11 @@ export function featureEnabled(item: ModuleEntry, flags: Record<string, boolean>
     return item.legacyCodes.some(code => flags[code] === true);
   }
   if (item.featureCode in flags) return flags[item.featureCode] === true;
+  // OPERACION and LOGISTICA are licensed as parent SaaS modules; their static
+  // navigation children are not separate plan entitlements in the backend catalog.
+  if (parent && (parent.code === 'OPERACION' || parent.code === 'LOGISTICA')) {
+    return featureEnabled(parent, flags);
+  }
   if (item.legacyCodes.length) return item.legacyCodes.some(code => flags[code] === true);
   // New child codes require explicit enrollment, even when the parent is licensed.
   return false;
