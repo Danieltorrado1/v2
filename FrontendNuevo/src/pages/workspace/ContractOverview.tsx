@@ -1,43 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useCompanyContext } from '../../context/CompanyContext';
 import { configuracionApi } from '../../services/configuracionApi';
-import { getContractPersonalFilterOptions, getPersonalResumen } from '../../services/vinculacionesApi';
-import type { Contrato } from '../../types/configuracion.types';
-import type { ContractPersonalFilterOptions, PersonalResumen } from '../../types/vinculaciones.types';
+import { getTenantContext } from '../../services/tenantApi';
+import { getPersonalResumen } from '../../services/vinculacionesApi';
+import { apiClient } from '../../services/apiClient';
+import type { Contrato, TenantContext } from '../../types/configuracion.types';
 import { WorkspaceHeading } from './StructuralPage';
 
+type Option = { id: number; nombre: string };
+type InstitutionItem = { id: string; institucion: string; sede: string; municipio: string; modalidad: string; cupos: number; jornada: string; zona: string; estado: string };
+type InstitutionResponse = { items: InstitutionItem[]; page: number; page_size: number; total: number; total_pages: number; summary: { instituciones: number; sedes: number; combinaciones: number; cupos: number }; filter_options: { municipios: Option[]; instituciones: Option[]; sedes: Option[]; modalidades: Option[] } };
+
+function InstitutionsView() {
+  const { empresaId } = useCompanyContext(); const [params, setParams] = useSearchParams();
+  const [tenant, setTenant] = useState<TenantContext | null>(null); const [contractId, setContractId] = useState<number | null>(null); const [data, setData] = useState<InstitutionResponse | null>(null); const [error, setError] = useState(''); const [loading, setLoading] = useState(false); const [q, setQ] = useState(params.get('q') ?? '');
+  const page = Math.max(1, Number(params.get('page') ?? 1) || 1); const pageSize = [25, 50, 100].includes(Number(params.get('page_size'))) ? Number(params.get('page_size')) : 50; const municipioId = params.get('municipio_id') ?? ''; const institucionId = params.get('institucion_id') ?? ''; const sedeId = params.get('sede_id') ?? ''; const modalidadId = params.get('modalidad_id') ?? '';
+  const setFilter = (key: string, value: string, resetPage = true) => { const next = new URLSearchParams(params); value ? next.set(key, value) : next.delete(key); if (resetPage) next.set('page', '1'); setParams(next); };
+  useEffect(() => { let live = true; void getTenantContext().then(value => { if (live) { setTenant(value); setContractId(value.contrato_default_id ?? value.contratos[0]?.id ?? null); } }).catch(() => live && setError('No fue posible cargar el contexto del usuario.')); return () => { live = false; }; }, []);
+  const contracts = useMemo(() => (tenant?.contratos ?? []).filter(item => !empresaId || item.empresa_id === empresaId), [tenant, empresaId]);
+  useEffect(() => { if (contractId === null) return; const timer = window.setTimeout(() => { let live = true; setLoading(true); setError(''); const requestParams: Record<string, string | number> = { q, page, page_size: pageSize, contrato_id: contractId }; if (municipioId) requestParams.municipio_id = municipioId; if (institucionId) requestParams.institucion_id = institucionId; if (sedeId) requestParams.sede_id = sedeId; if (modalidadId) requestParams.modalidad_id = modalidadId; void apiClient.get<{ data: InstitutionResponse }>('/operacion/instituciones', { params: requestParams }).then(response => live && setData(response.data)).catch(() => live && setError('No fue posible cargar las instituciones.')).finally(() => live && setLoading(false)); return () => { live = false; }; }, 300); return () => window.clearTimeout(timer); }, [contractId, q, page, pageSize, municipioId, institucionId, sedeId, modalidadId]);
+  const options = data?.filter_options ?? { municipios: [], instituciones: [], sedes: [], modalidades: [] }; const summary = data?.summary;
+  return <section className="workspace-page"><WorkspaceHeading title="Instituciones" description="Catálogo operativo de instituciones, sedes y modalidades." />{contracts.length > 1 && <label className="workspace-compact-contract">Contrato<select aria-label="Contrato activo" value={contractId ?? ''} onChange={e => { setContractId(Number(e.target.value)); setFilter('page', '1', false); }}>{contracts.map(item => <option key={item.id} value={item.id}>{item.numero_contrato ?? item.id}</option>)}</select></label>}<div className="workspace-card institution-toolbar"><input aria-label="Buscar instituciones" placeholder="Buscar por institución, sede, DANE o código DANE..." value={q} onChange={e => { setQ(e.target.value); const next = new URLSearchParams(params); next.set('q', e.target.value); next.set('page', '1'); setParams(next); }} /><div className="institution-filters"><select aria-label="Municipio" value={municipioId} onChange={e => setFilter('municipio_id', e.target.value)}><option value="">Municipio</option>{options.municipios.map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select><select aria-label="Institución" value={institucionId} onChange={e => setFilter('institucion_id', e.target.value)}><option value="">Institución</option>{options.instituciones.map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select><select aria-label="Sede" value={sedeId} onChange={e => setFilter('sede_id', e.target.value)}><option value="">Sede</option>{options.sedes.map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select><select aria-label="Modalidad" value={modalidadId} onChange={e => setFilter('modalidad_id', e.target.value)}><option value="">Modalidad</option>{options.modalidades.map(item => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></div></div><p className="workspace-summary">{summary ? `${summary.instituciones} instituciones · ${summary.sedes} sedes · ${summary.combinaciones} combinaciones · ${summary.cupos.toLocaleString('es-CO')} cupos` : 'Cargando resumen…'}</p>{error && <p role="alert">{error}</p>}<div className="workspace-card workspace-table-wrap"><table className="workspace-table"><thead><tr>{['Institución', 'Sede', 'Municipio', 'Modalidad', 'Cupos', 'Jornada', 'Zona', 'Estado', 'Acciones'].map(label => <th key={label}>{label}</th>)}</tr></thead><tbody>{data?.items.map(item => <tr key={item.id}><td>{item.institucion}</td><td>{item.sede}</td><td>{item.municipio}</td><td>{item.modalidad}</td><td>{item.cupos.toLocaleString('es-CO')}</td><td>{item.jornada}</td><td>{item.zona}</td><td><span className="workspace-badge">{item.estado}</span></td><td>—</td></tr>)}</tbody></table>{!loading && data?.items.length === 0 && <p className="workspace-empty">No hay combinaciones para los filtros seleccionados.</p>}{loading && <p role="status">Cargando…</p>}</div><footer className="institution-pagination"><label>Filas <select value={pageSize} onChange={e => setFilter('page_size', e.target.value)}><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label><span>{data?.total ? `${(page - 1) * pageSize + 1} - ${Math.min(page * pageSize, data.total)} de ${data.total}` : '0 de 0'}</span><button disabled={page <= 1 || loading} onClick={() => setFilter('page', String(page - 1), false)}>Anterior</button><button disabled={!data || page >= data.total_pages || loading} onClick={() => setFilter('page', String(page + 1), false)}>Siguiente</button></footer></section>;
+}
+
 export function ContractOverview({ institutions = false }: { institutions?: boolean }) {
-  const { empresaId } = useCompanyContext();
-  const [contracts, setContracts] = useState<Contrato[]>([]);
-  const [contractId, setContractId] = useState('');
-  const [summary, setSummary] = useState<PersonalResumen | null>(null);
-  const [options, setOptions] = useState<ContractPersonalFilterOptions | null>(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
-  useEffect(() => {
-    let live = true;
-    setContracts([]); setContractId(''); setSummary(null); setOptions(null); setError('');
-    if (empresaId) void configuracionApi.listarContratos({ empresa_id: empresaId, limit: 100, activo: true }).then(data => {
-      if (live) setContracts(data.items.filter(item => item.empresa.id === empresaId));
-    }).catch(() => { if (live) setError('No fue posible consultar los contratos autorizados.'); });
-    return () => { live = false; };
-  }, [empresaId]);
-  useEffect(() => {
-    let live = true;
-    setSummary(null); setOptions(null); setError(''); setLoading(false);
-    if (!contractId || !contracts.some(item => String(item.id) === contractId)) return;
-    setLoading(true);
-    const request = institutions ? getContractPersonalFilterOptions({ contrato_id: Number(contractId) }).then(value => { if (live) setOptions(value); })
-      : getPersonalResumen({ contrato_id: Number(contractId) }).then(value => { if (live) setSummary(value); });
-    void request.catch(() => { if (live) setError('No fue posible cargar la información del contrato.'); }).finally(() => { if (live) setLoading(false); });
-    return () => { live = false; };
-  }, [contractId, contracts, institutions]);
-  const metrics: Array<[string, number | undefined]> = [['Personal activo', summary?.trabajadores_activos], ['Ingresos', summary?.ingresos_mes], ['Retiros', summary?.retiros_mes], ['Contratos por vencer', undefined], ['Documentos pendientes', undefined]];
-  return <section className="workspace-page"><WorkspaceHeading title={institutions ? 'Instituciones' : 'Estadísticas de personal'} description={institutions ? 'Instituciones y sedes del catálogo operativo existente, por contrato.' : 'Resumen del personal del contrato seleccionado.'} />
-    <label>Contrato<select aria-label="Contrato" value={contractId} onChange={event => setContractId(event.target.value)}><option value="">Selecciona un contrato</option>{contracts.map(item => <option key={item.id} value={item.id}>{item.numero_contrato}</option>)}</select></label>
-    {error && <p role="alert">{error}</p>}{loading && <p role="status">Cargando información…</p>}
-    {institutions ? <><div className="workspace-card"><p>Consulta del catálogo compartido. La edición ampliada de dirección, modalidad, cupos y jornada está en configuración.</p></div><label>Buscar institución<input value={search} onChange={e => setSearch(e.target.value)} /></label><div className="workspace-table-wrap"><table className="workspace-table"><thead><tr>{['Institución / centro educativo', 'Sede', 'Municipio', 'Dirección', 'Modalidad', 'Cupos', 'Jornada', 'Estado'].map(label => <th key={label}>{label}</th>)}</tr></thead><tbody>{options?.instituciones.filter(item => item.nombre.toLowerCase().includes(search.toLowerCase())).map(item => <tr key={item.id}><td>{item.nombre}</td><td>{options.sedes.filter(sede => sede.institucion_id === item.id).map(sede => sede.nombre).join(', ') || 'No disponible'}</td><td>{options.municipios.find(m => m.id === item.municipio_id)?.nombre ?? 'No disponible'}</td>{Array.from({ length: 5 }, (_, index) => <td key={index}>No disponible</td>)}</tr>)}</tbody></table>{!options?.instituciones.length && <p className="workspace-empty">{contractId ? 'Sin instituciones disponibles.' : 'Selecciona un contrato para consultar instituciones y sedes.'}</p>}</div></>
-      : <><div className="workspace-metrics">{metrics.map(([label, value]) => <section key={label} className="workspace-card"><span>{label}</span><strong>{value ?? 'No disponible'}</strong></section>)}</div><div className="workspace-grid">{['Distribución por cargo', 'Distribución por municipio', 'Distribución por modalidad'].map(label => <section className="workspace-card" key={label}><h2>{label}</h2><p>No disponible.</p></section>)}</div></>}
-  </section>;
+  const { empresaId } = useCompanyContext(); const [contracts, setContracts] = useState<Contrato[]>([]); const [contractId, setContractId] = useState(''); const [summary, setSummary] = useState<Awaited<ReturnType<typeof getPersonalResumen>> | null>(null); const [error, setError] = useState(''); const [loading, setLoading] = useState(false);
+  useEffect(() => { if (!empresaId || institutions) return; let live = true; void configuracionApi.listarContratos({ empresa_id: empresaId, limit: 100, activo: true }).then(data => live && setContracts(data.items.filter(item => item.empresa.id === empresaId))).catch(() => live && setError('No fue posible consultar los contratos autorizados.')); return () => { live = false; }; }, [empresaId, institutions]);
+  useEffect(() => { if (institutions || !contractId) return; let live = true; setLoading(true); void getPersonalResumen({ contrato_id: Number(contractId) }).then(value => live && setSummary(value)).catch(() => live && setError('No fue posible cargar la información del contrato.')).finally(() => live && setLoading(false)); return () => { live = false; }; }, [contractId, institutions]);
+  if (institutions) return <InstitutionsView />; const metrics: Array<[string, number | undefined]> = [['Personal activo', summary?.trabajadores_activos], ['Ingresos', summary?.ingresos_mes], ['Retiros', summary?.retiros_mes], ['Contratos por vencer', undefined], ['Documentos pendientes', undefined]];
+  return <section className="workspace-page"><WorkspaceHeading title="Estadísticas de personal" description="Resumen del personal del contrato seleccionado." /><label>Contrato<select aria-label="Contrato" value={contractId} onChange={e => setContractId(e.target.value)}><option value="">Selecciona un contrato</option>{contracts.map(item => <option key={item.id} value={item.id}>{item.numero_contrato}</option>)}</select></label>{error && <p role="alert">{error}</p>}{loading && <p role="status">Cargando información…</p>}<div className="workspace-metrics">{metrics.map(([label, value]) => <section key={label} className="workspace-card"><span>{label}</span><strong>{value ?? 'No disponible'}</strong></section>)}</div></section>;
 }

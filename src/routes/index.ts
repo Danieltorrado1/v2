@@ -1,5 +1,4 @@
 import { Router } from 'express';
-
 import { alertasRoutes, notificacionesRoutes } from '../modules/alertas/alertas.routes';
 import { auditoriaRoutes } from '../modules/auditoria/auditoria.routes';
 import { authRouter } from '../modules/auth/auth.routes';
