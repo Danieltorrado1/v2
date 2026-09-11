@@ -67,6 +67,6 @@ export function resolveCatalogLocation(pathname: string, search = ''): { module:
     const module = tenantModules.find(item => item.code === 'PERSONAL')!;
     return { module, entry: { ...module.children[0], permission: ['dashboard.read'], legacyCodes: ['DASHBOARD'] } };
   }
-  const module = tenantModules.find(item => item.route === pathname && !item.children.length);
+  const module = tenantModules.find(item => item.route === pathname);
   return module ? { module, entry: module } : null;
 }

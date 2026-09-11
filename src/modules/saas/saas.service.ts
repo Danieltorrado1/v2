@@ -27,7 +27,8 @@ const number = (value: string | number) => Number(value);
 
 export function resolveModuleFlags(input:{modules:Array<{codigo:string;activo:boolean;plan_habilitado:boolean|null}>;overrides:Array<{codigo:string;habilitado:boolean}>;legacy:boolean;subscriptionState:string|null}){
   const operational=input.legacy||input.subscriptionState==='ACTIVA'||input.subscriptionState==='PRUEBA';
-  const legacyModules = new Set(['DASHBOARD','PERSONAL','DOCUMENTOS','CONTRATOS','NOMINA','COBERTURA','SST','REPOSITORIO','EVALUACION','PORTAL_COLABORADOR','ADMINISTRACION']);
+  // Legacy companies predate the SaaS plan catalogue. Keep historical access and include tenant modules added later.
+  const legacyModules = new Set(['DASHBOARD','PERSONAL','DOCUMENTOS','CONTRATOS','NOMINA','COBERTURA','SST','REPOSITORIO','EVALUACION','PORTAL_COLABORADOR','ADMINISTRACION','OPERACION','LOGISTICA']);
   const flags:Record<string,boolean>={};
   for(const module of input.modules)flags[module.codigo]=module.activo&&((input.legacy&&legacyModules.has(module.codigo))||(operational&&!input.legacy&&module.plan_habilitado===true));
   for(const override of input.overrides)if(operational&&flags[override.codigo]!==undefined)flags[override.codigo]=override.habilitado;

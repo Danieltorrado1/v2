@@ -19,6 +19,15 @@ function defaultConfig(role?: string): ModuleVisibilityConfig {
   return { modules, children };
 }
 
+/** Merge persisted settings with the current catalogue; explicit false values remain authoritative. */
+function mergeWithDefaults(config: Partial<ModuleVisibilityConfig> | null | undefined, role?: string): ModuleVisibilityConfig {
+  const defaults = defaultConfig(role);
+  return {
+    modules: { ...defaults.modules, ...(config?.modules ?? {}) },
+    children: { ...defaults.children, ...(config?.children ?? {}) },
+  };
+}
+
 function read(empresaId: number): VisibilityState {
   if (typeof window === 'undefined') return { roles: {}, users: {} };
   try {
@@ -30,19 +39,19 @@ function write(empresaId: number, state: VisibilityState) {
   window.localStorage.setItem(key(empresaId), JSON.stringify(state));
   window.dispatchEvent(new CustomEvent(MODULE_VISIBILITY_EVENT, { detail: { empresaId } }));
 }
-export function getRoleConfig(role: string, empresaId: number): ModuleVisibilityConfig | null { return read(empresaId).roles[role] ? clone(read(empresaId).roles[role]) : null; }
+export function getRoleConfig(role: string, empresaId: number): ModuleVisibilityConfig | null { const value = read(empresaId).roles[role]; return value ? mergeWithDefaults(value, role) : null; }
 export function setRoleConfig(role: string, config: ModuleVisibilityConfig, empresaId: number) { const state = read(empresaId); state.roles[role] = clone(config); write(empresaId, state); }
 export function resetRoleConfig(role: string, empresaId: number) { const state = read(empresaId); delete state.roles[role]; write(empresaId, state); }
-export function getUserOverride(userId: string | number, empresaId: number): ModuleVisibilityConfig | null { const value = read(empresaId).users[String(userId)]; return value ? clone(value) : null; }
+export function getUserOverride(userId: string | number, empresaId: number): ModuleVisibilityConfig | null { const value = read(empresaId).users[String(userId)]; return value ? mergeWithDefaults(value) : null; }
 export function setUserOverride(userId: string | number, config: ModuleVisibilityConfig, empresaId: number) { const state = read(empresaId); state.users[String(userId)] = clone(config); write(empresaId, state); }
 export function clearUserOverride(userId: string | number, empresaId: number) { const state = read(empresaId); delete state.users[String(userId)]; write(empresaId, state); }
 export function getEffectiveConfig(user: VisibilityUser | null | undefined, empresaId: number): ModuleVisibilityConfig {
   if (!user) return defaultConfig();
   const state = read(empresaId);
   const override = user.id == null ? null : state.users[String(user.id)];
-  if (override) return clone(override);
+  if (override) return mergeWithDefaults(override);
   const role = (user.roles ?? []).find((name) => state.roles[name]);
-  return role ? clone(state.roles[role]) : defaultConfig(user.roles?.[0]);
+  return role ? mergeWithDefaults(state.roles[role], role) : defaultConfig(user.roles?.[0]);
 }
 export function subscribeModuleVisibility(listener: () => void) {
   if (typeof window === 'undefined') return () => undefined;
