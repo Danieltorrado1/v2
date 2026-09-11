@@ -659,6 +659,7 @@ interface NominaDesprendibleGenerateRow extends QueryResultRow {
   devengado_basico: number | string | null;
   devengado_otros: number | string | null;
   devengado_transporte: number | string | null;
+  detalle_calculo: Record<string, unknown> | null;
   dias_pagados: number | string | null;
   empresa_nit: string | null;
   empresa_nombre: string | null;
@@ -3691,8 +3692,11 @@ const mapRealDesprendible = (row: NominaDesprendibleRealRow): NominaDesprendible
       nombre_periodo: payloadPeriodoNombre
     },
     periodo_id: payloadPeriodoId,
-    neto_pagar: getSnapshotNumberValue(payloadSnapshot, 'neto_pagar', toNumberValue(row.neto_pagar)),
-    pension: getSnapshotNumberValue(payloadSnapshot, 'pension', toNumberValue(row.pension)),
+    // Los importes vigentes salen de nomina_empleados. El snapshot solo conserva
+    // la evidencia de la versión que originó el archivo y puede ser anterior a
+    // un recálculo legítimo del periodo.
+    neto_pagar: toNumberValue(row.neto_pagar),
+    pension: toNumberValue(row.pension),
     persona: {
       id: row.persona_id,
       nombre_completo: payloadPersonaNombre,
@@ -3700,39 +3704,23 @@ const mapRealDesprendible = (row: NominaDesprendibleRealRow): NominaDesprendible
     },
     persona_id: row.persona_id,
     revisado: toBooleanValue(row.revisado),
-    salario_base: getSnapshotNumberValue(payloadSnapshot, 'salario_base_snapshot', toNumberValue(row.salario_base)),
-    salario_base_snapshot: getSnapshotNumberValue(
-      payloadSnapshot,
-      'salario_base_snapshot',
-      toNumberValue(row.salario_base)
-    ),
-    salud: getSnapshotNumberValue(payloadSnapshot, 'salud', toNumberValue(row.salud)),
+    salario_base: toNumberValue(row.salario_base),
+    salario_base_snapshot: toNumberValue(row.salario_base),
+    salud: toNumberValue(row.salud),
     tipo_desprendible:
       getSnapshotStringValue(payloadSnapshot, 'tipo_desprendible', row.tipo_desprendible) ?? row.tipo_desprendible,
-    total_adiciones: getSnapshotNumberValue(payloadSnapshot, 'total_adiciones', toNumberValue(row.total_adiciones)),
-    total_deducciones: getSnapshotNumberValue(
-      payloadSnapshot,
-      'total_deducciones',
-      toNumberValue(row.total_deducciones)
-    ),
-    total_devengado: getSnapshotNumberValue(payloadSnapshot, 'total_devengado', toNumberValue(row.total_adiciones)),
+    total_adiciones: toNumberValue(row.total_adiciones),
+    total_deducciones: toNumberValue(row.total_deducciones),
+    total_devengado: toNumberValue(row.total_adiciones),
     version: Math.max(1, getSnapshotNumberValue(payloadSnapshot, 'version', toNumberValue(row.version))),
     vinculacion: {
       id: row.vinculacion_id
     },
     desprendible_reemplaza_id: row.desprendible_reemplaza_id,
     vinculacion_id: row.vinculacion_id,
-    dias_liquidados: getSnapshotNumberValue(payloadSnapshot, 'dias_liquidados', toNumberValue(row.dias_pagados)),
-    devengado_salario: getSnapshotNumberValue(
-      payloadSnapshot,
-      'devengado_salario',
-      toNumberValue(row.devengado_basico)
-    ),
-    devengado_transporte: getSnapshotNumberValue(
-      payloadSnapshot,
-      'devengado_transporte',
-      toNumberValue(row.devengado_transporte)
-    )
+    dias_liquidados: toNumberValue(row.dias_pagados),
+    devengado_salario: toNumberValue(row.devengado_basico),
+    devengado_transporte: toNumberValue(row.devengado_transporte)
   };
 };
 
@@ -12571,6 +12559,30 @@ export const getNominaDesprendibleByPeriodoAndVinculacion = async (
 
   const desprendible = mapRealDesprendible(row);
 
+  const snapshot = desprendible.payload_snapshot;
+  const snapshotValues: Array<[string, number]> = [
+    ['salario_base_snapshot', desprendible.salario_base_snapshot],
+    ['devengado_salario', desprendible.devengado_salario],
+    ['devengado_transporte', desprendible.devengado_transporte],
+    ['total_adiciones', desprendible.total_adiciones],
+    ['total_deducciones', desprendible.total_deducciones],
+    ['salud', desprendible.salud],
+    ['pension', desprendible.pension],
+    ['neto_pagar', desprendible.neto_pagar],
+    ['total_devengado', desprendible.total_devengado],
+  ];
+  const staleSnapshot = snapshotValues.some(([key, currentValue]) =>
+    Object.prototype.hasOwnProperty.call(snapshot, key) &&
+    getSnapshotNumberValue(snapshot, key, currentValue) !== currentValue
+  );
+  if (staleSnapshot) {
+    throw new AppError(
+      'El desprendible está desactualizado frente a la liquidación calculada. Genere nuevamente el desprendible del periodo.',
+      409,
+      'NOMINA_DESPRENDIBLE_DESACTUALIZADO'
+    );
+  }
+
   if (
     actorUserId &&
     desprendible.documento.storage_bucket &&
@@ -12625,6 +12637,7 @@ export const generateNominaDesprendibles = async (
           ne.auxilio_transporte,
           ne.devengado_basico,
           ne.devengado_transporte,
+          ne.detalle_calculo,
           ne.devengado_otros,
           ne.dias_pagados,
           ne.total_adiciones,
@@ -12811,6 +12824,25 @@ export const generateNominaDesprendibles = async (
       const periodoFechaFin = toDateString(empleado.periodo_fecha_fin) ?? '';
       const novedades = novedadesByEmpleado.get(empleado.nomina_empleado_id) ?? [];
       const movimientos = movimientosByEmpleado.get(empleado.nomina_empleado_id) ?? [];
+      const hasCalculatedValues = [
+        salarioBase,
+        auxilioTransporte,
+        devengadoBasico,
+        devengadoTransporte,
+        devengadoOtros,
+        totalAdiciones,
+        totalDeducciones,
+        netoPagar,
+        salud,
+        pension,
+      ].some((value) => value !== 0);
+      if (!hasCalculatedValues && !empleado.detalle_calculo) {
+        throw new AppError(
+          'No existe una liquidación calculada para este empleado y periodo.',
+          409,
+          'NOMINA_DESPRENDIBLE_SIN_LIQUIDACION'
+        );
+      }
       const fileName = buildNominaDesprendibleFileName(
         periodoId,
         empleado.nomina_empleado_id,

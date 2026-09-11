@@ -407,7 +407,7 @@ function TurnosConsolidatedTable({
             <div className="nomina-turnos-person-row">
               <span className="np-table-stack"><strong>{group.personName}</strong><small>CC {group.document ?? "Sin documento"}</small></span>
               <span className="nomina-turnos-type-badges">{group.types.map((type) => <b className={`np-badge ${type === "INTERNO" ? "info" : "primary"}`} key={type}>{type}</b>)}</span>
-              <strong>{formatNumber(group.movements.length)}</strong>
+              <strong>{formatNumber(group.movements.reduce((sum, movement) => sum + (movement.cantidad ?? 0), 0))}</strong>
               <span>{group.lastDate ? formatDate(group.lastDate) : "No disponible"}</span>
               <span className="nomina-turnos-status-summary">{Array.from(statusCounts.entries()).map(([status, count]) => <small key={status}>{count} {status.toLowerCase()}</small>)}</span>
               <strong>{canSeeEconomic ? formatCOP(group.total) : "No disponible"}</strong>
@@ -708,13 +708,13 @@ export default function TurnosPage() {
   }, [displayedMovimientos, turnoSort]);
 
   const kpis = useMemo<Kpi[]>(() => {
-    const total = displayedMovimientos.length;
-    const internos = displayedMovimientos.filter(
-      (movimiento) => movimiento.tipo_movimiento === "TURNO_INTERNO",
-    ).length;
-    const externos = displayedMovimientos.filter(
-      (movimiento) => movimiento.tipo_movimiento === "TURNO_EXTERNO",
-    ).length;
+    const total = displayedMovimientos.reduce((sum, movimiento) => sum + (movimiento.cantidad ?? 0), 0);
+    const internos = displayedMovimientos
+      .filter((movimiento) => movimiento.tipo_movimiento === "TURNO_INTERNO")
+      .reduce((sum, movimiento) => sum + (movimiento.cantidad ?? 0), 0);
+    const externos = displayedMovimientos
+      .filter((movimiento) => movimiento.tipo_movimiento === "TURNO_EXTERNO")
+      .reduce((sum, movimiento) => sum + (movimiento.cantidad ?? 0), 0);
     const valorTotal = displayedMovimientos.reduce((sum, movimiento) => sum + movimiento.valor_total, 0);
     const activos = displayedMovimientos.filter((movimiento) => movimiento.activo).length;
     const documentacionCompleta = displayedMovimientos.filter(
@@ -1601,7 +1601,7 @@ export default function TurnosPage() {
               placeholder="Buscar por nombre o cédula..."
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              disabled={!selectedPeriodId || movementsState.loading}
+              disabled={!selectedPeriodId}
             />
           </div>
           <NpSelect
