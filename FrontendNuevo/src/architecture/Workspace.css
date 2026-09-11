@@ -45,6 +45,52 @@
 @media (max-width: 1100px) { .workspace-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workspace-primary-nav { flex-wrap: wrap; gap: 4px 8px; } }
 @media (max-width: 700px) { .workspace-heading h1 { font-size: 20px; } .workspace-card { padding: 14px; } .workspace-table { table-layout: auto; } .workspace-table th, .workspace-table td { padding: 8px 5px; } .workspace-overlay { padding: 6px; } }
 
+/* Instituciones: viewport-bound dense workspace. The selector keeps this
+   correction scoped to the active institutions screen. */
+.page-scroll:has(input[aria-label="Buscar instituciones"]) { overflow: hidden; }
+.page-scroll:has(input[aria-label="Buscar instituciones"]) > .page-content { min-height: 0; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) { height: 100%; min-height: 0; gap: 10px; padding-bottom: 0; overflow: hidden; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-heading { flex: 0 0 auto; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-heading h1 { margin: 0 0 3px; font-size: 21px; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-heading p { line-height: 1.3; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .institution-toolbar { flex: 0 0 auto; display: grid; grid-template-columns: minmax(260px, 1fr); gap: 8px; padding: 10px 12px; border-radius: 10px; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .institution-toolbar > input { width: 100%; padding: 7px 10px; }
+.institution-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .institution-filters select { padding: 7px 9px; }
+.workspace-summary { flex: 0 0 auto; margin: 0; color: var(--text-secondary); font-size: 12px; line-height: 1.2; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table-wrap { flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 0; border-radius: 10px; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table { table-layout: fixed; width: 100%; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th,
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table td { padding: 6px 7px; line-height: 1.2; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th { position: sticky; top: 0; z-index: 1; background: var(--bg-secondary); white-space: nowrap; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th:nth-child(1) { width: 18%; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th:nth-child(2) { width: 18%; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th:nth-child(3) { width: 12%; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th:nth-child(4) { width: 11%; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th:nth-child(5) { width: 7%; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th:nth-child(6),
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th:nth-child(7),
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th:nth-child(8) { width: 8%; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table th:nth-child(9) { width: 10%; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table td:nth-child(1),
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table td:nth-child(2) { white-space: nowrap; display: table-cell; }
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table td:nth-child(1) > *,
+.workspace-page:has(input[aria-label="Buscar instituciones"]) .workspace-table td:nth-child(2) > * { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.institution-pagination { flex: 0 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 38px; padding: 5px 0 0; font-size: 12px; }
+.institution-pagination label { flex-direction: row; align-items: center; gap: 5px; margin-right: auto; }
+.institution-pagination select { padding: 5px 8px; }
+.institution-pagination button { padding: 6px 9px; }
+.workspace-compact-contract { align-self: flex-start; flex: 0 0 auto; flex-direction: row !important; align-items: center; gap: 7px !important; }
+.workspace-compact-contract select { padding: 5px 8px; }
+@media (min-width: 1200px) {
+  .workspace-page:has(input[aria-label="Buscar instituciones"]) .institution-toolbar { grid-template-columns: minmax(320px, 1.2fr) 2fr; align-items: center; }
+}
+@media (max-width: 700px) {
+  .institution-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .institution-pagination { flex-wrap: wrap; justify-content: flex-start; }
+  .institution-pagination label { margin-right: 0; }
+}
+
 .workspace-company-dialog { padding: 0; margin: auto 16px auto auto; color: var(--text-primary); height: calc(100dvh - 32px); }
 .workspace-company-dialog::backdrop { background: var(--overlay-backdrop, #0007); }
 .global-tenant-banner { display:flex; gap:14px; align-items:center; flex-wrap:wrap; padding:8px 14px; margin-bottom:10px; border:1px solid #99f6e4; border-radius:10px; background:#ecfeff; color:#115e59; font-size:12px; }
