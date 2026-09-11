@@ -1,0 +1,4 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import test from 'node:test';
+const routes=fs.readFileSync('src/modules/logistica/logistica.routes.ts','utf8');const sql=fs.readFileSync('sql/phase-37-logistica.sql','utf8');
+test('Logística mantiene rutas independientes y flujo de remisión',()=>{for(const route of ['/remisiones','/remisiones/:id/despachar','/remisiones/:id/recibir','/remisiones/:id/novedades','/inventario/movimientos','/bodegas','/rutas','/conductores','/vehiculos'])assert.match(routes,new RegExp(route.replace(/[/:]/g,'\\$&')));assert.match(sql,/logistica_remision_items/);assert.match(sql,/logistica_movimientos/)});
+test('Logística no crea tablas duplicadas de instituciones o sedes',()=>{assert.doesNotMatch(sql,/CREATE TABLE IF NOT EXISTS logistica_(instituciones|sedes)/);});
