@@ -1,0 +1,8 @@
+import { z } from 'zod';
+const id = z.coerce.number().int().positive();
+export const institutionQuerySchema = z.object({ search: z.string().trim().optional(), municipio_id: id.optional(), zona: z.string().trim().optional(), estado: z.string().trim().optional(), etc: z.string().trim().optional(), contrato_id: id.optional(), matricula: z.enum(['CON_MATRICULA','SIN_MATRICULA']).optional(), focalizacion: z.enum(['CON_FOCALIZACION','SIN_FOCALIZACION']).optional(), page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(200).default(50) });
+export const simatQuerySchema = institutionQuerySchema.extend({ ano: z.coerce.number().int().optional(), institucion_id: id.optional(), sede_id: id.optional(), jornada: z.string().trim().optional(), grado: z.string().trim().optional(), grupo: z.string().trim().optional(), grupo_etario: z.string().trim().optional(), discapacidad: z.string().trim().optional(), complemento: z.string().trim().optional(), doc: z.string().trim().optional() });
+export const simatIdSchema = z.object({ id });
+export const importConfirmSchema = z.object({ importacion_id: id });
+export const institutionWriteSchema = z.object({ contrato_id: id, municipio_id: id, nombre: z.string().trim().min(1).max(240), dane: z.string().trim().max(40).optional().nullable(), activo: z.boolean().optional() });
+export const sedeWriteSchema = z.object({ institucion_id: id.optional(), nombre: z.string().trim().min(1).max(240), codigo_dane_sede: z.string().trim().max(60).optional().nullable(), consecutivo: z.string().trim().max(60).optional().nullable(), zona_sede: z.string().trim().max(30).optional().nullable(), estado: z.string().trim().max(30).optional(), activo: z.boolean().optional() });
