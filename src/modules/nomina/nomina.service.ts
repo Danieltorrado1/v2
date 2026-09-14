@@ -7000,6 +7000,8 @@ export const importNominaEmpleados = async (
 
     let reactivated = 0;
     let imported = 0;
+    const importedEmployeeIds: string[] = [];
+    const recalculableImportedEmployeeIds: string[] = [];
     let skippedDuplicates = 0;
     let skippedRequiresReview = 0;
     const periodoFechaInicio = toDateString(periodo.fecha_inicio) ?? '';
@@ -7126,6 +7128,134 @@ export const importNominaEmpleados = async (
 
       existingVinculacionIds.add(candidate.vinculacion_id);
       imported += 1;
+
+      const insertedEmployee = await client.query<{ id: string }>(
+        `
+          SELECT id::text AS id
+          FROM nomina_empleados
+          WHERE periodo_id = $1::bigint AND vinculacion_id = $2::bigint
+        `,
+        [periodoId, candidate.vinculacion_id]
+      );
+      if (insertedEmployee.rows[0]?.id) {
+        importedEmployeeIds.push(insertedEmployee.rows[0].id);
+      }
+    }
+
+    // A population sync can happen after the initial payroll calculation. New
+    // rows must receive the economic category snapshot before being calculated;
+    // otherwise the calculator has no salary/transport source and the export
+    // correctly exposes the persisted zeroes. Resolve only newly inserted rows
+    // and leave existing employee snapshots untouched.
+    {
+      const economicTables = await client.query<{ categorias: boolean; cobertura: boolean }>(`
+        SELECT
+          to_regclass('public.nomina_categorias_salariales') IS NOT NULL AS categorias,
+          to_regclass('public.cobertura_asignaciones') IS NOT NULL AS cobertura
+      `);
+      if (economicTables.rows[0]?.categorias && economicTables.rows[0]?.cobertura) {
+        const missingCategoryResult = await client.query<{ id: string }>(
+          `
+            SELECT ne.id::text AS id
+            FROM nomina_empleados ne
+            WHERE ne.periodo_id = $1::bigint
+              AND COALESCE(ne.activo, TRUE) = TRUE
+              AND ne.categoria_salarial_id IS NULL
+          `,
+          [periodoId]
+        );
+        const missingCalculationResult = await client.query<{ id: string }>(
+          `
+            SELECT ne.id::text AS id
+            FROM nomina_empleados ne
+            WHERE ne.periodo_id = $1::bigint
+              AND COALESCE(ne.activo, TRUE) = TRUE
+              AND ne.categoria_salarial_id IS NOT NULL
+              AND ne.detalle_calculo IS NULL
+              AND ($2::bigint IS NOT NULL AND (
+                ne.vinculacion_id = $2::bigint
+                OR EXISTS (
+                  SELECT 1 FROM vinculaciones vv
+                  WHERE vv.id = ne.vinculacion_id AND vv.persona_id = $2::bigint
+                )
+              ))
+          `,
+          [periodoId, personaId ?? vinculacionId ?? null]
+        );
+        const economicEmployeeIds = [...new Set([
+          ...importedEmployeeIds,
+          ...missingCategoryResult.rows.map((row) => row.id),
+          ...missingCalculationResult.rows.map((row) => row.id)
+        ])];
+        const categoryResult = await client.query<{ id: string }>(
+          `
+            WITH employee_scope AS (
+              SELECT ne.id AS nomina_empleado_id, ne.vinculacion_id, ne.periodo_id,
+                np.contrato_id, np.fecha_inicio AS periodo_inicio, np.fecha_fin AS periodo_fin
+              FROM nomina_empleados ne
+              JOIN nomina_periodos np ON np.id = ne.periodo_id
+              WHERE ne.id = ANY($1::bigint[])
+            ), assignments AS (
+              SELECT es.*, ca.focalizacion_final_id, ff.municipio_id, ff.institucion_id,
+                ff.sede_id, m.codigo_base,
+                ROW_NUMBER() OVER (
+                  PARTITION BY es.nomina_empleado_id
+                  ORDER BY CASE WHEN ca.fecha_inicio <= es.periodo_fin
+                    AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= es.periodo_inicio)
+                    THEN 0 ELSE 1 END, ca.fecha_inicio DESC, ca.id DESC
+                ) AS assignment_rank
+              FROM employee_scope es
+              JOIN vinculaciones v ON v.id = es.vinculacion_id
+              LEFT JOIN cobertura_asignaciones ca ON ca.vinculacion_id = v.id
+                AND COALESCE(ca.activo, TRUE) = TRUE
+              LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+              LEFT JOIN modalidades m ON m.id = ff.modalidad_id
+            ), chosen AS (
+              SELECT * FROM assignments WHERE assignment_rank = 1
+            ), caares_grouped AS (
+              SELECT ff.municipio_id, ff.institucion_id, ff.sede_id, COUNT(*)::int AS quantity
+              FROM cobertura_asignaciones ca
+              JOIN vinculaciones v ON v.id = ca.vinculacion_id
+              JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+              JOIN modalidades m ON m.id = ff.modalidad_id
+              JOIN (SELECT DISTINCT contrato_id, periodo_inicio, periodo_fin FROM employee_scope) es
+                ON es.contrato_id = v.contrato_id
+              WHERE COALESCE(ca.activo, TRUE) = TRUE
+                AND v.contrato_id = es.contrato_id
+                AND ca.fecha_inicio <= es.periodo_fin
+                AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= es.periodo_inicio)
+                AND m.codigo_base = 'CAARES'
+              GROUP BY ff.municipio_id, ff.institucion_id, ff.sede_id
+            ), resolved AS (
+              SELECT c.nomina_empleado_id,
+                CASE WHEN c.codigo_base = 'CAARES' THEN
+                  CASE WHEN COALESCE(g.quantity, 0) = 1 THEN 'CAARES1' ELSE 'CAARES3' END
+                ELSE c.codigo_base END AS category_code,
+                c.contrato_id, c.periodo_inicio, c.periodo_fin
+              FROM chosen c
+              LEFT JOIN caares_grouped g
+                ON g.municipio_id = c.municipio_id
+                AND g.institucion_id = c.institucion_id
+                AND g.sede_id = c.sede_id
+            )
+            UPDATE nomina_empleados ne
+            SET categoria_salarial_id = ncs.id
+            FROM resolved r
+            JOIN nomina_categorias_salariales ncs
+              ON ncs.contrato_id = r.contrato_id
+             AND UPPER(BTRIM(ncs.codigo_categoria)) = UPPER(BTRIM(r.category_code))
+             AND COALESCE(ncs.activo, TRUE) = TRUE
+             AND (ncs.vigente_desde IS NULL OR ncs.vigente_desde <= r.periodo_fin)
+             AND (ncs.vigente_hasta IS NULL OR ncs.vigente_hasta >= r.periodo_inicio)
+            WHERE ne.id = r.nomina_empleado_id
+              AND ne.categoria_salarial_id IS NULL
+            RETURNING ne.id::text AS id
+          `,
+          [economicEmployeeIds]
+        );
+        recalculableImportedEmployeeIds.push(...categoryResult.rows.map((row) => row.id));
+        recalculableImportedEmployeeIds.push(...missingCalculationResult.rows.map((row) => row.id));
+      }
     }
 
     // Legacy repair: nomina_empleados intentionally has no descriptive context
@@ -7251,6 +7381,19 @@ export const importNominaEmpleados = async (
     );
 
     await client.query('COMMIT');
+
+    // Recalculate only the rows materialized by this synchronization. This
+    // closes the timing gap without changing attendance, operational context,
+    // validity, or the already calculated values of older employees.
+    for (const nominaEmpleadoId of new Set(recalculableImportedEmployeeIds)) {
+      await recalculateNominaPeriodo(
+        periodoId,
+        { nomina_empleado_id: nominaEmpleadoId },
+        actorUserId,
+        tenant,
+        auditMeta
+      );
+    }
 
     return {
       reactivated,
