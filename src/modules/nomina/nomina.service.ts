@@ -129,6 +129,10 @@ import {
   type NominaAsistenciaRepositoryRow
 } from './infrastructure/repositories/nomina-asistencia.repository';
 import { nominaNovedadRepository } from './infrastructure/repositories/nomina-novedad.repository';
+import {
+  nominaMovimientoRepository,
+  type NominaMovimientoRepositoryRow
+} from './infrastructure/repositories/nomina-movimiento.repository';
 import { syncVinculacionEstadoProjection } from '../vinculaciones/vigencia.projection.service';
 
 interface CountRow extends QueryResultRow {
@@ -3746,16 +3750,11 @@ const loadNominaMovimientoByIdOrThrow = async (
   client?: PoolClient
 ): Promise<NominaMovimientoRealRow> => {
   const executor = client ?? dbPool;
-  const result = await executor.query<NominaMovimientoRealRow>(
-    `
-      ${getNominaMovimientosRealSelect()}
-      WHERE nm.id = $1::bigint
-      LIMIT 1
-    `,
-    [movimientoId]
-  );
-
-  const movimiento = result.rows[0];
+  const movimiento = await nominaMovimientoRepository.getById(
+    movimientoId,
+    tenant,
+    executor
+  ) as NominaMovimientoRepositoryRow | null;
 
   if (!movimiento) {
     throw new AppError('Payroll movement not found', 404, 'NOMINA_MOVIMIENTO_NOT_FOUND');
@@ -3774,7 +3773,7 @@ const loadNominaMovimientoByIdOrThrow = async (
     }
     await assertNominaEmpleadoCoberturaScope(reemplazado.rows[0].nomina_empleado_id, tenant, executor);
   }
-  return movimiento;
+  return movimiento as unknown as NominaMovimientoRealRow;
 };
 
 const loadNominaTipoNovedadByIdOrThrow = async (
@@ -8744,84 +8743,26 @@ export const getNominaMovimientos = async (
   query: ListNominaMovimientosQuery,
   tenant?: TenantAccessContext
 ): Promise<PaginatedResponse<NominaMovimiento>> => {
-  const params: unknown[] = [];
-  const conditions: string[] = [];
-
-  appendTenantScopeConditions(conditions, params, tenant, 'np.contrato_id', 'c.empresa_id');
-  appendNominaCoberturaScope(conditions, params, tenant);
-
-  if (query.periodo_id) {
-    params.push(query.periodo_id);
-    conditions.push(`nm.periodo_id = $${params.length}::bigint`);
-  }
-
-  if (query.nomina_empleado_id) {
-    params.push(query.nomina_empleado_id);
-    conditions.push(`nm.nomina_empleado_id = $${params.length}::bigint`);
-  }
-
-  if (query.vinculacion_id) {
-    params.push(query.vinculacion_id);
-    conditions.push(`nm.vinculacion_id = $${params.length}::bigint`);
-  }
-
-  if (query.tipo_movimiento) {
-    params.push(query.tipo_movimiento);
-    conditions.push(`nm.tipo_movimiento = $${params.length}`);
-  }
-
-  if (query.estado) {
-    params.push(query.estado);
-    conditions.push(`nm.estado = $${params.length}`);
-  }
-
-  if (query.familia_movimiento) {
-    params.push(query.familia_movimiento);
-    conditions.push(`nm.familia_movimiento = $${params.length}`);
-  }
-
-  if (query.activo !== undefined) {
-    params.push(query.activo);
-    conditions.push(`COALESCE(nm.activo, TRUE) = $${params.length}`);
-  }
-
-  const whereSql = buildSqlWhere(conditions);
-  const countResult = await dbQuery<CountRow>(
-    `
-      SELECT COUNT(*)::int AS total
-      FROM nomina_movimientos nm
-      INNER JOIN nomina_empleados ne ON ne.id = nm.nomina_empleado_id
-      INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
-      INNER JOIN nomina_periodos np ON np.id = nm.periodo_id
-      INNER JOIN contratos c ON c.id = np.contrato_id
-      ${whereSql}
-    `,
-    params
-  );
-
-  const total = countResult.rows[0]?.total ?? 0;
-  const offset = (query.page - 1) * query.limit;
-  const listParams = [...params, query.limit, offset];
-
-  const result = await dbQuery<NominaMovimientoRealRow>(
-    `
-      ${getNominaMovimientosRealSelect()}
-      INNER JOIN contratos c ON c.id = np.contrato_id
-      ${whereSql}
-      ORDER BY nm.created_at DESC, nm.id DESC
-      LIMIT $${listParams.length - 1}
-      OFFSET $${listParams.length}
-    `,
-    listParams
-  );
+  const result = await nominaMovimientoRepository.list({
+    activo: query.activo,
+    estado: query.estado,
+    familiaMovimiento: query.familia_movimiento,
+    limit: query.limit,
+    nominaEmpleadoId: query.nomina_empleado_id,
+    page: query.page,
+    periodoId: query.periodo_id,
+    tenant,
+    tipoMovimiento: query.tipo_movimiento,
+    vinculacionId: query.vinculacion_id
+  });
 
   return {
-    items: result.rows.map(mapRealMovimiento),
+    items: result.rows.map((row) => mapRealMovimiento(row as NominaMovimientoRealRow)),
     pagination: {
       page: query.page,
       limit: query.limit,
-      total,
-      total_pages: total === 0 ? 0 : Math.ceil(total / query.limit)
+      total: result.total,
+      total_pages: result.total === 0 ? 0 : Math.ceil(result.total / query.limit)
     }
   };
 };
