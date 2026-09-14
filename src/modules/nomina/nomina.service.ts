@@ -128,6 +128,7 @@ import {
   nominaAsistenciaRepository,
   type NominaAsistenciaRepositoryRow
 } from './infrastructure/repositories/nomina-asistencia.repository';
+import { nominaNovedadRepository } from './infrastructure/repositories/nomina-novedad.repository';
 import { syncVinculacionEstadoProjection } from '../vinculaciones/vigencia.projection.service';
 
 interface CountRow extends QueryResultRow {
@@ -3777,17 +3778,7 @@ const loadNominaTipoNovedadByIdOrThrow = async (
   tipoNovedadId: string,
   client?: PoolClient
 ): Promise<NominaTipoNovedadRow> => {
-  const executor = client ?? dbPool;
-  const result = await executor.query<NominaTipoNovedadRow>(
-    `
-      ${getNominaTiposNovedadSelect()}
-      WHERE id = $1::bigint
-      LIMIT 1
-    `,
-    [tipoNovedadId]
-  );
-
-  const tipo = result.rows[0];
+  const tipo = await nominaNovedadRepository.getTypeById(tipoNovedadId, client) as NominaTipoNovedadRow | null;
 
   if (!tipo) {
     throw new AppError('Payroll novelty type not found', 404, 'NOMINA_TIPO_NOVEDAD_NOT_FOUND');
@@ -3797,15 +3788,7 @@ const loadNominaTipoNovedadByIdOrThrow = async (
 };
 
 const loadNominaTiposNovedadCatalog = async (client?: PoolClient): Promise<NominaTipoNovedadRow[]> => {
-  const executor = client ?? dbPool;
-  const result = await executor.query<NominaTipoNovedadRow>(
-    `
-      ${getNominaTiposNovedadSelect()}
-      ORDER BY id ASC
-    `
-  );
-
-  return result.rows;
+  return await nominaNovedadRepository.listTypesCatalog(client) as NominaTipoNovedadRow[];
 };
 
 const loadNominaNovedadesCanonicasForPeriodo = async (
@@ -3867,17 +3850,7 @@ const resolveNominaTipoNovedadOrThrow = async (
 };
 
 const hasInactiveNominaTiposNovedad = async (): Promise<boolean> => {
-  const result = await dbQuery<{ exists: boolean }>(
-    `
-      SELECT EXISTS (
-        SELECT 1
-        FROM nomina_tipos_novedad
-        WHERE COALESCE(activo, TRUE) = FALSE
-      ) AS exists
-    `
-  );
-
-  return result.rows[0]?.exists === true;
+  return nominaNovedadRepository.hasInactiveTypes();
 };
 
 const ensureDocumentoPersonaScope = async (
@@ -5490,17 +5463,7 @@ const loadNominaNovedadByIdOrThrow = async (
   tenant?: TenantAccessContext,
   client?: PoolClient
 ): Promise<NominaNovedadRealRow> => {
-  const executor = client ?? dbPool;
-  const result = await executor.query<NominaNovedadRealRow>(
-    `
-      ${getNominaNovedadesRealSelect()}
-      WHERE nn.id = $1::bigint
-      LIMIT 1
-    `,
-    [novedadId]
-  );
-
-  const novedad = result.rows[0];
+  const novedad = await nominaNovedadRepository.getById(novedadId, tenant, client) as NominaNovedadRealRow | null;
 
   if (!novedad) {
     throw new AppError('Payroll novelty not found', 404, 'NOMINA_NOVEDAD_NOT_FOUND');
@@ -10556,57 +10519,18 @@ export const listNominaNovedades = async (
   query: ListNominaNovedadesQuery,
   tenant?: TenantAccessContext
 ): Promise<PaginatedResponse<NominaNovedad>> => {
-  const params: unknown[] = [];
-  const conditions: string[] = [];
-
-  appendTenantScopeConditions(conditions, params, tenant, 'np.contrato_id', 'c.empresa_id');
-  appendNominaCoberturaScope(conditions, params, tenant);
-
-  if (query.periodo_id) {
-    params.push(query.periodo_id);
-    conditions.push(`nn.periodo_id = $${params.length}::bigint`);
-  }
-
-  if (query.nomina_empleado_id) {
-    params.push(query.nomina_empleado_id);
-    conditions.push(`nn.nomina_empleado_id = $${params.length}::bigint`);
-  }
-
-  if (query.vinculacion_id) {
-    params.push(query.vinculacion_id);
-    conditions.push(`nn.vinculacion_id = $${params.length}::bigint`);
-  }
-
-  if (query.persona_id) {
-    params.push(query.persona_id);
-    conditions.push(`v.persona_id = $${params.length}::bigint`);
-  }
-
-  if (query.tipo_novedad_id) {
-    params.push(query.tipo_novedad_id);
-    conditions.push(`nn.tipo_novedad_id = $${params.length}::bigint`);
-  }
-
-  if (query.revisado !== undefined) {
-    params.push(query.revisado);
-    conditions.push(`COALESCE(nn.revisado, FALSE) = $${params.length}`);
-  }
-
-  if (query.activo !== undefined) {
-    params.push(query.activo);
-    conditions.push(`COALESCE(nn.activo, TRUE) = $${params.length}`);
-  }
-
   const ordinaryRows = (
-    await dbQuery<NominaNovedadRealRow>(
-      `
-        ${getNominaNovedadesRealSelect()}
-        ${buildSqlWhere(conditions)}
-        ORDER BY nn.created_at DESC, nn.id DESC
-      `,
-      params
-    )
-  ).rows.map(mapRealNovedad);
+    await nominaNovedadRepository.list({
+      activo: query.activo,
+      nominaEmpleadoId: query.nomina_empleado_id,
+      periodoId: query.periodo_id,
+      personaId: query.persona_id,
+      revisado: query.revisado,
+      tenant,
+      tipoNovedadId: query.tipo_novedad_id,
+      vinculacionId: query.vinculacion_id
+    })
+  ).map((row) => mapRealNovedad(row as NominaNovedadRealRow));
 
   const mergedItems = [...ordinaryRows];
 
@@ -10691,65 +10615,24 @@ export const listNominaNovedades = async (
 export const listNominaTiposNovedad = async (
   query: ListNominaTiposNovedadQuery
 ): Promise<PaginatedResponse<NominaTipoNovedadCatalogItem>> => {
-  const params: unknown[] = [];
-  const conditions: string[] = [];
-
-  if (query.categoria) {
-    params.push(query.categoria);
-    conditions.push(`LOWER(categoria) = LOWER($${params.length})`);
-  }
-
-  if (query.busqueda) {
-    params.push(`%${query.busqueda}%`);
-    conditions.push(
-      `(
-        nombre ILIKE $${params.length}
-        OR categoria ILIKE $${params.length}
-        OR COALESCE(codigo_operativo, '') ILIKE $${params.length}
-        OR COALESCE(descripcion_operativa, '') ILIKE $${params.length}
-      )`
-    );
-  }
-
-  if (query.activo !== undefined) {
-    params.push(query.activo);
-    conditions.push(`COALESCE(activo, TRUE) = $${params.length}`);
-  } else if (await hasInactiveNominaTiposNovedad()) {
-    params.push(true);
-    conditions.push(`COALESCE(activo, TRUE) = $${params.length}`);
-  }
-
-  const whereSql = buildSqlWhere(conditions);
-  const countResult = await dbQuery<CountRow>(
-    `
-      SELECT COUNT(*)::int AS total
-      FROM nomina_tipos_novedad
-      ${whereSql}
-    `,
-    params
-  );
-
-  const total = countResult.rows[0]?.total ?? 0;
-  const offset = (query.page - 1) * query.limit;
-  const listParams = [...params, query.limit, offset];
-  const result = await dbQuery<NominaTipoNovedadRow>(
-    `
-      ${getNominaTiposNovedadSelect()}
-      ${whereSql}
-      ORDER BY categoria ASC NULLS LAST, nombre ASC NULLS LAST, id ASC
-      LIMIT $${listParams.length - 1}
-      OFFSET $${listParams.length}
-    `,
-    listParams
-  );
+  const active = query.activo !== undefined
+    ? query.activo
+    : (await hasInactiveNominaTiposNovedad() ? true : undefined);
+  const result = await nominaNovedadRepository.listTypes({
+    activo: active,
+    busqueda: query.busqueda,
+    categoria: query.categoria,
+    limit: query.limit,
+    page: query.page
+  });
 
   return {
-    items: result.rows.map(mapNominaTipoNovedad),
-    pagination: {
-      page: query.page,
-      limit: query.limit,
-      total,
-      total_pages: total === 0 ? 0 : Math.ceil(total / query.limit)
+      items: result.rows.map((row) => mapNominaTipoNovedad(row as NominaTipoNovedadRow)),
+      pagination: {
+        page: query.page,
+        limit: query.limit,
+        total: result.total,
+        total_pages: result.total === 0 ? 0 : Math.ceil(result.total / query.limit)
     }
   };
 };
@@ -11000,77 +10883,28 @@ export const createNominaNovedad = async (
     });
     await assertNominaLinkedCoverageScope(client, input.periodo_id, input.cobertura, tenant);
 
-    const result = await client.query<{ id: string }>(
-      `
-        INSERT INTO nomina_novedades (
-          periodo_id,
-          nomina_empleado_id,
-          vinculacion_id,
-          tipo_novedad_id,
-          tipo_novedad_codigo_operativo,
-          documento_persona_id,
-          fecha_inicio,
-          fecha_fin,
-          dias,
-          horas,
-          valor_manual,
-          categoria_anterior_id,
-          categoria_nueva_id,
-          observacion,
-          revisado,
-          activo,
-          requiere_cobertura,
-          cubierta
-        )
-        VALUES (
-          $1::bigint,
-          $2::bigint,
-          $3::bigint,
-          $4::bigint,
-          $5,
-          $6::bigint,
-          $7,
-          $8,
-          $9,
-          $10,
-          $11,
-          $12::bigint,
-          $13::bigint,
-          $14,
-          $15,
-          $16,
-          $17,
-          $18
-        )
-        RETURNING id::text AS id
-      `,
-      [
-        input.periodo_id,
-        input.nomina_empleado_id,
-        input.vinculacion_id,
-        tipoNovedad.id,
-        tipoNovedad.codigo_operativo,
-        input.documento_persona_id,
-        input.fecha_inicio,
-        input.fecha_fin,
-        input.dias,
-        input.horas,
-        input.valor_manual,
-        input.categoria_anterior_id,
-        input.categoria_nueva_id,
-        input.observacion,
-        input.revisado,
-        input.activo,
-        coverageFlags.requiere_cobertura,
-        coverageFlags.cubierta
-      ]
-    );
+    const createdId = await nominaNovedadRepository.create({
+      activo: input.activo,
+      categoria_anterior_id: input.categoria_anterior_id,
+      categoria_nueva_id: input.categoria_nueva_id,
+      cubierta: coverageFlags.cubierta,
+      dias: input.dias,
+      documento_persona_id: input.documento_persona_id,
+      fecha_fin: input.fecha_fin,
+      fecha_inicio: input.fecha_inicio,
+      horas: input.horas,
+      nomina_empleado_id: input.nomina_empleado_id,
+      observacion: input.observacion,
+      periodo_id: input.periodo_id,
+      requiere_cobertura: coverageFlags.requiere_cobertura,
+      revisado: input.revisado,
+      tipo_novedad_codigo_operativo: tipoNovedad.codigo_operativo,
+      tipo_novedad_id: tipoNovedad.id,
+      valor_manual: input.valor_manual,
+      vinculacion_id: input.vinculacion_id
+    }, client);
 
-    const createdRow = result.rows[0];
-
-    if (!createdRow) {
-      throw new AppError('Failed to create payroll novelty', 500, 'NOMINA_NOVEDAD_CREATE_FAILED');
-    }
+    const createdRow = { id: createdId };
 
     if (input.documento_persona_id) {
       await client.query(
@@ -11941,50 +11775,28 @@ export const updateNominaNovedad = async (
     });
     await assertNominaLinkedCoverageScope(client, current.periodo_id, coverageInput, tenant);
 
-    await client.query(
-      `
-        UPDATE nomina_novedades
-        SET
-          tipo_novedad_id = $2::bigint,
-          tipo_novedad_codigo_operativo = $3,
-          documento_persona_id = $4::bigint,
-          fecha_inicio = $5,
-          fecha_fin = $6,
-          dias = $7,
-          horas = $8,
-          valor_manual = $9,
-          categoria_anterior_id = $10::bigint,
-          categoria_nueva_id = $11::bigint,
-          observacion = $12,
-          revisado = $13,
-          requiere_cobertura = $14,
-          cubierta = $15,
-          activo = $16
-        WHERE id = $1::bigint
-      `,
-      [
-        parsedId.entidad_id,
-        tipoNovedad.id,
-        tipoNovedad.codigo_operativo,
-        nextDocumentoPersonaId,
-        nextFechaInicio,
-        nextFechaFin,
-        nextDias,
-        nextHoras,
-        nextValorManual,
-        input.categoria_anterior_id !== undefined
-          ? input.categoria_anterior_id
-          : current.categoria_anterior_id,
-        input.categoria_nueva_id !== undefined
-          ? input.categoria_nueva_id
-          : current.categoria_nueva_id,
-        input.observacion !== undefined ? input.observacion : current.observacion,
-        input.revisado ?? current.revisado,
-        coverageFlags.requiere_cobertura,
-        coverageFlags.cubierta,
-        input.activo ?? current.activo
-      ]
-    );
+    await nominaNovedadRepository.update({
+      activo: input.activo ?? toBooleanValue(current.activo),
+      categoria_anterior_id: input.categoria_anterior_id !== undefined
+        ? input.categoria_anterior_id
+        : current.categoria_anterior_id,
+      categoria_nueva_id: input.categoria_nueva_id !== undefined
+        ? input.categoria_nueva_id
+        : current.categoria_nueva_id,
+      cubierta: coverageFlags.cubierta,
+      dias: nextDias,
+      documento_persona_id: nextDocumentoPersonaId,
+      fecha_fin: nextFechaFin,
+      fecha_inicio: nextFechaInicio,
+      horas: nextHoras,
+      id: parsedId.entidad_id,
+      observacion: input.observacion !== undefined ? input.observacion : current.observacion,
+      requiere_cobertura: coverageFlags.requiere_cobertura,
+      revisado: input.revisado ?? toBooleanValue(current.revisado),
+      tipo_novedad_codigo_operativo: tipoNovedad.codigo_operativo,
+      tipo_novedad_id: tipoNovedad.id,
+      valor_manual: nextValorManual
+    }, client);
 
     if (isFechaRetiroNominaType(currentTipo) || isFechaRetiroNominaType(tipoNovedad)) {
       await syncVinculacionEstadoProjection(client, current.vinculacion_id, actorUserId, auditMeta);
@@ -12188,14 +12000,7 @@ export const deactivateNominaNovedad = async (
     assertNominaEmpleadoEditable(empleado, 'anular novedades de nomina');
     await invalidateNominaEmpleadoRevisionState(client, current.nomina_empleado_id);
 
-    await client.query(
-      `
-        UPDATE nomina_novedades
-        SET activo = FALSE
-        WHERE id = $1::bigint
-      `,
-      [parsedId.entidad_id]
-    );
+    await nominaNovedadRepository.deactivate(parsedId.entidad_id, client);
 
     const deactivatedTipo = await loadNominaTipoNovedadByIdOrThrow(current.tipo_novedad_id, client);
     if (isFechaRetiroNominaType(deactivatedTipo)) {
