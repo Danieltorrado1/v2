@@ -97,8 +97,10 @@ test('revision operativa resuelve scope en SQL sin validacion secuencial por fil
 });
 test('asistencia por periodo usa el mismo scope SQL que la planilla visible',()=>{
   const serviceSource=readFileSync(resolve(process.cwd(),'src/modules/nomina/nomina.service.ts'),'utf8');
-  assert.ok(serviceSource.includes('const attendanceFromSql = '));
-  assert.ok(serviceSource.includes('appendNominaCoberturaScope(conditions, params, tenant);'));
-  assert.ok(serviceSource.includes("appendTenantScopeConditions(conditions, params, tenant, 'v.contrato_id', 'v.empresa_id');"));
-  assert.ok(serviceSource.includes(''));
+  const repositorySource=readFileSync(resolve(process.cwd(),'src/modules/nomina/infrastructure/repositories/nomina-asistencia.repository.ts'),'utf8');
+  assert.match(serviceSource,/nominaAsistenciaRepository\.listByPeriodo\(/);
+  assert.match(serviceSource,/tenant\s*\n?\s*\}/);
+  assert.match(repositorySource,/appendNominaCoberturaScope\(conditions, params, input\.tenant\);/);
+  assert.match(repositorySource,/v\.contrato_id = ANY\(\$\$\{params\.length\}::bigint\[\]\)/);
+  assert.match(repositorySource,/v\.empresa_id = ANY\(\$\$\{params\.length\}::bigint\[\]\)/);
 });

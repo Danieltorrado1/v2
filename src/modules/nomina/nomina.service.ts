@@ -124,6 +124,10 @@ import {
   nominaEmpleadoRepository,
   type NominaEmpleadoRepositoryRow
 } from './infrastructure/repositories/nomina-empleado.repository';
+import {
+  nominaAsistenciaRepository,
+  type NominaAsistenciaRepositoryRow
+} from './infrastructure/repositories/nomina-asistencia.repository';
 import { syncVinculacionEstadoProjection } from '../vinculaciones/vigencia.projection.service';
 
 interface CountRow extends QueryResultRow {
@@ -405,30 +409,7 @@ interface NominaNovedadCanonicaRow extends QueryResultRow {
   vinculacion_id: string;
 }
 
-interface NominaAsistenciaRealRow extends QueryResultRow {
-  activo: boolean | null;
-  cargo_id: string | null;
-  cargo_nombre: string | null;
-  created_at: Date | string;
-  estado_dia: string | null;
-  fecha: Date | string;
-  hora_ingreso: string | null;
-  hora_salida: string | null;
-  horas_trabajadas: number | string | null;
-  id: string;
-  observacion: string | null;
-  periodo_contrato_id: string;
-  periodo_estado: string;
-  periodo_id: string;
-  periodo_nombre: string;
-  persona_id: string;
-  persona_numero_documento: string | null;
-  primer_apellido: string | null;
-  primer_nombre: string | null;
-  segundo_apellido: string | null;
-  segundo_nombre: string | null;
-  vinculacion_id: string;
-}
+type NominaAsistenciaRealRow = NominaAsistenciaRepositoryRow;
 
 interface NominaMovimientoRealRow extends QueryResultRow {
   activo: boolean | null;
@@ -1769,22 +1750,13 @@ const listNominaAsistenciaPresentePorRango = async (
   vinculacionId: string,
   rango: NominaOperativaRango
 ): Promise<NominaAsistenciaPresenteRow[]> => {
-  return (
-    await client.query<NominaAsistenciaPresenteRow>(
-      `
-        SELECT fecha::text AS fecha
-        FROM nomina_asistencia_diaria
-        WHERE periodo_id = $1::bigint
-          AND vinculacion_id = $2::bigint
-          AND COALESCE(activo, TRUE) = TRUE
-          AND estado_dia = 'PRESENTE'
-          AND fecha >= $3::date
-          AND fecha <= $4::date
-        ORDER BY fecha ASC
-      `,
-      [periodoId, vinculacionId, rango.fecha_inicio, rango.fecha_fin]
-    )
-  ).rows;
+  return nominaAsistenciaRepository.listPresentByRango(
+    periodoId,
+    vinculacionId,
+    rango.fecha_inicio,
+    rango.fecha_fin,
+    client
+  );
 };
 
 const assertNominaAsistenciaSinNovedadActiva = async (
@@ -1828,27 +1800,13 @@ const replaceNominaAsistenciaPresentePorNovedad = async (
     );
   }
 
-  await client.query(
-    `
-      UPDATE nomina_asistencia_diaria
-      SET
-        estado_dia = 'PENDIENTE',
-        activo = TRUE,
-        observacion = $5
-      WHERE periodo_id = $1::bigint
-        AND vinculacion_id = $2::bigint
-        AND COALESCE(activo, TRUE) = TRUE
-        AND estado_dia = 'PRESENTE'
-        AND fecha >= $3::date
-        AND fecha <= $4::date
-    `,
-    [
-      periodoId,
-      vinculacionId,
-      rango.fecha_inicio,
-      rango.fecha_fin,
-      `Asistencia reemplazada por novedad ${novedadLabel}`
-    ]
+  await nominaAsistenciaRepository.replacePresentByRango(
+    periodoId,
+    vinculacionId,
+    rango.fecha_inicio,
+    rango.fecha_fin,
+    `Asistencia reemplazada por novedad ${novedadLabel}`,
+    client
   );
 
   return conflicts.map((item) => item.fecha);
@@ -2318,39 +2276,6 @@ const getNominaNovedadesRealSelect = (): string => {
       ON nnc.nomina_novedad_id = nn.id
      AND COALESCE(nnc.activo, TRUE) = TRUE
     LEFT JOIN personas pc ON pc.id = nnc.persona_cubre_id
-  `;
-};
-
-const getNominaAsistenciaRealSelect = (): string => {
-  return `
-    SELECT
-      nad.id::text AS id,
-      nad.periodo_id::text AS periodo_id,
-      nad.vinculacion_id::text AS vinculacion_id,
-      nad.fecha,
-      nad.hora_ingreso::text AS hora_ingreso,
-      nad.hora_salida::text AS hora_salida,
-      nad.horas_trabajadas,
-      nad.estado_dia,
-      nad.observacion,
-      COALESCE(nad.activo, TRUE) AS activo,
-      nad.created_at,
-      np.contrato_id::text AS periodo_contrato_id,
-      np.estado AS periodo_estado,
-      np.nombre_periodo AS periodo_nombre,
-      p.id::text AS persona_id,
-      p.numero_documento AS persona_numero_documento,
-      p.primer_nombre,
-      p.segundo_nombre,
-      p.primer_apellido,
-      p.segundo_apellido,
-      cc.id::text AS cargo_id,
-      cc.nombre_cargo AS cargo_nombre
-    FROM nomina_asistencia_diaria nad
-    INNER JOIN nomina_periodos np ON np.id = nad.periodo_id
-    INNER JOIN vinculaciones v ON v.id = nad.vinculacion_id
-    INNER JOIN personas p ON p.id = v.persona_id
-    LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
   `;
 };
 
@@ -3801,16 +3726,7 @@ const loadNominaAsistenciaByIdOrThrow = async (
   client?: PoolClient
 ): Promise<NominaAsistenciaRealRow> => {
   const executor = client ?? dbPool;
-  const result = await executor.query<NominaAsistenciaRealRow>(
-    `
-      ${getNominaAsistenciaRealSelect()}
-      WHERE nad.id = $1::bigint
-      LIMIT 1
-    `,
-    [asistenciaId]
-  );
-
-  const asistencia = result.rows[0];
+  const asistencia = await nominaAsistenciaRepository.getById(asistenciaId, executor);
 
   if (!asistencia) {
     throw new AppError('Payroll attendance not found', 404, 'NOMINA_ASISTENCIA_NOT_FOUND');
@@ -8567,70 +8483,24 @@ export const getNominaAsistenciaByPeriodo = async (
   tenant?: TenantAccessContext
 ): Promise<PaginatedResponse<NominaAsistencia>> => {
   await loadRealPeriodoOrThrow(periodoId, tenant);
-
-  const params: unknown[] = [periodoId];
-  const conditions = ['nad.periodo_id = $1::bigint'];
-  const attendanceFromSql = `
-    FROM nomina_asistencia_diaria nad
-    INNER JOIN nomina_periodos np ON np.id = nad.periodo_id
-    INNER JOIN vinculaciones v ON v.id = nad.vinculacion_id
-  `;
-
-  appendNominaCoberturaScope(conditions, params, tenant);
-  appendTenantScopeConditions(conditions, params, tenant, 'v.contrato_id', 'v.empresa_id');
-
-  if (query.vinculacion_id) {
-    params.push(query.vinculacion_id);
-    conditions.push(`nad.vinculacion_id = $${params.length}::bigint`);
-  }
-
-  if (query.fecha) {
-    params.push(query.fecha);
-    conditions.push(`nad.fecha = $${params.length}::date`);
-  }
-
-  if (query.estado_dia) {
-    params.push(query.estado_dia);
-    conditions.push(`nad.estado_dia = $${params.length}`);
-  }
-
-  if (query.activo !== undefined) {
-    params.push(query.activo);
-    conditions.push(`COALESCE(nad.activo, TRUE) = $${params.length}`);
-  }
-
-  const whereSql = buildSqlWhere(conditions);
-  const countResult = await dbQuery<CountRow>(
-    `
-      SELECT COUNT(*)::int AS total
-      ${attendanceFromSql}
-      ${whereSql}
-    `,
-    params
-  );
-
-  const total = countResult.rows[0]?.total ?? 0;
-  const offset = (query.page - 1) * query.limit;
-  const listParams = [...params, query.limit, offset];
-
-  const result = await dbQuery<NominaAsistenciaRealRow>(
-    `
-      ${getNominaAsistenciaRealSelect()}
-      ${whereSql}
-      ORDER BY nad.fecha ASC, p.primer_apellido ASC NULLS LAST, p.primer_nombre ASC NULLS LAST, nad.id ASC
-      LIMIT $${listParams.length - 1}
-      OFFSET $${listParams.length}
-    `,
-    listParams
-  );
+  const result = await nominaAsistenciaRepository.listByPeriodo({
+    periodoId,
+    page: query.page,
+    limit: query.limit,
+    vinculacionId: query.vinculacion_id,
+    fecha: query.fecha,
+    estadoDia: query.estado_dia,
+    activo: query.activo,
+    tenant
+  });
 
   return {
     items: result.rows.map(mapRealAsistencia),
     pagination: {
       page: query.page,
       limit: query.limit,
-      total,
-      total_pages: total === 0 ? 0 : Math.ceil(total / query.limit)
+      total: result.total,
+      total_pages: result.total === 0 ? 0 : Math.ceil(result.total / query.limit)
     }
   };
 };
@@ -11260,11 +11130,16 @@ export const markNominaAsistencia = async (periodoId: string, vinculacionId: str
     if (presente) {
       await assertNominaAsistenciaSinNovedadActiva(client, vinculacionId, { fecha_inicio: fecha, fecha_fin: fecha });
     }
-    const existing = await client.query<{ id: string }>(`SELECT id::text FROM nomina_asistencia_diaria WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint AND fecha=$3::date ORDER BY id DESC LIMIT 1`, [periodoId, vinculacionId, fecha]);
-    if (existing.rows[0]) await client.query(`UPDATE nomina_asistencia_diaria SET estado_dia=$2, activo=TRUE, observacion=$3 WHERE id=$1::bigint`, [existing.rows[0].id, presente ? 'PRESENTE' : 'PENDIENTE', presente ? 'Asistencia confirmada desde planilla' : 'Asistencia desmarcada']);
-    else if (presente) await client.query(`INSERT INTO nomina_asistencia_diaria(periodo_id,vinculacion_id,fecha,estado_dia,activo,observacion) VALUES($1::bigint,$2::bigint,$3::date,'PRESENTE',TRUE,'Asistencia confirmada desde planilla')`, [periodoId, vinculacionId, fecha]);
+    const persisted = await nominaAsistenciaRepository.upsert({
+      periodoId,
+      vinculacionId,
+      fecha,
+      presente,
+      observacionPresentada: 'Asistencia confirmada desde planilla',
+      observacionPendiente: 'Asistencia desmarcada'
+    }, client);
     await invalidateNominaEmpleadoRevisionState(client, empleado.nomina_empleado_id);
-    await registerAuditEntry({ client, usuario_id: actorUserId, accion: presente ? 'NOMINA_ASISTENCIA_CREATE' : 'NOMINA_ASISTENCIA_UPDATE', tabla: 'nomina_asistencia_diaria', registro_id: existing.rows[0]?.id ?? `${periodoId}:${vinculacionId}:${fecha}`, descripcion: 'Marcacion rapida de asistencia desde planilla', after: { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha, presente }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
+    await registerAuditEntry({ client, usuario_id: actorUserId, accion: presente ? 'NOMINA_ASISTENCIA_CREATE' : 'NOMINA_ASISTENCIA_UPDATE', tabla: 'nomina_asistencia_diaria', registro_id: persisted.id ?? `${periodoId}:${vinculacionId}:${fecha}`, descripcion: 'Marcacion rapida de asistencia desde planilla', after: { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha, presente }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
     await client.query('COMMIT');
     return { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha, estado_dia: presente ? 'PRESENTE' : 'PENDIENTE', activo: presente };
   } catch (error) {
@@ -11296,9 +11171,13 @@ export const markNominaAsistenciaRango = async (periodoId: string, vinculacionId
     const marcados: string[] = [];
     for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
       const fecha = cursor.toISOString().slice(0, 10);
-      const existing = await client.query<{ id: string }>(`SELECT id::text FROM nomina_asistencia_diaria WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint AND fecha=$3::date ORDER BY id DESC LIMIT 1`, [periodoId, vinculacionId, fecha]);
-      if (existing.rows[0]) await client.query(`UPDATE nomina_asistencia_diaria SET estado_dia='PRESENTE', activo=TRUE, observacion='Asistencia confirmada desde planilla' WHERE id=$1::bigint`, [existing.rows[0].id]);
-      else await client.query(`INSERT INTO nomina_asistencia_diaria(periodo_id,vinculacion_id,fecha,estado_dia,activo,observacion) VALUES($1::bigint,$2::bigint,$3::date,'PRESENTE',TRUE,'Asistencia confirmada desde planilla')`, [periodoId, vinculacionId, fecha]);
+      await nominaAsistenciaRepository.upsert({
+        periodoId,
+        vinculacionId,
+        fecha,
+        presente: true,
+        observacionPresentada: 'Asistencia confirmada desde planilla'
+      }, client);
       marcados.push(fecha);
     }
     await invalidateNominaEmpleadoRevisionState(client, empleado.nomina_empleado_id);
@@ -11338,7 +11217,15 @@ export const markNominaAsistenciaBulk = async (
   if (!unique.length) throw new AppError('Debe enviar cambios de asistencia', 400, 'NOMINA_ASISTENCIA_BULK_INPUT_INVALIDO');
   const client = await dbPool.connect();
   const confirmados: Array<{ vinculacion_id: string; fecha: string; presente: boolean }> = [];
-  const empleadosAfectados = new Set<string>();
+    const empleadosAfectados = new Set<string>();
+    const persistenceBatch: Array<{
+      fecha: string;
+      periodoId: string;
+      presente: boolean;
+      vinculacionId: string;
+      observacionPresentada: string;
+      observacionPendiente: string;
+    }> = [];
   try {
     await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
@@ -11351,12 +11238,18 @@ export const markNominaAsistenciaBulk = async (
       if (!vinc.rows[0]) throw new AppError('Vinculacion no encontrada', 404, 'NOMINA_ASISTENCIA_VINCULACION_INVALIDA');
       assertNominaFechaDentroDeVigencia(cambio.fecha, periodo, vinc.rows[0]);
       if (cambio.presente) await assertNominaAsistenciaSinNovedadActiva(client, cambio.vinculacion_id, { fecha_inicio: cambio.fecha, fecha_fin: cambio.fecha });
-      const existing = await client.query<{ id: string }>('SELECT id::text FROM nomina_asistencia_diaria WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint AND fecha=$3::date ORDER BY id DESC LIMIT 1', [periodoId, cambio.vinculacion_id, cambio.fecha]);
-      if (existing.rows[0]) await client.query('UPDATE nomina_asistencia_diaria SET estado_dia=$2, activo=TRUE, observacion=$3 WHERE id=$1::bigint', [existing.rows[0].id, cambio.presente ? 'PRESENTE' : 'PENDIENTE', cambio.presente ? 'Asistencia confirmada desde planilla (lote)' : 'Asistencia desmarcada desde planilla (lote)']);
-      else if (cambio.presente) await client.query("INSERT INTO nomina_asistencia_diaria(periodo_id,vinculacion_id,fecha,estado_dia,activo,observacion) VALUES($1::bigint,$2::bigint,$3::date,'PRESENTE',TRUE,'Asistencia confirmada desde planilla (lote)')", [periodoId, cambio.vinculacion_id, cambio.fecha]);
+      persistenceBatch.push({
+        periodoId,
+        vinculacionId: cambio.vinculacion_id,
+        fecha: cambio.fecha,
+        presente: cambio.presente,
+        observacionPresentada: 'Asistencia confirmada desde planilla (lote)',
+        observacionPendiente: 'Asistencia desmarcada desde planilla (lote)'
+      });
       empleadosAfectados.add(empleado.nomina_empleado_id);
       confirmados.push(cambio);
     }
+    await nominaAsistenciaRepository.bulkUpsert(persistenceBatch, client);
     if (empleadosAfectados.size) {
       await client.query(
         `UPDATE nomina_empleados SET revisado=FALSE, estado='PENDIENTE'
