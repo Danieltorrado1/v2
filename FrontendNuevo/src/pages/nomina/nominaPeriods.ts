@@ -29,3 +29,10 @@ export function pickDefaultNominaPeriod(periodos: NominaPeriodoApi[]) {
     })[0] ?? null
   );
 }
+
+export function isNominaPeriodSelectorDisabled(
+  periodos: NominaPeriodoApi[],
+  periodsLoading: boolean,
+) {
+  return periodsLoading || periodos.length < 2;
+}

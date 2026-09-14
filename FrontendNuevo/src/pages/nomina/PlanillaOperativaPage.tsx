@@ -45,7 +45,7 @@ import type {
   RevisionOperativaApi,
 } from "../../types/nomina.types";
 import type { NominaAsistenciaBulkChange } from "../../services/nominaApi";
-import { pickDefaultNominaPeriod } from "./nominaPeriods";
+import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from "./nominaPeriods";
 import { getColombianCalendarDay } from "./colombiaHolidays";
 import CoberturaFlowNav from "./CoberturaFlowNav";
 import {
@@ -707,6 +707,25 @@ export default function PlanillaOperativaPage() {
       setLoading(true);
       setError("");
       setScrollTop(0);
+      // Las capas de la planilla pertenecen al período seleccionado. Se limpian
+      // antes de solicitar el siguiente para no mostrar agosto con el contexto
+      // de septiembre (o viceversa) durante una carga o una respuesta tardía.
+      setEmployees([]);
+      setNovelties([]);
+      setMovements([]);
+      setCoverageTurns([]);
+      setChanges([]);
+      setAttendance([]);
+      setAttendanceFailures(new Map());
+      setReviews([]);
+      setAvailableEmployees(null);
+      setAvailabilityError("");
+      setSelected(null);
+      setRangeSelection(null);
+      setNoveltyCell(null);
+      setEditingNovelty(null);
+      setSelectedType(null);
+      setCoverEmployee(null);
 
       try {
         const selectedPeriod = periods.find((item) => String(item.id) === periodId);
@@ -1638,7 +1657,11 @@ export default function PlanillaOperativaPage() {
         <div className="op-period-picker">
           <label>
             Periodo
-            <select value={periodId} disabled={isSyncingPersonal} onChange={(event) => setPeriodId(event.target.value)}>
+            <select
+              value={periodId}
+              disabled={isNominaPeriodSelectorDisabled(periods, periodsLoading)}
+              onChange={(event) => setPeriodId(event.target.value)}
+            >
               {periods.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre_periodo} | {item.tipo_periodo}

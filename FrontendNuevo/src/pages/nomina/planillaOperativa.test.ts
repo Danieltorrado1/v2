@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildTramos, dateKey, dedupeNominaNovedades, isOutsideEmployment, mergeAttendance, movimientosOnDate, novedadesOnDate, novedadState, upsertNominaNovedad } from './planillaOperativa.domain';
+import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from './nominaPeriods';
 import type { NominaEmpleadoApi, NominaMovimientoApi, NominaNovedadApi } from '../../types/nomina.types';
 const employee={id:'1',vinculacion_id:'10',persona:{id:'7',nombre_completo:'MARIA PEREZ',numero_documento:'1234',primer_nombre:'MARIA',segundo_nombre:null,primer_apellido:'PEREZ',segundo_apellido:null},vinculacion:{id:'10',empresa_id:'15',contrato_id:'24',estado_vinculacion:'ACTIVA',fecha_inicio:'2026-08-10',fecha_fin:'2026-08-22',metodo_pago:'COBERTURA'},sede:{id:'1',municipio:'GRANADA',nombre_sede:'CENTRAL'},modalidad:'A'} as NominaEmpleadoApi;
 const source=readFileSync(resolve(process.cwd(),'FrontendNuevo/src/pages/nomina/PlanillaOperativaPage.tsx'),'utf8');
@@ -33,6 +34,18 @@ test('PR1 activo se proyecta visualmente en su celda DATE',()=>{const pr1={id:'8
 test('TA comparte dia y conserva su contexto independiente',()=>{const ta={activo:true,fecha:'2026-08-18',familia_movimiento:'ADICION_DEVENGO',contexto_operativo:{modalidad:'B'}} as NominaMovimientoApi;const found=movimientosOnDate([ta],'2026-08-18');assert.equal(found.length,1);assert.equal(found[0]?.contexto_operativo?.modalidad,'B');});
 test('estado de novedad siempre tiene etiqueta textual',()=>{const n={revisado:false,tipo_novedad:{requiere_revision:true}} as NominaNovedadApi;assert.equal(novedadState(n),'REQUIERE_REVISION');assert.equal(novedadState({...n,revisado:true}),'VALIDADA');});
 test('periodo cerrado y permisos bloquean edicion',()=>{assert.ok(source.includes('period?.estado==="ABIERTO"&&canCreate'));assert.ok(source.includes('nomina.novedades.create'));});
+test('selector conserva historico y solo se deshabilita con cero o un periodo autorizado',()=>{
+  const periods=[
+    {id:'2',nombre_periodo:'AGOSTO 2026',tipo_periodo:'MENSUAL',fecha_inicio:'2026-08-01',fecha_fin:'2026-08-31',estado:'CERRADO',activo:true,created_at:'2026-08-01',requiere_asistencia:true,contrato_id:'24',contrato:null},
+    {id:'3',nombre_periodo:'SEPTIEMBRE 2026',tipo_periodo:'MENSUAL',fecha_inicio:'2026-09-01',fecha_fin:'2026-09-30',estado:'ABIERTO',activo:true,created_at:'2026-09-01',requiere_asistencia:true,contrato_id:'24',contrato:null},
+  ] as any;
+  assert.equal(isNominaPeriodSelectorDisabled(periods,false),false);
+  assert.equal(isNominaPeriodSelectorDisabled(periods.slice(0,1),false),true);
+  assert.equal(isNominaPeriodSelectorDisabled(periods,false),false);
+  assert.equal(pickDefaultNominaPeriod(periods)?.id,'3');
+  assert.match(source,/disabled=\{isNominaPeriodSelectorDisabled\(periods, periodsLoading\)\}/);
+  assert.doesNotMatch(source,/<select value=\{periodId\} disabled=\{isSyncingPersonal\}/);
+});
 test('asistencia multidia conserva cada fecha y permite quitar una sola',()=>{let items=[];for(const day of ['01','02','03','04','05'])items=mergeAttendance(items,{vinculacion_id:'10',fecha:'2026-08-'+day,estado_dia:'PRESENTE',activo:true});assert.deepEqual(items.map(item=>item.fecha),['2026-08-01','2026-08-02','2026-08-03','2026-08-04','2026-08-05']);items=mergeAttendance(items,{vinculacion_id:'10',fecha:'2026-08-03',estado_dia:'PRESENTE',activo:true},true);assert.deepEqual(items.map(item=>item.fecha),['2026-08-01','2026-08-02','2026-08-04','2026-08-05']);});
 test('header y body usan una geometria comun',()=>{assert.ok(source.includes('const PLANILLA_GRID_TEMPLATE'));assert.ok(source.includes('gridTemplateColumns: PLANILLA_GRID_TEMPLATE(days.length)'));assert.ok(source.includes('PLANILLA_GRID_TEMPLATE(days.length),'));});
 test('workspace nomina expone rutas reales para cada area',()=>{const router=readFileSync(resolve(process.cwd(),'FrontendNuevo/src/router/AppRouter.tsx'),'utf8');for(const entry of ['nomina/novedades','nomina/cambios-operativos','nomina/validacion','nomina/liquidacion','nomina/pago','nomina/documentos'])assert.ok(router.includes(entry),entry);});
