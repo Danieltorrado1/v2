@@ -34,3 +34,15 @@ node_modules/
 # Archivos del sistema
 .DS_Store
 Thumbs.db
+
+
+# QA territorial local
+qa-territorial-pgdata/
+
+# Focalizaciones oficiales locales pesadas
+data/focalizacion-julio-2026.xlsx
+data/focalizacion-septiembre-2026.xlsx
+
+# Auditorías territoriales locales
+reports/territorial-contract-24-audit.json
+reports/territorial-contract-24-pre-migration.json
