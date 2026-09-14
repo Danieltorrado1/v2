@@ -13,6 +13,7 @@ import {
 import { getVinculacionChecklist } from '../documentos/documentos.service';
 import { listNominaDesprendibles, listNominaLiquidaciones } from '../nomina/nomina.service';
 import { listSstEventos, listSstPlanesAccion } from '../sst/sst.service';
+import { effectiveRetirementSql } from '../vinculaciones/vigencia';
 import { AppError } from '../../utils/AppError';
 import { CommonReportQuery, ReportFormat } from './reportes.schemas';
 
@@ -202,11 +203,13 @@ export const getPersonalActivoReport = async (
     contrato_id: 'v.contrato_id::text',
     municipio_id: 'p.municipio_residencia_id::text',
     fecha_desde: 'v.fecha_inicio',
-    fecha_hasta: 'COALESCE(v.fecha_fin, CURRENT_DATE)',
-    activo: 'p.activo'
+    fecha_hasta: 'COALESCE(v.fecha_fin, CURRENT_DATE)'
   });
 
-  const conditions = [baseFilters.whereClause.replace(/^WHERE\s*/, ''), `v.estado = 'ACTIVA'`]
+  const conditions = [
+    baseFilters.whereClause.replace(/^WHERE\s*/, ''),
+    `v.fecha_inicio <= CURRENT_DATE AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= CURRENT_DATE)`
+  ]
     .filter((condition) => condition.length > 0)
     .join(' AND ');
   const whereClause = conditions.length > 0 ? `WHERE ${conditions}` : '';
@@ -233,13 +236,13 @@ export const getPersonalActivoReport = async (
         p.correo,
         p.telefono,
         p.municipio_residencia_id::text AS municipio_residencia_id,
-        p.activo,
+        TRUE AS activo,
         v.empresa_id::text AS empresa_id,
-        e.nombre AS empresa_nombre,
+        e.nombre_empresa AS empresa_nombre,
         v.contrato_id::text AS contrato_id,
-        c.nombre AS contrato_nombre,
-        cc.nombre AS cargo_nombre,
-        v.estado,
+        c.numero_contrato AS contrato_nombre,
+        cc.nombre_cargo AS cargo_nombre,
+        v.estado_vinculacion AS estado,
         v.fecha_inicio,
         v.fecha_fin
       FROM personas p
@@ -316,16 +319,26 @@ export const getVinculacionesHistoricasReport = async (
   const filters = buildListFilters(query, {
     empresa_id: 'v.empresa_id::text',
     contrato_id: 'v.contrato_id::text',
-    fecha_desde: 'v.fecha_inicio',
-    fecha_hasta: 'COALESCE(v.fecha_fin, CURRENT_DATE)',
-    estado: 'v.estado'
+    estado: 'v.estado_vinculacion'
   });
+  const historicalConditions = [filters.whereClause.replace(/^WHERE\s*/, '')].filter(Boolean);
+  if (query.fecha_desde && query.fecha_hasta) {
+    filters.params.push(query.fecha_hasta, query.fecha_desde);
+    historicalConditions.push(`v.fecha_inicio <= $${filters.params.length - 1}::date AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= $${filters.params.length}::date)`);
+  } else if (query.fecha_desde) {
+    filters.params.push(query.fecha_desde);
+    historicalConditions.push(`(${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= $${filters.params.length}::date)`);
+  } else if (query.fecha_hasta) {
+    filters.params.push(query.fecha_hasta);
+    historicalConditions.push(`v.fecha_inicio <= $${filters.params.length}::date`);
+  }
+  const whereClause = historicalConditions.length > 0 ? `WHERE ${historicalConditions.join(' AND ')}` : '';
 
   const countResult = await dbQuery<CountRow>(
     `
       SELECT COUNT(*)::int AS total
       FROM vinculaciones v
-      ${filters.whereClause}
+      ${whereClause}
     `,
     filters.params
   );
@@ -340,11 +353,11 @@ export const getVinculacionesHistoricasReport = async (
         p.numero_documento,
         CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido) AS nombre_completo,
         v.empresa_id::text AS empresa_id,
-        e.nombre AS empresa_nombre,
+        e.nombre_empresa AS empresa_nombre,
         v.contrato_id::text AS contrato_id,
-        c.nombre AS contrato_nombre,
-        cc.nombre AS cargo_nombre,
-        v.estado,
+        c.numero_contrato AS contrato_nombre,
+        cc.nombre_cargo AS cargo_nombre,
+        v.estado_vinculacion AS estado,
         v.fecha_inicio,
         v.fecha_fin
       FROM vinculaciones v
@@ -352,7 +365,7 @@ export const getVinculacionesHistoricasReport = async (
       LEFT JOIN empresas e ON e.id = v.empresa_id
       LEFT JOIN contratos c ON c.id = v.contrato_id
       LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
-      ${filters.whereClause}
+      ${whereClause}
       ORDER BY v.fecha_inicio DESC, nombre_completo ASC
       LIMIT $${listParams.length - 1}
       OFFSET $${listParams.length}

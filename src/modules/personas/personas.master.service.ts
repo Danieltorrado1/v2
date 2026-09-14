@@ -14,6 +14,7 @@ import type {
   UpdatePersonaCuentaBancariaInput
 } from './personas.master.schemas';
 import { computeSstPerfilCompleteness } from '../sst/sst.perfil.domain';
+import { effectiveRetirementSql } from '../vinculaciones/vigencia';
 
 interface MutationContext {
   actorUserId: string;
@@ -1070,7 +1071,7 @@ export const generatePersonalExport = async (
     }
 
     if (input.cobertura === 'RETIRADA') {
-      conditions.push(`v.fecha_fin IS NOT NULL AND v.fecha_fin < $2::date`);
+      conditions.push(`${effectiveRetirementSql('v')} IS NOT NULL AND ${effectiveRetirementSql('v')} < $2::date`);
     }
 
     if (input.licitacion === 'PRESENTADA') {
@@ -1103,7 +1104,7 @@ export const generatePersonalExport = async (
 
     if (input.estado_vinculacion) {
       if (input.estado_vinculacion === 'ACTIVA') {
-        conditions.push(`v.estado_vinculacion = ANY(ARRAY['ACTIVA', 'ACTIVO'])`);
+        conditions.push(`v.fecha_inicio <= CURRENT_DATE AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= CURRENT_DATE)`);
       } else {
         params.push(input.estado_vinculacion);
         conditions.push(`v.estado_vinculacion = $${paramIndex}`);

@@ -25,6 +25,7 @@ import {
 import { resolveCoberturaFechaConsulta } from './cobertura.temporal';
 import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { appendVisibleMunicipalityScope } from '../users/municipal-scope.service';
+import { effectiveRetirementSql } from '../vinculaciones/vigencia';
 
 interface CoberturaBaseRow extends QueryResultRow {
   activo: boolean;
@@ -459,7 +460,7 @@ const getCoberturaBaseRows = async (
           AND ca.fecha_inicio <= ${datePlaceholder}::date
           AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= ${datePlaceholder}::date)
           AND v.fecha_inicio <= ${datePlaceholder}::date
-          AND (v.fecha_fin IS NULL OR v.fecha_fin >= ${datePlaceholder}::date)
+          AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= ${datePlaceholder}::date)
         GROUP BY ca.focalizacion_final_id::text
       )
       SELECT

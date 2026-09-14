@@ -116,6 +116,11 @@ import {
   ensurePeriodoRelacionadoConFecha,
   ensureVinculacionExists
 } from './nomina.validator';
+import {
+  nominaPeriodoRepository,
+  type NominaPeriodoRepositoryRow
+} from './infrastructure/repositories/nomina-periodo.repository';
+import { syncVinculacionEstadoProjection } from '../vinculaciones/vigencia.projection.service';
 
 interface CountRow extends QueryResultRow {
   total: number;
@@ -145,23 +150,7 @@ interface NominaPeriodoAsistenciaPendienteRow extends QueryResultRow {
   vinculacion_id: string;
 }
 
-interface NominaPeriodoRealRow extends QueryResultRow {
-  activo: boolean;
-  contrato_empresa_id: string | null;
-  contrato_entidad_contratante: string | null;
-  contrato_fecha_finalizacion: Date | string | null;
-  contrato_fecha_inicio: Date | string | null;
-  contrato_id: string;
-  contrato_numero: string | null;
-  created_at: Date | string;
-  estado: string;
-  fecha_fin: Date | string;
-  fecha_inicio: Date | string;
-  id: string;
-  nombre_periodo: string;
-  requiere_asistencia: boolean;
-  tipo_periodo: string;
-}
+type NominaPeriodoRealRow = NominaPeriodoRepositoryRow;
 
 interface NominaEmpleadoRealRow extends QueryResultRow {
   activo: boolean;
@@ -1254,6 +1243,10 @@ export interface NominaImportEmployeesResult {
   skipped_requires_review?: number;
 }
 
+const isFechaRetiroNominaType = (tipo: { nombre?: string | null; codigo_operativo?: string | null }): boolean =>
+  [tipo.nombre, tipo.codigo_operativo]
+    .some(value => value?.trim().toUpperCase() === 'FECHA DE RETIRO');
+
 export interface NominaRecalculateResult {
   liquidaciones_generadas: number;
   periodo: NominaPeriodo;
@@ -1927,29 +1920,6 @@ export const appendTenantScopeConditions = (
 
 export const buildSqlWhere = (conditions: string[]): string => {
   return conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-};
-
-const getNominaPeriodosRealSelect = (): string => {
-  return `
-    SELECT
-      np.id::text AS id,
-      np.contrato_id::text AS contrato_id,
-      np.nombre_periodo,
-      np.fecha_inicio,
-      np.fecha_fin,
-      np.tipo_periodo,
-      COALESCE(np.requiere_asistencia, FALSE) AS requiere_asistencia,
-      np.estado,
-      COALESCE(np.activo, TRUE) AS activo,
-      np.created_at,
-      c.empresa_id::text AS contrato_empresa_id,
-      c.numero_contrato AS contrato_numero,
-      c.entidad_contratante AS contrato_entidad_contratante,
-      c.fecha_inicio AS contrato_fecha_inicio,
-      c.fecha_finalizacion AS contrato_fecha_finalizacion
-    FROM nomina_periodos np
-    INNER JOIN contratos c ON c.id = np.contrato_id
-  `;
 };
 
 const getNominaEmpleadosRealSelect = (): string => {
@@ -3769,17 +3739,7 @@ const loadRealPeriodoOrThrow = async (
   tenant?: TenantAccessContext,
   client?: PoolClient
 ): Promise<NominaPeriodoRealRow> => {
-  const executor = client ?? dbPool;
-  const result = await executor.query<NominaPeriodoRealRow>(
-    `
-      ${getNominaPeriodosRealSelect()}
-      WHERE np.id = $1::bigint
-      LIMIT 1
-    `,
-    [periodoId]
-  );
-
-  const periodo = result.rows[0];
+  const periodo = await nominaPeriodoRepository.findById(periodoId, client);
 
   if (!periodo) {
     throw new AppError('Payroll period not found', 404, 'NOMINA_PERIODO_NOT_FOUND');
@@ -6000,23 +5960,17 @@ const updateNominaPeriodoEstado = async (
   estado: string,
   tenant?: TenantAccessContext
 ): Promise<NominaPeriodo> => {
-  const result = await client.query<{ id: string }>(
-    `
-      UPDATE nomina_periodos
-      SET estado = $2
-      WHERE id = $1::bigint
-      RETURNING id::text AS id
-    `,
-    [periodoId, estado]
-  );
-
-  const updatedRow = result.rows[0];
-
-  if (!updatedRow) {
-    throw new AppError('Failed to update payroll period state', 500, 'NOMINA_PERIODO_STATE_UPDATE_FAILED');
+  let updatedId: string;
+  try {
+    updatedId = await nominaPeriodoRepository.updateState(periodoId, estado, client);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'NominaPeriodoRepository.updateState returned no id') {
+      throw new AppError('Failed to update payroll period state', 500, 'NOMINA_PERIODO_STATE_UPDATE_FAILED');
+    }
+    throw error;
   }
 
-  return mapRealPeriodo(await loadRealPeriodoOrThrow(updatedRow.id, tenant, client));
+  return mapRealPeriodo(await loadRealPeriodoOrThrow(updatedId, tenant, client));
 };
 
 const buildWhereClause = (
@@ -6075,21 +6029,7 @@ const findExistingNominaPeriodoByContractAndRange = async (
   tenant?: TenantAccessContext,
   client?: PoolClient
 ): Promise<NominaPeriodo | null> => {
-  const executor = client ?? dbPool;
-  const result = await executor.query<NominaPeriodoRealRow>(
-    `
-      ${getNominaPeriodosRealSelect()}
-      WHERE np.contrato_id = $1::bigint
-        AND np.fecha_inicio = $2::date
-        AND np.fecha_fin = $3::date
-        AND np.tipo_periodo = $4
-      ORDER BY np.id ASC
-      LIMIT 1
-    `,
-    [input.contrato_id, input.fecha_inicio, input.fecha_fin, input.tipo_periodo]
-  );
-
-  const row = result.rows[0];
+  const row = await nominaPeriodoRepository.findByIdentity(input, client);
 
   if (!row) {
     return null;
@@ -6103,8 +6043,7 @@ const lockNominaPeriodoIdentity = async (
   client: PoolClient,
   input: { contrato_id: string; fecha_inicio: string; fecha_fin: string; tipo_periodo: string }
 ): Promise<void> => {
-  const identity = [input.contrato_id, input.fecha_inicio, input.fecha_fin, input.tipo_periodo].join('|');
-  await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [identity]);
+  await nominaPeriodoRepository.lockIdentity(input, client);
 };
 
 const NOMINA_MONTH_NAMES = [
@@ -6313,60 +6252,22 @@ export const listNominaPeriodos = async (
     contrato_id: query.contrato_id
   });
 
-  const conditions: string[] = [];
-  const params: unknown[] = [];
-
-  appendTenantScopeConditions(conditions, params, tenant, 'np.contrato_id', 'c.empresa_id');
-
-  if (query.contrato_id) {
-    params.push(query.contrato_id);
-    conditions.push(`np.contrato_id = $${params.length}::bigint`);
-  }
-
-  if (query.empresa_id) {
-    params.push(query.empresa_id);
-    conditions.push(`c.empresa_id = $${params.length}::bigint`);
-  }
-
-  if (query.estado) {
-    params.push(query.estado);
-    conditions.push(`np.estado = $${params.length}`);
-  }
-
-  const whereSql = buildSqlWhere(conditions);
-
-  const countResult = await dbQuery<CountRow>(
-    `
-      SELECT COUNT(*)::int AS total
-      FROM nomina_periodos np
-      INNER JOIN contratos c ON c.id = np.contrato_id
-      ${whereSql}
-    `,
-    params
-  );
-
-  const total = countResult.rows[0]?.total ?? 0;
-  const offset = (query.page - 1) * query.limit;
-  const listParams = [...params, query.limit, offset];
-
-  const result = await dbQuery<NominaPeriodoRealRow>(
-    `
-      ${getNominaPeriodosRealSelect()}
-      ${whereSql}
-      ORDER BY np.fecha_inicio DESC, np.id DESC
-      LIMIT $${listParams.length - 1}
-      OFFSET $${listParams.length}
-    `,
-    listParams
-  );
+  const result = await nominaPeriodoRepository.list({
+    contratoId: query.contrato_id,
+    empresaId: query.empresa_id,
+    estado: query.estado,
+    limit: query.limit,
+    page: query.page,
+    tenant
+  });
 
   return {
     items: result.rows.map(mapRealPeriodo),
     pagination: {
       page: query.page,
       limit: query.limit,
-      total,
-      total_pages: total === 0 ? 0 : Math.ceil(total / query.limit)
+      total: result.total,
+      total_pages: result.total === 0 ? 0 : Math.ceil(result.total / query.limit)
     }
   };
 };
@@ -6375,16 +6276,7 @@ export const getNominaPeriodoById = async (
   periodoId: string,
   tenant?: TenantAccessContext
 ): Promise<NominaPeriodo | null> => {
-  const result = await dbQuery<NominaPeriodoRealRow>(
-    `
-      ${getNominaPeriodosRealSelect()}
-      WHERE np.id = $1::bigint
-      LIMIT 1
-    `,
-    [periodoId]
-  );
-
-  const row = result.rows[0];
+  const row = await nominaPeriodoRepository.findById(periodoId);
 
   if (!row) {
     return null;
@@ -6430,48 +6322,17 @@ export const createNominaPeriodo = async (
       return existing;
     }
 
-    const result = await client.query<{ id: string }>(
-      `
-        INSERT INTO nomina_periodos (
-          contrato_id,
-          nombre_periodo,
-          fecha_inicio,
-          fecha_fin,
-          tipo_periodo,
-          requiere_asistencia,
-          estado,
-          activo
-        )
-        VALUES (
-          $1::bigint,
-          $2,
-          $3,
-          $4,
-          $5,
-          $6,
-          'ABIERTO',
-          $7
-        )
-        RETURNING id::text AS id
-      `,
-      [
-        input.contrato_id,
-        input.nombre_periodo,
-        input.fecha_inicio,
-        input.fecha_fin,
-        input.tipo_periodo,
-        input.requiere_asistencia,
-        input.activo
-      ]
-    );
-
-    const createdRow = result.rows[0];
-
-    if (!createdRow) {
-      throw new AppError('Failed to create payroll period', 500, 'NOMINA_PERIODO_CREATE_FAILED');
+    let createdId: string;
+    try {
+      createdId = await nominaPeriodoRepository.create(input, client);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'NominaPeriodoRepository.create returned no id') {
+        throw new AppError('Failed to create payroll period', 500, 'NOMINA_PERIODO_CREATE_FAILED');
+      }
+      throw error;
     }
 
-    const created = mapRealPeriodo(await loadRealPeriodoOrThrow(createdRow.id, tenant, client));
+    const created = mapRealPeriodo(await loadRealPeriodoOrThrow(createdId, tenant, client));
 
     await recordNominaAudit(
       client,
@@ -6520,39 +6381,26 @@ export const updateNominaPeriodo = async (
     await ensureContratoExists(nextContratoId, client);
     await assertTenantAccessForContrato(nextContratoId, tenant, client);
 
-    const result = await client.query<{ id: string }>(
-      `
-        UPDATE nomina_periodos
-        SET
-          contrato_id = $2::bigint,
-          nombre_periodo = $3,
-          fecha_inicio = $4,
-          fecha_fin = $5,
-          tipo_periodo = $6,
-          requiere_asistencia = $7,
-          activo = $8
-        WHERE id = $1::bigint
-        RETURNING id::text AS id
-      `,
-      [
-        periodoId,
-        nextContratoId,
-        input.nombre_periodo ?? current.nombre_periodo,
-        nextFechaInicio,
-        nextFechaFin,
-        input.tipo_periodo ?? current.tipo_periodo,
-        input.requiere_asistencia ?? current.requiere_asistencia,
-        input.activo ?? current.activo
-      ]
-    );
-
-    const updatedRow = result.rows[0];
-
-    if (!updatedRow) {
-      throw new AppError('Failed to update payroll period', 500, 'NOMINA_PERIODO_UPDATE_FAILED');
+    let updatedId: string;
+    try {
+      updatedId = await nominaPeriodoRepository.update({
+        periodo_id: periodoId,
+        contrato_id: nextContratoId,
+        nombre_periodo: input.nombre_periodo ?? current.nombre_periodo,
+        fecha_inicio: nextFechaInicio,
+        fecha_fin: nextFechaFin,
+        tipo_periodo: input.tipo_periodo ?? current.tipo_periodo,
+        requiere_asistencia: input.requiere_asistencia ?? current.requiere_asistencia,
+        activo: input.activo ?? current.activo
+      }, client);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'NominaPeriodoRepository.update returned no id') {
+        throw new AppError('Failed to update payroll period', 500, 'NOMINA_PERIODO_UPDATE_FAILED');
+      }
+      throw error;
     }
 
-    const updated = mapRealPeriodo(await loadRealPeriodoOrThrow(updatedRow.id, tenant, client));
+    const updated = mapRealPeriodo(await loadRealPeriodoOrThrow(updatedId, tenant, client));
 
     await recordNominaAudit(
       client,
@@ -7421,8 +7269,6 @@ export const importNominaEmpleados = async (
     if (snapshotTableResult.rows[0]?.exists) {
       const snapshotParams: unknown[] = [
         periodoId,
-        periodoFechaInicio,
-        periodoFechaFin,
         actorUserId
       ];
       const snapshotScopeCondition = personaId
@@ -7471,7 +7317,7 @@ export const importNominaEmpleados = async (
               periodo_id, nomina_empleado_id, vinculacion_id, contexto, fuente, created_by
             )
             SELECT $1::bigint, nomina_empleado_id, vinculacion_id, contexto,
-              'SINCRONIZACION_PERSONAL', $4::bigint
+              'SINCRONIZACION_PERSONAL', $2::bigint
             FROM source_context
             ON CONFLICT (periodo_id, nomina_empleado_id) DO UPDATE
               SET vinculacion_id = EXCLUDED.vinculacion_id,
@@ -11223,6 +11069,9 @@ export const createNominaNovedad = async (
       }
 
       const canonical = await loadNominaNovedadCanonicaByIdOrThrow(createdRow.id, client);
+      if (isFechaRetiroNominaType(tipoNovedad)) {
+        await syncVinculacionEstadoProjection(client, input.vinculacion_id, actorUserId, auditMeta);
+      }
       const empleadoRows = await loadNominaEmpleadoRowsForPeriodo(
         input.periodo_id,
         { nomina_empleado_id: input.nomina_empleado_id },
@@ -11371,6 +11220,10 @@ export const createNominaNovedad = async (
          ON CONFLICT (nomina_novedad_id, documento_persona_id) WHERE activo = TRUE DO NOTHING`,
         [createdRow.id, input.documento_persona_id, actorUserId]
       );
+    }
+
+    if (isFechaRetiroNominaType(tipoNovedad)) {
+      await syncVinculacionEstadoProjection(client, input.vinculacion_id, actorUserId, auditMeta);
     }
 
     await syncNominaNovedadCobertura(client, {
@@ -12009,6 +11862,10 @@ export const updateNominaNovedad = async (
         ]
       );
 
+      if (isFechaRetiroNominaType(currentTipo) || isFechaRetiroNominaType(tipoNovedad)) {
+        await syncVinculacionEstadoProjection(client, current.vinculacion_id, actorUserId, auditMeta);
+      }
+
       const updatedCanonical = await loadNominaNovedadCanonicaByIdOrThrow(current.id, client);
       const updated = buildProjectedNominaNovedadFromCanonica({
         canonical: updatedCanonical,
@@ -12113,6 +11970,7 @@ export const updateNominaNovedad = async (
     assertNominaEmpleadoEditable(empleado, 'editar novedades de nomina');
     await invalidateNominaEmpleadoRevisionState(client, current.nomina_empleado_id);
 
+    const currentTipo = await loadNominaTipoNovedadByIdOrThrow(current.tipo_novedad_id, client);
     const tipoNovedad = await resolveNominaTipoNovedadOrThrow(
       {
         tipo_novedad_id: input.tipo_novedad_id ?? current.tipo_novedad_id,
@@ -12246,6 +12104,10 @@ export const updateNominaNovedad = async (
       ]
     );
 
+    if (isFechaRetiroNominaType(currentTipo) || isFechaRetiroNominaType(tipoNovedad)) {
+      await syncVinculacionEstadoProjection(client, current.vinculacion_id, actorUserId, auditMeta);
+    }
+
     await syncNominaNovedadCobertura(client, {
       novedadId: parsedId.entidad_id,
       empleado: empleadoMapped,
@@ -12345,6 +12207,10 @@ export const deactivateNominaNovedad = async (
         `,
         [current.id]
       );
+
+      if (isFechaRetiroNominaType(tipo)) {
+        await syncVinculacionEstadoProjection(client, current.vinculacion_id, actorUserId, auditMeta);
+      }
 
       const updatedCanonical = await loadNominaNovedadCanonicaByIdOrThrow(current.id, client);
       const after = empleadoRow
@@ -12448,6 +12314,11 @@ export const deactivateNominaNovedad = async (
       `,
       [parsedId.entidad_id]
     );
+
+    const deactivatedTipo = await loadNominaTipoNovedadByIdOrThrow(current.tipo_novedad_id, client);
+    if (isFechaRetiroNominaType(deactivatedTipo)) {
+      await syncVinculacionEstadoProjection(client, current.vinculacion_id, actorUserId, auditMeta);
+    }
 
     // A replacement cannot remain economically active after its source novelty is cancelled.
     await client.query(

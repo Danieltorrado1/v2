@@ -3,6 +3,7 @@
 import { dbPool, dbQuery } from '../../config/db';
 import { AppError } from '../../utils/AppError';
 import { registerAuditEntry } from '../auditoria/auditoria.helper';
+import { effectiveRetirementSql } from '../vinculaciones/vigencia';
 import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { METODOS_PAGO } from '../vinculaciones/vinculaciones.schemas';
 import type {
@@ -737,9 +738,10 @@ const ensureContratoCanDeactivate = async (client: PoolClient, contratoId: numbe
   const result = await client.query<{ total: number }>(
     `
       SELECT COUNT(*)::int AS total
-      FROM vinculaciones
+      FROM vinculaciones v
       WHERE contrato_id = $1::bigint
-        AND estado_vinculacion IN ('ACTIVA', 'ACTIVO')
+        AND v.fecha_inicio <= CURRENT_DATE
+        AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= CURRENT_DATE)
     `,
     [contratoId]
   );
@@ -779,9 +781,10 @@ const ensureCargoCanDeactivate = async (client: PoolClient, cargoId: number): Pr
   const result = await client.query<{ total: number }>(
     `
       SELECT COUNT(*)::int AS total
-      FROM vinculaciones
+      FROM vinculaciones v
       WHERE contrato_cargo_id = $1::bigint
-        AND estado_vinculacion IN ('ACTIVA', 'ACTIVO')
+        AND v.fecha_inicio <= CURRENT_DATE
+        AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= CURRENT_DATE)
     `,
     [cargoId]
   );

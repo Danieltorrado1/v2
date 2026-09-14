@@ -17,6 +17,7 @@ import {
   SeveridadAlertaDocumental,
   TipoAlertaDocumental
 } from './alertas.documentales.schemas';
+import { effectiveRetirementSql } from '../vinculaciones/vigencia';
 
 interface AlertaDocumentalRow extends QueryResultRow {
   activo: boolean;
@@ -394,7 +395,9 @@ const loadTargetVinculaciones = async (
   input: GenerateAlertasDocumentalesInput,
   tenant: TenantAccessContext
 ): Promise<VinculacionScopeRow[]> => {
-  const conditions: string[] = [`v.estado_vinculacion = 'ACTIVA'`];
+  const conditions: string[] = [
+    `v.fecha_inicio <= CURRENT_DATE AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= CURRENT_DATE)`
+  ];
   const params: unknown[] = [];
 
   if (input.vinculacion_id) {

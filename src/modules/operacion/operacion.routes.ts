@@ -19,7 +19,7 @@ import {
   updateSedeHandler,
   validateImportHandler,
 } from './operacion.controller';
-import { getInstitucionesHandler } from './operacion.instituciones.controller';
+import { getInstitucionesHandler, updateInstitucionFocalizacionHandler } from './operacion.instituciones.controller';
 
 const router = Router();
 
@@ -46,6 +46,12 @@ const read = requireAnyPermissions(
  * filtros + búsqueda + paginación + sede/modalidad/cupos.
  */
 router.get('/instituciones', read, getInstitucionesHandler);
+
+router.patch(
+  '/instituciones/focalizaciones/:id',
+  requireAnyPermissions('operacion.instituciones.write', 'operacion.read'),
+  updateInstitucionFocalizacionHandler,
+);
 
 /*
  * Expediente / CRUD institucional existente.

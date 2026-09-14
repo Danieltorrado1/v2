@@ -25,6 +25,17 @@ test('ingreso durante agosto queda incluido', () => {
   );
 });
 
+test('casos límite de ingreso y retiro respetan el solapamiento inclusivo del periodo', () => {
+  assert.equal(intersectsNominaPeriodo('2026-07-01', null, PERIODO_INICIO, PERIODO_FIN), true);
+  assert.equal(intersectsNominaPeriodo('2026-08-01', null, PERIODO_INICIO, PERIODO_FIN), true);
+  assert.equal(intersectsNominaPeriodo('2026-08-18', null, PERIODO_INICIO, PERIODO_FIN), true);
+  assert.equal(intersectsNominaPeriodo('2026-08-31', null, PERIODO_INICIO, PERIODO_FIN), true);
+  assert.equal(intersectsNominaPeriodo('2026-07-01', '2026-08-20', PERIODO_INICIO, PERIODO_FIN), true);
+  assert.equal(intersectsNominaPeriodo('2026-08-18', '2026-08-20', PERIODO_INICIO, PERIODO_FIN), true);
+  assert.equal(intersectsNominaPeriodo('2026-09-01', null, PERIODO_INICIO, PERIODO_FIN), false);
+  assert.equal(intersectsNominaPeriodo('2026-07-01', '2026-07-31', PERIODO_INICIO, PERIODO_FIN), false);
+});
+
 test('retiro durante agosto queda incluido', () => {
   assert.equal(
     intersectsNominaPeriodo('2026-07-29', '2026-08-17', PERIODO_INICIO, PERIODO_FIN),

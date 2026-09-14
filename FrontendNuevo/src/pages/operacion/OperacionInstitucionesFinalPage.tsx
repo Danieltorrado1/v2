@@ -6,99 +6,32 @@ import { useCompanyContext } from '../../context/CompanyContext';
 import { WorkspaceHeading } from '../workspace/StructuralPage';
 import './OperacionPages.css';
 
-type InstitutionDetail = Institution & { id: string; sedes?: Array<{ id: string; nombre: string; codigo_dane_sede: string | null; consecutivo_sede: string | null; municipio_id: string | null; activo: boolean; matricula?: number; focalizados?: number }> };
-const emptyResult: InstitutionResult = { items: [], total: 0, page: 1, page_size: 50, total_pages: 0, summary: { instituciones: 0, sedes: 0, cupos: 0 }, options: { municipios: [], instituciones: [], sedes: [], modalidades: [] } };
-const optionLabel = (item: InstitutionOption) => item.nombre || 'Sin nombre';
+const empty: InstitutionResult = { items: [], total: 0, page: 1, page_size: 50, total_pages: 0, summary: { instituciones: 0, sedes: 0, combinaciones: 0, matriculados: 0, cupos: 0 }, filter_options: { periodos: [], municipios: [], instituciones: [], sedes: [], modalidades: [], rectores: [], gestores: [], estados: [] }, contrato_id: 0 };
+const label = (item: InstitutionOption) => item.nombre || 'Sin nombre';
+const value = (n: number | null) => n === null || n === undefined ? '—' : n.toLocaleString('es-CO');
+const percent = (n: number | null) => n === null || n === undefined ? '—' : `${n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`;
+const metricCell = (metric: { primaria: number | null; secundaria: number | null; total: number | null }, formatter: (n: number | null) => string) => <span className="instituciones-metrics"><span>P: {formatter(metric.primaria)}</span><span>S: {formatter(metric.secundaria)}</span><strong>T: {formatter(metric.total)}</strong></span>;
 
 export default function OperacionInstitucionesFinalPage() {
-  const { empresaId } = useCompanyContext();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [result, setResult] = useState<InstitutionResult>(emptyResult);
-  const [search, setSearch] = useState(searchParams.get('q') ?? '');
-  const [municipioId, setMunicipioId] = useState(searchParams.get('municipio_id') ?? '');
-  const [institucionId, setInstitucionId] = useState(searchParams.get('institucion_id') ?? '');
-  const [sedeId, setSedeId] = useState(searchParams.get('sede_id') ?? '');
-  const [modalidadId, setModalidadId] = useState(searchParams.get('modalidad_id') ?? '');
-  const [page, setPage] = useState(Number(searchParams.get('page') ?? 1) || 1);
-  const [pageSize, setPageSize] = useState(Number(searchParams.get('page_size') ?? 50) || 50);
-  const [contractId, setContractId] = useState<number | null>(null);
-  const [contracts, setContracts] = useState<Array<{ id: number; numero_contrato: string | null }>>([]);
-  const [detail, setDetail] = useState<InstitutionDetail | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const { empresaId } = useCompanyContext(); const [params, setParams] = useSearchParams();
+  const [result, setResult] = useState<InstitutionResult>(empty); const [history, setHistory] = useState<Institution[]>([]); const [detail, setDetail] = useState<Institution | null>(null); const [editing, setEditing] = useState<Institution | null>(null);
+  const [search, setSearch] = useState(params.get('q') ?? ''); const [period, setPeriod] = useState(params.get('periodo_id') ?? ''); const [municipio, setMunicipio] = useState(params.get('municipio_id') ?? ''); const [institution, setInstitution] = useState(params.get('institucion_id') ?? ''); const [site, setSite] = useState(params.get('sede_id') ?? ''); const [modality, setModality] = useState(params.get('modalidad_id') ?? ''); const [rector, setRector] = useState(params.get('rector') ?? ''); const [manager, setManager] = useState(params.get('gestor_id') ?? ''); const [state, setState] = useState(params.get('estado') ?? ''); const [page, setPage] = useState(Number(params.get('page') ?? 1) || 1); const [pageSize, setPageSize] = useState(Number(params.get('page_size') ?? 50) || 50); const [contractId, setContractId] = useState<number | null>(null); const [contracts, setContracts] = useState<Array<{ id: number; numero_contrato: string | null }>>([]); const [loading, setLoading] = useState(false); const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    void getTenantContext().then((context) => {
-      if (cancelled) return;
-      const available = context.contratos.filter((contract) => contract.empresa_id === empresaId);
-      setContracts(available);
-      const preferred = context.contrato_default_id && available.some((contract) => contract.id === context.contrato_default_id)
-        ? context.contrato_default_id
-        : available[0]?.id ?? null;
-      setContractId((current) => current && available.some((contract) => contract.id === current) ? current : preferred);
-    }).catch(() => {
-      if (!cancelled) setMessage('No fue posible resolver el contrato activo.');
-    });
-    return () => { cancelled = true; };
-  }, [empresaId]);
+  useEffect(() => { let live = true; void getTenantContext().then((context) => { if (!live) return; const available = context.contratos.filter((c) => c.empresa_id === empresaId); setContracts(available); const preferred = context.contrato_default_id && available.some((c) => c.id === context.contrato_default_id) ? context.contrato_default_id : available[0]?.id ?? null; setContractId(preferred); }).catch(() => live && setMessage('No fue posible resolver el contrato activo.')); return () => { live = false; }; }, [empresaId]);
+  useEffect(() => { const next = new URLSearchParams(); Object.entries({ q: search, periodo_id: period, municipio_id: municipio, institucion_id: institution, sede_id: site, modalidad_id: modality, rector, gestor_id: manager, estado: state, page: String(page), page_size: String(pageSize) }).forEach(([key, v]) => v && next.set(key, v)); setParams(next, { replace: true }); }, [search, period, municipio, institution, site, modality, rector, manager, state, page, pageSize, setParams]);
+  useEffect(() => { if (!contractId) return; let live = true; const timer = window.setTimeout(() => { setLoading(true); void operacionApi.institutions({ q: search || undefined, periodo_id: period && period !== 'all' ? period : undefined, municipio_id: municipio || undefined, institucion_id: institution || undefined, sede_id: site || undefined, modalidad_id: modality || undefined, rector: rector || undefined, gestor_id: manager || undefined, estado: state || undefined, contrato_id: contractId, page, page_size: pageSize }).then((response) => { if (!live) return; setResult(response.data); if (!period && response.data.filter_options.periodos[0]) setPeriod(response.data.filter_options.periodos[0].id); }).catch((error) => live && setMessage(error instanceof Error ? error.message : 'Error cargando instituciones.')).finally(() => live && setLoading(false)); }, 250); return () => { live = false; window.clearTimeout(timer); }; }, [contractId, search, period, municipio, institution, site, modality, rector, manager, state, page, pageSize]);
 
-  useEffect(() => {
-    const next = new URLSearchParams();
-    const values: Record<string, string> = { q: search, municipio_id: municipioId, institucion_id: institucionId, sede_id: sedeId, modalidad_id: modalidadId, page: String(page), page_size: String(pageSize) };
-    Object.entries(values).forEach(([key, value]) => value ? next.set(key, value) : next.delete(key));
-    setSearchParams(next, { replace: true });
-  }, [search, municipioId, institucionId, sedeId, modalidadId, page, pageSize, setSearchParams]);
+  const institutions = useMemo(() => result.filter_options.instituciones.filter((item) => !municipio || item.municipio_id === municipio), [result.filter_options.instituciones, municipio]); const sites = useMemo(() => result.filter_options.sedes.filter((item) => (!municipio || item.municipio_id === municipio) && (!institution || item.institucion_id === institution)), [result.filter_options.sedes, municipio, institution]); const start = result.total ? (result.page - 1) * result.page_size + 1 : 0; const end = Math.min(result.page * result.page_size, result.total);
+  const resetPage = () => setPage(1); const openDetails = async (row: Institution) => { setDetail(row); try { const response = await operacionApi.institutions({ contrato_id: contractId ?? undefined, institucion_id: row.institucion_id, sede_id: row.sede_id ?? undefined, modalidad_id: row.modalidad_id ?? undefined, periodo_id: 'all', page: 1, page_size: 100 }); setHistory(response.data.items); } catch { setHistory([row]); } };
+  const submitEdit = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); if (!editing) return; const form = new FormData(event.currentTarget); try { await operacionApi.updateFocalizacion(editing.periodo.id, { matriculados_primaria: Number(form.get('matriculados_primaria')), matriculados_secundaria: Number(form.get('matriculados_secundaria')), cupos_primaria: Number(form.get('cupos_primaria')), cupos_secundaria: Number(form.get('cupos_secundaria')), estado: String(form.get('estado')) }); setEditing(null); setPage((current) => current); setMessage('Focalización mensual actualizada.'); } catch (error) { setMessage(error instanceof Error ? error.message : 'No fue posible actualizar la focalización.'); } };
 
-  useEffect(() => {
-    if (!contractId) return;
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      setLoading(true);
-      setMessage('');
-      void operacionApi.institutions({ q: search || undefined, municipio_id: municipioId || undefined, institucion_id: institucionId || undefined, sede_id: sedeId || undefined, modalidad_id: modalidadId || undefined, contrato_id: contractId, page, page_size: pageSize })
-        .then((response) => { if (!cancelled) setResult(response.data); })
-        .catch((error) => { if (!cancelled) setMessage(error instanceof Error ? error.message : 'Error cargando instituciones.'); })
-        .finally(() => { if (!cancelled) setLoading(false); });
-    }, 300);
-    return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [contractId, search, municipioId, institucionId, sedeId, modalidadId, page, pageSize]);
-
-  const institutions = useMemo(() => result.options.instituciones.filter((item) => !municipioId || item.municipio_id === municipioId), [result.options.instituciones, municipioId]);
-  const sites = useMemo(() => result.options.sedes.filter((item) => (!municipioId || item.municipio_id === municipioId) && (!institucionId || item.institucion_id === institucionId)), [result.options.sedes, municipioId, institucionId]);
-  const start = result.total === 0 ? 0 : (result.page - 1) * result.page_size + 1;
-  const end = Math.min(result.page * result.page_size, result.total);
-
-  const clearDependent = (nextMunicipio: string) => {
-    setMunicipioId(nextMunicipio); setInstitucionId(''); setSedeId(''); setPage(1);
-  };
-  const open = async (row: Institution) => {
-    try { setDetail((await operacionApi.institution(row.institucion_id)).data as InstitutionDetail); }
-    catch (error) { setMessage(error instanceof Error ? error.message : 'No fue posible abrir el expediente.'); }
-  };
-
-  return <section className="workspace-page operacion-page instituciones-page">
-    <WorkspaceHeading title="Instituciones" description="Consulta operativa por sede y modalidad del contrato activo." />
-    <div className="instituciones-context">
-      <span>Contrato activo:</span>
-      {contracts.length > 1 ? <select aria-label="Contrato activo" value={contractId ?? ''} onChange={(event) => { setContractId(Number(event.target.value)); setPage(1); }}>
-        {contracts.map((contract) => <option key={contract.id} value={contract.id}>{contract.numero_contrato ?? `Contrato ${contract.id}`}</option>)}
-      </select> : <strong>{contracts[0]?.numero_contrato ?? (contractId ? `Contrato ${contractId}` : 'Resolviendo...')}</strong>}
-    </div>
-    <div className="instituciones-search-row"><input aria-label="Buscar por institución, sede, DANE o código DANE" placeholder="Buscar por institución, sede, DANE o código DANE..." value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /></div>
-    <div className="instituciones-filters">
-      <label>Municipio<select value={municipioId} onChange={(event) => clearDependent(event.target.value)}><option value="">Todos</option>{result.options.municipios.map((item) => <option key={item.id} value={item.id}>{optionLabel(item)}</option>)}</select></label>
-      <label>Institución<select value={institucionId} onChange={(event) => { setInstitucionId(event.target.value); setSedeId(''); setPage(1); }}><option value="">Todas</option>{institutions.map((item) => <option key={item.id} value={item.id}>{optionLabel(item)}</option>)}</select></label>
-      <label>Sede<select value={sedeId} onChange={(event) => { setSedeId(event.target.value); setPage(1); }}><option value="">Todas</option>{sites.map((item) => <option key={item.id} value={item.id}>{optionLabel(item)}</option>)}</select></label>
-      <label>Modalidad<select value={modalidadId} onChange={(event) => { setModalidadId(event.target.value); setPage(1); }}><option value="">Todas</option>{result.options.modalidades.map((item) => <option key={item.id} value={item.id}>{optionLabel(item)}</option>)}</select></label>
-    </div>
-    {message && <p className="operacion-message" role="status">{message}</p>}
-    <div className="instituciones-summary"><strong>{result.summary.instituciones} instituciones</strong><span>·</span><strong>{result.summary.sedes} sedes</strong><span>·</span><strong>{result.summary.cupos.toLocaleString('es-CO')} cupos</strong>{loading && <span> Cargando...</span>}</div>
-    <div className="operacion-table-wrap instituciones-table-wrap"><table><thead><tr>{['INSTITUCIÓN','SEDE','MUNICIPIO','MODALIDAD','CUPOS','JORNADA','ZONA','ESTADO','ACCIONES'].map((heading) => <th key={heading}>{heading}</th>)}</tr></thead><tbody>
-      {result.items.map((row) => <tr key={`${row.sede_id ?? row.institucion_id}-${row.modalidad_id ?? 'sin-modalidad'}`}><td>{row.institucion}</td><td>{row.sede ?? 'Sin sede'}</td><td>{row.municipio ?? 'Sin municipio'}</td><td>{row.modalidad ?? 'Sin modalidad'}</td><td>{row.cupos == null ? '—' : row.cupos.toLocaleString('es-CO')}</td><td>{row.jornada ?? '—'}</td><td>{row.zona ?? '—'}</td><td><span className={`instituciones-status ${row.estado ? 'is-active' : 'is-inactive'}`}>{row.estado ? 'Activa' : 'Inactiva'}</span></td><td><button type="button" className="instituciones-action" onClick={() => void open(row)}>Ver expediente</button></td></tr>)}
-      {!loading && result.items.length === 0 && <tr><td colSpan={9} className="instituciones-empty">No hay resultados para los filtros actuales.</td></tr>}
-    </tbody></table></div>
-    <div className="instituciones-pagination"><label>Filas:<select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select></label><span>{start} - {end} de {result.total}</span><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((value) => Math.max(1, value - 1))}>Anterior</button><button type="button" disabled={page >= result.total_pages || loading} onClick={() => setPage((value) => value + 1)}>Siguiente</button></div>
-    {detail && <aside className="operacion-drawer"><button className="drawer-close" type="button" onClick={() => setDetail(null)}>Cerrar</button><h2>{detail.institucion}</h2><p>{detail.dane ?? 'Sin DANE'} · {detail.municipio ?? 'Sin municipio'}</p><h3>Sedes</h3>{(detail.sedes ?? []).map((site) => <div key={site.id} className={`workspace-card ${site.id === detail.sede_id ? 'instituciones-drawer-selected' : ''}`}><strong>{site.nombre}</strong><p>{site.codigo_dane_sede ?? 'Sin código DANE'} · {site.activo ? 'Activa' : 'Inactiva'}</p></div>)}</aside>}
+  return <section className="workspace-page operacion-page instituciones-page"><WorkspaceHeading title="Instituciones" description="Consulta operativa por contrato y focalización mensual." /><div className="instituciones-context"><span>Contrato activo:</span>{contracts.length > 1 ? <select aria-label="Contrato activo" value={contractId ?? ''} onChange={(e) => { setContractId(Number(e.target.value)); resetPage(); }}>{contracts.map((c) => <option key={c.id} value={c.id}>{c.numero_contrato ?? `Contrato ${c.id}`}</option>)}</select> : <strong>{contracts[0]?.numero_contrato ?? (contractId ? `Contrato ${contractId}` : 'Resolviendo...')}</strong>}</div>
+    <div className="instituciones-search-row"><input aria-label="Buscar por institución, sede, DANE, rector o gestor" placeholder="Buscar por institución, sede, DANE, rector o gestor..." value={search} onChange={(e) => { setSearch(e.target.value); resetPage(); }} /></div>
+    <div className="instituciones-filters"><label>Focalización<select value={period} onChange={(e) => { setPeriod(e.target.value); resetPage(); }}><option value="all">Todas las focalizaciones</option>{result.filter_options.periodos.map((item) => <option key={item.id} value={item.id}>{label(item)}</option>)}</select></label><label>Municipio<select value={municipio} onChange={(e) => { setMunicipio(e.target.value); setInstitution(''); setSite(''); resetPage(); }}><option value="">Todos</option>{result.filter_options.municipios.map((item) => <option key={item.id} value={item.id}>{label(item)}</option>)}</select></label><label>Institución<select value={institution} onChange={(e) => { setInstitution(e.target.value); setSite(''); resetPage(); }}><option value="">Todas</option>{institutions.map((item) => <option key={item.id} value={item.id}>{label(item)}</option>)}</select></label><label>Sede<select value={site} onChange={(e) => { setSite(e.target.value); resetPage(); }}><option value="">Todas</option>{sites.map((item) => <option key={item.id} value={item.id}>{label(item)}</option>)}</select></label><label>Modalidad<select value={modality} onChange={(e) => { setModality(e.target.value); resetPage(); }}><option value="">Todas</option>{result.filter_options.modalidades.map((item) => <option key={item.id} value={item.id}>{label(item)}</option>)}</select></label><label>Rector<select value={rector} onChange={(e) => { setRector(e.target.value); resetPage(); }}><option value="">Todos</option>{result.filter_options.rectores.map((item) => <option key={item.id} value={item.id}>{label(item)}</option>)}</select></label><label>Gestor<select value={manager} onChange={(e) => { setManager(e.target.value); resetPage(); }}><option value="">Todos</option>{result.filter_options.gestores.map((item) => <option key={item.id} value={item.id}>{label(item)}</option>)}</select></label><label>Estado<select value={state} onChange={(e) => { setState(e.target.value); resetPage(); }}><option value="">Todos</option>{result.filter_options.estados.map((item) => <option key={item.id} value={item.id}>{label(item)}</option>)}</select></label></div>
+    {message && <p className="operacion-message" role="status">{message}</p>}<div className="instituciones-summary"><strong>{result.summary.instituciones} instituciones</strong><span>·</span><strong>{result.summary.sedes} sedes</strong><span>·</span><strong>{result.summary.combinaciones} combinaciones</strong><span>·</span><strong>{value(result.summary.matriculados)} matriculados</strong><span>·</span><strong>{value(result.summary.cupos)} cupos</strong>{loading && <span>Cargando...</span>}</div>
+    <div className="operacion-table-wrap instituciones-table-wrap"><table><thead><tr><th>Municipio</th><th>Institución</th><th>Sede</th><th>Modalidad</th><th>Matriculados</th><th>Cupos</th><th>% Atención</th><th>Rector / Gestor</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{result.items.map((row) => <tr key={`${row.id}-${row.periodo.id}`}><td title={row.municipio ?? ''}>{row.municipio ?? '—'}{period === 'all' && <small className="instituciones-period">{row.periodo.nombre}</small>}</td><td title={row.institucion ?? ''}>{row.institucion ?? 'Sin institución'}</td><td title={row.sede ?? ''}>{row.sede ?? 'Sin sede'}</td><td title={row.modalidad ?? ''}>{row.modalidad ?? 'Sin modalidad'}</td><td>{metricCell(row.matriculados, value)}</td><td>{metricCell(row.cupos, value)}</td><td>{metricCell(row.atencion, percent)}</td><td><span className="instituciones-person">{row.rector?.nombre ?? 'Sin rector'}</span><span className="instituciones-person">{row.gestor?.nombre ?? 'Sin gestor'}</span></td><td><span className={`instituciones-status ${row.activo ? 'is-active' : 'is-inactive'}`}>{row.estado}</span></td><td><span className="instituciones-actions"><button type="button" className="instituciones-action" title="Editar focalización" aria-label="Editar focalización" onClick={() => setEditing(row)}>✎</button><button type="button" className="instituciones-action" title="Ver detalles" aria-label="Ver detalles" onClick={() => void openDetails(row)}>⌕</button></span></td></tr>)}{!loading && !result.items.length && <tr><td colSpan={10} className="instituciones-empty">No hay resultados para los filtros actuales.</td></tr>}</tbody></table></div>
+    <div className="instituciones-pagination"><label>Filas:<select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); resetPage(); }}><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select></label><span>{start} - {end} de {result.total}</span><button type="button" disabled={page <= 1 || loading} onClick={() => setPage((v) => Math.max(1, v - 1))}>Anterior</button><button type="button" disabled={page >= result.total_pages || loading} onClick={() => setPage((v) => v + 1)}>Siguiente</button></div>
+    {detail && <aside className="operacion-drawer instituciones-detail"><button className="drawer-close" type="button" onClick={() => setDetail(null)}>Cerrar</button><h2>{detail.institucion}</h2><p>{detail.municipio} · {detail.sede} · {detail.modalidad}</p><h3>Focalización actual</h3><div className="instituciones-detail-grid"><span>Rector</span><strong>{detail.rector?.nombre ?? 'Sin rector configurado'}</strong><span>Gestor</span><strong>{detail.gestor?.nombre ?? 'Sin gestor'}</strong><span>Matrícula</span><strong>{metricCell(detail.matriculados, value)}</strong><span>Cupos</span><strong>{metricCell(detail.cupos, value)}</strong><span>Atención</span><strong>{metricCell(detail.atencion, percent)}</strong></div><h3>Histórico mensual</h3><div className="instituciones-history">{history.sort((a,b) => b.periodo.anio*100+b.periodo.mes-(a.periodo.anio*100+a.periodo.mes)).map((item) => <div className="instituciones-history-row" key={`${item.id}-${item.periodo.id}`}><strong>{item.periodo.nombre}</strong>{metricCell(item.matriculados, value)}{metricCell(item.cupos, value)}{metricCell(item.atencion, percent)}</div>)}</div></aside>}
+    {editing && <div className="instituciones-modal-backdrop"><form className="instituciones-edit" onSubmit={(e) => void submitEdit(e)}><button type="button" className="drawer-close" onClick={() => setEditing(null)}>Cerrar</button><h2>Editar focalización</h2><p>{editing.periodo.nombre} · {editing.institucion} · {editing.sede}</p>{[['matriculados_primaria','Matrícula primaria',editing.matriculados.primaria],['matriculados_secundaria','Matrícula secundaria',editing.matriculados.secundaria],['cupos_primaria','Cupos primaria',editing.cupos.primaria],['cupos_secundaria','Cupos secundaria',editing.cupos.secundaria]].map(([name, textLabel, initial]) => <label key={String(name)}>{textLabel}<input name={String(name)} type="number" min="0" defaultValue={initial === null ? '' : String(initial)} /></label>)}<label>Estado<select name="estado" defaultValue={editing.estado}><option value="ACTIVA">Activa</option><option value="INACTIVA">Inactiva</option><option value="PENDIENTE">Pendiente</option></select></label><button className="instituciones-save" type="submit">Guardar</button></form></div>}
   </section>;
 }

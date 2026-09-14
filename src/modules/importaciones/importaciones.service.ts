@@ -81,7 +81,7 @@ interface PersonMatchRow extends QueryResultRow {
   primer_apellido: string;
   segundo_apellido: string | null;
 }
-interface ExistingLinkRow extends QueryResultRow { id: number | string; fecha_inicio: string | Date; estado_vinculacion: string | null; }
+interface ExistingLinkRow extends QueryResultRow { id: number | string; fecha_inicio: string | Date; fecha_fin: string | Date | null; estado_vinculacion: string | null; }
 interface StageRowDb extends QueryResultRow {
   fila_numero: number;
   persona_payload_resuelto: PreviewPayload;
@@ -259,7 +259,7 @@ const findPersonByIdentification = async (client: PoolClient, tipoDocumentoId: n
   return result.rows[0] ?? null;
 };
 const findExistingLink = async (client: PoolClient, personaId: number, contratoId: number, fechaIngreso: string | null): Promise<ExistingLinkRow | null> => {
-  const rows = (await client.query<ExistingLinkRow>(`SELECT id, fecha_inicio, estado_vinculacion FROM vinculaciones WHERE persona_id = $1::bigint AND contrato_id = $2::bigint ORDER BY CASE WHEN estado_vinculacion IN ('ACTIVA','ACTIVO','SUSPENDIDA') THEN 0 ELSE 1 END, fecha_inicio DESC, id DESC`, [personaId, contratoId])).rows;
+  const rows = (await client.query<ExistingLinkRow>(`SELECT id, fecha_inicio, fecha_fin, estado_vinculacion FROM vinculaciones WHERE persona_id = $1::bigint AND contrato_id = $2::bigint ORDER BY CASE WHEN estado_vinculacion IN ('ACTIVA','ACTIVO','SUSPENDIDA') THEN 0 ELSE 1 END, fecha_inicio DESC, id DESC`, [personaId, contratoId])).rows;
   const active = rows.find((row) => ACTIVE_LINK_STATES.has((row.estado_vinculacion ?? '').toUpperCase()));
   if (active) return active;
   return fechaIngreso ? rows.find((row) => formatDate(row.fecha_inicio) === fechaIngreso) ?? null : null;
@@ -318,6 +318,9 @@ const buildPreviewPayload = async (
   if (row.vinculacion.metodo_pago && !metodoPago) errors.push(issue('vinculacion.metodo_pago', 'ERROR', `Método de pago no soportado: ${row.vinculacion.metodo_pago}`));
 
   const existingLink = person ? await findExistingLink(client, toRequiredNumber(person.id), toRequiredNumber(contrato.id), row.vinculacion.fecha_ingreso) : null;
+  if (existingLink && ACTIVE_LINK_STATES.has((existingLink.estado_vinculacion ?? '').toUpperCase()) && formatDate(existingLink.fecha_fin) && formatDate(existingLink.fecha_fin)! < new Date().toISOString().slice(0, 10)) {
+    warnings.push(`La vinculación existente #${toRequiredNumber(existingLink.id)} conserva estado ${existingLink.estado_vinculacion} aunque su fecha_fin (${formatDate(existingLink.fecha_fin)}) ya venció. Requiere revisión; no se corregirá automáticamente.`);
+  }
   const resultado: ImportRowGeneralStatus = existingLink ? 'YA_VINCULADO'
     : errors.some((item) => item.code === 'DUPLICADO_CONFLICTIVO') ? 'DUPLICADO_CONFLICTIVO'
     : errors.some((item) => item.code === 'DUPLICADO_EN_ARCHIVO') ? 'DUPLICADO_EN_ARCHIVO'

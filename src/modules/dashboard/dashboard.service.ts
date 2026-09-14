@@ -4,6 +4,7 @@ import { dbQuery } from '../../config/db';
 import { getCoberturaResumen } from '../cobertura/cobertura.service';
 import { DashboardQuery } from './dashboard.schemas';
 import { countMisNotificacionesNoLeidas } from '../alertas/alertas.service';
+import { effectiveRetirementSql } from '../vinculaciones/vigencia';
 
 interface CountMetricRow extends QueryResultRow {
   total: number;
@@ -381,7 +382,7 @@ export const getDashboardResumen = async (query: DashboardQuery): Promise<Dashbo
         ${filters.sql}
       ),
       vinculaciones_filtradas AS (
-        SELECT v.*
+        SELECT v.*, ${effectiveRetirementSql('v')}::date AS fecha_retiro_efectiva
         FROM vinculaciones v
         WHERE 1 = 1
         ${filters.sql}
@@ -416,8 +417,8 @@ export const getDashboardResumen = async (query: DashboardQuery): Promise<Dashbo
         -- asÃ­ que todo contrato filtrado se considera activo.
         (SELECT COUNT(*)::int FROM contratos_filtrados) AS contratos_activos,
         (SELECT COUNT(*)::int FROM personas_filtradas) AS total_personas,
-        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'ACTIVA') AS vinculaciones_activas,
-        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'RETIRADA') AS vinculaciones_retiradas,
+        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE fecha_inicio <= $${filters.params.length + contratoParams.length + 1}::date AND (fecha_retiro_efectiva IS NULL OR fecha_retiro_efectiva >= $${filters.params.length + contratoParams.length + 1}::date)) AS vinculaciones_activas,
+        (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE fecha_retiro_efectiva < $${filters.params.length + contratoParams.length + 1}::date) AS vinculaciones_retiradas,
         (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'SUSPENDIDA') AS vinculaciones_suspendidas,
         (
           SELECT COUNT(*)::int
@@ -481,7 +482,7 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
             ${filters.sql}
           ),
           vinculaciones_filtradas AS (
-            SELECT *
+            SELECT v.*, ${effectiveRetirementSql('v')}::date AS fecha_retiro_efectiva
             FROM vinculaciones v
             WHERE 1 = 1
             ${filters.sql}
@@ -489,7 +490,8 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
           personas_activas_cte AS (
             SELECT DISTINCT persona_id
             FROM vinculaciones_filtradas
-            WHERE estado_vinculacion = 'ACTIVA'
+            WHERE fecha_inicio <= CURRENT_DATE
+              AND (fecha_retiro_efectiva IS NULL OR fecha_retiro_efectiva >= CURRENT_DATE)
           )
           SELECT
             (SELECT COUNT(*)::int FROM personas_filtradas) AS total_personas,
@@ -499,7 +501,7 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
               FROM personas_filtradas
               WHERE id NOT IN (SELECT persona_id FROM personas_activas_cte)
             ) AS personas_inactivas,
-            (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE estado_vinculacion = 'ACTIVA') AS vinculaciones_activas,
+            (SELECT COUNT(*)::int FROM vinculaciones_filtradas WHERE fecha_inicio <= CURRENT_DATE AND (fecha_retiro_efectiva IS NULL OR fecha_retiro_efectiva >= CURRENT_DATE)) AS vinculaciones_activas,
             (
               SELECT COUNT(*)::int
               FROM vinculaciones_filtradas
@@ -509,9 +511,8 @@ export const getDashboardPersonas = async (query: DashboardQuery): Promise<Dashb
             (
               SELECT COUNT(*)::int
               FROM vinculaciones_filtradas
-              WHERE fecha_fin IS NOT NULL
-                AND fecha_fin >= $${filters.params.length + 1}
-                AND fecha_fin <= $${filters.params.length + 2}
+              WHERE fecha_retiro_efectiva >= $${filters.params.length + 1}
+                AND fecha_retiro_efectiva <= $${filters.params.length + 2}
             ) AS retiros_periodo
         `,
         [...filters.params, range.fecha_desde, range.fecha_hasta]

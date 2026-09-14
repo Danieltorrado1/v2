@@ -9,6 +9,22 @@ const source=readFileSync(resolve(process.cwd(),'FrontendNuevo/src/pages/nomina/
 const css=readFileSync(resolve(process.cwd(),'FrontendNuevo/src/pages/nomina/PlanillaOperativaPage.css'),'utf8');
 test('calendario expone dia 31',()=>assert.equal(dateKey(2026,8,31),'2026-08-31'));
 test('ingreso y retiro sombrean fuera de vinculacion',()=>{assert.equal(isOutsideEmployment(employee,'2026-08-09'),true);assert.equal(isOutsideEmployment(employee,'2026-08-10'),false);assert.equal(isOutsideEmployment(employee,'2026-08-23'),true);});
+test('ingreso intrames conserva la fila y habilita solo los dias vigentes',()=>{
+  const cases=[
+    ['2026-07-01',null,'2026-08-01','2026-08-31'],
+    ['2026-08-01',null,'2026-08-01','2026-08-31'],
+    ['2026-08-18',null,'2026-08-18','2026-08-31'],
+    ['2026-08-31',null,'2026-08-31','2026-08-31'],
+    ['2026-07-01','2026-08-20','2026-08-01','2026-08-20'],
+    ['2026-08-18','2026-08-20','2026-08-18','2026-08-20'],
+  ] as const;
+  for(const [fecha_inicio,fecha_fin,expectedStart,expectedEnd] of cases){
+    const candidate={...employee,vinculacion:{...employee.vinculacion,fecha_inicio,fecha_fin}} as NominaEmpleadoApi;
+    assert.deepEqual(buildTramos(candidate,'2026-08-01','2026-08-31',[]).map(item=>[item.inicio,item.fin]),[[expectedStart,expectedEnd]]);
+  }
+  assert.deepEqual(buildTramos({...employee,vinculacion:{...employee.vinculacion,fecha_inicio:'2026-09-01',fecha_fin:null}},'2026-08-01','2026-08-31',[]),[]);
+  assert.deepEqual(buildTramos({...employee,vinculacion:{...employee.vinculacion,fecha_inicio:'2026-07-01',fecha_fin:'2026-07-31'}},'2026-08-01','2026-08-31',[]),[]);
+});
 test('tres tramos siguen en una fila',()=>{const e={...employee,vinculacion:{...employee.vinculacion,fecha_inicio:'2026-08-01',fecha_fin:null}};const t=buildTramos(e,'2026-08-01','2026-08-31',[{id:'1',vinculacion_id:'10',fecha_inicio_efectiva:'2026-08-11',contexto_anterior:{modalidad:'A'},contexto_nuevo:{modalidad:'B'},tipo:'CAMBIO_DE_MODALIDAD',activo:true},{id:'2',vinculacion_id:'10',fecha_inicio_efectiva:'2026-08-21',contexto_anterior:{modalidad:'B'},contexto_nuevo:{modalidad:'C'},tipo:'CAMBIO_COMBINADO',activo:true}]);assert.deepEqual(t.map(x=>[x.inicio,x.fin,x.contexto.modalidad]),[['2026-08-01','2026-08-10','A'],['2026-08-11','2026-08-20','B'],['2026-08-21','2026-08-31','C']]);});
 test('virtualiza 771 filas y usa un grid sticky',()=>{assert.ok(source.includes('filtered.slice(startIndex,startIndex+visibleCount)'));assert.ok(css.includes('.op-head{position:sticky'));assert.ok(css.includes('.op-doc,.op-name{position:sticky!important'));assert.equal(source.includes('<table'),false);assert.equal(Array.from({length:771}).length,771);});
 test('incluye saltos y teclado requeridos',()=>{for(const token of ['[1,7]','[8,14]','[15,21]','[22,28]','[29,31]','ArrowDown','ArrowUp','ArrowRight','ArrowLeft','Enter','Escape'])assert.ok(source.includes(token),token);});
@@ -50,7 +66,13 @@ test('migration de planilla operativa fija tipos multidia y queda registrada en 
 test('carga inicial paraleliza empleados y asistencia en una sola lectura',()=>{
   assert.ok(source.includes('const ATTENDANCE_BATCH_LIMIT = 5000;'));
   assert.ok(source.includes('const [employeeResult, ...layers] = await Promise.allSettled(['));
-  assert.ok(source.includes('limit: ATTENDANCE_BATCH_LIMIT, page: 1'));
+  assert.match(source, /limit:\s*ATTENDANCE_BATCH_LIMIT,\s*page\s*\}/);
+});
+test('carga inicial sincroniza una vez la poblacion V1 de periodos abiertos',()=>{
+  assert.ok(source.includes('populationSyncKeyRef'));
+  assert.ok(source.includes('selectedPeriod?.estado === "ABIERTO"'));
+  assert.ok(source.includes('await importNominaEmpleados(periodId);'));
+  assert.ok(source.includes('nomina.empleados.import'));
 });
 
 test('revision operativa resuelve scope en SQL sin validacion secuencial por fila',()=>{

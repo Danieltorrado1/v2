@@ -56,6 +56,7 @@ import {
   UpdateSstEventoInput,
   UpdateSstPlanAccionInput
 } from './sst.schemas';
+import { effectiveRetirementSql } from '../vinculaciones/vigencia';
 import {
   ensureContratoExists,
   ensureEmpresaExists,
@@ -4332,7 +4333,7 @@ const listSstObligaciones = async (
   const conditions: string[] = [
     `COALESCE(sc.activo, TRUE) = TRUE`,
     `COALESCE(sc.obligatoria, TRUE) = TRUE`,
-    `v.estado_vinculacion = 'ACTIVA'`
+    `v.fecha_inicio <= CURRENT_DATE AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= CURRENT_DATE)`
   ];
 
   appendTenantScopeConditions(conditions, params, tenant, 'sc.contrato_id', 'sc.empresa_id');
@@ -4432,7 +4433,7 @@ const listSstDotacionEppObligaciones = async (
   const conditions: string[] = [
     `COALESCE(sde.activo, TRUE) = TRUE`,
     `COALESCE(sde.obligatorio, TRUE) = TRUE`,
-    `v.estado_vinculacion = 'ACTIVA'`
+    `v.fecha_inicio <= CURRENT_DATE AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= CURRENT_DATE)`
   ];
 
   appendTenantScopeConditions(conditions, params, tenant, 'sde.contrato_id', 'sde.empresa_id');
@@ -4525,7 +4526,7 @@ const listSstExamenObligaciones = async (
   const conditions: string[] = [
     `COALESCE(seo.activo, TRUE) = TRUE`,
     `COALESCE(seo.obligatorio, TRUE) = TRUE`,
-    `v.estado_vinculacion = 'ACTIVA'`
+    `v.fecha_inicio <= CURRENT_DATE AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= CURRENT_DATE)`
   ];
 
   appendTenantScopeConditions(conditions, params, tenant, 'seo.contrato_id', 'seo.empresa_id');

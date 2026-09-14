@@ -7,6 +7,10 @@ const source = readFileSync(
   path.resolve(process.cwd(), 'src/modules/nomina/nomina.service.ts'),
   'utf8'
 );
+const periodoRepositorySource = readFileSync(
+  path.resolve(process.cwd(), 'src/modules/nomina/infrastructure/repositories/nomina-periodo.repository.ts'),
+  'utf8'
+);
 
 const sectionFrom = (marker: string) => {
   const start = source.indexOf(marker);
@@ -34,10 +38,10 @@ test('un periodo anterior abierto no bloquea ni se actualiza al asegurar el nuev
 });
 
 test('la creación automática y manual comparten bloqueo transaccional de identidad', () => {
-  const lockSection = sectionFrom('const lockNominaPeriodoIdentity');
   const manualSection = sectionFrom('export const createNominaPeriodo');
 
-  assert.match(lockSection, /pg_advisory_xact_lock/);
+  assert.match(periodoRepositorySource, /pg_advisory_xact_lock/);
+  assert.match(source, /nominaPeriodoRepository\.lockIdentity/);
   assert.match(manualSection, /await lockNominaPeriodoIdentity/);
   assert.match(sectionFrom('export const ensureCurrentNominaPeriods'), /await lockNominaPeriodoIdentity/);
 });

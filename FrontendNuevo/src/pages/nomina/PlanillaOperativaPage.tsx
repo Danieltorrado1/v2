@@ -513,6 +513,7 @@ export default function PlanillaOperativaPage() {
   const [periodsLoading, setPeriodsLoading] = useState(true);
   const [reloadVersion, setReloadVersion] = useState(0);
   const [isSyncingPersonal, setIsSyncingPersonal] = useState(false);
+  const populationSyncKeyRef = useRef<string | null>(null);
   const [availableEmployees, setAvailableEmployees] = useState<number | null>(null);
   const [availabilityError, setAvailabilityError] = useState("");
   const [error, setError] = useState("");
@@ -708,6 +709,34 @@ export default function PlanillaOperativaPage() {
       setScrollTop(0);
 
       try {
+        const selectedPeriod = periods.find((item) => String(item.id) === periodId);
+        const canImportPopulation = user?.permissions.includes("nomina.empleados.import") === true;
+        const populationSyncKey = `${empresaId ?? "global"}:${periodId}`;
+
+        // La Planilla consulta nomina_empleados, que es una materialización V1.
+        // Al abrir un período vigente sincronizamos una sola vez su población
+        // elegible para que los ingresos intrames no dependan de un botón manual.
+        // La operación existente conserva la regla de solapamiento, idempotencia,
+        // tenant, auditoría y límites transaccionales del backend.
+        if (
+          selectedPeriod?.estado === "ABIERTO" &&
+          canImportPopulation &&
+          populationSyncKeyRef.current !== populationSyncKey
+        ) {
+          populationSyncKeyRef.current = populationSyncKey;
+          setIsSyncingPersonal(true);
+          try {
+            await importNominaEmpleados(periodId);
+          } catch (syncError) {
+            populationSyncKeyRef.current = null;
+            throw syncError;
+          } finally {
+            if (!cancelled) {
+              setIsSyncingPersonal(false);
+            }
+          }
+        }
+
         const employeeLoader = user?.permissions.includes("nomina.economico.read") === true
           ? getAllNominaPeriodoEmpleados
           : getAllNominaPeriodoEmpleadosOperativos;
@@ -786,7 +815,7 @@ export default function PlanillaOperativaPage() {
     return () => {
       cancelled = true;
     };
-  }, [empresaId, periodId, reloadVersion]);
+  }, [empresaId, periodId, periods, reloadVersion, user?.permissions]);
 
   useEffect(() => onPersonalInvalidation((change) => {
     if (!periodId) return;

@@ -1,4 +1,5 @@
 import { compareDateStrings } from './nomina.calculator';
+import { effectiveRetirementSql as buildEffectiveRetirementSql } from '../vinculaciones/vigencia';
 
 export interface NominaPopulationLink {
   fecha_fin: string | null;
@@ -176,12 +177,6 @@ export const classifyNominaMultipleLinks = (
  * PostgreSQL LEAST ignores nulls; the earliest recorded effective end wins.
  * Alias v must refer to the scoped vinculaciones row.
  */
-export const effectiveRetirementSql = `LEAST(v.fecha_fin, (
-  SELECT MIN(COALESCE(n.fecha_inicio, n.fecha_fin))
-  FROM nomina_novedades n
-  JOIN nomina_tipos_novedad t ON t.id = n.tipo_novedad_id
-  WHERE n.vinculacion_id = v.id AND COALESCE(n.activo, TRUE)
-    AND UPPER(TRIM(t.nombre)) = 'FECHA DE RETIRO'
-))`;
+export const effectiveRetirementSql = buildEffectiveRetirementSql('v');
 
 export const POPULATION_EXCLUSION = 'PERSONAL_FUERA_VIGENCIA';

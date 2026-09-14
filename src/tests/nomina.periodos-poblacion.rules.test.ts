@@ -26,7 +26,7 @@ test('importNominaEmpleados usa interseccion por fechas y no depende de estado A
 
   assert.doesNotMatch(section, /estado_vinculacion = 'ACTIVA'/);
   assert.match(section, /v\.fecha_inicio <= \$2::date/);
-  assert.match(section, /COALESCE\(v\.fecha_fin, \$2::date\) >= \$3::date/);
+  assert.match(section, /effectiveRetirementSql/);
 });
 
 test('importNominaEmpleados omite vinculaciones ambiguas marcadas en revision', () => {

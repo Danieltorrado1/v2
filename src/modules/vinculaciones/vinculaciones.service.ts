@@ -5,6 +5,7 @@ import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import { AppError } from '../../utils/AppError';
 import { isTenantAdmin, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { getVinculacionChecklist } from '../documentos/documentos.service';
+import { effectiveRetirementSql } from './vigencia';
 import {
   getVinculacionPersonalContext,
   type VinculacionPersonalContext
@@ -2018,7 +2019,7 @@ export const getPersonalResumen = async (
                    AND ca.fecha_inicio <= $2::date
                    AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $2::date)
                    AND vca.fecha_inicio <= $2::date
-                   AND (vca.fecha_fin IS NULL OR vca.fecha_fin >= $2::date)
+                   AND (${effectiveRetirementSql('vca')} IS NULL OR ${effectiveRetirementSql('vca')} >= $2::date)
                  THEN COALESCE(ca.porcentaje_cobertura, 0)
                  ELSE 0
                END
@@ -2033,9 +2034,9 @@ export const getPersonalResumen = async (
          GROUP BY ff.id, ff.cobertura_requerida
        )
        SELECT
-         COUNT(*) FILTER (WHERE v.fecha_inicio <= $2::date AND (v.fecha_fin IS NULL OR v.fecha_fin >= $2::date))::int AS trabajadores_activos,
+         COUNT(*) FILTER (WHERE v.fecha_inicio <= $2::date AND (${effectiveRetirementSql('v')} IS NULL OR ${effectiveRetirementSql('v')} >= $2::date))::int AS trabajadores_activos,
          COUNT(*) FILTER (WHERE v.fecha_inicio >= periodo.inicio AND v.fecha_inicio < periodo.siguiente)::int AS ingresos_mes,
-         COUNT(*) FILTER (WHERE v.fecha_fin >= periodo.inicio AND v.fecha_fin < periodo.siguiente)::int AS retiros_mes,
+         COUNT(*) FILTER (WHERE ${effectiveRetirementSql('v')} >= periodo.inicio AND ${effectiveRetirementSql('v')} < periodo.siguiente)::int AS retiros_mes,
          COALESCE((SELECT SUM(GREATEST(requeridas - asignadas, 0)) FROM cobertura), 0)::int AS vacantes
        FROM vinculaciones v
        CROSS JOIN periodo
