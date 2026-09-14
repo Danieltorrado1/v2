@@ -120,6 +120,10 @@ import {
   nominaPeriodoRepository,
   type NominaPeriodoRepositoryRow
 } from './infrastructure/repositories/nomina-periodo.repository';
+import {
+  nominaEmpleadoRepository,
+  type NominaEmpleadoRepositoryRow
+} from './infrastructure/repositories/nomina-empleado.repository';
 import { syncVinculacionEstadoProjection } from '../vinculaciones/vigencia.projection.service';
 
 interface CountRow extends QueryResultRow {
@@ -3781,22 +3785,7 @@ const loadNominaEmpleadoContextOrThrow = async (
   client?: PoolClient
 ): Promise<NominaEmpleadoContextRow> => {
   const executor = client ?? dbPool;
-  const result = await executor.query<NominaEmpleadoContextRow>(
-    `
-      SELECT
-        ne.id::text AS id,
-        ne.periodo_id::text AS periodo_id,
-        np.contrato_id::text AS periodo_contrato_id,
-        np.estado AS periodo_estado
-      FROM nomina_empleados ne
-      INNER JOIN nomina_periodos np ON np.id = ne.periodo_id
-      WHERE ne.id = $1::bigint
-      LIMIT 1
-    `,
-    [empleadoId]
-  );
-
-  const context = result.rows[0];
+  const context: NominaEmpleadoRepositoryRow | null = await nominaEmpleadoRepository.getById(empleadoId, executor);
 
   if (!context) {
     throw new AppError('Payroll employee not found', 404, 'NOMINA_EMPLEADO_NOT_FOUND');
