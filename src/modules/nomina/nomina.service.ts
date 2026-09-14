@@ -1933,18 +1933,18 @@ const getNominaEmpleadosRealSelect = (): string => {
       p.segundo_nombre,
       p.primer_apellido,
       p.segundo_apellido,
-      COALESCE(mu_op.nombre_municipio, mu.nombre_municipio) AS municipio_nombre,
-      mu_op.nombre_municipio AS contexto_municipio_nombre,
-      ins_op.nombre_institucion AS contexto_institucion_nombre,
+      COALESCE(contexto_base.contexto ->> 'municipio', contexto_operativo.municipio_operativo_nombre, mu_op.nombre_municipio, mu.nombre_municipio) AS municipio_nombre,
+      COALESCE(contexto_base.contexto ->> 'municipio', contexto_operativo.municipio_operativo_nombre, mu_op.nombre_municipio) AS contexto_municipio_nombre,
+      COALESCE(contexto_base.contexto ->> 'institucion', contexto_operativo.institucion_nombre, ins_op.nombre_institucion) AS contexto_institucion_nombre,
       se_op.id::text AS contexto_sede_id,
-      se_op.nombre_sede AS contexto_sede_nombre,
-      mo_op.nombre_modalidad AS contexto_modalidad_nombre,
-      contexto_operativo.municipio_operativo_nombre,
-      contexto_operativo.institucion_nombre,
-      contexto_operativo.sede_nombre,
-      contexto_operativo.modalidad_id,
+      COALESCE(contexto_base.contexto ->> 'sede', contexto_operativo.sede_nombre, se_op.nombre_sede) AS contexto_sede_nombre,
+      COALESCE(contexto_base.contexto ->> 'modalidad', contexto_operativo.modalidad_nombre, mo_op.nombre_modalidad) AS contexto_modalidad_nombre,
+      COALESCE(contexto_base.contexto ->> 'municipio', contexto_operativo.municipio_operativo_nombre) AS municipio_operativo_nombre,
+      COALESCE(contexto_base.contexto ->> 'institucion', contexto_operativo.institucion_nombre) AS institucion_nombre,
+      COALESCE(contexto_base.contexto ->> 'sede', contexto_operativo.sede_nombre) AS sede_nombre,
+      COALESCE(contexto_base.contexto ->> 'modalidad_id', contexto_operativo.modalidad_id) AS modalidad_id,
       contexto_operativo.modalidad_codigo,
-      contexto_operativo.modalidad_nombre,
+      COALESCE(contexto_base.contexto ->> 'modalidad', contexto_operativo.modalidad_nombre) AS modalidad_nombre,
       gestor_actual.gestor_usuario_id,
       gestor_actual.gestor_nombre_completo,
       gestor_actual.gestor_origen,
@@ -1975,6 +1975,9 @@ const getNominaEmpleadosRealSelect = (): string => {
     INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
     INNER JOIN personas p ON p.id = v.persona_id
     INNER JOIN nomina_periodos np_context ON np_context.id = ne.periodo_id
+    LEFT JOIN nomina_contextos_operativos_base contexto_base
+      ON contexto_base.periodo_id = ne.periodo_id
+     AND contexto_base.nomina_empleado_id = ne.id
     LEFT JOIN municipios mu ON mu.id = p.municipio_residencia_id
     LEFT JOIN LATERAL (
       SELECT ca1.focalizacion_final_id
@@ -7169,9 +7172,27 @@ export const importNominaEmpleados = async (
               SELECT ca1.*
               FROM cobertura_asignaciones ca1
               WHERE ca1.vinculacion_id = v.id
-                AND ca1.fecha_inicio <= np.fecha_fin
-                AND (ca1.fecha_fin IS NULL OR ca1.fecha_fin >= np.fecha_inicio)
-              ORDER BY ca1.fecha_inicio DESC, ca1.id DESC
+                AND COALESCE(ca1.activo, TRUE) = TRUE
+                AND (
+                  (
+                    ca1.fecha_inicio <= np.fecha_fin
+                    AND (ca1.fecha_fin IS NULL OR ca1.fecha_fin >= np.fecha_inicio)
+                  )
+                  OR NOT EXISTS (
+                    SELECT 1
+                    FROM cobertura_asignaciones ca_period
+                    WHERE ca_period.vinculacion_id = v.id
+                      AND COALESCE(ca_period.activo, TRUE) = TRUE
+                      AND ca_period.fecha_inicio <= np.fecha_fin
+                      AND (ca_period.fecha_fin IS NULL OR ca_period.fecha_fin >= np.fecha_inicio)
+                  )
+                )
+              ORDER BY
+                CASE WHEN ca1.fecha_inicio <= np.fecha_fin
+                  AND (ca1.fecha_fin IS NULL OR ca1.fecha_fin >= np.fecha_inicio)
+                  THEN 0 ELSE 1 END,
+                ca1.fecha_inicio DESC,
+                ca1.id DESC
               LIMIT 1
             ) ca ON TRUE
             LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
