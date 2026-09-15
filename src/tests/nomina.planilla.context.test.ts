@@ -6,6 +6,9 @@ import { test } from 'node:test';
 const serviceSource = readFileSync(
   resolve(process.cwd(), 'src/modules/nomina/nomina.service.ts'),
   'utf8'
+) + readFileSync(
+  resolve(process.cwd(), 'src/modules/nomina/infrastructure/repositories/nomina-poblacion.repository.ts'),
+  'utf8'
 );
 
 test('Planilla Operativa prioriza el snapshot de contexto por periodo', () => {

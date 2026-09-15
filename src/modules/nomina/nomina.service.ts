@@ -142,6 +142,11 @@ import { nominaPoblacionRepository } from './infrastructure/repositories/nomina-
 import { nominaCalculoRepository } from './infrastructure/repositories/nomina-calculo.repository';
 import { nominaLiquidacionRepository } from './infrastructure/repositories/nomina-liquidacion.repository';
 import { nominaDocumentoRepository } from './infrastructure/repositories/nomina-documento.repository';
+import { nominaPoblacionService } from './application/nomina-poblacion.service';
+import { recordNominaAudit } from './application/nomina-audit.service';
+import { buildImportCandidateReviewSet } from './application/nomina-population-review';
+import { assertNominaTenantContractAccess, loadNominaPeriodoOrThrow } from './application/nomina-periodo-context';
+import { mapNominaPeriodo, type NominaPeriodo } from './domain/nomina-periodo.mapper';
 import { syncVinculacionEstadoProjection } from '../vinculaciones/vigencia.projection.service';
 
 interface CountRow extends QueryResultRow {
@@ -257,11 +262,6 @@ interface NominaEmpleadoRealRow extends QueryResultRow {
   vinculacion_id: string;
   vinculacion_metodo_pago: string | null;
   vinculacion_cotiza_pension: boolean;
-}
-
-interface ContratoScopeRow extends QueryResultRow {
-  empresa_id: string | null;
-  id: string;
 }
 
 interface ImportCandidateRow extends QueryResultRow {
@@ -686,31 +686,7 @@ interface NominaAuditRow extends QueryResultRow {
   id: string;
 }
 
-export interface NominaPeriodo {
-  activo: boolean;
-  contrato: {
-    empresa_id: string | null;
-    entidad_contratante: string | null;
-    fecha_finalizacion: string | null;
-    fecha_inicio: string | null;
-    id: string;
-    numero_contrato: string | null;
-  } | null;
-  contrato_id: string | null;
-  created_at: string;
-  estado: string;
-  fecha_fin: string;
-  fecha_inicio: string;
-  id: string;
-  nombre_periodo: string;
-  requiere_asistencia: boolean;
-  tipo_periodo: string;
-  descripcion?: string | null;
-  empresa_id?: string | null;
-  fecha_cierre?: string | null;
-  nombre?: string;
-  updated_at?: string;
-}
+export type { NominaPeriodo } from './domain/nomina-periodo.mapper';
 
 export interface NominaEmpleado {
   activo: boolean;
@@ -1847,22 +1823,6 @@ export const assertPeriodoAllowsRecalculate = (
   );
 };
 
-const hasTenantContractAccess = (
-  tenant: TenantAccessContext | undefined,
-  contratoId: number,
-  empresaId: number | null
-): boolean => {
-  if (!tenant || tenant.isGlobalAdmin) {
-    return true;
-  }
-
-  if (tenant.contratoIds.includes(contratoId)) {
-    return true;
-  }
-
-  return empresaId !== null && tenant.empresaIds.includes(empresaId);
-};
-
 export const appendTenantScopeConditions = (
   conditions: string[],
   params: unknown[],
@@ -2367,32 +2327,7 @@ const getNominaMovimientosRealSelect = (): string => {
   `;
 };
 
-const mapRealPeriodo = (row: NominaPeriodoRealRow): NominaPeriodo => {
-  const contrato = row.contrato_id
-    ? {
-        id: row.contrato_id,
-        empresa_id: row.contrato_empresa_id,
-        numero_contrato: row.contrato_numero,
-        entidad_contratante: row.contrato_entidad_contratante,
-        fecha_inicio: toDateString(row.contrato_fecha_inicio),
-        fecha_finalizacion: toDateString(row.contrato_fecha_finalizacion)
-      }
-    : null;
-
-  return {
-    id: row.id,
-    contrato_id: row.contrato_id,
-    nombre_periodo: row.nombre_periodo,
-    tipo_periodo: row.tipo_periodo,
-    fecha_inicio: toDateString(row.fecha_inicio) ?? '',
-    fecha_fin: toDateString(row.fecha_fin) ?? '',
-    requiere_asistencia: toBooleanValue(row.requiere_asistencia),
-    estado: row.estado,
-    activo: toBooleanValue(row.activo),
-    created_at: toIsoString(row.created_at) ?? '',
-    contrato
-  };
-};
+const mapRealPeriodo = mapNominaPeriodo;
 
 const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
   const totalDocumentalRequeridos = toOptionalNumberValue(row.total_documental_requeridos);
@@ -3518,60 +3453,8 @@ const mapRealDesprendible = (row: NominaDesprendibleRealRow): NominaDesprendible
   };
 };
 
-const loadContratoScope = async (
-  contratoId: string,
-  client?: PoolClient
-): Promise<ContratoScopeRow> => {
-  const executor = client ?? dbPool;
-  const result = await executor.query<ContratoScopeRow>(
-    `
-      SELECT
-        c.id::text AS id,
-        c.empresa_id::text AS empresa_id
-      FROM contratos c
-      WHERE c.id = $1::bigint
-      LIMIT 1
-    `,
-    [contratoId]
-  );
-
-  const contrato = result.rows[0];
-
-  if (!contrato) {
-    throw new AppError('Contrato not found', 404, 'CONTRATO_NOT_FOUND');
-  }
-
-  return contrato;
-};
-
-const assertTenantAccessForContrato = async (
-  contratoId: string,
-  tenant: TenantAccessContext | undefined,
-  client?: PoolClient
-): Promise<void> => {
-  const contrato = await loadContratoScope(contratoId, client);
-  const empresaId = toOptionalNumberValue(contrato.empresa_id);
-  const contratoNumericId = toNumberValue(contrato.id);
-
-  if (!hasTenantContractAccess(tenant, contratoNumericId, empresaId)) {
-    throw new AppError('Tenant access denied', 403, 'TENANT_FORBIDDEN');
-  }
-};
-
-const loadRealPeriodoOrThrow = async (
-  periodoId: string,
-  tenant?: TenantAccessContext,
-  client?: PoolClient
-): Promise<NominaPeriodoRealRow> => {
-  const periodo = await nominaPeriodoRepository.findById(periodoId, client);
-
-  if (!periodo) {
-    throw new AppError('Payroll period not found', 404, 'NOMINA_PERIODO_NOT_FOUND');
-  }
-
-  await assertTenantAccessForContrato(periodo.contrato_id, tenant, client);
-  return periodo;
-};
+const loadRealPeriodoOrThrow = loadNominaPeriodoOrThrow;
+const assertTenantAccessForContrato = assertNominaTenantContractAccess;
 
 const loadNominaEmpleadoByIdOrThrow = async (
   empleadoId: string,
@@ -5398,28 +5281,6 @@ const loadNominaTipoDocumentoByCodeOrThrow = async (
   return tipoDocumento;
 };
 
-const recordNominaAudit = async (
-  client: PoolClient,
-  periodoId: string,
-  actorUserId: string,
-  action: string,
-  payload?: Record<string, unknown>,
-  auditMeta?: AuditRequestMeta
-): Promise<void> => {
-  await registerAuditEntry({
-    client,
-    usuario_id: actorUserId,
-    accion: action,
-    tabla: 'nomina_periodos',
-    registro_id: periodoId,
-    descripcion: `Auditoria de nomina ${action}`,
-    before: payload?.before ?? null,
-    after: payload?.after ?? payload ?? null,
-    ip: auditMeta?.ip ?? null,
-    user_agent: auditMeta?.user_agent ?? null
-  });
-};
-
 /**
  * Resuelve la categoria salarial de los empleados CAARES del periodo.
  *
@@ -5945,47 +5806,6 @@ export const ensureCurrentNominaPeriods = async ({
   } finally {
     client.release();
   }
-};
-
-const buildImportCandidateReviewSet = (
-  candidates: ImportCandidateRow[],
-  periodoFechaInicio: string,
-  periodoFechaFin: string
-): Set<string> => {
-  const byPersona = new Map<string, NominaPopulationLink[]>();
-
-  for (const candidate of candidates) {
-    const current = byPersona.get(candidate.persona_id) ?? [];
-    current.push({
-      vinculacion_id: candidate.vinculacion_id,
-      persona_id: candidate.persona_id,
-      fecha_inicio: toDateString(candidate.fecha_inicio) ?? periodoFechaInicio,
-      fecha_fin: toDateString(candidate.fecha_fin),
-      metodo_pago: candidate.metodo_pago,
-      tipo_vinculacion_codigo: candidate.tipo_vinculacion_codigo
-    });
-    byPersona.set(candidate.persona_id, current);
-  }
-
-  const reviewSet = new Set<string>();
-
-  for (const links of byPersona.values()) {
-    const classification = classifyNominaMultipleLinks(
-      links,
-      periodoFechaInicio,
-      periodoFechaFin
-    );
-
-    if (classification === 'SOLAPADA' || classification === 'REQUIERE_REVISION') {
-      for (const link of links) {
-        if (intersectsNominaPeriodo(link.fecha_inicio, link.fecha_fin, periodoFechaInicio, periodoFechaFin)) {
-          reviewSet.add(link.vinculacion_id);
-        }
-      }
-    }
-  }
-
-  return reviewSet;
 };
 
 export const listNominaPeriodos = async (
@@ -6793,431 +6613,27 @@ export const importNominaEmpleados = async (
   personaId?: string,
   vinculacionId?: string
 ): Promise<NominaImportEmployeesResult> => {
-  const client = await dbPool.connect();
-
-  try {
-    await client.query('BEGIN');
-    await client.query('SELECT id FROM nomina_periodos WHERE id = $1::bigint FOR UPDATE', [periodoId]);
-    const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
-    await assertNominaPeriodoCoberturaScope(periodoId, tenant, client);
-
-    assertPeriodoAllowsOpenMutations(periodo.estado, 'importing payroll employees');
-
-    const candidateParams: unknown[] = [periodo.contrato_id, toDateString(periodo.fecha_fin), toDateString(periodo.fecha_inicio)];
-    const candidateScopeCondition = personaId
-      ? (candidateParams.push(personaId), `AND v.persona_id = $${candidateParams.length}::bigint`)
-      : vinculacionId
-        ? (candidateParams.push(vinculacionId), `AND v.id = $${candidateParams.length}::bigint`)
-        : '';
-    const candidatesResult = await client.query<ImportCandidateRow>(
-      `
-        SELECT
-          v.id::text AS vinculacion_id,
-          v.persona_id::text AS persona_id,
-          v.fecha_inicio,
-          ${effectiveRetirementSql} AS fecha_fin,
-          v.metodo_pago,
-          tv.codigo AS tipo_vinculacion_codigo,
-          v.contrato_cargo_id::text AS cargo_id,
-          NULL::text AS categoria_id,
-          NULL::numeric AS categoria_salario_base,
-          NULL::numeric AS categoria_auxilio_transporte
-        FROM vinculaciones v
-        LEFT JOIN tipos_vinculacion tv ON tv.id = v.tipo_vinculacion_id
-        WHERE v.contrato_id = $1::bigint
-          AND v.fecha_inicio <= $2::date
-          AND COALESCE(${effectiveRetirementSql}, $2::date) >= $3::date
-          ${candidateScopeCondition}
-        ORDER BY v.id ASC
-      `,
-      candidateParams
-    );
-
-    // Logical exclusion only: all related rows and all economic columns remain intact.
-    const excludedResult = await client.query<{ id: string; has_activity: boolean }>(`
-      WITH excluded AS (
-        UPDATE nomina_empleados ne SET activo = FALSE,
-          motivo_caso_especial = concat_ws(' | ', NULLIF(ne.motivo_caso_especial, ''), $4::text)
-        FROM vinculaciones v
-      WHERE ne.periodo_id = $1::bigint AND v.id = ne.vinculacion_id
-          ${personaId ? 'AND v.persona_id = $6::bigint' : vinculacionId ? 'AND v.id = $6::bigint' : ''}
-          AND COALESCE(ne.activo, TRUE)
-          AND (v.contrato_id <> $5::bigint OR v.fecha_inicio > $3::date
-            OR ${effectiveRetirementSql} < $2::date)
-        RETURNING ne.id, ne.vinculacion_id, ne.revisado, ne.detalle_calculo
-      ) SELECT e.id::text, (
-        e.revisado OR e.detalle_calculo IS NOT NULL
-        OR EXISTS (SELECT 1 FROM nomina_asistencia_diaria a WHERE a.periodo_id = $1::bigint AND a.vinculacion_id = e.vinculacion_id)
-        OR EXISTS (SELECT 1 FROM nomina_novedades n WHERE n.nomina_empleado_id = e.id)
-        OR EXISTS (SELECT 1 FROM nomina_novedad_turnos t WHERE t.nomina_empleado_id = e.id)
-        OR EXISTS (SELECT 1 FROM nomina_movimientos m WHERE m.nomina_empleado_id = e.id)
-        OR EXISTS (SELECT 1 FROM nomina_ajustes_manuales j WHERE j.nomina_empleado_id = e.id)
-        OR EXISTS (SELECT 1 FROM nomina_revision_operativa r WHERE r.nomina_empleado_id = e.id)
-      ) AS has_activity FROM excluded e
-    `, personaId || vinculacionId
-      ? [periodoId, toDateString(periodo.fecha_inicio), toDateString(periodo.fecha_fin), POPULATION_EXCLUSION, periodo.contrato_id, personaId ?? vinculacionId]
-      : [periodoId, toDateString(periodo.fecha_inicio), toDateString(periodo.fecha_fin), POPULATION_EXCLUSION, periodo.contrato_id]);
-    const excluded = excludedResult.rows.length;
-    const requiresReview = excludedResult.rows.filter(row => row.has_activity).map(row => row.id);
-
-    const existingRows = await nominaPoblacionRepository.listExistingByPeriodo({
-      periodoId,
-      contratoId: periodo.contrato_id,
-      personaId,
-      vinculacionId
-    }, client);
-    const existingByVinculacionId = new Map(existingRows.map(row => [row.vinculacion_id, row]));
-    const existingVinculacionIds = new Set(existingByVinculacionId.keys());
-    const preexistingVinculacionIds = new Set(existingVinculacionIds);
-
-    let reactivated = 0;
-    let imported = 0;
-    const importedEmployeeIds: string[] = [];
-    const recalculableImportedEmployeeIds: string[] = [];
-    let skippedDuplicates = 0;
-    let skippedRequiresReview = 0;
-    const periodoFechaInicio = toDateString(periodo.fecha_inicio) ?? '';
-    const periodoFechaFin = toDateString(periodo.fecha_fin) ?? '';
-    const diasPeriodo = inclusiveDaysBetween(periodoFechaInicio, periodoFechaFin);
-    const reviewVinculacionIds = buildImportCandidateReviewSet(
-      candidatesResult.rows,
-      periodoFechaInicio,
-      periodoFechaFin
-    );
-
-    for (const candidate of candidatesResult.rows) {
-      if (existingVinculacionIds.has(candidate.vinculacion_id)) {
-        const existing = existingByVinculacionId.get(candidate.vinculacion_id);
-        if (!existing?.activo && existing?.motivo_caso_especial?.split(' | ').includes(POPULATION_EXCLUSION)
-          && !reviewVinculacionIds.has(candidate.vinculacion_id)) {
-          await nominaPoblacionRepository.reactivate(
-            periodoId,
-            candidate.vinculacion_id,
-            existing.motivo_caso_especial.split(' | ').filter(reason => reason !== POPULATION_EXCLUSION).join(' | '),
-            client
-          );
-          reactivated += 1;
-        } else {
-          skippedDuplicates += 1;
-        }
-        continue;
-      }
-
-      if (reviewVinculacionIds.has(candidate.vinculacion_id)) {
-        skippedRequiresReview += 1;
-        continue;
-      }
-
-      const fechaInicioPago = maxDateString(
-        toDateString(candidate.fecha_inicio) ?? periodoFechaInicio,
-        periodoFechaInicio
-      );
-      const fechaFinPago = minDateString(
-        toDateString(candidate.fecha_fin) ?? periodoFechaFin,
-        periodoFechaFin
-      );
-
-      if (fechaInicioPago > fechaFinPago) {
-        continue;
-      }
-
-      const diasPagados = inclusiveDaysBetween(fechaInicioPago, fechaFinPago);
-      const salarioBase = toNumberValue(candidate.categoria_salario_base);
-      const auxilioTransporte = toNumberValue(candidate.categoria_auxilio_transporte);
-
-      const metodoLiquidacion = resolveNominaMetodoLiquidacion({
-        metodo_pago: candidate.metodo_pago
-      });
-
-      const insertedEmployeeId = await nominaPoblacionRepository.insert({
-        periodoId,
-        vinculacionId: candidate.vinculacion_id,
-        metodoLiquidacion,
-        categoriaSalarialId: candidate.categoria_id,
-        salarioBase,
-        auxilioTransporte,
-        fechaInicioPago,
-        fechaFinPago,
-        diasPeriodo,
-        diasPagados
-      }, client);
-
-      existingVinculacionIds.add(candidate.vinculacion_id);
-      imported += 1;
-      importedEmployeeIds.push(insertedEmployeeId);
-    }
-
-    // A population sync can happen after the initial payroll calculation. New
-    // rows must receive the economic category snapshot before being calculated;
-    // otherwise the calculator has no salary/transport source and the export
-    // correctly exposes the persisted zeroes. Resolve only newly inserted rows
-    // and leave existing employee snapshots untouched.
-    {
-      const economicTables = await client.query<{ categorias: boolean; cobertura: boolean }>(`
-        SELECT
-          to_regclass('public.nomina_categorias_salariales') IS NOT NULL AS categorias,
-          to_regclass('public.cobertura_asignaciones') IS NOT NULL AS cobertura
-      `);
-      if (economicTables.rows[0]?.categorias && economicTables.rows[0]?.cobertura) {
-        const missingCategoryResult = await client.query<{ id: string }>(
-          `
-            SELECT ne.id::text AS id
-            FROM nomina_empleados ne
-            WHERE ne.periodo_id = $1::bigint
-              AND COALESCE(ne.activo, TRUE) = TRUE
-              AND ne.categoria_salarial_id IS NULL
-          `,
-          [periodoId]
+  const result = await nominaPoblacionService.sync({
+    periodoId,
+    actorUserId,
+    tenant,
+    auditMeta,
+    personaId,
+    vinculacionId,
+    dependencies: {
+      loadPeriod: loadRealPeriodoOrThrow,
+      mapPeriod: mapRealPeriodo,
+      assertScope: assertNominaPeriodoCoberturaScope,
+      assertOpen: (estado: string) => assertPeriodoAllowsOpenMutations(estado, 'importing payroll employees'),
+      recalculate: async (nominaEmpleadoId: string) => {
+        await recalculateNominaPeriodo(
+          periodoId, { nomina_empleado_id: nominaEmpleadoId }, actorUserId, tenant, auditMeta
         );
-        const missingCalculationResult = await client.query<{ id: string }>(
-          `
-            SELECT ne.id::text AS id
-            FROM nomina_empleados ne
-            WHERE ne.periodo_id = $1::bigint
-              AND COALESCE(ne.activo, TRUE) = TRUE
-              AND ne.categoria_salarial_id IS NOT NULL
-              AND ne.detalle_calculo IS NULL
-              AND ($2::bigint IS NOT NULL AND (
-                ne.vinculacion_id = $2::bigint
-                OR EXISTS (
-                  SELECT 1 FROM vinculaciones vv
-                  WHERE vv.id = ne.vinculacion_id AND vv.persona_id = $2::bigint
-                )
-              ))
-          `,
-          [periodoId, personaId ?? vinculacionId ?? null]
-        );
-        const economicEmployeeIds = [...new Set([
-          ...importedEmployeeIds,
-          ...missingCategoryResult.rows.map((row) => row.id),
-          ...missingCalculationResult.rows.map((row) => row.id)
-        ])];
-        const categoryResult = await client.query<{ id: string }>(
-          `
-            WITH employee_scope AS (
-              SELECT ne.id AS nomina_empleado_id, ne.vinculacion_id, ne.periodo_id,
-                np.contrato_id, np.fecha_inicio AS periodo_inicio, np.fecha_fin AS periodo_fin
-              FROM nomina_empleados ne
-              JOIN nomina_periodos np ON np.id = ne.periodo_id
-              WHERE ne.id = ANY($1::bigint[])
-            ), assignments AS (
-              SELECT es.*, ca.focalizacion_final_id, ff.municipio_id, ff.institucion_id,
-                ff.sede_id, m.codigo_base,
-                ROW_NUMBER() OVER (
-                  PARTITION BY es.nomina_empleado_id
-                  ORDER BY CASE WHEN ca.fecha_inicio <= es.periodo_fin
-                    AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= es.periodo_inicio)
-                    THEN 0 ELSE 1 END, ca.fecha_inicio DESC, ca.id DESC
-                ) AS assignment_rank
-              FROM employee_scope es
-              JOIN vinculaciones v ON v.id = es.vinculacion_id
-              LEFT JOIN cobertura_asignaciones ca ON ca.vinculacion_id = v.id
-                AND COALESCE(ca.activo, TRUE) = TRUE
-              LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
-              LEFT JOIN modalidades m ON m.id = ff.modalidad_id
-            ), chosen AS (
-              SELECT * FROM assignments WHERE assignment_rank = 1
-            ), caares_grouped AS (
-              SELECT ff.municipio_id, ff.institucion_id, ff.sede_id, COUNT(*)::int AS quantity
-              FROM cobertura_asignaciones ca
-              JOIN vinculaciones v ON v.id = ca.vinculacion_id
-              JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
-              JOIN modalidades m ON m.id = ff.modalidad_id
-              JOIN (SELECT DISTINCT contrato_id, periodo_inicio, periodo_fin FROM employee_scope) es
-                ON es.contrato_id = v.contrato_id
-              WHERE COALESCE(ca.activo, TRUE) = TRUE
-                AND v.contrato_id = es.contrato_id
-                AND ca.fecha_inicio <= es.periodo_fin
-                AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= es.periodo_inicio)
-                AND m.codigo_base = 'CAARES'
-              GROUP BY ff.municipio_id, ff.institucion_id, ff.sede_id
-            ), resolved AS (
-              SELECT c.nomina_empleado_id,
-                CASE WHEN c.codigo_base = 'CAARES' THEN
-                  CASE WHEN COALESCE(g.quantity, 0) = 1 THEN 'CAARES1' ELSE 'CAARES3' END
-                ELSE c.codigo_base END AS category_code,
-                c.contrato_id, c.periodo_inicio, c.periodo_fin
-              FROM chosen c
-              LEFT JOIN caares_grouped g
-                ON g.municipio_id = c.municipio_id
-                AND g.institucion_id = c.institucion_id
-                AND g.sede_id = c.sede_id
-            )
-            UPDATE nomina_empleados ne
-            SET categoria_salarial_id = ncs.id
-            FROM resolved r
-            JOIN nomina_categorias_salariales ncs
-              ON ncs.contrato_id = r.contrato_id
-             AND UPPER(BTRIM(ncs.codigo_categoria)) = UPPER(BTRIM(r.category_code))
-             AND COALESCE(ncs.activo, TRUE) = TRUE
-             AND (ncs.vigente_desde IS NULL OR ncs.vigente_desde <= r.periodo_fin)
-             AND (ncs.vigente_hasta IS NULL OR ncs.vigente_hasta >= r.periodo_inicio)
-            WHERE ne.id = r.nomina_empleado_id
-              AND ne.categoria_salarial_id IS NULL
-            RETURNING ne.id::text AS id
-          `,
-          [economicEmployeeIds]
-        );
-        recalculableImportedEmployeeIds.push(...categoryResult.rows.map((row) => row.id));
-        recalculableImportedEmployeeIds.push(...missingCalculationResult.rows.map((row) => row.id));
       }
     }
+  });
 
-    // Legacy repair: nomina_empleados intentionally has no descriptive context
-    // columns.  Keep its economic snapshot untouched and repair only the
-    // operational snapshot used by change derivation, when the source
-    // assignment overlaps this payroll period.
-    let actualizadosContexto = 0;
-    const snapshotTableResult = await client.query<{ exists: boolean }>(
-      `SELECT to_regclass('public.nomina_contextos_operativos_base') IS NOT NULL AS exists`
-    );
-    if (snapshotTableResult.rows[0]?.exists) {
-      const snapshotParams: unknown[] = [
-        periodoId,
-        actorUserId
-      ];
-      const snapshotScopeCondition = personaId
-        ? (snapshotParams.push(personaId), `AND v.persona_id = $${snapshotParams.length}::bigint`)
-        : vinculacionId
-          ? (snapshotParams.push(vinculacionId), `AND v.id = $${snapshotParams.length}::bigint`)
-          : '';
-      const snapshotResult = await client.query<{ vinculacion_id: string }>(
-        `
-          WITH source_context AS (
-            SELECT
-              ne.id AS nomina_empleado_id,
-              ne.vinculacion_id,
-              jsonb_strip_nulls(jsonb_build_object(
-                'municipio_id', COALESCE(ff.municipio_id, ca.municipio_id)::text,
-                'municipio', COALESCE(ff.municipio_texto, mu.nombre_municipio),
-                'institucion_id', ff.institucion_id::text,
-                'institucion', COALESCE(ff.institucion_final, ca.institucion),
-                'sede_id', ff.sede_id::text,
-                'sede', COALESCE(ff.sede_final, ca.sede),
-                'modalidad_id', ff.modalidad_id::text,
-                'modalidad', ff.modalidad_final,
-                'cargo_operativo_id', v.cargo_operativo_id::text,
-                'cobertura_asignacion_id', ca.id::text
-              )) AS contexto
-            FROM nomina_empleados ne
-            INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
-            INNER JOIN nomina_periodos np ON np.id = ne.periodo_id
-            INNER JOIN LATERAL (
-              SELECT ca1.*
-              FROM cobertura_asignaciones ca1
-              WHERE ca1.vinculacion_id = v.id
-                AND COALESCE(ca1.activo, TRUE) = TRUE
-                AND (
-                  (
-                    ca1.fecha_inicio <= np.fecha_fin
-                    AND (ca1.fecha_fin IS NULL OR ca1.fecha_fin >= np.fecha_inicio)
-                  )
-                  OR NOT EXISTS (
-                    SELECT 1
-                    FROM cobertura_asignaciones ca_period
-                    WHERE ca_period.vinculacion_id = v.id
-                      AND COALESCE(ca_period.activo, TRUE) = TRUE
-                      AND ca_period.fecha_inicio <= np.fecha_fin
-                      AND (ca_period.fecha_fin IS NULL OR ca_period.fecha_fin >= np.fecha_inicio)
-                  )
-                )
-              ORDER BY
-                CASE WHEN ca1.fecha_inicio <= np.fecha_fin
-                  AND (ca1.fecha_fin IS NULL OR ca1.fecha_fin >= np.fecha_inicio)
-                  THEN 0 ELSE 1 END,
-                ca1.fecha_inicio DESC,
-                ca1.id DESC
-              LIMIT 1
-            ) ca ON TRUE
-            LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
-            LEFT JOIN municipios mu ON mu.id = COALESCE(ff.municipio_id, ca.municipio_id)
-            WHERE ne.periodo_id = $1::bigint
-              AND v.contrato_id = np.contrato_id
-              AND COALESCE(ne.activo, TRUE)
-              ${snapshotScopeCondition}
-          ), repaired AS (
-            INSERT INTO nomina_contextos_operativos_base (
-              periodo_id, nomina_empleado_id, vinculacion_id, contexto, fuente, created_by
-            )
-            SELECT $1::bigint, nomina_empleado_id, vinculacion_id, contexto,
-              'SINCRONIZACION_PERSONAL', $2::bigint
-            FROM source_context
-            ON CONFLICT (periodo_id, nomina_empleado_id) DO UPDATE
-              SET vinculacion_id = EXCLUDED.vinculacion_id,
-                  contexto = EXCLUDED.contexto,
-                  fuente = EXCLUDED.fuente,
-                  created_by = EXCLUDED.created_by
-              WHERE nomina_contextos_operativos_base.contexto IS DISTINCT FROM EXCLUDED.contexto
-            RETURNING vinculacion_id::text
-          )
-          SELECT vinculacion_id FROM repaired
-        `,
-        snapshotParams
-      );
-      actualizadosContexto = snapshotResult.rows.filter(row =>
-        preexistingVinculacionIds.has(row.vinculacion_id)
-      ).length;
-    }
-
-    const sinCambios = Math.max(0, skippedDuplicates - actualizadosContexto);
-
-    const updatedPeriodo = mapRealPeriodo(await loadRealPeriodoOrThrow(periodoId, tenant, client));
-
-    await recordNominaAudit(
-      client,
-      periodoId,
-      actorUserId,
-      'NOMINA_EMPLEADOS_IMPORT',
-      {
-        after: {
-          reactivated,
-          excluded,
-          requires_review: requiresReview,
-          excluded_employee_ids: excludedResult.rows.map(row => row.id),
-          imported,
-          nuevos: imported,
-          actualizados_contexto: actualizadosContexto,
-          sin_cambios: sinCambios,
-          skipped_duplicates: skippedDuplicates,
-          skipped_requires_review: skippedRequiresReview
-        }
-      },
-      auditMeta
-    );
-
-    await client.query('COMMIT');
-
-    // Recalculate only the rows materialized by this synchronization. This
-    // closes the timing gap without changing attendance, operational context,
-    // validity, or the already calculated values of older employees.
-    for (const nominaEmpleadoId of new Set(recalculableImportedEmployeeIds)) {
-      await recalculateNominaPeriodo(
-        periodoId,
-        { nomina_empleado_id: nominaEmpleadoId },
-        actorUserId,
-        tenant,
-        auditMeta
-      );
-    }
-
-    return {
-      reactivated,
-      excluded,
-      requires_review: requiresReview,
-      imported,
-      nuevos: imported,
-      actualizados_contexto: actualizadosContexto,
-      sin_cambios: sinCambios,
-      skipped_duplicates: skippedDuplicates,
-      skipped_requires_review: skippedRequiresReview,
-      periodo: updatedPeriodo
-    };
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+  return result;
 };
 
 export const recalculateNominaPeriodo = async (

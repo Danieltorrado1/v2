@@ -54,6 +54,11 @@ export interface NominaPeriodoIdentity {
   tipo_periodo: string;
 }
 
+export interface NominaContratoScopeRow extends QueryResultRow {
+  empresa_id: string | null;
+  id: string;
+}
+
 export interface CreateNominaPeriodoRepositoryInput extends NominaPeriodoIdentity {
   activo: boolean;
   nombre_periodo: string;
@@ -121,6 +126,18 @@ const appendScope = (
 };
 
 export class NominaPeriodoRepository {
+  public async findContratoScope(
+    contratoId: string,
+    executor?: NominaPeriodoRepositoryExecutor
+  ): Promise<NominaContratoScopeRow | null> {
+    const result = await getExecutor(executor).query<NominaContratoScopeRow>(
+      `SELECT c.id::text AS id, c.empresa_id::text AS empresa_id
+       FROM contratos c WHERE c.id = $1::bigint LIMIT 1`,
+      [contratoId]
+    );
+    return result.rows[0] ?? null;
+  }
+
   public async list(
     input: ListNominaPeriodosRepositoryInput,
     executor?: NominaPeriodoRepositoryExecutor
