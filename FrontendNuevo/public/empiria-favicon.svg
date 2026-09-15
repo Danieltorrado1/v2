@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Empiria</title>
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5EEAD4"/>
+      <stop offset="45%" stop-color="#0F8B8D"/>
+      <stop offset="100%" stop-color="#0A4F50"/>
+    </linearGradient>
+  </defs>
+  <path d="M256 64C158 64 78 144 78 242c0 61 31 115 78 147v-52c-27-24-44-58-44-95 0-80 64-144 144-144s144 64 144 144c0 37-17 71-44 95v52c47-32 78-86 78-147C434 144 354 64 256 64Z" fill="url(#brand)"/>
+  <circle cx="256" cy="158" r="28" fill="url(#brand)"/>
+  <path d="M198 212l40 40v178l-40-23V212Zm116 0-40 40v178l40-23V212Z" fill="url(#brand)"/>
+</svg>
