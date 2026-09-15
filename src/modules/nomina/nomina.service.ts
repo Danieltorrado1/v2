@@ -140,6 +140,7 @@ import {
 } from './infrastructure/repositories/nomina-movimiento.repository';
 import { nominaPoblacionRepository } from './infrastructure/repositories/nomina-poblacion.repository';
 import { nominaCalculoRepository } from './infrastructure/repositories/nomina-calculo.repository';
+import { nominaLiquidacionRepository } from './infrastructure/repositories/nomina-liquidacion.repository';
 import { syncVinculacionEstadoProjection } from '../vinculaciones/vigencia.projection.service';
 
 interface CountRow extends QueryResultRow {
@@ -2362,64 +2363,6 @@ const getNominaMovimientosRealSelect = (): string => {
     INNER JOIN personas p ON p.id = v.persona_id
     LEFT JOIN personas pr ON pr.id = nm.persona_reemplazada_id
     LEFT JOIN cobertura_externos ce ON ce.id = nm.externo_id
-  `;
-};
-
-const getNominaLiquidacionesRealSelect = (): string => {
-  return `
-    SELECT
-      nl.id::text AS id,
-      nl.vinculacion_id::text AS vinculacion_id,
-      nl.periodo_id::text AS periodo_id,
-      nl.fecha_inicio_vinculacion,
-      nl.fecha_fin_vinculacion,
-      nl.fecha_retiro,
-      nl.motivo_retiro,
-      nl.dias_base_liquidacion,
-      nl.dias_trabajados,
-      nl.dias_vacaciones_pendientes,
-      nl.salario_base,
-      nl.auxilio_transporte,
-      nl.promedio_salario,
-      nl.promedio_auxilio_transporte,
-      nl.cesantias,
-      nl.intereses_cesantias,
-      nl.prima_servicios,
-      nl.vacaciones,
-      nl.otros_devengos,
-      nl.deducciones,
-      nl.total_liquidacion,
-      nl.estado,
-      nl.archivo_path,
-      nl.documento_persona_id::text AS documento_persona_id,
-      nl.observacion,
-      COALESCE(nl.activo, TRUE) AS activo,
-      nl.created_at,
-      p.id::text AS persona_id,
-      p.numero_documento AS persona_numero_documento,
-      p.primer_nombre,
-      p.segundo_nombre,
-      p.primer_apellido,
-      p.segundo_apellido,
-      v.estado_vinculacion AS vinculacion_estado,
-      c.id::text AS contrato_id,
-      c.empresa_id::text AS contrato_empresa_id,
-      c.numero_contrato AS contrato_numero,
-      c.entidad_contratante AS contrato_entidad_contratante,
-      np.nombre_periodo AS periodo_nombre,
-      np.fecha_inicio AS periodo_fecha_inicio,
-      np.fecha_fin AS periodo_fecha_fin,
-      np.estado AS periodo_estado,
-      ne.salud AS salud_deduccion_empleado,
-      ne.pension AS pension_deduccion_empleado
-    FROM nomina_liquidaciones nl
-    INNER JOIN vinculaciones v ON v.id = nl.vinculacion_id
-    INNER JOIN personas p ON p.id = v.persona_id
-    INNER JOIN contratos c ON c.id = v.contrato_id
-    INNER JOIN nomina_periodos np ON np.id = nl.periodo_id
-    LEFT JOIN nomina_empleados ne
-      ON ne.periodo_id = nl.periodo_id
-     AND ne.vinculacion_id = nl.vinculacion_id
   `;
 };
 
@@ -10124,61 +10067,23 @@ export const listNominaLiquidaciones = async (
   tenant?: TenantAccessContext
 ): Promise<PaginatedResponse<NominaLiquidacion>> => {
   await loadRealPeriodoOrThrow(periodoId, tenant);
-  const params: unknown[] = [periodoId];
-  const conditions = ['nl.periodo_id = $1::bigint'];
-  appendNominaCoberturaScope(conditions, params, tenant);
-
-  if (query.vinculacion_id) {
-    params.push(query.vinculacion_id);
-    conditions.push(`nl.vinculacion_id = $${params.length}::bigint`);
-  }
-
-  if (query.persona_id) {
-    params.push(query.persona_id);
-    conditions.push(`p.id = $${params.length}::bigint`);
-  }
-
-  if (query.estado) {
-    params.push(query.estado);
-    conditions.push(`nl.estado = $${params.length}`);
-  }
-
-  const whereSql = buildSqlWhere(conditions);
-
-  const countResult = await dbQuery<CountRow>(
-    `
-      SELECT COUNT(*)::int AS total
-      FROM nomina_liquidaciones nl
-      INNER JOIN vinculaciones v ON v.id = nl.vinculacion_id
-      INNER JOIN personas p ON p.id = v.persona_id
-      INNER JOIN nomina_periodos np ON np.id = nl.periodo_id
-      ${whereSql}
-    `,
-    params
-  );
-
-  const total = countResult.rows[0]?.total ?? 0;
-  const offset = (query.page - 1) * query.limit;
-  const listParams = [...params, query.limit, offset];
-
-  const result = await dbQuery<NominaLiquidacionRealRow>(
-    `
-      ${getNominaLiquidacionesRealSelect()}
-      ${whereSql}
-      ORDER BY p.primer_apellido ASC NULLS LAST, p.primer_nombre ASC NULLS LAST, nl.id ASC
-      LIMIT $${listParams.length - 1}
-      OFFSET $${listParams.length}
-    `,
-    listParams
-  );
+  const result = await nominaLiquidacionRepository.list({
+    periodoId,
+    page: query.page,
+    limit: query.limit,
+    vinculacionId: query.vinculacion_id ?? undefined,
+    personaId: query.persona_id ?? undefined,
+    estado: query.estado,
+    tenant
+  });
 
   return {
     items: result.rows.map(mapRealLiquidacion),
     pagination: {
       page: query.page,
       limit: query.limit,
-      total,
-      total_pages: total === 0 ? 0 : Math.ceil(total / query.limit)
+      total: result.total,
+      total_pages: result.total === 0 ? 0 : Math.ceil(result.total / query.limit)
     }
   };
 };
@@ -10189,18 +10094,7 @@ export const getNominaLiquidacionByPeriodoAndVinculacion = async (
   tenant?: TenantAccessContext
 ): Promise<NominaLiquidacion | null> => {
   await loadRealPeriodoOrThrow(periodoId, tenant);
-
-  const result = await dbQuery<NominaLiquidacionRealRow>(
-    `
-      ${getNominaLiquidacionesRealSelect()}
-      WHERE nl.periodo_id = $1::bigint
-        AND nl.vinculacion_id = $2::bigint
-      LIMIT 1
-    `,
-    [periodoId, vinculacionId]
-  );
-
-  const row = result.rows[0];
+  const row = await nominaLiquidacionRepository.getByPeriodoVinculacion(periodoId, vinculacionId, tenant);
   return row ? mapRealLiquidacion(row) : null;
 };
 
@@ -10249,20 +10143,9 @@ export const generarNominaLiquidaciones = async (
       [periodoId]
     );
 
-    const existingResult = await client.query<{ id: string; vinculacion_id: string }>(
-      `
-        SELECT
-          id::text AS id,
-          vinculacion_id::text AS vinculacion_id
-        FROM nomina_liquidaciones
-        WHERE periodo_id = $1::bigint
-          AND COALESCE(activo, TRUE) = TRUE
-      `,
-      [periodoId]
-    );
-
     const existingByVinculacion = new Map(
-      existingResult.rows.map((row) => [row.vinculacion_id, row.id])
+      (await nominaLiquidacionRepository.listActiveKeys(periodoId, client))
+        .map((row) => [row.vinculacion_id, row.id] as const)
     );
 
     let generatedCount = 0;
@@ -10309,118 +10192,16 @@ export const generarNominaLiquidaciones = async (
       const existingId = existingByVinculacion.get(empleado.vinculacion_id);
 
       if (existingId) {
-        await client.query(
-          `
-            UPDATE nomina_liquidaciones
-            SET
-              fecha_inicio_vinculacion = $2,
-              fecha_fin_vinculacion = $3,
-              fecha_retiro = $4,
-              motivo_retiro = $5,
-              dias_base_liquidacion = $6,
-              dias_trabajados = $7,
-              dias_vacaciones_pendientes = 0,
-              salario_base = $8,
-              auxilio_transporte = $9,
-              promedio_salario = $10,
-              promedio_auxilio_transporte = $11,
-              cesantias = $12,
-              intereses_cesantias = $13,
-              prima_servicios = $14,
-              vacaciones = $15,
-              otros_devengos = $16,
-              deducciones = $17,
-              total_liquidacion = $18,
-              estado = 'GENERADA',
-              activo = TRUE
-            WHERE id = $1::bigint
-          `,
-          [
-            existingId,
-            fechaInicioVinculacion,
-            toDateString(empleado.fecha_fin_vinculacion),
-            fechaRetiro,
-            empleado.motivo_retiro,
-            diasTrabajados,
-            diasTrabajados,
-            salarioBase,
-            auxilioTransporte,
-            promedioSalario,
-            promedioAuxilioTransporte,
-            cesantias,
-            interesesCesantias,
-            primaServicios,
-            vacaciones,
-            otrosDevengos,
-            deducciones,
-            totalLiquidacion
-          ]
-        );
-
-        updatedCount += 1;
-        continue;
-      }
-
-      await client.query(
-        `
-          INSERT INTO nomina_liquidaciones (
-            vinculacion_id,
-            periodo_id,
-            fecha_inicio_vinculacion,
-            fecha_fin_vinculacion,
-            fecha_retiro,
-            motivo_retiro,
-            dias_base_liquidacion,
-            dias_trabajados,
-            dias_vacaciones_pendientes,
-            salario_base,
-            auxilio_transporte,
-            promedio_salario,
-            promedio_auxilio_transporte,
-            cesantias,
-            intereses_cesantias,
-            prima_servicios,
-            vacaciones,
-            otros_devengos,
-            deducciones,
-            total_liquidacion,
-            estado,
-            activo
-          )
-          VALUES (
-            $1::bigint,
-            $2::bigint,
-            $3,
-            $4,
-            $5,
-            $6,
-            $7,
-            $8,
-            0,
-            $9,
-            $10,
-            $11,
-            $12,
-            $13,
-            $14,
-            $15,
-            $16,
-            $17,
-            $18,
-            $19,
-            'GENERADA',
-            TRUE
-          )
-        `,
-        [
-          empleado.vinculacion_id,
+        await nominaLiquidacionRepository.persistResult(existingId, {
+          vinculacionId: empleado.vinculacion_id,
           periodoId,
           fechaInicioVinculacion,
-          toDateString(empleado.fecha_fin_vinculacion),
+          fechaFinVinculacion: toDateString(empleado.fecha_fin_vinculacion),
           fechaRetiro,
-          empleado.motivo_retiro,
+          motivoRetiro: empleado.motivo_retiro,
+          diasBaseLiquidacion: diasTrabajados,
           diasTrabajados,
-          diasTrabajados,
+          diasVacacionesPendientes: 0,
           salarioBase,
           auxilioTransporte,
           promedioSalario,
@@ -10432,8 +10213,34 @@ export const generarNominaLiquidaciones = async (
           otrosDevengos,
           deducciones,
           totalLiquidacion
-        ]
-      );
+        }, client);
+
+        updatedCount += 1;
+        continue;
+      }
+
+      await nominaLiquidacionRepository.create({
+        vinculacionId: empleado.vinculacion_id,
+        periodoId,
+        fechaInicioVinculacion,
+        fechaFinVinculacion: toDateString(empleado.fecha_fin_vinculacion),
+        fechaRetiro,
+        motivoRetiro: empleado.motivo_retiro,
+        diasBaseLiquidacion: diasTrabajados,
+        diasTrabajados,
+        diasVacacionesPendientes: 0,
+        salarioBase,
+        auxilioTransporte,
+        promedioSalario,
+        promedioAuxilioTransporte,
+        cesantias,
+        interesesCesantias,
+        primaServicios,
+        vacaciones,
+        otrosDevengos,
+        deducciones,
+        totalLiquidacion
+      }, client);
 
       generatedCount += 1;
     }
@@ -10484,17 +10291,7 @@ export const finalizeNominaLiquidaciones = async (
     await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
 
-    const liquidacionesResult = await client.query<CountRow>(
-      `
-        SELECT COUNT(*)::int AS total
-        FROM nomina_liquidaciones
-        WHERE periodo_id = $1::bigint
-          AND COALESCE(activo, TRUE) = TRUE
-      `,
-      [periodoId]
-    );
-
-    const totalLiquidaciones = liquidacionesResult.rows[0]?.total ?? 0;
+    const totalLiquidaciones = await nominaLiquidacionRepository.countActiveByPeriodo(periodoId, client);
 
     if (totalLiquidaciones === 0) {
       throw new AppError(
@@ -10504,16 +10301,7 @@ export const finalizeNominaLiquidaciones = async (
       );
     }
 
-    await client.query(
-      `
-        UPDATE nomina_liquidaciones
-        SET
-          estado = 'FINALIZADA'
-        WHERE periodo_id = $1::bigint
-          AND COALESCE(activo, TRUE) = TRUE
-      `,
-      [periodoId]
-    );
+    await nominaLiquidacionRepository.updateStateByPeriodo(periodoId, 'FINALIZADA', client);
 
     await registerAuditEntry({
       client,

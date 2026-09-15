@@ -8,6 +8,7 @@ import { resolveNominaMovimientoFamilia } from '../modules/nomina/nomina.movimie
 
 const sql = readFileSync(resolve('sql/phase-33-nomina-4a-cobertura.sql'), 'utf8');
 const service = readFileSync(resolve('src/modules/nomina/nomina.service.ts'), 'utf8');
+const liquidationRepository = readFileSync(resolve('src/modules/nomina/infrastructure/repositories/nomina-liquidacion.repository.ts'), 'utf8');
 
 test('liquidaciones cerradas y pagadas bloquean recálculo incluso forzado', () => {
   for (const estado of ['CERRADO', 'PAGADO']) {
@@ -35,7 +36,8 @@ test('aporta_pension invalida periodos editables por vigencia y conserva snapsho
   assert.match(sql, /FUENTE_APORTA_PENSION/);
   assert.match(service, /condiciones_economicas/);
   assert.match(service, /aporta_pension: coberturaResult\.aporta_pension/);
-  assert.match(service, /detalle_calculo = \$12::jsonb/);
+  assert.match(service, /nominaCalculoRepository\.persistResult/);
+  assert.match(liquidationRepository, /total_liquidacion = \$19/);
 });
 
 test('categorías activas del mismo código y contrato no pueden solapar vigencias', () => {
