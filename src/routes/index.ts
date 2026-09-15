@@ -26,6 +26,7 @@ import { saasRoutes } from '../modules/saas/saas.routes';
 import { empresaConfiguracionRoutes } from '../modules/empresa-configuracion/empresa-configuracion.routes';
 import { operacionRoutes } from '../modules/operacion/operacion.routes';
 import { logisticaRoutes } from '../modules/logistica/logistica.routes';
+import { agendaRoutes } from '../modules/agenda/agenda.routes';
 
 const apiRouter = Router();
 
@@ -57,5 +58,6 @@ apiRouter.use('/saas', saasRoutes);
 apiRouter.use('/company-settings', empresaConfiguracionRoutes);
 apiRouter.use('/operacion', operacionRoutes);
 apiRouter.use('/logistica', logisticaRoutes);
+apiRouter.use('/agenda', agendaRoutes);
 
 export { apiRouter };

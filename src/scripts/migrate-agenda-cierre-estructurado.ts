@@ -1,0 +1,3 @@
+import dotenv from 'dotenv'; import { readFile } from 'node:fs/promises'; import { resolve } from 'node:path'; import { Pool } from 'pg';
+dotenv.config();
+const main=async()=>{const pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DATABASE_URL?.includes('supabase.com')?{rejectUnauthorized:false}:false});const c=await pool.connect();try{await c.query('BEGIN');await c.query(await readFile(resolve(process.cwd(),'sql/phase-41-agenda-cierre-estructurado.sql'),'utf8'));await c.query('COMMIT');}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();await pool.end();}};void main().catch(e=>{console.error(e);process.exitCode=1;});

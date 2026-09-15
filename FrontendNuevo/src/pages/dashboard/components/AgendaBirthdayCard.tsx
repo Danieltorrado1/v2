@@ -1,5 +1,8 @@
 import { Cake, CalendarDays } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../context/AuthContext";
+import { useCompanyContext } from "../../../context/CompanyContext";
 import type { DashboardCumpleanosItem } from "../../../types/dashboard.types";
 
 type Tab = "agenda" | "cumpleanos";
@@ -54,6 +57,10 @@ interface AgendaBirthdayCardProps {
 
 export default function AgendaBirthdayCard({ cumpleanos, loading }: AgendaBirthdayCardProps) {
   const [tab, setTab] = useState<Tab>("agenda");
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { hasModule } = useCompanyContext();
+  const agendaAvailable = hasModule("AGENDA_OPERATIVA") && Boolean(user?.permissions.includes("agenda.read"));
 
   return (
     <div className="dashboard-panel agenda-card">
@@ -92,13 +99,13 @@ export default function AgendaBirthdayCard({ cumpleanos, loading }: AgendaBirthd
       </div>
 
       {tab === "agenda" ? (
-        <div key="agenda" className="card-scroll dash-unavailable-state">
+        <button type="button" key="agenda" className="card-scroll dash-unavailable-state" onClick={() => { if (agendaAvailable) navigate('/agenda'); }} disabled={!agendaAvailable}>
           <CalendarDays size={28} className="dash-unavailable-icon" />
-          <p className="dash-unavailable-title">No hay agenda disponible</p>
+          <p className="dash-unavailable-title">{agendaAvailable ? 'Abrir Agenda Operativa' : 'No hay agenda disponible'}</p>
           <p className="dash-unavailable-desc">
             El módulo de agenda estará disponible en una próxima versión.
           </p>
-        </div>
+        </button>
       ) : (
         <div key="cumpleanos" className="card-scroll">
           {loading ? (
