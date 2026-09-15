@@ -138,6 +138,7 @@ import {
   nominaMovimientoRepository,
   type NominaMovimientoRepositoryRow
 } from './infrastructure/repositories/nomina-movimiento.repository';
+import { nominaPoblacionRepository } from './infrastructure/repositories/nomina-poblacion.repository';
 import { syncVinculacionEstadoProjection } from '../vinculaciones/vigencia.projection.service';
 
 interface CountRow extends QueryResultRow {
@@ -6989,17 +6990,13 @@ export const importNominaEmpleados = async (
     const excluded = excludedResult.rows.length;
     const requiresReview = excludedResult.rows.filter(row => row.has_activity).map(row => row.id);
 
-    const existingResult = await client.query<{ vinculacion_id: string; activo: boolean; motivo_caso_especial: string | null }>(
-      `
-        SELECT vinculacion_id::text AS vinculacion_id, COALESCE(activo, TRUE) AS activo, motivo_caso_especial
-        FROM nomina_empleados
-        WHERE periodo_id = $1::bigint
-          ${personaId ? 'AND vinculacion_id IN (SELECT id FROM vinculaciones WHERE persona_id = $2::bigint)' : vinculacionId ? 'AND vinculacion_id = $2::bigint' : ''}
-      `,
-      personaId || vinculacionId ? [periodoId, personaId ?? vinculacionId] : [periodoId]
-    );
-
-    const existingByVinculacionId = new Map(existingResult.rows.map(row => [row.vinculacion_id, row]));
+    const existingRows = await nominaPoblacionRepository.listExistingByPeriodo({
+      periodoId,
+      contratoId: periodo.contrato_id,
+      personaId,
+      vinculacionId
+    }, client);
+    const existingByVinculacionId = new Map(existingRows.map(row => [row.vinculacion_id, row]));
     const existingVinculacionIds = new Set(existingByVinculacionId.keys());
     const preexistingVinculacionIds = new Set(existingVinculacionIds);
 
@@ -7023,10 +7020,12 @@ export const importNominaEmpleados = async (
         const existing = existingByVinculacionId.get(candidate.vinculacion_id);
         if (!existing?.activo && existing?.motivo_caso_especial?.split(' | ').includes(POPULATION_EXCLUSION)
           && !reviewVinculacionIds.has(candidate.vinculacion_id)) {
-          await client.query(`UPDATE nomina_empleados SET activo = TRUE,
-            motivo_caso_especial = NULLIF($3::text, '')
-            WHERE periodo_id = $1::bigint AND vinculacion_id = $2::bigint`,
-            [periodoId, candidate.vinculacion_id, existing.motivo_caso_especial.split(' | ').filter(reason => reason !== POPULATION_EXCLUSION).join(' | ')]);
+          await nominaPoblacionRepository.reactivate(
+            periodoId,
+            candidate.vinculacion_id,
+            existing.motivo_caso_especial.split(' | ').filter(reason => reason !== POPULATION_EXCLUSION).join(' | '),
+            client
+          );
           reactivated += 1;
         } else {
           skippedDuplicates += 1;
@@ -7060,91 +7059,22 @@ export const importNominaEmpleados = async (
         metodo_pago: candidate.metodo_pago
       });
 
-      await client.query(
-        `
-          INSERT INTO nomina_empleados (
-            periodo_id,
-            vinculacion_id,
-            metodo_liquidacion,
-            categoria_salarial_id,
-            salario_base,
-            auxilio_transporte,
-            otros_devengos,
-            fecha_inicio_pago,
-            fecha_fin_pago,
-            dias_periodo,
-            dias_pagados,
-            horas_trabajadas,
-            horas_extra_total,
-            devengado_basico,
-            devengado_transporte,
-            devengado_otros,
-            total_adiciones,
-            total_deducciones,
-            salud,
-            pension,
-            neto_pagar,
-            revisado,
-            estado,
-            activo,
-            motivo_caso_especial
-          )
-          VALUES (
-            $1::bigint,
-            $2::bigint,
-            $3,
-            $4::bigint,
-            $5,
-            $6,
-            0,
-            $7,
-            $8,
-            $9,
-            $10,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            FALSE,
-            'PENDIENTE',
-            TRUE,
-            NULL
-          )
-        `,
-        [
-          periodoId,
-          candidate.vinculacion_id,
-          metodoLiquidacion,
-          candidate.categoria_id,
-          salarioBase,
-          auxilioTransporte,
-          fechaInicioPago,
-          fechaFinPago,
-          diasPeriodo,
-          diasPagados
-        ]
-      );
+      const insertedEmployeeId = await nominaPoblacionRepository.insert({
+        periodoId,
+        vinculacionId: candidate.vinculacion_id,
+        metodoLiquidacion,
+        categoriaSalarialId: candidate.categoria_id,
+        salarioBase,
+        auxilioTransporte,
+        fechaInicioPago,
+        fechaFinPago,
+        diasPeriodo,
+        diasPagados
+      }, client);
 
       existingVinculacionIds.add(candidate.vinculacion_id);
       imported += 1;
-
-      const insertedEmployee = await client.query<{ id: string }>(
-        `
-          SELECT id::text AS id
-          FROM nomina_empleados
-          WHERE periodo_id = $1::bigint AND vinculacion_id = $2::bigint
-        `,
-        [periodoId, candidate.vinculacion_id]
-      );
-      if (insertedEmployee.rows[0]?.id) {
-        importedEmployeeIds.push(insertedEmployee.rows[0].id);
-      }
+      importedEmployeeIds.push(insertedEmployeeId);
     }
 
     // A population sync can happen after the initial payroll calculation. New
