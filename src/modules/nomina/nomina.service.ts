@@ -141,6 +141,7 @@ import {
 import { nominaPoblacionRepository } from './infrastructure/repositories/nomina-poblacion.repository';
 import { nominaCalculoRepository } from './infrastructure/repositories/nomina-calculo.repository';
 import { nominaLiquidacionRepository } from './infrastructure/repositories/nomina-liquidacion.repository';
+import { nominaDocumentoRepository } from './infrastructure/repositories/nomina-documento.repository';
 import { syncVinculacionEstadoProjection } from '../vinculaciones/vigencia.projection.service';
 
 interface CountRow extends QueryResultRow {
@@ -2363,70 +2364,6 @@ const getNominaMovimientosRealSelect = (): string => {
     INNER JOIN personas p ON p.id = v.persona_id
     LEFT JOIN personas pr ON pr.id = nm.persona_reemplazada_id
     LEFT JOIN cobertura_externos ce ON ce.id = nm.externo_id
-  `;
-};
-
-const getNominaDesprendiblesRealSelect = (): string => {
-  return `
-    SELECT
-      nd.id::text AS id,
-      nd.periodo_id::text AS periodo_id,
-      nd.nomina_empleado_id::text AS nomina_empleado_id,
-      nd.vinculacion_id::text AS vinculacion_id,
-      nd.tipo_desprendible,
-      nd.archivo_path,
-      nd.fecha_generacion,
-      nd.estado,
-      nd.observacion,
-      COALESCE(nd.activo, TRUE) AS activo,
-      nd.created_at,
-      nd.documento_persona_id::text AS documento_persona_id,
-      nd.version,
-      COALESCE(nd.es_vigente, TRUE) AS es_vigente,
-      nd.desprendible_reemplaza_id::text AS desprendible_reemplaza_id,
-      ne.salario_base,
-      ne.auxilio_transporte,
-      ne.devengado_basico,
-      ne.devengado_transporte,
-      ne.devengado_otros,
-      ne.dias_pagados,
-      ne.total_adiciones,
-      ne.total_deducciones,
-      ne.neto_pagar,
-      ne.salud,
-      ne.pension,
-      COALESCE(ne.revisado, FALSE) AS revisado,
-      np.nombre_periodo AS periodo_nombre,
-      np.fecha_inicio AS periodo_fecha_inicio,
-      np.fecha_fin AS periodo_fecha_fin,
-      np.estado AS periodo_estado,
-      p.id::text AS persona_id,
-      p.numero_documento AS persona_numero_documento,
-      p.primer_nombre,
-      p.segundo_nombre,
-      p.primer_apellido,
-      p.segundo_apellido,
-      cc.nombre_cargo AS cargo_nombre,
-      c.id::text AS contrato_id,
-      c.numero_contrato AS contrato_numero,
-      c.entidad_contratante AS contrato_entidad_contratante,
-      c.empresa_id::text AS contrato_empresa_id,
-      e.nombre_empresa AS empresa_nombre,
-      e.nit AS empresa_nit,
-      dp.storage_bucket AS dp_storage_bucket,
-      dp.storage_path AS dp_storage_path,
-      dp.nombre_original AS dp_nombre_original,
-      dp.mime_type AS dp_mime_type,
-      dp.tamano_bytes AS dp_tamano_bytes
-    FROM nomina_desprendibles nd
-    INNER JOIN nomina_empleados ne ON ne.id = nd.nomina_empleado_id
-    INNER JOIN nomina_periodos np ON np.id = nd.periodo_id
-    INNER JOIN vinculaciones v ON v.id = nd.vinculacion_id
-    INNER JOIN personas p ON p.id = v.persona_id
-    INNER JOIN contratos c ON c.id = v.contrato_id
-    INNER JOIN empresas e ON e.id = c.empresa_id
-    LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
-    LEFT JOIN documentos_persona dp ON dp.id = nd.documento_persona_id
   `;
 };
 
@@ -5688,18 +5625,7 @@ const countNominaDesprendiblesVigentes = async (
   client: PoolClient,
   periodoId: string
 ): Promise<number> => {
-  const result = await client.query<CountRow>(
-    `
-      SELECT COUNT(*)::int AS total
-      FROM nomina_desprendibles
-      WHERE periodo_id = $1::bigint
-        AND COALESCE(activo, TRUE) = TRUE
-        AND COALESCE(es_vigente, TRUE) = TRUE
-    `,
-    [periodoId]
-  );
-
-  return result.rows[0]?.total ?? 0;
+  return nominaDocumentoRepository.countCurrentByPeriodo(periodoId, client);
 };
 
 const loadNominaPeriodoAsistenciaPendiente = async (
@@ -11884,21 +11810,12 @@ export const listNominaDesprendibles = async (
   options?: { includeVersions?: boolean }
 ): Promise<NominaDesprendible[]> => {
   await loadRealPeriodoOrThrow(periodoId, tenant);
-  const includeVersions = options?.includeVersions === true;
-  const vigenteFilter = includeVersions ? '' : 'AND COALESCE(nd.es_vigente, TRUE) = TRUE';
+  const result = await nominaDocumentoRepository.listByPeriodo({
+    periodoId,
+    includeVersions: options?.includeVersions === true
+  });
 
-  const result = await dbQuery<NominaDesprendibleRealRow>(
-    `
-      ${getNominaDesprendiblesRealSelect()}
-      WHERE nd.periodo_id = $1::bigint
-        AND COALESCE(nd.activo, TRUE) = TRUE
-        ${vigenteFilter}
-      ORDER BY nd.vinculacion_id ASC, nd.version DESC, nd.id DESC
-    `,
-    [periodoId]
-  );
-
-  return result.rows.map(mapRealDesprendible);
+  return result.map(mapRealDesprendible);
 };
 
 export const getNominaDesprendibleByPeriodoAndVinculacion = async (
@@ -11910,20 +11827,7 @@ export const getNominaDesprendibleByPeriodoAndVinculacion = async (
 ): Promise<NominaDesprendible | null> => {
   await loadRealPeriodoOrThrow(periodoId, tenant);
 
-  const result = await dbQuery<NominaDesprendibleRealRow>(
-    `
-      ${getNominaDesprendiblesRealSelect()}
-      WHERE nd.periodo_id = $1::bigint
-        AND nd.vinculacion_id = $2::bigint
-        AND COALESCE(nd.activo, TRUE) = TRUE
-        AND COALESCE(nd.es_vigente, TRUE) = TRUE
-      ORDER BY nd.version DESC, nd.id DESC
-      LIMIT 1
-    `,
-    [periodoId, vinculacionId]
-  );
-
-  const row = result.rows[0];
+  const row = await nominaDocumentoRepository.getLatestByPeriodoVinculacion(periodoId, vinculacionId);
   if (!row) {
     return null;
   }
@@ -12155,29 +12059,11 @@ export const generateNominaDesprendibles = async (
         empleado.primer_apellido,
         empleado.segundo_apellido
       );
-      const versionResult = await client.query<{
-        desprendible_id: string;
-        documento_persona_id: string | null;
-        version: number | string | null;
-      }>(
-        `
-          SELECT
-            id::text AS desprendible_id,
-            documento_persona_id::text AS documento_persona_id,
-            version,
-            es_vigente
-          FROM nomina_desprendibles
-          WHERE periodo_id = $1::bigint
-            AND nomina_empleado_id = $2::bigint
-            AND COALESCE(activo, TRUE) = TRUE
-            AND COALESCE(es_vigente, TRUE) = TRUE
-          ORDER BY COALESCE(es_vigente, TRUE) DESC, version DESC NULLS LAST, id DESC
-          LIMIT 1
-        `,
-        [periodoId, empleado.nomina_empleado_id]
+      const existing = await nominaDocumentoRepository.getLatestVersion(
+        periodoId,
+        empleado.nomina_empleado_id,
+        client
       );
-
-      const existing = versionResult.rows[0];
       const nextVersion = existing ? Number(existing.version ?? 1) + 1 : 1;
       const timestamp = Date.now();
       const salarioBase = toNumberValue(empleado.salario_base);
@@ -12267,26 +12153,10 @@ export const generateNominaDesprendibles = async (
       const storage = await uploadNominaPdfToStorage(storagePath, fileBuffer);
 
       if (existing?.desprendible_id) {
-        await client.query(
-          `
-            UPDATE nomina_desprendibles
-            SET
-              es_vigente = FALSE,
-              estado = 'REEMPLAZADO'
-            WHERE id = $1::bigint
-          `,
-          [existing.desprendible_id]
-        );
-      }
-
-      if (existing?.documento_persona_id) {
-        await client.query(
-          `
-            UPDATE documentos_persona
-            SET es_vigente = FALSE
-            WHERE id = $1::bigint
-          `,
-          [existing.documento_persona_id]
+        await nominaDocumentoRepository.markReplaced(
+          existing.desprendible_id,
+          existing.documento_persona_id,
+          client
         );
       }
 
@@ -12324,63 +12194,20 @@ export const generateNominaDesprendibles = async (
         vinculacion_id: empleado.vinculacion_id
       });
 
-      const documentoPersonaResult = await client.query<{ id: string }>(
-        `
-          INSERT INTO documentos_persona (
-            persona_id,
-            tipo_documento_id,
-            fecha_expedicion,
-            fecha_vencimiento,
-            archivo_path,
-            fecha_carga,
-            activo,
-            vinculacion_id,
-            version,
-            documento_reemplaza_id,
-            es_vigente,
-            storage_bucket,
-            storage_path,
-            nombre_original,
-            mime_type,
-            tamano_bytes
-          )
-          VALUES (
-            $1::bigint,
-            $2::bigint,
-            $3::date,
-            NULL,
-            $4,
-            NOW(),
-            TRUE,
-            $5::bigint,
-            $6::int,
-            $7::bigint,
-            TRUE,
-            $8,
-            $9,
-            $10,
-            $11,
-            $12::bigint
-          )
-          RETURNING id::text AS id
-        `,
-        [
-          empleado.persona_id,
-          tipoDocumento.id,
-          periodoFechaFin,
-          storage.path,
-          empleado.vinculacion_id,
-          nextVersion,
-          existing?.documento_persona_id ?? null,
-          storage.bucket,
-          storage.path,
-          fileName,
-          'application/pdf',
-          fileBuffer.byteLength
-        ]
-      );
-
-      const documentoPersonaId = documentoPersonaResult.rows[0]?.id;
+      const documentoPersonaId = await nominaDocumentoRepository.createPersonaMetadata({
+        personaId: empleado.persona_id,
+        documentoTipoId: tipoDocumento.id,
+        fechaExpedicion: periodoFechaFin,
+        archivoPath: storage.path,
+        vinculacionId: empleado.vinculacion_id,
+        version: nextVersion,
+        documentoReemplazaId: existing?.documento_persona_id ?? null,
+        storageBucket: storage.bucket,
+        storagePath: storage.path,
+        fileName,
+        mimeType: 'application/pdf',
+        tamanoBytes: fileBuffer.byteLength
+      }, client);
 
       if (!documentoPersonaId) {
         throw new AppError(
@@ -12390,51 +12217,18 @@ export const generateNominaDesprendibles = async (
         );
       }
 
-      await client.query(
-        `
-          INSERT INTO nomina_desprendibles (
-            periodo_id,
-            nomina_empleado_id,
-            vinculacion_id,
-            tipo_desprendible,
-            archivo_path,
-            fecha_generacion,
-            estado,
-            observacion,
-            activo,
-            documento_persona_id,
-            version,
-            es_vigente,
-            desprendible_reemplaza_id
-          )
-          VALUES (
-            $1::bigint,
-            $2::bigint,
-            $3::bigint,
-            $4,
-            $5,
-            NOW(),
-            'GENERADO',
-            $6,
-            TRUE,
-            $7::bigint,
-            $8::int,
-            TRUE,
-            $9::bigint
-          )
-        `,
-        [
-          periodoId,
-          empleado.nomina_empleado_id,
-          empleado.vinculacion_id,
-          'PAGO',
-          storage.path,
-          JSON.stringify(payload),
-          documentoPersonaId,
-          nextVersion,
-          existing?.desprendible_id ?? null
-        ]
-      );
+      await nominaDocumentoRepository.createMetadata({
+        periodoId,
+        nominaEmpleadoId: empleado.nomina_empleado_id,
+        vinculacionId: empleado.vinculacion_id,
+        tipoDesprendible: 'PAGO',
+        archivoPath: storage.path,
+        estado: 'GENERADO',
+        observacion: JSON.stringify(payload),
+        documentoPersonaId,
+        version: nextVersion,
+        reemplazaDesprendibleId: existing?.desprendible_id ?? null
+      }, client);
 
       generatedCount += 1;
     }
@@ -12479,18 +12273,7 @@ export const finalizeNominaDesprendibles = async (
   try {
     await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
-    const currentResult = await client.query<CountRow>(
-      `
-        SELECT COUNT(*)::int AS total
-        FROM nomina_desprendibles
-        WHERE periodo_id = $1::bigint
-          AND COALESCE(activo, TRUE) = TRUE
-          AND COALESCE(es_vigente, TRUE) = TRUE
-      `,
-      [periodoId]
-    );
-
-    const totalCurrent = currentResult.rows[0]?.total ?? 0;
+    const totalCurrent = await nominaDocumentoRepository.countCurrentByPeriodo(periodoId, client);
 
     if (totalCurrent === 0) {
       throw new AppError(
@@ -12500,16 +12283,7 @@ export const finalizeNominaDesprendibles = async (
       );
     }
 
-    await client.query(
-      `
-        UPDATE nomina_desprendibles
-        SET estado = 'FINALIZADO'
-        WHERE periodo_id = $1::bigint
-          AND COALESCE(activo, TRUE) = TRUE
-          AND COALESCE(es_vigente, TRUE) = TRUE
-      `,
-      [periodoId]
-    );
+    await nominaDocumentoRepository.markFinalizedByPeriodo(periodoId, client);
 
     await registerAuditEntry({
       client,
