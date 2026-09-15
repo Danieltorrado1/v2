@@ -69,7 +69,12 @@ import {
   normalizeNominaNovedadLabel,
   resolveNominaNovedadTypeSelection
 } from './nomina.novedades';
-import { buildCsv, buildPayrollXlsx, buildSectionedCsv } from './nomina.exporter';
+import {
+  buildCsv,
+  buildPayrollXlsx,
+  buildSectionedCsv,
+  buildTurnosConsolidado
+} from './nomina.exporter';
 import { listAjustesManuales } from './ajustes-manuales.service';
 import {
   COBERTURA_PORCENTAJE_PENSION,
@@ -8982,7 +8987,27 @@ export const exportNominaTurnos = async (
     'VALOR TOTAL': item.valor_total,
     'OBSERVACIÓN': item.descripcion ?? '',
   }));
-  const file = buildPayrollXlsx([{ name: 'TURNOS', headers, rows: rowsForExport, currencyHeaders: ['VALOR UNITARIO', 'VALOR TOTAL'] }]);
+  const consolidated = buildTurnosConsolidado(rows.map((item) => {
+    const people = movementPeople(item);
+    return {
+      cantidad: item.cantidad,
+      documento_reemplazante: people.performer.document,
+      modalidad: item.contexto_operativo?.modalidad,
+      nombre_reemplazante: people.performer.name,
+      tipo_reemplazante: people.performer.type,
+      valor_total: item.valor_total
+    };
+  }));
+  const file = buildPayrollXlsx([
+    { name: 'TURNOS', headers, rows: rowsForExport, currencyHeaders: ['VALOR UNITARIO', 'VALOR TOTAL'] },
+    {
+      name: 'CONSOLIDADO TURNOS',
+      headers: consolidated.headers,
+      rows: consolidated.rows,
+      currencyHeaders: ['TOTAL A PAGAR'],
+      integerHeaders: ['TOTAL TURNOS', ...consolidated.headers.slice(3, -2)]
+    }
+  ]);
   await registerAuditEvent({ accion: 'NOMINA_TURNOS_EXPORT', contrato_id: periodo.contrato_id, datos_nuevos: { periodo_id: periodoId, tipo: query.tipo, registros: rows.length }, descripcion: 'Exportación XLSX de turnos', entidad: 'nomina_periodos', entidad_id: periodoId, empresa_id: periodo.contrato?.empresa_id ?? null, ip_address: auditMeta?.ip ?? null, modulo: 'NOMINA', user_agent: auditMeta?.user_agent ?? null, usuario_id: actorUserId });
   const safePeriod = periodo.nombre_periodo.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || periodoId;
   return { file, file_name: `turnos-${safePeriod}-${query.tipo.toLowerCase()}.xlsx` };

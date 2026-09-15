@@ -46,6 +46,87 @@ export interface XlsxSheet {
   integerHeaders?: string[];
 }
 
+export interface TurnoConsolidadoInput {
+  cantidad: number | null | undefined;
+  documento_reemplazante: string | null | undefined;
+  modalidad: string | null | undefined;
+  nombre_reemplazante: string | null | undefined;
+  tipo_reemplazante: string;
+  valor_total: number | null | undefined;
+}
+
+export interface TurnoConsolidadoRow {
+  'CÉDULA REEMPLAZANTE': string | null;
+  'NOMBRE REEMPLAZANTE': string | null;
+  'TIPO REEMPLAZANTE': string;
+  [modalidad: string]: CsvCellValue;
+}
+
+const normalizeTurnoModalidad = (value: string | null | undefined): string =>
+  value?.trim() || 'SIN MODALIDAD';
+
+export const buildTurnosConsolidado = (
+  movements: TurnoConsolidadoInput[]
+): { headers: string[]; rows: TurnoConsolidadoRow[] } => {
+  const modalities: string[] = [];
+  const modalitySet = new Set<string>();
+  const grouped = new Map<string, TurnoConsolidadoRow & {
+    total_turnos: number;
+    total_pagar: number;
+  }>();
+
+  for (const movement of movements) {
+    const modality = normalizeTurnoModalidad(movement.modalidad);
+    if (!modalitySet.has(modality)) {
+      modalitySet.add(modality);
+      modalities.push(modality);
+    }
+
+    const document = movement.documento_reemplazante?.trim() || null;
+    const name = movement.nombre_reemplazante?.trim() || null;
+    const key = JSON.stringify([document, name, movement.tipo_reemplazante]);
+    let row = grouped.get(key);
+    if (!row) {
+      row = {
+        'CÉDULA REEMPLAZANTE': document,
+        'NOMBRE REEMPLAZANTE': name,
+        'TIPO REEMPLAZANTE': movement.tipo_reemplazante,
+        total_turnos: 0,
+        total_pagar: 0
+      };
+      grouped.set(key, row);
+    }
+
+    const cantidad = Number(movement.cantidad ?? 0);
+    const valorTotal = Number(movement.valor_total ?? 0);
+    row[modality] = Number(row[modality] ?? 0) + cantidad;
+    row.total_turnos += cantidad;
+    row.total_pagar += valorTotal;
+  }
+
+  const headers = [
+    'CÉDULA REEMPLAZANTE',
+    'NOMBRE REEMPLAZANTE',
+    'TIPO REEMPLAZANTE',
+    ...modalities,
+    'TOTAL TURNOS',
+    'TOTAL A PAGAR'
+  ];
+  const rows = Array.from(grouped.values()).map((row) => {
+    const output: TurnoConsolidadoRow = {
+      'CÉDULA REEMPLAZANTE': row['CÉDULA REEMPLAZANTE'],
+      'NOMBRE REEMPLAZANTE': row['NOMBRE REEMPLAZANTE'],
+      'TIPO REEMPLAZANTE': row['TIPO REEMPLAZANTE']
+    };
+    for (const modality of modalities) output[modality] = row[modality] ?? 0;
+    output['TOTAL TURNOS'] = row.total_turnos;
+    output['TOTAL A PAGAR'] = row.total_pagar;
+    return output;
+  });
+
+  return { headers, rows };
+};
+
 export const buildPayrollXlsx = (sheets: XlsxSheet[]): Buffer => {
   const workbook = XLSX.utils.book_new();
 
