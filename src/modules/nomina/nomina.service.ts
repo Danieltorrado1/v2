@@ -139,6 +139,7 @@ import {
   type NominaMovimientoRepositoryRow
 } from './infrastructure/repositories/nomina-movimiento.repository';
 import { nominaPoblacionRepository } from './infrastructure/repositories/nomina-poblacion.repository';
+import { nominaCalculoRepository } from './infrastructure/repositories/nomina-calculo.repository';
 import { syncVinculacionEstadoProjection } from '../vinculaciones/vigencia.projection.service';
 
 interface CountRow extends QueryResultRow {
@@ -8313,38 +8314,20 @@ export const recalculateNominaPeriodo = async (
           pension_aplicada_final: pensionTotal
         };
 
-        await client.query(
-          `
-            UPDATE nomina_empleados
-            SET
-              dias_pagados = $2,
-              horas_trabajadas = $3,
-              devengado_basico = $4,
-              devengado_transporte = $5,
-              devengado_otros = $6,
-              salud = $7,
-              pension = $8,
-              total_adiciones = $9,
-              total_deducciones = $10,
-              neto_pagar = $11,
-              detalle_calculo = $12::jsonb
-            WHERE id = $1::bigint
-          `,
-          [
-            empleadoRow.id,
-            coberturaResult.dias_salario,
-            horasTrabajadasBase,
-            coberturaResult.salario_ordinario,
-            coberturaResult.transporte_ordinario,
-            devengadoOtros,
-            saludTotal,
-            pensionTotal,
-            coberturaResult.total_devengado,
-            totalDeduccionesFinal,
-            netoFinal,
-            JSON.stringify(detalleCalculoCobertura)
-          ]
-        );
+        await nominaCalculoRepository.persistResult({
+          empleadoId: empleadoRow.id,
+          diasPagados: coberturaResult.dias_salario,
+          horasTrabajadas: horasTrabajadasBase,
+          devengadoBasico: coberturaResult.salario_ordinario,
+          devengadoTransporte: coberturaResult.transporte_ordinario,
+          devengadoOtros,
+          salud: saludTotal,
+          pension: pensionTotal,
+          totalAdiciones: coberturaResult.total_devengado,
+          totalDeducciones: totalDeduccionesFinal,
+          netoPagar: netoFinal,
+          detalleCalculo: detalleCalculoCobertura
+        }, client);
 
         continue;
       }
@@ -8459,38 +8442,20 @@ export const recalculateNominaPeriodo = async (
         }
       };
 
-      await client.query(
-        `
-          UPDATE nomina_empleados
-          SET
-            dias_pagados = $2,
-            horas_trabajadas = $3,
-            devengado_basico = $4,
-            devengado_transporte = $5,
-            devengado_otros = $6,
-            salud = $7,
-            pension = $8,
-            total_adiciones = $9,
-            total_deducciones = $10,
-            neto_pagar = $11,
-            detalle_calculo = $12::jsonb
-          WHERE id = $1::bigint
-        `,
-        [
-          empleadoRow.id,
-          diasPagadosBase,
-          horasTrabajadasBase,
-          devengadoBasico,
-          devengadoTransporte,
-          devengadoOtros,
-          salud,
-          pension,
-          totalAdiciones,
-          totalDeducciones,
-          netoPagar,
-          JSON.stringify(detalleCalculo)
-        ]
-      );
+      await nominaCalculoRepository.persistResult({
+        empleadoId: empleadoRow.id,
+        diasPagados: diasPagadosBase,
+        horasTrabajadas: horasTrabajadasBase,
+        devengadoBasico,
+        devengadoTransporte,
+        devengadoOtros,
+        salud,
+        pension,
+        totalAdiciones,
+        totalDeducciones,
+        netoPagar,
+        detalleCalculo
+      }, client);
     }
 
     if (!options?.nomina_empleado_id) {
