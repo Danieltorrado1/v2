@@ -1,5 +1,115 @@
 export type TaskLike = { id: number; fecha_prevista: string; hora_inicio?: string | null };
 
+export type AgendaParticipant = { id: number; nombre?: string; nombre_completo?: string; rol?: string; activo?: boolean; active?: boolean };
+
+export function participantIds(items: Array<{ id?: number | string; usuario_id?: number | string }> = []) {
+  return Array.from(new Set(items.map((item) => Number(item.id ?? item.usuario_id)).filter(Number.isSafeInteger)));
+}
+
+export function addParticipant(ids: number[], id: number, responsibleId: number) {
+  if (!Number.isSafeInteger(id) || id <= 0 || id === responsibleId || ids.includes(id)) return ids;
+  return [...ids, id];
+}
+
+export function removeParticipant(ids: number[], id: number) {
+  return ids.filter((current) => current !== id);
+}
+
+export function validateParticipantIds(ids: number[], responsibleId: number) {
+  if (new Set(ids).size !== ids.length) return 'No se permiten participantes duplicados.';
+  if (ids.includes(responsibleId)) return 'El responsable principal no puede ser participante.';
+  if (ids.some((id) => !Number.isSafeInteger(id) || id <= 0)) return 'La lista contiene un usuario no válido.';
+  return null;
+}
+
+export function participantListIsDirty(initialIds: number[], currentIds: number[]) {
+  return initialIds.length !== currentIds.length || initialIds.some((id) => !currentIds.includes(id));
+}
+
+export function activeAssignableUsers(items: AgendaParticipant[], responsibleId: number) {
+  return items.filter((user) => user.activo !== false && user.active !== false && Number(user.id) !== responsibleId);
+}
+
+export function availableAssignableUsers(items: AgendaParticipant[], responsibleId: number, selectedIds: number[]) {
+  return activeAssignableUsers(items, responsibleId).filter((user) => !selectedIds.includes(Number(user.id)));
+}
+
+export function participantPayload(ids: number[], responsibleId: number) {
+  const error = validateParticipantIds(ids, responsibleId);
+  return error ? { error, payload: null } : { error: null, payload: { participantes: [...ids] } };
+}
+
+export function mergeParticipantUpdate<T extends { participantes?: unknown[]; seguimientos?: unknown[] }>(current: T, updated: Partial<T>): T {
+  return { ...current, ...updated };
+}
+
+const statesThatAllowReschedule = new Set(['PENDIENTE', 'EN_PROCESO']);
+const statesThatAllowCancel = new Set(['PENDIENTE', 'EN_PROCESO']);
+
+export function canRescheduleAgendaTask(state: string, permissions: string[]) {
+  return statesThatAllowReschedule.has(state) && (permissions.includes('agenda.update') || permissions.includes('agenda.manage'));
+}
+
+export function canCancelAgendaTask(state: string, permissions: string[]) {
+  return statesThatAllowCancel.has(state) && (permissions.includes('agenda.cancel') || permissions.includes('agenda.manage'));
+}
+
+// These three existing routes require their specific permission. agenda.manage
+// is not accepted by their middleware, so the UI follows that stricter contract.
+export function canStartAgendaTask(state: string, permissions: string[]) {
+  return state === 'PENDIENTE' && permissions.includes('agenda.update');
+}
+
+export function canCompleteAgendaTask(state: string, permissions: string[]) {
+  return (state === 'PENDIENTE' || state === 'EN_PROCESO') && permissions.includes('agenda.complete');
+}
+
+export function canReopenAgendaTask(state: string, permissions: string[]) {
+  return (state === 'TERMINADA' || state === 'CANCELADA') && permissions.includes('agenda.reopen');
+}
+
+export function transitionPayload(version?: number) {
+  return version ? { version } : {};
+}
+
+export function isAgendaDate(value: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1) return false;
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return day <= daysInMonth[month - 1]!;
+}
+
+export function buildReschedulePayload(input: {
+  fechaActual: string;
+  fechaNueva: string;
+  fechaLimite?: string | null;
+  motivo: string;
+  version?: number;
+}) {
+  if (!isAgendaDate(input.fechaNueva)) return { error: 'La nueva fecha no es válida.', payload: null };
+  if (input.fechaNueva === input.fechaActual) return { error: 'La nueva fecha debe ser diferente de la programación vigente.', payload: null };
+  if (input.motivo.trim().length < 3) return { error: 'El motivo debe tener al menos 3 caracteres.', payload: null };
+  return {
+    error: null,
+    payload: {
+      fecha_prevista: input.fechaNueva,
+      fecha_limite: input.fechaLimite ?? null,
+      motivo: input.motivo.trim(),
+      ...(input.version ? { version: input.version } : {}),
+    },
+  };
+}
+
+export function buildCancelPayload(motivo: string, version?: number) {
+  if (motivo.trim().length < 3) return { error: 'El motivo debe tener al menos 3 caracteres.', payload: null };
+  return { error: null, payload: { motivo: motivo.trim(), ...(version ? { version } : {}) } };
+}
+
 export function addDays(date: string, amount: number): string {
   const [year, month, day] = date.split('-').map(Number);
   const value = new Date(year!, month! - 1, day! + amount);

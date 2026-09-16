@@ -3,10 +3,14 @@ import { agendaApi } from '../../services/agendaApi';
 import { useAuth } from '../../context/AuthContext';
 import AgendaTaskEditForm from './components/AgendaTaskEditForm';
 import AgendaTaskAssignForm from './components/AgendaTaskAssignForm';
-import { addDays, closeDayFormFromRecord, closeDayPayload, groupTasksByDate, weekDates, weekStart } from './agendaOperativa.domain';
+import AgendaTaskParticipantsForm from './components/AgendaTaskParticipantsForm';
+import AgendaTaskRescheduleForm from './components/AgendaTaskRescheduleForm';
+import AgendaTaskCancelForm from './components/AgendaTaskCancelForm';
+import AgendaTaskTransitionConfirm, { type AgendaTransitionKind } from './components/AgendaTaskTransitionConfirm';
+import { addDays, canCancelAgendaTask, canCompleteAgendaTask, canRescheduleAgendaTask, canReopenAgendaTask, canStartAgendaTask, closeDayFormFromRecord, closeDayPayload, groupTasksByDate, mergeParticipantUpdate, weekDates, weekStart } from './agendaOperativa.domain';
 import './AgendaOperativaPage.css';
 
-type Task = Record<string, any> & { id: number; fecha_prevista: string; hora_inicio?: string | null; titulo: string; tipo: string; responsable_nombre: string; estado: string };
+type Task = Record<string, any> & { id: number; responsable_id: number | string; fecha_prevista: string; hora_inicio?: string | null; titulo: string; tipo: string; responsable_nombre: string; estado: string };
 type Detail = Task & { seguimientos: any[]; asignaciones: any[]; reprogramaciones: any[]; participantes: any[] };
 const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
 const dataOf = <T,>(response: any): T => response?.data?.data ?? response?.data ?? response;
@@ -23,6 +27,11 @@ export default function AgendaOperativaPage() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [editing, setEditing] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const [managingParticipants, setManagingParticipants] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [confirmingTransition, setConfirmingTransition] = useState<AgendaTransitionKind | null>(null);
+  const [participantsDirty, setParticipantsDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -58,10 +67,16 @@ export default function AgendaOperativaPage() {
   useEffect(() => { void load(); }, [status, view, week]);
 
   const open = async (id: number) => {
+    if (participantsDirty && detail?.id !== id && !window.confirm('Hay cambios sin guardar en el formulario. ¿Descartarlos y abrir otra tarea?')) return;
     try {
       setDetail(dataOf<Detail>(await agendaApi.get<Detail>(id)));
       setEditing(false);
       setAssigning(false);
+      setManagingParticipants(false);
+      setRescheduling(false);
+      setCancelling(false);
+      setConfirmingTransition(null);
+      setParticipantsDirty(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No fue posible cargar el detalle');
     }
@@ -72,6 +87,48 @@ export default function AgendaOperativaPage() {
     setAssigning(false);
     setNotice('Cambios guardados');
     await load();
+  };
+
+  const afterParticipants = (updated: Record<string, any>) => {
+    setDetail((current) => current ? mergeParticipantUpdate(current, updated) : current);
+    setManagingParticipants(false);
+    setParticipantsDirty(false);
+    setNotice('Participantes actualizados');
+  };
+
+  const afterTaskAction = async (updated: Record<string, any>, message: string) => {
+    const taskId = Number(updated.id ?? detail?.id);
+    setDetail((current) => current ? { ...current, ...updated } : current);
+    setRescheduling(false);
+    setCancelling(false);
+    setConfirmingTransition(null);
+    setParticipantsDirty(false);
+    setNotice(message);
+    try {
+      const [refreshedDetail] = await Promise.all([agendaApi.get<Detail>(taskId), load()]);
+      setDetail(dataOf<Detail>(refreshedDetail));
+    } catch (err) {
+      setError(err instanceof Error ? `La tarea se guardó, pero no fue posible actualizar su detalle: ${err.message}` : 'La tarea se guardó, pero no fue posible actualizar su detalle.');
+    }
+  };
+
+  const reloadTaskDetail = async () => {
+    if (!detail) return;
+    const refreshed = dataOf<Detail>(await agendaApi.get<Detail>(detail.id));
+    setDetail(refreshed);
+    setConfirmingTransition(null);
+    setError('');
+    await load();
+  };
+
+  const closeDetail = () => {
+    if (participantsDirty && !window.confirm('Hay cambios sin guardar en el formulario. ¿Descartarlos y cerrar la tarea?')) return;
+    setDetail(null);
+    setManagingParticipants(false);
+    setRescheduling(false);
+    setCancelling(false);
+    setConfirmingTransition(null);
+    setParticipantsDirty(false);
   };
 
   useEffect(() => {
@@ -130,6 +187,41 @@ export default function AgendaOperativaPage() {
       <div className="agenda-actions"><button className="agenda-primary" disabled={closeSaving}>{closeSaving ? 'Guardando…' : 'Guardar cierre'}</button></div>
     </>}</form>}
 
-    {detail && (editing ? <div className="agenda-overlay"><AgendaTaskEditForm task={detail} onSaved={after} onCancel={() => setEditing(false)}/></div> : assigning ? <div className="agenda-overlay"><AgendaTaskAssignForm task={detail} onSaved={after} onCancel={() => setAssigning(false)}/></div> : <div className="agenda-overlay"><aside className="agenda-drawer"><div className="agenda-drawer-toolbar"><button onClick={() => setDetail(null)}>Cerrar</button>{can('agenda.update') && <button onClick={() => setEditing(true)}>Editar</button>}{can('agenda.assign') && <button onClick={() => setAssigning(true)}>Cambiar responsable</button>}</div><h2>{detail.titulo}</h2><p>{detail.descripcion || 'Sin descripción'}</p><p>{detail.tipo} · {detail.prioridad} · {detail.estado}</p><p>Responsable: {detail.responsable_nombre}<br/>Creador: {detail.creador_nombre}<br/>Fecha: {detail.fecha_prevista}<br/>Límite: {detail.fecha_limite || '—'}</p><h3>Asignaciones</h3>{detail.asignaciones?.map((item) => <p key={item.id}>{item.responsable_anterior_id || '—'} → {item.responsable_nuevo_id} · {item.motivo || ''}</p>)}</aside></div>)}
-  </main>;
+    {detail && (
+      editing ? <div className="agenda-overlay"><AgendaTaskEditForm task={detail} onSaved={after} onCancel={() => setEditing(false)} /></div>
+        : assigning ? <div className="agenda-overlay"><AgendaTaskAssignForm task={detail} onSaved={after} onCancel={() => setAssigning(false)} /></div>
+          : managingParticipants ? <div className="agenda-overlay"><AgendaTaskParticipantsForm task={detail} onSaved={afterParticipants} onCancel={() => { setManagingParticipants(false); setParticipantsDirty(false); }} onDirtyChange={setParticipantsDirty} /></div>
+          : rescheduling ? <div className="agenda-overlay"><AgendaTaskRescheduleForm task={detail} onSaved={(task) => void afterTaskAction(task, 'Tarea reprogramada')} onCancel={() => { setRescheduling(false); setParticipantsDirty(false); }} onClose={closeDetail} onDirtyChange={setParticipantsDirty} /></div>
+          : cancelling ? <div className="agenda-overlay"><AgendaTaskCancelForm task={detail} onSaved={(task) => void afterTaskAction(task, 'Tarea cancelada')} onCancel={() => { setCancelling(false); setParticipantsDirty(false); }} onClose={closeDetail} onDirtyChange={setParticipantsDirty} /></div>
+          : confirmingTransition ? <div className="agenda-overlay"><AgendaTaskTransitionConfirm task={detail} kind={confirmingTransition} onSaved={(task) => void afterTaskAction(task, confirmingTransition === 'START' ? 'Tarea iniciada' : confirmingTransition === 'COMPLETE' ? 'Tarea terminada' : 'Tarea reabierta')} onCancel={() => setConfirmingTransition(null)} onReload={reloadTaskDetail} /></div>
+                : <div className="agenda-overlay"><aside className="agenda-drawer">
+                  <div className="agenda-drawer-toolbar">
+                    <button onClick={closeDetail}>Cerrar</button>
+                    {can('agenda.update') && <button onClick={() => setEditing(true)}>Editar</button>}
+                    {can('agenda.assign') && <button onClick={() => setAssigning(true)}>Cambiar responsable</button>}
+                    {(user?.permissions.includes('agenda.update') || user?.permissions.includes('agenda.manage')) && <button onClick={() => setManagingParticipants(true)}>Administrar participantes</button>}
+                    {canRescheduleAgendaTask(detail.estado, user?.permissions ?? []) && <button onClick={() => setRescheduling(true)}>Reprogramar tarea</button>}
+                    {canCancelAgendaTask(detail.estado, user?.permissions ?? []) && <button onClick={() => setCancelling(true)}>Cancelar tarea</button>}
+                    {canStartAgendaTask(detail.estado, user?.permissions ?? []) && <button onClick={() => setConfirmingTransition('START')}>Iniciar</button>}
+                    {canCompleteAgendaTask(detail.estado, user?.permissions ?? []) && <button onClick={() => setConfirmingTransition('COMPLETE')}>Terminar</button>}
+                    {canReopenAgendaTask(detail.estado, user?.permissions ?? []) && <button onClick={() => setConfirmingTransition('REOPEN')}>Reabrir</button>}
+                  </div>
+                  <h2>{detail.titulo}</h2>
+                  <p>{detail.descripcion || 'Sin descripción'}</p>
+                  <p>{detail.tipo} · {detail.prioridad} · {detail.estado}</p>
+                  <p>Responsable: {detail.responsable_nombre}<br />Creador: {detail.creador_nombre}<br />Fecha: {detail.fecha_prevista}<br />Límite: {detail.fecha_limite || '—'}</p>
+                  {detail.estado === 'CANCELADA' && detail.motivo_cancelacion && <p>Motivo de cancelación: {detail.motivo_cancelacion}</p>}
+                  {detail.estado === 'REPROGRAMADA' && detail.motivo_reprogramacion && <p>Motivo de reprogramación: {detail.motivo_reprogramacion}</p>}
+                  {detail.fecha_terminacion && <p>Fecha de terminación: {detail.fecha_terminacion}</p>}
+                  <h3>Participantes</h3>
+                  <p><strong>{detail.responsable_nombre}</strong> · Responsable principal</p>
+                  {detail.participantes?.map((participant) => <p key={participant.id}>{participant.nombre ?? participant.nombre_completo} · {participant.rol || 'Rol no disponible'}</p>)}
+                  <h3>Historial</h3>
+                  {detail.seguimientos?.map((item) => <p key={item.id}>{item.tipo} · {item.comentario || ''} {item.fecha_nueva ? `· ${item.fecha_anterior} → ${item.fecha_nueva}` : ''}</p>)}
+                  <h3>Reprogramaciones</h3>
+                  {detail.reprogramaciones?.map((item) => <p key={item.id}>{item.fecha_anterior} → {item.fecha_nueva} · {item.comentario || ''}</p>)}
+                  <h3>Asignaciones</h3>
+                  {detail.asignaciones?.map((item) => <p key={item.id}>{item.responsable_anterior_id || '—'} → {item.responsable_nuevo_id} · {item.motivo || ''}</p>)}
+                </aside></div>
+    )}  </main>;
 }

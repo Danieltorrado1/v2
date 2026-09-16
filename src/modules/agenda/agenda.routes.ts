@@ -11,9 +11,9 @@ router.get('/seguimientos',requirePermissions('agenda.read'),c.followupsHandler)
 router.get('/tareas',requirePermissions('agenda.read'),c.listTasksHandler); router.get('/tareas/:id',requirePermissions('agenda.read'),c.getTaskHandler);
 router.post('/tareas',requirePermissions('agenda.create'),c.createTaskHandler); router.patch('/tareas/:id',requirePermissions('agenda.update'),c.updateTaskHandler);
 router.post('/tareas/:id/asignar',requirePermissions('agenda.assign'),c.assignTaskHandler); router.post('/tareas/:id/iniciar',requirePermissions('agenda.update'),c.startTaskHandler);
-router.put('/tareas/:id/participantes',requirePermissions('agenda.update'),c.participantsHandler);
-router.post('/tareas/:id/terminar',requirePermissions('agenda.complete'),c.completeTaskHandler); router.post('/tareas/:id/reprogramar',requirePermissions('agenda.update'),c.rescheduleTaskHandler);
-router.post('/tareas/:id/cancelar',requirePermissions('agenda.cancel'),c.cancelTaskHandler); router.post('/tareas/:id/reabrir',requirePermissions('agenda.reopen'),c.reopenTaskHandler);
+router.put('/tareas/:id/participantes',requireAnyPermissions('agenda.update','agenda.manage'),c.participantsHandler);
+router.post('/tareas/:id/terminar',requirePermissions('agenda.complete'),c.completeTaskHandler); router.post('/tareas/:id/reprogramar',requireAnyPermissions('agenda.update','agenda.manage'),c.rescheduleTaskHandler);
+router.post('/tareas/:id/cancelar',requireAnyPermissions('agenda.cancel','agenda.manage'),c.cancelTaskHandler); router.post('/tareas/:id/reabrir',requirePermissions('agenda.reopen'),c.reopenTaskHandler);
 router.post('/tareas/:id/seguimientos',requirePermissions('agenda.update'),c.followupHandler); router.get('/tareas/:id/historial',requirePermissions('agenda.read'),c.historyHandler);
 router.post('/top',requirePermissions('agenda.update'),c.topHandler); router.post('/cierre-diario',requirePermissions('agenda.update'),c.closeDayHandler);
 router.get('/cierre-diario',requirePermissions('agenda.update'),c.getCloseDayHandler);
