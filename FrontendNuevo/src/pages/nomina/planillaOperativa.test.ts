@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildTramos, dateKey, dedupeNominaNovedades, isOutsideEmployment, mergeAttendance, movimientosOnDate, novedadesOnDate, novedadState, upsertNominaNovedad } from './planillaOperativa.domain';
+import { buildTramos, countActivePlanillaFilters, dateKey, dedupeNominaNovedades, emptyPlanillaFilters, isOutsideEmployment, matchesPlanillaFilters, mergeAttendance, movimientosOnDate, novedadesOnDate, novedadState, normalizePlanillaSearch, persistedPlanillaFiltersMatchPeriod, upsertNominaNovedad } from './planillaOperativa.domain';
 import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from './nominaPeriods';
 import type { NominaEmpleadoApi, NominaMovimientoApi, NominaNovedadApi } from '../../types/nomina.types';
 const employee={id:'1',vinculacion_id:'10',persona:{id:'7',nombre_completo:'MARIA PEREZ',numero_documento:'1234',primer_nombre:'MARIA',segundo_nombre:null,primer_apellido:'PEREZ',segundo_apellido:null},vinculacion:{id:'10',empresa_id:'15',contrato_id:'24',estado_vinculacion:'ACTIVA',fecha_inicio:'2026-08-10',fecha_fin:'2026-08-22',metodo_pago:'COBERTURA'},sede:{id:'1',municipio:'GRANADA',nombre_sede:'CENTRAL'},modalidad:'A'} as NominaEmpleadoApi;
@@ -81,6 +81,61 @@ test('carga inicial paraleliza empleados y asistencia en una sola lectura',()=>{
   assert.ok(source.includes('const [employeeResult, ...layers] = await Promise.allSettled(['));
   assert.match(source, /limit:\s*ATTENDANCE_BATCH_LIMIT,\s*page\s*\}/);
 });
+const lizethRow={searchText:'LIZETH YURANY CORRALES CASTILLO 1120026863 EL DORADO INSTITUCION EDUCATIVA EL DORADO SEDE PRINCIPAL EL DORADO RI Sin gestor asignado',municipio:'EL DORADO',gestorId:null,modalidad:'RI',reviewState:'PENDIENTE',needsReview:false,noveltyCount:0,hasInconsistencies:false} as const;
+test('Lizeth 1120026863 existe y pasa sin filtros, incluidos valores nulos de gestor/contexto',()=>{
+  assert.equal(matchesPlanillaFilters(lizethRow,emptyPlanillaFilters()),true);
+  assert.equal(matchesPlanillaFilters({...lizethRow,searchText:normalizePlanillaSearch('LIZETH YURANY CORRALES CASTILLO',null,'1120026863')},emptyPlanillaFilters()),true);
+  assert.equal(lizethRow.gestorId,null);
+});
+test('búsqueda encuentra Lizeth por documento o nombre ignorando tildes, mayúsculas y espacios',()=>{
+  for(const query of ['1120026863','Lizeth Yurany Corrales Castillo','  LIZETH   YURANY  '])
+    assert.equal(matchesPlanillaFilters(lizethRow,{...emptyPlanillaFilters(),query}),true,query);
+  for(const query of ['EL DORADO','INSTITUCIÓN EDUCATIVA EL DORADO','SEDE PRINCIPAL','RI','Sin gestor asignado'])
+    assert.equal(matchesPlanillaFilters(lizethRow,{...emptyPlanillaFilters(),query}),true,query);
+  assert.ok(source.includes('visible.institucion'));
+  assert.ok(source.includes('visible.sede'));
+  assert.ok(source.includes('visible.modalidad'));
+  assert.ok(source.includes('visible.gestor'));
+});
+test('cada filtro aplicado evalúa la fila de Lizeth con sus valores reales',()=>{
+  const cases=[
+    ['búsqueda','1120026863',true,{query:'1120026863'}],
+    ['municipio','EL DORADO',true,{municipio:'EL DORADO'}],
+    ['municipio','OTRO',false,{municipio:'OTRO'}],
+    ['gestor','Sin gestor asignado',true,{gestor:'__SIN_GESTOR__'}],
+    ['gestor','123',false,{gestor:'123'}],
+    ['modalidad','RI',true,{modalidad:'RI'}],
+    ['modalidad','A',false,{modalidad:'A'}],
+    ['revisión','PENDIENTE',true,{review:'PENDIENTES'}],
+    ['revisión','REVISADO',false,{review:'REVISADOS'}],
+    ['novedades','sin novedades',true,{events:'SIN_NOVEDADES'}],
+    ['novedades','con novedades',false,{events:'CON_NOVEDADES'}],
+  ] as const;
+  for(const [name,value,expected,partial] of cases){
+    assert.equal(matchesPlanillaFilters(lizethRow,{...emptyPlanillaFilters(),...partial}),expected,`${name}: ${value}`);
+  }
+});
+test('sin filtros la Planilla conserva el total de las 751 filas activas recibidas',()=>{
+  const activeRows=Array.from({length:750},(_,index)=>({...lizethRow,searchText:`PERSONA ${index}`})).concat(lizethRow);
+  assert.equal(activeRows.length,751);
+  assert.equal(activeRows.filter((row)=>matchesPlanillaFilters(row,emptyPlanillaFilters())).length,751);
+  assert.ok(source.includes('setEmployees(employeeResult.value.items.filter(employee => employee.activo !== false))'));
+});
+test('la paginación completa incluye Lizeth y el filtro frontend no la descarta',()=>{
+  const allPages=[[{...lizethRow,searchText:'1120026863 LIZETH YURANY CORRALES CASTILLO'}],[{...lizethRow,searchText:'OTRA PERSONA'}]];
+  const complete=allPages.flat();
+  assert.equal(complete.filter((row)=>matchesPlanillaFilters(row,emptyPlanillaFilters())).some((row)=>row.searchText.includes('1120026863')),true);
+  assert.ok(source.includes('getAllNominaPeriodoEmpleadosOperativos'));
+});
+test('cambiar agosto a septiembre invalida filtros persistidos del periodo anterior y limpiar devuelve defaults',()=>{
+  assert.equal(persistedPlanillaFiltersMatchPeriod('2','3'),false);
+  assert.equal(persistedPlanillaFiltersMatchPeriod('3','3'),true);
+  assert.deepEqual(emptyPlanillaFilters(),{query:'',municipio:'',gestor:'',modalidad:'',review:'TODOS',events:'TODOS'});
+  assert.equal(countActivePlanillaFilters({...emptyPlanillaFilters(),query:'1120026863'}),1);
+  assert.equal(countActivePlanillaFilters(emptyPlanillaFilters()),0);
+  assert.ok(source.includes('setQuery("")'));
+  assert.ok(source.includes('LIMPIAR FILTROS'));
+});
 test('carga inicial sincroniza una vez la poblacion V1 de periodos abiertos',()=>{
   assert.ok(source.includes('populationSyncKeyRef'));
   assert.ok(source.includes('selectedPeriod?.estado === "ABIERTO"'));
@@ -94,6 +149,12 @@ test('revision operativa resuelve scope en SQL sin validacion secuencial por fil
   assert.ok(revisionSource.includes("appendTenantScopeConditions(conditions, params, tenant, 'v.contrato_id', 'v.empresa_id');"));
   assert.ok(revisionSource.includes('${buildSqlWhere(conditions)}'));
   assert.equal(revisionSource.includes('for (const row of result.rows) await assertTenantAccessForVinculacionId'),false);
+});
+test('Planilla conserva el selector de servicio por permiso económico y scope de rol en backend',()=>{
+  assert.ok(source.includes('user?.permissions.includes("nomina.economico.read") === true'));
+  assert.match(source, /\? getAllNominaPeriodoEmpleados\s+: getAllNominaPeriodoEmpleadosOperativos/);
+  const revisionSource=readFileSync(resolve(process.cwd(),'src/modules/nomina/revision-operativa.service.ts'),'utf8');
+  assert.ok(revisionSource.includes('appendNominaCoberturaScope(conditions, params, tenant);'));
 });
 test('asistencia por periodo usa el mismo scope SQL que la planilla visible',()=>{
   const serviceSource=readFileSync(resolve(process.cwd(),'src/modules/nomina/nomina.service.ts'),'utf8');

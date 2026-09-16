@@ -25,6 +25,71 @@ export interface PlanillaTramo {
   cambioId: string | null;
 }
 
+export interface PlanillaRowFilterValues {
+  searchText: string;
+  municipio: string;
+  gestorId: string | null;
+  modalidad: string;
+  reviewState: "PENDIENTE" | "REVISADO" | "CERRADO";
+  needsReview: boolean;
+  noveltyCount: number;
+  hasInconsistencies: boolean;
+}
+
+export interface PlanillaFilters {
+  query: string;
+  municipio: string;
+  gestor: string;
+  modalidad: string;
+  review: "TODOS" | "PENDIENTES" | "REVISADOS" | "CERRADOS" | "REQUIERE_REVISION";
+  events: "TODOS" | "CON_NOVEDADES" | "SIN_NOVEDADES" | "INCONSISTENCIAS";
+}
+
+export function normalizePlanillaSearch(...values: Array<string | null | undefined>) {
+  return values
+    .map((value) => value ?? "")
+    .join(" ")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("es-CO")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+export function matchesPlanillaFilters(row: PlanillaRowFilterValues, filters: PlanillaFilters) {
+  const query = normalizePlanillaSearch(filters.query);
+  if (query && !normalizePlanillaSearch(row.searchText).includes(query)) return false;
+  if (filters.municipio && row.municipio !== filters.municipio) return false;
+  if (filters.gestor === "__SIN_GESTOR__" && row.gestorId) return false;
+  if (filters.gestor && filters.gestor !== "__SIN_GESTOR__" && row.gestorId !== filters.gestor) return false;
+  if (filters.modalidad && row.modalidad !== filters.modalidad) return false;
+  if (filters.review === "PENDIENTES" && row.reviewState !== "PENDIENTE") return false;
+  if (filters.review === "REVISADOS" && row.reviewState !== "REVISADO") return false;
+  if (filters.review === "CERRADOS" && row.reviewState !== "CERRADO") return false;
+  if (filters.review === "REQUIERE_REVISION" && !row.needsReview) return false;
+  if (filters.events === "CON_NOVEDADES" && row.noveltyCount === 0) return false;
+  if (filters.events === "SIN_NOVEDADES" && row.noveltyCount > 0) return false;
+  if (filters.events === "INCONSISTENCIAS" && !row.hasInconsistencies) return false;
+  return true;
+}
+
+export function countActivePlanillaFilters(filters: PlanillaFilters) {
+  return Number(Boolean(normalizePlanillaSearch(filters.query))) +
+    Number(Boolean(filters.municipio)) +
+    Number(Boolean(filters.gestor)) +
+    Number(Boolean(filters.modalidad)) +
+    Number(filters.review !== "TODOS") +
+    Number(filters.events !== "TODOS");
+}
+
+export function emptyPlanillaFilters(): PlanillaFilters {
+  return { query: "", municipio: "", gestor: "", modalidad: "", review: "TODOS", events: "TODOS" };
+}
+
+export function persistedPlanillaFiltersMatchPeriod(savedPeriodId: string | undefined, selectedPeriodId: string) {
+  return Boolean(savedPeriodId && selectedPeriodId && savedPeriodId === selectedPeriodId);
+}
+
 export const dateKey = (year: number, month: number, day: number) =>
   `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
