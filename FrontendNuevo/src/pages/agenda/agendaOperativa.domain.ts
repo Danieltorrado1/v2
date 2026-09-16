@@ -1,3 +1,7 @@
+export function canManageAgendaAction(permissions: string[], specific: string) {
+  return permissions.includes(specific) || permissions.includes('agenda.manage');
+}
+
 export type TaskLike = { id: number; fecha_prevista: string; hora_inicio?: string | null };
 
 export type AgendaParticipant = { id: number; nombre?: string; nombre_completo?: string; rol?: string; activo?: boolean; active?: boolean };
@@ -54,18 +58,16 @@ export function canCancelAgendaTask(state: string, permissions: string[]) {
   return statesThatAllowCancel.has(state) && (permissions.includes('agenda.cancel') || permissions.includes('agenda.manage'));
 }
 
-// These three existing routes require their specific permission. agenda.manage
-// is not accepted by their middleware, so the UI follows that stricter contract.
 export function canStartAgendaTask(state: string, permissions: string[]) {
-  return state === 'PENDIENTE' && permissions.includes('agenda.update');
+  return (state === 'PENDIENTE' || state === 'REPROGRAMADA') && (permissions.includes('agenda.update') || permissions.includes('agenda.manage'));
 }
 
 export function canCompleteAgendaTask(state: string, permissions: string[]) {
-  return (state === 'PENDIENTE' || state === 'EN_PROCESO') && permissions.includes('agenda.complete');
+  return (state === 'PENDIENTE' || state === 'EN_PROCESO') && (permissions.includes('agenda.complete') || permissions.includes('agenda.manage'));
 }
 
 export function canReopenAgendaTask(state: string, permissions: string[]) {
-  return (state === 'TERMINADA' || state === 'CANCELADA') && permissions.includes('agenda.reopen');
+  return (state === 'TERMINADA' || state === 'CANCELADA') && (permissions.includes('agenda.reopen') || permissions.includes('agenda.manage'));
 }
 
 export function transitionPayload(version?: number) {

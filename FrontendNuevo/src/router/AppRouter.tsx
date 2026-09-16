@@ -76,7 +76,7 @@ export default function AppRouter() {
             {['historial-remisiones','inventario','bodegas','rutas','conductores','conductores-vehiculos'].map(path => <Route key={`log-${path}`} path={`logistica/${path}`} element={<ModuleRoute code="LOGISTICA" requiredPermissions={["logistica.read"]}><LogisticaManagementPage /></ModuleRoute>} />)}
             <Route path="configuracion" element={<TenantHome moduleCode="CONFIGURACION_EMPRESA" />} />
             <Route path="dashboard" element={<ModuleRoute code="DASHBOARD" requiredPermissions={["dashboard.read"]}><DashboardPage /></ModuleRoute>} />
-            <Route path="agenda" element={<ModuleRoute code="AGENDA_OPERATIVA" requiredPermissions={["agenda.read"]}><AgendaOperativaPage /></ModuleRoute>} />
+            <Route path="agenda" element={<ModuleRoute code="AGENDA_OPERATIVA" requiredPermissions={["agenda.read", "agenda.manage"]}><AgendaOperativaPage /></ModuleRoute>} />
             <Route path="personal" element={<ModuleRoute code="PERSONAL" requiredPermissions={["vinculaciones.read"]}><OperationalPersonalPage /></ModuleRoute>} />
             <Route path="nomina" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaHubPage /></ModuleRoute>} />
             <Route path="nomina/cobertura" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.operativa.read", "nomina.read"]}><PlanillaOperativaPage /></ModuleRoute>} />

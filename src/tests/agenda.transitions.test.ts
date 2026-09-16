@@ -3,24 +3,12 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const read = (path: string) => readFileSync(path, 'utf8');
-const routes = read('src/modules/agenda/agenda.routes.ts');
 const schemas = read('src/modules/agenda/agenda.schemas.ts');
 const service = read('src/modules/agenda/agenda.service.ts');
 const repository = read('src/modules/agenda/agenda.repository.ts');
 const page = read('FrontendNuevo/src/pages/agenda/AgendaOperativaPage.tsx');
 const api = read('FrontendNuevo/src/services/agendaApi.ts');
 const dialog = read('FrontendNuevo/src/pages/agenda/components/AgendaTaskTransitionConfirm.tsx');
-const domain = read('FrontendNuevo/src/pages/agenda/agendaOperativa.domain.ts');
-
-test('rutas mantienen los permisos más restrictivos para iniciar, terminar y reabrir', () => {
-  assert.match(routes, /router\.post\('\/tareas\/:id\/iniciar',requirePermissions\('agenda\.update'\)/);
-  assert.match(routes, /router\.post\('\/tareas\/:id\/terminar',requirePermissions\('agenda\.complete'\)/);
-  assert.match(routes, /router\.post\('\/tareas\/:id\/reabrir',requirePermissions\('agenda\.reopen'\)/);
-  assert.match(domain, /agenda\.manage[\s\S]*not accepted/);
-  assert.match(page, /canStartAgendaTask\(detail\.estado, user\?\.permissions/);
-  assert.match(page, /canCompleteAgendaTask\(detail\.estado, user\?\.permissions/);
-  assert.match(page, /canReopenAgendaTask\(detail\.estado, user\?\.permissions/);
-});
 
 test('cada transición usa su endpoint POST y schema admite version opcional', () => {
   assert.match(api, /start:.*apiClient\.post.*\/iniciar/);

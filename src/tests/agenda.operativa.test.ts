@@ -41,7 +41,7 @@ test('semana consulta un rango, muestra siete fechas y separa tareas sin hora',(
   assert.match(agendaDomain,/task\.fecha_prevista === date && Boolean\(task\.hora_inicio\)/);assert.match(agendaDomain,/task\.fecha_prevista === date && !task\.hora_inicio/);
   assert.match(page,/desde: week, hasta: addDays\(week, 6\)/);assert.match(page,/agendaApi\.list/);assert.match(page,/Semana anterior/);assert.match(page,/Semana siguiente/);assert.match(page,/Volver a hoy/);assert.match(page,/open\(task\.id\)/);
 });
-test('usuarios asignables se limitan al tenant y el formulario usa solo Agenda',()=>{assert.match(routesText,/usuarios-asignables/);assert.match(routesText,/requireAnyPermissions\('agenda\.create','agenda\.assign','agenda\.update','agenda\.manage'\)/);assert.match(repo,/listAssignableUsers/);assert.match(repo,/ue\.empresa_id=\$1/);assert.match(repo,/COALESCE\(u\.activo,TRUE\)=TRUE/);assert.match(assignForm,/agendaApi\.users/);assert.doesNotMatch(assignForm,/['"]\/users['"]/);});
+test('usuarios asignables se limitan al tenant y el formulario usa solo Agenda',()=>{assert.match(routesText,/usuarios-asignables/);assert.match(routesText,/requireAnyPermissions\('agenda\.create','agenda\.assign','agenda\.update','agenda\.manage','agenda\.read'\)/);assert.match(repo,/listAssignableUsers/);assert.match(repo,/ue\.empresa_id=\$1/);assert.match(repo,/COALESCE\(u\.activo,TRUE\)=TRUE/);assert.match(assignForm,/agendaApi\.users/);assert.doesNotMatch(assignForm,/['"]\/users['"]/);});
 
 test('formulario carga participantes actuales y obtiene candidatos solo de usuarios asignables activos',()=>{
   assert.match(participantsForm,/agendaApi\.users<any>\(/);
@@ -62,7 +62,7 @@ test('se rechazan duplicados y responsable también en validación local',()=>{
   assert.match(participantsForm,/participantPayload\(ids, responsibleId\)/);
 });
 test('Administrar participantes se oculta sin update ni manage',()=>{
-  assert.match(page,/user\?\.permissions\.includes\('agenda\.update'\) \|\| user\?\.permissions\.includes\('agenda\.manage'\)/);
+  assert.match(page,/can\('agenda\.update'\) && <button onClick=\{\(\) => setManagingParticipants\(true\)\}/);
   assert.match(page,/Administrar participantes/);
   assert.match(routesText,/router\.put\('\/tareas\/:id\/participantes',requireAnyPermissions\('agenda\.update','agenda\.manage'\)/);
 });

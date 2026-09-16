@@ -24,4 +24,6 @@ export const followupsHandler=asyncHandler(async(r,res)=>successResponse(res,{da
 export const summaryHandler=asyncHandler(async(r,res)=>successResponse(res,{data:await s.summary(actor(r),r.tenant,perms(r))}));
 export const topHandler=asyncHandler(async(r,res)=>successResponse(res,{data:await s.replaceTop(z.topSchema.parse(r.body),actor(r),r.tenant,perms(r),meta(r))}));
 export const closeDayHandler=asyncHandler(async(r,res)=>successResponse(res,{data:await s.closeDay(z.closeDaySchema.parse(r.body),actor(r),r.tenant,perms(r),meta(r))}));
-export const getCloseDayHandler=asyncHandler(async(r,res)=>successResponse(res,{data:await s.getCloseDay(z.closeDaySchema.shape.fecha.parse(String(r.query.fecha)),actor(r),r.tenant,perms(r))}));
+export const getCloseDayHandler=asyncHandler(async(r,res)=>successResponse(res,{data:await s.getCloseDay(z.topQuerySchema.shape.fecha.parse(String(r.query.fecha)),actor(r),r.tenant,perms(r))}));
+
+export const getTopHandler=asyncHandler(async(r,res)=>successResponse(res,{data:await s.getTop(z.topQuerySchema.parse({fecha:r.query.fecha}).fecha,actor(r),r.tenant,perms(r))}));
