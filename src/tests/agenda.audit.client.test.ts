@@ -55,6 +55,7 @@ test('Semana carga paginas del rango, Mi dia consulta hoy y respuestas viejas no
   const h=harness(hooks=>{
     const dependencies:any={react:hooks,'react/jsx-runtime':frontend('react/jsx-runtime'),'../../services/agendaApi':{createAgendaApi:()=>api},'../../context/AuthContext':{useAuth:()=>({user:{permissions:['agenda.read']}})},'../../context/CompanyContext':{useCompanyContext:()=>({empresaId:company})},'./agendaOperativa.domain':common,'./agendaFollowup.domain':load(`${base}agendaFollowup.domain.ts`,{'./agendaOperativa.domain':common}),'./agendaTopThree.domain':load(`${base}agendaTopThree.domain.ts`,{'./agendaOperativa.domain':common}),'./AgendaOperativaPage.css':{}};
     for(const name of ['AgendaFollowupsView','AgendaTaskFollowupForm','AgendaTaskTopThree','AgendaTaskEditForm','AgendaTaskAssignForm','AgendaTaskParticipantsForm','AgendaTaskRescheduleForm','AgendaTaskCancelForm','AgendaTaskTransitionConfirm'])dependencies[`./components/${name}`]={default:()=>null};
+    dependencies['lucide-react']=frontend('lucide-react');
     const module=load(`${base}AgendaOperativaPage.tsx`,dependencies,{window:{confirm:()=>true}});
     const first=module.default();company=2;const second=module.default();assert.notEqual(first.key,second.key);
     return module.AgendaCompanyPage;

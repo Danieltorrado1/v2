@@ -79,6 +79,7 @@ for (const stringIds of [false, true]) test(`drawer existente abre tarea correct
   const ids: number[] = []; let task: any = { id: stringIds ? '10' : 10, titulo: 'Actualizada', responsable_id: 7, estado: 'PENDIENTE', tipo: 'OTRA', fecha_prevista: '2026-09-16', seguimientos: [] };
   dependencies['../../services/agendaApi'] = { createAgendaApi: () => ({ list: async () => ({ items: [] }), summary: async () => ({}), get: async (id: number) => { ids.push(id); return task; } }) };
   dependencies['../../context/CompanyContext'] = { useCompanyContext: () => ({ empresaId: 1 }) };
+  dependencies['lucide-react'] = requireFrontend('lucide-react');
   const Page = load(`${base}AgendaOperativaPage.tsx`, dependencies, { window: { confirm: () => true } }).AgendaCompanyPage;
   let tree: any;
   const render = () => { cursor = 0; effects = []; tree = Page({ empresaId: 1 }); for (const effect of effects) effect(); };
@@ -90,7 +91,7 @@ for (const stringIds of [false, true]) test(`drawer existente abre tarea correct
   view.props.onOpenTask(10); await flush(); render(); assert.deepEqual(ids, [10]);
   assert.ok(nodes(tree).some(node => node.type === 'h2' && node.props.children === 'Actualizada'));
   click('Cerrar'); render(); assert.equal(find(children.AgendaFollowupsView).key, view.key); assert.equal(find(children.AgendaFollowupsView).props.active, true);
-  assert.equal(find('aside'), undefined);
+  assert.ok(!nodes(tree).some(node => node.type === 'aside' && node.props.className === 'agenda-drawer'));
   find(children.AgendaFollowupsView).props.onOpenTask(10); await flush(); render();
   for (const [button, form, update] of [['Cambiar responsable', 'AgendaTaskAssignForm', { responsable_id: 8 }], ['Iniciar', 'AgendaTaskTransitionConfirm', { estado: 'EN_PROCESO' }], ['Agregar seguimiento', 'AgendaTaskFollowupForm', { seguimientos: [{ id: 90, tipo: 'COMENTARIO', comentario: 'Nuevo' }] }]] as const) {
     const before = find(children.AgendaFollowupsView).props.refreshRevision;
