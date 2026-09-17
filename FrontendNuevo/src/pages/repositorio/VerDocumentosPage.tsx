@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle, BookOpen, CheckCircle, ChevronRight,
   ClipboardCheck, Clock, Download, Eye, FileText,
-  Filter, LayoutGrid, List, Loader2, Package, Plus, Search,
+  Filter, LayoutGrid, List, Loader2, Search,
   TrendingUp, Users, X, XCircle,
 } from 'lucide-react';
 import type {
@@ -19,12 +19,11 @@ import {
   getRepositorioDocumentos,
   getRepositorioIndicadores,
 } from '../../services/repositorioApi';
-import { MOCK_PAQUETES } from './repositorio.mock';
-import type { TipoPaquete, VistaRepositorio } from './repositorio.types';
-import { TIPO_PAQUETE_LABEL } from './repositorio.types';
+import type { VistaRepositorio } from './repositorio.types';
 import { DocumentViewer } from './DocumentViewer';
-import { PaqueteBuilder } from './PaqueteBuilder';
+import PersonalNavigation from '../personal/PersonalNavigation';
 import './repositorio.css';
+import '../personal/PersonalVisual.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,8 +118,6 @@ export default function VerDocumentosPage() {
   const [expandedIds,   setExpandedIds]   = useState<Set<number>>(new Set());
   const [viewerDoc,     setViewerDoc]     = useState<RepositorioDocumentoApi | null>(null);
   const [exportLoading, setExportLoading] = useState(false);
-  const [paqueteOpen,   setPaqueteOpen]   = useState(false);
-  const [paquetes,      setPaquetes]      = useState(MOCK_PAQUETES);
   const [reqSel,        setReqSel]        = useState<string[]>([]);
 
   // ── Debounce search ────────────────────────────────────────────────────────
@@ -245,21 +242,6 @@ export default function VerDocumentosPage() {
       setExportLoading(false);
     }
   }
-
-  function handleNewPaquete(nombre: string, tipo: TipoPaquete, requisitos: string[]) {
-    setPaquetes(prev => [{
-      id: Date.now(),
-      codigo: `PKG-2026-${String(prev.length + 1).padStart(3, '0')}`,
-      nombre, descripcion: '', tipo, requisitos,
-      personas_ids: personaGroups.map(g => g.personaId).filter(id => id !== -1),
-      cantidad_documentos: 0,
-      fecha_creacion: new Date().toISOString().slice(0, 10),
-      usuario_creador: 'Usuario TH',
-      estado: 'activo',
-    }, ...prev]);
-  }
-
-  // ── Sub-views ──────────────────────────────────────────────────────────────
 
   function StateBadge({ estado }: { estado: RepositorioEstadoDocumental }) {
     return <span className={`rep-badge ${estado}`}>{ESTADO_LABEL[estado]}</span>;
@@ -464,6 +446,7 @@ export default function VerDocumentosPage() {
       <div className="rep-req-layout">
         <div className="rep-req-selector">
           <h4>Requisitos a evaluar</h4>
+          <p className="personal-matrix-note">Tipos y documentos de la página consultada. Una celda vacía no determina un requisito faltante.</p>
           {availableTipos.length === 0 && (
             <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 0' }}>
               {docsLoading ? 'Cargando tipos…' : 'Sin tipos disponibles'}
@@ -491,7 +474,7 @@ export default function VerDocumentosPage() {
               <thead>
                 <tr>
                   <th>Persona</th>
-                  {reqSel.map(r => <th key={r}>{r.length > 16 ? r.slice(0, 14) + '…' : r}</th>)}
+                  {reqSel.map(r => <th key={r} title={r}><span>{r}</span></th>)}
                   <th>Cumplimiento</th>
                 </tr>
               </thead>
@@ -512,7 +495,14 @@ export default function VerDocumentosPage() {
                           </div>
                         )}
                       </td>
-                      {reqSel.map(r => <td key={r}>{cellFor(group, r)}</td>)}
+                      {reqSel.map(r => {
+                        const doc = group.docs.find(item => item.nombre_tipo_documento === r);
+                        return <td key={r}>{doc ? (
+                          <button type="button" className="personal-doc-cell" title={`${r}: ${ESTADO_LABEL[doc.estado_documental]}`} aria-label={`Ver ${r} de ${buildNombrePersonaRepo(group.persona)}`} onClick={() => setViewerDoc(doc)}>
+                            {cellFor(group, r)}
+                          </button>
+                        ) : <span title="Sin documento en los resultados de esta página">—</span>}</td>;
+                      })}
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center' }}>
                           <Ring pct={pct} size={36} />
@@ -531,7 +521,8 @@ export default function VerDocumentosPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="rep-page">
+    <div className="rep-page personal-visual">
+      <PersonalNavigation />
 
       {/* Header */}
       <div className="rep-page-header">
@@ -540,9 +531,6 @@ export default function VerDocumentosPage() {
           <p className="rep-page-sub">Gestión y consulta centralizada del expediente documental de colaboradores</p>
         </div>
         <div className="rep-header-actions">
-          <button className="rep-btn secondary" onClick={() => setPaqueteOpen(true)}>
-            <Package size={14} /> Nuevo paquete
-          </button>
           <button className="rep-btn secondary" onClick={() => { void handleExport(); }} disabled={exportLoading}>
             {exportLoading ? <Loader2 size={14} /> : <Download size={14} />}
             {exportLoading ? 'Exportando…' : 'Exportar CSV'}
@@ -601,13 +589,7 @@ export default function VerDocumentosPage() {
             <span className="rep-stat-lbl">Cumpl. prom.</span>
           </div>
         </div>
-        <div className="rep-stat">
-          <div className="rep-stat-icon neutral"><Package size={15} /></div>
-          <div className="rep-stat-body">
-            <span className="rep-stat-val">{paquetes.length}</span>
-            <span className="rep-stat-lbl">Paquetes</span>
-          </div>
-        </div>
+
       </div>
 
       {/* Toolbar */}
@@ -741,52 +723,11 @@ export default function VerDocumentosPage() {
       {vista === 'expediente' && <ExpedienteView />}
       {vista === 'requisitos' && <RequisitosView />}
 
-      {/* Paquetes documentales (stays mock — no backend endpoint) */}
-      <div style={{ marginTop: 32 }}>
-        <div className="rep-section-header">
-          <h3 className="rep-section-title">
-            <Package size={15} /> Paquetes documentales
-            <span className="count">{paquetes.length}</span>
-          </h3>
-          <button className="rep-btn secondary sm" onClick={() => setPaqueteOpen(true)}>
-            <Plus size={12} /> Nuevo
-          </button>
-        </div>
-        <div className="rep-paquetes-grid">
-          {paquetes.map(pkg => (
-            <div key={pkg.id} className="rep-paquete-card">
-              <div className="rep-paquete-top">
-                <div>
-                  <div className="rep-paquete-codigo">{pkg.codigo}</div>
-                  <div className="rep-paquete-nombre">{pkg.nombre}</div>
-                </div>
-                <span className={`rep-paquete-badge ${pkg.estado}`}>{pkg.estado}</span>
-              </div>
-              <p className="rep-paquete-desc">{pkg.descripcion || '—'}</p>
-              <div className="rep-paquete-meta">
-                <span className={`rep-paquete-badge ${pkg.tipo}`}>{TIPO_PAQUETE_LABEL[pkg.tipo]}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{pkg.requisitos.length} requisitos</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{pkg.personas_ids.length} personas</span>
-              </div>
-              <div className="rep-paquete-footer">
-                <span>{pkg.fecha_creacion} · {pkg.usuario_creador}</span>
-                <div className="rep-paquete-actions">
-                  <button className="rep-btn ghost sm"><Eye size={11} /></button>
-                  <button className="rep-btn secondary sm"><Download size={11} /> Exportar</button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Modals */}
       {viewerDoc && (
         <DocumentViewer doc={viewerDoc} onClose={() => setViewerDoc(null)} />
       )}
-      {paqueteOpen && (
-        <PaqueteBuilder onClose={() => setPaqueteOpen(false)} onSave={handleNewPaquete} />
-      )}
+
 
     </div>
   );

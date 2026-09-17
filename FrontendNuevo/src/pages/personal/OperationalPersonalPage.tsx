@@ -39,7 +39,9 @@ import { EmpiriaIcon } from "../../components/EmpiriaIcon";
 import PersonalMasterDrawer from "./PersonalMasterDrawer";
 import PersonalExportModal from "./PersonalExportModal";
 import OperationalImportModal from "./OperationalImportModal";
+import PersonalNavigation from "./PersonalNavigation";
 import "./OperationalPersonalPage.css";
+import "./PersonalVisual.css";
 
 const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
   gestores: [],
@@ -898,7 +900,7 @@ export default function OperationalPersonalPage() {
 
   if (!canReadContext || !canReadPersonal) {
     return (
-      <div className="op-personal-page">
+      <div className="op-personal-page personal-visual">
         <div className="op-state error">
           <AlertTriangle size={16} />
           No tienes permisos para consultar empresas, contratos o personal vinculado.
@@ -914,38 +916,8 @@ export default function OperationalPersonalPage() {
     );
 
   return (
-    <div className="op-personal-page">
-      <header className="op-page-header">
-        <div>
-          <div className="op-eyebrow">
-            <EmpiriaIcon name="personal" size={18} variant="duotone" /> Personal
-          </div>
-          <div className="op-title-row">
-            <h1>Personal</h1>
-            <label className="op-contract-compact">
-              <FileText size={14} />
-              <span>Contrato</span>
-              <select
-                value={contratoId ?? ""}
-                onChange={(event) => {
-                  setContratoId(event.target.value ? Number(event.target.value) : null);
-                  setSelectedVinculacionId(null);
-                  setSelectedExpediente(null);
-                  setSelectedError("");
-                }}
-                disabled={!empresaId}
-              >
-                <option value="">Seleccionar</option>
-                {contratos.map((contrato) => (
-                  <option key={contrato.id} value={contrato.id}>
-                    {contrato.numero_contrato}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <p>Gestiona, importa y exporta la informacion maestra de todos los trabajadores.</p>
-        </div>
+    <div className="op-personal-page personal-visual">
+      <PersonalNavigation>
         <div className="op-header-actions">
           <button
             type="button"
@@ -979,6 +951,38 @@ export default function OperationalPersonalPage() {
           >
             <UserPlus size={15} /> Nuevo trabajador
           </button>
+        </div>
+      </PersonalNavigation>
+      <header className="op-page-header">
+        <div>
+          <div className="op-eyebrow">
+            <EmpiriaIcon name="personal" size={18} variant="duotone" /> Personal
+          </div>
+          <div className="op-title-row">
+            <h1>Personal</h1>
+            <label className="op-contract-compact">
+              <FileText size={14} />
+              <span>Contrato</span>
+              <select
+                value={contratoId ?? ""}
+                onChange={(event) => {
+                  setContratoId(event.target.value ? Number(event.target.value) : null);
+                  setSelectedVinculacionId(null);
+                  setSelectedExpediente(null);
+                  setSelectedError("");
+                }}
+                disabled={!empresaId}
+              >
+                <option value="">Seleccionar</option>
+                {contratos.map((contrato) => (
+                  <option key={contrato.id} value={contrato.id}>
+                    {contrato.numero_contrato}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <p>Gestiona, importa y exporta la informacion maestra de todos los trabajadores.</p>
         </div>
       </header>
 
@@ -1490,8 +1494,10 @@ export default function OperationalPersonalPage() {
                     </th>
                     <th className="is-worker">Trabajador</th>
                     <th className="is-role">Cargo</th>
-                    <th className="is-assignment">Asignacion</th>
+                    <th className="is-assignment">Asignación</th>
+                    <th className="is-institution">Institución / Municipio</th>
                     <th className="is-modality">Modalidad</th>
+                    <th className="is-gestor">Gestor</th>
                     <th className="is-offer">Oferta</th>
                     <th className="is-status">Estado</th>
                     <th className="is-date">Ingreso</th>
@@ -1502,7 +1508,7 @@ export default function OperationalPersonalPage() {
                 <tbody>
                   {(tableData?.items ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={10} className="op-empty-row">
+                      <td colSpan={12} className="op-empty-row">
                         No hay personal vinculado a este contrato con los filtros actuales.
                       </td>
                     </tr>
@@ -1510,7 +1516,7 @@ export default function OperationalPersonalPage() {
                   {(tableData?.items ?? []).map((item) => (
                     <tr
                       key={item.vinculacion_id}
-                      className={item.vinculacion_id === selectedVinculacionId ? "is-selected" : ""}
+                      className={item.vinculacion_id === selectedVinculacionId || selectedVinculacionIds.includes(item.vinculacion_id) ? "is-selected" : ""}
                       onClick={() => setSelectedVinculacionId(item.vinculacion_id)}
                     >
                       <td className="is-select">
@@ -1540,33 +1546,15 @@ export default function OperationalPersonalPage() {
                       </td>
                       <td className="is-assignment">
                         <div className="op-assignment-cell">
-                          {item.asignacion_actual.institucion ? (
-                            <>
-                              <strong>{item.asignacion_actual.institucion}</strong>
-                              {item.asignacion_actual.sede && (
-                                <small>{item.asignacion_actual.sede}</small>
-                              )}
-                              {item.asignacion_actual.municipio && (
-                                <small>{item.asignacion_actual.municipio}</small>
-                              )}
-                              {item.asignacion_actual.modalidad && (
-                                <span className="op-assignment-status">Cobertura si</span>
-                              )}
-                              <span className="op-gestor-chip">
-                                {item.gestor_actual?.nombre ?? "Sin gestor"}
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <strong>
-                                {item.asignacion_actual.nombre ?? "Sin ubicacion laboral"}
-                              </strong>
-                              <small>Personal administrativo</small>
-                              <span className="op-gestor-chip">
-                                {item.gestor_actual?.nombre ?? "Sin gestor"}
-                              </span>
-                            </>
-                          )}
+                          <strong>{item.asignacion_actual.nombre ?? "Sin ubicación laboral"}</strong>
+                          {item.asignacion_actual.sede && <small>{item.asignacion_actual.sede}</small>}
+                          {item.asignacion_actual.modalidad && <span className="op-assignment-status">Cobertura sí</span>}
+                        </div>
+                      </td>
+                      <td className="is-institution">
+                        <div className="op-assignment-cell">
+                          <strong>{item.asignacion_actual.institucion ?? "—"}</strong>
+                          <small>{item.asignacion_actual.municipio ?? "—"}</small>
                         </div>
                       </td>
                       <td className="is-modality">
@@ -1577,6 +1565,11 @@ export default function OperationalPersonalPage() {
                         ) : (
                           <span className="op-muted">—</span>
                         )}
+                      </td>
+                      <td className="is-gestor">
+                        <span className="op-gestor-chip" title={item.gestor_actual?.nombre ?? "Sin gestor"}>
+                          {item.gestor_actual?.nombre ?? "Sin gestor"}
+                        </span>
                       </td>
                       <td className="is-offer">
                         <div className="op-offer-cell">

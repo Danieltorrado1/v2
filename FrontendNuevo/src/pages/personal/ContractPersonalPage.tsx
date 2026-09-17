@@ -44,6 +44,7 @@ import type {
 import type { ContractPersonalFilterOptions, ContractPersonalListResponse, PersonalResumen } from "../../types/vinculaciones.types";
 import ExpedienteDocumentosPanel from "./ExpedienteDocumentosPanel";
 import "./ContractPersonalPage.css";
+import "./PersonalVisual.css";
 
 const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
   gestores: [],
@@ -754,7 +755,7 @@ export default function ContractPersonalPage() {
 
   if (!canReadContext || !canReadPersonal) {
     return (
-      <div className="cp-page">
+      <div className="cp-page personal-visual">
         <div className="cp-state error">
           <AlertTriangle size={16} />
           No tienes permisos para consultar empresas, contratos o personal vinculado.
@@ -764,7 +765,7 @@ export default function ContractPersonalPage() {
   }
 
   return (
-    <div className="cp-page">
+    <div className="cp-page personal-visual">
       <div className="cp-toolbar">
         <div>
           <h1>Personal</h1>
