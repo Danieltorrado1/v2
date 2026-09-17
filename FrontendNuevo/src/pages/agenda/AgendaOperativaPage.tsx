@@ -25,6 +25,27 @@ const dateLabel = (date: string) => {
   return new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(year!, month! - 1, day!));
 };
 
+const statusLabels: Record<string, string> = {
+  PENDIENTE: 'Pendiente', EN_PROCESO: 'En proceso', TERMINADA: 'Terminada',
+  REPROGRAMADA: 'Reprogramada', CANCELADA: 'Cancelada',
+};
+
+function renderTaskRow(task: Task, onOpen: () => void) {
+  return <button key={task.id} className="agenda-task" data-status={task.estado} onClick={onOpen}>
+    <span className="agenda-task-indicator" aria-hidden="true" />
+    <span className="agenda-task-content">
+      <strong>{task.titulo}</strong>
+      {task.descripcion && <span className="agenda-task-description">{task.descripcion}</span>}
+      <span className="agenda-task-meta">
+        {task.prioridad && <span className="agenda-priority" data-priority={task.prioridad}>Prioridad {task.prioridad}</span>}
+        <em className="agenda-status" data-status={task.estado}>{statusLabels[task.estado] ?? task.estado}</em>
+        <small>{task.hora_inicio ? `${task.hora_inicio} · ` : ''}{task.tipo} · {task.responsable_nombre}</small>
+        {task.fecha_limite && <small>Vence {task.fecha_limite}</small>}
+      </span>
+    </span>
+  </button>;
+}
+
 function FollowupEntry({ item }: { item: any }) {
   if (!item.comentario?.trim()) return null;
   const nextDate = item.fecha_proxima_seguimiento ?? (manualFollowupTypes.includes(item.tipo) ? item.fecha_nueva : null);
@@ -288,26 +309,28 @@ export function AgendaCompanyPage({ empresaId }: { empresaId: number }) {
   const grouped = useMemo(() => groupTasksByDate(items, days), [items, days]);
   const visible = view === 'Mi día' ? items.filter((task) => task.fecha_prevista === today()) : items;
 
-  return <main className="agenda-page">
-    <header><div><span className="agenda-eyebrow">OPERACIÓN · AGENDA</span><h1>Agenda Operativa</h1></div></header>
+  return <main className="agenda-page" data-view={view}>
+    <header className="agenda-page-header"><div><span className="agenda-eyebrow">OPERACIÓN · AGENDA</span><h1>Agenda Operativa</h1></div><p className="agenda-today">{dateLabel(today())}</p></header>
     {error && <div className="agenda-error" role="alert">{error}</div>}
     {notice && <div className="agenda-notice" role="status">{notice}</div>}
-    <section className="agenda-summary">{[['Pendientes', summary?.pendientes], ['Para hoy', summary?.para_hoy], ['Vencidas', summary?.vencidas], ['Terminadas', summary?.terminadas]].map((item) => <article key={String(item[0])}><span>{item[0]}</span><strong>{loading ? '—' : item[1]}</strong></article>)}</section>
-    <nav className="agenda-tabs">{['Mi día', 'Bandeja', 'Seguimientos', 'Semana'].map((tab) => <button className={view === tab ? 'active' : ''} key={tab} onClick={() => setView(tab)}>{tab}</button>)}</nav>
-    {view === 'Mi día' && <section className="agenda-panel" aria-label="Mi Top 3 del día">
-      <h2>Mi Top 3 · {topToday()}</h2>
+    <section className="agenda-summary" aria-label="Resumen de tareas">{[['Pendientes', summary?.pendientes], ['Para hoy', summary?.para_hoy], ['Vencidas', summary?.vencidas], ['Terminadas', summary?.terminadas]].map((item) => <article key={String(item[0])}><strong>{loading ? '—' : item[1]}</strong><span>{item[0]}</span></article>)}</section>
+    <div className="agenda-workspace">
+    <nav className="agenda-tabs" aria-label="Vistas de Agenda">{['Mi día', 'Bandeja', 'Seguimientos', 'Semana'].map((tab) => <button className={view === tab ? 'active' : ''} aria-current={view === tab ? 'page' : undefined} key={tab} onClick={() => setView(tab)}>{tab}</button>)}</nav>
+    {view === 'Mi día' && <section className="agenda-panel agenda-top-panel" aria-label="Mi Top 3 del día">
+      <div className="agenda-panel-heading"><h2>Mi Top 3</h2><span>{topToday()}</span></div>
       {loading ? <p>Cargando Top 3…</p> : <ol>{[1, 2, 3].map(position => {
         const item = summary?.top_3?.find((entry: any) => Number(entry.posicion) === position);
-        return <li key={position}>Posición {position}: {item ? <button type="button" onClick={() => void open(Number(item.tarea_id))}>{item.titulo}</button> : 'Libre'}</li>;
+        return <li key={position}><span className="agenda-top-position" aria-label={`Posición ${position}`}>{position}</span>{item ? <button type="button" onClick={() => void open(Number(item.tarea_id))}>{item.titulo}</button> : <span className="agenda-top-free">Libre</span>}</li>;
       })}</ol>}
     </section>}
-    {view !== 'Seguimientos' && <section className="agenda-filters"><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar tareas"/><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos</option><option value="PENDIENTE">Pendientes</option><option value="EN_PROCESO">En proceso</option><option value="TERMINADA">Terminadas</option></select><button onClick={() => void load()}>Filtrar</button>{can('agenda.update') && <button onClick={() => setCloseOpen((open) => !open)}>{closeOpen ? 'Ocultar cierre diario' : 'Cierre diario'}</button>}</section>}
+    {view !== 'Seguimientos' && <section className="agenda-filters"><input aria-label="Buscar tareas" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar tareas"/><select aria-label="Estado de las tareas" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos</option><option value="PENDIENTE">Pendientes</option><option value="EN_PROCESO">En proceso</option><option value="TERMINADA">Terminadas</option></select><button className="agenda-primary" onClick={() => void load()}>Filtrar</button>{can('agenda.update') && <button onClick={() => setCloseOpen((open) => !open)}>{closeOpen ? 'Ocultar cierre diario' : 'Cierre diario'}</button>}</section>}
     <AgendaFollowupsView active={view === 'Seguimientos'} refreshRevision={followupsRevision} onOpenTask={id => void open(id)} />
 
     {view === 'Seguimientos' ? null : view === 'Semana' ? <>
       <div className="agenda-week-toolbar"><button onClick={() => setWeek((date) => addDays(date, -7))}>Semana anterior</button><strong>{dateLabel(days[0]!)} – {dateLabel(days[6]!)}</strong><button onClick={() => setWeek((date) => addDays(date, 7))}>Semana siguiente</button><button onClick={() => setWeek(weekStart(today()))}>Volver a hoy</button></div>
-      <section className="agenda-week" aria-label="Tareas de la semana">{grouped.map(({ date, timed, untimed }) => <article className="agenda-week-day" key={date}><h2>{dateLabel(date)}</h2>{timed.map((task) => <button className="agenda-task" key={task.id} onClick={() => void open(task.id)}><span><strong>{task.titulo}</strong><small>{task.hora_inicio} · {task.tipo} · {task.responsable_nombre}</small></span><em>{task.estado}</em></button>)}{untimed.length > 0 && <div className="agenda-untimed"><h3>Sin hora</h3>{untimed.map((task) => <button className="agenda-task" key={task.id} onClick={() => void open(task.id)}><span><strong>{task.titulo}</strong><small>{task.tipo} · {task.responsable_nombre}</small></span><em>{task.estado}</em></button>)}</div>}{timed.length + untimed.length === 0 && <p className="agenda-empty">Sin tareas</p>}</article>)}</section>
-    </> : <section className="agenda-list agenda-panel">{loading && <div className="agenda-empty">Cargando…</div>}{visible.map((task) => <button className="agenda-task" key={task.id} onClick={() => void open(task.id)}><span><strong>{task.titulo}</strong><small>{task.tipo} · {task.responsable_nombre}</small></span><em>{task.estado}</em></button>)}</section>}
+      <section className="agenda-week" aria-label="Tareas de la semana">{grouped.map(({ date, timed, untimed }) => <article className="agenda-week-day" key={date}><h2>{dateLabel(date)}</h2>{timed.map((task) => renderTaskRow(task, () => void open(task.id)))}{untimed.length > 0 && <div className="agenda-untimed"><h3>Sin hora</h3>{untimed.map((task) => renderTaskRow(task, () => void open(task.id)))}</div>}{timed.length + untimed.length === 0 && <p className="agenda-empty">Sin tareas</p>}</article>)}</section>
+    </> : <section className="agenda-list agenda-panel" aria-label="Tareas" aria-busy={loading}>{loading && <div className="agenda-empty">Cargando…</div>}{!loading && !error && visible.length === 0 && <p className="agenda-empty">No hay tareas para esta vista.</p>}{visible.map((task) => renderTaskRow(task, () => void open(task.id)))}</section>}
+    </div>
 
     {closeOpen && <form className="agenda-close-panel" onSubmit={saveClose}><h2>Cierre diario · {today()}</h2>{closeError && <div className="agenda-error" role="alert">{closeError}{!closeLoaded && <button type="button" disabled={closeLoading} onClick={() => setCloseAttempt(value => value + 1)}>Reintentar carga</button>}</div>}{closeLoading ? <p>Recuperando cierre guardado…</p> : <>
       <label>Resumen del día<textarea value={closeForm.resumen_dia} onChange={(event) => setCloseForm((form) => ({ ...form, resumen_dia: event.target.value }))}/></label>
