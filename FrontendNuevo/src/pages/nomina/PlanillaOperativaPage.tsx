@@ -48,6 +48,8 @@ import type { NominaAsistenciaBulkChange } from "../../services/nominaApi";
 import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from "./nominaPeriods";
 import { getColombianCalendarDay } from "./colombiaHolidays";
 import CoberturaFlowNav from "./CoberturaFlowNav";
+import CambioOperativoFields from './CambioOperativoFields';
+import { tipoCambioOperativo } from './cambioOperativo.domain';
 import {
   buildTramos,
   dateKey,
@@ -59,6 +61,11 @@ import {
   novedadCode,
   novedadesOnDate,
   dedupeNominaNovedades,
+  countActivePlanillaFilters,
+  emptyPlanillaFilters,
+  matchesPlanillaFilters,
+  normalizePlanillaSearch,
+  persistedPlanillaFiltersMatchPeriod,
   upsertNominaNovedad,
   novedadState,
   type PlanillaAsistencia,
@@ -86,7 +93,7 @@ const DAY_WIDTH = 22;
 const PLANILLA_GRID_TEMPLATE = (dayCount: number) =>
   `${REVIEW_WIDTH}px ${DOCUMENT_WIDTH}px minmax(${NAME_WIDTH}px,1.35fr) repeat(${dayCount},minmax(${DAY_WIDTH}px,1fr))`;
 // Los 31 dias se muestran juntos. Compatibilidad de auditoria: [1,7] [8,14] [15,21] [22,28] [29,31]. Teclado: ArrowDown ArrowUp ArrowRight ArrowLeft Enter Escape.
-const REVIEW_STATES = ["TODOS", "PENDIENTES", "REVISADOS", "CERRADOS"] as const;
+const REVIEW_STATES = ["TODOS", "PENDIENTES", "REVISADOS", "CERRADOS", "REQUIERE_REVISION"] as const;
 // Compatibilidad con auditorias previas: period?.estado==="ABIERTO"&&canCreate.
 const SORT_MODES = [
   "NOMBRE_ASC",
@@ -111,6 +118,7 @@ type Attendance = PlanillaAsistencia;
 type SelectedCell = { employee: NominaEmpleadoApi; date: string; context: PlanillaContexto };
 type RangeSelection = { employeeId: string; start: string; end: string | null } | null;
 type PersistedFilters = {
+  periodId?: string;
   eventFilter: EventFilter;
   gestor: string;
   modalidad: string;
@@ -135,14 +143,7 @@ function normalizeLabel(value: string | null | undefined) {
   return trimmed ? trimmed : null;
 }
 
-function normalizeSearchValue(...values: Array<string | null | undefined>) {
-  return values
-    .filter((value): value is string => Boolean(value))
-    .join(" ")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
+const normalizeSearchValue = normalizePlanillaSearch;
 
 function dateLabel(value: string) {
   if (!value) {
@@ -308,17 +309,18 @@ function formatPlanillaErrorMessage(
   return fallback;
 }
 
-function readPersistedFilters(empresaId: number | null): PersistedFilters {
+function readPersistedFilters(empresaId: number | null, periodId: string): PersistedFilters {
+  const defaults: PersistedFilters = {
+    eventFilter: "TODOS",
+    gestor: GESTOR_ALL,
+    modalidad: "",
+    municipio: "",
+    query: "",
+    reviewFilter: "TODOS",
+    sortMode: "NOMBRE_ASC",
+  };
   if (typeof window === "undefined") {
-    return {
-      eventFilter: "TODOS",
-      gestor: GESTOR_ALL,
-      modalidad: "",
-      municipio: "",
-      query: "",
-      reviewFilter: "TODOS",
-      sortMode: "NOMBRE_ASC",
-    };
+    return defaults;
   }
 
   try {
@@ -328,6 +330,7 @@ function readPersistedFilters(empresaId: number | null): PersistedFilters {
     }
 
     const parsed = JSON.parse(raw) as Partial<PersistedFilters>;
+    if (!persistedPlanillaFiltersMatchPeriod(parsed.periodId, periodId)) return defaults;
     return {
       eventFilter: parsed.eventFilter ?? "TODOS",
       gestor: parsed.gestor ?? GESTOR_ALL,
@@ -338,15 +341,7 @@ function readPersistedFilters(empresaId: number | null): PersistedFilters {
       sortMode: parsed.sortMode ?? "NOMBRE_ASC",
     };
   } catch {
-    return {
-      eventFilter: "TODOS",
-      gestor: GESTOR_ALL,
-      modalidad: "",
-      municipio: "",
-      query: "",
-      reviewFilter: "TODOS",
-      sortMode: "NOMBRE_ASC",
-    };
+    return defaults;
   }
 }
 
@@ -488,7 +483,8 @@ export default function PlanillaOperativaPage() {
   const { user } = useAuth();
   const { empresaId } = useCompanyContext();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialFilters = useRef(readPersistedFilters(empresaId));
+  const previousFilterScopeRef = useRef("");
+  const skipFilterWriteRef = useRef(false);
 
   const [periods, setPeriods] = useState<NominaPeriodoApi[]>([]);
   const [periodId, setPeriodId] = useState("");
@@ -518,13 +514,13 @@ export default function PlanillaOperativaPage() {
   const [availabilityError, setAvailabilityError] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [query, setQuery] = useState(initialFilters.current.query);
-  const [municipio, setMunicipio] = useState(initialFilters.current.municipio);
-  const [gestorFilter, setGestorFilter] = useState(initialFilters.current.gestor);
-  const [modalidad, setModalidad] = useState(initialFilters.current.modalidad);
-  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>(initialFilters.current.reviewFilter);
-  const [eventFilter, setEventFilter] = useState<EventFilter>(initialFilters.current.eventFilter);
-  const [sortMode, setSortMode] = useState<SortMode>(initialFilters.current.sortMode);
+  const [query, setQuery] = useState("");
+  const [municipio, setMunicipio] = useState("");
+  const [gestorFilter, setGestorFilter] = useState(GESTOR_ALL);
+  const [modalidad, setModalidad] = useState("");
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("TODOS");
+  const [eventFilter, setEventFilter] = useState<EventFilter>("TODOS");
+  const [sortMode, setSortMode] = useState<SortMode>("NOMBRE_ASC");
   const [scrollTop, setScrollTop] = useState(0);
 
   const [selected, setSelected] = useState<SelectedCell | null>(null);
@@ -532,6 +528,8 @@ export default function PlanillaOperativaPage() {
   const [noveltyCell, setNoveltyCell] = useState<SelectedCell | null>(null);
   const [editingNovelty, setEditingNovelty] = useState<NominaNovedadApi | null>(null);
   const [selectedType, setSelectedType] = useState<NominaTipoNovedad | null>(null);
+  const [editingChange, setEditingChange] = useState<PlanillaCambio | null>(null);
+  const changeSavingRef = useRef(false);
   const [coverageType, setCoverageType] = useState<CoverageType>("SIN_REEMPLAZO");
   const [coverSearch, setCoverSearch] = useState("");
   const [coverEmployee, setCoverEmployee] = useState<NominaEmpleadoApi | null>(null);
@@ -547,10 +545,6 @@ export default function PlanillaOperativaPage() {
   const [saving, setSaving] = useState(false);
   const noveltySaveInFlightRef = useRef(false);
   const [reviewSaving, setReviewSaving] = useState<Set<string>>(new Set());
-  const planillaFiltersStorageKey = useMemo(
-    () => `nomina.planilla.filters:${empresaId ?? "global"}`,
-    [empresaId],
-  );
   const nominaPeriodStorageKey = useMemo(
     () => `nomina.periodo_id:${empresaId ?? "global"}`,
     [empresaId],
@@ -623,7 +617,42 @@ export default function PlanillaOperativaPage() {
   useEffect(() => () => { void attendanceFlushRef.current(); }, [periodId]);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" || !periodId) {
+      return;
+    }
+
+    const scope = `${empresaId ?? "global"}:${periodId}`;
+    const firstScope = previousFilterScopeRef.current === "";
+    const changedPeriod = previousFilterScopeRef.current !== "" && previousFilterScopeRef.current !== scope;
+    previousFilterScopeRef.current = scope;
+    skipFilterWriteRef.current = true;
+    if (changedPeriod) {
+      const defaults = emptyPlanillaFilters();
+      setQuery(defaults.query);
+      setMunicipio(defaults.municipio);
+      setGestorFilter(defaults.gestor);
+      setModalidad(defaults.modalidad);
+      setReviewFilter(defaults.review);
+      setEventFilter(defaults.events);
+      setSortMode("NOMBRE_ASC");
+      return;
+    }
+    if (firstScope) {
+      const saved = readPersistedFilters(empresaId, periodId);
+      setQuery(saved.query);
+      setMunicipio(saved.municipio);
+      setGestorFilter(saved.gestor);
+      setModalidad(saved.modalidad);
+      setReviewFilter(saved.reviewFilter);
+      setEventFilter(saved.eventFilter);
+      setSortMode(saved.sortMode);
+    }
+  }, [empresaId, periodId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !periodId) return;
+    if (skipFilterWriteRef.current) {
+      skipFilterWriteRef.current = false;
       return;
     }
 
@@ -632,6 +661,7 @@ export default function PlanillaOperativaPage() {
       PLANILLA_FILTERS_KEY,
       empresaId,
       JSON.stringify({
+        periodId,
         eventFilter,
         gestor: gestorFilter,
         modalidad,
@@ -641,7 +671,7 @@ export default function PlanillaOperativaPage() {
         sortMode,
       }),
     );
-  }, [empresaId, eventFilter, gestorFilter, modalidad, municipio, query, reviewFilter, sortMode, planillaFiltersStorageKey]);
+  }, [empresaId, eventFilter, gestorFilter, modalidad, municipio, periodId, query, reviewFilter, sortMode]);
 
   useEffect(() => {
     if (!periodId || typeof window === "undefined") {
@@ -850,14 +880,6 @@ export default function PlanillaOperativaPage() {
   }), [periodId, periods, user?.permissions]);
 
   useEffect(() => {
-    const persistedFilters = readPersistedFilters(empresaId);
-    setQuery(persistedFilters.query);
-    setMunicipio(persistedFilters.municipio);
-    setGestorFilter(persistedFilters.gestor);
-    setModalidad(persistedFilters.modalidad);
-    setReviewFilter(persistedFilters.reviewFilter);
-    setEventFilter(persistedFilters.eventFilter);
-    setSortMode(persistedFilters.sortMode);
     setSelected(null);
     setRangeSelection(null);
     setNoveltyCell(null);
@@ -996,58 +1018,25 @@ export default function PlanillaOperativaPage() {
           visible.gestor,
         );
 
-        if (query && !searchValue.includes(normalizeSearchValue(query))) {
-          return false;
-        }
-
-        if (municipio && visible.municipio !== municipio) {
-          return false;
-        }
-
-        if (gestorFilter === GESTOR_NONE && getEmployeeGestorId(employee)) {
-          return false;
-        }
-
-        if (gestorFilter && gestorFilter !== GESTOR_NONE && getEmployeeGestorId(employee) !== gestorFilter) {
-          return false;
-        }
-
-        if (modalidad && visible.modalidad !== modalidad) {
-          return false;
-        }
-
-        if (reviewFilter === "PENDIENTES" && resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null) !== "PENDIENTE") {
-          return false;
-        }
-
-        if (reviewFilter === "REVISADOS" && resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null) !== "REVISADO") {
-          return false;
-        }
-
-        if (reviewFilter === "CERRADOS" && resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null) !== "CERRADO") {
-          return false;
-        }
-
-        if (eventFilter === "CON_NOVEDADES" && employeeNovelties.length === 0) {
-          return false;
-        }
-
-        if (eventFilter === "SIN_NOVEDADES" && employeeNovelties.length > 0) {
-          return false;
-        }
-
-        if (
-          eventFilter === "INCONSISTENCIAS" &&
-          !(movementByEmployee.get(employee.id) ?? []).some(
-            (item) => item.posible_duplicado || item.alertas_validacion.length > 0,
-          )
-        ) {
-          return false;
-        }
-
-        return true;
+        const reviewState = resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null);
+        const hasInconsistencies = (movementByEmployee.get(employee.id) ?? []).some(
+          (item) => item.posible_duplicado || item.alertas_validacion.length > 0,
+        );
+        return matchesPlanillaFilters(
+          {
+            searchText: searchValue,
+            municipio: visible.municipio,
+            gestorId: getEmployeeGestorId(employee),
+            modalidad: visible.modalidad,
+            reviewState,
+            needsReview: reviewByEmployee.get(employee.id)?.estado_revision === "REQUIERE_REVISION",
+            noveltyCount: employeeNovelties.length + (changesByLink.get(employee.vinculacion_id)?.filter(change => change.activo).length ?? 0),
+            hasInconsistencies,
+          },
+          { query, municipio, gestor: gestorFilter, modalidad, review: reviewFilter, events: eventFilter },
+        );
       }),
-    [employees, eventFilter, gestorFilter, modalidad, movementByEmployee, municipio, noveltyByEmployee, query, reviewByEmployee, reviewFilter],
+    [employees, eventFilter, gestorFilter, modalidad, movementByEmployee, municipio, noveltyByEmployee, changesByLink, query, reviewByEmployee, reviewFilter],
   );
 
   const ordered = useMemo(() => {
@@ -1173,6 +1162,7 @@ export default function PlanillaOperativaPage() {
   };
 
   const closeNoveltyModal = () => {
+    if (changeSavingRef.current) return;
     setNoveltyCell(null);
     setSelectedType(null);
     setCoverageType("SIN_REEMPLAZO");
@@ -1355,6 +1345,7 @@ export default function PlanillaOperativaPage() {
   };
 
   const openNovelty = (cell: SelectedCell, novelty: NominaNovedadApi | null = null) => {
+    setEditingChange(null);
     setSelected(cell);
     setNoveltyCell(cell);
     setEditingNovelty(novelty);
@@ -1615,6 +1606,10 @@ export default function PlanillaOperativaPage() {
     setSortMode("NOMBRE_ASC");
   };
 
+  const activeFilterCount = countActivePlanillaFilters({
+    query, municipio, gestor: gestorFilter, modalidad, review: reviewFilter, events: eventFilter,
+  });
+
   const nextPending = () => {
     const wanted =
       reviewFilter === "PENDIENTES"
@@ -1684,6 +1679,9 @@ export default function PlanillaOperativaPage() {
 
       <div className="op-summary">
         <strong>{employees.length} trabajadores</strong>
+        <span aria-live="polite">
+          {filtered.length} personas · {activeFilterCount} {activeFilterCount === 1 ? "filtro activo" : "filtros activos"}
+        </span>
         <span>
           REVISION {summary.reviewed}/{employees.length} |{" "}
           {employees.length ? Math.round((summary.reviewed * 100) / employees.length) : 0}%
@@ -1759,8 +1757,8 @@ export default function PlanillaOperativaPage() {
           Siguiente pendiente
         </button>
 
-        <button type="button" onClick={clearFilters}>
-          Limpiar filtros
+        <button type="button" onClick={clearFilters} disabled={activeFilterCount === 0}>
+          LIMPIAR FILTROS
         </button>
       </div>
 
@@ -2025,6 +2023,27 @@ export default function PlanillaOperativaPage() {
             return <div className="op-context-detail"><strong>Novedad</strong><span>Codigo: {novedadCode(novelty)}</span><span>Nombre: {novelty.tipo_novedad?.nombre ?? "Novedad"}</span><span>Inicio: {novelty.fecha_inicio ?? selected.date}</span><span>Fin: {novelty.fecha_fin ?? selected.date}</span><span>Observacion: {novelty.observacion ?? "Sin observacion"}</span><span>Soporte: {novelty.documento_persona_id ?? "Sin soporte"}</span><span>Estado: {novelty.activo ? "ACTIVA" : "ANULADA"}</span>{canUpdate ? <><button type="button" onClick={() => { openNovelty(selected, novelty); }}>Editar novedad</button><button type="button" onClick={() => { if (window.confirm(`Anular ${novedadCode(novelty)}?`)) void deactivateNominaNovedad(novelty.id).then(() => { setNovelties(items => items.filter(item => item.id !== novelty.id)); invalidateReviewLocally(selected.employee, "NOVEDAD_ANULADA"); }).catch(value => setError(value instanceof Error ? value.message : "No fue posible anular la novedad")); }}>Anular novedad</button></> : null}</div>;
           })() : null}
 
+          {(changesByLink.get(selected.employee.vinculacion_id) ?? []).filter(change => change.activo && change.fecha_inicio_efectiva === selected.date).map(change => (
+            <div className="op-context-detail" key={change.id}>
+              <strong>Novedad: {change.tipo.replaceAll('_', ' ')}</strong>
+              <span>Fecha efectiva: {change.fecha_inicio_efectiva}</span>
+              <span>{[change.contexto_nuevo.institucion, change.contexto_nuevo.sede, change.contexto_nuevo.modalidad].filter(Boolean).join(' / ')}</span>
+              <span>{change.motivo}</span>
+              {period?.estado === 'ABIERTO' && user?.permissions.includes('nomina.movimientos.update') && <button type="button" onClick={() => {
+                const type = types.find(item => tipoCambioOperativo(item) === change.tipo);
+                if (!type) { setError('El tipo de novedad ya no está disponible en el catálogo.'); return; }
+                openNovelty(selected); setSelectedType(type); setEditingChange(change);
+              }}>Editar novedad de cambio</button>}
+              {period?.estado === 'ABIERTO' && user?.permissions.includes('nomina.movimientos.deactivate') && <button type="button" onClick={() => {
+                const motivo = window.prompt('Motivo de anulación del cambio');
+                if (!motivo || motivo.trim().length < 3) return;
+                void apiClient.patch(`/nomina/cambios-operativos/${change.id}/deactivate`, { motivo }).then(() => {
+                  setChanges(current => current.filter(item => item.id !== change.id));
+                  setSelected(null); invalidateReviewLocally(selected.employee, 'CAMBIO_OPERATIVO_ANULADO');
+                }).catch(err => setError(formatPlanillaErrorMessage(err, 'No fue posible anular el cambio')));
+              }}>Anular novedad de cambio</button>}
+            </div>
+          ))}
           {selectedAttendancePending ? (
             <div className="op-inline-note compact pending"><span>{`Guardando asistencia del ${shortDateLabel(selected.date) ?? selected.date}...`}</span></div>
           ) : null}
@@ -2090,6 +2109,28 @@ export default function PlanillaOperativaPage() {
                   </button>
                 ))}
               </div>
+            ) : tipoCambioOperativo(selectedType) && !editingNovelty ? (
+              <>
+                <h3>{selectedType.nombre}</h3>
+                <CambioOperativoFields
+                  key={`${noveltyCell.employee.id}-${selectedType.id}-${editingChange?.id ?? 'new'}`}
+                  periodoId={periodId} empleadoId={noveltyCell.employee.id}
+                  vinculacionId={noveltyCell.employee.vinculacion_id} fecha={noveltyCell.date}
+                  tipo={tipoCambioOperativo(selectedType)!} existing={editingChange}
+                  canSave={period?.estado === 'ABIERTO' && user?.permissions.includes(editingChange ? 'nomina.movimientos.update' : 'nomina.movimientos.create') === true}
+                  onCancel={closeNoveltyModal}
+                  onSavingChange={value => { changeSavingRef.current = value; }}
+                  onSaved={change => {
+                    setChanges(current => [...current.filter(item => item.id !== change.id), change]);
+                    invalidateReviewLocally(noveltyCell.employee, 'CAMBIO_OPERATIVO');
+                    setSelected(current => current ? { ...current, context: buildTramos(current.employee, start, end,
+                      [...(changesByLink.get(current.employee.vinculacion_id) ?? []).filter(item => item.id !== change.id), change])
+                      .find(tramo => tramo.inicio <= current.date && tramo.fin >= current.date)?.contexto ?? current.context } : current);
+                    setSuccessMessage('Novedad de cambio guardada con su fecha efectiva.');
+                    closeNoveltyModal();
+                  }}
+                />
+              </>
             ) : (
               <>
                 <h3>

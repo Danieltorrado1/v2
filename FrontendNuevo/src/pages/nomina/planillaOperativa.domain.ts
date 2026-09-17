@@ -2,6 +2,11 @@ import type { NominaEmpleadoApi, NominaMovimientoApi, NominaNovedadApi } from ".
 import { addDaysToDateOnly } from "./dateOnly";
 
 export interface PlanillaContexto {
+  [key: string]: unknown;
+  municipio_id?: string | null;
+  institucion_id?: string | null;
+  sede_id?: string | null;
+  modalidad_id?: string | null;
   municipio?: string | null;
   institucion?: string | null;
   sede?: string | null;
@@ -16,6 +21,7 @@ export interface PlanillaCambio {
   contexto_anterior: PlanillaContexto;
   tipo: string;
   activo: boolean;
+  motivo?: string;
 }
 
 export interface PlanillaTramo {
@@ -61,7 +67,9 @@ export function buildTramos(
 
   const result: PlanillaTramo[] = [];
   let cursor = start;
-  let context = employeeBaseContext(employee);
+  // Use the saved base of the first change, not a current assignment that may
+  // already describe the destination. Days before the effective date stay intact.
+  let context = relevant[0]?.contexto_anterior ?? employeeBaseContext(employee);
   let source: string | null = null;
 
   for (const cambio of relevant) {
