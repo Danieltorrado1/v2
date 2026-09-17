@@ -9,6 +9,7 @@ import {
   createPersonaSchema,
   listPersonasQuerySchema,
   personaDocumentoParamSchema,
+  personaDocumentoLookupQuerySchema,
   personaIdParamSchema,
   updatePersonaSchema
 } from './personas.schemas';
@@ -17,6 +18,7 @@ import {
   createPersonaIdentificacion,
   getPersonaById,
   getPersonaByNumeroDocumento,
+  getPersonaForVinculacion,
   listPersonaIdentificaciones,
   listPersonas,
   updatePersona
@@ -191,7 +193,13 @@ export const getPersona = asyncHandler(async (req: Request, res: Response) => {
 
 export const getPersonaByDocumento = asyncHandler(async (req: Request, res: Response) => {
   const { numero_documento } = personaDocumentoParamSchema.parse(req.params);
-  const persona = await getPersonaByNumeroDocumento(numero_documento, req.tenant);
+  const lookup = personaDocumentoLookupQuerySchema.parse(req.query);
+  if (lookup.empresa_id !== undefined && !req.user?.permissions.includes('vinculaciones.create')) {
+    throw new AppError('No tienes permisos para crear personal en esta empresa.', 403, 'VINCULATION_CREATE_FORBIDDEN');
+  }
+  const persona = lookup.empresa_id !== undefined && lookup.contrato_id !== undefined
+    ? await getPersonaForVinculacion(numero_documento, lookup.empresa_id, lookup.contrato_id, req.tenant)
+    : await getPersonaByNumeroDocumento(numero_documento, req.tenant);
 
   if (!persona) {
     throw new AppError('Persona not found', 404, 'PERSONA_NOT_FOUND');

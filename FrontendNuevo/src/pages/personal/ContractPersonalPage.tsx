@@ -636,7 +636,10 @@ export default function ContractPersonalPage() {
     setRequiresCreation(false);
 
     try {
-      const persona = await getPersonaByDocumento(personaForm.numero_documento.trim());
+      const persona = await getPersonaByDocumento(
+        personaForm.numero_documento.trim(),
+        empresaId && contratoId ? { empresaId, contratoId } : undefined
+      );
       setFoundPersona(persona);
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 404) {
@@ -646,7 +649,9 @@ export default function ContractPersonalPage() {
           numero_documento: current.numero_documento.trim(),
         }));
       } else {
-        setLookupError(getErrorMessage(error, "No fue posible buscar la persona."));
+        setLookupError(error instanceof ApiClientError && error.status === 403
+          ? "No tienes permisos para crear personal en esta empresa."
+          : getErrorMessage(error, "No fue posible buscar la persona."));
       }
     } finally {
       setLookupLoading(false);

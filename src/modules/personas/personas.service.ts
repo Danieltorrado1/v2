@@ -1166,6 +1166,41 @@ export const getPersonaByNumeroDocumento = async (
   return mapPersona(row);
 };
 
+/** Lookup used while creating a vinculation. It authorizes the destination
+ * contract and returns identity fields only; prior vinculations never grant
+ * access to the person's private tenant data. */
+export const getPersonaForVinculacion = async (
+  numeroDocumento: string,
+  empresaId: number,
+  contratoId: number,
+  tenant?: TenantAccessContext
+): Promise<Pick<Persona, 'id' | 'tipo_documento_id' | 'numero_documento' | 'primer_nombre' | 'segundo_nombre' | 'primer_apellido' | 'segundo_apellido'> | null> => {
+  const destination = await dbQuery<{ empresa_id: string | number }>(
+    'SELECT empresa_id FROM contratos WHERE id = $1 LIMIT 1',
+    [contratoId]
+  );
+  const contract = destination.rows[0];
+  if (!contract || Number(contract.empresa_id) !== empresaId) {
+    throw new AppError('El contrato no pertenece a la empresa seleccionada.', 403, 'CONTRACT_COMPANY_MISMATCH');
+  }
+  if (tenant && !tenant.isGlobalAdmin) {
+    const contractAllowed = tenant.contratoIds.length > 0
+      ? tenant.contratoIds.includes(contratoId)
+      : tenant.empresaIds.includes(empresaId);
+    if (!contractAllowed) {
+      throw new AppError('No tienes permisos para crear personal en esta empresa.', 403, 'TENANT_FORBIDDEN');
+    }
+  }
+
+  const result = await dbQuery<Pick<Persona, 'id' | 'tipo_documento_id' | 'numero_documento' | 'primer_nombre' | 'segundo_nombre' | 'primer_apellido' | 'segundo_apellido'>>(
+    `SELECT id, tipo_documento_id, numero_documento, primer_nombre, segundo_nombre,
+            primer_apellido, segundo_apellido
+       FROM personas WHERE numero_documento = $1 LIMIT 1`,
+    [numeroDocumento.trim()]
+  );
+  return result.rows[0] ?? null;
+};
+
 export const listPersonaIdentificaciones = async (
   personaId: string,
   tenant?: TenantAccessContext

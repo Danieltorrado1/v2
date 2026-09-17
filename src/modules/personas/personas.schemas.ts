@@ -102,6 +102,13 @@ export const personaDocumentoParamSchema = z.object({
   numero_documento: requiredTrimmedString
 });
 
+export const personaDocumentoLookupQuerySchema = z.object({
+  empresa_id: z.coerce.number().int().positive().optional(),
+  contrato_id: z.coerce.number().int().positive().optional()
+}).refine((value) => (value.empresa_id === undefined) === (value.contrato_id === undefined), {
+  message: 'empresa_id y contrato_id deben enviarse juntos'
+});
+
 export const listPersonasQuerySchema = z.object({
   search: nullableTrimmedString.optional(),
   numero_documento: nullableTrimmedString.optional(),
@@ -177,6 +184,7 @@ export const createPersonaIdentificacionSchema = z.object({
 export type PersonaIdentificationInput = z.infer<typeof personaIdentificationFieldsSchema>;
 export type PersonaIdParams = z.infer<typeof personaIdParamSchema>;
 export type PersonaDocumentoParams = z.infer<typeof personaDocumentoParamSchema>;
+export type PersonaDocumentoLookupQuery = z.infer<typeof personaDocumentoLookupQuerySchema>;
 export type ListPersonasQuery = z.infer<typeof listPersonasQuerySchema>;
 export type CreatePersonaInput = z.infer<typeof createPersonaSchema>;
 export type UpdatePersonaInput = z.infer<typeof updatePersonaSchema>;

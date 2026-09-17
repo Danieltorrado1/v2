@@ -347,9 +347,16 @@ export async function getPersonaById(id: number): Promise<PersonaApi> {
   return res.data;
 }
 
-export async function getPersonaByDocumento(numeroDocumento: string): Promise<PersonaApi> {
+export async function getPersonaByDocumento(
+  numeroDocumento: string,
+  destination?: { empresaId: number; contratoId: number }
+): Promise<PersonaApi> {
+  const params = destination
+    ? { empresa_id: destination.empresaId, contrato_id: destination.contratoId }
+    : undefined;
   const res = await apiClient.get<ApiResponse<PersonaApi>>(
-    `/personas/documento/${encodeURIComponent(numeroDocumento)}`
+    `/personas/documento/${encodeURIComponent(numeroDocumento)}`,
+    { params }
   );
   return res.data;
 }
