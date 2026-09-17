@@ -6,6 +6,23 @@ const flush = async () => { await Promise.resolve(); await Promise.resolve(); aw
 const page = (number = 1, total = 60): FollowupPage => ({ items: [], page: number, limit: 25, total, hoy: '2026-09-16' });
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (reason: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 
+test('snapshot estable al montar oculto y activar; renders no duplican cargas', async () => {
+  let calls = 0;
+  const model = new FollowupsListState(async () => { calls++; return page(); });
+  const hidden = model.getSnapshot();
+  model.setActive(false);
+  for (let render = 0; render < 20; render++) assert.equal(model.getSnapshot(), hidden);
+  assert.equal(calls, 0);
+  model.setActive(true); await flush();
+  const loaded = model.getSnapshot();
+  for (let render = 0; render < 20; render++) {
+    model.setActive(true);
+    assert.equal(model.getSnapshot(), loaded);
+  }
+  assert.equal(calls, 1);
+  model.setActive(false);
+});
+
 test('carga paginada, limites y bloqueo inmediato de clics repetidos', async () => {
   const calls: Record<string, string | number>[] = [];
   const pending = deferred<FollowupPage>();

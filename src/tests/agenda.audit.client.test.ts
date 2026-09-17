@@ -17,16 +17,23 @@ function load(file: string, dependencies: Record<string, unknown>, globals: Reco
 const flush = async () => { for (let i=0;i<20;i++) await Promise.resolve(); };
 const nodes = (node: any): any[] => Array.isArray(node) ? node.flatMap(nodes) : node && typeof node === 'object' ? [node,...nodes(node.props?.children)] : [];
 function harness(component: (hooks: any) => any) {
-  const slots: any[] = []; let cursor=0; let effects: (() => void)[]=[]; let tree: any;
+  const slots: any[] = []; let cursor=0; let effects: (() => void)[]=[]; let tree: any; let dirty=false;
   const hooks = {
-    useState(initial: any) { const i=cursor++; if (!(i in slots)) slots[i]=typeof initial==='function'?initial():initial; return [slots[i],(value: any)=>{slots[i]=typeof value==='function'?value(slots[i]):value;}]; },
+    useState(initial: any) { const i=cursor++; if (!(i in slots)) slots[i]=typeof initial==='function'?initial():initial; return [slots[i],(value: any)=>{const next=typeof value==='function'?value(slots[i]):value; if (!Object.is(next,slots[i])) { slots[i]=next; dirty=true; }}]; },
     useRef(initial: any) { const i=cursor++; return slots[i]??={current:initial}; },
-    useMemo(fn: () => unknown) { cursor++; return fn(); },
+    useMemo(fn: () => unknown,deps: any[]) { const i=cursor++; if (!slots[i]||deps.some((v,j)=>!Object.is(v,slots[i].deps[j]))) slots[i]={deps,value:fn()}; return slots[i].value; },
     useEffect(fn: () => any,deps: any[]) { const i=cursor++; const previous=slots[i]; if (!previous||deps.some((v,j)=>v!==previous.deps[j])) { slots[i]={deps,cleanup:previous?.cleanup}; effects.push(()=>{previous?.cleanup?.();slots[i].cleanup=fn();}); } },
   };
   const Component=component(hooks);
   return {
     render(props: any={}) { cursor=0; effects=[]; tree=Component(props); effects.forEach(fn=>fn()); return tree; },
+    async settle(props: any={}) {
+      for (let renders=0; renders<20; renders++) {
+        dirty=false; this.render(props); await flush();
+        if (!dirty) return;
+      }
+      assert.fail('Agenda did not settle: repeated state updates after mounting');
+    },
     all() { return nodes(tree); },
     click(text: string) { const button=nodes(tree).find(n=>n.type==='button'&&n.props.children===text); assert.ok(button,text); button.props.onClick(); },
   };
@@ -52,7 +59,8 @@ test('Semana carga paginas del rango, Mi dia consulta hoy y respuestas viejas no
     const first=module.default();company=2;const second=module.default();assert.notEqual(first.key,second.key);
     return module.AgendaCompanyPage;
   });
-  h.render({empresaId:1});await flush();h.render({empresaId:1});
+  await h.settle({empresaId:1});
+  assert.equal(calls.length,2,'Mount loads each page only once and settles without an update loop');
   assert.equal(calls[0].desde,calls[0].hasta);assert.equal(calls[1].page,2);
   assert.equal(h.all().filter(n=>n.props?.className==='agenda-task').length,101);
   assert.ok(!h.all().some(n=>n.type==='button'&&n.props.children==='Cierre diario'));

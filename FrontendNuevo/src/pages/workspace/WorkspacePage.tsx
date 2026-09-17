@@ -17,6 +17,7 @@ import { NominaProcesosTab } from '../admin/ConfiguracionGeneral/tabs/NominaProc
 import PortalPage from '../portal/PortalPage';
 import { visiblePayrollLinks } from '../../architecture/payrollNavigation';
 import { RoleModuleVisibility } from './RoleModuleVisibility';
+import AgendaOperativaPage from '../agenda/AgendaOperativaPage';
 
 export function TenantHome({ moduleCode }: { moduleCode?: string } = {}) {
   const { user } = useAuth();
@@ -33,6 +34,9 @@ export function WorkspacePage({ entry }: { entry: ModuleEntry }) {
   const location = useLocation();
   const { capabilities } = useCompanyContext();
   const visible = visibleTenantModules(user, capabilities, empresaId);
+  // Agenda is a standalone catalog entry, so its generated route reaches here
+  // before the explicit route. It has no child entry to dispatch or redirect to.
+  if (entry.code === 'AGENDA_OPERATIVA' && visible.some(module => module.code === entry.code)) return <AgendaOperativaPage />;
   const entryVisible = visible.some((module) => module.children.some((child) => child.code === entry.code));
   if (!entryVisible && entry.scope === 'TENANT') return <Navigate to={visible[0]?.children[0]?.route ?? '/empresa'} replace />;
   if (entry.target) {
