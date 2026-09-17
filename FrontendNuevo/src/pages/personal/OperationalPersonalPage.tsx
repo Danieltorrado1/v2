@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { TopbarContractSlot } from "../../layouts/TopbarContractSlot";
+import { visibleTenantModules } from "../../architecture/moduleAccess";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
-  ArrowRight,
   Download,
-  FileText,
+  Eye,
+  SlidersHorizontal,
   Search,
   Upload,
   UserPlus,
@@ -12,6 +14,7 @@ import {
 
 import { useAuth } from "../../context/AuthContext";
 import { ApiClientError } from "../../services/apiClient";
+import { getAllCatalogPages } from "../../services/catalogPagination";
 import { configuracionApi } from "../../services/configuracionApi";
 import {
   closeGestorMunicipioAssignment,
@@ -39,6 +42,7 @@ import { EmpiriaIcon } from "../../components/EmpiriaIcon";
 import PersonalMasterDrawer from "./PersonalMasterDrawer";
 import PersonalExportModal from "./PersonalExportModal";
 import OperationalImportModal from "./OperationalImportModal";
+import PersonalRepositoryPanel from "./PersonalRepositoryPanel";
 import "./OperationalPersonalPage.css";
 
 const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
@@ -56,6 +60,7 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 type PersonalRow = {
   vinculacion_id: number;
+  persona_id: number;
   numero_documento: string;
   nombre_completo: string;
   gestor_actual: {
@@ -65,6 +70,7 @@ type PersonalRow = {
   cargo_nombre: string | null;
   estado_vinculacion: VinculacionEstado;
   fecha_ingreso: string;
+  fecha_fin: string | null;
   asignacion_actual: {
     nombre: string | null;
     institucion: string | null;
@@ -88,7 +94,7 @@ function hasAnyPermission(current: string[], expected: string[]): boolean {
 
 function formatDate(value: string | null | undefined): string {
   if (!value) {
-    return "Sin fecha";
+    return "—";
   }
 
   try {
@@ -152,7 +158,9 @@ export default function OperationalPersonalPage() {
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([]);
   const [tiposIdentificacion, setTiposIdentificacion] = useState<CatalogoItem[]>([]);
 
-  const { empresaId, empresaActiva } = useCompanyContext();
+  const { empresaId, empresaActiva, capabilities } = useCompanyContext();
+  const canReadRepository = visibleTenantModules(user, capabilities, empresaId).some(module => module.children.some(child => child.code === "PERSONAL_REPOSITORIO"));
+  const [contextError, setContextError] = useState("");
   const [contratoId, setContratoId] = useState<number | null>(null);
   const [cargoId, setCargoId] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<"" | VinculacionEstado>("");
@@ -175,6 +183,7 @@ export default function OperationalPersonalPage() {
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [personalResumen, setPersonalResumen] = useState<PersonalResumen | null>(null);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState<"base" | "repository">("base");
   const [showAssignGestorModal, setShowAssignGestorModal] = useState(false);
   const [assignmentGestorId, setAssignmentGestorId] = useState("");
   const [assignmentMunicipioId, setAssignmentMunicipioId] = useState("");
@@ -227,6 +236,7 @@ export default function OperationalPersonalPage() {
     : null;
 
   useEffect(() => {
+    setContextError("");
     setContratos([]);
     setContratoId(null);
     setCargos([]);
@@ -272,8 +282,9 @@ export default function OperationalPersonalPage() {
           }
           return response.items[0]?.id ?? null;
         });
-      } catch {
+      } catch (error) {
         if (!cancelled) {
+          setContextError(getErrorMessage(error, "No fue posible cargar los contratos."));
           setContratos([]);
           setContratoId(null);
         }
@@ -316,8 +327,9 @@ export default function OperationalPersonalPage() {
         setCargoId((current) =>
           current && nextCargos.some((item) => String(item.id) === current) ? current : ""
         );
-      } catch {
+      } catch (error) {
         if (!cancelled) {
+          setContextError(getErrorMessage(error, "No fue posible cargar los cargos."));
           setCargos([]);
           setCargoId("");
         }
@@ -335,22 +347,23 @@ export default function OperationalPersonalPage() {
     if (!canReadContext) return;
     let cancelled = false;
     void Promise.all([
-      configuracionApi.listarTiposDocumento({ page: 1, limit: 200, activo: true }),
-      configuracionApi.listarTiposDocumento({
-        page: 1,
-        limit: 200,
+      getAllCatalogPages((page, limit) => configuracionApi.listarTiposDocumento({ page, limit, activo: true })),
+      getAllCatalogPages((page, limit) => configuracionApi.listarTiposDocumento({
+        page,
+        limit,
         activo: true,
         es_identificacion_personal: true,
-      }),
+      })),
     ])
       .then(([documentos, identificaciones]) => {
         if (!cancelled) {
-          setTiposDocumento(documentos.items);
-          setTiposIdentificacion(identificaciones.items);
+          setTiposDocumento(documentos);
+          setTiposIdentificacion(identificaciones);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
+          setContextError(getErrorMessage(error, "No fue posible cargar los tipos de documento."));
           setTiposDocumento([]);
           setTiposIdentificacion([]);
         }
@@ -466,12 +479,14 @@ export default function OperationalPersonalPage() {
         const nextData: PersonalTableData = {
           items: response.items.map((item) => ({
             vinculacion_id: item.vinculacion_id,
+            persona_id: item.persona_id,
             numero_documento: item.numero_documento,
             nombre_completo: item.nombre_completo,
             gestor_actual: item.gestor_actual,
             cargo_nombre: item.cargo.nombre_cargo,
             estado_vinculacion: item.estado_vinculacion,
             fecha_ingreso: item.fecha_ingreso,
+            fecha_fin: item.fecha_fin,
             asignacion_actual: {
               ...item.asignacion_actual,
               municipio_id: item.asignacion_actual.municipio_id,
@@ -915,17 +930,8 @@ export default function OperationalPersonalPage() {
 
   return (
     <div className="op-personal-page">
-      <header className="op-page-header">
-        <div>
-          <div className="op-eyebrow">
-            <EmpiriaIcon name="personal" size={18} variant="duotone" /> Personal
-          </div>
-          <div className="op-title-row">
-            <h1>Personal</h1>
-            <label className="op-contract-compact">
-              <FileText size={14} />
-              <span>Contrato</span>
-              <select
+      <TopbarContractSlot>
+              <select aria-label="Contrato activo" title={contratoSeleccionado?.numero_contrato ?? "Contrato activo"}
                 value={contratoId ?? ""}
                 onChange={(event) => {
                   setContratoId(event.target.value ? Number(event.target.value) : null);
@@ -942,10 +948,12 @@ export default function OperationalPersonalPage() {
                   </option>
                 ))}
               </select>
-            </label>
-          </div>
-          <p>Gestiona, importa y exporta la informacion maestra de todos los trabajadores.</p>
-        </div>
+      </TopbarContractSlot>
+      <header className="op-page-header">
+        <nav className="op-section-tabs" aria-label="Secciones de Personal">
+          <button type="button" aria-current={activeTab === "base" ? "page" : undefined} className={activeTab === "base" ? "is-active" : ""} onClick={() => setActiveTab("base")}>Base de datos</button>
+          {canReadRepository && <button type="button" aria-current={activeTab === "repository" ? "page" : undefined} className={activeTab === "repository" ? "is-active" : ""} onClick={() => setActiveTab("repository")}>Repositorio de documentos</button>}
+        </nav>
         <div className="op-header-actions">
           <button
             type="button"
@@ -982,48 +990,8 @@ export default function OperationalPersonalPage() {
         </div>
       </header>
 
-      <section className="op-kpi-grid" aria-label="Resumen de personal">
-        <article className="op-kpi">
-          <div className="op-kpi-icon op-kpi-icon--active">
-            <EmpiriaIcon name="personal" size={19} variant="duotone" />
-          </div>
-          <div>
-            <span>Trabajadores activos</span>
-            <strong>{personalResumen?.trabajadores_activos ?? "—"}</strong>
-            <small>Vigentes al {formatDate(fechaConsulta)}</small>
-          </div>
-        </article>
-        <article className="op-kpi">
-          <div className="op-kpi-icon op-kpi-icon--income">
-            <EmpiriaIcon name="income" size={19} variant="duotone" />
-          </div>
-          <div>
-            <span>Ingresos del mes</span>
-            <strong>{personalResumen?.ingresos_mes ?? "—"}</strong>
-            <small>Inicios dentro del mes</small>
-          </div>
-        </article>
-        <article className="op-kpi">
-          <div className="op-kpi-icon op-kpi-icon--retirement">
-            <EmpiriaIcon name="retirement" size={19} variant="duotone" />
-          </div>
-          <div>
-            <span>Retiros del mes</span>
-            <strong>{personalResumen?.retiros_mes ?? "—"}</strong>
-            <small>Fechas fin dentro del mes</small>
-          </div>
-        </article>
-        <article className="op-kpi">
-          <div className="op-kpi-icon op-kpi-icon--vacancy">
-            <EmpiriaIcon name="vacancy" size={19} variant="duotone" />
-          </div>
-          <div>
-            <span>Vacantes / cargos sin cubrir</span>
-            <strong>{personalResumen?.vacantes ?? "—"}</strong>
-            <small>Deficit territorial agregado</small>
-          </div>
-        </article>
-      </section>
+      {contextError && <div className="op-state error" role="alert">{contextError}</div>}
+      {activeTab === "repository" && canReadRepository ? <PersonalRepositoryPanel contratoId={contratoId} /> : <>
 
       <section className="op-tools-bar">
         <div className="op-search-row">
@@ -1032,18 +1000,10 @@ export default function OperationalPersonalPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nombre, documento o institucion..."
+              placeholder="Buscar nombre o documento..."
             />
           </label>
-          <button
-            type="button"
-            className={`op-button secondary op-more-filters ${showMoreFilters ? "is-open" : ""}`}
-            onClick={() => setShowMoreFilters((current) => !current)}
-            aria-expanded={showMoreFilters}
-          >
-            Mas filtros
-            {activeFilterCount > 0 && <b>{activeFilterCount}</b>}
-          </button>
+
         </div>
 
         <div className="op-primary-filters">
@@ -1064,7 +1024,7 @@ export default function OperationalPersonalPage() {
               }}
               disabled={!contratoId}
             >
-              <option value="">Todos</option>
+              <option value="">Gestor</option>
               <option value="sin_gestor">Sin gestor</option>
               {filterOptions.gestores.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -1085,7 +1045,7 @@ export default function OperationalPersonalPage() {
               }}
               disabled={!contratoId}
             >
-              <option value="">Todos</option>
+              <option value="">Municipio</option>
               {filterOptions.municipios.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
@@ -1104,7 +1064,7 @@ export default function OperationalPersonalPage() {
               }}
               disabled={!contratoId || !municipioId}
             >
-              <option value="">Todas</option>
+              <option value="">Institución</option>
               {filterOptions.instituciones.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
@@ -1112,6 +1072,63 @@ export default function OperationalPersonalPage() {
               ))}
             </select>
           </label>
+
+          <label className="op-filter">
+            <span><EmpiriaIcon name="modalidad" size={13} /> Modalidad</span>
+            <select
+              value={modalidadId}
+              onChange={(event) => setModalidadId(event.target.value)}
+              disabled={!contratoId || !sedeId}
+            >
+              <option value="">Modalidad</option>
+              {filterOptions.modalidades.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.codigo ?? item.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="op-filter">
+            <span><EmpiriaIcon name="cargo" size={13} /> Cargo</span>
+            <select
+              value={cargoId}
+              onChange={(event) => setCargoId(event.target.value)}
+              disabled={!contratoId}
+            >
+              <option value="">Cargo</option>
+              {cargos.map((cargo) => (
+                <option key={cargo.id} value={cargo.id}>
+                  {cargo.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="op-filter">
+            <span><EmpiriaIcon name="estado" size={13} /> Estado</span>
+            <select
+              value={estadoFiltro}
+              onChange={(event) => setEstadoFiltro(event.target.value as "" | VinculacionEstado)}
+              disabled={!contratoId}
+            >
+              <option value="">Estado</option>
+              <option value="ACTIVA">Activa</option>
+              <option value="SUSPENDIDA">Suspendida</option>
+              <option value="RETIRADA">Retirada</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className={`op-button secondary op-more-filters ${showMoreFilters ? "is-open" : ""}`}
+            onClick={() => setShowMoreFilters((current) => !current)}
+            aria-expanded={showMoreFilters}
+          >
+            <SlidersHorizontal size={11} /> Más
+            {activeFilterCount > 0 && <b>{activeFilterCount}</b>}
+          </button>
+        </div>
+
+        {showMoreFilters && (
+          <div className="op-more-filters-panel">
           <label className="op-filter">
             <span><EmpiriaIcon name="sede" size={13} /> Sede</span>
             <select
@@ -1130,53 +1147,6 @@ export default function OperationalPersonalPage() {
               ))}
             </select>
           </label>
-          <label className="op-filter">
-            <span><EmpiriaIcon name="modalidad" size={13} /> Modalidad</span>
-            <select
-              value={modalidadId}
-              onChange={(event) => setModalidadId(event.target.value)}
-              disabled={!contratoId || !sedeId}
-            >
-              <option value="">Todas</option>
-              {filterOptions.modalidades.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.codigo ?? item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="op-filter">
-            <span><EmpiriaIcon name="cargo" size={13} /> Cargo</span>
-            <select
-              value={cargoId}
-              onChange={(event) => setCargoId(event.target.value)}
-              disabled={!contratoId}
-            >
-              <option value="">Todos</option>
-              {cargos.map((cargo) => (
-                <option key={cargo.id} value={cargo.id}>
-                  {cargo.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="op-filter">
-            <span><EmpiriaIcon name="estado" size={13} /> Estado</span>
-            <select
-              value={estadoFiltro}
-              onChange={(event) => setEstadoFiltro(event.target.value as "" | VinculacionEstado)}
-              disabled={!contratoId}
-            >
-              <option value="">Todos</option>
-              <option value="ACTIVA">Activa</option>
-              <option value="SUSPENDIDA">Suspendida</option>
-              <option value="RETIRADA">Retirada</option>
-            </select>
-          </label>
-        </div>
-
-        {showMoreFilters && (
-          <div className="op-more-filters-panel">
             <label className="op-filter">
               <span>Ubicacion laboral</span>
               <select
@@ -1495,8 +1465,8 @@ export default function OperationalPersonalPage() {
                     <th className="is-offer">Oferta</th>
                     <th className="is-status">Estado</th>
                     <th className="is-date">Ingreso</th>
-                    <th className="is-updated">Ultima actualizacion</th>
-                    <th className="is-action">Expediente</th>
+                    <th className="is-date">Retiro</th>
+                    <th className="is-action">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1510,13 +1480,14 @@ export default function OperationalPersonalPage() {
                   {(tableData?.items ?? []).map((item) => (
                     <tr
                       key={item.vinculacion_id}
-                      className={item.vinculacion_id === selectedVinculacionId ? "is-selected" : ""}
+                      className={item.vinculacion_id === selectedVinculacionId || selectedVinculacionIds.includes(item.vinculacion_id) ? "is-selected" : ""}
                       onClick={() => setSelectedVinculacionId(item.vinculacion_id)}
                     >
                       <td className="is-select">
                         <input
                           type="checkbox"
                           checked={selectedVinculacionIds.includes(item.vinculacion_id)}
+                          onClick={(event) => event.stopPropagation()}
                           onChange={(event) => {
                             event.stopPropagation();
                             toggleSelectedVinculacion(item.vinculacion_id);
@@ -1542,17 +1513,14 @@ export default function OperationalPersonalPage() {
                         <div className="op-assignment-cell">
                           {item.asignacion_actual.institucion ? (
                             <>
-                              <strong>{item.asignacion_actual.institucion}</strong>
-                              {item.asignacion_actual.sede && (
-                                <small>{item.asignacion_actual.sede}</small>
-                              )}
+                              <strong title={item.asignacion_actual.sede ?? undefined}>{item.asignacion_actual.institucion}</strong>
                               {item.asignacion_actual.municipio && (
                                 <small>{item.asignacion_actual.municipio}</small>
                               )}
                               {item.asignacion_actual.modalidad && (
-                                <span className="op-assignment-status">Cobertura si</span>
+                                <span className="op-assignment-status">Cobertura</span>
                               )}
-                              <span className="op-gestor-chip">
+                              <span className={`op-gestor-chip${item.gestor_actual?.nombre ? "" : " is-unassigned"}`}>
                                 {item.gestor_actual?.nombre ?? "Sin gestor"}
                               </span>
                             </>
@@ -1562,7 +1530,7 @@ export default function OperationalPersonalPage() {
                                 {item.asignacion_actual.nombre ?? "Sin ubicacion laboral"}
                               </strong>
                               <small>Personal administrativo</small>
-                              <span className="op-gestor-chip">
+                              <span className={`op-gestor-chip${item.gestor_actual?.nombre ? "" : " is-unassigned"}`}>
                                 {item.gestor_actual?.nombre ?? "Sin gestor"}
                               </span>
                             </>
@@ -1588,8 +1556,8 @@ export default function OperationalPersonalPage() {
                             }`}
                           >
                             {item.presentada_licitacion_actual
-                              ? "PRESENTADA"
-                              : "NO PRESENTADA"}
+                              ? "Presentada"
+                              : "No presentada"}
                           </span>
                           {item.presentada_licitacion_actual &&
                             item.perfil_licitacion_actual && (
@@ -1605,7 +1573,7 @@ export default function OperationalPersonalPage() {
                         </span>
                       </td>
                       <td className="is-date">{formatDate(item.fecha_ingreso)}</td>
-                      <td className="is-updated op-last-updated">—</td>
+                      <td className="is-date">{formatDate(item.fecha_fin)}</td>
                       <td className="is-action">
                         <button
                           type="button"
@@ -1615,7 +1583,8 @@ export default function OperationalPersonalPage() {
                             setSelectedVinculacionId(item.vinculacion_id);
                           }}
                         >
-                          Ver expediente <ArrowRight size={14} />
+                          <Eye size={15} />
+                          <span className="op-sr-only">Ver ficha de {item.nombre_completo}</span>
                         </button>
                       </td>
                     </tr>
@@ -1659,6 +1628,8 @@ export default function OperationalPersonalPage() {
           </>
         )}
       </section>
+
+      </>}
 
       {showAssignGestorModal && (
         <div className="op-modal-layer" onClick={closeAssignGestorModal}>

@@ -12,13 +12,14 @@
 ========================= */
 
 .topbar {
-  height: 68px;
+  height: 48px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 18px;
-  background: var(--topbar-bg);
+  gap: 12px;
+  padding: 0 20px;
+  background: #0a1628;
+  color: #cbd5e1;
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
@@ -705,3 +706,59 @@
 [data-theme="dark"] .company-context-control select option { background: #102132; color: #f2f8fc; }
 [data-theme="dark"] .company-context-control:hover,
 [data-theme="dark"] .company-context-control:focus-within { border-color: #59ddff; background: #17314a; }
+
+/* Figma Make Navbar: navy in both themes. Menus retain their functional controls. */
+.topbar { display: grid; grid-template-columns: minmax(120px, 1fr) auto minmax(0, 1fr); border-bottom: 0; box-shadow: 0 2px 8px #0002; }
+.topbar .logo-area { width: 112px; min-width: 112px; height: 30px; min-height: 30px; }
+.topbar .logo-image { width: 112px; height: 30px; transform: none; }
+.topbar .logo-fallback { color: white; font-size: 12px; letter-spacing: .18em; }
+.topbar .menu { justify-content: center; gap: 2px; overflow: visible; }
+.topbar .menu-navlink, .topbar .menu-dropdown-trigger { height: 28px; padding: 0 10px; border: 0; border-radius: 6px; color: #cbd5e1; font-size: 13px; font-weight: 500; }
+.topbar .menu-navlink:hover, .topbar .menu-dropdown-trigger:hover, .topbar .menu-dropdown-trigger.open { color: white; background: #ffffff1a; }
+.topbar .menu-navlink.active, .topbar .menu-dropdown-trigger.active { background: #00c4d4; color: #0a1628; font-weight: 600; }
+.topbar .right-side { gap: 8px; }
+.topbar-business-context { order: 1; display: flex; flex-direction: column; align-items: flex-end; min-width: 0; max-width: 300px; padding-right: 12px; border-right: 1px solid #ffffff1a; line-height: 1.25; }
+.topbar-company { display: block; width: 100%; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; font-size: 12px; font-weight: 600; color: white; background: transparent; border: 0; }
+.topbar-contract { max-width: 100%; min-width: 0; }
+.topbar-contract select { display: block; width: 100%; max-width: 100%; border: 0; padding: 0; text-overflow: ellipsis; background: transparent; color: #00c4d4; font: inherit; font-size: 12px; cursor: pointer; }
+.topbar-company option, .topbar-contract option { background: #0a1628; color: #f1f5f9; }
+.topbar .notif-bell-button, .topbar .theme-button { width: 28px; height: 28px; flex-basis: 28px; background: transparent; border: 0; color: #94a3b8; border-radius: 6px; box-shadow: none; }
+.topbar .notif-bell-button:hover, .topbar .theme-button:hover { background: #ffffff1a; color: white; }
+.topbar .notif-bell-button svg, .topbar .theme-button svg { width: 14px; height: 14px; }
+.topbar .account-area { min-width: 120px; flex: 0 1 140px; }
+.topbar .account-trigger { min-height: 32px; padding: 0; gap: 8px; color: white; }
+.topbar .account-trigger > svg { display: none; }
+.topbar .account-trigger .account-avatar { width: 28px; height: 28px; flex-basis: 28px; background: #00c4d4; color: #0a1628; }
+.topbar .account-copy strong { display: block; font-size: 12px; font-weight: 600; }
+.topbar .account-copy small { display: block; color: #00c4d4; font-size: 12px; font-weight: 400; }
+.topbar .account-avatar { font-size: 11px; }
+.topbar .notif-bell-badge { font-size: 11px; }
+.topbar .account-menu { color: var(--text-primary); }
+.page-scroll:has(.op-personal-page) { padding: 16px 24px; }
+.page-content:has(.op-personal-page) { max-width: none; }
+@media (max-width: 1500px) {
+  .topbar { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); padding-inline: 20px; }
+  .topbar-business-context { max-width: 260px; }
+}
+@media (max-width: 1150px) {
+  .topbar { grid-template-columns: 100px auto minmax(0, 1fr); gap: 8px; padding-inline: 12px; }
+  .topbar .logo-area, .topbar .logo-image { width: 96px; min-width: 96px; }
+  .topbar .menu-navlink, .topbar .menu-dropdown-trigger { padding-inline: 6px; }
+  .topbar .account-area { min-width: 28px; flex-basis: 28px; }
+  .topbar .account-copy { display: none; }
+}
+@media (max-width: 850px) {
+  .topbar { height: auto; min-height: 48px; grid-template-columns: 100px minmax(0, 1fr); padding-block: 8px; }
+  .topbar .menu { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; }
+  .topbar .right-side { grid-column: 2; grid-row: 1; }
+  .topbar-business-context { max-width: 230px; }
+  .page-scroll:has(.op-personal-page) { padding: 12px; }
+}
+
+.topbar .logo-link { gap: 8px; overflow: visible; }
+.topbar-brand-mark { width: 24px; height: 24px; flex: 0 0 24px; border: 2px solid #00c4d4; border-radius: 50%; display: grid; place-items: center; }
+.topbar-brand-mark img { width: 10px; height: 10px; }
+.topbar-brand-name { color: #fff; font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+.layout:has(.op-personal-page) { background: #f5f7fa; }
+[data-theme="dark"] .layout:has(.op-personal-page) { background: #0d1424; }
+@media (min-width: 1151px) { .topbar { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); } }

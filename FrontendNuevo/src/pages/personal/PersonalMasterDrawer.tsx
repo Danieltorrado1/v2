@@ -655,7 +655,7 @@ export default function PersonalMasterDrawer({
           tiposVinculacion.length > 0
             ? Promise.resolve(tiposVinculacion)
             : getAllCatalogPages((page, limit) => configuracionApi.listarTiposVinculacion({ page, limit })),
-          configuracionApi.listarCargos({ contrato_id: contratoId, activo: true, page: 1, limit: 200 }).then((result) => result.items),
+          getAllCatalogPages((page, limit) => configuracionApi.listarCargos({ contrato_id: contratoId, activo: true, page, limit })),
         ]);
 
         if (cancelled) return;
