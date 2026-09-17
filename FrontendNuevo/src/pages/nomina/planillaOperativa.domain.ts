@@ -174,3 +174,46 @@ export function mergeAttendance(
   const without = items.filter((item) => key(item) !== target);
   return remove ? without : [...without, next];
 }
+
+export const normalizePlanillaSearch = (...values: unknown[]) => values
+  .filter((value) => value !== null && value !== undefined)
+  .map((value) => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' '))
+  .join(' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+export const emptyPlanillaFilters = () => ({
+  query: '', municipio: '', gestor: '', modalidad: '', review: 'TODOS' as const, events: 'TODOS' as const
+});
+
+export const countActivePlanillaFilters = (filters: Record<string, unknown>) => Object.values(filters)
+  .filter((value) => value !== '' && value !== 'TODOS' && value !== null && value !== undefined).length;
+
+export const persistedPlanillaFiltersMatchPeriod = (periodId: unknown, currentPeriodId: string) =>
+  typeof periodId === 'string' && periodId.length > 0 && periodId === currentPeriodId;
+
+export const matchesPlanillaFilters = (
+  item: { searchText: string; municipio: string | null | undefined; gestorId: string | null | undefined; modalidad: string | null | undefined; reviewState: string; needsReview: boolean; noveltyCount: number; hasInconsistencies: boolean },
+  filters: { query: string; municipio: string; gestor: string; modalidad: string; review: string; events: string }
+) => {
+  const query = normalizePlanillaSearch(filters.query);
+  if (query && !item.searchText.includes(query)) return false;
+  if (filters.municipio && item.municipio !== filters.municipio) return false;
+  if (filters.gestor === '__SIN_GESTOR__' && item.gestorId) return false;
+  if (filters.gestor && filters.gestor !== '__SIN_GESTOR__' && item.gestorId !== filters.gestor) return false;
+  if (filters.modalidad && item.modalidad !== filters.modalidad) return false;
+  const reviewMatches = filters.review === 'PENDIENTES'
+    ? item.reviewState === 'PENDIENTE'
+    : filters.review === 'REVISADOS'
+      ? item.reviewState === 'REVISADO'
+      : filters.review === 'CERRADOS'
+        ? item.reviewState === 'CERRADO'
+        : filters.review === 'REQUIERE_REVISION'
+          ? item.needsReview
+          : true;
+  if (!reviewMatches) return false;
+  if (filters.events === 'CON_NOVEDADES' && item.noveltyCount === 0) return false;
+  if (filters.events === 'SIN_NOVEDADES' && item.noveltyCount > 0) return false;
+  if (filters.events === 'INCONSISTENCIAS' && !item.hasInconsistencies) return false;
+  return true;
+};

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildTramos, dateKey, dedupeNominaNovedades, isOutsideEmployment, mergeAttendance, movimientosOnDate, novedadesOnDate, novedadState, upsertNominaNovedad } from './planillaOperativa.domain';
+import { buildTramos, dateKey, dedupeNominaNovedades, isOutsideEmployment, mergeAttendance, movimientosOnDate, novedadesOnDate, novedadState, upsertNominaNovedad, matchesPlanillaFilters, normalizePlanillaSearch, persistedPlanillaFiltersMatchPeriod } from './planillaOperativa.domain';
 import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from './nominaPeriods';
 import type { NominaEmpleadoApi, NominaMovimientoApi, NominaNovedadApi } from '../../types/nomina.types';
 const employee={id:'1',vinculacion_id:'10',persona:{id:'7',nombre_completo:'MARIA PEREZ',numero_documento:'1234',primer_nombre:'MARIA',segundo_nombre:null,primer_apellido:'PEREZ',segundo_apellido:null},vinculacion:{id:'10',empresa_id:'15',contrato_id:'24',estado_vinculacion:'ACTIVA',fecha_inicio:'2026-08-10',fecha_fin:'2026-08-22',metodo_pago:'COBERTURA'},sede:{id:'1',municipio:'GRANADA',nombre_sede:'CENTRAL'},modalidad:'A'} as NominaEmpleadoApi;
@@ -54,6 +54,24 @@ test('modal de novedad concentra la cobertura sin panel externo',()=>{for(const 
 test('dedupe y upsert evitan render duplicado del mismo registro',()=>{const novelty={id:'dup',activo:true,fecha_inicio:'2026-08-11',fecha_fin:'2026-08-11',fecha_inicio_evento_canonico:null,fecha_fin_evento_canonico:null} as NominaNovedadApi;assert.equal(dedupeNominaNovedades([novelty,novelty]).length,1);assert.equal(upsertNominaNovedad([novelty],{...novelty,observacion:'corregida'} as NominaNovedadApi)[0]?.observacion,'corregida');});
 test('celda con novedad prioriza correccion y celda vacia conserva asistencia rapida',()=>{assert.ok(source.includes('if (activeNovelties.length === 1) {'));assert.ok(source.includes('openNovelty(cell, activeNovelties[0] ?? null);'));assert.ok(source.includes('void toggleAttendance(employee, date);'));assert.ok(source.includes('if (activeNoveltiesOnThisDay.length > 1) {'));});
 test('planilla reutiliza el modal para corregir una novedad existente',()=>{assert.ok(source.includes('editingNovelty'));assert.ok(source.includes('updateNominaNovedad(editingNovelty.id, basePayload)'));assert.ok(source.includes('Guardar correccion'));assert.ok(source.includes('Corregir novedad'));});
+
+test('filtros persistidos exigen el periodo y no reutilizan legacy',()=>{
+  assert.equal(persistedPlanillaFiltersMatchPeriod('2026-08','2026-08'),true);
+  assert.equal(persistedPlanillaFiltersMatchPeriod('2026-07','2026-08'),false);
+  assert.equal(persistedPlanillaFiltersMatchPeriod(undefined,'2026-08'),false);
+});
+
+test('filtros conservan estados, gestor, contexto, novedades y busqueda',()=>{
+  const base={searchText:normalizePlanillaSearch('Lizéth Pérez','1093924969','Granada','Institución Uno','Sede Norte','COMPLEMENTARIA'),municipio:'Granada',gestorId:null,modalidad:'COMPLEMENTARIA',reviewState:'PENDIENTE',needsReview:true,noveltyCount:1,hasInconsistencies:true};
+  assert.equal(matchesPlanillaFilters(base,{query:' lizeth   perez ',municipio:'',gestor:'',modalidad:'',review:'PENDIENTES',events:'TODOS'}),true);
+  assert.equal(matchesPlanillaFilters({...base,reviewState:'REVISADO',needsReview:false},{query:'',municipio:'',gestor:'',modalidad:'',review:'REVISADOS',events:'TODOS'}),true);
+  assert.equal(matchesPlanillaFilters({...base,reviewState:'CERRADO',needsReview:false},{query:'',municipio:'',gestor:'',modalidad:'',review:'CERRADOS',events:'TODOS'}),true);
+  assert.equal(matchesPlanillaFilters(base,{query:'',municipio:'',gestor:'',modalidad:'',review:'REQUIERE_REVISION',events:'TODOS'}),true);
+  assert.equal(matchesPlanillaFilters(base,{query:'',municipio:'',gestor:'__SIN_GESTOR__',modalidad:'',review:'TODOS',events:'CON_NOVEDADES'}),true);
+  assert.equal(matchesPlanillaFilters({...base,gestorId:'g1'},{query:'',municipio:'Granada',gestor:'g1',modalidad:'COMPLEMENTARIA',review:'TODOS',events:'INCONSISTENCIAS'}),true);
+  assert.equal(matchesPlanillaFilters({...base,noveltyCount:0},{query:'',municipio:'',gestor:'',modalidad:'',review:'TODOS',events:'SIN_NOVEDADES'}),true);
+  assert.equal(matchesPlanillaFilters({...base,noveltyCount:0},{query:'',municipio:'',gestor:'',modalidad:'',review:'TODOS',events:'CON_NOVEDADES'}),false);
+});
 
 test('planilla no conserva literales con mojibake en separadores o marcas de asistencia',()=>{
   for(const token of ['Â·','Ã‚Â·','Ã¢â‚¬Â¦','Ã¢Å“â€œ','PensiÃ³n']) assert.equal(source.includes(token),false,token);
