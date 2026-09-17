@@ -8,6 +8,7 @@ import { uploadPersonaDocumento } from '../documentos/documentos.service';
 import { assertNominaEmpleadoCoberturaScope } from './nomina.procesos';
 import type { ajusteManualSchema, ajusteManualUpdateSchema } from './nomina.schemas';
 import type { z } from 'zod';
+import { assertPensionAdjustmentAccess } from './nomina.pension-permissions';
 
 export type AjusteManualInput = z.infer<typeof ajusteManualSchema>;
 export type AjusteManualUpdate = z.infer<typeof ajusteManualUpdateSchema>;
@@ -56,6 +57,7 @@ export const listAjustesManuales = async (periodoId: string, tenant?: TenantAcce
 };
 
 export const createAjusteManual = async (periodoId: string, input: AjusteManualInput, actor: string, tenant?: TenantAccessContext, meta?: AuditRequestMeta) => {
+  assertPensionAdjustmentAccess([input.concepto], tenant);
   const client = await dbPool.connect();
   try {
     await client.query('BEGIN');
@@ -73,6 +75,7 @@ export const updateAjusteManual = async (id: string, input: AjusteManualUpdate, 
     await client.query('BEGIN');
     const current = (await client.query(`${rowSelect} WHERE a.id=$1::bigint FOR UPDATE`, [id])).rows[0];
     if (!current) throw new AppError('Ajuste manual no encontrado', 404, 'NOMINA_AJUSTE_NOT_FOUND');
+    assertPensionAdjustmentAccess([current.concepto, input.concepto], tenant);
     await assertTenantAccessForEmpresaId(tenant, current.empresa_id);
     await assertNominaEmpleadoCoberturaScope(current.nomina_empleado_id, tenant, client);
     if (!current.activo) throw new AppError('No se puede editar un ajuste anulado', 409, 'NOMINA_AJUSTE_INACTIVO');
@@ -88,7 +91,7 @@ export const updateAjusteManual = async (id: string, input: AjusteManualUpdate, 
 
 export const annulAjusteManual = async (id: string, motivo: string, actor: string, tenant?: TenantAccessContext, meta?: AuditRequestMeta) => {
   const client = await dbPool.connect();
-  try { await client.query('BEGIN'); const current = (await client.query(`${rowSelect} WHERE a.id=$1::bigint FOR UPDATE`, [id])).rows[0]; if (!current) throw new AppError('Ajuste manual no encontrado', 404, 'NOMINA_AJUSTE_NOT_FOUND'); await assertTenantAccessForEmpresaId(tenant, current.empresa_id); await assertNominaEmpleadoCoberturaScope(current.nomina_empleado_id, tenant, client); if (!current.activo) return current; const period = await client.query<{ estado: string }>('SELECT estado FROM nomina_periodos WHERE id=$1::bigint', [current.periodo_id]); if (period.rows[0]?.estado !== 'ABIERTO') throw new AppError('El periodo debe estar ABIERTO', 409, 'NOMINA_PERIODO_NO_ABIERTO'); await client.query('UPDATE nomina_ajustes_manuales SET activo=FALSE, anulado_by=$2, anulado_at=NOW(), motivo_anulacion=$3, updated_at=NOW() WHERE id=$1::bigint', [id, actor, motivo]); const row = (await client.query(`${rowSelect} WHERE a.id=$1::bigint`, [id])).rows[0]; await registerAuditEntry({ client, usuario_id: actor, accion: 'NOMINA_AJUSTE_MANUAL_ANNUL', tabla: 'nomina_ajustes_manuales', registro_id: id, descripcion: 'Anulación de ajuste manual', before: current, after: row, ip: meta?.ip, user_agent: meta?.user_agent }); await client.query('COMMIT'); return row; } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+  try { await client.query('BEGIN'); const current = (await client.query(`${rowSelect} WHERE a.id=$1::bigint FOR UPDATE`, [id])).rows[0]; if (!current) throw new AppError('Ajuste manual no encontrado', 404, 'NOMINA_AJUSTE_NOT_FOUND'); assertPensionAdjustmentAccess([current.concepto],tenant); await assertTenantAccessForEmpresaId(tenant, current.empresa_id); await assertNominaEmpleadoCoberturaScope(current.nomina_empleado_id, tenant, client); if (!current.activo) return current; const period = await client.query<{ estado: string }>('SELECT estado FROM nomina_periodos WHERE id=$1::bigint', [current.periodo_id]); if (period.rows[0]?.estado !== 'ABIERTO') throw new AppError('El periodo debe estar ABIERTO', 409, 'NOMINA_PERIODO_NO_ABIERTO'); await client.query('UPDATE nomina_ajustes_manuales SET activo=FALSE, anulado_by=$2, anulado_at=NOW(), motivo_anulacion=$3, updated_at=NOW() WHERE id=$1::bigint', [id, actor, motivo]); const row = (await client.query(`${rowSelect} WHERE a.id=$1::bigint`, [id])).rows[0]; await registerAuditEntry({ client, usuario_id: actor, accion: 'NOMINA_AJUSTE_MANUAL_ANNUL', tabla: 'nomina_ajustes_manuales', registro_id: id, descripcion: 'Anulación de ajuste manual', before: current, after: row, ip: meta?.ip, user_agent: meta?.user_agent }); await client.query('COMMIT'); return row; } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 };
 
 export const uploadAjusteManualSoporte = async (id: string, file: Express.Multer.File, actor: string, tenant?: TenantAccessContext) => {

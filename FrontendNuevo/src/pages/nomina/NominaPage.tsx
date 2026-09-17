@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { canSavePension } from './cambioOperativo.domain';
 import { onPersonalInvalidation } from "../../events/personalInvalidation";
 import type { ComponentType, FormEvent } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -2030,15 +2031,11 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
     ),
     [ajustesManuales],
   );
-  // Deducciones adicionales son movimientos de Nómina; no requieren permiso
-  // de edición de vinculaciones. Pensión conserva su protección específica.
+  // These are period adjustments; editing the base employment record is not required.
   const canCreateManualDeduction = user?.permissions.includes("nomina.movimientos.create") === true;
   const canUpdateManualDeduction = user?.permissions.includes("nomina.movimientos.update") === true;
   const canSaveManualDeduction = canCreateManualDeduction || canUpdateManualDeduction;
-  const canSaveManualPension = Boolean(
-    canUpdateManualDeduction &&
-    user?.permissions.some((permission) => ["vinculaciones.update", "vinculacion.editar"].includes(permission)),
-  );
+  const canSaveManualPension = canSavePension(user?.permissions ?? [], user?.roles ?? []);
   const canSaveManualFinal = canSaveManualDeduction || canSaveManualPension;
   const getManualFinalDraft = (empleado: NominaEmpleadoApi): ManualFinalDraft => {
     const existing = finalAdjustmentsByEmployee.get(empleado.id);
