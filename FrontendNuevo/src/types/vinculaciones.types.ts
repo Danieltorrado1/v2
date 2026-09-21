@@ -63,6 +63,7 @@ export interface ContractPersonalListItem {
   numero_documento: string;
   nombre_completo: string;
   es_manipuladora: boolean;
+  gestor_aplica: boolean;
   gestor_actual: {
     nombre: string | null;
     usuario_id: number | null;
