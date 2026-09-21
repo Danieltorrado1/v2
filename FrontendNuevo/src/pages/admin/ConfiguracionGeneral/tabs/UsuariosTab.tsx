@@ -466,6 +466,7 @@ export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}
 
   async function openAssignmentModal(contratoId: number, municipioId: number, municipioNombre: string, departamentoId: number | null) {
     if (!userModal || userModal.mode !== 'edit' || !isGestorTarget) return;
+    setAssignmentMode('SELECCION');
     setAssignmentModal({ contratoId, departamentoId, municipioId, municipioNombre, userId: Number(userModal.user.id), userName: userModal.user.name });
     setAssignmentLoading(true);
     try {
@@ -486,6 +487,10 @@ export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}
 
   async function handleSaveAssignments() {
     if (!assignmentModal) return;
+    if (assignmentMode === 'SELECCION' && selectedAssignmentIds.length === 0) {
+      setFormError('Selecciona al menos una persona para el alcance Personal seleccionado.');
+      return;
+    }
     setAssignmentSaving(true);
     try {
       if (assignmentMode === 'REEMPLAZAR_MUNICIPIO') {
@@ -504,6 +509,7 @@ export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}
           municipio_id: assignmentModal.municipioId,
           departamento_id: assignmentModal.departamentoId,
           modo: 'REEMPLAZAR_MUNICIPIO',
+          alcance_personal: 'PERSONAL_SELECCIONADO',
           vinculacion_ids: selectedAssignmentIds,
           observacion: 'Asignacion desde Administracion de usuarios'
         });
@@ -1327,7 +1333,7 @@ export function UsuariosTab({ companyScopeId }: { companyScopeId?: number } = {}
               </div>
               <div className="cg-role-selector-grid" style={{ marginBottom: 10 }}>
                 <label className="cg-role-checkbox">
-                  <input type="radio" name="assignment-mode" checked={assignmentMode === 'REEMPLAZAR_MUNICIPIO'} onChange={() => setAssignmentMode('REEMPLAZAR_MUNICIPIO')} />
+                  <input type="radio" name="assignment-mode" checked={assignmentMode === 'REEMPLAZAR_MUNICIPIO'} onChange={() => { if (selectedAssignmentIds.length && !window.confirm('Este cambio amplía el alcance a todo el municipio y cerrará las selecciones individuales vigentes. ¿Continuar?')) return; setSelectedAssignmentIds([]); setAssignmentMode('REEMPLAZAR_MUNICIPIO'); }} />
                   <span>Todo el municipio</span>
                 </label>
                 <label className="cg-role-checkbox">

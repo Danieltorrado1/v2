@@ -174,6 +174,7 @@ export const saveGestorAssignmentsSchema = z.object({
   departamento_id: nullableNumericIdSchema.optional(),
   fecha: z.string().date().optional(),
   modo: gestorAssignmentModeSchema.optional().default('SELECCION'),
+  alcance_personal: gestorMunicipioPersonalScopeSchema.optional().default('PERSONAL_SELECCIONADO'),
   vinculacion_ids: z
     .array(numericIdSchema.transform((value) => Number(value)))
     .max(5000)

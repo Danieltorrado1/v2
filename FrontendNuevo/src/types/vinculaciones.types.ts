@@ -233,6 +233,7 @@ export interface SaveGestorAssignmentsPayload {
   departamento_id?: number | null;
   fecha?: string;
   modo?: "SELECCION" | "REEMPLAZAR_MUNICIPIO";
+  alcance_personal?: "PERSONAL_SELECCIONADO" | "TODO_MUNICIPIO";
   vinculacion_ids: number[];
   observacion?: string | null;
 }
