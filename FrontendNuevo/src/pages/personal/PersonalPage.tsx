@@ -1948,7 +1948,7 @@ function EditarEmpleadoModal({
 
           {vinculacion && <><label style={FIELD_LABEL}>Tipo de cambio<select style={FIELD_INPUT} value={tipoCambio} onChange={e=>setTipoCambio(e.target.value as 'CORRECCION_DIGITACION'|'CAMBIO_REAL')}><option value="CORRECCION_DIGITACION">Corrección de dato mal digitado</option><option value="CAMBIO_REAL">Cambio Operativo real desde una fecha</option></select></label>{tipoCambio==='CAMBIO_REAL' && <label style={FIELD_LABEL}>Fecha efectiva del cambio<input type="date" required style={FIELD_INPUT} value={fechaEfectiva} onChange={e=>setFechaEfectiva(e.target.value)} /></label>}<label style={FIELD_LABEL}>Motivo del cambio *<textarea required style={FIELD_INPUT} value={motivoCambio} onChange={e=>setMotivoCambio(e.target.value)} placeholder="Corrección, traslado, cambio operativo..." /></label><small style={{fontSize:11,color:'var(--text-secondary)'}}>La corrección no crea un traslado ficticio; el Cambio Operativo real conserva las vigencias anteriores.</small></>}
           {apiError && <FormError msg={apiError} />}
-          <p style={{fontSize:12,color:'var(--text-secondary)'}}>Gestor efectivo: {expediente?.personal_contexto.gestor_actual?.nombre ?? 'Sin gestor'}</p>
+          {expediente?.personal_contexto.es_manipuladora && <p style={{fontSize:12,color:'var(--text-secondary)'}}>Gestor efectivo: {expediente.personal_contexto.gestor_actual?.nombre ?? 'Sin gestor'}</p>}
           <ModalFooter onCancel={onClose} submitLabel="Guardar cambios" submitting={submitting} />
         </form>
       </div>

@@ -604,6 +604,7 @@ export interface NominaEmpleadoEstadoDocumentalApi {
 
 export interface NominaEmpleadoApi {
   id: string;
+  gestor_aplica: boolean;
   periodo_id: string;
   vinculacion_id: string;
   gestor?: {

@@ -64,6 +64,7 @@ type PersonalRow = {
   persona_id: number;
   numero_documento: string;
   nombre_completo: string;
+  gestor_aplica: boolean;
   gestor_actual: {
     nombre: string | null;
     usuario_id: number | null;
@@ -450,6 +451,7 @@ export default function OperationalPersonalPage() {
             persona_id: item.persona_id,
             numero_documento: item.numero_documento,
             nombre_completo: item.nombre_completo,
+            gestor_aplica: item.gestor_aplica,
             gestor_actual: item.gestor_actual,
             cargo_nombre: item.cargo.nombre_cargo,
             estado_vinculacion: item.estado_vinculacion,
@@ -1492,7 +1494,7 @@ export default function OperationalPersonalPage() {
                       </td>
                       <td className="is-assignment">
                         <div className="op-assignment-cell">
-                          {item.asignacion_actual.institucion ? (
+                          {item.gestor_aplica ? (
                             <>
                               <strong title={item.asignacion_actual.institucion ?? undefined}>{item.asignacion_actual.institucion}</strong>
                               {item.asignacion_actual.sede && (<small className="op-sede-name" title={item.asignacion_actual.sede}>Sede: {item.asignacion_actual.sede}</small>)}
@@ -1512,9 +1514,6 @@ export default function OperationalPersonalPage() {
                                 {item.asignacion_actual.nombre ?? "Sin ubicacion laboral"}
                               </strong>
                               <small>Personal administrativo</small>
-                              <span className={`op-gestor-chip${item.gestor_actual?.nombre ? "" : " is-unassigned"}`}>
-                                {item.gestor_actual?.nombre ?? "Sin gestor"}
-                              </span>
                             </>
                           )}
                         </div>
