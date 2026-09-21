@@ -44,11 +44,12 @@ export interface ExpedienteIndicadoresApi {
 // ── Checklist ─────────────────────────────────────────────────────────────────
 
 export type ChecklistEstado = 'CARGADO' | 'FALTANTE' | 'VENCIDO';
-export type ChecklistEstadoDetallado = 'COMPLETO' | 'PENDIENTE' | 'PROXIMO_A_VENCER' | 'VENCIDO' | 'NO_APLICA';
+export type ChecklistEstadoDetallado = 'SIN_DOCUMENTO' | 'PENDIENTE_REVISION' | 'APROBADO' | 'RECHAZADO' | 'POR_VENCER' | 'PARCIAL' | 'COMPLETO' | 'PENDIENTE' | 'PROXIMO_A_VENCER' | 'VENCIDO' | 'NO_APLICA';
 export type ChecklistOrigen = 'GENERAL' | 'CARGO' | 'TIPO_VINCULACION' | 'CARGO_TIPO_VINCULACION';
 export type DocFuente = 'PERSONA' | 'VINCULACION';
 
 export interface ChecklistItemApi {
+  documentos?: { documento_id: number; tipo_documento_id: number; nombre: string }[];
   ambito_documental: 'PERSONA' | 'VINCULACION';
   codigo: string | null;
   contrato_cargo_id: number | null;
@@ -67,8 +68,11 @@ export interface ChecklistItemApi {
   requiere_fecha_expedicion: boolean;
   requiere_fecha_vencimiento: boolean;
   tipo_documento_id: number | null;
+  tipo_documento_ids?: number[];
   tipo_documento_nombre: string | null;
   tipo_requisito: string | null;
+  cuenta_cumplimiento?: boolean;
+  grupo_visual?: string | null;
   tipo_vinculacion_id: number | null;
   vigencia_meses: number | null;
 }

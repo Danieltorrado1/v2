@@ -46,6 +46,7 @@ import ExpedienteDocumentosPanel from "./ExpedienteDocumentosPanel";
 import "./ContractPersonalPage.css";
 
 const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
+  cargos: [],
   gestores: [],
   municipios: [],
   instituciones: [],

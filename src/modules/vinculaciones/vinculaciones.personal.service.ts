@@ -533,7 +533,21 @@ export const listOpcionesAsignacionOperativa = async (vinculacionId: number, ten
   await assertTenantAccessForVinculacionId(tenant, vinculacionId);
   const context = await dbPool.query<{ contrato_id: string }>('SELECT contrato_id::text FROM vinculaciones WHERE id=$1::bigint', [vinculacionId]);
   if (!context.rows[0]) throw new AppError('Vinculacion not found', 404, 'VINCULACION_NOT_FOUND');
-  return (await dbPool.query(`SELECT ff.id::text,ff.municipio_id::text,COALESCE(mu.nombre_municipio,ff.municipio_texto) municipio,ff.institucion_id::text,ff.institucion_final institucion,ff.sede_id::text,ff.sede_final sede,ff.modalidad_id::text,ff.modalidad_final modalidad FROM focalizacion_final ff LEFT JOIN municipios mu ON mu.id=ff.municipio_id WHERE ff.contrato_id=$1::bigint AND COALESCE(ff.activo,TRUE)=TRUE ORDER BY municipio,institucion,sede,modalidad`, [context.rows[0].contrato_id])).rows;
+  const scopeSql = tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('TALENTO_HUMANO') && tenant.userId
+    ? ` AND EXISTS (
+          SELECT 1 FROM gestor_municipio_asignaciones gma
+          WHERE gma.usuario_id = $2::bigint
+            AND gma.contrato_id = ff.contrato_id
+            AND gma.municipio_id = ff.municipio_id
+            AND COALESCE(gma.activo, TRUE) = TRUE
+            AND gma.vigencia_desde <= CURRENT_DATE
+            AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
+        )`
+    : '';
+  const params = tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('TALENTO_HUMANO') && tenant.userId
+    ? [context.rows[0].contrato_id, tenant.userId]
+    : [context.rows[0].contrato_id];
+  return (await dbPool.query(`SELECT ff.id::text,ff.municipio_id::text,COALESCE(mu.nombre_municipio,ff.municipio_texto) municipio,ff.institucion_id::text,ff.institucion_final institucion,ff.sede_id::text,ff.sede_final sede,ff.modalidad_id::text,ff.modalidad_final modalidad FROM focalizacion_final ff LEFT JOIN municipios mu ON mu.id=ff.municipio_id WHERE ff.contrato_id=$1::bigint AND COALESCE(ff.activo,TRUE)=TRUE${scopeSql} ORDER BY municipio,institucion,sede,modalidad`, params)).rows;
 };
 
 export const replaceAsignacionOperativaPersonal = async (
@@ -558,6 +572,26 @@ export const replaceAsignacionOperativaPersonal = async (
       throw new AppError('El Gestor no puede modificar la asignacion administrativa del trabajador',403,'VINCULACION_SCOPE_FORBIDDEN');
     }
     if (tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('TALENTO_HUMANO')) {
+      const currentScope = await client.query<{ allowed: boolean }>(
+        `SELECT EXISTS (SELECT 1
+           FROM cobertura_asignaciones ca
+           INNER JOIN gestor_municipio_asignaciones gma
+             ON gma.municipio_id = ca.municipio_id
+            AND gma.usuario_id = $1::bigint
+            AND gma.contrato_id = $2::bigint
+            AND COALESCE(gma.activo, TRUE) = TRUE
+            AND gma.vigencia_desde <= $3::date
+            AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= $3::date)
+          WHERE ca.vinculacion_id = $4::bigint
+            AND ca.contrato_id = $2::bigint
+            AND COALESCE(ca.activo, TRUE) = TRUE
+            AND ca.fecha_inicio <= $3::date
+            AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $3::date)) AS allowed`,
+        [tenant.userId, vinculacion.contrato_id, fechaDesde, vinculacionId]
+      );
+      if (!currentScope.rows[0]?.allowed) {
+        throw new AppError('No tienes permiso para asignar personal a ese municipio.',403,'VINCULACION_SCOPE_FORBIDDEN');
+      }
       const allowed = await client.query<{ allowed: boolean }>(
         `SELECT EXISTS (SELECT 1 FROM gestor_municipio_asignaciones gma
           WHERE gma.usuario_id = $1::bigint AND gma.contrato_id = $2::bigint
@@ -567,7 +601,7 @@ export const replaceAsignacionOperativaPersonal = async (
         [tenant.userId, vinculacion.contrato_id, target.rows[0].municipio_id, fechaDesde]
       );
       if (!allowed.rows[0]?.allowed) {
-        throw new AppError('El municipio esta fuera del alcance autorizado',403,'VINCULACION_SCOPE_FORBIDDEN');
+        throw new AppError('No tienes permiso para asignar personal a ese municipio.',403,'VINCULACION_SCOPE_FORBIDDEN');
       }
     }
     const current=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND (($3::bigint IS NOT NULL AND id=$3::bigint) OR ($3::bigint IS NULL AND fecha_inicio<= $2::date AND (fecha_fin IS NULL OR fecha_fin>= $2::date))) ORDER BY fecha_inicio DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId,fechaDesde,input.asignacion_id ?? null]);

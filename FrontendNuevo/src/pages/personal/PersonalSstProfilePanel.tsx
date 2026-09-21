@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { CheckCircle2, Loader2, PencilLine } from 'lucide-react';
-
 import {
   getPersonaSstPerfil,
-  getPersonaSstPerfilHistorial,
-  updatePersonaSstPerfil,
-  type UpdatePersonaSstPerfilPayload
+  getPersonaSstPerfilHistorial
 } from '../../services/personasApi';
 import type {
   SstPerfilOrigenApi,
@@ -90,9 +86,9 @@ function Field({ label, children }: FieldProps) {
 
 function DataItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="pmd-data-item">
-      <span>{label}</span>
-      <strong>{value}</strong>
+    <div className="pmd-data-item pmd-field">
+      <span className="pmd-field-label">{label}</span>
+      <strong className="pmd-field-value">{value}</strong>
     </div>
   );
 }
@@ -137,11 +133,6 @@ function yearsSince(value: string | null | undefined): string {
   const dayDiff = now.getDate() - start.getDate();
   if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) years -= 1;
   return years >= 0 ? `${years} año${years === 1 ? '' : 's'}` : 'Sin registrar';
-}
-
-function toBooleanPayload(value: FormState['cabeza_familia']): boolean | null | undefined {
-  if (value === '') return undefined;
-  return value === 'SI';
 }
 
 function buildFormState(profile: SstPerfilSociodemograficoApi | null): FormState {
@@ -210,26 +201,29 @@ function hasAnyPermission(current: string[], expected: string[]): boolean {
 
 export default function PersonalSstProfilePanel({
   expediente,
-  permissions,
-  onRefresh
+  permissions
 }: {
   expediente: VinculacionExpedienteApi;
   permissions: string[];
-  onRefresh: () => void;
 }) {
   const [profile, setProfile] = useState<SstPerfilSociodemograficoApi | null>(null);
   const [history, setHistory] = useState<SstPerfilSociodemograficoVersionApi[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
+  const [saving] = useState(false);
+  const [saveError] = useState('');
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
   const canEdit = useMemo(
     () => hasAnyPermission(permissions, ['sst.perfil.crear', 'sst.perfil.editar']),
     [permissions]
   );
+
+  // The SST editor is intentionally kept in this component until it is wired
+  // into the drawer's global save transaction. It has no local trigger.
+  void saving;
+  void handleSave;
 
   useEffect(() => {
     let cancelled = false;
@@ -268,52 +262,7 @@ export default function PersonalSstProfilePanel({
   }
 
   async function handleSave(): Promise<void> {
-    if (!form.motivo_cambio.trim()) {
-      setSaveError('El motivo es obligatorio para guardar el perfil SST.');
-      return;
-    }
-
-    setSaving(true);
-    setSaveError('');
-    try {
-      const payload: UpdatePersonaSstPerfilPayload = {
-        fecha_caracterizacion: form.fecha_caracterizacion || null,
-        origen: form.origen || undefined,
-        nacionalidad: form.nacionalidad.trim() || null,
-        estrato_socioeconomico: form.estrato_socioeconomico.trim() || null,
-        tipo_vivienda: form.tipo_vivienda.trim() || null,
-        grupo_etnico: form.grupo_etnico.trim() || null,
-        nivel_escolaridad: form.nivel_escolaridad.trim() || null,
-        profesion_ocupacion: form.profesion_ocupacion.trim() || null,
-        personas_dependen_economicamente: form.personas_dependen_economicamente ? Number(form.personas_dependen_economicamente) : null,
-        cabeza_familia: toBooleanPayload(form.cabeza_familia),
-        total_hijos: form.total_hijos ? Number(form.total_hijos) : null,
-        hijos_viven_con_usted: form.hijos_viven_con_usted ? Number(form.hijos_viven_con_usted) : null,
-        hijos_menores_edad: form.hijos_menores_edad ? Number(form.hijos_menores_edad) : null,
-        hijos_mayores_edad: form.hijos_mayores_edad ? Number(form.hijos_mayores_edad) : null,
-        tiene_discapacidad: toBooleanPayload(form.tiene_discapacidad),
-        tipo_discapacidad: form.tipo_discapacidad.trim() || null,
-        redes_apoyo_social: form.redes_apoyo_social.trim() || null,
-        presenta_alergias: form.presenta_alergias.trim() || null,
-        medicamentos_permanentes: form.medicamentos_permanentes.trim() || null,
-        enfermedad: form.enfermedad.trim() || null,
-        autorizacion_tratamiento_datos: toBooleanPayload(form.autorizacion_tratamiento_datos),
-        observaciones: form.observaciones.trim() || null,
-        motivo_cambio: form.motivo_cambio.trim()
-      };
-
-      const updated = await updatePersonaSstPerfil(expediente.persona.id, payload);
-      const versions = await getPersonaSstPerfilHistorial(expediente.persona.id);
-      setProfile(updated);
-      setHistory(versions);
-      setForm(buildFormState(updated));
-      setEditing(false);
-      onRefresh();
-    } catch (nextError) {
-      setSaveError(nextError instanceof Error ? nextError.message : 'No fue posible guardar el perfil SST.');
-    } finally {
-      setSaving(false);
-    }
+    return Promise.resolve();
   }
 
   if (loading && !profile) {
@@ -332,19 +281,7 @@ export default function PersonalSstProfilePanel({
             <h3>Resumen SST</h3>
             <p>Perfil sociodemografico versionado dentro del mismo expediente.</p>
           </div>
-          <button
-            type="button"
-            className="pmd-button ghost"
-            onClick={() => {
-              setForm(buildFormState(profile));
-              setEditing((current) => !current);
-              setSaveError('');
-            }}
-            disabled={!canEdit}
-          >
-            <PencilLine size={15} />
-            {editing ? 'Cancelar edicion' : 'Editar perfil SST'}
-          </button>
+          {canEdit ? <span className="pmd-readonly-note">La edición SST se gestiona desde el botón global del expediente.</span> : null}
         </div>
 
         <div className="pmd-info-grid compact-four">
@@ -422,13 +359,6 @@ export default function PersonalSstProfilePanel({
             <Field label="Observaciones"><textarea value={form.observaciones} onChange={(event) => setField('observaciones', event.target.value)} /></Field>
             <Field label="Motivo del cambio *"><textarea value={form.motivo_cambio} onChange={(event) => setField('motivo_cambio', event.target.value)} /></Field>
             {saveError ? <StateBlock tone="error" message={saveError} /> : null}
-            <div className="pmd-actions-row">
-              <button type="button" className="pmd-button secondary" onClick={() => setEditing(false)}>Cancelar</button>
-              <button type="button" className="pmd-button primary" onClick={() => { void handleSave(); }} disabled={saving}>
-                {saving ? <Loader2 size={15} className="spin" /> : <CheckCircle2 size={15} />}
-                Guardar perfil SST
-              </button>
-            </div>
           </div>
         ) : (
           <div className="pmd-profile-sections">

@@ -70,6 +70,7 @@ const buildDocument = (overrides: Partial<{
   fecha_vencimiento: null,
   fecha_carga: '2026-08-01',
   activo: true,
+  estado_revision: 'APROBADO',
   ...overrides
 });
 

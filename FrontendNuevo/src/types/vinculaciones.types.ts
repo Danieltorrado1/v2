@@ -53,6 +53,8 @@ export interface ContractPersonalFilters {
   ubicacion_laboral_id?: number;
   cobertura?: "SI" | "NO" | "RETIRADA";
   licitacion?: "PRESENTADA" | "NO_PRESENTADA";
+  sort_by?: "nombre" | "ingreso" | "municipio" | "institucion" | "cargo" | "cumplimiento";
+  sort_dir?: "asc" | "desc";
 }
 
 export interface ContractPersonalListItem {
@@ -143,6 +145,7 @@ export interface ReactivarVinculacionPayload {
 }
 
 export interface ContractPersonalFilterOptions {
+  cargos: Array<{ id: number; nombre: string }>;
   gestores: Array<{ id: number; nombre: string; roles: string[] }>;
   municipios: Array<{ id: number; nombre: string; departamento_id: number | null; departamento_nombre: string | null }>;
   instituciones: Array<{ id: number; nombre: string; municipio_id: number | null }>;

@@ -84,7 +84,11 @@ vinculacionesRoutes.get(
   getAsignacionesOperativasByVinculacionHandler
 );
 vinculacionesRoutes.get('/:id/asignacion-operativa/opciones', requirePermissions('vinculaciones.read'), getOpcionesAsignacionOperativaHandler);
-vinculacionesRoutes.patch('/:id/asignacion-operativa', requirePermissions('vinculaciones.update'), replaceAsignacionOperativaPersonalHandler);
+vinculacionesRoutes.patch(
+  '/:id/asignacion-operativa',
+  requirePermissions('vinculacion.editar_asignacion'),
+  replaceAsignacionOperativaPersonalHandler
+);
 vinculacionesRoutes.get(
   '/:id/asignaciones-laborales',
   requirePermissions('vinculaciones.read'),

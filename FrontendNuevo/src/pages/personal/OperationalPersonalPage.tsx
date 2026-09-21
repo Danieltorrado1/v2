@@ -1,10 +1,12 @@
+import { contextualPersonalOptions } from './personalOperationalFilters';
 import { useEffect, useState } from "react";
+import { TopbarContractSlot } from "../../layouts/TopbarContractSlot";
+import { visibleTenantModules } from "../../architecture/moduleAccess";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
-  ArrowRight,
   Download,
-  FileText,
+  SlidersHorizontal,
   Search,
   Upload,
   UserPlus,
@@ -12,6 +14,7 @@ import {
 
 import { useAuth } from "../../context/AuthContext";
 import { ApiClientError } from "../../services/apiClient";
+import { getAllCatalogPages } from "../../services/catalogPagination";
 import { configuracionApi } from "../../services/configuracionApi";
 import {
   closeGestorMunicipioAssignment,
@@ -39,9 +42,11 @@ import { EmpiriaIcon } from "../../components/EmpiriaIcon";
 import PersonalMasterDrawer from "./PersonalMasterDrawer";
 import PersonalExportModal from "./PersonalExportModal";
 import OperationalImportModal from "./OperationalImportModal";
+import PersonalRepositoryPanel from "./PersonalRepositoryPanel";
 import "./OperationalPersonalPage.css";
 
 const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
+  cargos: [],
   gestores: [],
   municipios: [],
   instituciones: [],
@@ -56,6 +61,7 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 type PersonalRow = {
   vinculacion_id: number;
+  persona_id: number;
   numero_documento: string;
   nombre_completo: string;
   gestor_actual: {
@@ -65,6 +71,7 @@ type PersonalRow = {
   cargo_nombre: string | null;
   estado_vinculacion: VinculacionEstado;
   fecha_ingreso: string;
+  fecha_fin: string | null;
   asignacion_actual: {
     nombre: string | null;
     institucion: string | null;
@@ -88,7 +95,7 @@ function hasAnyPermission(current: string[], expected: string[]): boolean {
 
 function formatDate(value: string | null | undefined): string {
   if (!value) {
-    return "Sin fecha";
+    return "—";
   }
 
   try {
@@ -152,7 +159,9 @@ export default function OperationalPersonalPage() {
   const [tiposDocumento, setTiposDocumento] = useState<CatalogoItem[]>([]);
   const [tiposIdentificacion, setTiposIdentificacion] = useState<CatalogoItem[]>([]);
 
-  const { empresaId, empresaActiva } = useCompanyContext();
+  const { empresaId, empresaActiva, capabilities } = useCompanyContext();
+  const canReadRepository = visibleTenantModules(user, capabilities, empresaId).some(module => module.children.some(child => child.code === "PERSONAL_REPOSITORIO"));
+  const [contextError, setContextError] = useState("");
   const [contratoId, setContratoId] = useState<number | null>(null);
   const [cargoId, setCargoId] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<"" | VinculacionEstado>("");
@@ -163,18 +172,21 @@ export default function OperationalPersonalPage() {
   const [municipioId, setMunicipioId] = useState("");
   const [institucionId, setInstitucionId] = useState("");
   const [sedeId, setSedeId] = useState("");
+  const [sortBy, setSortBy] = useState<"nombre_asc" | "nombre_desc" | "ingreso_desc" | "ingreso_asc" | "municipio_asc" | "institucion_asc" | "cargo_asc">("ingreso_desc");
   const [modalidadId, setModalidadId] = useState("");
   const [ubicacionId, setUbicacionId] = useState("");
   const [coberturaFiltro, setCoberturaFiltro] = useState<"" | "SI" | "NO" | "RETIRADA">("");
   const [licitacionFiltro, setLicitacionFiltro] = useState<"" | "PRESENTADA" | "NO_PRESENTADA">("");
-  const [filterOptions, setFilterOptions] = useState<ContractPersonalFilterOptions>({
+  const [allFilterOptions, setFilterOptions] = useState<ContractPersonalFilterOptions>({
     ...EMPTY_FILTER_OPTIONS,
   });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [personalResumen, setPersonalResumen] = useState<PersonalResumen | null>(null);
+  const filterOptions = contextualPersonalOptions(allFilterOptions, { municipio_id: municipioId, institucion_id: institucionId, sede_id: sedeId });
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState<"base" | "repository">("base");
   const [showAssignGestorModal, setShowAssignGestorModal] = useState(false);
   const [assignmentGestorId, setAssignmentGestorId] = useState("");
   const [assignmentMunicipioId, setAssignmentMunicipioId] = useState("");
@@ -193,6 +205,7 @@ export default function OperationalPersonalPage() {
   const [tableData, setTableData] = useState<PersonalTableData | null>(null);
   const [tableLoading, setTableLoading] = useState(false);
   const [tableError, setTableError] = useState("");
+  const [rateLimited, setRateLimited] = useState(false);
 
   const [selectedVinculacionId, setSelectedVinculacionId] = useState<number | null>(null);
   const [selectedVinculacionIds, setSelectedVinculacionIds] = useState<number[]>([]);
@@ -206,27 +219,29 @@ export default function OperationalPersonalPage() {
   const contratoSeleccionado =
     contratos.find((contrato) => contrato.id === contratoId) ?? null;
   const currentFilters: ContractPersonalFilters | null = contratoId
-      ? {
-        contrato_id: contratoId,
-        contrato_cargo_id: cargoId ? Number(cargoId) : undefined,
-        estado_vinculacion: estadoFiltro || undefined,
-        gestor_usuario_id: gestorId ? Number(gestorId) : undefined,
-        sin_gestor: sinGestorOnly || undefined,
-        search: searchValue || undefined,
-        fecha: fechaConsulta,
-        municipio_id: municipioId ? Number(municipioId) : undefined,
-        institucion_id: institucionId ? Number(institucionId) : undefined,
-        sede_id: sedeId ? Number(sedeId) : undefined,
-        modalidad_id: modalidadId ? Number(modalidadId) : undefined,
-        ubicacion_laboral_id: ubicacionId ? Number(ubicacionId) : undefined,
-        cobertura: coberturaFiltro || undefined,
-        licitacion: licitacionFiltro || undefined,
-        page,
-        limit: pageSize,
-      }
+    ? {
+      contrato_id: contratoId,
+      contrato_cargo_id: cargoId ? Number(cargoId) : undefined,
+      estado_vinculacion: estadoFiltro || undefined,
+      gestor_usuario_id: gestorId ? Number(gestorId) : undefined,
+      sin_gestor: sinGestorOnly || undefined,
+      search: searchValue || undefined,
+      fecha: fechaConsulta,
+      municipio_id: municipioId ? Number(municipioId) : undefined,
+      institucion_id: institucionId ? Number(institucionId) : undefined,
+      sede_id: sedeId ? Number(sedeId) : undefined,
+      modalidad_id: modalidadId ? Number(modalidadId) : undefined,
+      ubicacion_laboral_id: ubicacionId ? Number(ubicacionId) : undefined,
+      cobertura: coberturaFiltro || undefined,
+      licitacion: licitacionFiltro || undefined,
+      sort_by: sortBy.startsWith("nombre") ? "nombre" : sortBy.startsWith("ingreso") ? "ingreso" : sortBy.startsWith("municipio") ? "municipio" : sortBy.startsWith("institucion") ? "institucion" : "cargo",
+      sort_dir: sortBy.endsWith("desc") ? "desc" : "asc",
+      page,
+      limit: pageSize,
+    }
     : null;
-
   useEffect(() => {
+    setContextError("");
     setContratos([]);
     setContratoId(null);
     setCargos([]);
@@ -242,6 +257,7 @@ export default function OperationalPersonalPage() {
     setEstadoFiltro("");
     setCoberturaFiltro("");
     setLicitacionFiltro("");
+    setSortBy("ingreso_desc");
     setTableData(null);
     setPersonalResumen(null);
     setSelectedVinculacionId(null);
@@ -272,8 +288,9 @@ export default function OperationalPersonalPage() {
           }
           return response.items[0]?.id ?? null;
         });
-      } catch {
+      } catch (error) {
         if (!cancelled) {
+          setContextError(getErrorMessage(error, "No fue posible cargar los contratos."));
           setContratos([]);
           setContratoId(null);
         }
@@ -316,8 +333,9 @@ export default function OperationalPersonalPage() {
         setCargoId((current) =>
           current && nextCargos.some((item) => String(item.id) === current) ? current : ""
         );
-      } catch {
+      } catch (error) {
         if (!cancelled) {
+          setContextError(getErrorMessage(error, "No fue posible cargar los cargos."));
           setCargos([]);
           setCargoId("");
         }
@@ -335,22 +353,23 @@ export default function OperationalPersonalPage() {
     if (!canReadContext) return;
     let cancelled = false;
     void Promise.all([
-      configuracionApi.listarTiposDocumento({ page: 1, limit: 200, activo: true }),
-      configuracionApi.listarTiposDocumento({
-        page: 1,
-        limit: 200,
+      getAllCatalogPages((page, limit) => configuracionApi.listarTiposDocumento({ page, limit, activo: true })),
+      getAllCatalogPages((page, limit) => configuracionApi.listarTiposDocumento({
+        page,
+        limit,
         activo: true,
         es_identificacion_personal: true,
-      }),
+      })),
     ])
       .then(([documentos, identificaciones]) => {
         if (!cancelled) {
-          setTiposDocumento(documentos.items);
-          setTiposIdentificacion(identificaciones.items);
+          setTiposDocumento(documentos);
+          setTiposIdentificacion(identificaciones);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
+          setContextError(getErrorMessage(error, "No fue posible cargar los tipos de documento."));
           setTiposDocumento([]);
           setTiposIdentificacion([]);
         }
@@ -369,32 +388,12 @@ export default function OperationalPersonalPage() {
     let cancelled = false;
     void getContractPersonalFilterOptions({
       contrato_id: contratoId,
-      municipio_id: municipioId ? Number(municipioId) : undefined,
-      institucion_id: institucionId ? Number(institucionId) : undefined,
-      sede_id: sedeId ? Number(sedeId) : undefined,
       fecha: fechaConsulta,
     })
       .then((options) => {
         if (!cancelled) {
           setFilterOptions(options);
-          if (
-            institucionId &&
-            !options.instituciones.some((item) => String(item.id) === institucionId)
-          ) {
-            setInstitucionId("");
-            setSedeId("");
-            setModalidadId("");
-          }
-          if (sedeId && !options.sedes.some((item) => String(item.id) === sedeId)) {
-            setSedeId("");
-            setModalidadId("");
-          }
-          if (
-            modalidadId &&
-            !options.modalidades.some((item) => String(item.id) === modalidadId)
-          ) {
-            setModalidadId("");
-          }
+
         }
       })
       .catch(() => {
@@ -405,7 +404,7 @@ export default function OperationalPersonalPage() {
     return () => {
       cancelled = true;
     };
-  }, [contratoId, fechaConsulta, municipioId, institucionId, sedeId, modalidadId]);
+  }, [contratoId, fechaConsulta]);
 
   useEffect(() => {
     if (!canReadPersonal || !contratoId) {
@@ -435,43 +434,27 @@ export default function OperationalPersonalPage() {
     }
 
     let cancelled = false;
-    const currentContratoId = contratoId;
-
+    const controller = new AbortController();
     async function loadPersonal() {
       setTableLoading(true);
       setTableError("");
 
       try {
-        const response = await getContractPersonal({
-          contrato_id: currentContratoId,
-          contrato_cargo_id: cargoId ? Number(cargoId) : undefined,
-          estado_vinculacion: estadoFiltro || undefined,
-          gestor_usuario_id: gestorId ? Number(gestorId) : undefined,
-          sin_gestor: sinGestorOnly || undefined,
-          search: searchValue || undefined,
-          fecha: fechaConsulta,
-          municipio_id: municipioId ? Number(municipioId) : undefined,
-          institucion_id: institucionId ? Number(institucionId) : undefined,
-          sede_id: sedeId ? Number(sedeId) : undefined,
-          modalidad_id: modalidadId ? Number(modalidadId) : undefined,
-          ubicacion_laboral_id: ubicacionId ? Number(ubicacionId) : undefined,
-          cobertura: coberturaFiltro || undefined,
-          licitacion: licitacionFiltro || undefined,
-          page,
-          limit: pageSize,
-        });
+        const response = await getContractPersonal(currentFilters!, controller.signal);
 
         if (cancelled) return;
 
         const nextData: PersonalTableData = {
           items: response.items.map((item) => ({
             vinculacion_id: item.vinculacion_id,
+            persona_id: item.persona_id,
             numero_documento: item.numero_documento,
             nombre_completo: item.nombre_completo,
             gestor_actual: item.gestor_actual,
             cargo_nombre: item.cargo.nombre_cargo,
             estado_vinculacion: item.estado_vinculacion,
             fecha_ingreso: item.fecha_ingreso,
+            fecha_fin: item.fecha_fin,
             asignacion_actual: {
               ...item.asignacion_actual,
               municipio_id: item.asignacion_actual.municipio_id,
@@ -483,6 +466,7 @@ export default function OperationalPersonalPage() {
         };
 
         setTableData(nextData);
+        setRateLimited(false);
         setSelectedVinculacionId((current) =>
           current && nextData.items.some((item) => item.vinculacion_id === current)
             ? current
@@ -490,12 +474,15 @@ export default function OperationalPersonalPage() {
         );
       } catch (error) {
         if (!cancelled) {
-          setTableData(null);
-          setSelectedVinculacionId(null);
-          setSelectedExpediente(null);
-          setTableError(
-            getErrorMessage(error, "No fue posible cargar el personal del contrato.")
-          );
+          if (error instanceof ApiClientError && error.status === 429) {
+            setRateLimited(true);
+            setTableError("");
+          } else {
+            setTableData(null);
+            setSelectedVinculacionId(null);
+            setSelectedExpediente(null);
+            setTableError(getErrorMessage(error, "No fue posible cargar el personal del contrato."));
+          }
         }
       } finally {
         if (!cancelled) {
@@ -504,10 +491,12 @@ export default function OperationalPersonalPage() {
       }
     }
 
-    void loadPersonal();
+    const timer = window.setTimeout(() => void loadPersonal(), 250);
 
     return () => {
       cancelled = true;
+      controller.abort();
+      window.clearTimeout(timer);
     };
   }, [
     canReadPersonal,
@@ -528,6 +517,7 @@ export default function OperationalPersonalPage() {
     ubicacionId,
     coberturaFiltro,
     licitacionFiltro,
+    sortBy,
   ]);
 
   useEffect(() => {
@@ -589,6 +579,7 @@ export default function OperationalPersonalPage() {
     ubicacionId,
     coberturaFiltro,
     licitacionFiltro,
+    sortBy,
   ]);
 
   useEffect(() => {
@@ -914,18 +905,9 @@ export default function OperationalPersonalPage() {
     );
 
   return (
-    <div className="op-personal-page">
-      <header className="op-page-header">
-        <div>
-          <div className="op-eyebrow">
-            <EmpiriaIcon name="personal" size={18} variant="duotone" /> Personal
-          </div>
-          <div className="op-title-row">
-            <h1>Personal</h1>
-            <label className="op-contract-compact">
-              <FileText size={14} />
-              <span>Contrato</span>
-              <select
+    <div className={`op-personal-page${selectedVinculacionId !== null ? " has-expediente" : ""}`}>
+      <TopbarContractSlot>
+              <select aria-label="Contrato activo" title={contratoSeleccionado?.numero_contrato ?? "Contrato activo"}
                 value={contratoId ?? ""}
                 onChange={(event) => {
                   setContratoId(event.target.value ? Number(event.target.value) : null);
@@ -942,11 +924,13 @@ export default function OperationalPersonalPage() {
                   </option>
                 ))}
               </select>
-            </label>
-          </div>
-          <p>Gestiona, importa y exporta la informacion maestra de todos los trabajadores.</p>
-        </div>
-        <div className="op-header-actions">
+      </TopbarContractSlot>
+      <header className="op-page-header">
+        <nav className="op-section-tabs" aria-label="Secciones de Personal">
+          <button type="button" aria-current={activeTab === "base" ? "page" : undefined} className={activeTab === "base" ? "is-active" : ""} onClick={() => setActiveTab("base")}>Base de datos</button>
+          {canReadRepository && <button type="button" aria-current={activeTab === "repository" ? "page" : undefined} className={activeTab === "repository" ? "is-active" : ""} onClick={() => setActiveTab("repository")}>Repositorio de documentos</button>}
+        </nav>
+        {activeTab === "base" && <div className="op-header-actions">
           <button
             type="button"
             className="op-button secondary"
@@ -979,51 +963,11 @@ export default function OperationalPersonalPage() {
           >
             <UserPlus size={15} /> Nuevo trabajador
           </button>
-        </div>
+        </div>}
       </header>
 
-      <section className="op-kpi-grid" aria-label="Resumen de personal">
-        <article className="op-kpi">
-          <div className="op-kpi-icon op-kpi-icon--active">
-            <EmpiriaIcon name="personal" size={19} variant="duotone" />
-          </div>
-          <div>
-            <span>Trabajadores activos</span>
-            <strong>{personalResumen?.trabajadores_activos ?? "—"}</strong>
-            <small>Vigentes al {formatDate(fechaConsulta)}</small>
-          </div>
-        </article>
-        <article className="op-kpi">
-          <div className="op-kpi-icon op-kpi-icon--income">
-            <EmpiriaIcon name="income" size={19} variant="duotone" />
-          </div>
-          <div>
-            <span>Ingresos del mes</span>
-            <strong>{personalResumen?.ingresos_mes ?? "—"}</strong>
-            <small>Inicios dentro del mes</small>
-          </div>
-        </article>
-        <article className="op-kpi">
-          <div className="op-kpi-icon op-kpi-icon--retirement">
-            <EmpiriaIcon name="retirement" size={19} variant="duotone" />
-          </div>
-          <div>
-            <span>Retiros del mes</span>
-            <strong>{personalResumen?.retiros_mes ?? "—"}</strong>
-            <small>Fechas fin dentro del mes</small>
-          </div>
-        </article>
-        <article className="op-kpi">
-          <div className="op-kpi-icon op-kpi-icon--vacancy">
-            <EmpiriaIcon name="vacancy" size={19} variant="duotone" />
-          </div>
-          <div>
-            <span>Vacantes / cargos sin cubrir</span>
-            <strong>{personalResumen?.vacantes ?? "—"}</strong>
-            <small>Deficit territorial agregado</small>
-          </div>
-        </article>
-      </section>
+      {contextError && <div className="op-state error" role="alert">{contextError}</div>}
+      {activeTab === "repository" && canReadRepository ? <PersonalRepositoryPanel contratoId={contratoId} /> : <>
 
       <section className="op-tools-bar">
         <div className="op-search-row">
@@ -1032,21 +976,79 @@ export default function OperationalPersonalPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nombre, documento o institucion..."
+              placeholder="Buscar nombre o documento..."
             />
           </label>
-          <button
-            type="button"
-            className={`op-button secondary op-more-filters ${showMoreFilters ? "is-open" : ""}`}
-            onClick={() => setShowMoreFilters((current) => !current)}
-            aria-expanded={showMoreFilters}
-          >
-            Mas filtros
-            {activeFilterCount > 0 && <b>{activeFilterCount}</b>}
-          </button>
+
         </div>
 
         <div className="op-primary-filters">
+          <label className="op-filter">
+            <span><EmpiriaIcon name="municipio" size={13} /> Municipio</span>
+            <select
+              value={municipioId}
+              onChange={(event) => {
+                setMunicipioId(event.target.value);
+              }}
+              disabled={!contratoId}
+            >
+              <option value="">Municipio</option>
+              {filterOptions.municipios.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="op-filter">
+            <span><EmpiriaIcon name="institucion" size={13} /> Institucion</span>
+            <select
+              value={institucionId}
+              onChange={(event) => {
+                setInstitucionId(event.target.value);
+              }}
+              disabled={!contratoId}
+            >
+              <option value="">Institución</option>
+              {filterOptions.instituciones.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="op-filter">
+            <span><EmpiriaIcon name="sede" size={13} /> Sede</span>
+            <select
+              value={sedeId}
+              onChange={(event) => {
+                setSedeId(event.target.value);
+              }}
+              disabled={!contratoId}
+            >
+              <option value="">Sedes</option>
+              {filterOptions.sedes.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="op-filter">
+            <span><EmpiriaIcon name="cargo" size={13} /> Cargo</span>
+            <select
+              value={cargoId}
+              onChange={(event) => setCargoId(event.target.value)}
+              disabled={!contratoId}
+            >
+              <option value="">Cargo</option>
+              {cargos.map((cargo) => (
+                <option key={cargo.id} value={cargo.id}>
+                  {cargo.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="op-filter">
             <span><EmpiriaIcon name="personal" size={13} /> Gestor</span>
             <select
@@ -1064,66 +1066,9 @@ export default function OperationalPersonalPage() {
               }}
               disabled={!contratoId}
             >
-              <option value="">Todos</option>
+              <option value="">Gestor</option>
               <option value="sin_gestor">Sin gestor</option>
               {filterOptions.gestores.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="op-filter">
-            <span><EmpiriaIcon name="municipio" size={13} /> Municipio</span>
-            <select
-              value={municipioId}
-              onChange={(event) => {
-                setMunicipioId(event.target.value);
-                setInstitucionId("");
-                setSedeId("");
-                setModalidadId("");
-              }}
-              disabled={!contratoId}
-            >
-              <option value="">Todos</option>
-              {filterOptions.municipios.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="op-filter">
-            <span><EmpiriaIcon name="institucion" size={13} /> Institucion</span>
-            <select
-              value={institucionId}
-              onChange={(event) => {
-                setInstitucionId(event.target.value);
-                setSedeId("");
-                setModalidadId("");
-              }}
-              disabled={!contratoId || !municipioId}
-            >
-              <option value="">Todas</option>
-              {filterOptions.instituciones.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="op-filter">
-            <span><EmpiriaIcon name="sede" size={13} /> Sede</span>
-            <select
-              value={sedeId}
-              onChange={(event) => {
-                setSedeId(event.target.value);
-                setModalidadId("");
-              }}
-              disabled={!contratoId || !institucionId}
-            >
-              <option value="">Todas</option>
-              {filterOptions.sedes.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.nombre}
                 </option>
@@ -1135,27 +1080,12 @@ export default function OperationalPersonalPage() {
             <select
               value={modalidadId}
               onChange={(event) => setModalidadId(event.target.value)}
-              disabled={!contratoId || !sedeId}
+              disabled={!contratoId}
             >
-              <option value="">Todas</option>
+              <option value="">Modalidad</option>
               {filterOptions.modalidades.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.codigo ?? item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="op-filter">
-            <span><EmpiriaIcon name="cargo" size={13} /> Cargo</span>
-            <select
-              value={cargoId}
-              onChange={(event) => setCargoId(event.target.value)}
-              disabled={!contratoId}
-            >
-              <option value="">Todos</option>
-              {cargos.map((cargo) => (
-                <option key={cargo.id} value={cargo.id}>
-                  {cargo.label}
                 </option>
               ))}
             </select>
@@ -1167,16 +1097,38 @@ export default function OperationalPersonalPage() {
               onChange={(event) => setEstadoFiltro(event.target.value as "" | VinculacionEstado)}
               disabled={!contratoId}
             >
-              <option value="">Todos</option>
+              <option value="">Estado</option>
               <option value="ACTIVA">Activa</option>
               <option value="SUSPENDIDA">Suspendida</option>
               <option value="RETIRADA">Retirada</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className={`op-button secondary op-more-filters ${showMoreFilters ? "is-open" : ""}`}
+            onClick={() => setShowMoreFilters((current) => !current)}
+            aria-expanded={showMoreFilters}
+          >
+            <SlidersHorizontal size={11} /> Más
+            {activeFilterCount > 0 && <b>{activeFilterCount}</b>}
+          </button>
+          <label className="op-filter op-sort-filter">
+            <span>Ordenar por</span>
+            <select aria-label="Ordenar por" value={sortBy} onChange={(event) => { setSortBy(event.target.value as typeof sortBy); setPage(1); }} disabled={!contratoId}>
+              <option value="nombre_asc">Nombre A–Z</option>
+              <option value="nombre_desc">Nombre Z–A</option>
+              <option value="ingreso_desc">Ingreso reciente</option>
+              <option value="ingreso_asc">Ingreso antiguo</option>
+              <option value="municipio_asc">Municipio A–Z</option>
+              <option value="institucion_asc">Institución A–Z</option>
+              <option value="cargo_asc">Cargo A–Z</option>
             </select>
           </label>
         </div>
 
         {showMoreFilters && (
           <div className="op-more-filters-panel">
+
             <label className="op-filter">
               <span>Ubicacion laboral</span>
               <select
@@ -1270,9 +1222,6 @@ export default function OperationalPersonalPage() {
                 type="button"
                 onClick={() => {
                   setMunicipioId("");
-                  setInstitucionId("");
-                  setSedeId("");
-                  setModalidadId("");
                 }}
               >
                 Municipio ×
@@ -1283,8 +1232,6 @@ export default function OperationalPersonalPage() {
                 type="button"
                 onClick={() => {
                   setInstitucionId("");
-                  setSedeId("");
-                  setModalidadId("");
                 }}
               >
                 Institucion ×
@@ -1295,7 +1242,6 @@ export default function OperationalPersonalPage() {
                 type="button"
                 onClick={() => {
                   setSedeId("");
-                  setModalidadId("");
                 }}
               >
                 Sede ×
@@ -1467,7 +1413,7 @@ export default function OperationalPersonalPage() {
           <div className="op-empty">
             Selecciona un contrato para abrir la vista operativa.
           </div>
-        ) : tableError ? (
+        ) : tableError && !tableData ? (
           <div className="op-state error">
             <AlertTriangle size={16} />
             {tableError}
@@ -1476,6 +1422,12 @@ export default function OperationalPersonalPage() {
           <div className="op-empty">Cargando personal del contrato...</div>
         ) : (
           <>
+            {rateLimited ? (
+              <div className="op-inline-feedback warning" role="status">
+                Demasiadas solicitudes. Intenta nuevamente en unos segundos.
+                <button type="button" className="op-button secondary" onClick={() => { setRateLimited(false); setRefreshIndex((value) => value + 1); }}>Reintentar</button>
+              </div>
+            ) : null}
             <div className="op-table-scroll">
               <table className="op-table">
                 <thead>
@@ -1495,14 +1447,13 @@ export default function OperationalPersonalPage() {
                     <th className="is-offer">Oferta</th>
                     <th className="is-status">Estado</th>
                     <th className="is-date">Ingreso</th>
-                    <th className="is-updated">Ultima actualizacion</th>
-                    <th className="is-action">Expediente</th>
+                    <th className="is-date">Retiro</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(tableData?.items ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={10} className="op-empty-row">
+                      <td colSpan={9} className="op-empty-row">
                         No hay personal vinculado a este contrato con los filtros actuales.
                       </td>
                     </tr>
@@ -1510,13 +1461,14 @@ export default function OperationalPersonalPage() {
                   {(tableData?.items ?? []).map((item) => (
                     <tr
                       key={item.vinculacion_id}
-                      className={item.vinculacion_id === selectedVinculacionId ? "is-selected" : ""}
+                      className={item.vinculacion_id === selectedVinculacionId || selectedVinculacionIds.includes(item.vinculacion_id) ? "is-selected" : ""}
                       onClick={() => setSelectedVinculacionId(item.vinculacion_id)}
                     >
                       <td className="is-select">
                         <input
                           type="checkbox"
                           checked={selectedVinculacionIds.includes(item.vinculacion_id)}
+                          onClick={(event) => event.stopPropagation()}
                           onChange={(event) => {
                             event.stopPropagation();
                             toggleSelectedVinculacion(item.vinculacion_id);
@@ -1542,17 +1494,15 @@ export default function OperationalPersonalPage() {
                         <div className="op-assignment-cell">
                           {item.asignacion_actual.institucion ? (
                             <>
-                              <strong>{item.asignacion_actual.institucion}</strong>
-                              {item.asignacion_actual.sede && (
-                                <small>{item.asignacion_actual.sede}</small>
-                              )}
+                              <strong title={item.asignacion_actual.institucion ?? undefined}>{item.asignacion_actual.institucion}</strong>
+                              {item.asignacion_actual.sede && (<small className="op-sede-name" title={item.asignacion_actual.sede}>Sede: {item.asignacion_actual.sede}</small>)}
                               {item.asignacion_actual.municipio && (
                                 <small>{item.asignacion_actual.municipio}</small>
                               )}
                               {item.asignacion_actual.modalidad && (
-                                <span className="op-assignment-status">Cobertura si</span>
+                                <span className="op-assignment-status">Cobertura</span>
                               )}
-                              <span className="op-gestor-chip">
+                              <span className={`op-gestor-chip${item.gestor_actual?.nombre ? "" : " is-unassigned"}`}>
                                 {item.gestor_actual?.nombre ?? "Sin gestor"}
                               </span>
                             </>
@@ -1562,7 +1512,7 @@ export default function OperationalPersonalPage() {
                                 {item.asignacion_actual.nombre ?? "Sin ubicacion laboral"}
                               </strong>
                               <small>Personal administrativo</small>
-                              <span className="op-gestor-chip">
+                              <span className={`op-gestor-chip${item.gestor_actual?.nombre ? "" : " is-unassigned"}`}>
                                 {item.gestor_actual?.nombre ?? "Sin gestor"}
                               </span>
                             </>
@@ -1588,8 +1538,8 @@ export default function OperationalPersonalPage() {
                             }`}
                           >
                             {item.presentada_licitacion_actual
-                              ? "PRESENTADA"
-                              : "NO PRESENTADA"}
+                              ? "Presentada"
+                              : "No presentada"}
                           </span>
                           {item.presentada_licitacion_actual &&
                             item.perfil_licitacion_actual && (
@@ -1605,19 +1555,7 @@ export default function OperationalPersonalPage() {
                         </span>
                       </td>
                       <td className="is-date">{formatDate(item.fecha_ingreso)}</td>
-                      <td className="is-updated op-last-updated">—</td>
-                      <td className="is-action">
-                        <button
-                          type="button"
-                          className="op-link-button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedVinculacionId(item.vinculacion_id);
-                          }}
-                        >
-                          Ver expediente <ArrowRight size={14} />
-                        </button>
-                      </td>
+                      <td className="is-date">{formatDate(item.fecha_fin)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1659,6 +1597,8 @@ export default function OperationalPersonalPage() {
           </>
         )}
       </section>
+
+      </>}
 
       {showAssignGestorModal && (
         <div className="op-modal-layer" onClick={closeAssignGestorModal}>

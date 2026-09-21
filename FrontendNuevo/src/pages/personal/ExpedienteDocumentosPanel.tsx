@@ -689,7 +689,7 @@ function DocTable({
         <button type="button" style={S.retryBtn} onClick={onRetry}>Reintentar</button>
       </div>
     )}
-    <table style={S.table}>
+    <table className="pmd-documents-table" style={S.table}>
       <thead>
         <tr>
           <th style={S.th}>Tipo</th>
@@ -821,7 +821,7 @@ function ChecklistView({
         )}
       </div>
 
-      <table style={S.table}>
+      <table className="pmd-documents-table" style={S.table}>
         <thead>
           <tr>
             <th style={S.th}>Requisito</th>

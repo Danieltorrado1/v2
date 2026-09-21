@@ -94,6 +94,9 @@ export const testDocumentoPersonaSchema = z
 
 export const uploadDocumentoSchema = z.object({
   tipo_documento_id: trimmedStringSchema,
+  experiencia_inicio: nullableDateSchema.optional(),
+  experiencia_fin: nullableDateSchema.optional(),
+  sisben: z.string().trim().max(80).optional(),
   fecha_expedicion: nullableDateSchema.optional().default(null),
   fecha_vencimiento: nullableDateSchema.optional().default(null)
 }).refine(
