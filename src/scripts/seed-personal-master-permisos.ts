@@ -25,6 +25,7 @@ const PERMISOS = [
   ['vinculacion', 'editar_cargo', 'Permiso para editar cargo o tipo de vinculacion'],
   ['vinculacion', 'editar_fechas', 'Permiso para editar fechas de vinculacion'],
   ['vinculacion', 'editar_estado', 'Permiso para editar estado de vinculacion'],
+  ['vinculacion', 'editar_asignacion', 'Permiso para editar institución, sede y modalidad de asignación operativa'],
   ['bancario', 'ver', 'Permiso para consultar informacion bancaria enmascarada'],
   ['bancario', 'ver_numero_completo', 'Permiso para consultar el numero completo de cuenta bancaria'],
   ['bancario', 'editar', 'Permiso para registrar o actualizar informacion bancaria'],
@@ -39,6 +40,7 @@ const ROLE_ASSIGNMENTS: Record<string, string[]> = {
   TALENTO_HUMANO: [
     'persona.ver',
     'vinculacion.ver',
+    'vinculacion.editar_asignacion',
     'importaciones.preparar',
     'exportaciones.generar'
   ]

@@ -1,3 +1,4 @@
+import { documentPolicy, documentState, countsAsApproved, type DocumentState } from './documentos.review.domain';
 ﻿import { randomUUID } from 'node:crypto';
 import type { QueryResultRow } from 'pg';
 
@@ -11,6 +12,9 @@ import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import { ensureVinculacionExists } from './documentos.validator';
 
 interface ChecklistRequirementRow extends QueryResultRow {
+  regla_aplica: boolean | null;
+  cotiza_pension: boolean | null;
+  aplica: boolean;
   activo: boolean;
   ambito_documental: 'PERSONA' | 'VINCULACION';
   codigo: string | null;
@@ -25,9 +29,17 @@ interface ChecklistRequirementRow extends QueryResultRow {
   tipo_documento_id: string;
   tipo_vinculacion_id: string | null;
   vigencia_meses: number | null;
+  tipo_documento_ids: string[];
+  componentes: Record<string,string>;
+  tipo_requisito: string;
+  cuenta_cumplimiento: boolean;
+  grupo_visual: string;
 }
 
 interface ChecklistLoadedRow extends QueryResultRow {
+  estado_revision?: string | null;
+  policy_type?: { requiere_fecha_expedicion?:boolean; requiere_fecha_vencimiento?:boolean; tiene_vencimiento?:boolean; vigencia_dias_default?:number|null; dias_alerta_amarilla?:number };
+
   activo: boolean;
   fecha_carga: Date | string | null;
   fecha_expedicion: Date | string | null;
@@ -44,7 +56,7 @@ type ChecklistDetailedState =
   | 'PENDIENTE'
   | 'PROXIMO_A_VENCER'
   | 'VENCIDO'
-  | 'NO_APLICA';
+  | 'NO_APLICA' | 'SIN_DOCUMENTO' | 'PENDIENTE_REVISION' | 'APROBADO' | 'RECHAZADO' | 'POR_VENCER' | 'PARCIAL';
 
 export interface ContextualChecklistItem {
   ambito_documental: 'PERSONA' | 'VINCULACION';
@@ -53,6 +65,7 @@ export interface ContextualChecklistItem {
   detalle_contexto: 'GENERAL' | 'CARGO' | 'TIPO_VINCULACION' | 'CARGO_TIPO_VINCULACION';
   dias_para_vencimiento: number | null;
   documento_id: number | null;
+  documentos?: { documento_id: number; tipo_documento_id: number; nombre: string; estado?: DocumentState }[];
   estado: LegacyChecklistState;
   estado_detallado: ChecklistDetailedState;
   fecha_vencimiento: string | null;
@@ -65,13 +78,18 @@ export interface ContextualChecklistItem {
   requiere_fecha_expedicion: boolean;
   requiere_fecha_vencimiento: boolean;
   tipo_documento_id: number | null;
+  tipo_documento_ids?: number[];
+  componentes?: Record<string,string>;
   tipo_documento_nombre: string | null;
   tipo_requisito: string | null;
+  cuenta_cumplimiento?: boolean;
+  grupo_visual?: string | null;
   tipo_vinculacion_id: number | null;
   vigencia_meses: number | null;
 }
 
 export interface ContextualChecklistRequirementInput {
+  aplica?: boolean;
   ambito_documental: 'PERSONA' | 'VINCULACION';
   codigo: string | null;
   contrato_cargo_id: number | null;
@@ -83,11 +101,19 @@ export interface ContextualChecklistRequirementInput {
   requiere_fecha_expedicion: boolean;
   requiere_fecha_vencimiento: boolean;
   tipo_documento_id: number;
+  tipo_documento_ids?: number[];
+  componentes?: Record<string,string>;
   tipo_vinculacion_id: number | null;
   vigencia_meses: number | null;
+  tipo_requisito?: string | null;
+  cuenta_cumplimiento?: boolean;
+  grupo_visual?: string | null;
 }
 
 export interface ContextualChecklistDocumentInput {
+  estado_revision?: string | null;
+  policy_type?: { requiere_fecha_expedicion?:boolean; requiere_fecha_vencimiento?:boolean; tiene_vencimiento?:boolean; vigencia_dias_default?:number|null; dias_alerta_amarilla?:number };
+
   activo: boolean;
   fecha_carga: Date | string | null;
   fecha_expedicion: Date | string | null;
@@ -130,21 +156,6 @@ const toDateString = (value: Date | string | null): string | null => {
 
 const toNumber = (value: number | string): number => {
   return typeof value === 'number' ? value : Number(value);
-};
-
-const addMonths = (isoDate: string, months: number): string | null => {
-  if (!isoDate || !months) {
-    return null;
-  }
-
-  const base = new Date(`${isoDate}T00:00:00.000Z`);
-
-  if (Number.isNaN(base.getTime())) {
-    return null;
-  }
-
-  base.setUTCMonth(base.getUTCMonth() + months);
-  return base.toISOString().slice(0, 10);
 };
 
 const daysBetween = (fromIsoDate: string, toIsoDate: string): number => {
@@ -216,58 +227,41 @@ export const buildContextualChecklistSnapshot = (input: {
   const todayIso = input.todayIso ?? new Date().toISOString().slice(0, 10);
 
   const requisitos = input.requirements.map((requirement) => {
-    const sourceDocument =
-      requirement.ambito_documental === 'PERSONA'
-        ? personaDocumentIndex.get(requirement.tipo_documento_id) ?? null
-        : vinculacionDocumentIndex.get(requirement.tipo_documento_id) ?? null;
-    const fechaExpedicion = sourceDocument ? toDateString(sourceDocument.fecha_expedicion) : null;
-    const explicitFechaVencimiento = sourceDocument
-      ? toDateString(sourceDocument.fecha_vencimiento)
-      : null;
-    const computedFechaVencimiento =
-      explicitFechaVencimiento ??
-      (fechaExpedicion && requirement.vigencia_meses
-        ? addMonths(fechaExpedicion, requirement.vigencia_meses)
-        : null);
-    const diasParaVencimiento = computedFechaVencimiento
-      ? daysBetween(todayIso, computedFechaVencimiento)
-      : null;
-    const origin = resolveOrigin(requirement.contrato_cargo_id, requirement.tipo_vinculacion_id);
-    let estado: LegacyChecklistState = 'FALTANTE';
-    let estadoDetallado: ChecklistDetailedState = 'PENDIENTE';
+    const documentIndex = requirement.ambito_documental === 'PERSONA' ? personaDocumentIndex : vinculacionDocumentIndex;
+    const candidateDocuments = (requirement.tipo_documento_ids ?? [requirement.tipo_documento_id])
+      .map(typeId => documentIndex.get(typeId) ?? null)
+      .filter((document): document is ContextualChecklistDocumentInput => Boolean(document))
+      .sort((a,b)=>String(b.fecha_carga).localeCompare(String(a.fecha_carga)) || b.id-a.id);
+    const composite = requirement.codigo === 'MANIPULACION';
+    const sourceDocument = candidateDocuments[0] ?? null;
+    const evaluate = (d: ContextualChecklistDocumentInput) => documentState({...d,fecha_expedicion:toDateString(d.fecha_expedicion),fecha_vencimiento:toDateString(d.fecha_vencimiento)},documentPolicy(requirement.codigo ?? '',d.policy_type),todayIso);
+    const computedFechaVencimiento = sourceDocument && documentPolicy(requirement.codigo ?? '',sourceDocument.policy_type).kind !== 'NORMAL' ? toDateString(sourceDocument.fecha_vencimiento) : null;
+    const diasParaVencimiento = computedFechaVencimiento ? daysBetween(todayIso,computedFechaVencimiento) : null;
+    const origin = resolveOrigin(requirement.contrato_cargo_id,requirement.tipo_vinculacion_id);
+    let estadoDetallado: ChecklistDetailedState = sourceDocument ? evaluate(sourceDocument) : 'SIN_DOCUMENTO';
     let observacion: string | null = null;
-
-    if (!sourceDocument) {
-      if (requirement.obligatorio) {
-        estado = 'FALTANTE';
-        estadoDetallado = 'PENDIENTE';
-      } else {
-        estado = 'FALTANTE';
-        estadoDetallado = 'NO_APLICA';
-        observacion = 'Requisito opcional sin documento cargado.';
-      }
-    } else if (computedFechaVencimiento && computedFechaVencimiento < todayIso) {
-      estado = 'VENCIDO';
-      estadoDetallado = 'VENCIDO';
-    } else if (
-      computedFechaVencimiento &&
-      diasParaVencimiento !== null &&
-      diasParaVencimiento <= requirement.dias_proximo_vencimiento
-    ) {
-      estado = 'CARGADO';
-      estadoDetallado = 'PROXIMO_A_VENCER';
-    } else {
-      estado = 'CARGADO';
-      estadoDetallado = 'COMPLETO';
+    if (requirement.aplica === false || (!sourceDocument && !requirement.obligatorio && requirement.tipo_requisito !== 'ACREDITABLE')) {
+      estadoDetallado='NO_APLICA';
+    } else if (composite) {
+      const componentKey = (id:number) => requirement.componentes?.[String(id)] ?? String(id);
+      const required = new Set(requirement.componentes ? Object.values(requirement.componentes).filter(Boolean) : (requirement.tipo_documento_ids ?? []).map(String));
+      const latestByComponent = new Map<string,ContextualChecklistDocumentInput>();
+      for(const d of candidateDocuments) if(!latestByComponent.has(componentKey(d.tipo_documento_id)))latestByComponent.set(componentKey(d.tipo_documento_id),d);
+      const compliant=[...latestByComponent.values()].filter(d=>countsAsApproved(evaluate(d))).length;
+      estadoDetallado = required.size >= 2 && compliant === required.size ? 'COMPLETO' : compliant > 0 ? 'PARCIAL' : 'PENDIENTE';
     }
+    const estado: LegacyChecklistState = estadoDetallado === 'VENCIDO' ? 'VENCIDO' : sourceDocument ? 'CARGADO' : 'FALTANTE';
 
     return {
       requisito_id: requirement.id,
       nombre_requisito: requirement.nombre_requisito,
       codigo: requirement.codigo,
       tipo_documento_id: requirement.tipo_documento_id,
+      tipo_documento_ids: requirement.tipo_documento_ids ?? [requirement.tipo_documento_id],
       tipo_documento_nombre: requirement.nombre_documento,
-      tipo_requisito: null,
+      tipo_requisito: requirement.tipo_requisito ?? null,
+      cuenta_cumplimiento: requirement.cuenta_cumplimiento ?? requirement.obligatorio,
+      grupo_visual: requirement.grupo_visual ?? null,
       ambito_documental: requirement.ambito_documental,
       obligatorio: requirement.obligatorio,
       requiere_fecha_expedicion: requirement.requiere_fecha_expedicion,
@@ -277,6 +271,9 @@ export const buildContextualChecklistSnapshot = (input: {
       tipo_vinculacion_id: requirement.tipo_vinculacion_id,
       origen: origin,
       detalle_contexto: origin,
+      documentos: (requirement.ambito_documental === 'PERSONA' ? input.personaDocuments : input.vinculacionDocuments)
+        .filter(d => d.activo && (requirement.tipo_documento_ids ?? [requirement.tipo_documento_id]).includes(d.tipo_documento_id))
+        .map(d => ({ documento_id: d.id, tipo_documento_id: d.tipo_documento_id, nombre: d.nombre_original, estado: evaluate(d) })),
       documento_id: sourceDocument ? sourceDocument.id : null,
       fuente_documento: sourceDocument ? requirement.ambito_documental : null,
       fecha_vencimiento: computedFechaVencimiento,
@@ -287,15 +284,16 @@ export const buildContextualChecklistSnapshot = (input: {
     } satisfies ContextualChecklistItem;
   });
 
-  const totalRequisitos = requisitos.length;
-  const completos = requisitos.filter((item) => item.estado_detallado === 'COMPLETO').length;
-  const proximosVencer = requisitos.filter(
-    (item) => item.estado_detallado === 'PROXIMO_A_VENCER'
+  const exigibles = requisitos.filter((item) => item.cuenta_cumplimiento !== false && item.estado_detallado !== 'NO_APLICA');
+  const totalRequisitos = exigibles.length;
+  const completos = exigibles.filter((item) => (item.estado_detallado === 'COMPLETO' || item.estado_detallado === 'APROBADO')).length;
+  const proximosVencer = exigibles.filter(
+    (item) => item.estado_detallado === 'POR_VENCER'
   ).length;
-  const pendientes = requisitos.filter((item) => item.estado_detallado === 'PENDIENTE').length;
+  const pendientes = exigibles.filter((item) => ['PENDIENTE','SIN_DOCUMENTO','PENDIENTE_REVISION','RECHAZADO','PARCIAL'].includes(item.estado_detallado)).length;
   const noAplica = requisitos.filter((item) => item.estado_detallado === 'NO_APLICA').length;
   const cargados = requisitos.filter((item) => item.estado === 'CARGADO').length;
-  const vencidos = requisitos.filter((item) => item.estado === 'VENCIDO').length;
+  const vencidos = exigibles.filter((item) => item.estado === 'VENCIDO').length;
   const cumplimientoPorcentaje =
     totalRequisitos === 0
       ? 0
@@ -319,6 +317,14 @@ export const buildContextualChecklistSnapshot = (input: {
     requisitos
   };
 };
+
+export function resolveCanonicalApplicability(
+  code: string | null, type: string, configured: boolean | null, cotizaPension: boolean | null
+): { aplica: boolean; obligatorio: boolean } {
+  const aplica = !(code === 'PENSION' && cotizaPension === false) &&
+    (configured ?? (type === 'OBLIGATORIO' || type === 'ACREDITABLE'));
+  return { aplica, obligatorio: aplica && (type === 'OBLIGATORIO' || configured === true) };
+}
 
 export const buildContextualVinculacionChecklist = async (
   vinculacionId: string,
@@ -349,33 +355,38 @@ export const buildContextualVinculacionChecklist = async (
     dbQuery<ChecklistRequirementRow>(
       `
         SELECT
-          r.id::text AS id,
-          r.nombre_requisito,
-          r.obligatorio,
-          r.activo,
-          r.ambito_documental,
-          r.requiere_fecha_expedicion,
-          r.requiere_fecha_vencimiento,
-          r.vigencia_meses,
-          r.dias_proximo_vencimiento,
-          r.contrato_cargo_id::text AS contrato_cargo_id,
-          r.tipo_vinculacion_id::text AS tipo_vinculacion_id,
-          r.tipo_documento_id::text AS tipo_documento_id,
-          td.codigo,
-          td.nombre_documento
-        FROM contrato_documento_requisitos r
-        INNER JOIN tipos_documentos td ON td.id = r.tipo_documento_id
-        WHERE r.contrato_id::text = $1
-          AND r.objetivo_requisito = 'VINCULACION'
-          AND r.activo = TRUE
-          AND (r.contrato_cargo_id IS NULL OR r.contrato_cargo_id::text = $2)
-          AND (r.tipo_vinculacion_id IS NULL OR r.tipo_vinculacion_id::text = $3)
+          c.id::text AS id, c.nombre AS nombre_requisito,
+          rr.aplica AS regla_aplica, v.cotiza_pension, c.activo,
+          'PERSONA'::text AS ambito_documental,
+          false AS requiere_fecha_expedicion, false AS requiere_fecha_vencimiento,
+          NULL::int AS vigencia_meses, 30 AS dias_proximo_vencimiento,
+          NULL::text AS contrato_cargo_id, NULL::text AS tipo_vinculacion_id,
+          MIN(a.tipo_documento_id)::text AS tipo_documento_id,
+          ARRAY_AGG(a.tipo_documento_id::text ORDER BY a.tipo_alias, a.tipo_documento_id) AS tipo_documento_ids,
+          COALESCE(jsonb_object_agg(a.tipo_documento_id::text,a.componente_codigo) FILTER (WHERE a.tipo_documento_id IS NOT NULL AND a.componente_codigo IS NOT NULL),'{}'::jsonb) AS componentes,
+          c.codigo AS codigo, MIN(td.nombre_documento) AS nombre_documento,
+          c.tipo_requisito, c.cuenta_cumplimiento, c.grupo_visual
+        FROM documentos_requisitos_canonicos c
+        LEFT JOIN documentos_requisitos_aliases a ON a.requisito_canonico_id = c.id
+        LEFT JOIN tipos_documentos td ON td.id = a.tipo_documento_id
+        JOIN vinculaciones v ON v.id::text = $4
+        LEFT JOIN LATERAL (
+          SELECT r.aplica FROM documentos_requisitos_reglas r
+          WHERE r.requisito_canonico_id = c.id
+            AND (r.contrato_id IS NULL OR r.contrato_id::text = $1)
+            AND (r.contrato_cargo_id IS NULL OR r.contrato_cargo_id::text = $2)
+            AND (r.tipo_vinculacion_id IS NULL OR r.tipo_vinculacion_id::text = $3)
+          ORDER BY ((r.contrato_id IS NOT NULL)::int + (r.contrato_cargo_id IS NOT NULL)::int
+            + (r.tipo_vinculacion_id IS NOT NULL)::int) DESC, r.id DESC
+          LIMIT 1
+        ) rr ON TRUE
+        WHERE c.activo = TRUE AND c.tipo_requisito <> 'HISTORICO'
+        GROUP BY c.id, c.codigo, c.nombre, c.tipo_requisito, c.cuenta_cumplimiento, c.grupo_visual,
+          rr.aplica, v.cotiza_pension
         ORDER BY
-          COALESCE(r.contrato_cargo_id, 0) ASC,
-          COALESCE(r.tipo_vinculacion_id, 0) ASC,
-          r.id ASC
+          c.id ASC
       `,
-      [vinculacion.contrato_id, contratoCargoContext, tipoVinculacionContext]
+      [vinculacion.contrato_id, contratoCargoContext, tipoVinculacionContext, vinculacionId]
     ),
     dbQuery<ChecklistLoadedRow>(
       `
@@ -387,11 +398,12 @@ export const buildContextualVinculacionChecklist = async (
           dv.fecha_expedicion,
           dv.fecha_vencimiento,
           dv.fecha_carga,
-          dv.activo
+          dv.activo, dv.estado_revision, to_jsonb(td) AS policy_type
         FROM documentos_vinculacion dv
         INNER JOIN tipos_documentos td ON td.id = dv.tipo_documento_id
         WHERE dv.vinculacion_id::text = $1
-          AND dv.activo = TRUE
+          AND dv.activo = TRUE AND dv.es_vigente = TRUE
+          AND COALESCE(NULLIF(dv.storage_path,''),NULLIF(dv.archivo_path,'')) IS NOT NULL
         ORDER BY dv.fecha_carga DESC, dv.id DESC
       `,
       [vinculacionId]
@@ -406,12 +418,13 @@ export const buildContextualVinculacionChecklist = async (
           dp.fecha_expedicion,
           dp.fecha_vencimiento,
           dp.fecha_carga,
-          dp.activo
+          dp.activo, dp.estado_revision, to_jsonb(td) AS policy_type
         FROM documentos_persona dp
         INNER JOIN tipos_documentos td ON td.id = dp.tipo_documento_id
         WHERE dp.persona_id::text = $1
           AND dp.activo = TRUE
           AND dp.es_vigente = TRUE
+          AND COALESCE(NULLIF(dp.storage_path,''),NULLIF(dp.archivo_path,'')) IS NOT NULL
         ORDER BY dp.fecha_carga DESC, dp.version DESC, dp.id DESC
       `,
       [vinculacion.persona_id]
@@ -426,7 +439,7 @@ export const buildContextualVinculacionChecklist = async (
     requirements: requirementsResult.rows.map((requirement) => ({
       id: toNumber(requirement.id),
       nombre_requisito: requirement.nombre_requisito,
-      obligatorio: requirement.obligatorio,
+      ...resolveCanonicalApplicability(requirement.codigo, requirement.tipo_requisito, requirement.regla_aplica, requirement.cotiza_pension),
       ambito_documental: requirement.ambito_documental,
       requiere_fecha_expedicion: requirement.requiere_fecha_expedicion,
       requiere_fecha_vencimiento: requirement.requiere_fecha_vencimiento,
@@ -439,8 +452,13 @@ export const buildContextualVinculacionChecklist = async (
         ? toNumber(requirement.tipo_vinculacion_id)
         : null,
       tipo_documento_id: toNumber(requirement.tipo_documento_id),
+      tipo_documento_ids: (requirement.tipo_documento_ids ?? []).filter(value => value !== null).map(value => toNumber(value)),
       codigo: requirement.codigo,
-      nombre_documento: requirement.nombre_documento
+      componentes: requirement.componentes,
+      nombre_documento: requirement.nombre_documento,
+      tipo_requisito: requirement.tipo_requisito,
+      cuenta_cumplimiento: requirement.cuenta_cumplimiento,
+      grupo_visual: requirement.grupo_visual
     })),
     vinculacionDocuments: vinculacionDocumentsResult.rows.map((document) => ({
       id: toNumber(document.id),
@@ -450,7 +468,9 @@ export const buildContextualVinculacionChecklist = async (
       fecha_expedicion: document.fecha_expedicion,
       fecha_vencimiento: document.fecha_vencimiento,
       fecha_carga: document.fecha_carga,
-      activo: document.activo
+      activo: document.activo,
+      estado_revision: document.estado_revision,
+      policy_type: document.policy_type
     })),
     personaDocuments: personaDocumentsResult.rows.map((document) => ({
       id: toNumber(document.id),
@@ -460,7 +480,9 @@ export const buildContextualVinculacionChecklist = async (
       fecha_expedicion: document.fecha_expedicion,
       fecha_vencimiento: document.fecha_vencimiento,
       fecha_carga: document.fecha_carga,
-      activo: document.activo
+      activo: document.activo,
+      estado_revision: document.estado_revision,
+      policy_type: document.policy_type
     }))
   });
 

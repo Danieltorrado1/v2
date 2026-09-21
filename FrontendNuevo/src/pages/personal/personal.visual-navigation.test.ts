@@ -68,16 +68,16 @@ test('matriz: GENERAL admite documentos personales sin inventar requisitos ni pr
   assert.equal(item.estado_detallado, 'SIN_DOCUMENTO');
   assert.equal(item.documento_id, null);
   assert.equal(row.checklist, undefined);
-  assert.equal(repositoryGroup(column), 'Personales');
+  assert.equal(repositoryGroup(column), 'DATOS_PERSONALES');
 });
 
-test('matriz: distingue ámbitos y conserva el estado vencido de documentos reales', () => {
+test('matriz: distingue ámbitos y no infiere aprobaci?n ni vigencia de archivos sin revisi?n', () => {
   const persona = catalogDocument({ id: 2, label: 'ARL', alcance: 'GENERAL' });
   const laboral = catalogDocument({ id: 2, label: 'ARL', alcance: 'VINCULACION' });
   const row = { documents: [{ tipo_documento_id: 2, origen: 'vinculacion', documento_id: 91, estado_documental: 'vencido' }], worker: {} } as RepositoryRow;
   assert.notEqual(repositoryKey(persona), repositoryKey(laboral));
   assert.equal(repositoryCell(row, persona).documento_id, null);
   assert.equal(repositoryCell(row, laboral).documento_id, 91);
-  assert.equal(repositoryCell(row, laboral).estado_detallado, 'VENCIDO');
-  assert.equal(repositoryGroup(laboral), 'Seg. Social');
+  assert.equal(repositoryCell(row, laboral).estado_detallado, 'PENDIENTE_REVISION');
+  assert.equal(repositoryGroup({ ...laboral, group: 'SEGURIDAD_SOCIAL' }), 'SEGURIDAD_SOCIAL');
 });

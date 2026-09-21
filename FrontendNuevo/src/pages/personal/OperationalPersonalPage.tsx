@@ -1,3 +1,4 @@
+import { contextualPersonalOptions } from './personalOperationalFilters';
 import { useEffect, useState } from "react";
 import { TopbarContractSlot } from "../../layouts/TopbarContractSlot";
 import { visibleTenantModules } from "../../architecture/moduleAccess";
@@ -5,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   Download,
-  Eye,
   SlidersHorizontal,
   Search,
   Upload,
@@ -46,6 +46,7 @@ import PersonalRepositoryPanel from "./PersonalRepositoryPanel";
 import "./OperationalPersonalPage.css";
 
 const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
+  cargos: [],
   gestores: [],
   municipios: [],
   instituciones: [],
@@ -171,17 +172,19 @@ export default function OperationalPersonalPage() {
   const [municipioId, setMunicipioId] = useState("");
   const [institucionId, setInstitucionId] = useState("");
   const [sedeId, setSedeId] = useState("");
+  const [sortBy, setSortBy] = useState<"nombre_asc" | "nombre_desc" | "ingreso_desc" | "ingreso_asc" | "municipio_asc" | "institucion_asc" | "cargo_asc">("ingreso_desc");
   const [modalidadId, setModalidadId] = useState("");
   const [ubicacionId, setUbicacionId] = useState("");
   const [coberturaFiltro, setCoberturaFiltro] = useState<"" | "SI" | "NO" | "RETIRADA">("");
   const [licitacionFiltro, setLicitacionFiltro] = useState<"" | "PRESENTADA" | "NO_PRESENTADA">("");
-  const [filterOptions, setFilterOptions] = useState<ContractPersonalFilterOptions>({
+  const [allFilterOptions, setFilterOptions] = useState<ContractPersonalFilterOptions>({
     ...EMPTY_FILTER_OPTIONS,
   });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [refreshIndex, setRefreshIndex] = useState(0);
   const [personalResumen, setPersonalResumen] = useState<PersonalResumen | null>(null);
+  const filterOptions = contextualPersonalOptions(allFilterOptions, { municipio_id: municipioId, institucion_id: institucionId, sede_id: sedeId });
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<"base" | "repository">("base");
   const [showAssignGestorModal, setShowAssignGestorModal] = useState(false);
@@ -202,6 +205,7 @@ export default function OperationalPersonalPage() {
   const [tableData, setTableData] = useState<PersonalTableData | null>(null);
   const [tableLoading, setTableLoading] = useState(false);
   const [tableError, setTableError] = useState("");
+  const [rateLimited, setRateLimited] = useState(false);
 
   const [selectedVinculacionId, setSelectedVinculacionId] = useState<number | null>(null);
   const [selectedVinculacionIds, setSelectedVinculacionIds] = useState<number[]>([]);
@@ -215,26 +219,27 @@ export default function OperationalPersonalPage() {
   const contratoSeleccionado =
     contratos.find((contrato) => contrato.id === contratoId) ?? null;
   const currentFilters: ContractPersonalFilters | null = contratoId
-      ? {
-        contrato_id: contratoId,
-        contrato_cargo_id: cargoId ? Number(cargoId) : undefined,
-        estado_vinculacion: estadoFiltro || undefined,
-        gestor_usuario_id: gestorId ? Number(gestorId) : undefined,
-        sin_gestor: sinGestorOnly || undefined,
-        search: searchValue || undefined,
-        fecha: fechaConsulta,
-        municipio_id: municipioId ? Number(municipioId) : undefined,
-        institucion_id: institucionId ? Number(institucionId) : undefined,
-        sede_id: sedeId ? Number(sedeId) : undefined,
-        modalidad_id: modalidadId ? Number(modalidadId) : undefined,
-        ubicacion_laboral_id: ubicacionId ? Number(ubicacionId) : undefined,
-        cobertura: coberturaFiltro || undefined,
-        licitacion: licitacionFiltro || undefined,
-        page,
-        limit: pageSize,
-      }
+    ? {
+      contrato_id: contratoId,
+      contrato_cargo_id: cargoId ? Number(cargoId) : undefined,
+      estado_vinculacion: estadoFiltro || undefined,
+      gestor_usuario_id: gestorId ? Number(gestorId) : undefined,
+      sin_gestor: sinGestorOnly || undefined,
+      search: searchValue || undefined,
+      fecha: fechaConsulta,
+      municipio_id: municipioId ? Number(municipioId) : undefined,
+      institucion_id: institucionId ? Number(institucionId) : undefined,
+      sede_id: sedeId ? Number(sedeId) : undefined,
+      modalidad_id: modalidadId ? Number(modalidadId) : undefined,
+      ubicacion_laboral_id: ubicacionId ? Number(ubicacionId) : undefined,
+      cobertura: coberturaFiltro || undefined,
+      licitacion: licitacionFiltro || undefined,
+      sort_by: sortBy.startsWith("nombre") ? "nombre" : sortBy.startsWith("ingreso") ? "ingreso" : sortBy.startsWith("municipio") ? "municipio" : sortBy.startsWith("institucion") ? "institucion" : "cargo",
+      sort_dir: sortBy.endsWith("desc") ? "desc" : "asc",
+      page,
+      limit: pageSize,
+    }
     : null;
-
   useEffect(() => {
     setContextError("");
     setContratos([]);
@@ -252,6 +257,7 @@ export default function OperationalPersonalPage() {
     setEstadoFiltro("");
     setCoberturaFiltro("");
     setLicitacionFiltro("");
+    setSortBy("ingreso_desc");
     setTableData(null);
     setPersonalResumen(null);
     setSelectedVinculacionId(null);
@@ -382,32 +388,12 @@ export default function OperationalPersonalPage() {
     let cancelled = false;
     void getContractPersonalFilterOptions({
       contrato_id: contratoId,
-      municipio_id: municipioId ? Number(municipioId) : undefined,
-      institucion_id: institucionId ? Number(institucionId) : undefined,
-      sede_id: sedeId ? Number(sedeId) : undefined,
       fecha: fechaConsulta,
     })
       .then((options) => {
         if (!cancelled) {
           setFilterOptions(options);
-          if (
-            institucionId &&
-            !options.instituciones.some((item) => String(item.id) === institucionId)
-          ) {
-            setInstitucionId("");
-            setSedeId("");
-            setModalidadId("");
-          }
-          if (sedeId && !options.sedes.some((item) => String(item.id) === sedeId)) {
-            setSedeId("");
-            setModalidadId("");
-          }
-          if (
-            modalidadId &&
-            !options.modalidades.some((item) => String(item.id) === modalidadId)
-          ) {
-            setModalidadId("");
-          }
+
         }
       })
       .catch(() => {
@@ -418,7 +404,7 @@ export default function OperationalPersonalPage() {
     return () => {
       cancelled = true;
     };
-  }, [contratoId, fechaConsulta, municipioId, institucionId, sedeId, modalidadId]);
+  }, [contratoId, fechaConsulta]);
 
   useEffect(() => {
     if (!canReadPersonal || !contratoId) {
@@ -448,31 +434,13 @@ export default function OperationalPersonalPage() {
     }
 
     let cancelled = false;
-    const currentContratoId = contratoId;
-
+    const controller = new AbortController();
     async function loadPersonal() {
       setTableLoading(true);
       setTableError("");
 
       try {
-        const response = await getContractPersonal({
-          contrato_id: currentContratoId,
-          contrato_cargo_id: cargoId ? Number(cargoId) : undefined,
-          estado_vinculacion: estadoFiltro || undefined,
-          gestor_usuario_id: gestorId ? Number(gestorId) : undefined,
-          sin_gestor: sinGestorOnly || undefined,
-          search: searchValue || undefined,
-          fecha: fechaConsulta,
-          municipio_id: municipioId ? Number(municipioId) : undefined,
-          institucion_id: institucionId ? Number(institucionId) : undefined,
-          sede_id: sedeId ? Number(sedeId) : undefined,
-          modalidad_id: modalidadId ? Number(modalidadId) : undefined,
-          ubicacion_laboral_id: ubicacionId ? Number(ubicacionId) : undefined,
-          cobertura: coberturaFiltro || undefined,
-          licitacion: licitacionFiltro || undefined,
-          page,
-          limit: pageSize,
-        });
+        const response = await getContractPersonal(currentFilters!, controller.signal);
 
         if (cancelled) return;
 
@@ -498,6 +466,7 @@ export default function OperationalPersonalPage() {
         };
 
         setTableData(nextData);
+        setRateLimited(false);
         setSelectedVinculacionId((current) =>
           current && nextData.items.some((item) => item.vinculacion_id === current)
             ? current
@@ -505,12 +474,15 @@ export default function OperationalPersonalPage() {
         );
       } catch (error) {
         if (!cancelled) {
-          setTableData(null);
-          setSelectedVinculacionId(null);
-          setSelectedExpediente(null);
-          setTableError(
-            getErrorMessage(error, "No fue posible cargar el personal del contrato.")
-          );
+          if (error instanceof ApiClientError && error.status === 429) {
+            setRateLimited(true);
+            setTableError("");
+          } else {
+            setTableData(null);
+            setSelectedVinculacionId(null);
+            setSelectedExpediente(null);
+            setTableError(getErrorMessage(error, "No fue posible cargar el personal del contrato."));
+          }
         }
       } finally {
         if (!cancelled) {
@@ -519,10 +491,12 @@ export default function OperationalPersonalPage() {
       }
     }
 
-    void loadPersonal();
+    const timer = window.setTimeout(() => void loadPersonal(), 250);
 
     return () => {
       cancelled = true;
+      controller.abort();
+      window.clearTimeout(timer);
     };
   }, [
     canReadPersonal,
@@ -543,6 +517,7 @@ export default function OperationalPersonalPage() {
     ubicacionId,
     coberturaFiltro,
     licitacionFiltro,
+    sortBy,
   ]);
 
   useEffect(() => {
@@ -604,6 +579,7 @@ export default function OperationalPersonalPage() {
     ubicacionId,
     coberturaFiltro,
     licitacionFiltro,
+    sortBy,
   ]);
 
   useEffect(() => {
@@ -929,7 +905,7 @@ export default function OperationalPersonalPage() {
     );
 
   return (
-    <div className="op-personal-page">
+    <div className={`op-personal-page${selectedVinculacionId !== null ? " has-expediente" : ""}`}>
       <TopbarContractSlot>
               <select aria-label="Contrato activo" title={contratoSeleccionado?.numero_contrato ?? "Contrato activo"}
                 value={contratoId ?? ""}
@@ -954,7 +930,7 @@ export default function OperationalPersonalPage() {
           <button type="button" aria-current={activeTab === "base" ? "page" : undefined} className={activeTab === "base" ? "is-active" : ""} onClick={() => setActiveTab("base")}>Base de datos</button>
           {canReadRepository && <button type="button" aria-current={activeTab === "repository" ? "page" : undefined} className={activeTab === "repository" ? "is-active" : ""} onClick={() => setActiveTab("repository")}>Repositorio de documentos</button>}
         </nav>
-        <div className="op-header-actions">
+        {activeTab === "base" && <div className="op-header-actions">
           <button
             type="button"
             className="op-button secondary"
@@ -987,7 +963,7 @@ export default function OperationalPersonalPage() {
           >
             <UserPlus size={15} /> Nuevo trabajador
           </button>
-        </div>
+        </div>}
       </header>
 
       {contextError && <div className="op-state error" role="alert">{contextError}</div>}
@@ -1007,6 +983,72 @@ export default function OperationalPersonalPage() {
         </div>
 
         <div className="op-primary-filters">
+          <label className="op-filter">
+            <span><EmpiriaIcon name="municipio" size={13} /> Municipio</span>
+            <select
+              value={municipioId}
+              onChange={(event) => {
+                setMunicipioId(event.target.value);
+              }}
+              disabled={!contratoId}
+            >
+              <option value="">Municipio</option>
+              {filterOptions.municipios.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="op-filter">
+            <span><EmpiriaIcon name="institucion" size={13} /> Institucion</span>
+            <select
+              value={institucionId}
+              onChange={(event) => {
+                setInstitucionId(event.target.value);
+              }}
+              disabled={!contratoId}
+            >
+              <option value="">Institución</option>
+              {filterOptions.instituciones.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="op-filter">
+            <span><EmpiriaIcon name="sede" size={13} /> Sede</span>
+            <select
+              value={sedeId}
+              onChange={(event) => {
+                setSedeId(event.target.value);
+              }}
+              disabled={!contratoId}
+            >
+              <option value="">Sedes</option>
+              {filterOptions.sedes.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="op-filter">
+            <span><EmpiriaIcon name="cargo" size={13} /> Cargo</span>
+            <select
+              value={cargoId}
+              onChange={(event) => setCargoId(event.target.value)}
+              disabled={!contratoId}
+            >
+              <option value="">Cargo</option>
+              {cargos.map((cargo) => (
+                <option key={cargo.id} value={cargo.id}>
+                  {cargo.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="op-filter">
             <span><EmpiriaIcon name="personal" size={13} /> Gestor</span>
             <select
@@ -1034,71 +1076,16 @@ export default function OperationalPersonalPage() {
             </select>
           </label>
           <label className="op-filter">
-            <span><EmpiriaIcon name="municipio" size={13} /> Municipio</span>
-            <select
-              value={municipioId}
-              onChange={(event) => {
-                setMunicipioId(event.target.value);
-                setInstitucionId("");
-                setSedeId("");
-                setModalidadId("");
-              }}
-              disabled={!contratoId}
-            >
-              <option value="">Municipio</option>
-              {filterOptions.municipios.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="op-filter">
-            <span><EmpiriaIcon name="institucion" size={13} /> Institucion</span>
-            <select
-              value={institucionId}
-              onChange={(event) => {
-                setInstitucionId(event.target.value);
-                setSedeId("");
-                setModalidadId("");
-              }}
-              disabled={!contratoId || !municipioId}
-            >
-              <option value="">Institución</option>
-              {filterOptions.instituciones.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="op-filter">
             <span><EmpiriaIcon name="modalidad" size={13} /> Modalidad</span>
             <select
               value={modalidadId}
               onChange={(event) => setModalidadId(event.target.value)}
-              disabled={!contratoId || !sedeId}
+              disabled={!contratoId}
             >
               <option value="">Modalidad</option>
               {filterOptions.modalidades.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.codigo ?? item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="op-filter">
-            <span><EmpiriaIcon name="cargo" size={13} /> Cargo</span>
-            <select
-              value={cargoId}
-              onChange={(event) => setCargoId(event.target.value)}
-              disabled={!contratoId}
-            >
-              <option value="">Cargo</option>
-              {cargos.map((cargo) => (
-                <option key={cargo.id} value={cargo.id}>
-                  {cargo.label}
                 </option>
               ))}
             </select>
@@ -1125,28 +1112,23 @@ export default function OperationalPersonalPage() {
             <SlidersHorizontal size={11} /> Más
             {activeFilterCount > 0 && <b>{activeFilterCount}</b>}
           </button>
+          <label className="op-filter op-sort-filter">
+            <span>Ordenar por</span>
+            <select aria-label="Ordenar por" value={sortBy} onChange={(event) => { setSortBy(event.target.value as typeof sortBy); setPage(1); }} disabled={!contratoId}>
+              <option value="nombre_asc">Nombre A–Z</option>
+              <option value="nombre_desc">Nombre Z–A</option>
+              <option value="ingreso_desc">Ingreso reciente</option>
+              <option value="ingreso_asc">Ingreso antiguo</option>
+              <option value="municipio_asc">Municipio A–Z</option>
+              <option value="institucion_asc">Institución A–Z</option>
+              <option value="cargo_asc">Cargo A–Z</option>
+            </select>
+          </label>
         </div>
 
         {showMoreFilters && (
           <div className="op-more-filters-panel">
-          <label className="op-filter">
-            <span><EmpiriaIcon name="sede" size={13} /> Sede</span>
-            <select
-              value={sedeId}
-              onChange={(event) => {
-                setSedeId(event.target.value);
-                setModalidadId("");
-              }}
-              disabled={!contratoId || !institucionId}
-            >
-              <option value="">Todas</option>
-              {filterOptions.sedes.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
-              ))}
-            </select>
-          </label>
+
             <label className="op-filter">
               <span>Ubicacion laboral</span>
               <select
@@ -1240,9 +1222,6 @@ export default function OperationalPersonalPage() {
                 type="button"
                 onClick={() => {
                   setMunicipioId("");
-                  setInstitucionId("");
-                  setSedeId("");
-                  setModalidadId("");
                 }}
               >
                 Municipio ×
@@ -1253,8 +1232,6 @@ export default function OperationalPersonalPage() {
                 type="button"
                 onClick={() => {
                   setInstitucionId("");
-                  setSedeId("");
-                  setModalidadId("");
                 }}
               >
                 Institucion ×
@@ -1265,7 +1242,6 @@ export default function OperationalPersonalPage() {
                 type="button"
                 onClick={() => {
                   setSedeId("");
-                  setModalidadId("");
                 }}
               >
                 Sede ×
@@ -1437,7 +1413,7 @@ export default function OperationalPersonalPage() {
           <div className="op-empty">
             Selecciona un contrato para abrir la vista operativa.
           </div>
-        ) : tableError ? (
+        ) : tableError && !tableData ? (
           <div className="op-state error">
             <AlertTriangle size={16} />
             {tableError}
@@ -1446,6 +1422,12 @@ export default function OperationalPersonalPage() {
           <div className="op-empty">Cargando personal del contrato...</div>
         ) : (
           <>
+            {rateLimited ? (
+              <div className="op-inline-feedback warning" role="status">
+                Demasiadas solicitudes. Intenta nuevamente en unos segundos.
+                <button type="button" className="op-button secondary" onClick={() => { setRateLimited(false); setRefreshIndex((value) => value + 1); }}>Reintentar</button>
+              </div>
+            ) : null}
             <div className="op-table-scroll">
               <table className="op-table">
                 <thead>
@@ -1466,13 +1448,12 @@ export default function OperationalPersonalPage() {
                     <th className="is-status">Estado</th>
                     <th className="is-date">Ingreso</th>
                     <th className="is-date">Retiro</th>
-                    <th className="is-action">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(tableData?.items ?? []).length === 0 && (
                     <tr>
-                      <td colSpan={10} className="op-empty-row">
+                      <td colSpan={9} className="op-empty-row">
                         No hay personal vinculado a este contrato con los filtros actuales.
                       </td>
                     </tr>
@@ -1513,7 +1494,8 @@ export default function OperationalPersonalPage() {
                         <div className="op-assignment-cell">
                           {item.asignacion_actual.institucion ? (
                             <>
-                              <strong title={item.asignacion_actual.sede ?? undefined}>{item.asignacion_actual.institucion}</strong>
+                              <strong title={item.asignacion_actual.institucion ?? undefined}>{item.asignacion_actual.institucion}</strong>
+                              {item.asignacion_actual.sede && (<small className="op-sede-name" title={item.asignacion_actual.sede}>Sede: {item.asignacion_actual.sede}</small>)}
                               {item.asignacion_actual.municipio && (
                                 <small>{item.asignacion_actual.municipio}</small>
                               )}
@@ -1574,19 +1556,6 @@ export default function OperationalPersonalPage() {
                       </td>
                       <td className="is-date">{formatDate(item.fecha_ingreso)}</td>
                       <td className="is-date">{formatDate(item.fecha_fin)}</td>
-                      <td className="is-action">
-                        <button
-                          type="button"
-                          className="op-link-button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedVinculacionId(item.vinculacion_id);
-                          }}
-                        >
-                          <Eye size={15} />
-                          <span className="op-sr-only">Ver ficha de {item.nombre_completo}</span>
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>

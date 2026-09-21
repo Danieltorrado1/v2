@@ -769,7 +769,7 @@ export const listPersonaHistorialCambios = async (
         hc.motivo,
         hc.created_at,
         hc.usuario_id,
-        COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.nombre, u.apellido)), ''), u.correo) AS usuario_nombre,
+        COALESCE(NULLIF(TRIM(u.nombre_completo), ''), u.correo) AS usuario_nombre,
         u.correo AS usuario_correo
       FROM historial_cambios hc
       LEFT JOIN usuarios u ON u.id = hc.usuario_id

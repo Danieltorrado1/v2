@@ -1,5 +1,10 @@
+import { documentReviewDossier, reviewDocument } from './documentos.review.service';
 import multer from 'multer';
 import { Router } from 'express';
+import { z } from 'zod';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { successResponse } from '../../utils/apiResponse';
+import { getRepositoryPageSummary } from './documentos.repository.service';
 
 import { authMiddleware } from '../../middlewares/authMiddleware';
 import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
@@ -29,6 +34,26 @@ const documentosRoutes = Router();
 
 documentosRoutes.use(authMiddleware);
 documentosRoutes.use(tenantMiddleware);
+
+documentosRoutes.get('/repositorio/resumen', requirePermissions('documentos.read'), asyncHandler(async (req, res) => {
+  const ids = z.string().transform(value => value.split(',').map(Number))
+    .pipe(z.array(z.number().int().positive()).min(1).max(25)).parse(req.query.vinculacion_ids);
+  const data = await getRepositoryPageSummary([...new Set(ids)], req.tenant,
+    req.user?.permissions.includes('sst.dotacion_epp.read') ?? false);
+  return successResponse(res, { data, message: 'Resumen documental de la página' });
+}));
+
+const reviewParams = z.object({scope:z.enum(['persona','vinculacion']),id:z.string().regex(/^\d+$/)});
+documentosRoutes.get('/revision/:scope/:id', requirePermissions('documentos.read'), asyncHandler(async(req,res)=>{
+  const {scope,id}=reviewParams.parse(req.params);
+  const ids=z.string().transform(v=>v.split(',').map(Number)).pipe(z.array(z.number().int().positive()).min(1).max(50)).parse(req.query.tipos);
+  return successResponse(res,{data:await documentReviewDossier(scope,id,ids,req.tenant),message:'Revisi?n documental'});
+}));
+documentosRoutes.post('/revision/:scope/:id', requirePermissions('documentos.update'), asyncHandler(async(req,res)=>{
+  const {scope,id}=reviewParams.parse(req.params);
+  const input=z.object({estado:z.enum(['APROBADO','RECHAZADO']),motivo:z.string().trim().max(2000).optional()}).parse(req.body);
+  return successResponse(res,{data:await reviewDocument(scope,id,input.estado,input.motivo,req.user!.userId,req.tenant),message:'Revisi?n guardada'});
+}));
 
 documentosRoutes.post(
   '/test',

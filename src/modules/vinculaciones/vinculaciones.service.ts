@@ -1689,8 +1689,50 @@ export const listContractPersonal = async (
 
     const total = countResult.rows[0]?.total ?? 0;
     const personasTotal = countResult.rows[0]?.personas_total ?? total;
+    if (filters.sort_by === 'cumplimiento' && total > 0) {
+      const allRows = await listContractPersonal({
+        ...filters,
+        sort_by: 'nombre',
+        sort_dir: 'asc',
+        page: 1,
+        limit: total
+      }, tenant);
+      const scores = new Map<number, number>();
+      for (let offset = 0; offset < allRows.items.length; offset += 4) {
+        const batch = allRows.items.slice(offset, offset + 4);
+        const checklists = await Promise.all(batch.map(item => getVinculacionChecklist(String(item.vinculacion_id), tenant, { audit: false })));
+        checklists.forEach((checklist, index) => scores.set(batch[index]!.vinculacion_id, checklist.cumplimiento_porcentaje));
+      }
+      const direction = filters.sort_dir === 'asc' ? 1 : -1;
+      const sortedItems = [...allRows.items].sort((left, right) => {
+        const scoreDiff = (scores.get(left.vinculacion_id) ?? 0) - (scores.get(right.vinculacion_id) ?? 0);
+        if (scoreDiff !== 0) return scoreDiff * direction;
+        return left.nombre_completo.localeCompare(right.nombre_completo, 'es', { sensitivity: 'base' });
+      });
+      const start = (filters.page - 1) * filters.limit;
+      return {
+        items: sortedItems.slice(start, start + filters.limit),
+        pagination: {
+          page: filters.page,
+          limit: filters.limit,
+          total,
+          total_pages: Math.ceil(total / filters.limit),
+          personas_total: personasTotal
+        }
+      };
+    }
     const offset = (filters.page - 1) * filters.limit;
     const listParams = [...params, filters.limit, offset];
+    const sortBy = filters.sort_by ?? 'ingreso';
+    const direction = (filters.sort_dir ?? (sortBy === 'ingreso' ? 'desc' : 'asc')) === 'desc' ? 'DESC' : 'ASC';
+    const sortExpression = {
+      nombre: `p.primer_nombre ${direction}, p.segundo_nombre ${direction}, p.primer_apellido ${direction}, p.segundo_apellido ${direction}`,
+      ingreso: `v.fecha_inicio ${direction} NULLS LAST`,
+      municipio: `COALESCE(caa.municipio_actual, '') ${direction}`,
+      institucion: `COALESCE(caa.institucion, '') ${direction}`,
+      cargo: `COALESCE(cc.nombre_cargo, '') ${direction}`,
+      cumplimiento: `v.fecha_inicio DESC NULLS LAST`
+    }[sortBy];
     const result = await client.query<ContractPersonalRow>(
       `
         WITH cobertura_actual AS (
@@ -1814,7 +1856,7 @@ export const listContractPersonal = async (
         LEFT JOIN presentacion_licitacion_actual pla ON pla.vinculacion_id = v.id
         LEFT JOIN gestor_actual ga ON ga.vinculacion_id = v.id
         ${whereClause}
-        ORDER BY v.fecha_inicio DESC, p.primer_apellido ASC, p.primer_nombre ASC, v.id DESC
+        ORDER BY ${sortExpression}, p.primer_nombre ASC, p.segundo_nombre ASC, p.primer_apellido ASC, p.segundo_apellido ASC, v.id ASC
         LIMIT $${listParams.length - 1}::int
         OFFSET $${listParams.length}::int
       `,
@@ -1837,6 +1879,7 @@ export const listContractPersonal = async (
 };
 
 export interface ContractPersonalFilterOptions {
+  cargos: Array<{ id: number; nombre: string }>;
   departamentos: Array<{ id: number; nombre: string }>;
   gestores: Array<{ id: number; nombre: string; roles: string[] }>;
   municipios: Array<{ id: number; nombre: string }>;
@@ -2313,7 +2356,7 @@ export const getContractPersonalFilterOptions = async (
           fecha
         ]
       : [contratoId, filters.municipio_id ?? null, filters.institucion_id ?? null, filters.sede_id ?? null];
-    const [gestores, municipios, instituciones, sedes, modalidades, ubicaciones, asignacionesOperativas] = await Promise.all([
+    const [gestores, municipios, instituciones, sedes, modalidades, ubicaciones, asignacionesOperativas, cargos] = await Promise.all([
       listGestorAssignableUsers(client, tenant, contratoId),
       client.query<{ id: number; nombre: string; departamento_id: number | null; departamento_nombre: string | null }>(`SELECT DISTINCT mu.id::int AS id, mu.nombre_municipio AS nombre, mu.departamento_id::int AS departamento_id, dep.nombre_departamento AS departamento_nombre ${base} ORDER BY nombre`, params),
       client.query<{ id: number; nombre: string; municipio_id: number | null }>(`SELECT DISTINCT ins.id::int AS id, ins.nombre_institucion AS nombre, ins.municipio_id::int AS municipio_id ${base} ORDER BY nombre`, params),
@@ -2326,7 +2369,14 @@ export const getContractPersonalFilterOptions = async (
                 ff.institucion_id::int AS institucion_id, COALESCE(ins.nombre_institucion, ff.institucion_final) AS institucion,
                 ff.sede_id::int AS sede_id, COALESCE(se.nombre_sede, ff.sede_final) AS sede,
                 ff.modalidad_id::int AS modalidad_id, COALESCE(mo.nombre_modalidad, ff.modalidad_final) AS modalidad
-         ${base} ORDER BY municipio, institucion, sede, modalidad`, params)
+         ${base} ORDER BY municipio, institucion, sede, modalidad`, params),
+      client.query<{ id: number; nombre: string }>(
+        `SELECT id::int AS id, nombre_cargo AS nombre
+         FROM contrato_cargos
+         WHERE contrato_id = $1::bigint AND activo = TRUE
+         ORDER BY nombre_cargo`,
+        [contratoId]
+      )
     ]);
     const departamentos = Array.from(
       new Map(
@@ -2340,6 +2390,7 @@ export const getContractPersonalFilterOptions = async (
     ).sort((a, b) => a.nombre.localeCompare(b.nombre));
 
     return {
+      cargos: cargos.rows,
       departamentos,
       gestores: gestores
         .map((item) => ({

@@ -218,7 +218,7 @@
 
 .pmd-info-grid { display: grid; gap: 2px 16px; }
 .pmd-info-grid.compact-three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.pmd-info-grid.compact-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pmd-info-grid.compact-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .pmd-data-item.is-empty strong { color: var(--text-secondary); font-weight: 500; }
 
@@ -378,7 +378,7 @@
 
 .pmd-data-item strong {
   font-size: 0.9rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .pmd-field {
@@ -401,6 +401,14 @@
     border-color 0.18s ease,
     box-shadow 0.18s ease,
     background 0.18s ease;
+}
+
+/* Native controls must remain the event target inside the scrollable drawer. */
+.pmd-shell .pmd-field select {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  appearance: auto;
 }
 
 .pmd-field textarea {
@@ -451,7 +459,7 @@
 }
 
 .pmd-history-head strong {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .pmd-history-meta {
@@ -488,6 +496,45 @@
 
 .pmd-state.is-compact {
   padding: 12px;
+}
+
+/* Keep every expediente label and value in normal horizontal reading flow. */
+.pmd-shell,
+.pmd-shell * {
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  word-break: normal;
+}
+.pmd-shell .pmd-body { overflow-x: hidden; }
+.pmd-shell .pmd-card,
+.pmd-shell .pmd-subcard,
+.pmd-shell .pmd-data-item,
+.pmd-shell .pmd-info-section { min-width: 0; }
+
+.pmd-shell .pmd-data-item span,
+.pmd-shell .pmd-data-item strong,
+.pmd-shell .pmd-card-header h3,
+.pmd-shell .pmd-card-header p,
+.pmd-shell .pmd-history-meta { min-width: 0; overflow-wrap: break-word; white-space: normal; }
+.pmd-shell .pmd-info-grid.compact-three { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; }
+.pmd-shell .pmd-info-grid.compact-four { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; }
+.pmd-shell .pmd-compact-table th,
+.pmd-shell .pmd-compact-table td { white-space: normal; word-break: normal; overflow-wrap: break-word; vertical-align: top; }
+
+.pmd-header-person { display: flex; min-width: 0; align-items: flex-start; gap: 11px; }
+.pmd-header-copy { min-width: 0; }
+.pmd-avatar { width: 42px; height: 42px; flex: 0 0 42px; display: grid; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--color-primary) 18%, var(--bg-panel)); color: var(--color-primary); font-size: .8rem; font-weight: 800; }
+.pmd-header-context { max-width: 100%; overflow-wrap: break-word; }
+
+.pmd-inline-error {
+  flex: 0 0 auto;
+  margin: 8px 16px 0;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 28%, var(--border-color));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--color-danger) 9%, var(--bg-panel));
+  color: var(--color-danger);
+  font-size: .76rem;
 }
 
 .spin,
@@ -547,7 +594,7 @@
 .pmd-button { padding: 6px 10px; border-radius: 9px; font-size: 0.8rem; }
 .pmd-data-item {
   display: grid;
-  grid-template-columns: minmax(92px, 0.75fr) minmax(0, 1.25fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: baseline;
   gap: 7px;
   padding: 5px 0;
@@ -567,5 +614,95 @@
   .pmd-header-actions { flex-direction: row; align-items: center; }
   .pmd-body, .pmd-header, .pmd-tabs { padding-left: 11px; padding-right: 11px; }
   .pmd-info-grid.compact-three, .pmd-info-grid.compact-four { grid-template-columns: 1fr; }
-  .pmd-data-item { grid-template-columns: minmax(100px, 0.8fr) minmax(0, 1.2fr); }
+
+}
+
+/* Layout follows the actual 45% drawer and each card, not the viewport. */
+.pmd-shell { container: expediente / inline-size; }
+.pmd-shell .pmd-header { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.pmd-header-person, .pmd-header-copy { width: 100%; }
+.pmd-shell .pmd-header-actions { flex-direction: row; align-items: center; gap: 6px; }
+.pmd-header > .pmd-header-actions { justify-content: flex-end; }
+.pmd-header-context { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 1.4; }
+.pmd-shell .pmd-tabs { display: grid; grid-template-columns: 1fr 1.15fr 1.65fr .65fr 1fr 1.25fr 1fr; gap: 2px; padding: 6px 10px; overflow: visible; }
+.pmd-shell .pmd-tab { min-width: 0; justify-content: center; gap: 4px; padding: 7px 2px; font-size: .72rem; white-space: normal; line-height: 1.25; }
+.pmd-tab svg { width: 13px; height: 13px; flex-shrink: 0; }
+.pmd-general-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+.pmd-personal-group, .pmd-personal-group > .pmd-profile-sections { display: contents; }
+.pmd-personal-group > .pmd-personal-heading { grid-column: 1 / -1; margin: 0; }
+.pmd-personal-heading h3, .pmd-personal-heading p { display: none; }
+.pmd-personal-heading { justify-content: flex-end; }
+.pmd-personal-group.pmd-card { display: block; }
+.pmd-section-title { margin: 0 0 12px; font-size: .9rem; }
+.pmd-card-wide { grid-column: 1 / -1; }
+.pmd-shell .pmd-card, .pmd-shell .pmd-subcard, .pmd-shell .pmd-info-section { container: expediente-card / inline-size; min-width: 0; }
+.pmd-shell .pmd-profile-sections { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.pmd-shell .pmd-info-grid.compact-three, .pmd-shell .pmd-info-grid.compact-four, .pmd-shell .pmd-grid.two { grid-template-columns: minmax(0, 1fr); gap: 12px 18px; }
+.pmd-shell .pmd-data-item { display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 3px 0; }
+.pmd-field { min-width: 0; }
+.pmd-shell .pmd-field-label { color: var(--text-secondary); font-size: .73rem; line-height: 1.4; }
+.pmd-shell .pmd-field-value { display: block; width: 100%; min-width: 0; font-size: .84rem; line-height: 1.45; word-break: normal; overflow-wrap: break-word; white-space: normal; }
+.pmd-table-wrap { min-width: 0; max-width: 100%; overflow-x: auto; }
+.pmd-shell .pmd-compact-table { min-width: 680px; }
+.pmd-shell .pmd-compact-table th, .pmd-shell .pmd-compact-table td { white-space: normal; overflow-wrap: normal; min-width: 100px; line-height: 1.4; }
+.pmd-shell .pmd-history-meta { display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px; line-height: 1.45; }
+.pmd-history-item { border-left: 3px solid color-mix(in srgb, var(--color-primary) 45%, var(--border-color)); }
+.pmd-history-head > strong { flex: 1 1 180px; min-width: 0; }
+.pmd-history-head > .pmd-inline-badge { flex-shrink: 0; }
+.pmd-shell .pmd-documents-table { min-width: 880px; }
+.pmd-shell .pmd-documents-table td { min-width: 90px; word-break: normal; overflow-wrap: normal; }
+@container expediente-card (min-width: 440px) {
+  .pmd-shell .pmd-info-grid.compact-three, .pmd-shell .pmd-info-grid.compact-four, .pmd-shell .pmd-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container expediente (min-width: 700px) {
+  .pmd-general-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pmd-general-grid > .pmd-card:first-child, .pmd-general-grid > .pmd-card:last-child { grid-column: 1 / -1; }
+  .pmd-shell .pmd-profile-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pmd-shell .pmd-tab { font-size: .78rem; gap: 5px; }
+}
+@container expediente (min-width: 830px) {
+  .pmd-shell .pmd-header { grid-template-columns: minmax(0, 1fr) auto; }
+}
+@container expediente (max-width: 480px) {
+  .pmd-shell .pmd-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* Final expediente density pass: keep the drawer readable while reducing vertical travel. */
+.pmd-shell .pmd-header { padding: 8px 12px 7px; gap: 7px; }
+.pmd-shell .pmd-header-person { gap: 8px; }
+.pmd-shell .pmd-avatar { width: 38px; height: 38px; flex-basis: 38px; font-size: .74rem; }
+.pmd-shell .pmd-header h2 { font-size: 1rem; }
+.pmd-shell .pmd-header p { margin-top: 1px; font-size: .76rem; line-height: 1.25; }
+.pmd-shell .pmd-header small { margin-top: 2px; font-size: .7rem; }
+.pmd-shell .pmd-status-chip { padding: 3px 7px; font-size: .66rem; }
+.pmd-shell .pmd-header-actions { gap: 4px; }
+.pmd-shell .pmd-button { padding: 5px 8px; font-size: .76rem; }
+.pmd-shell .pmd-tabs { padding: 4px 8px; }
+.pmd-shell .pmd-tab { padding-block: 5px; font-size: .69rem; }
+.pmd-shell .pmd-body { padding: 8px 12px 12px; }
+.pmd-shell .pmd-stack, .pmd-shell .pmd-general-grid { gap: 7px; }
+.pmd-shell .pmd-card { padding: 9px 11px; border-radius: 12px; }
+.pmd-shell .pmd-subcard { padding: 9px 10px; }
+.pmd-shell .pmd-card-header { margin-bottom: 6px; gap: 5px; }
+.pmd-shell .pmd-card-header h3 { font-size: .84rem; }
+.pmd-shell .pmd-card-header p { margin-top: 1px; font-size: .69rem; line-height: 1.25; }
+.pmd-shell .pmd-section-title { margin-bottom: 6px; font-size: .82rem; }
+.pmd-shell .pmd-info-grid.compact-three, .pmd-shell .pmd-info-grid.compact-four, .pmd-shell .pmd-grid.two { gap: 5px 14px; }
+.pmd-shell .pmd-data-item { gap: 2px; padding: 2px 0; }
+.pmd-shell .pmd-data-item span, .pmd-shell .pmd-field span { font-size: .66rem; line-height: 1.2; }
+.pmd-shell .pmd-data-item strong { font-size: .78rem; line-height: 1.25; }
+.pmd-shell .pmd-field { gap: 3px; }
+.pmd-shell .pmd-field input, .pmd-shell .pmd-field select { padding: 6px 8px; border-radius: 8px; }
+.pmd-shell .pmd-field textarea { min-height: 58px; padding: 6px 8px; border-radius: 8px; }
+.pmd-shell .pmd-history-list, .pmd-shell .pmd-requirements-list { gap: 5px; }
+.pmd-shell > .pmd-body .pmd-history-list { max-height: 260px; overflow-y: auto; padding-right: 3px; }
+.pmd-shell > .pmd-body .pmd-inline-history .pmd-history-list { max-height: 180px; }
+.pmd-shell > .pmd-body .pmd-table-wrap { max-height: min(42vh, 320px); overflow: auto; }
+.pmd-shell .pmd-history-item, .pmd-shell .pmd-requirement-row { padding: 6px 8px; border-radius: 8px; }
+.pmd-shell .pmd-history-meta { margin-top: 2px; gap: 3px 10px; font-size: .68rem; }
+.pmd-shell .pmd-state { padding: 9px; }
+.pmd-shell .pmd-compact-table th, .pmd-shell .pmd-compact-table td { padding: 5px 6px; }
+
+@container expediente-card (min-width: 440px) {
+  .pmd-shell .pmd-info-grid.compact-three, .pmd-shell .pmd-info-grid.compact-four, .pmd-shell .pmd-grid.two { gap: 5px 14px; }
 }

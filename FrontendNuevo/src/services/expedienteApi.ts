@@ -8,3 +8,10 @@ export async function getExpedienteConsolidado(personaId: number): Promise<Exped
   );
   return res.data;
 }
+
+export async function generateExpedientePdf(personaId: number): Promise<{ signed_url: string; mime_type: string; expires_in: number; file_name: string }> {
+  const res = await apiClient.post<ApiResponse<{ signed_url: string; mime_type: string; expires_in: number; file_name: string }>>(
+    `/expedientes/personas/${personaId}/pdf`,
+  );
+  return res.data;
+}

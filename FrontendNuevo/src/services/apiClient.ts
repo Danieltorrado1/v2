@@ -3,6 +3,7 @@ import { getAuthToken, clearAuthSession } from './tokenStorage';
 import type { ApiErrorResponse, ApiRequestOptions } from '../types/api.types';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const inflightGetRequests = new Map<string, Promise<unknown>>();
 
 export class ApiClientError extends Error {
   readonly status: number;
@@ -71,6 +72,9 @@ async function request<T>(
   }
 
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (options.signal?.aborted) controller.abort();
+  options.signal?.addEventListener('abort', abort, { once: true });
   const timeoutId = setTimeout(() => { controller.abort(); }, timeout);
 
   let response: Response;
@@ -88,6 +92,7 @@ async function request<T>(
     });
   } catch (err) {
     clearTimeout(timeoutId);
+    options.signal?.removeEventListener('abort', abort);
     if (err instanceof DOMException && err.name === 'AbortError') {
       throw new ApiClientError(
         'La solicitud tardó demasiado. Inténtalo de nuevo.',
@@ -103,6 +108,7 @@ async function request<T>(
   }
 
   clearTimeout(timeoutId);
+  options.signal?.removeEventListener('abort', abort);
 
   if (response.status === 401) {
     clearAuthSession();
@@ -132,7 +138,8 @@ async function request<T>(
       details,
       retryAfterMs: response.status === 429 && Number.isFinite(retryAfterSeconds)
         ? Math.max(0, retryAfterSeconds * 1000)
-        : null,
+        : response.status === 429 && retryAfter && Number.isFinite(Date.parse(retryAfter))
+          ? Math.max(0, Date.parse(retryAfter) - Date.now()) : null,
     });
   }
 
@@ -152,8 +159,18 @@ async function request<T>(
 }
 
 export const apiClient = {
-  get: <T>(path: string, options?: ApiRequestOptions): Promise<T> =>
-    request<T>('GET', path, undefined, options),
+  get: <T>(path: string, options?: ApiRequestOptions): Promise<T> => {
+    if (options?.signal) return request<T>('GET', path, undefined, options);
+    const tokenKey = options?.skipAuth ? 'public' : getAuthToken() ?? 'anonymous';
+    const key = `${tokenKey}:${path}`;
+    const current = inflightGetRequests.get(key);
+    if (current) return current as Promise<T>;
+    const next = request<T>('GET', path, undefined, options).finally(() => {
+      if (inflightGetRequests.get(key) === next) inflightGetRequests.delete(key);
+    });
+    inflightGetRequests.set(key, next);
+    return next;
+  },
 
   post: <T>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<T> =>
     request<T>('POST', path, body, options),

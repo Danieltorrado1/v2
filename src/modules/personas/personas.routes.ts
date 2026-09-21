@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { authMiddleware } from '../../middlewares/authMiddleware';
-import { requireAnyPermissions, requirePermissions } from '../../middlewares/roleMiddleware';
+import { requireAnyPermissions, requirePermissions, requireRoles } from '../../middlewares/roleMiddleware';
 import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
 import {
   createPersonalExportTemplateHandler,
@@ -87,6 +87,7 @@ personasRoutes.post(
 );
 personasRoutes.get(
   '/:id/historial-cambios',
+  requireRoles('ADMINISTRADOR'),
   requireAnyPermissions('personas.read', 'persona.ver', 'auditoria.read'),
   getPersonaHistorialCambiosHandler
 );

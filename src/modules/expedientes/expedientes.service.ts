@@ -579,6 +579,7 @@ export interface ExpedientePersonaTimelineResult {
 
 export interface ExpedientePersonaPdfResult {
   expires_in: number;
+  file_name: string;
   mime_type: 'application/pdf';
   signed_url: string;
   storage_bucket: string;
@@ -2948,8 +2949,22 @@ const formatCurrencyCop = (value: number): string => {
   }).format(value);
 };
 
-const buildExpedientePdfStoragePath = (personaId: number, timestamp: number): string => {
-  return `expedientes/personas/persona_${personaId}/expediente-laboral-persona-${personaId}-${timestamp}.pdf`;
+const sanitizePdfFilePart = (value: string): string => value
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^A-Za-z0-9]+/g, '_')
+  .replace(/^_+|_+$/g, '')
+  .toUpperCase();
+
+const buildHvFileName = (persona: Persona): string => {
+  const name = [persona.primer_nombre, persona.segundo_nombre, persona.primer_apellido, persona.segundo_apellido]
+    .filter(Boolean)
+    .join('_');
+  return `HV_${sanitizePdfFilePart(name)}_${sanitizePdfFilePart(persona.numero_documento)}.pdf`;
+};
+
+const buildExpedientePdfStoragePath = (personaId: number, timestamp: number, fileName: string): string => {
+  return `expedientes/personas/persona_${personaId}/${timestamp}_${fileName}`;
 };
 
 const uploadExpedientePdfToStorage = async (
@@ -2979,116 +2994,303 @@ const uploadExpedientePdfToStorage = async (
   };
 };
 
-const buildExpedienteLaboralPdfBuffer = async (snapshot: ExpedienteSnapshot): Promise<Buffer> => {
-  const timeline = buildTimelineItems(snapshot).slice(0, 12);
-  const activeAlertas = snapshot.alertas.filter((item) => item.estado === 'ACTIVA').slice(0, 10);
-  const totalNetoNomina = snapshot.nominaEmpleados.reduce(
-    (accumulator, item) => accumulator + (getRecordNumber(item, 'neto_pagar') ?? 0),
-    0
+interface HvFormationRow extends QueryResultRow {
+  nivel_educativo: string | null;
+  titulo_programa: string | null;
+  institucion: string | null;
+  fecha_inicio: Date | string | null;
+  fecha_fin: Date | string | null;
+}
+
+interface HvExperienceRow extends QueryResultRow {
+  vinculacion_id: number | string;
+  empresa: string | null;
+  cargo: string | null;
+  fecha_inicio: Date | string;
+  fecha_fin: Date | string | null;
+}
+
+const loadHvFormation = async (personaId: number): Promise<HvFormationRow[]> => {
+  try {
+    const result = await dbQuery<HvFormationRow>(
+      `SELECT nivel_educativo, titulo_programa, institucion, fecha_inicio, fecha_fin
+         FROM persona_formacion_academica
+        WHERE persona_id = $1::bigint AND COALESCE(activo, TRUE) = TRUE
+        ORDER BY fecha_fin DESC NULLS LAST, id DESC`,
+      [personaId]
+    );
+    return result.rows;
+  } catch {
+    return [];
+  }
+};
+
+const loadHvExperience = async (snapshot: ExpedienteSnapshot): Promise<HvExperienceRow[]> => {
+  const ids = snapshot.vinculaciones.filter((item) => item.cuenta_como_experiencia).map((item) => item.id);
+  if (ids.length === 0) return [];
+  const result = await dbQuery<HvExperienceRow>(
+    `SELECT v.id AS vinculacion_id, e.nombre_empresa AS empresa, cc.nombre_cargo AS cargo,
+            v.fecha_inicio, v.fecha_fin
+       FROM vinculaciones v
+       LEFT JOIN empresas e ON e.id = v.empresa_id
+       LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
+      WHERE v.id = ANY($1::bigint[])
+        AND COALESCE(v.cuenta_como_experiencia, FALSE) = TRUE
+      ORDER BY v.fecha_inicio DESC, v.id DESC`,
+    [ids]
   );
+  return result.rows;
+};
+
+export const formatHvDateDDMMYYYY = (value: unknown): string | null => {
+  const parts = value instanceof Date && !Number.isNaN(value.getTime())
+    ? [value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate()]
+    : (() => { const m = String(value ?? '').trim().match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null; })();
+  return parts ? `${String(parts[2]).padStart(2, '0')}-${String(parts[1]).padStart(2, '0')}-${parts[0]}` : null;
+};
+export const inclusiveCalendarDays = (start: unknown, end: unknown): number => {
+  const normalize = (value: unknown): [number, number, number] | null => { if (value instanceof Date && !Number.isNaN(value.getTime())) return [value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate()]; const m = String(value ?? '').trim().match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null; };
+  const from = normalize(start); const to = normalize(end); if (!from || !to) return 0;
+  return Math.max(0, Math.floor((Date.UTC(to[0], to[1] - 1, to[2]) - Date.UTC(from[0], from[1] - 1, from[2])) / 86400000) + 1);
+};
+
+export const calculateHvRowHeight = (cellHeights: number[]): number => Math.max(18, ...cellHeights);
+
+const buildExpedienteLaboralPdfBuffer = async (snapshot: ExpedienteSnapshot): Promise<Buffer> => {
+  const fullName = [snapshot.persona.primer_nombre, snapshot.persona.segundo_nombre, snapshot.persona.primer_apellido, snapshot.persona.segundo_apellido].filter(Boolean).join(' ');
+  const clean = (value: unknown): string | null => {
+    const text = String(value ?? '').trim();
+    return text && text !== '\u2014' && text !== '-' ? text : null;
+  };
+  const formatDate = formatHvDateDDMMYYYY;
+  const dateParts = (value: unknown): [number, number, number] | null => {
+    const formatted = formatDate(value); return formatted ? formatted.split('-').reverse().map(Number) as [number, number, number] : null;
+  };
+  const daysBetween = inclusiveCalendarDays;
+  const [formation, experienceRows] = await Promise.all([loadHvFormation(snapshot.persona.id), loadHvExperience(snapshot)]);
+  const todayParts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const today = `${todayParts.find((part) => part.type === 'year')?.value}-${todayParts.find((part) => part.type === 'month')?.value}-${todayParts.find((part) => part.type === 'day')?.value}`;
+  const experience = experienceRows.map((item) => {
+    const startDate = dateParts(item.fecha_inicio);
+    const endDate = item.fecha_fin ? dateParts(item.fecha_fin) : dateParts(today);
+    const startIso = startDate ? `${startDate[0]}-${String(startDate[1]).padStart(2, '0')}-${String(startDate[2]).padStart(2, '0')}` : '';
+    const endIso = endDate ? `${endDate[0]}-${String(endDate[1]).padStart(2, '0')}-${String(endDate[2]).padStart(2, '0')}` : '';
+    return {
+      company: clean(item.empresa) ?? 'Empresa no identificada',
+      role: clean(item.cargo) ?? 'Cargo no identificado',
+      period: (formatDate(startIso) ?? startIso) + ' – ' + (item.fecha_fin ? (formatDate(endIso) ?? endIso) : 'Actual'),
+      days: inclusiveCalendarDays(startIso, endIso)
+    };
+  });
+  const totalExperienceDays = experience.reduce((sum, item) => sum + item.days, 0);
+
+  let photoBuffer: Buffer | null = null;
+  const photoDocument = snapshot.documentosPersona.find((item) => /foto|fotografia|photo/i.test(item.tipo_documento.codigo) && item.storage_bucket && item.storage_path);
+  if (photoDocument?.storage_bucket && photoDocument.storage_path) {
+    try {
+      const download = await getSupabaseAdminClient().storage.from(photoDocument.storage_bucket).download(photoDocument.storage_path);
+      if (!download.error) photoBuffer = Buffer.from(await download.data.arrayBuffer());
+    } catch { photoBuffer = null; }
+  }
 
   return new Promise<Buffer>((resolve, reject) => {
-    const doc = new PDFDocument({
-      margin: 40,
-      size: 'A4'
-    });
+    const doc = new PDFDocument({ margin: 42, size: 'A4', bufferPages: true });
     const chunks: Buffer[] = [];
+    const navy = '#0A1628';
+    const cyan = '#00C4D4';
+    const ink = '#101820';
+    const muted = '#46566B';
+    const soft = '#F3F7F9';
+    const contentX = 42;
+    const contentWidth = 511;
+    const contentRight = contentX + contentWidth;
+    const pageBottom = 748;
+    const footerReservedHeight = 48;
+    const spacing = { xs: 6, sm: 10, md: 16, lg: 22 } as const;
 
-    const ensureSpace = (minimumY = 740): void => {
-      if (doc.y > minimumY) {
-        doc.addPage();
+    const drawFooter = (): void => {
+      const savedY = doc.y;
+      doc.save();
+      doc.strokeColor('#D7E2E7').lineWidth(0.5).moveTo(contentX, 766).lineTo(contentRight, 766).stroke();
+      doc.font('Helvetica').fontSize(7).fillColor(muted).text('Hoja de vida creada por software Empiria', contentX, 774, { width: contentWidth, align: 'center' });
+      doc.restore();
+      doc.y = savedY;
+    };
+    const addPage = (): void => {
+      drawFooter();
+      doc.addPage();
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(cyan).text('HOJA DE VIDA - ' + (fullName || 'COLABORADOR'), contentX, 42, { width: contentWidth });
+      doc.font('Helvetica').fontSize(8).fillColor(muted).text(fullName || 'Colaborador', 380, 42, { width: contentRight - 380, align: 'right' });
+      doc.strokeColor(cyan).lineWidth(1).moveTo(contentX, 58).lineTo(contentRight, 58).stroke();
+      doc.y = 76;
+    };
+    const ensureSpace = (height = 34): void => {
+      if (doc.y + height > pageBottom - footerReservedHeight) addPage();
+    };
+    const section = (number: string, title: string): void => {
+      ensureSpace(48);
+      doc.moveDown(0.2);
+      const top = doc.y;
+      doc.fillColor(cyan).roundedRect(42, top, 27, 22, 3).fill();
+      doc.font('Helvetica-Bold').fontSize(9).fillColor(navy).text(number, 42, top + 7, { width: 27, align: 'center' });
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(navy).text(title.toUpperCase(), 80, top + 5);
+      doc.strokeColor('#DCE5EA').lineWidth(0.6).moveTo(contentX, top + 28).lineTo(contentRight, top + 28).stroke();
+      doc.y = top + 28;
+    };
+    const fieldHeight = (value: string, width: number): number => {
+      doc.font('Helvetica').fontSize(9.5);
+      return Math.max(28, doc.heightOfString(value, { width, lineGap: 1 }) + 16);
+    };
+    const field = (label: string, value: string, x: number, width: number, y: number, height: number): void => {
+      doc.fillColor('#FFFFFF').strokeColor('#E2E6EE').lineWidth(0.5).roundedRect(x, y, width, height, 2).fillAndStroke();
+      doc.font('Helvetica-Bold').fontSize(7).fillColor(muted).text(label.toUpperCase(), x + 8, y + 7, { width: width - 16 });
+      doc.font('Helvetica').fontSize(9.5).fillColor(ink).text(value, x + 8, y + 18, { width: width - 16, lineGap: 1 });
+    };
+    const drawFields = (items: Array<[string, string | null]>): void => {
+      const gap = spacing.sm;
+      const width = (contentWidth - gap) / 2;
+      for (let index = 0; index < items.length; index += 2) {
+        const row = items.slice(index, index + 2).filter((item): item is [string, string] => Boolean(item?.[1]));
+        if (!row.length) continue;
+        const height = Math.max(...row.map((item) => fieldHeight(item[1], width)));
+        ensureSpace(height + spacing.sm);
+        const y = doc.y;
+        row.forEach((item, cellIndex) => field(item[0], item[1], contentX + cellIndex * (width + gap), width, y, height));
+        doc.y = y + height + spacing.sm;
       }
     };
+    const drawTable = (headers: string[], rows: string[][], widths: number[]): void => {
+      const tableX = contentX;
+      const tableWidth = widths.reduce((sum, value) => sum + value, 0);
+      const headerHeight = 20;
+      const drawHeader = (headerY: number): void => {
+        doc.fillColor('#EFF6FA').rect(tableX, headerY, tableWidth, headerHeight).fill();
+        let headerX = tableX;
+        headers.forEach((header, index) => {
+          const width = widths[index] ?? 0;
+          doc.font('Helvetica-Bold').fontSize(7).fillColor(navy).text(header, headerX + 7, headerY + 6, { width: width - 14 });
+          headerX += width;
+        });
+      };
+      ensureSpace(headerHeight + 32);
+      const headerY = doc.y;
+      drawHeader(headerY);
+      doc.y = headerY + headerHeight;
+      rows.forEach((row, rowIndex) => {
+        doc.font('Helvetica').fontSize(8.5);
+        const heights = row.map((value, index) => Math.max(18, doc.heightOfString(value, { width: (widths[index] ?? 0) - 14, lineGap: 1 }) + 10));
+        const height = calculateHvRowHeight(heights);
+        if (doc.y + height > pageBottom - footerReservedHeight) {
+          addPage();
+          const nextHeaderY = doc.y;
+          drawHeader(nextHeaderY);
+          doc.y = nextHeaderY + headerHeight;
+        }
+        const rowY = doc.y;
+        if (rowIndex % 2 === 0) doc.fillColor(soft).rect(tableX, rowY, tableWidth, height).fill();
+        let cellX = tableX;
+        row.forEach((value, index) => {
+          const width = widths[index] ?? 0;
+          doc.font('Helvetica').fontSize(8.5).fillColor(ink).text(value, cellX + 7, rowY + 5, { width: width - 14, lineGap: 1 });
+          cellX += width;
+        });
+        doc.strokeColor('#D7E2E7').lineWidth(0.4).moveTo(tableX, rowY + height).lineTo(tableX + tableWidth, rowY + height).stroke();
+        doc.y = rowY + height;
+      });
+    };
 
-    doc.on('data', (chunk: Buffer | Uint8Array) => {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    });
+    doc.on('data', (chunk: Buffer | Uint8Array) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
 
-    doc.font('Helvetica-Bold').fontSize(18).text('EMPIRIA', { align: 'center' });
-    doc.moveDown(0.3);
-    doc.fontSize(14).text('EXPEDIENTE LABORAL 360', { align: 'center' });
-    doc.moveDown(0.8);
+    const firstNames = [snapshot.persona.primer_nombre, snapshot.persona.segundo_nombre].filter(Boolean).join(' ');
+    const surnames = [snapshot.persona.primer_apellido, snapshot.persona.segundo_apellido].filter(Boolean).join(' ');
+    const headerTop = 42;
+    const headerHeight = photoBuffer ? 104 : 86;
+    doc.fillColor('#FFFFFF').roundedRect(42, headerTop, 511, headerHeight, 3).fill();
+    doc.strokeColor(cyan).lineWidth(2).moveTo(42, headerTop).lineTo(553, headerTop).stroke();
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(navy).text('HOJA DE VIDA', 42, 56);
+    let photoRendered = false;
+    const identityWidth = photoBuffer ? 365 : 511;
+    doc.font('Helvetica-Bold').fontSize(18).fillColor(navy).text(firstNames || fullName || 'COLABORADOR', 42, 76, { width: identityWidth });
+    doc.font('Helvetica-Bold').fontSize(21).fillColor(navy).text(surnames || fullName || ' ', 42, 96, { width: identityWidth });
+    doc.font('Helvetica').fontSize(9).fillColor(muted).text((snapshot.persona.identificacion_vigente?.tipo_documento_nombre ? snapshot.persona.identificacion_vigente.tipo_documento_nombre + ' ' : '') + snapshot.persona.numero_documento, 42, 123, { width: identityWidth });
+    if (photoBuffer) {
+      try {
+        doc.strokeColor('#D7E2E7').lineWidth(0.7).roundedRect(458, 49, 76, 93, 4).stroke();
+        doc.image(photoBuffer, 461, 52, { fit: [70, 87], align: 'center', valign: 'center' });
+        photoRendered = true;
+      } catch { /* la foto es opcional */ }
+    }
+    const contactTop = headerTop + headerHeight + 12;
+    const contactParts: Array<[string, string]> = [
+      ['TELÉFONO', clean(snapshot.persona.telefono)],
+      ['CORREO', clean(snapshot.persona.correo)],
+      ['UBICACIÓN', clean(snapshot.persona.direccion)]
+    ].filter((item): item is [string, string] => Boolean(item[1]));
+    doc.fillColor('#F5F7FA').roundedRect(contentX, contactTop, contentWidth, 32, 3).fill();
+    const contactWidth = contentWidth / Math.max(1, contactParts.length);
+    contactParts.forEach(([label, value], index) => {
+      const x = contentX + 12 + index * contactWidth;
+      doc.font('Helvetica-Bold').fontSize(6.5).fillColor(cyan).text(label, x, contactTop + 6, { width: contactWidth - 24 });
+      doc.font('Helvetica').fontSize(8.2).fillColor(ink).text(value, x, contactTop + 16, { width: contactWidth - 24, lineGap: 1 });
+    });
+    doc.y = contactTop + 43;
+    let sectionCounter = 0;
+    const nextSection = (title: string): void => {
+      sectionCounter += 1;
+      section(String(sectionCounter).padStart(2, '0'), title);
+    };
 
-    doc.fontSize(10).font('Helvetica-Bold').text('Persona: ', { continued: true });
-    doc.font('Helvetica').text(
-      [
-        snapshot.persona.primer_nombre,
-        snapshot.persona.segundo_nombre,
-        snapshot.persona.primer_apellido,
-        snapshot.persona.segundo_apellido
-      ]
-        .filter(Boolean)
-        .join(' ')
-    );
-    doc.font('Helvetica-Bold').text('Documento: ', { continued: true });
-    doc.font('Helvetica').text(snapshot.persona.numero_documento);
-    doc.font('Helvetica-Bold').text('Riesgo documental: ', { continued: true });
-    doc.font('Helvetica').text(
-      `${snapshot.indicadores.riesgo_documental.nivel} (${snapshot.indicadores.riesgo_documental.puntaje}/100)`
-    );
-    doc.moveDown(0.6);
+    nextSection('Datos personales');
+    drawFields([
+      ['Tipo de documento', clean(snapshot.persona.identificacion_vigente?.tipo_documento_nombre)],
+      ['N\u00famero', clean(snapshot.persona.numero_documento)],
+      ['Fecha de nacimiento', formatDate(snapshot.persona.fecha_nacimiento)],
+      ['Nacionalidad', clean(snapshot.persona.perfil_demografico?.nacionalidad)],
+      ['Nivel educativo', clean(snapshot.persona.perfil_demografico?.nivel_escolaridad)]
+    ]);
 
-    doc.font('Helvetica-Bold').fontSize(11).text('Indicadores principales');
-    doc.font('Helvetica').fontSize(9).text(
-      [
-        `Vinculaciones: ${snapshot.indicadores.vinculaciones_total}`,
-        `Documentos: ${snapshot.indicadores.documentos_total}`,
-        `Alertas activas: ${snapshot.indicadores.alertas_activas}`,
-        `Checklist promedio: ${snapshot.indicadores.checklist_cumplimiento_promedio}%`,
-        `Nomina empleados: ${snapshot.indicadores.nomina_empleados}`,
-        `Neto nomina: ${formatCurrencyCop(totalNetoNomina)}`
-      ].join(' | ')
-    );
-    doc.moveDown(0.8);
-
-    doc.font('Helvetica-Bold').fontSize(11).text('Resumen documental');
-    doc.font('Helvetica').fontSize(9).text(
-      [
-        `Vigentes: ${snapshot.indicadores.documentos_vigentes}`,
-        `Vencidos: ${snapshot.indicadores.documentos_vencidos}`,
-        `Por vencer 30 dias: ${snapshot.indicadores.documentos_por_vencer_30_dias}`,
-        `Sin vencimiento: ${snapshot.indicadores.documentos_sin_vencimiento}`,
-        `Reemplazados: ${snapshot.indicadores.documentos_reemplazados}`
-      ].join(' | ')
-    );
-    doc.moveDown(0.8);
-
-    doc.font('Helvetica-Bold').fontSize(11).text('Alertas documentales');
-    if (activeAlertas.length === 0) {
-      doc.font('Helvetica').fontSize(9).text('No hay alertas documentales activas.');
-    } else {
-      for (const alerta of activeAlertas) {
-        ensureSpace();
-        doc.font('Helvetica-Bold').fontSize(9).text(
-          `[${alerta.severidad}] ${alerta.titulo}`
-        );
-        doc.font('Helvetica').fontSize(8).text(
-          `${alerta.tipo_alerta} | Fecha: ${normalizeDateOnly(alerta.fecha_alerta) ?? 'N/D'} | ${alerta.descripcion ?? ''}`
-        );
-        doc.moveDown(0.2);
-      }
+    if (formation.length > 0) {
+      nextSection('Formaci\u00f3n acad\u00e9mica');
+      drawTable(['NIVEL', 'TITULO / FORMACION', 'INSTITUCION', 'FECHA'], formation.map((item) => [
+        clean(item.nivel_educativo) ?? '',
+        clean(item.titulo_programa) ?? '',
+        clean(item.institucion) ?? '',
+        [formatDate(item.fecha_inicio), formatDate(item.fecha_fin)].filter(Boolean).join(' – ')
+      ]), [92, 170, 170, 79]);
     }
 
-    doc.moveDown(0.8);
-    doc.font('Helvetica-Bold').fontSize(11).text('Ultimos eventos del timeline');
-    if (timeline.length === 0) {
-      doc.font('Helvetica').fontSize(9).text('No hay eventos para mostrar.');
-    } else {
-      for (const item of timeline) {
-        ensureSpace();
-        doc.font('Helvetica-Bold').fontSize(9).text(`${item.fecha} | ${item.titulo}`);
-        doc.font('Helvetica').fontSize(8).text(item.descripcion ?? '');
-        doc.moveDown(0.2);
-      }
+    if (experience.length > 0) {
+      nextSection('Experiencia laboral');
+      drawTable(['EMPRESA', 'CARGO', 'PERIODO', 'DÍAS'], experience.map((item) => [item.company, item.role, item.period, String(item.days)]), [174, 153, 133, 51]);
+      const totalHeight = 28;
+      ensureSpace(totalHeight + spacing.lg);
+      const totalY = doc.y + spacing.md;
+      doc.fillColor(soft).roundedRect(contentX, totalY, contentWidth, totalHeight, 3).fill();
+      doc.fillColor(cyan).rect(contentX, totalY, 3, totalHeight).fill();
+      doc.font('Helvetica-Bold').fontSize(8).fillColor(navy).text('EXPERIENCIA TOTAL', contentX + 12, totalY + 9, { width: 240 });
+      doc.font('Helvetica-Bold').fontSize(10).fillColor(ink).text(totalExperienceDays + ' días', contentRight - 145, totalY + 8, { width: 133, align: 'right' });
+      doc.y = totalY + totalHeight + spacing.lg;
     }
-
-    doc.moveDown(0.8);
-    doc.font('Helvetica').fontSize(8).text(
-      `Generado por Empiria el ${new Date().toISOString()} para persona ${snapshot.persona.id}.`
-    );
-
+    const signatureHeight = 82;
+    const declarationHeight = 48;
+    ensureSpace(signatureHeight + spacing.lg + declarationHeight + spacing.md);
+    const signatureTop = doc.y + spacing.md;
+    doc.fillColor('#F8FAFC').roundedRect(contentX, signatureTop, contentWidth, signatureHeight, 3).fill();
+    doc.font('Helvetica-Bold').fontSize(7).fillColor(cyan).text('FIRMA', contentX + 16, signatureTop + 13);
+    doc.strokeColor(navy).lineWidth(0.7).moveTo(190, signatureTop + 57).lineTo(405, signatureTop + 57).stroke();
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(ink).text(fullName || 'Colaborador', 190, signatureTop + 64, { width: 215, align: 'center' });
+    doc.font('Helvetica').fontSize(7.5).fillColor(muted).text('Firma del colaborador', 190, signatureTop + 75, { width: 215, align: 'center' });
+    doc.y = signatureTop + signatureHeight + spacing.md;
+    ensureSpace(declarationHeight);
+    const declarationTop = doc.y;
+    doc.fillColor('#F8FAFC').roundedRect(contentX, declarationTop, contentWidth, declarationHeight, 3).fill();
+    doc.fillColor(cyan).rect(contentX, declarationTop, 3, declarationHeight).fill();
+    doc.font('Helvetica-Bold').fontSize(6.5).fillColor(navy).text('DECLARACIÓN', contentX + 16, declarationTop + 8);
+    doc.font('Helvetica').fontSize(6.2).fillColor(muted).text('La información contenida en esta hoja de vida corresponde a los datos registrados en Empiria y suministrados por el titular. La veracidad y actualización de la información es responsabilidad del titular.', contentX + 16, declarationTop + 18, { width: contentWidth - 28, lineGap: 1 });
+    doc.y = declarationTop + declarationHeight;
+    drawFooter();
     doc.end();
   });
 };
@@ -3475,7 +3677,8 @@ export const generateExpedienteLaboralPdf = async (
   const snapshot = await loadExpedienteSnapshot(personaId, tenant);
   const pdfBuffer = await buildExpedienteLaboralPdfBuffer(snapshot);
   const timestamp = Date.now();
-  const storagePath = buildExpedientePdfStoragePath(personaId, timestamp);
+  const fileName = buildHvFileName(snapshot.persona);
+  const storagePath = buildExpedientePdfStoragePath(personaId, timestamp, fileName);
   const uploadResult = await uploadExpedientePdfToStorage(storagePath, pdfBuffer);
   const expiresIn = 300;
   const signedUrl = await createDocumentSignedUrlForBucket(uploadResult.bucket, uploadResult.path, expiresIn);
@@ -3501,6 +3704,7 @@ export const generateExpedienteLaboralPdf = async (
     storage_path: uploadResult.path,
     expires_in: expiresIn,
     mime_type: 'application/pdf',
+    file_name: fileName,
     tamano_bytes: pdfBuffer.length
   };
 };

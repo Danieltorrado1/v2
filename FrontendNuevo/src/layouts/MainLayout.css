@@ -762,3 +762,22 @@
 .layout:has(.op-personal-page) { background: #f5f7fa; }
 [data-theme="dark"] .layout:has(.op-personal-page) { background: #0d1424; }
 @media (min-width: 1151px) { .topbar { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); } }
+
+/* Personal desktop shell: reserve readable space for contract and account at 100% zoom. */
+@media (min-width: 1280px) {
+  .topbar:has(~ .content .op-personal-page) { grid-template-columns: 150px minmax(360px, 1fr) auto; gap: 10px; padding-inline: 16px; }
+  .topbar:has(~ .content .op-personal-page) .menu { justify-content: flex-start; min-width: 0; }
+  .topbar:has(~ .content .op-personal-page) .right-side { flex: 0 0 auto; gap: 7px; }
+  .topbar:has(~ .content .op-personal-page) .topbar-business-context { width: min(420px, 34vw); max-width: 420px; padding-right: 12px; }
+  .topbar:has(~ .content .op-personal-page) .topbar-contract select { font-size: 12px; }
+  .topbar:has(~ .content .op-personal-page) .account-area { min-width: 178px; flex: 0 0 178px; }
+  .topbar:has(~ .content .op-personal-page) .account-copy strong { font-size: 12px; }
+  .topbar:has(~ .content .op-personal-page) .account-copy small { font-size: 11px; }
+  .page-scroll:has(.op-personal-page) { padding: 10px 16px; overflow: hidden; }
+  .page-content:has(.op-personal-page) { height: 100%; min-height: 0; overflow: hidden; }
+}
+
+/* The table owns vertical overflow on Personal. Clip only the active workspace
+   root so its scrollable rows cannot propagate into the document scrollbar. */
+html:has(.op-personal-page),
+body:has(.op-personal-page) { overflow: clip; }
