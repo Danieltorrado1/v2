@@ -1,0 +1,21 @@
+{
+  "checks": [
+    "footer and single scroll",
+    "KPI amounts and responsive",
+    "separate detail, equal values, complete novelties, paginated turns",
+    "back preserves query and page",
+    "Planilla initial load without F5",
+    "August still operational",
+    "zero eligible",
+    "error and retry",
+    "detail not found",
+    "detail error and retry"
+  ],
+  "writes": [
+    {
+      "path": "/api/nomina/periodos/9/importar-empleados",
+      "body": {}
+    }
+  ],
+  "errors": []
+}

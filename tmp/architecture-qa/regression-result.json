@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "Personal list and existing Expediente open/close PASS",
+    "Existing SST statistics route mounted PASS",
+    "Company profile contracts scoped PASS",
+    "Configuration contracts follow active tenant PASS",
+    "Dynamic module roots, explicit configuration flags, hidden/denied SST tabs, payroll navigation PASS"
+  ],
+  "errors": [],
+  "writes": []
+}

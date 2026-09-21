@@ -1,0 +1,263 @@
+{
+  "pass": true,
+  "dimensions": [
+    {
+      "width": 1440,
+      "scroll": 1440,
+      "kpis": [
+        {
+          "text": "EMPLEADOS2",
+          "width": 67,
+          "scroll": 67
+        },
+        {
+          "text": "REVISADAS1",
+          "width": 63,
+          "scroll": 63
+        },
+        {
+          "text": "PENDIENTES1",
+          "width": 69,
+          "scroll": 69
+        },
+        {
+          "text": "NOVEDADES0",
+          "width": 68,
+          "scroll": 68
+        },
+        {
+          "text": "DÍAS NOVEDAD0",
+          "width": 86,
+          "scroll": 86
+        },
+        {
+          "text": "INGRESOS7",
+          "width": 55,
+          "scroll": 55
+        },
+        {
+          "text": "RETIROS4",
+          "width": 47,
+          "scroll": 47
+        },
+        {
+          "text": "DEVENGADO$1.234.567.890.123",
+          "width": 102,
+          "scroll": 102
+        },
+        {
+          "text": "NETO$1.123.456.789.012",
+          "width": 102,
+          "scroll": 102
+        }
+      ],
+      "tables": [
+        {
+          "width": 1176,
+          "scroll": 1176
+        },
+        {
+          "width": 1176,
+          "scroll": 1176
+        }
+      ],
+      "sidebar": 170
+    },
+    {
+      "width": 1024,
+      "scroll": 1024,
+      "kpis": [
+        {
+          "text": "EMPLEADOS2",
+          "width": 67,
+          "scroll": 67
+        },
+        {
+          "text": "REVISADAS1",
+          "width": 63,
+          "scroll": 63
+        },
+        {
+          "text": "PENDIENTES1",
+          "width": 69,
+          "scroll": 69
+        },
+        {
+          "text": "NOVEDADES0",
+          "width": 68,
+          "scroll": 68
+        },
+        {
+          "text": "DÍAS NOVEDAD0",
+          "width": 86,
+          "scroll": 86
+        },
+        {
+          "text": "INGRESOS7",
+          "width": 55,
+          "scroll": 55
+        },
+        {
+          "text": "RETIROS4",
+          "width": 47,
+          "scroll": 47
+        },
+        {
+          "text": "DEVENGADO$1.234.567.890.123",
+          "width": 132,
+          "scroll": 132
+        },
+        {
+          "text": "NETO$1.123.456.789.012",
+          "width": 131,
+          "scroll": 131
+        }
+      ],
+      "tables": [
+        {
+          "width": 946,
+          "scroll": 946
+        },
+        {
+          "width": 946,
+          "scroll": 946
+        }
+      ],
+      "sidebar": 988
+    },
+    {
+      "width": 768,
+      "scroll": 768,
+      "kpis": [
+        {
+          "text": "EMPLEADOS2",
+          "width": 67,
+          "scroll": 67
+        },
+        {
+          "text": "REVISADAS1",
+          "width": 63,
+          "scroll": 63
+        },
+        {
+          "text": "PENDIENTES1",
+          "width": 69,
+          "scroll": 69
+        },
+        {
+          "text": "NOVEDADES0",
+          "width": 68,
+          "scroll": 68
+        },
+        {
+          "text": "DÍAS NOVEDAD0",
+          "width": 86,
+          "scroll": 86
+        },
+        {
+          "text": "INGRESOS7",
+          "width": 55,
+          "scroll": 55
+        },
+        {
+          "text": "RETIROS4",
+          "width": 47,
+          "scroll": 47
+        },
+        {
+          "text": "DEVENGADO$1.234.567.890.123",
+          "width": 132,
+          "scroll": 132
+        },
+        {
+          "text": "NETO$1.123.456.789.012",
+          "width": 131,
+          "scroll": 131
+        }
+      ],
+      "tables": [
+        {
+          "width": 690,
+          "scroll": 690
+        },
+        {
+          "width": 690,
+          "scroll": 690
+        }
+      ],
+      "sidebar": 732
+    },
+    {
+      "width": 390,
+      "scroll": 390,
+      "kpis": [
+        {
+          "text": "EMPLEADOS2",
+          "width": 67,
+          "scroll": 67
+        },
+        {
+          "text": "REVISADAS1",
+          "width": 63,
+          "scroll": 63
+        },
+        {
+          "text": "PENDIENTES1",
+          "width": 69,
+          "scroll": 69
+        },
+        {
+          "text": "NOVEDADES0",
+          "width": 68,
+          "scroll": 68
+        },
+        {
+          "text": "DÍAS NOVEDAD0",
+          "width": 86,
+          "scroll": 86
+        },
+        {
+          "text": "INGRESOS7",
+          "width": 55,
+          "scroll": 55
+        },
+        {
+          "text": "RETIROS4",
+          "width": 47,
+          "scroll": 47
+        },
+        {
+          "text": "DEVENGADO$1.234.567.890.123",
+          "width": 105,
+          "scroll": 105
+        },
+        {
+          "text": "NETO$1.123.456.789.012",
+          "width": 105,
+          "scroll": 105
+        }
+      ],
+      "tables": [
+        {
+          "width": 312,
+          "scroll": 312
+        },
+        {
+          "width": 312,
+          "scroll": 312
+        }
+      ],
+      "sidebar": 354
+    }
+  ],
+  "writes": [
+    {
+      "path": "/api/nomina/periodos/9/importar-empleados",
+      "method": "POST"
+    },
+    {
+      "path": "/api/nomina/periodos/8/importar-empleados",
+      "method": "POST"
+    }
+  ]
+}

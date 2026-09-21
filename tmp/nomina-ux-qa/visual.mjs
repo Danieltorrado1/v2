@@ -1,0 +1,116 @@
+import {chromium} from '../nomina-population-qa/node_modules/playwright-core/index.mjs';
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const harness=`import React from 'react'; import {createRoot} from 'react-dom/client'; import {BrowserRouter,Routes,Route} from 'react-router-dom'; import MainLayout from './src/layouts/MainLayout'; import NominaPage from './src/pages/nomina/NominaPage'; import Detail from './src/pages/nomina/NominaEmpleadoDetallePage'; import Planilla from './src/pages/nomina/PlanillaOperativaPage'; import './src/index.css'; createRoot(document.getElementById('root')!).render(<BrowserRouter><Routes><Route element={<MainLayout/>}><Route path='/nomina/gestion' element={<NominaPage/>}/><Route path='/nomina/gestion/:periodoId/empleado/:nominaEmpleadoId' element={<Detail/>}/><Route path='/nomina/planilla-operativa' element={<Planilla/>}/></Route></Routes></BrowserRouter>);`;
+const html='<html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><script type="module">import RefreshRuntime from "/@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true;</script><div id="root"></div><script type="module" src="/qa-nomina-final.tsx"></script></body></html>';
+await fs.writeFile('FrontendNuevo/qa-nomina-final.tsx',harness);
+const browser=await chromium.launch({executablePath:'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:900}});
+page.setDefaultTimeout(12000);
+const errors=[],writes=[],checks=[];
+page.on('pageerror',e=>{errors.push(e.message);console.log('PAGEERROR',e.message);});
+const permissions=['nomina.read','nomina.operativa.read','nomina.dashboard.read','nomina.empleados.import','nomina.novedades.create','nomina.economico.read','nomina.desprendibles.read'];
+await page.route('**/nomina/**',r=>r.request().resourceType()==='document'?r.fulfill({contentType:'text/html',body:html}):r.fallback());
+await page.route('**/src/context/AuthContext.tsx*',r=>r.fulfill({contentType:'application/javascript',body:`const user={id:1,name:'QA',roles:['TALENTO_HUMANO'],permissions:${JSON.stringify(permissions)}};export const useAuth=()=>({user,logout:()=>{}});`}));
+await page.route('**/src/context/CompanyContext.tsx*',r=>r.fulfill({contentType:'application/javascript',body:`export const useCompanyContext=()=>({empresaId:1,empresasDisponibles:[],empresaActual:null,organizacionActual:null,hasModule:()=>true,setEmpresaActual:()=>{}});`}));
+await page.route('**/src/context/ThemeContext.tsx*',r=>r.fulfill({contentType:'application/javascript',body:`export const useTheme=()=>({theme:'light',toggleTheme:()=>{}});`}));
+const periods=[9,8].map(id=>({id:String(id),nombre_periodo:id===9?'SEPTIEMBRE 2026':'AGOSTO 2026',fecha_inicio:`2026-0${id}-01`,fecha_fin:`2026-0${id}-${id===9?30:31}`,estado:'ABIERTO',activo:true,contrato_id:'1',tipo_periodo:'MENSUAL'}));
+const employee=(month,index)=>({id:String(month*100+index),periodo_id:String(month),vinculacion_id:String(month*100+index),activo:true,revisado:false,estado:'PENDIENTE',persona:{id:String(index),nombre_completo:`Persona ${month} ${String(index).padStart(3,'0')}`,numero_documento:String(index)},vinculacion:{id:String(index),contrato_id:'1',cotiza_pension:true,fecha_inicio:'2026-01-01',fecha_fin:null},cargo:{nombre_cargo:'Docente'},dias_pagados:30,dias_periodo:30,total_adiciones:1234567,total_deducciones:12345,neto_pagar:1222222,salud:2345,pension:10000,devengado_basico:1000000,devengado_transporte:200000,devengado_otros:34567,detalle_calculo:{dias:{salario:30,transporte:29,recargos:28,base:30},componentes:{recargos_ordinarios:34567,otros_devengos_reales:0}},created_at:'2026-09-01T00:00:00Z'});
+let septLoaded=true,eligible=750,employeeError=false;
+const paged=items=>({items,pagination:{page:1,limit:500,total:items.length,total_pages:1}});
+const novedad=(id,ne)=>({id:String(id),nomina_empleado_id:String(ne),periodo_id:'9',vinculacion_id:String(ne),tipo_novedad:{nombre:'PERMISO',codigo_operativo:'PR1'},persona:{nombre_completo:'Persona 9 026',numero_documento:'26'},fecha_inicio:'2026-09-03',fecha_fin:'2026-09-03',dias:1,activo:true,revisado:false,observacion:`Observacion ${id}`,documento_persona_id:null});
+await page.route('**/api/**',async r=>{
+ const u=new URL(r.request().url()),p=u.pathname; let data=paged([]);
+ const month=Number(p.match(/periodos\/(\d+)/)?.[1]||u.searchParams.get('periodo_id')||9);
+ if(r.request().method()!=='GET')writes.push({path:p,body:r.request().postDataJSON()});
+ if(p.endsWith('/periodos'))data=periods;
+ else if(/periodos\/\d+$/.test(p))data=periods.find(x=>Number(x.id)===month);
+ else if(p.endsWith('/dashboard'))data={empleados_total:month===9&&!septLoaded?0:60,empleados_disponibles:eligible,total_devengado:1234567890123,total_neto:1123456789012,ingresos:3,retiros:2};
+ else if(p.endsWith('/empleados')||p.endsWith('/empleados-operativos')){
+  if(employeeError)return r.fulfill({status:500,json:{success:false,message:'Fallo QA controlado'}});
+  data=paged(month===9&&!septLoaded?[]:Array.from({length:60},(_,i)=>employee(month,i+1)));
+ }
+ else if(p.endsWith('/novedades'))data=paged(month===9?[novedad(1,926),novedad(2,926),novedad(3,927)]:[]);
+ else if(p.endsWith('/ajustes-manuales'))data=[{id:'1',nomina_empleado_id:'926',periodo_id:'9',tipo:'DEDUCCION',concepto:'DEDUCCION_ADICIONAL_FINAL',valor:123,activo:true,created_by:'7',created_at:'2026-09-03',updated_at:'2026-09-04'}];
+ else if(p.endsWith('/revision-operativa'))data=[{nomina_empleado_id:'926',periodo_id:'9',estado_revision:'REVISADO',revisado_por:'7',revisado_at:'2026-09-04'}];
+ else if(p.endsWith('/novedad-turnos-operativos')){const pg=Number(u.searchParams.get('page')||1);data={items:[{id:String(pg),nomina_empleado_id:'926',periodo_id:'9',tipo_turno:pg===1?'INTERNO':'EXTERNO',fecha:'2026-09-02',trabajador_reemplazado:`Cubierto ${pg}`,modalidad:'CAA',movimiento_valor_aplicado:10000*pg,activo:true,estado:'REGISTRADO'}],pagination:{page:pg,total_pages:2,total:2,limit:1}};}
+ else if(p.endsWith('/movimientos'))data=paged([{id:'1',nomina_empleado_id:'926',periodo_id:'9',es_deduccion:true,valor_total:123,descripcion:'Deduccion real',activo:true}]);
+ else if(p.includes('/desprendibles/'))data=[];
+ else if(p.endsWith('/tipos-novedad'))data={...paged([{id:'1',nombre:'PERMISO',activo:true,requiere_fechas:true}]),total:1};
+ else if(p.endsWith('/importar-empleados')){septLoaded=true;data={imported:60,excluded:0,skipped_duplicates:0,requires_review:[]};}
+ else if(p.includes('/notificaciones'))data={items:[],total:0,no_leidas:0};
+ await r.fulfill({json:{success:true,data}});
+});
+const cards=()=>page.locator('.nomina-page--period-host > .nomina-payroll-main > .payroll-periods > .payroll-period-card');
+try {
+ await page.goto('http://127.0.0.1:5177/nomina/gestion?period_id=9');
+ await page.getByText('Persona 9 001',{exact:true}).waitFor();
+ await page.getByRole('button',{name:/AGOSTO 2026/}).click();
+ await page.getByText('Persona 8 001',{exact:true}).waitFor();
+ await page.locator('.page-scroll').evaluate(e=>e.scrollTop=e.scrollHeight);
+ const end=await cards().last().locator('.payroll-pagination').boundingBox();
+ assert.ok(end&&end.y>68&&end.y+end.height<900,JSON.stringify(end));
+ const lastCard = await cards().last().boundingBox(); assert.ok(lastCard.y+lastCard.height < 892,JSON.stringify(lastCard));
+ await page.screenshot({path:"tmp/nomina-ux-qa/footer.png",fullPage:true});
+ const scrolls=await page.evaluate(()=>[...document.querySelectorAll('.page-scroll,.nomina-page,.nomina-payroll-main,.payroll-periods,.payroll-table-scroll')].filter(e=>e.scrollHeight>e.clientHeight+2&&['auto','scroll'].includes(getComputedStyle(e).overflowY)).map(e=>e.className));
+ assert.equal(scrolls.length,1,JSON.stringify(scrolls));checks.push('footer and single scroll');
+ const icon=await page.locator('.payroll-kpi-icon').first().boundingBox();assert.equal(icon.width,32);
+ for(const width of [1440,1024,768,390]){
+  await page.setViewportSize({width,height:900});
+  const geometry=await page.evaluate(()=>({w:innerWidth,sw:document.documentElement.scrollWidth,kpis:[...document.querySelectorAll('.payroll-kpi-body')].map(e=>[e.clientWidth,e.scrollWidth])}));
+  assert.ok(geometry.sw<=width,JSON.stringify(geometry));assert.ok(geometry.kpis.every(([w,sw])=>sw<=w),JSON.stringify(geometry));
+ }
+ checks.push('KPI amounts and responsive');
+ await page.setViewportSize({width:1440,height:900});
+ const sept=cards().first();
+ await sept.locator('input[type=search],input[placeholder*="Buscar"]').first().fill('Persona 9');
+ await sept.locator('.payroll-pagination').getByRole('button',{name:'2',exact:true}).click();
+ await sept.getByText('Persona 9 026',{exact:true}).waitFor();
+ await sept.getByRole('button',{name:'Ver detalle de Persona 9 026',exact:true}).click();
+ await page.waitForURL('**/nomina/gestion/9/empleado/926');
+ await page.getByRole('heading',{name:'Persona 9 026',exact:true}).waitFor();
+ assert.equal(await page.locator('.payroll-table-row-detail').count(),0);
+ await page.getByText('Cubierto 2',{exact:false}).waitFor();
+ const totals=await page.locator('.nomina-employee-detail-totals').innerText();assert.ok(totals.includes('1.234.567')&&totals.includes('12.345')&&totals.includes('1.222.222'),totals);
+ const noveltySection=page.locator('.nomina-employee-detail-sections > section').filter({has:page.getByRole('heading',{name:'Novedades del periodo',exact:false})});
+ assert.equal(await page.getByText('Observacion 1',{exact:true}).count(),1);assert.equal(await page.getByText('Observacion 2',{exact:true}).count(),1);assert.equal(await page.getByText('Observacion 3',{exact:true}).count(),0);
+ checks.push('separate detail, equal values, complete novelties, paginated turns');
+ await page.locator('.page-scroll').evaluate(e=>e.scrollTop=0);
+ await page.screenshot({path:'tmp/nomina-ux-qa/detail.png',fullPage:true});
+ await page.setViewportSize({width:390,height:900});
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.screenshot({path:'tmp/nomina-ux-qa/detail-mobile.png',fullPage:true});
+ await page.setViewportSize({width:1440,height:900});
+ await page.getByRole('button',{name:'Volver a nomina'}).click();
+ await page.getByText('Persona 9 026',{exact:true}).waitFor();
+ assert.equal(await cards().first().locator('input[placeholder*="Buscar"]').inputValue(),'Persona 9');checks.push('back preserves query and page');
+ septLoaded=false;
+ await page.goto('http://127.0.0.1:5177/nomina/planilla-operativa?period_id=9');
+ await page.getByText(/750 empleados disponibles/).waitFor();
+ await page.screenshot({path:'tmp/nomina-ux-qa/planilla-empty.png',fullPage:true});
+ await page.getByRole('button',{name:'CARGAR PERSONAL',exact:true}).click();
+ await page.getByText('Persona 9 001',{exact:true}).first().waitFor();
+ await page.getByRole('button',{name:'ACTUALIZAR PERSONAL',exact:true}).waitFor();
+ assert.ok(page.url().includes('period_id=9'));checks.push('Planilla initial load without F5');
+ await page.locator('.op-period-picker select').selectOption('8');
+ await page.getByText('Persona 8 001',{exact:true}).first().waitFor();checks.push('August still operational');
+ septLoaded=false;eligible=0;
+ await page.goto('http://127.0.0.1:5177/nomina/planilla-operativa?period_id=9');await page.getByRole('heading',{name:'No existen empleados elegibles'}).waitFor();checks.push('zero eligible');
+ employeeError=true;
+ await page.reload();await page.getByRole('heading',{name:'No fue posible mostrar el personal'}).waitFor();
+ employeeError=false;eligible=750;
+ await page.locator('.op-population-empty').getByRole('button',{name:'Reintentar'}).click();await page.getByText(/750 empleados disponibles/).waitFor();checks.push('error and retry');
+ await page.goto('http://127.0.0.1:5177/nomina/gestion/9/empleado/999999');
+ await page.getByText('Nomina no encontrada',{exact:true}).waitFor();checks.push('detail not found');
+ employeeError=true;
+ await page.goto('http://127.0.0.1:5177/nomina/gestion/9/empleado/926');
+ await page.getByText('No fue posible cargar la ficha',{exact:true}).waitFor();
+ employeeError=false;septLoaded=true;
+ await page.getByRole('button',{name:'Reintentar',exact:true}).click();
+ await page.getByRole('heading',{name:'Persona 9 026',exact:true}).waitFor();checks.push('detail error and retry');
+ assert.equal(errors.length,0,errors.join('\n'));
+ assert.equal(writes.length,1,JSON.stringify(writes));assert.ok(writes[0].path.endsWith('/periodos/9/importar-empleados'));
+ await fs.writeFile('tmp/nomina-ux-qa/result.json',JSON.stringify({checks,writes,errors},null,2));
+ console.log(JSON.stringify({PASS:checks,writes}));
+} catch(e){console.log((await page.locator('body').innerText()).slice(0,3000));await page.screenshot({path:'tmp/nomina-ux-qa/error.png',fullPage:true});throw e;}
+finally {await browser.close();await fs.unlink('FrontendNuevo/qa-nomina-final.tsx');}

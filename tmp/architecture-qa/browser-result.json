@@ -1,0 +1,783 @@
+{
+  "checks": [
+    "Admin: five modules, dashboard, companies/profile, plans/duplicate form, catalog, product settings, enter same tenant",
+    "Tenant: six enabled modules; real CompanyProvider switching; disabled module/submodule hidden; global and legacy direct URLs guarded; contract-scoped statistics/institutions",
+    "RBAC: enabled feature without permission is hidden and denied",
+    "Payroll: 771 mocked employees; fixed shell/headers/footer, rows-only scroll at 1920/1600/1366, drawer preserved",
+    "Existing route mounted: /personal/base-datos",
+    "Existing route mounted: /personal/repositorio",
+    "Existing route mounted: /personal/cobertura",
+    "Existing route mounted: /nomina/planilla-operativa",
+    "Existing route mounted: /nomina/turnos",
+    "Existing route mounted: /nomina/novedades",
+    "Existing route mounted: /nomina/liquidacion"
+  ],
+  "errors": [],
+  "writes": [],
+  "requests": [
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies-summary",
+      "query": ""
+    },
+    {
+      "path": "/saas/modules",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies-summary",
+      "query": ""
+    },
+    {
+      "path": "/saas/modules",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/empresas",
+      "query": "?page=1&limit=10"
+    },
+    {
+      "path": "/configuracion/empresas",
+      "query": "?page=1&limit=10"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/empresas",
+      "query": "?page=1&limit=100"
+    },
+    {
+      "path": "/saas/companies-summary",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/empresas",
+      "query": "?page=1&limit=100"
+    },
+    {
+      "path": "/saas/companies-summary",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/saas/modules",
+      "query": ""
+    },
+    {
+      "path": "/saas/modules",
+      "query": ""
+    },
+    {
+      "path": "/saas/plans",
+      "query": ""
+    },
+    {
+      "path": "/saas/plans",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/saas/modules",
+      "query": ""
+    },
+    {
+      "path": "/saas/plans",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/modules",
+      "query": ""
+    },
+    {
+      "path": "/saas/plans",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/saas/modules",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/plans",
+      "query": ""
+    },
+    {
+      "path": "/saas/modules",
+      "query": ""
+    },
+    {
+      "path": "/saas/plans",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/empresas",
+      "query": "?page=1&limit=10"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/empresas",
+      "query": "?page=1&limit=10"
+    },
+    {
+      "path": "/configuracion/empresas",
+      "query": "?page=1&limit=100"
+    },
+    {
+      "path": "/saas/companies-summary",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/empresas",
+      "query": "?page=1&limit=100"
+    },
+    {
+      "path": "/saas/companies-summary",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/empresas/1",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/history",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/empresas/1",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/history",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies-summary",
+      "query": ""
+    },
+    {
+      "path": "/saas/modules",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies-summary",
+      "query": ""
+    },
+    {
+      "path": "/saas/modules",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?empresa_id=1&limit=100&activo=true"
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?empresa_id=1&limit=100&activo=true"
+    },
+    {
+      "path": "/vinculaciones/personal/resumen",
+      "query": "?contrato_id=1"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?empresa_id=1&limit=100&activo=true"
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?empresa_id=1&limit=100&activo=true"
+    },
+    {
+      "path": "/vinculaciones/personal/opciones",
+      "query": "?contrato_id=1"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/roles",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/roles",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?empresa_id=1&limit=100&activo=true"
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?empresa_id=1&limit=100&activo=true"
+    },
+    {
+      "path": "/saas/companies/2/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?empresa_id=2&limit=100&activo=true"
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?empresa_id=2&limit=100&activo=true"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/2/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/tipos-novedad",
+      "query": "?activo=true&empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/tipos-novedad",
+      "query": "?activo=true&empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/tipos-novedad",
+      "query": "?activo=true&empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos/9/dashboard",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos/9/empleados",
+      "query": "?empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/novedades",
+      "query": "?periodo_id=9&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9/ajustes-manuales",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos/9",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos/9/dashboard",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos/9/empleados",
+      "query": "?empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/novedades",
+      "query": "?periodo_id=9&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9/ajustes-manuales",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos/8/dashboard",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/tipos-novedad",
+      "query": "?activo=true&empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos/9/dashboard",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos/9/empleados",
+      "query": "?empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/novedades",
+      "query": "?periodo_id=9&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9/ajustes-manuales",
+      "query": ""
+    },
+    {
+      "path": "/nomina/novedad-turnos-operativos",
+      "query": "?periodo_id=9&nomina_empleado_id=9001&page=1&limit=500"
+    },
+    {
+      "path": "/nomina/movimientos",
+      "query": "?periodo_id=9&nomina_empleado_id=9001&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9/revision-operativa",
+      "query": ""
+    },
+    {
+      "path": "/nomina/desprendibles/9",
+      "query": "?include_versiones=true"
+    },
+    {
+      "path": "/nomina/novedad-turnos-operativos",
+      "query": "?periodo_id=9&nomina_empleado_id=9001&page=1&limit=500"
+    },
+    {
+      "path": "/nomina/movimientos",
+      "query": "?periodo_id=9&nomina_empleado_id=9001&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9/revision-operativa",
+      "query": ""
+    },
+    {
+      "path": "/nomina/desprendibles/9",
+      "query": "?include_versiones=true"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?page=1&limit=100&activo=true&empresa_id=1"
+    },
+    {
+      "path": "/configuracion/catalogos/tipos-documentos",
+      "query": "?page=1&limit=200&activo=true"
+    },
+    {
+      "path": "/configuracion/catalogos/tipos-documentos",
+      "query": "?page=1&limit=200&activo=true&es_identificacion_personal=true"
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?page=1&limit=100&activo=true&empresa_id=1"
+    },
+    {
+      "path": "/configuracion/catalogos/tipos-documentos",
+      "query": "?page=1&limit=200&activo=true"
+    },
+    {
+      "path": "/configuracion/catalogos/tipos-documentos",
+      "query": "?page=1&limit=200&activo=true&es_identificacion_personal=true"
+    },
+    {
+      "path": "/configuracion/cargos",
+      "query": "?page=1&limit=100&contrato_id=1&activo=true"
+    },
+    {
+      "path": "/vinculaciones/personal/opciones",
+      "query": "?contrato_id=1&fecha=2026-09-07"
+    },
+    {
+      "path": "/vinculaciones/personal/resumen",
+      "query": "?contrato_id=1&fecha=2026-09-07"
+    },
+    {
+      "path": "/vinculaciones/personal",
+      "query": "?contrato_id=1&page=1&limit=50&fecha=2026-09-07"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/repositorio/documentos",
+      "query": "?page=1&limit=50"
+    },
+    {
+      "path": "/repositorio/documentos/indicadores",
+      "query": ""
+    },
+    {
+      "path": "/repositorio/documentos",
+      "query": "?page=1&limit=50"
+    },
+    {
+      "path": "/repositorio/documentos/indicadores",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?page=1&limit=100&activo=true&empresa_id=1"
+    },
+    {
+      "path": "/configuracion/contratos",
+      "query": "?page=1&limit=100&activo=true&empresa_id=1"
+    },
+    {
+      "path": "/cobertura/focalizacion/importaciones",
+      "query": "?contrato_id=1"
+    },
+    {
+      "path": "/cobertura/dashboard",
+      "query": "?contrato_id=1&fecha=2026-09-07&page=1&limit=100"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/tipos-novedad",
+      "query": "?activo=true&empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/tipos-novedad",
+      "query": "?activo=true&empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9/empleados",
+      "query": "?empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/novedades",
+      "query": "?periodo_id=9&activo=true&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/movimientos-operativos",
+      "query": "?periodo_id=9&activo=true&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/novedad-turnos-operativos",
+      "query": "?periodo_id=9&activo=true&limit=500"
+    },
+    {
+      "path": "/nomina/cambios-operativos",
+      "query": "?activo=true&periodo_id=9"
+    },
+    {
+      "path": "/nomina/periodos/9/asistencia",
+      "query": "?activo=true&limit=5000&page=1"
+    },
+    {
+      "path": "/nomina/periodos/9/revision-operativa",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos/9/dashboard",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/tipos-novedad",
+      "query": "?activo=true&empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/movimientos",
+      "query": "?periodo_id=9&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9/empleados",
+      "query": "?empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/novedad-turnos-operativos",
+      "query": "?periodo_id=9&activo=true&limit=500"
+    },
+    {
+      "path": "/nomina/cobertura/externos",
+      "query": "?periodo_id=9&empresa_id=1"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/tipos-novedad",
+      "query": "?activo=true&empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/tipos-novedad",
+      "query": "?activo=true&empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9/empleados-operativos",
+      "query": "?empresa_id=1&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/novedades",
+      "query": "?periodo_id=9&page=1&limit=100"
+    },
+    {
+      "path": "/nomina/periodos/9/ajustes-manuales",
+      "query": ""
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/periodos",
+      "query": "?page=1&limit=100&empresa_id=1"
+    },
+    {
+      "path": "/nomina/liquidaciones/9",
+      "query": "?page=1&limit=100"
+    },
+    {
+      "path": "/tenant/me",
+      "query": ""
+    },
+    {
+      "path": "/saas/companies/1/capabilities",
+      "query": ""
+    }
+  ]
+}

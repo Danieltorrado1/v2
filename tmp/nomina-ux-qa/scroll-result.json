@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "1920x1080 PASS",
+    "1600x900 PASS",
+    "1366x768 PASS",
+    "drawer preserves internal scroll PASS",
+    "pagination and single visual expansion PASS"
+  ],
+  "errors": [],
+  "writes": []
+}

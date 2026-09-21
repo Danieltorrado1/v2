@@ -1,0 +1,22 @@
+[
+  {
+    "region": "const flushAttendance =",
+    "unchanged": true,
+    "sha256": "bee43c2a487d824488b607ebe7e7eca5331c56199da67c7081f8eaf3ccde1eb6"
+  },
+  {
+    "region": "const overlayPendingAttendance =",
+    "unchanged": true,
+    "sha256": "a138a757ed6c113e7044fe74ee28334b5015b14ee9adbb744f0632e541cdfe9f"
+  },
+  {
+    "region": "const handleSaveManualFinal =",
+    "unchanged": true,
+    "sha256": "8f54194b6730998e03109e9c8c0df7c969982fd41ea5e3ceb8e077d27606f824"
+  },
+  {
+    "region": "function InternalTurnsDetail",
+    "unchanged": true,
+    "sha256": "0618ed53a985f2b5520ef030180e01cb52b63de81cb4e121f3a69ad34930ec3d"
+  }
+]
