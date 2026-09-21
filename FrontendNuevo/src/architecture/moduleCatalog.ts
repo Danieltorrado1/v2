@@ -57,14 +57,12 @@ export const moduleCatalog: ModuleEntry[] = [
       ['LEGISLACION', 'Legislación', 'legislacion', { permission: ['legislacion.read'], sections: ['Normatividad vigente', 'Obligaciones', 'Cambios', 'Cumplimiento', 'Evidencias', 'Alertas'] }],
       ['HERRAMIENTAS', 'Herramientas', 'herramientas', { permission: ['cobertura.read', 'cobertura.update', 'nomina.read'], legacyCodes: ['COBERTURA', 'NOMINA'], view: 'tools', aliases: ['/herramientas/calculadora-salario'], sections: ['Calculadora salarial'] }],
     ]) }, 1),
-  entry({ code: 'OPERACION', label: 'Operación', icon: Workflow, route: '/operacion/estadisticas', children: children('OPERACION', '/operacion', [
-    ['ESTADISTICAS', 'Estadísticas', 'estadisticas', { permission: ['operacion.read'], sections: ['Servicios programados', 'Servicios entregados', 'Novedades', 'Distribución por municipio'] }],
-    ['INSTITUCIONES', 'Instituciones', 'instituciones', { permission: ['vinculaciones.read'], view: 'institutions', sections: ['Institución', 'Centro educativo', 'Sede', 'Municipio', 'Dirección', 'Modalidad', 'Cupos', 'Jornada', 'Estado'] }],
-    ['SIMAT', 'Verificación SIMAT', 'simat', { permission: ['operacion.read'], sections: ['Cargar archivo', 'Comparar', 'Diferencias', 'Duplicados', 'Inconsistencias', 'Aprobados', 'Pendientes', 'Historial'] }],
+  entry({ code: 'OPERACION', label: 'Operación', icon: Workflow, route: '/operacion', children: children('OPERACION', '/operacion', [
+    ['INSTITUCIONES', 'Instituciones', 'instituciones', { permission: ['operacion.instituciones.read', 'operacion.read', 'vinculaciones.read'], view: 'institutions', sections: ['Institución', 'Centro educativo', 'Sede', 'Municipio', 'Dirección', 'Modalidad', 'Cupos', 'Jornada', 'Estado'] }],
+    ['SIMAT', 'Verificación SIMAT', 'simat', { permission: ['operacion.simat.read', 'operacion.read'], sections: ['Cargar archivo', 'Comparar', 'Diferencias', 'Duplicados', 'Inconsistencias', 'Aprobados', 'Pendientes', 'Historial'] }],
     ['REPORTE_DIARIO', 'Reporte diario', 'reporte-diario', { permission: ['operacion.read'], sections: ['Institución', 'Sede', 'Modalidad', 'Programado', 'Entregado', 'Novedades', 'Observaciones', 'Soportes', 'Responsable'] }],
     ['DESCUENTOS_SEMANALES', 'Descuentos semanales', 'descuentos-semanales', { permission: ['operacion.read'], sections: ['Semana', 'Institución', 'Sede', 'Motivo', 'Cantidad', 'Valor', 'Soporte', 'Estado', 'Aprobación'] }],
     ['PLANILLA_FINAL', 'Planilla final', 'planilla-final', { permission: ['operacion.read'], sections: ['Institución', 'Sede', 'Modalidad', 'Días', 'Servicios', 'Descuentos', 'Novedades', 'Valor final', 'Revisión', 'Aprobación', 'Exportación'] }],
-    ['EVALUACION', 'Evaluación operacional', 'evaluacion', { permission: ['operacion.read'], sections: ['Ciclos', 'Criterios operacionales', 'Resultados', 'Planes de mejora'] }],
   ]) }, 2),
   entry({ code: 'LOGISTICA', label: 'Logística', icon: Truck, route: '/logistica/estadisticas', children: children('LOGISTICA', '/logistica', [
     ['ESTADISTICAS', 'Estadísticas', 'estadisticas', { permission: ['logistica.read'], sections: ['Despachos', 'Recepciones', 'Existencias', 'Vencimientos'] }],

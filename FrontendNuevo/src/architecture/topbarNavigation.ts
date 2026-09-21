@@ -6,6 +6,8 @@ export const promotedPersonalCodes = ['PERSONAL_NOMINA', 'PERSONAL_PORTAL_SERVIC
 export function topbarNavigation(modules: ModuleEntry[]): ModuleEntry[] {
   const order = ['AGENDA_OPERATIVA', 'PERSONAL', 'PERSONAL_NOMINA', 'OPERACION', 'LOGISTICA', 'SST', 'PERSONAL_PORTAL_SERVICIOS', 'CONFIGURACION_EMPRESA'];
   return modules.flatMap(item => {
+    // Operación owns its internal navigation bar; it must be a direct module link.
+    if (item.code === 'OPERACION') return [{ ...item, route: '/operacion', children: [] }];
     if (item.code !== 'PERSONAL') return [item];
     const children = item.children.filter(child => !promotedPersonalCodes.includes(child.code));
     const direct = children.find(child => child.code === 'PERSONAL_BASE_DATOS') ?? children[0];

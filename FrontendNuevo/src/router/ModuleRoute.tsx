@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCompanyContext } from '../context/CompanyContext';
 import { canAccessDashboard, isGestorOnly } from './roleNavigation';
-import { resolveCatalogLocation, visibleTenantModules } from '../architecture/moduleAccess';
+import { isVisibleCatalogLocation, resolveCatalogLocation, resolveVisibleModulePath, shouldDeferModuleRoute, visibleTenantModules } from '../architecture/moduleAccess';
 
 function canAny(permissions: string[], required: readonly string[]): boolean {
   return required.length === 0 || required.some((permission) => permissions.includes(permission));
@@ -57,15 +57,15 @@ export default function ModuleRoute({
     return <div className="adm-empty"><p>{error.includes('429') || error.toLowerCase().includes('límite') || error.toLowerCase().includes('limite') ? 'Se alcanzó temporalmente el límite de solicitudes. Intenta nuevamente.' : error}</p><button type="button" className="adm-btn primary" onClick={retryBootstrap}>Reintentar</button></div>;
   }
 
-  if (!empresaId || capabilitiesLoading || !capabilities) {
+  if (shouldDeferModuleRoute({ empresaId, capabilitiesLoading, capabilities })) {
     return <div className="adm-empty">Cargando configuracion empresarial...</div>;
   }
 
   const catalogLocation = resolveCatalogLocation(location.pathname, location.search);
   const visible = visibleTenantModules(user, capabilities, empresaId);
-  const visualHidden = Boolean(catalogLocation && !visible.some((module) => module.code === catalogLocation.module.code && module.children.some((entry) => entry.code === catalogLocation.entry.code)));
+  const visualHidden = !isVisibleCatalogLocation(catalogLocation, visible);
   if (dashboardDenied || visualHidden || !hasModule(code) || !canAny(permissions, requiredPermissions) || denyRoles.some((role) => roles.includes(role))) {
-    return <Navigate to={visualHidden ? (visible[0]?.children[0]?.route ?? '/empresa') : resolveFallbackPath({ hasModule, permissions, roles })} replace />;
+    return <Navigate to={visualHidden ? resolveVisibleModulePath(visible) : resolveFallbackPath({ hasModule, permissions, roles })} replace />;
   }
 
   return children;

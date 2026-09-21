@@ -45,7 +45,9 @@ export default function MainLayout() {
   const activeModule = adminScope ? [...adminModules].reverse().find(item => location.pathname === item.route || location.pathname.startsWith(`${item.route}/`)) : modules.find(item => item.code === current?.module.code);
   const personalModule = modules.find(item => item.code === 'PERSONAL');
   const navigation = adminScope ? modules : topbarNavigation(modules);
-  const activeNavigationCode = promotedPersonalCodes.includes(current?.entry.code ?? '') ? current?.entry.code : activeModule?.code;
+  const activeNavigationCode = promotedPersonalCodes.includes(current?.entry.code ?? '')
+    ? current?.entry.code
+    : location.pathname.startsWith('/operacion') ? 'OPERACION' : activeModule?.code;
   const personalExtraLinks = personalModule?.children.filter(child => ![...promotedPersonalCodes, 'PERSONAL_BASE_DATOS', 'PERSONAL_REPOSITORIO'].includes(child.code)) ?? [];
   const homePath = adminScope ? '/admin-global' : modules[0]?.route ?? (legacyNavigation.PERSONAL ? '/personal' : '/');
   const displayName = user?.name ?? "Usuario";
@@ -225,8 +227,8 @@ export default function MainLayout() {
 
       <main className="content content--workspace">
 
-        <div className={`page-scroll${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-scroll--nomina-gestion" : ""}`}>
-          <div className={`page-content${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-content--nomina-gestion" : ""}`}>
+        <div className={`page-scroll${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-scroll--nomina-gestion" : ""}${location.pathname.startsWith('/operacion') ? " page-scroll--operacion" : ""}`}>
+          <div className={`page-content${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-content--nomina-gestion" : ""}${location.pathname.startsWith('/operacion') ? " page-content--operacion" : ""}`}>
             <WorkspaceAccess><Outlet /></WorkspaceAccess>
           </div>
         </div>

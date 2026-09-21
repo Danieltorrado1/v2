@@ -1,0 +1,11 @@
+.operacion-module-shell { width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 0; }
+.operacion-tabs { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--border-color); padding: 0 0 0 2px; scrollbar-width: thin; }
+.operacion-tabs a { flex: 0 0 auto; padding: 13px 16px 11px; border-bottom: 3px solid transparent; color: var(--text-secondary); font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.operacion-tabs a:hover, .operacion-tabs a.active { color: var(--color-primary); border-bottom-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 7%, transparent); }
+.operacion-module-content { min-width: 0; width: 100%; padding-top: 16px; }
+.operacion-message { display: flex; align-items: center; gap: 12px; color: var(--text-secondary); }
+.operacion-message button { border: 1px solid var(--color-primary); border-radius: 8px; background: transparent; color: var(--color-primary); padding: 7px 11px; cursor: pointer; }
+.operacion-access-denied { padding: 32px; color: var(--text-primary); }
+.operacion-access-denied h1 { margin: 0 0 8px; font-size: 20px; }
+.operacion-access-denied p { color: var(--text-secondary); }
+@media (max-width: 700px) { .operacion-tabs a { padding-inline: 13px; font-size: 12px; } }

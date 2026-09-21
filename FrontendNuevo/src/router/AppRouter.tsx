@@ -40,6 +40,7 @@ import LogisticaManagementPage from '../pages/logistica/LogisticaManagementPage'
 import OperacionStatsPage from '../pages/operacion/OperacionStatsPage';
 import OperacionSimatFinalPage from '../pages/operacion/OperacionSimatFinalPage';
 import LogisticaRemisionesFinalPage from '../pages/logistica/LogisticaRemisionesFinalPage';
+import OperacionModuleShell from '../pages/operacion/OperacionModuleShell';
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -61,14 +62,17 @@ export default function AppRouter() {
             <Route path="admin-global/planes" element={<section className="workspace-page"><PlanesModulosTab initialCompanyId={null} catalogOnly /></section>} />
             <Route path="admin-global/modulos" element={<ModuleCatalogPage />} />
             <Route path="admin-global/configuracion" element={<ProductConfigurationPage />} />
-            {tenantEntries.filter(entry => !entry.children.length).map(entry => <Route key={entry.code} path={entry.route.slice(1)} element={<WorkspacePage entry={entry} />} />)}
+            {tenantEntries.filter(entry => !entry.children.length && !entry.route.startsWith('/operacion/')).map(entry => <Route key={entry.code} path={entry.route.slice(1)} element={<WorkspacePage entry={entry} />} />)}
             <Route path="configuracion/nomina" element={<Navigate to="/configuracion/nomina/asignaciones" replace />} />
-            <Route path="operacion" element={<TenantHome moduleCode="OPERACION" />} />
+            <Route path="operacion" element={<ModuleRoute code="OPERACION"><OperacionModuleShell /></ModuleRoute>}>
+              <Route path="instituciones" element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.instituciones.read", "operacion.read", "vinculaciones.read"]}><OperacionInstitucionesFinalPage /></ModuleRoute>} />
+              <Route path="simat" element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.simat.read", "operacion.read"]}><OperacionSimatFinalPage /></ModuleRoute>} />
+              {['reporte-diario','descuentos-semanales','planilla-final'].map(path => <Route key={path} path={path} element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.read"]}><LogisticaShellPage /></ModuleRoute>} />)}
+            </Route>
             <Route path="logistica" element={<TenantHome moduleCode="LOGISTICA" />} />
-            <Route path="operacion/instituciones" element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.read", "vinculaciones.read"]}><OperacionInstitucionesFinalPage /></ModuleRoute>} />
-            <Route path="operacion/simat" element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.read"]}><OperacionSimatFinalPage /></ModuleRoute>} />
             <Route path="operacion/estadisticas" element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.read"]}><OperacionStatsPage /></ModuleRoute>} />
-            {['reporte-diario','descuentos-semanales','planilla-final','evaluacion'].map(path => <Route key={path} path={`operacion/${path}`} element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.read"]}><LogisticaShellPage /></ModuleRoute>} />)}
+            {/* Legacy screens remain routable but are intentionally absent from Operación navigation. */}
+            <Route path="operacion/evaluacion" element={<ModuleRoute code="OPERACION" requiredPermissions={["operacion.read"]}><LogisticaShellPage /></ModuleRoute>} />
             <Route path="logistica/remisiones" element={<ModuleRoute code="LOGISTICA" requiredPermissions={["logistica.read"]}><LogisticaRemisionesFinalPage /></ModuleRoute>} />
             <Route path="logistica/estadisticas" element={<ModuleRoute code="LOGISTICA" requiredPermissions={["logistica.read"]}><LogisticaManagementPage /></ModuleRoute>} />
             <Route path="logistica/historial" element={<ModuleRoute code="LOGISTICA" requiredPermissions={["logistica.read"]}><LogisticaRemisionesFinalPage /></ModuleRoute>} />

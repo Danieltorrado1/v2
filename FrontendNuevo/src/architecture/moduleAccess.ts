@@ -75,3 +75,23 @@ export function resolveCatalogLocation(pathname: string, search = ''): { module:
   const module = tenantModules.find(item => item.route === pathname);
   return module ? { module, entry: module } : null;
 }
+
+/** A module root is a valid catalog location in its own right. */
+export function isVisibleCatalogLocation(
+  location: { module: ModuleEntry; entry: ModuleEntry } | null,
+  visible: ModuleEntry[],
+): boolean {
+  if (!location) return true;
+  const visibleModule = visible.find((module) => module.code === location.module.code);
+  if (!visibleModule) return false;
+  return location.entry.code === location.module.code
+    || visibleModule.children.some((entry) => entry.code === location.entry.code);
+}
+
+export function resolveVisibleModulePath(visible: ModuleEntry[], fallback = '/empresa'): string {
+  return visible[0]?.children[0]?.route ?? fallback;
+}
+
+export function shouldDeferModuleRoute(input: { empresaId: number | null; capabilitiesLoading: boolean; capabilities: unknown }): boolean {
+  return !input.empresaId || input.capabilitiesLoading || !input.capabilities;
+}

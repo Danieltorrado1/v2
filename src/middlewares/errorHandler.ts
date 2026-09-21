@@ -16,7 +16,7 @@ type HttpError = Error & {
 
 export const errorHandler = (
   error: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ): Response => {
@@ -92,7 +92,17 @@ export const errorHandler = (
   const exposeMessage = statusCode < 500;
 
   if (statusCode >= 500) {
-    logger.error('Unhandled error', error);
+    const operation = `${req.method} ${req.route?.path ?? req.originalUrl}`;
+    logger.error('Unhandled error', {
+      operation,
+      code: httpError?.code,
+      message: httpError?.message,
+      position: (httpError as HttpError & { position?: string })?.position,
+      detail: (httpError as HttpError & { detail?: string })?.detail,
+      severity: (httpError as HttpError & { severity?: string })?.severity,
+      // Never include SQL text or bound parameters in production logs.
+      ...(env.NODE_ENV === 'production' ? {} : { file: (httpError as HttpError & { file?: string })?.file, routine: (httpError as HttpError & { routine?: string })?.routine })
+    });
   }
 
   return errorResponse(res, {

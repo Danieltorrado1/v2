@@ -28,6 +28,17 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 },
 });
 
+// `periodo_id` es reservado para rutas de Nómina. Durante la transición,
+// convierte URLs antiguas de Instituciones antes de que el middleware SaaS
+// intente resolverlas como contexto de Nómina.
+router.use((req, _res, next) => {
+  if (req.path === '/instituciones' && req.query.focalizacion_id === undefined && req.query.periodo_id !== undefined) {
+    req.query.focalizacion_id = req.query.periodo_id;
+    delete req.query.periodo_id;
+  }
+  next();
+});
+
 router.use(
   authMiddleware,
   tenantMiddleware,
