@@ -11,6 +11,8 @@ import { buildContextualVinculacionChecklist } from '../documentos/documentos.ch
 import {
   buildLicitacionQuotaDelta,
   deriveCumpleRequisitosState,
+  gestorApplicableCargoSql,
+  isGestorApplicableCargo,
   looksLikeManipuladoraCargo,
   rangesOverlap,
   validateVigenciaRange
@@ -176,7 +178,7 @@ export interface PerfilLicitacionResumenItem {
 export interface VinculacionPersonalContext {
   asignacion_laboral_actual: AsignacionLaboralItem | null;
   asignacion_operativa_actual: AsignacionOperativaItem | null;
-  gestor_actual: { id: number; nombre: string } | null;
+  gestor_actual: { id: number | null; nombre: string } | null;
   es_manipuladora: boolean;
   historial_asignacion_laboral: AsignacionLaboralItem[];
   historial_asignacion_operativa: AsignacionOperativaItem[];
@@ -728,7 +730,7 @@ export const getVinculacionPersonalContext = async (
 
   try {
     const vinculacion = await getVinculacionContextRow(client, vinculacionId);
-    const esManipuladora = looksLikeManipuladoraCargo(vinculacion.cargo_nombre);
+    const esManipuladora = isGestorApplicableCargo(vinculacion.cargo_nombre);
     const [historialOperativo, historialLaboral, historialLicitacion] = await Promise.all([
       listAsignacionesOperativasByVinculacion(vinculacionId, tenant),
       listAsignacionesLaboralesByVinculacion(vinculacionId, tenant),
@@ -749,26 +751,30 @@ export const getVinculacionPersonalContext = async (
       }) ?? null;
 
     const asignacionActual = pickCurrent(historialOperativo, { from: 'fecha_inicio', to: 'fecha_fin', active: 'activo' });
-    const gestorResult = await client.query<{ id: string; nombre: string }>(
-      `SELECT usuario_id::text AS id, nombre_completo AS nombre
-       FROM (
-         SELECT gpa.usuario_id, u.nombre_completo, 0 AS prioridad, gpa.vigencia_desde, gpa.id
-         FROM gestor_personal_asignaciones gpa
-         INNER JOIN usuarios u ON u.id = gpa.usuario_id
-         WHERE gpa.vinculacion_id = $1::bigint AND gpa.contrato_id = $2::bigint
-           AND COALESCE(gpa.activo, TRUE) = TRUE AND gpa.vigencia_desde <= CURRENT_DATE
-           AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= CURRENT_DATE)
-         UNION ALL
-         SELECT gma.usuario_id, u.nombre_completo, 1, gma.vigencia_desde, gma.id
-         FROM gestor_municipio_asignaciones gma
-         INNER JOIN usuarios u ON u.id = gma.usuario_id
-         WHERE gma.contrato_id = $2::bigint AND gma.municipio_id = $3::bigint
-           AND COALESCE(gma.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
-           AND COALESCE(gma.activo, TRUE) = TRUE AND gma.vigencia_desde <= CURRENT_DATE
-           AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
-       ) effective
-       ORDER BY prioridad, vigencia_desde DESC, id DESC LIMIT 1`,
-      [vinculacionId, vinculacion.contrato_id, asignacionActual?.municipio_id ?? null]
+    const gestorResult = await client.query<{ id: string | null; nombre: string }>(
+      `SELECT
+         CASE WHEN COUNT(DISTINCT gma.usuario_id) = 1 THEN MIN(gma.usuario_id)::text ELSE NULL END AS id,
+         CASE WHEN COUNT(DISTINCT gma.usuario_id) = 1 THEN MIN(u.nombre_completo) ELSE 'Múltiples gestores' END AS nombre
+       FROM gestor_municipio_asignaciones gma
+       INNER JOIN usuarios u ON u.id = gma.usuario_id
+       INNER JOIN contrato_cargos cc_scope ON cc_scope.id = $3::bigint
+       WHERE ${gestorApplicableCargoSql('cc_scope')}
+         AND gma.contrato_id = $1::bigint
+         AND gma.municipio_id = $2::bigint
+         AND COALESCE(gma.activo, TRUE) = TRUE
+         AND gma.vigencia_desde <= CURRENT_DATE
+         AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
+         AND EXISTS (
+           SELECT 1
+           FROM usuario_roles ur_gestor
+           INNER JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
+           WHERE ur_gestor.usuario_id = gma.usuario_id
+             AND r_gestor.nombre_rol = 'GESTOR'
+             AND COALESCE(ur_gestor.activo, TRUE) = TRUE
+             AND COALESCE(r_gestor.activo, TRUE) = TRUE
+         )
+       HAVING COUNT(DISTINCT gma.usuario_id) > 0`,
+      [vinculacion.contrato_id, asignacionActual?.municipio_id ?? null, vinculacion.contrato_cargo_id]
     );
 
     return {
@@ -778,7 +784,7 @@ export const getVinculacionPersonalContext = async (
       historial_presentacion_licitacion: historialLicitacion,
       asignacion_operativa_actual: asignacionActual,
       gestor_actual: gestorResult.rows[0]
-        ? { id: toNumber(gestorResult.rows[0].id), nombre: gestorResult.rows[0].nombre }
+        ? { id: gestorResult.rows[0].id === null ? null : toNumber(gestorResult.rows[0].id), nombre: gestorResult.rows[0].nombre }
         : null,
       asignacion_laboral_actual: pickCurrent(historialLaboral, {
         from: 'vigencia_desde',

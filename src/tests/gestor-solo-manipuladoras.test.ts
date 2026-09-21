@@ -28,6 +28,14 @@ test('Personal resuelve gestor vigente por municipio y contrato sin exigir TODO_
   assert.doesNotMatch(personalService, /gma\.alcance_personal.*TODO_MUNICIPIO/);
 });
 
+test('el contexto del expediente no deja un placeholder SQL sin tipo y filtra gestores reales', () => {
+  assert.match(personalService, /gma\.contrato_id = \$1::bigint/);
+  assert.match(personalService, /gma\.municipio_id = \$2::bigint/);
+  assert.match(personalService, /cc_scope\.id = \$3::bigint/);
+  assert.match(personalService, /r_gestor\.nombre_rol = 'GESTOR'/);
+  assert.doesNotMatch(personalService, /cc_scope\.id = \$4::bigint/);
+});
+
 test('Personal y Nómina comparten filtro de aplicabilidad y no muestran gestor para otros cargos', () => {
   assert.match(personalListService, /gestorApplicableCargoSql/);
   assert.match(nominaService, /gestorApplicableCargoSql/);
