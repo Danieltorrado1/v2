@@ -4,6 +4,7 @@ import { dbPool, dbQuery } from '../../config/db';
 import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import { AppError } from '../../utils/AppError';
 import { isTenantAdmin, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
+import { buildGestorMunicipalityScopeExistsSql, buildAnyGestorMunicipalityScopeExistsSql } from '../users/municipal-scope.service';
 import { getVinculacionChecklist } from '../documentos/documentos.service';
 import { effectiveRetirementSql } from './vigencia';
 import {
@@ -465,60 +466,25 @@ const buildGestorScopeExistsSql = (
   contratoSql: string,
   startDateSql: string,
   endDateSql: string
-): string => `
-  (
-    EXISTS (
-      SELECT 1
-      FROM gestor_personal_asignaciones gpa_scope
-      WHERE gpa_scope.vinculacion_id = ${vinculacionSql}
-        AND gpa_scope.contrato_id = ${contratoSql}
-        AND gpa_scope.usuario_id = ${userParamSql}::bigint
-        AND COALESCE(gpa_scope.activo, TRUE) = TRUE
-        AND gpa_scope.vigencia_desde <= ${endDateSql}
-        AND (gpa_scope.vigencia_hasta IS NULL OR gpa_scope.vigencia_hasta >= ${startDateSql})
-    )
-    OR EXISTS (
-      SELECT 1
-      FROM gestor_municipio_asignaciones gma_scope
-      WHERE gma_scope.contrato_id = ${contratoSql}
-        AND gma_scope.usuario_id = ${userParamSql}::bigint
-        AND COALESCE(gma_scope.activo, TRUE) = TRUE
-        AND COALESCE(gma_scope.alcance_personal, '${GESTOR_SCOPE_SELECTED}') = '${GESTOR_SCOPE_ALL}'
-        AND gma_scope.vigencia_desde <= ${endDateSql}
-        AND (gma_scope.vigencia_hasta IS NULL OR gma_scope.vigencia_hasta >= ${startDateSql})
-        AND ${buildMunicipioCoverageExistsSql(vinculacionSql, startDateSql, endDateSql, 'gma_scope.municipio_id')}
-    )
-  )
-`;
+): string => buildGestorMunicipalityScopeExistsSql(
+  userParamSql,
+  vinculacionSql,
+  contratoSql,
+  startDateSql,
+  endDateSql,
+);
 
 const buildAnyGestorScopeExistsSql = (
   vinculacionSql: string,
   contratoSql: string,
   startDateSql: string,
   endDateSql: string
-): string => `
-  (
-    EXISTS (
-      SELECT 1
-      FROM gestor_personal_asignaciones gpa_scope
-      WHERE gpa_scope.vinculacion_id = ${vinculacionSql}
-        AND gpa_scope.contrato_id = ${contratoSql}
-        AND COALESCE(gpa_scope.activo, TRUE) = TRUE
-        AND gpa_scope.vigencia_desde <= ${endDateSql}
-        AND (gpa_scope.vigencia_hasta IS NULL OR gpa_scope.vigencia_hasta >= ${startDateSql})
-    )
-    OR EXISTS (
-      SELECT 1
-      FROM gestor_municipio_asignaciones gma_scope
-      WHERE gma_scope.contrato_id = ${contratoSql}
-        AND COALESCE(gma_scope.activo, TRUE) = TRUE
-        AND COALESCE(gma_scope.alcance_personal, '${GESTOR_SCOPE_SELECTED}') = '${GESTOR_SCOPE_ALL}'
-        AND gma_scope.vigencia_desde <= ${endDateSql}
-        AND (gma_scope.vigencia_hasta IS NULL OR gma_scope.vigencia_hasta >= ${startDateSql})
-        AND ${buildMunicipioCoverageExistsSql(vinculacionSql, startDateSql, endDateSql, 'gma_scope.municipio_id')}
-    )
-  )
-`;
+): string => buildAnyGestorMunicipalityScopeExistsSql(
+  vinculacionSql,
+  contratoSql,
+  startDateSql,
+  endDateSql,
+);
 
 const buildManagedMunicipioScopeExistsSql = (
   userParamSql: string,
