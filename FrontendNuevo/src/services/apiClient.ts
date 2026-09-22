@@ -1,6 +1,7 @@
 import { env } from '../config/env';
 import { getAuthToken, clearAuthSession } from './tokenStorage';
 import type { ApiErrorResponse, ApiRequestOptions } from '../types/api.types';
+import { buildGetRequestKey } from './apiRequestKey';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const inflightGetRequests = new Map<string, Promise<unknown>>();
@@ -51,8 +52,10 @@ async function request<T>(
   const url = new URL(`${env.apiUrl}${path}`);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined) {
-        url.searchParams.set(key, String(value));
+      if (value === undefined) continue;
+      const values = Array.isArray(value) ? value : [value];
+      for (const item of values) {
+        if (item !== undefined) url.searchParams.append(key, String(item));
       }
     }
   }
@@ -162,7 +165,7 @@ export const apiClient = {
   get: <T>(path: string, options?: ApiRequestOptions): Promise<T> => {
     if (options?.signal) return request<T>('GET', path, undefined, options);
     const tokenKey = options?.skipAuth ? 'public' : getAuthToken() ?? 'anonymous';
-    const key = `${tokenKey}:${path}`;
+    const key = buildGetRequestKey(tokenKey, path, options?.params);
     const current = inflightGetRequests.get(key);
     if (current) return current as Promise<T>;
     const next = request<T>('GET', path, undefined, options).finally(() => {
