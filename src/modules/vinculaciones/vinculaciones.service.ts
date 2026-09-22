@@ -1636,6 +1636,31 @@ export const listContractPersonal = async (
       paramIndex += 1;
     }
 
+    if (filters.estado_documental === 'PENDIENTE_REVISION') {
+      conditions.push(`(
+        EXISTS (
+          SELECT 1
+          FROM documentos_vinculacion dv_pending
+          INNER JOIN documentos_requisitos_aliases dra_pending ON dra_pending.tipo_documento_id = dv_pending.tipo_documento_id
+          INNER JOIN documentos_requisitos_canonicos drc_pending ON drc_pending.id = dra_pending.requisito_canonico_id
+          WHERE dv_pending.vinculacion_id = v.id
+            AND dv_pending.activo = TRUE AND dv_pending.es_vigente = TRUE
+            AND dv_pending.estado_revision = 'PENDIENTE_REVISION'
+            AND drc_pending.activo = TRUE
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM documentos_persona dp_pending
+          INNER JOIN documentos_requisitos_aliases dra_pending ON dra_pending.tipo_documento_id = dp_pending.tipo_documento_id
+          INNER JOIN documentos_requisitos_canonicos drc_pending ON drc_pending.id = dra_pending.requisito_canonico_id
+          WHERE dp_pending.persona_id = p.id
+            AND dp_pending.activo = TRUE AND dp_pending.es_vigente = TRUE
+            AND dp_pending.estado_revision = 'PENDIENTE_REVISION'
+            AND drc_pending.activo = TRUE
+        )
+      )`);
+    }
+
     if (filters.contrato_cargo_id !== undefined && filters.contrato_cargo_id !== null) {
       params.push(filters.contrato_cargo_id);
       conditions.push(`v.contrato_cargo_id = $${paramIndex}::bigint`);
@@ -1708,7 +1733,7 @@ export const listContractPersonal = async (
             ca.sede,
             ca.modalidad,
             ff.municipio_id AS municipio_actual_id,
-            COALESCE(ff.municipio_texto, mu.nombre_municipio) AS municipio_actual
+            COALESCE(mu.nombre_municipio, NULLIF(ff.municipio_texto, '')) AS municipio_actual
           FROM cobertura_asignaciones ca
           INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
           LEFT JOIN municipios mu ON mu.id = ff.municipio_id

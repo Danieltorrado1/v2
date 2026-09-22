@@ -47,7 +47,7 @@ const buildRequirement = (overrides: Partial<{
   contrato_cargo_id: null,
   tipo_vinculacion_id: null,
   tipo_documento_id: 10,
-  codigo: 'DOC_GENERAL',
+  codigo: `DOC_${overrides.id??1}`,
   nombre_documento: 'Documento general',
   ...overrides
 });

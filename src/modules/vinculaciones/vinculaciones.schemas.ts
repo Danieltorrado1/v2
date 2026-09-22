@@ -141,6 +141,7 @@ export const listContractPersonalQuerySchema = z.object({
   fecha: z.string().date().optional(),
   sort_by: z.enum(['nombre', 'ingreso', 'municipio', 'institucion', 'cargo', 'cumplimiento']).optional(),
   sort_dir: z.enum(['asc', 'desc']).optional(),
+  estado_documental: z.enum(['PENDIENTE_REVISION']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25)
 });

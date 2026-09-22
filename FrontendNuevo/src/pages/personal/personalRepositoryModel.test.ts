@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { canonicalColumns, repositoryCell, repositoryGroup } from './personalRepositoryModel';
+import { repositoryOptionalLabel, canonicalColumns, repositoryCell, repositoryGroup } from './personalRepositoryModel';
 
 const type = (id: number, codigo: string) => ({ id, codigo, label: codigo, alcance: 'GENERAL', categoria_documento: null, requiere_fecha_expedicion: false, requiere_fecha_vencimiento: false }) as any;
 const worker = { vinculacion_id: 1, persona_id: 1, nombre_completo: 'Ana', numero_documento: '1' } as any;
@@ -44,7 +44,7 @@ for (const [group, codes] of Object.entries({ DATOS_PERSONALES: ['HOJA_VIDA','ID
   test(`${group} conserva todas sus subcolumnas y estados sin depender del catálogo`, () => {
     const columns = canonicalColumns([]).filter(c => repositoryGroup(c) === group);
     assert.deepEqual(columns.map(c => c.canonical_code), codes);
-    for (const column of columns.filter(c => !c.proceso && c.cuenta_cumplimiento)) {
+    for (const column of columns.filter(c => !c.proceso)) {
       for (const estado of ['COMPLETO','PENDIENTE','NO_APLICA','VENCIDO']) {
         assert.equal(repositoryCell(row([{ codigo: column.canonical_code, estado_detallado: estado }]), column).estado_detallado, estado);
       }
@@ -66,4 +66,15 @@ test('manipulación recibe ambos componentes dentro del requisito canónico', ()
   const column = canonicalColumns([]).find(c => c.canonical_code === 'MANIPULACION')!;
   const cell = repositoryCell(row([{codigo:'MANIPULACION', estado_detallado:'COMPLETO', documentos:[{tipo_documento_id:1},{tipo_documento_id:2}]}]), column);
   assert.equal(cell.estado_detallado,'COMPLETO');
+});
+
+test('opcionales usan dimensiones backend; Dotación conserva obligación e historial',()=>{
+ for(const code of ['RESIDENCIA','SISBEN','FORMACION','CERT_LABORAL','VACUNACION','DOTACION']){
+  const column=canonicalColumns([]).find(c=>c.canonical_code===code)!;
+  const tipo=['FORMACION','CERT_LABORAL'].includes(code)?'ACREDITABLE':'OPCIONAL';
+  const cell=repositoryCell(row([{codigo:code==='DOTACION'?'DOTACION_HISTORICA':code,aplica:true,obligatorio:code==='DOTACION',tipo_requisito:code==='DOTACION'?'OBLIGATORIO':tipo,cuenta_cumplimiento:code==='DOTACION',estado_detallado:'SIN_DOCUMENTO'}]),column);
+  assert.equal(cell.estado_detallado,'SIN_DOCUMENTO');
+  assert.equal(cell.cuenta_cumplimiento,code==='DOTACION');
+  assert.equal(repositoryOptionalLabel(cell),code==='DOTACION'?null:tipo==='ACREDITABLE'?'Acreditable':'Opcional');
+ }
 });

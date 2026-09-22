@@ -1271,7 +1271,7 @@
 .op-repo-panel { color: var(--text-primary); }
 .op-repo-filters a { text-decoration: none; }
 
-/* Matriz hÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­brida: grupos canÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³nicos con subcolumnas legibles. */
+/* Matriz híbrida: grupos canónicos con subcolumnas legibles. */
 .op-repo-matrix { min-width: 1480px; table-layout: fixed; }
 .op-repo-matrix th, .op-repo-matrix td { min-width: 108px; padding: 7px 6px; }
 .op-repo-matrix th:first-child, .op-repo-matrix td:first-child { position: sticky; left: 0; z-index: 3; min-width: 220px; width: 220px; background: var(--bg-card); }
@@ -1285,7 +1285,7 @@
 .repo-history { display: grid; gap: 8px; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border-color); }
 @media (max-width: 850px) { .op-repo-matrix { min-width: 1180px; } .op-repo-matrix th:first-child, .op-repo-matrix td:first-child { min-width: 180px; width: 180px; } }
 
-/* Matriz documental: un ÃƒÆ’Ã‚Âºnico grupo expandido por vez. */
+/* Matriz documental: un único grupo expandido por vez. */
 .op-repo-matrix-scroll { overflow-x: auto; overflow-y: visible; }
 .op-repo-matrix { min-width: 1180px; width: max-content; }
 .op-repo-matrix th.repo-group { padding: 0; }
@@ -1309,7 +1309,7 @@
 .op-repo-matrix .repo-cell { border: 0; background: transparent; box-shadow: none; min-width: 72px; padding: 8px 10px; font-size: 16px; font-weight: 700; }
 .op-repo-matrix .repo-cell:hover, .op-repo-matrix .repo-cell:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); outline: none; }
 
-/* Ajuste final de composiciÃ³n del repositorio. */
+/* Ajuste final de composición del repositorio. */
 .op-repo-matrix-scroll { overflow-x: auto; }
 .op-repo-matrix { width: 100%; min-width: 620px; table-layout: fixed; }
 .op-repo-matrix .repo-worker-heading, .op-repo-matrix tbody td:first-child { width: 300px; min-width: 300px; }
@@ -1351,7 +1351,9 @@
 .op-repo-sort { display: flex; align-items: center; gap: 6px; flex: 1 1 165px; min-width: 150px; }
 .op-repo-sort span { flex: 0 0 auto; color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
 .op-repo-sort select { min-width: 0; flex: 1 1 auto; }
-/* RevisiÃ³n documental: archivo, decisiÃ³n y vigencia son estados distintos. */
+.op-repo-pending-count { color: #9a5d00; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.repo-legacy-combined { margin: 0 0 10px; padding: 8px 10px; border: 1px solid #b8dce1; border-radius: 8px; background: #effbfd; color: #155e67; font-size: 12px; font-weight: 700; }
+/* Revisión documental: archivo, decisión y vigencia son estados distintos. */
 .op-repo-panel { max-width: 1080px; width: min(1080px, 96vw); }
 .repo-review-layout { display: grid; grid-template-columns: minmax(210px, 30%) minmax(0, 1fr); gap: 24px; }
 .repo-review-layout aside { border-right: 1px solid var(--border-color); padding-right: 16px; }
@@ -1381,6 +1383,7 @@
 .repo-status-icon { flex: 0 0 auto; vertical-align: middle; }
 .repo-status-icon.is-approved { color: #15966a; }
 .repo-status-icon.is-pending { color: #c08319; }
+.repo-status-icon.is-pending { stroke-width: 3; filter: drop-shadow(0 0 1px rgba(192,131,25,.45)); }
 .repo-status-icon.is-warning { color: #c26d12; }
 .repo-status-icon.is-danger { color: #d44958; }
 .repo-status-icon.is-na, .repo-status-icon.is-empty { color: var(--text-muted); }
@@ -1398,6 +1401,8 @@
 .op-repo-matrix .repo-cell[data-document-state="RECHAZADO"]::before { content: '×'; }
 .op-repo-matrix .repo-cell[data-document-state="NO_APLICA"]::before { content: '–'; }
 .op-repo-matrix .repo-cell[data-document-state="SIN_DOCUMENTO"]::before { content: '–'; }
+.op-repo-matrix .repo-cell[data-document-state="PENDIENTE_REVISION"] { color: #9a5d00; background: color-mix(in srgb, #f4b740 14%, transparent); }
+.op-repo-matrix .repo-cell[data-document-state="PENDIENTE_REVISION"]::before { border: 2px solid #d88900; font-weight: 800; }
 
 /* Soft group palette; the current visible group stays legible without saturation. */
 .repo-header-groups button:nth-child(1) { background: #f3f8ff; }

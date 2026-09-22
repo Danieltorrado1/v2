@@ -14,6 +14,22 @@ test('Repositorio usa únicamente estados canónicos para los iconos', () => {
   assert.doesNotMatch(panel, /state === ['"]PARCIAL['"].*Clock3/);
 });
 
+test('Repositorio filtra cargo y pendientes en backend antes de paginar', () => {
+  assert.match(service, /filters\.contrato_cargo_id[\s\S]{0,240}v\.contrato_cargo_id =/);
+  assert.match(service, /filters\.estado_documental === 'PENDIENTE_REVISION'/);
+  assert.match(service, /dv_pending\.estado_revision = 'PENDIENTE_REVISION'/);
+  assert.match(service, /ORDER BY \$\{sortExpression\}[\s\S]{0,180}LIMIT/);
+  assert.match(panel, /estado_documental: estadoDocumental/);
+  assert.match(panel, /aria-label="Estado documental del repositorio"/);
+  assert.match(panel, /por revisar/);
+});
+
+test('Municipio se ordena por nombre canónico con desempate estable', () => {
+  assert.match(service, /COALESCE\(mu\.nombre_municipio, NULLIF\(ff\.municipio_texto, ''\)\) AS municipio_actual/);
+  assert.match(service, /municipio: `COALESCE\(caa\.municipio_actual, ''\) \$\{direction\}`/);
+  assert.match(service, /p\.primer_nombre ASC, p\.segundo_nombre ASC/);
+});
+
 test('Repositorio expone todos los criterios y cumplimiento se ordena antes de paginar', () => {
   for (const option of ['Nombre A–Z', 'Nombre Z–A', 'Ingreso reciente', 'Ingreso antiguo', 'Municipio A–Z', 'Institución A–Z', 'Cargo A–Z', 'Cumplimiento mayor → menor', 'Cumplimiento menor → mayor']) {
     assert.match(panel, new RegExp(option.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));

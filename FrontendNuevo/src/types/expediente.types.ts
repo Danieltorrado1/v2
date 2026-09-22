@@ -49,6 +49,9 @@ export type ChecklistOrigen = 'GENERAL' | 'CARGO' | 'TIPO_VINCULACION' | 'CARGO_
 export type DocFuente = 'PERSONA' | 'VINCULACION';
 
 export interface ChecklistItemApi {
+  aplica: boolean;
+  cuenta_numerador?: boolean;
+  motivo_aplicabilidad?: string;
   documentos?: { documento_id: number; tipo_documento_id: number; nombre: string }[];
   ambito_documental: 'PERSONA' | 'VINCULACION';
   codigo: string | null;
@@ -78,6 +81,8 @@ export interface ChecklistItemApi {
 }
 
 export interface VinculacionChecklistApi {
+  exigibles: number;
+  cumplidos: number;
   cargados: number;
   completos: number;
   contrato_cargo_id: number;

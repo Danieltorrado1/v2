@@ -53,6 +53,7 @@ export interface ContractPersonalFilters {
   ubicacion_laboral_id?: number;
   cobertura?: "SI" | "NO" | "RETIRADA";
   licitacion?: "PRESENTADA" | "NO_PRESENTADA";
+  estado_documental?: 'PENDIENTE_REVISION';
   sort_by?: "nombre" | "ingreso" | "municipio" | "institucion" | "cargo" | "cumplimiento";
   sort_dir?: "asc" | "desc";
 }

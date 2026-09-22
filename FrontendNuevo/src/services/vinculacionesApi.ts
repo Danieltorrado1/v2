@@ -64,6 +64,7 @@ export async function getContractPersonal(
     ubicacion_laboral_id: filters.ubicacion_laboral_id,
     cobertura: filters.cobertura,
     licitacion: filters.licitacion,
+    estado_documental: filters.estado_documental,
     gestor_usuario_id: filters.gestor_usuario_id,
     sin_gestor: filters.sin_gestor,
     sort_by: filters.sort_by,
