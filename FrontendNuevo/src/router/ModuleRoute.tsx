@@ -63,7 +63,11 @@ export default function ModuleRoute({
 
   const catalogLocation = resolveCatalogLocation(location.pathname, location.search);
   const visible = visibleTenantModules(user, capabilities, empresaId);
-  const visualHidden = Boolean(catalogLocation && !visible.some((module) => module.code === catalogLocation.module.code && module.children.some((entry) => entry.code === catalogLocation.entry.code)));
+  const visualHidden = Boolean(catalogLocation && !visible.some((module) => module.code === catalogLocation.module.code && (
+    module.children.length === 0
+      ? catalogLocation.entry.code === module.code
+      : module.children.some((entry) => entry.code === catalogLocation.entry.code)
+  )));
   if (dashboardDenied || visualHidden || !hasModule(code) || !canAny(permissions, requiredPermissions) || denyRoles.some((role) => roles.includes(role))) {
     return <Navigate to={visualHidden ? (visible[0]?.children[0]?.route ?? '/empresa') : resolveFallbackPath({ hasModule, permissions, roles })} replace />;
   }

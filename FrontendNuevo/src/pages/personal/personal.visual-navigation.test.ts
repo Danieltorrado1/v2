@@ -19,10 +19,11 @@ test('Personal es directo y las entradas promovidas conservan autorización y ru
   const personal = navigation.find(item => item.code === 'PERSONAL')!;
   assert.equal(personal.route, '/personal/base-datos');
   assert.deepEqual(personal.children, []);
-  for (const code of ['PERSONAL_NOMINA', 'PERSONAL_PORTAL_SERVICIOS']) {
+  assert.equal(navigation.find(item => item.code === 'NOMINA')?.route, '/nomina/planilla-operativa');
+  for (const code of ['PERSONAL_PORTAL_SERVICIOS']) {
     assert.equal(navigation.find(item => item.code === code)?.route, visible.find(item => item.code === 'PERSONAL')?.children.find(item => item.code === code)?.route);
   }
-  assert.equal(resolveCatalogLocation('/nomina/asistencia')?.entry.code, 'PERSONAL_NOMINA');
+  assert.equal(resolveCatalogLocation('/nomina/asistencia')?.module.code, 'NOMINA');
   assert.equal(resolveCatalogLocation('/personal')?.entry.code, 'PERSONAL_BASE_DATOS');
 });
 
@@ -37,7 +38,7 @@ test('el cambio visual no concede módulos sin licencia, sin permiso o de otra e
 test('usuarios con sólo nómina conservan su entrada sin recibir la base de Personal', () => {
   const user = { roles: ['ADMINISTRADOR'], permissions: ['nomina.read'] };
   const navigation = topbarNavigation(visibleTenantModules(user, capabilities({ NOMINA: true }), 8));
-  assert.ok(navigation.some(item => item.code === 'PERSONAL_NOMINA'));
+  assert.equal(navigation.find(item => item.code === 'NOMINA')?.route, '/nomina/planilla-operativa');
   assert.ok(!navigation.some(item => item.route === '/personal/base-datos'));
 });
 
