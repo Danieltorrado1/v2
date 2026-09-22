@@ -39,6 +39,17 @@
 .pdr .pdr-check { display:flex; align-items:center; }.pdr-check input { width:16px; min-height:16px; }
 .pdr-type { margin-bottom:12px; max-width:360px; }
 .pdr-components { display:flex; gap:10px; margin-bottom:14px; }
+.pdr-mode-confirm { display:grid; gap:8px; margin:0 0 14px; padding:10px; border:1px solid var(--border-color); border-radius:8px; background:color-mix(in srgb,#f4b740 8%,var(--bg-card)); }
+.pdr-mode-confirm label { display:grid; gap:5px; font-size:12px; font-weight:700; }
+.pdr-mode-confirm select { min-height:34px; }
+.pdr-modality { margin-bottom:16px; }
+.pdr-modality > div:not(.pdr-components) { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.pdr-modality .pdr-components { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); max-width:680px; }
+.pdr-modality .pdr-components button { min-height:88px; }
+.pdr-modality .pdr-components button:hover:not(:disabled) { border-color:#0891b2; }
+.pdr-modality .pdr-components button:focus-visible { outline:2px solid #0891b2; outline-offset:3px; }
+.pdr-modality .pdr-components strong { display:block; margin-bottom:6px; font-size:14px; }
+@media(max-width:600px) { .pdr-modality .pdr-components { grid-template-columns:1fr; } }
 .pdr-components button,.pdr-collection button { border:1px solid var(--border-color); padding:12px; border-radius:9px; background:var(--bg-card); color:var(--text-primary); text-align:left; cursor:pointer; }
 .pdr [aria-pressed=true] { border-color:#0891b2; background:color-mix(in srgb,var(--bg-card) 92%,#06b6d4); }
 .pdr-collection { margin-bottom:14px; }.pdr-collection button { display:inline-grid; gap:5px; margin:4px; max-width:100%; }

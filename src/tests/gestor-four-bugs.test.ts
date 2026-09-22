@@ -37,13 +37,14 @@ test('Turnos reutilizan scope canónico en listado y mutaciones por empleado', (
   assert.match(externos, /listCoberturaExternosOperativos[\s\S]*appendNominaCoberturaScope/);
 });
 
-test('Planilla prioriza asignación directa y resuelve gestor territorial único sin elección arbitraria', () => {
-  assert.match(nomina, /0 AS prioridad[\s\S]*1 AS prioridad/);
-  assert.match(nomina, /COUNT\(DISTINCT gma\.usuario_id\) = 1/);
-  assert.match(nomina, /Múltiples gestores/);
+test('Planilla resuelve el alcance canónico con prioridad y desempate estable', () => {
+  assert.match(nomina, /gestorApplicableCargoSql\('cc'\)/);
+  assert.match(nomina, /'MUNICIPIO'::text[\s\S]*1 AS prioridad/);
+  assert.match(nomina, /'INSTITUCION'::text[\s\S]*2/);
+  assert.match(nomina, /'PERSONA'::text[\s\S]*3/);
+  assert.match(nomina, /scope\.prioridad ASC, scope\.vigencia_desde DESC, scope\.id DESC/);
+  assert.match(nomina, /LIMIT 1/);
   assert.match(nomina, /gma\.vigencia_desde <= CURRENT_DATE/);
-  assert.match(nomina, /'PERSONAL'::text AS gestor_origen/);
-  assert.match(nomina, /'MUNICIPIO'::text ELSE 'MUNICIPIO_AMBIGUO'/);
 });
 
 test('Drawer usa usuarios asociados a empresa activa y expone estados reales', () => {

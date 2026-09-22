@@ -8,7 +8,7 @@ test('resumen de página conserva entregas repetidas, separa personas y no modif
   t.mock.method(dbPool, 'query', async (sql: string, params: unknown[]) => {
     queries.push(sql);
     if (sql.includes('FROM vinculaciones')) return { rows: [{ id: String(params[0]), persona_id: String(params[0]), contrato_id: '3', contrato_cargo_id: '1', tipo_vinculacion_id: '1' }] };
-    if (sql.includes('FROM sst_dotacion_epp_entregas')) return { rows: [
+    if (sql.includes('SELECT e.id::int')) return { rows: [
       { id: 1, persona_id: 1, tipo: 'DOTACION' }, { id: 2, persona_id: 1, tipo: 'DOTACION' },
       { id: 3, persona_id: 1, tipo: 'EPP' }, { id: 4, persona_id: 1, tipo: 'EPP' },
       { id: 5, persona_id: 2, tipo: 'EPP' },
@@ -20,7 +20,7 @@ test('resumen de página conserva entregas repetidas, separa personas y no modif
   assert.deepEqual(rows[1]!.entregas?.map(e => e.id), [5]);
   assert.equal(rows[0]!.checklist.total_requisitos, 0);
   assert.equal(rows[0]!.checklist.cumplimiento_porcentaje, 0);
-  assert.equal(queries.filter(q => q.includes('FROM sst_dotacion_epp_entregas')).length, 1);
+  assert.equal(queries.filter(q => q.includes('SELECT e.id::int')).length, 1);
   assert.ok(queries.every(q => !/\b(INSERT|UPDATE|DELETE)\b/.test(q)));
 });
 
@@ -33,5 +33,5 @@ test('sin permiso SST no consulta ni devuelve históricos como si estuvieran vac
   });
   const rows = await getRepositoryPageSummary([1], undefined, false);
   assert.equal(rows[0]!.entregas, null);
-  assert.equal(queries.some(q => q.includes('FROM sst_dotacion_epp_entregas')), false);
+  assert.equal(queries.some(q => q.includes('SELECT e.id::int')), false);
 });

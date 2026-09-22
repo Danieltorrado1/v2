@@ -34,7 +34,7 @@ for (const cotiza of [false, true, null]) {
       const result = buildContextualChecklistSnapshot({ vinculacionId: 1, personaId: 1, contratoId: 1, contratoCargoId: 1,
         requirements: [requirement(1, 'PENSION', 1, { ...applicability, tipo_requisito: 'CONDICIONAL' })], personaDocuments: [], vinculacionDocuments: [] });
       assert.equal(result.requisitos.length, 1);
-      assert.equal(result.requisitos[0]!.estado_detallado, cotiza !== false && regla === true ? 'SIN_DOCUMENTO' : 'NO_APLICA');
+      assert.equal(result.requisitos[0]!.estado_detallado, cotiza !== false ? 'SIN_DOCUMENTO' : 'NO_APLICA');
     });
   }
 }

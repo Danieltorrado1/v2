@@ -20,10 +20,12 @@ test('gestor solo aplica al cargo canónico de manipuladora de alimentos', () =>
   assert.equal(looksLikeManipuladoraCargo('Profesional de apoyo'), false);
 });
 
-test('Personal y Nómina conservan las fuentes actuales de gestor por alcance', () => {
-  assert.match(personalListService, /gestor_actual/);
-  assert.match(nominaService, /gestor_personal_asignaciones/);
-  assert.match(nominaService, /gestor_municipio_asignaciones/);
+test('Personal resuelve el alcance vigente con el helper canónico de cargo', () => {
+  assert.match(personalListService, /gestorApplicableCargoSql/);
+  assert.match(personalListService, /COUNT\(DISTINCT usuario_id\) = 1/);
+  assert.match(personalListService, /gestor_municipio_asignaciones/);
+  assert.match(personalListService, /gestor_institucion_asignaciones/);
+  assert.match(personalListService, /gestor_personal_asignaciones/);
 });
 
 test('la interfaz deja oculto el gestor cuando el dato de aplicabilidad es falso', () => {

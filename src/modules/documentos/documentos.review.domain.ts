@@ -19,7 +19,7 @@ export function addCalendarMonths(date: string, months: number): string {
   const last = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + 1, 0)).getUTCDate();
   value.setUTCDate(Math.min(day, last)); return value.toISOString().slice(0, 10);
 }
-export interface SpecialMetadata { experiencia_inicio?: string | null; experiencia_fin?: string | null; sisben?: string | null }
+export interface SpecialMetadata { manipulacion_modalidad?: 'COMBINADO'|'SEPARADO'; experiencia_inicio?: string | null; experiencia_fin?: string | null; sisben?: string | null }
 export function normalizeDocumentMetadata(policy: DocumentPolicy, input: { fecha_expedicion?: string | null; fecha_vencimiento?: string | null } & SpecialMetadata) {
   let emission = policy.emission ? input.fecha_expedicion ?? null : null;
   let expiration = policy.expiration ? input.fecha_vencimiento ?? null : null;

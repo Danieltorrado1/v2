@@ -7,6 +7,7 @@ import { isTenantAdmin, type TenantAccessContext } from '../../middlewares/tenan
 import { buildGestorMunicipalityScopeExistsSql, buildAnyGestorMunicipalityScopeExistsSql } from '../users/municipal-scope.service';
 import { getVinculacionChecklist } from '../documentos/documentos.service';
 import { effectiveRetirementSql } from './vigencia';
+import { gestorApplicableCargoSql } from './vinculaciones.personal.domain';
 import {
   getVinculacionPersonalContext,
   type VinculacionPersonalContext
@@ -25,6 +26,8 @@ import {
   ReactivarVinculacionInput,
   RetirarVinculacionInput,
   SaveGestorAssignmentsInput,
+  GestorWizardQuery,
+  SaveGestorWizardInput,
   SuspenderVinculacionInput,
   UpdateVinculacionInput,
   VinculacionEstado
@@ -101,6 +104,7 @@ interface ContractPersonalRow extends QueryResultRow {
   contrato_cargo_id: number | string | null;
   contrato_id: number | string;
   es_manipuladora: boolean;
+  gestor_aplica: boolean;
   empresa_id: number | string;
   estado_vinculacion: string | null;
   fecha_fin: string | Date | null;
@@ -128,6 +132,7 @@ export interface ContractPersonalListItem {
     nombre_cargo: string | null;
   };
   es_manipuladora: boolean;
+  gestor_aplica: boolean;
   gestor_actual: {
     nombre: string | null;
     usuario_id: number | null;
@@ -559,8 +564,8 @@ const mapContractPersonal = (row: ContractPersonalRow): ContractPersonalListItem
       nombre_cargo: row.cargo_nombre
     },
     es_manipuladora: row.es_manipuladora,
-    gestor_actual:
-      row.gestor_actual_usuario_id !== null || row.gestor_actual_nombre
+    gestor_aplica: row.gestor_aplica,
+    gestor_actual: row.gestor_actual_usuario_id !== null || row.gestor_actual_nombre
         ? {
             usuario_id:
               row.gestor_actual_usuario_id === null ? null : toNumber(row.gestor_actual_usuario_id),
@@ -1636,6 +1641,31 @@ export const listContractPersonal = async (
       paramIndex += 1;
     }
 
+    if (filters.estado_documental === 'PENDIENTE_REVISION') {
+      conditions.push(`(
+        EXISTS (
+          SELECT 1
+          FROM documentos_vinculacion dv_pending
+          INNER JOIN documentos_requisitos_aliases dra_pending ON dra_pending.tipo_documento_id = dv_pending.tipo_documento_id
+          INNER JOIN documentos_requisitos_canonicos drc_pending ON drc_pending.id = dra_pending.requisito_canonico_id
+          WHERE dv_pending.vinculacion_id = v.id
+            AND dv_pending.activo = TRUE AND dv_pending.es_vigente = TRUE
+            AND dv_pending.estado_revision = 'PENDIENTE_REVISION'
+            AND drc_pending.activo = TRUE
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM documentos_persona dp_pending
+          INNER JOIN documentos_requisitos_aliases dra_pending ON dra_pending.tipo_documento_id = dp_pending.tipo_documento_id
+          INNER JOIN documentos_requisitos_canonicos drc_pending ON drc_pending.id = dra_pending.requisito_canonico_id
+          WHERE dp_pending.persona_id = p.id
+            AND dp_pending.activo = TRUE AND dp_pending.es_vigente = TRUE
+            AND dp_pending.estado_revision = 'PENDIENTE_REVISION'
+            AND drc_pending.activo = TRUE
+        )
+      )`);
+    }
+
     if (filters.contrato_cargo_id !== undefined && filters.contrato_cargo_id !== null) {
       params.push(filters.contrato_cargo_id);
       conditions.push(`v.contrato_cargo_id = $${paramIndex}::bigint`);
@@ -1708,7 +1738,7 @@ export const listContractPersonal = async (
             ca.sede,
             ca.modalidad,
             ff.municipio_id AS municipio_actual_id,
-            COALESCE(ff.municipio_texto, mu.nombre_municipio) AS municipio_actual
+            COALESCE(mu.nombre_municipio, NULLIF(ff.municipio_texto, '')) AS municipio_actual
           FROM cobertura_asignaciones ca
           INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
           LEFT JOIN municipios mu ON mu.id = ff.municipio_id
@@ -1741,49 +1771,40 @@ export const listContractPersonal = async (
           ORDER BY ppl.vinculacion_id, ppl.vigencia_desde DESC, ppl.id DESC
         ),
         gestor_actual AS (
-          SELECT DISTINCT ON (scope.vinculacion_id)
-            scope.vinculacion_id,
-            scope.usuario_id AS gestor_actual_usuario_id,
-            scope.nombre_completo AS gestor_actual_nombre
+          SELECT vinculacion_id,
+            CASE WHEN COUNT(DISTINCT usuario_id) = 1 THEN MIN(usuario_id) ELSE NULL END AS gestor_actual_usuario_id,
+            CASE WHEN COUNT(DISTINCT usuario_id) = 1 THEN MIN(nombre_completo) ELSE CONCAT('M', CHR(250), 'ltiples gestores') END AS gestor_actual_nombre
           FROM (
-            SELECT
-              gpa.vinculacion_id,
-              gpa.usuario_id,
-              u.nombre_completo,
-              gpa.vigencia_desde,
-              gpa.id,
-              0 AS prioridad
-            FROM gestor_personal_asignaciones gpa
-            INNER JOIN usuarios u ON u.id = gpa.usuario_id
-            WHERE COALESCE(gpa.activo, TRUE) = TRUE
-              AND gpa.contrato_id = $1::bigint
-              AND gpa.vigencia_desde <= DATE '${consultaFecha}'
-              AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= DATE '${consultaFecha}')
-            UNION ALL
-            SELECT
-              ca_scope.vinculacion_id,
-              gma.usuario_id,
-              u.nombre_completo,
-              gma.vigencia_desde,
-              gma.id,
-              1 AS prioridad
+            SELECT ca_scope.vinculacion_id, gma.usuario_id, u.nombre_completo
             FROM gestor_municipio_asignaciones gma
             INNER JOIN usuarios u ON u.id = gma.usuario_id
-            INNER JOIN cobertura_asignaciones ca_scope
-              ON ca_scope.contrato_id = gma.contrato_id
-             AND COALESCE(ca_scope.activo, TRUE) = TRUE
-             AND ca_scope.fecha_inicio <= DATE '${consultaFecha}'
-             AND (ca_scope.fecha_fin IS NULL OR ca_scope.fecha_fin >= DATE '${consultaFecha}')
-            INNER JOIN focalizacion_final ff_scope
-              ON ff_scope.id = ca_scope.focalizacion_final_id
-             AND ff_scope.municipio_id = gma.municipio_id
-            WHERE COALESCE(gma.activo, TRUE) = TRUE
-              AND COALESCE(gma.alcance_personal, '${GESTOR_SCOPE_SELECTED}') = '${GESTOR_SCOPE_ALL}'
-              AND gma.contrato_id = $1::bigint
-              AND gma.vigencia_desde <= DATE '${consultaFecha}'
-              AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= DATE '${consultaFecha}')
-          ) scope
-          ORDER BY scope.vinculacion_id, scope.prioridad ASC, scope.vigencia_desde DESC, scope.id DESC
+            INNER JOIN cobertura_asignaciones ca_scope ON ca_scope.contrato_id=gma.contrato_id AND COALESCE(ca_scope.activo,TRUE)=TRUE AND ca_scope.fecha_inicio <= DATE '${consultaFecha}' AND (ca_scope.fecha_fin IS NULL OR ca_scope.fecha_fin >= DATE '${consultaFecha}')
+            INNER JOIN vinculaciones v_scope ON v_scope.id=ca_scope.vinculacion_id
+            INNER JOIN contrato_cargos cc_scope ON cc_scope.id=v_scope.contrato_cargo_id
+            INNER JOIN focalizacion_final ff_scope ON ff_scope.id=ca_scope.focalizacion_final_id AND ff_scope.municipio_id=gma.municipio_id
+            WHERE ${gestorApplicableCargoSql('cc_scope')} AND COALESCE(gma.activo,TRUE)=TRUE AND gma.contrato_id=$1::bigint AND gma.vigencia_desde <= DATE '${consultaFecha}' AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= DATE '${consultaFecha}')
+              AND EXISTS (SELECT 1 FROM usuario_roles ur_gestor INNER JOIN roles r_gestor ON r_gestor.id=ur_gestor.rol_id WHERE ur_gestor.usuario_id=gma.usuario_id AND r_gestor.nombre_rol='GESTOR' AND COALESCE(ur_gestor.activo,TRUE)=TRUE AND COALESCE(r_gestor.activo,TRUE)=TRUE)
+            UNION
+            SELECT ca_scope.vinculacion_id, gia.usuario_id, u.nombre_completo
+            FROM gestor_institucion_asignaciones gia
+            INNER JOIN usuarios u ON u.id=gia.usuario_id
+            INNER JOIN cobertura_asignaciones ca_scope ON ca_scope.contrato_id=gia.contrato_id AND COALESCE(ca_scope.activo,TRUE)=TRUE AND ca_scope.fecha_inicio <= DATE '${consultaFecha}' AND (ca_scope.fecha_fin IS NULL OR ca_scope.fecha_fin >= DATE '${consultaFecha}')
+            INNER JOIN focalizacion_final ff_scope ON ff_scope.id=ca_scope.focalizacion_final_id AND ff_scope.municipio_id=gia.municipio_id AND ff_scope.institucion_id=gia.institucion_id
+            INNER JOIN vinculaciones v_scope ON v_scope.id=ca_scope.vinculacion_id
+            INNER JOIN contrato_cargos cc_scope ON cc_scope.id=v_scope.contrato_cargo_id
+            WHERE ${gestorApplicableCargoSql('cc_scope')} AND gia.contrato_id=$1::bigint AND COALESCE(gia.activo,TRUE)=TRUE AND gia.vigencia_desde <= DATE '${consultaFecha}' AND (gia.vigencia_hasta IS NULL OR gia.vigencia_hasta >= DATE '${consultaFecha}')
+              AND EXISTS (SELECT 1 FROM usuario_roles ur_gestor INNER JOIN roles r_gestor ON r_gestor.id=ur_gestor.rol_id WHERE ur_gestor.usuario_id=gia.usuario_id AND r_gestor.nombre_rol='GESTOR' AND COALESCE(ur_gestor.activo,TRUE)=TRUE AND COALESCE(r_gestor.activo,TRUE)=TRUE)
+            UNION
+            SELECT ca_scope.vinculacion_id, gpa.usuario_id, u.nombre_completo
+            FROM gestor_personal_asignaciones gpa
+            INNER JOIN usuarios u ON u.id=gpa.usuario_id
+            INNER JOIN vinculaciones v_scope ON v_scope.id=gpa.vinculacion_id
+            INNER JOIN contrato_cargos cc_scope ON cc_scope.id=v_scope.contrato_cargo_id
+            INNER JOIN cobertura_asignaciones ca_scope ON ca_scope.vinculacion_id=v_scope.id AND COALESCE(ca_scope.activo,TRUE)=TRUE AND ca_scope.fecha_inicio <= DATE '${consultaFecha}' AND (ca_scope.fecha_fin IS NULL OR ca_scope.fecha_fin >= DATE '${consultaFecha}')
+            WHERE ${gestorApplicableCargoSql('cc_scope')} AND gpa.contrato_id=$1::bigint AND COALESCE(gpa.activo,TRUE)=TRUE AND gpa.vigencia_desde <= DATE '${consultaFecha}' AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= DATE '${consultaFecha}')
+              AND EXISTS (SELECT 1 FROM usuario_roles ur_gestor INNER JOIN roles r_gestor ON r_gestor.id=ur_gestor.rol_id WHERE ur_gestor.usuario_id=gpa.usuario_id AND r_gestor.nombre_rol='GESTOR' AND COALESCE(ur_gestor.activo,TRUE)=TRUE AND COALESCE(r_gestor.activo,TRUE)=TRUE)
+          ) candidates
+          GROUP BY vinculacion_id
         )
         SELECT
           v.id AS vinculacion_id,
@@ -1800,10 +1821,8 @@ export const listContractPersonal = async (
           p.primer_apellido,
           p.segundo_apellido,
           cc.nombre_cargo AS cargo_nombre,
-          (
-            COALESCE(cc.aplica_cobertura, FALSE)
-            AND LOWER(COALESCE(cc.nombre_cargo, '')) LIKE '%manipulad%'
-          ) AS es_manipuladora,
+          (${gestorApplicableCargoSql('cc')}) AS es_manipuladora,
+          (${gestorApplicableCargoSql('cc')}) AS gestor_aplica,
           ala.nombre_ubicacion AS asignacion_laboral_actual,
           caa.institucion AS institucion_actual,
           caa.municipio_actual_id,
@@ -1908,6 +1927,18 @@ export interface GestorAssignmentUser {
   id: number;
   nombre: string;
   roles: string[];
+}
+
+export interface GestorWizardData {
+  gestores: GestorAssignmentUser[];
+  municipios: Array<{ id: number; nombre: string; departamento_nombre: string | null }>;
+  instituciones: Array<{ id: number; nombre: string; municipio_id: number }>;
+  personas: Array<{ id: number; nombre: string; documento: string | null; municipio_id: number; institucion_id: number | null }>;
+  current: {
+    municipios: number[];
+    instituciones: number[];
+    vinculaciones: number[];
+  };
 }
 
 export interface GestorMunicipioAssignment {
@@ -2388,6 +2419,137 @@ export const listGestores = async (
   } finally {
     client.release();
   }
+};
+
+const ensureGestorWizardAdmin = (tenant?: TenantAccessContext): void => {
+  if (!tenant || (!tenant.isGlobalAdmin && !isTenantAdmin(tenant))) {
+    throw new AppError('Only a global or contract administrator can manage gestor coverage', 403, 'GESTOR_WIZARD_FORBIDDEN');
+  }
+};
+
+export const getGestorWizardData = async (
+  query: GestorWizardQuery,
+  tenant?: TenantAccessContext
+): Promise<GestorWizardData> => {
+  ensureGestorWizardAdmin(tenant);
+  const fechaConsulta = toIsoDate(query.fecha);
+  const client = await dbPool.connect();
+  try {
+    await ensureContractTenantAccess(client, tenant, query.contrato_id);
+    const gestores = await listGestorAssignableUsers(client, tenant, query.contrato_id);
+    const [municipios, instituciones, personas] = await Promise.all([
+      client.query<{ id: number; nombre: string; departamento_nombre: string | null }>(`
+        SELECT DISTINCT mu.id::int AS id, mu.nombre_municipio AS nombre, dep.nombre_departamento AS departamento_nombre
+        FROM focalizacion_final ff
+        INNER JOIN municipios mu ON mu.id = ff.municipio_id
+        LEFT JOIN departamentos dep ON dep.id = mu.departamento_id
+        WHERE ff.contrato_id = $1::bigint AND COALESCE(ff.activo, TRUE) = TRUE
+        ORDER BY mu.nombre_municipio
+      `, [query.contrato_id]),
+      client.query<{ id: number; nombre: string; municipio_id: number }>(`
+        SELECT DISTINCT ins.id::int AS id, ins.nombre_institucion AS nombre, ff.municipio_id::int AS municipio_id
+        FROM focalizacion_final ff
+        INNER JOIN instituciones ins ON ins.id = ff.institucion_id
+        WHERE ff.contrato_id = $1::bigint AND COALESCE(ff.activo, TRUE) = TRUE AND ff.institucion_id IS NOT NULL
+        ORDER BY ins.nombre_institucion
+      `, [query.contrato_id]),
+      client.query<{ id: number; nombre: string; documento: string | null; municipio_id: number; institucion_id: number | null }>(`
+        SELECT DISTINCT v.id::int AS id,
+          CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido) AS nombre,
+          p.numero_documento AS documento, ff.municipio_id::int AS municipio_id, ff.institucion_id::int AS institucion_id
+        FROM vinculaciones v
+        INNER JOIN personas p ON p.id = v.persona_id
+        INNER JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
+        INNER JOIN cobertura_asignaciones ca ON ca.vinculacion_id = v.id
+        INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+        WHERE v.contrato_id = $1::bigint
+          AND COALESCE(v.estado_vinculacion, 'ACTIVA') IN ('ACTIVA', 'ACTIVO')
+          AND COALESCE(ca.activo, TRUE) = TRUE
+          AND ca.fecha_inicio <= $2::date AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $2::date)
+          AND ${gestorApplicableCargoSql('cc')}
+        ORDER BY nombre
+      `, [query.contrato_id, fechaConsulta])
+    ]);
+
+    const current = { municipios: [] as number[], instituciones: [] as number[], vinculaciones: [] as number[] };
+    if (query.gestor_usuario_id) {
+      const [full, partial, people] = await Promise.all([
+        client.query<{ municipio_id: number }>(`SELECT municipio_id::int FROM gestor_municipio_asignaciones WHERE contrato_id=$1::bigint AND usuario_id=$2::bigint AND COALESCE(activo,TRUE)=TRUE AND vigencia_desde<=$3::date AND (vigencia_hasta IS NULL OR vigencia_hasta>=$3::date)`, [query.contrato_id, query.gestor_usuario_id, fechaConsulta]),
+        client.query<{ institucion_id: number }>(`SELECT institucion_id::int FROM gestor_institucion_asignaciones WHERE contrato_id=$1::bigint AND usuario_id=$2::bigint AND COALESCE(activo,TRUE)=TRUE AND vigencia_desde<=$3::date AND (vigencia_hasta IS NULL OR vigencia_hasta>=$3::date)`, [query.contrato_id, query.gestor_usuario_id, fechaConsulta]),
+        client.query<{ vinculacion_id: number }>(`SELECT vinculacion_id::int FROM gestor_personal_asignaciones WHERE contrato_id=$1::bigint AND usuario_id=$2::bigint AND COALESCE(activo,TRUE)=TRUE AND vigencia_desde<=$3::date AND (vigencia_hasta IS NULL OR vigencia_hasta>=$3::date)`, [query.contrato_id, query.gestor_usuario_id, fechaConsulta])
+      ]);
+      current.municipios = full.rows.map((row) => row.municipio_id);
+      current.instituciones = partial.rows.map((row) => row.institucion_id);
+      current.vinculaciones = people.rows.map((row) => row.vinculacion_id);
+    }
+    return { gestores, municipios: municipios.rows, instituciones: instituciones.rows, personas: personas.rows, current };
+  } finally {
+    client.release();
+  }
+};
+
+export const saveGestorWizard = async (
+  input: SaveGestorWizardInput,
+  actorUserId: number,
+  tenant?: TenantAccessContext
+): Promise<{ gestor_usuario_id: number; municipios: number; instituciones: number; vinculaciones: number }> => {
+  ensureGestorWizardAdmin(tenant);
+  const client = await dbPool.connect();
+  try {
+    await client.query('BEGIN');
+    await ensureContractTenantAccess(client, tenant, input.contrato_id);
+    await ensureGestorAssignmentUserExists(client, input.gestor_usuario_id, input.contrato_id);
+    const fecha = toIsoDate(input.fecha);
+    const selectedMunicipios = input.municipios.map((item) => item.municipio_id);
+    const duplicate = selectedMunicipios.length !== new Set(selectedMunicipios).size;
+    if (duplicate) throw new AppError('Municipios duplicados en la asignacion', 400, 'GESTOR_WIZARD_DUPLICATE_MUNICIPALITY');
+
+    for (const item of input.municipios) {
+      await ensureMunicipioBelongsContratoScope(client, input.contrato_id, item.municipio_id);
+      if (item.alcance === 'FULL') {
+        const conflict = await client.query(`SELECT 1 FROM gestor_municipio_asignaciones WHERE contrato_id=$1::bigint AND municipio_id=$2::bigint AND usuario_id<>$3::bigint AND COALESCE(activo,TRUE)=TRUE AND vigencia_desde<=CURRENT_DATE AND (vigencia_hasta IS NULL OR vigencia_hasta>=CURRENT_DATE) LIMIT 1`, [input.contrato_id, item.municipio_id, input.gestor_usuario_id]);
+        if (conflict.rowCount) throw new AppError('Esta cobertura ya esta asignada a otro gestor.', 409, 'GESTOR_WIZARD_SCOPE_CONFLICT', { municipio_id: item.municipio_id });
+      }
+      if (item.institucion_ids.length) {
+        const valid = await client.query<{ id: number }>(`SELECT DISTINCT ff.institucion_id::int AS id FROM focalizacion_final ff WHERE ff.contrato_id=$1::bigint AND ff.municipio_id=$2::bigint AND ff.institucion_id = ANY($3::bigint[]) AND COALESCE(ff.activo,TRUE)=TRUE`, [input.contrato_id, item.municipio_id, item.institucion_ids]);
+        if (valid.rowCount !== item.institucion_ids.length) throw new AppError('Institucion fuera del municipio o contrato.', 400, 'GESTOR_WIZARD_INSTITUTION_INVALID');
+        const conflict = await client.query(`SELECT 1 FROM gestor_institucion_asignaciones WHERE contrato_id=$1::bigint AND municipio_id=$2::bigint AND institucion_id = ANY($3::bigint[]) AND usuario_id<>$4::bigint AND COALESCE(activo,TRUE)=TRUE AND vigencia_desde<=CURRENT_DATE AND (vigencia_hasta IS NULL OR vigencia_hasta>=CURRENT_DATE) LIMIT 1`, [input.contrato_id, item.municipio_id, item.institucion_ids, input.gestor_usuario_id]);
+        if (conflict.rowCount) throw new AppError('Esta cobertura institucional ya esta asignada a otro gestor.', 409, 'GESTOR_WIZARD_INSTITUTION_CONFLICT');
+      }
+      if (item.vinculacion_ids.length) {
+        const valid = await client.query(`SELECT v.id FROM vinculaciones v INNER JOIN cobertura_asignaciones ca ON ca.vinculacion_id=v.id INNER JOIN focalizacion_final ff ON ff.id=ca.focalizacion_final_id INNER JOIN contrato_cargos cc ON cc.id=v.contrato_cargo_id WHERE v.contrato_id=$1::bigint AND v.id=ANY($2::bigint[]) AND ff.municipio_id=$3::bigint AND ${gestorApplicableCargoSql('cc')} AND COALESCE(ca.activo,TRUE)=TRUE`, [input.contrato_id, item.vinculacion_ids, item.municipio_id]);
+        if (valid.rowCount !== item.vinculacion_ids.length) throw new AppError('Solo se pueden seleccionar manipuladoras del municipio.', 400, 'GESTOR_WIZARD_PERSON_INVALID');
+        const conflict = await client.query(`SELECT 1 FROM gestor_personal_asignaciones WHERE contrato_id=$1::bigint AND vinculacion_id=ANY($2::bigint[]) AND usuario_id<>$3::bigint AND COALESCE(activo,TRUE)=TRUE AND vigencia_desde<=CURRENT_DATE AND (vigencia_hasta IS NULL OR vigencia_hasta>=CURRENT_DATE) LIMIT 1`, [input.contrato_id, item.vinculacion_ids, input.gestor_usuario_id]);
+        if (conflict.rowCount) throw new AppError('Una de las personas ya esta asignada a otro gestor.', 409, 'GESTOR_WIZARD_PERSON_CONFLICT');
+      }
+    }
+
+    await client.query(`UPDATE gestor_municipio_asignaciones SET activo=FALSE, vigencia_hasta=GREATEST(vigencia_desde, $3::date - 1), updated_by_user_id=$4::bigint, updated_at=NOW() WHERE contrato_id=$1::bigint AND usuario_id=$2::bigint AND COALESCE(activo,TRUE)=TRUE`, [input.contrato_id, input.gestor_usuario_id, fecha, actorUserId]);
+    await client.query(`UPDATE gestor_institucion_asignaciones SET activo=FALSE, vigencia_hasta=GREATEST(vigencia_desde, $3::date - 1), updated_by_user_id=$4::bigint, updated_at=NOW() WHERE contrato_id=$1::bigint AND usuario_id=$2::bigint AND COALESCE(activo,TRUE)=TRUE`, [input.contrato_id, input.gestor_usuario_id, fecha, actorUserId]);
+    await client.query(`UPDATE gestor_personal_asignaciones SET activo=FALSE, vigencia_hasta=GREATEST(vigencia_desde, $3::date - 1), updated_by_user_id=$4::bigint, updated_at=NOW() WHERE contrato_id=$1::bigint AND usuario_id=$2::bigint AND COALESCE(activo,TRUE)=TRUE`, [input.contrato_id, input.gestor_usuario_id, fecha, actorUserId]);
+
+    let institutions = 0, people = 0, municipalities = 0;
+    for (const item of input.municipios) {
+      if (item.alcance === 'FULL') {
+        await client.query(`INSERT INTO gestor_municipio_asignaciones (usuario_id, contrato_id, municipio_id, alcance_personal, tipo_alcance, vigencia_desde, activo, observacion, created_by_user_id, updated_by_user_id) VALUES ($1::bigint,$2::bigint,$3::bigint,'TODO_MUNICIPIO','FULL',$4::date,TRUE,$5,$6::bigint,$6::bigint)`, [input.gestor_usuario_id, input.contrato_id, item.municipio_id, fecha, input.observacion, actorUserId]);
+        municipalities += 1;
+      }
+      for (const institutionId of item.institucion_ids) {
+        await client.query(`INSERT INTO gestor_institucion_asignaciones (usuario_id, contrato_id, municipio_id, institucion_id, vigencia_desde, activo, observacion, created_by_user_id, updated_by_user_id) VALUES ($1::bigint,$2::bigint,$3::bigint,$4::bigint,$5::date,TRUE,$6,$7::bigint,$7::bigint)`, [input.gestor_usuario_id, input.contrato_id, item.municipio_id, institutionId, fecha, input.observacion, actorUserId]);
+        institutions += 1;
+      }
+      for (const vinculacionId of item.vinculacion_ids) {
+        await client.query(`INSERT INTO gestor_personal_asignaciones (usuario_id, contrato_id, vinculacion_id, municipio_id, vigencia_desde, activo, observacion, created_by_user_id, updated_by_user_id) VALUES ($1::bigint,$2::bigint,$3::bigint,$4::bigint,$5::date,TRUE,$6,$7::bigint,$7::bigint)`, [input.gestor_usuario_id, input.contrato_id, vinculacionId, item.municipio_id, fecha, input.observacion, actorUserId]);
+        people += 1;
+      }
+    }
+    await registerAuditEntry({ client, usuario_id: String(actorUserId), accion: 'GESTOR_WIZARD_SAVE', tabla: 'gestor_municipio_asignaciones', registro_id: `${input.gestor_usuario_id}:${input.contrato_id}`, descripcion: 'Actualizacion transaccional de alcance de gestor', before: null, after: input, ip: null, user_agent: null });
+    await client.query('COMMIT');
+    return { gestor_usuario_id: input.gestor_usuario_id, municipios: municipalities, instituciones: institutions, vinculaciones: people };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally { client.release(); }
 };
 
 export const listGestorMunicipios = async (

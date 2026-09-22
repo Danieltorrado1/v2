@@ -9,6 +9,8 @@ import {
   createVinculacionSchema,
   gestorAssignmentIdParamSchema,
   gestorAssignmentWorkspaceQuerySchema,
+  gestorWizardQuerySchema,
+  saveGestorWizardSchema,
   gestorPersonalHistoryQuerySchema,
   listGestorMunicipiosQuerySchema,
   listContractPersonalQuerySchema,
@@ -29,6 +31,7 @@ import {
   createGestorMunicipioAssignment,
   createVinculacion,
   getGestorAssignmentWorkspace,
+  getGestorWizardData,
   getGestorPersonalHistory,
   listGestorMunicipios,
   listGestores,
@@ -42,6 +45,7 @@ import {
   reactivarVinculacion,
   retirarVinculacion,
   saveGestorAssignments,
+  saveGestorWizard,
   suspenderVinculacion,
   updateVinculacion
 } from './vinculaciones.service';
@@ -211,6 +215,18 @@ export const getGestorAssignmentWorkspaceHandler = asyncHandler(async (req: Requ
     message: 'Gestor assignment workspace retrieved successfully',
     data: result
   });
+});
+
+export const getGestorWizardHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = gestorWizardQuerySchema.parse(req.query);
+  const result = await getGestorWizardData(query, req.tenant);
+  return successResponse(res, { message: 'Gestor wizard data retrieved successfully', data: result });
+});
+
+export const saveGestorWizardHandler = asyncHandler(async (req: Request, res: Response) => {
+  const input = saveGestorWizardSchema.parse(req.body);
+  const result = await saveGestorWizard(input, getActorUserId(req), req.tenant);
+  return successResponse(res, { message: 'Gestor coverage saved successfully', data: result });
 });
 
 export const createGestorMunicipioAssignmentHandler = asyncHandler(async (req: Request, res: Response) => {
