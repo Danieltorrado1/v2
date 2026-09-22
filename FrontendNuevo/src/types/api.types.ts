@@ -6,7 +6,13 @@ export interface ApiError {
   originalError?: unknown;
 }
 
-export type ApiQueryParamValue = string | number | boolean | null | undefined;
+export type ApiQueryParamValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | readonly (string | number | boolean | null)[];
 
 export type ApiQueryParams = Record<string, ApiQueryParamValue>;
 
