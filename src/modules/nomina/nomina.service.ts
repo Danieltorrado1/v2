@@ -85,6 +85,8 @@ import {
   roundUpToHundreds
 } from './nomina.cobertura';
 import { syncCoberturaCuentasCobroExternasPeriodo } from './cobertura.externos.service';
+import { assertNovedadRequiredDocuments } from './cobertura.novedad-documentos';
+import { getNominaPeriodRange } from './nomina-periodos';
 import {
   resolverTramosOperativos,
   type CambioOperativoDerivable,
@@ -312,6 +314,7 @@ interface NominaTipoNovedadRow extends QueryResultRow {
   es_permiso: boolean | null;
   es_suspension: boolean | null;
   grupo_exclusividad: string | null;
+  permite_asistencia_simultanea: boolean | null;
   id: string;
   modelo_registro: string | null;
   nombre: string | null;
@@ -320,6 +323,7 @@ interface NominaTipoNovedadRow extends QueryResultRow {
   proyecta_periodos: boolean | null;
   requiere_revision: boolean | null;
   requiere_solicitud_permiso: boolean | null;
+  requiere_autorizacion_descuento: boolean | null;
   requiere_soporte: boolean | null;
   requiere_dias: boolean | null;
   requiere_fechas: boolean | null;
@@ -346,6 +350,16 @@ interface NominaNovedadRealRow extends QueryResultRow {
   cobertura_snapshot: unknown;
   cobertura_tipo_cobertura: string | null;
   cobertura_vinculacion_cubre_id: string | null;
+  contexto_municipio: string | null;
+  contexto_municipio_id: string | null;
+  contexto_institucion: string | null;
+  contexto_institucion_id: string | null;
+  contexto_sede: string | null;
+  contexto_sede_id: string | null;
+  contexto_modalidad: string | null;
+  contexto_modalidad_id: string | null;
+  contexto_cargo: string | null;
+  contexto_cargo_id: string | null;
   cubierta: boolean | null;
   created_at: Date | string;
   documento_persona_id: string | null;
@@ -364,6 +378,10 @@ interface NominaNovedadRealRow extends QueryResultRow {
   segundo_apellido: string | null;
   segundo_nombre: string | null;
   solicitud_permiso_documento_persona_id: string | null;
+  autorizacion_descuento_documento_persona_id: string | null;
+  soporte_documento_estado_revision: string | null;
+  solicitud_permiso_documento_estado_revision: string | null;
+  autorizacion_descuento_documento_estado_revision: string | null;
   soporte_documento_persona_id: string | null;
   tipo_novedad_activo: boolean | null;
   tipo_novedad_afecta_salario: boolean | null;
@@ -399,6 +417,7 @@ interface NominaNovedadRealRow extends QueryResultRow {
   tipo_novedad_proyecta_periodos: boolean | null;
   tipo_novedad_requiere_revision: boolean | null;
   tipo_novedad_requiere_solicitud_permiso: boolean | null;
+  tipo_novedad_requiere_autorizacion_descuento: boolean | null;
   tipo_novedad_requiere_soporte: boolean | null;
   tipo_novedad_requiere_dias: boolean | null;
   tipo_novedad_requiere_fechas: boolean | null;
@@ -828,6 +847,7 @@ export interface NominaTipoNovedadCatalogItem {
   es_permiso: boolean;
   es_suspension: boolean;
   grupo_exclusividad: NominaGrupoExclusividad;
+  permite_asistencia_simultanea: boolean;
   id: string;
   modelo_registro: NominaModeloRegistro;
   nombre: string | null;
@@ -836,6 +856,7 @@ export interface NominaTipoNovedadCatalogItem {
   proyecta_periodos: boolean;
   requiere_revision: boolean;
   requiere_solicitud_permiso: boolean;
+  requiere_autorizacion_descuento: boolean;
   requiere_soporte: boolean;
   requiere_dias: boolean;
   requiere_fechas: boolean;
@@ -880,17 +901,26 @@ export interface NominaNovedad {
     vinculacion_cubre_id: string | null;
   } | null;
   documentos: {
+    AUTORIZACION_DESCUENTO: {
+      cargado: boolean;
+      documento_persona_id: string | null;
+      requerido: boolean;
+      tipo: 'AUTORIZACION_DESCUENTO';
+      estado_revision?: 'PENDIENTE_VALIDACION' | 'APROBADO' | 'RECHAZADO' | 'PENDIENTE_CARGA';
+    };
     SOLICITUD_PERMISO: {
       cargado: boolean;
       documento_persona_id: string | null;
       requerido: boolean;
       tipo: 'SOLICITUD_PERMISO';
+      estado_revision?: 'PENDIENTE_VALIDACION' | 'APROBADO' | 'RECHAZADO' | 'PENDIENTE_CARGA';
     };
     SOPORTE: {
       cargado: boolean;
       documento_persona_id: string | null;
       requerido: boolean;
       tipo: 'SOPORTE';
+      estado_revision?: 'PENDIENTE_VALIDACION' | 'APROBADO' | 'RECHAZADO' | 'PENDIENTE_CARGA';
     };
   };
   persona: {
@@ -939,6 +969,7 @@ export interface NominaNovedad {
     proyecta_periodos: boolean;
     requiere_revision: boolean;
     requiere_solicitud_permiso: boolean;
+    requiere_autorizacion_descuento: boolean;
     requiere_soporte: boolean;
     requiere_dias: boolean;
     requiere_fechas: boolean;
@@ -948,6 +979,18 @@ export interface NominaNovedad {
   };
   valor_manual: number | null;
   vinculacion_id: string;
+  contexto_operativo: {
+    cargo_id: string | null;
+    cargo_nombre: string | null;
+    municipio_id: string | null;
+    municipio: string | null;
+    institucion_id: string | null;
+    institucion: string | null;
+    sede_id: string | null;
+    sede: string | null;
+    modalidad_id: string | null;
+    modalidad: string | null;
+  } | null;
 }
 
 export interface NominaAsistencia {
@@ -2124,6 +2167,7 @@ const getNominaTiposNovedadSelect = (): string => {
       COALESCE(permite_rango, FALSE) AS permite_rango,
       COALESCE(requiere_revision, FALSE) AS requiere_revision,
       COALESCE(requiere_solicitud_permiso, FALSE) AS requiere_solicitud_permiso,
+      COALESCE(requiere_autorizacion_descuento, FALSE) AS requiere_autorizacion_descuento,
       COALESCE(es_incapacidad, FALSE) AS es_incapacidad,
       COALESCE(es_accidente_laboral, FALSE) AS es_accidente_laboral,
       COALESCE(es_permiso, FALSE) AS es_permiso,
@@ -2160,7 +2204,11 @@ const getNominaNovedadesRealSelect = (): string => {
         soporte_doc.documento_persona_id::text,
         nn.documento_persona_id::text
       ) AS soporte_documento_persona_id,
+      soporte_doc.estado_revision AS soporte_documento_estado_revision,
       permiso_doc.documento_persona_id::text AS solicitud_permiso_documento_persona_id,
+      permiso_doc.estado_revision AS solicitud_permiso_documento_estado_revision,
+      autorizacion_doc.documento_persona_id::text AS autorizacion_descuento_documento_persona_id,
+      autorizacion_doc.estado_revision AS autorizacion_descuento_documento_estado_revision,
       nn.observacion,
       COALESCE(nn.revisado, FALSE) AS revisado,
       COALESCE(nn.activo, TRUE) AS activo,
@@ -2204,6 +2252,7 @@ const getNominaNovedadesRealSelect = (): string => {
       COALESCE(ntn.permite_rango, FALSE) AS tipo_novedad_permite_rango,
       COALESCE(ntn.requiere_revision, FALSE) AS tipo_novedad_requiere_revision,
       COALESCE(ntn.requiere_solicitud_permiso, FALSE) AS tipo_novedad_requiere_solicitud_permiso,
+      COALESCE(ntn.requiere_autorizacion_descuento, FALSE) AS tipo_novedad_requiere_autorizacion_descuento,
       COALESCE(ntn.es_incapacidad, FALSE) AS tipo_novedad_es_incapacidad,
       COALESCE(ntn.es_accidente_laboral, FALSE) AS tipo_novedad_es_accidente_laboral,
       COALESCE(ntn.es_permiso, FALSE) AS tipo_novedad_es_permiso,
@@ -2233,7 +2282,7 @@ const getNominaNovedadesRealSelect = (): string => {
     INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
     INNER JOIN contratos c ON c.id = np.contrato_id
     LEFT JOIN LATERAL (
-      SELECT nd.documento_persona_id
+      SELECT nd.documento_persona_id, nd.estado_revision
       FROM nomina_novedad_documentos nd
       WHERE nd.nomina_novedad_id = nn.id
         AND nd.tipo_relacion = 'SOPORTE_NOVEDAD'
@@ -2242,7 +2291,7 @@ const getNominaNovedadesRealSelect = (): string => {
       LIMIT 1
     ) soporte_doc ON TRUE
     LEFT JOIN LATERAL (
-      SELECT nd.documento_persona_id
+      SELECT nd.documento_persona_id, nd.estado_revision
       FROM nomina_novedad_documentos nd
       WHERE nd.nomina_novedad_id = nn.id
         AND nd.tipo_relacion = 'SOLICITUD_PERMISO'
@@ -2250,6 +2299,15 @@ const getNominaNovedadesRealSelect = (): string => {
       ORDER BY nd.id DESC
       LIMIT 1
     ) permiso_doc ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT nd.documento_persona_id, nd.estado_revision
+      FROM nomina_novedad_documentos nd
+      WHERE nd.nomina_novedad_id = nn.id
+        AND nd.tipo_relacion = 'AUTORIZACION_DESCUENTO'
+        AND COALESCE(nd.activo, TRUE) = TRUE
+      ORDER BY nd.id DESC
+      LIMIT 1
+    ) autorizacion_doc ON TRUE
     LEFT JOIN nomina_novedad_coberturas nnc
       ON nnc.nomina_novedad_id = nn.id
      AND COALESCE(nnc.activo, TRUE) = TRUE
@@ -2488,6 +2546,21 @@ const mapRealNovedad = (row: NominaNovedadRealRow): NominaNovedad => {
     periodo_id: row.periodo_id,
     nomina_empleado_id: row.nomina_empleado_id,
     vinculacion_id: row.vinculacion_id,
+    contexto_operativo:
+      row.contexto_municipio || row.contexto_institucion || row.contexto_sede || row.contexto_modalidad || row.contexto_cargo
+        ? {
+            cargo_id: row.contexto_cargo_id,
+            cargo_nombre: row.contexto_cargo,
+            municipio_id: row.contexto_municipio_id,
+            municipio: row.contexto_municipio,
+            institucion_id: row.contexto_institucion_id,
+            institucion: row.contexto_institucion,
+            sede_id: row.contexto_sede_id,
+            sede: row.contexto_sede,
+            modalidad_id: row.contexto_modalidad_id,
+            modalidad: row.contexto_modalidad,
+          }
+        : null,
     documento_persona_id: row.soporte_documento_persona_id ?? row.documento_persona_id,
     fecha_inicio: toDateString(row.fecha_inicio),
     fecha_fin: toDateString(row.fecha_fin),
@@ -2512,12 +2585,27 @@ const mapRealNovedad = (row: NominaNovedadRealRow): NominaNovedad => {
         documento_persona_id: row.soporte_documento_persona_id ?? row.documento_persona_id,
         requerido: toBooleanValue(row.tipo_novedad_requiere_soporte),
         tipo: 'SOPORTE',
+        estado_revision: row.soporte_documento_persona_id
+          ? (row.soporte_documento_estado_revision as 'PENDIENTE_VALIDACION' | 'APROBADO' | 'RECHAZADO')
+          : 'PENDIENTE_CARGA',
       },
       SOLICITUD_PERMISO: {
         cargado: Boolean(row.solicitud_permiso_documento_persona_id),
         documento_persona_id: row.solicitud_permiso_documento_persona_id,
         requerido: toBooleanValue(row.tipo_novedad_requiere_solicitud_permiso),
         tipo: 'SOLICITUD_PERMISO',
+        estado_revision: row.solicitud_permiso_documento_persona_id
+          ? (row.solicitud_permiso_documento_estado_revision as 'PENDIENTE_VALIDACION' | 'APROBADO' | 'RECHAZADO')
+          : 'PENDIENTE_CARGA',
+      },
+      AUTORIZACION_DESCUENTO: {
+        cargado: Boolean(row.autorizacion_descuento_documento_persona_id),
+        documento_persona_id: row.autorizacion_descuento_documento_persona_id,
+        requerido: toBooleanValue(row.tipo_novedad_requiere_autorizacion_descuento),
+        tipo: 'AUTORIZACION_DESCUENTO',
+        estado_revision: row.autorizacion_descuento_documento_persona_id
+          ? (row.autorizacion_descuento_documento_estado_revision as 'PENDIENTE_VALIDACION' | 'APROBADO' | 'RECHAZADO')
+          : 'PENDIENTE_CARGA',
       },
     },
     cobertura: row.cobertura_id && row.cobertura_tipo_cobertura
@@ -2595,6 +2683,7 @@ const mapRealNovedad = (row: NominaNovedadRealRow): NominaNovedad => {
       permite_rango: toBooleanValue(row.tipo_novedad_permite_rango),
       requiere_revision: toBooleanValue(row.tipo_novedad_requiere_revision),
       requiere_solicitud_permiso: toBooleanValue(row.tipo_novedad_requiere_solicitud_permiso),
+      requiere_autorizacion_descuento: toBooleanValue(row.tipo_novedad_requiere_autorizacion_descuento),
       soporte_documento_tipo: row.tipo_novedad_soporte_documento_tipo,
       requiere_fechas: toBooleanValue(row.tipo_novedad_requiere_fechas),
       requiere_dias: toBooleanValue(row.tipo_novedad_requiere_dias),
@@ -2652,6 +2741,7 @@ const mapNominaTipoNovedad = (
     proyecta_periodos: toBooleanValue(row.proyecta_periodos),
     bloquea_otras_novedades: toBooleanValue(row.bloquea_otras_novedades),
     grupo_exclusividad: toNominaGrupoExclusividad(row.grupo_exclusividad),
+    permite_asistencia_simultanea: toBooleanValue(row.permite_asistencia_simultanea),
     observacion_plantilla: row.observacion_plantilla,
     es_adicion: toBooleanValue(row.es_adicion),
     es_incapacidad: toBooleanValue(row.es_incapacidad),
@@ -2664,6 +2754,7 @@ const mapNominaTipoNovedad = (
     permite_rango: toBooleanValue(row.permite_rango),
     requiere_revision: toBooleanValue(row.requiere_revision),
     requiere_solicitud_permiso: toBooleanValue(row.requiere_solicitud_permiso),
+    requiere_autorizacion_descuento: toBooleanValue(row.requiere_autorizacion_descuento),
     soporte_documento_tipo: row.soporte_documento_tipo,
     requiere_fechas: toBooleanValue(row.requiere_fechas),
     requiere_dias: toBooleanValue(row.requiere_dias),
@@ -4881,6 +4972,20 @@ const buildProjectedNominaNovedadFromCanonica = (input: {
     periodo_id: input.empleado.periodo_id,
     nomina_empleado_id: input.empleado.id,
     vinculacion_id: input.empleado.vinculacion_id,
+    contexto_operativo: input.empleado.contexto_operativo
+      ? {
+          cargo_id: input.empleado.cargo?.id ?? null,
+          cargo_nombre: input.empleado.cargo?.nombre_cargo ?? null,
+          municipio_id: null,
+          municipio: input.empleado.contexto_operativo.municipio,
+          institucion_id: null,
+          institucion: input.empleado.contexto_operativo.institucion,
+          sede_id: null,
+          sede: input.empleado.contexto_operativo.sede,
+          modalidad_id: input.empleado.contexto_operativo.modalidad_id,
+          modalidad: input.empleado.contexto_operativo.modalidad_descripcion ?? input.empleado.contexto_operativo.modalidad_codigo,
+        }
+      : null,
     documento_persona_id: input.canonical.documento_persona_id,
     fecha_inicio: projection.fecha_inicio,
     fecha_fin: projection.fecha_fin,
@@ -4910,6 +5015,12 @@ const buildProjectedNominaNovedadFromCanonica = (input: {
         documento_persona_id: null,
         requerido: toBooleanValue(input.tipo.requiere_solicitud_permiso),
         tipo: 'SOLICITUD_PERMISO',
+      },
+      AUTORIZACION_DESCUENTO: {
+        cargado: false,
+        documento_persona_id: null,
+        requerido: toBooleanValue(input.tipo.requiere_autorizacion_descuento),
+        tipo: 'AUTORIZACION_DESCUENTO',
       },
     },
     registro_tipo: 'CANONICA_PROYECTADA',
@@ -5654,11 +5765,6 @@ const lockNominaPeriodoIdentity = async (
   await nominaPeriodoRepository.lockIdentity(input, client);
 };
 
-const NOMINA_MONTH_NAMES = [
-  'ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
-  'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'
-] as const;
-
 type EnsureCurrentNominaPeriodsInput = {
   tenant?: TenantAccessContext;
   empresa_id?: string | null;
@@ -5685,23 +5791,13 @@ export const ensureCurrentNominaPeriods = async ({
   try {
     await client.query('BEGIN');
 
-    const monthResult = await client.query<{
-      fecha_inicio: string;
-      fecha_fin: string;
-      anio: number;
-      mes: number;
-    }>(`
-      SELECT
-        date_trunc('month', CURRENT_DATE)::date::text AS fecha_inicio,
-        (date_trunc('month', CURRENT_DATE) + interval '1 month - 1 day')::date::text AS fecha_fin,
-        extract(year FROM CURRENT_DATE)::int AS anio,
-        extract(month FROM CURRENT_DATE)::int AS mes
+    const monthResult = await client.query<{ anio: number; mes: number }>(`
+      SELECT extract(year FROM CURRENT_DATE)::int AS anio,
+             extract(month FROM CURRENT_DATE)::int AS mes
     `);
-    const month = monthResult.rows[0];
-
-    if (!month) {
-      throw new AppError('Unable to resolve current payroll month', 500, 'NOMINA_PERIODO_CURRENT_MONTH_UNRESOLVED');
-    }
+    const calendarMonth = monthResult.rows[0];
+    if (!calendarMonth) throw new AppError('Unable to resolve current payroll month', 500, 'NOMINA_PERIODO_CURRENT_MONTH_UNRESOLVED');
+    const month = getNominaPeriodRange(calendarMonth.anio, calendarMonth.mes);
 
     const contractConditions = [
       'c.activo = TRUE',
@@ -5755,7 +5851,7 @@ export const ensureCurrentNominaPeriods = async ({
       contractParams
     );
 
-    const nombrePeriodo = `${NOMINA_MONTH_NAMES[month.mes - 1] ?? month.mes} ${month.anio}`;
+    const nombrePeriodo = month.nombre_periodo;
 
     for (const contract of contracts.rows) {
       const identity = {
@@ -9638,6 +9734,7 @@ export const listNominaNovedades = async (
   const ordinaryRows = (
     await nominaNovedadRepository.list({
       activo: query.activo,
+      excludeInformative: true,
       nominaEmpleadoId: query.nomina_empleado_id,
       periodoId: query.periodo_id,
       personaId: query.persona_id,
@@ -9676,6 +9773,11 @@ export const listNominaNovedades = async (
         const tipo = tiposById.get(canonicalRow.tipo_novedad_id);
 
         if (!empleadoRow || !tipo) {
+          continue;
+        }
+
+        const codigoOperativo = tipo.codigo_operativo?.trim().toUpperCase();
+        if (codigoOperativo === 'DNC' || codigoOperativo === 'DCO') {
           continue;
         }
 
@@ -9830,7 +9932,7 @@ export const createNominaNovedad = async (
       nextRange?.fecha_fin ?? input.fecha_fin ?? input.fecha_inicio
     );
 
-    if (operativeRange) {
+    if (operativeRange && !toBooleanValue(tipoNovedad.permite_asistencia_simultanea)) {
       await replaceNominaAsistenciaPresentePorNovedad(
         client,
         input.periodo_id,
@@ -10630,14 +10732,16 @@ export const updateNominaNovedad = async (
       if (!operativeRange) {
         throw new AppError('La novedad no tiene un rango operativo valido.', 400, 'NOMINA_NOVEDAD_RANGO_INVALIDO');
       }
-      await replaceNominaAsistenciaPresentePorNovedad(
-        client,
-        periodoId,
-        current.vinculacion_id,
-        operativeRange,
-        tipoNovedad.codigo_operativo ?? tipoNovedad.nombre ?? 'NOVEDAD',
-        input.reemplazar_asistencia_confirmado === true
-      );
+      if (!toBooleanValue(tipoNovedad.permite_asistencia_simultanea)) {
+        await replaceNominaAsistenciaPresentePorNovedad(
+          client,
+          periodoId,
+          current.vinculacion_id,
+          operativeRange,
+          tipoNovedad.codigo_operativo ?? tipoNovedad.nombre ?? 'NOVEDAD',
+          input.reemplazar_asistencia_confirmado === true
+        );
+      }
 
       const nextDocumentoPersonaId =
         input.documento_persona_id !== undefined ? input.documento_persona_id : current.documento_persona_id;
@@ -10743,6 +10847,20 @@ export const updateNominaNovedad = async (
         periodo_id: periodoId,
         nomina_empleado_id: empleadoRow.id,
         vinculacion_id: current.vinculacion_id,
+        contexto_operativo: empleadoRow.contexto_operativo
+          ? {
+              cargo_id: empleadoRow.cargo?.id ?? null,
+              cargo_nombre: empleadoRow.cargo?.nombre_cargo ?? null,
+              municipio_id: null,
+              municipio: empleadoRow.contexto_operativo.municipio,
+              institucion_id: null,
+              institucion: empleadoRow.contexto_operativo.institucion,
+              sede_id: null,
+              sede: empleadoRow.contexto_operativo.sede,
+              modalidad_id: empleadoRow.contexto_operativo.modalidad_id,
+              modalidad: empleadoRow.contexto_operativo.modalidad_descripcion ?? empleadoRow.contexto_operativo.modalidad_codigo,
+            }
+          : null,
         documento_persona_id: updatedCanonical.documento_persona_id,
         fecha_inicio: nextRange.fecha_inicio,
         fecha_fin: nextRange.fecha_fin,
@@ -10762,17 +10880,23 @@ export const updateNominaNovedad = async (
         cubierta: false,
         cobertura: null,
         documentos: {
-          SOPORTE: {
+      SOPORTE: {
             cargado: Boolean(updatedCanonical.documento_persona_id),
             documento_persona_id: updatedCanonical.documento_persona_id,
             requerido: toBooleanValue(tipoNovedad.requiere_soporte),
-            tipo: 'SOPORTE',
+        tipo: 'SOPORTE',
           },
           SOLICITUD_PERMISO: {
             cargado: false,
             documento_persona_id: null,
             requerido: toBooleanValue(tipoNovedad.requiere_solicitud_permiso),
             tipo: 'SOLICITUD_PERMISO',
+          },
+          AUTORIZACION_DESCUENTO: {
+            cargado: false,
+            documento_persona_id: null,
+            requerido: toBooleanValue(tipoNovedad.requiere_autorizacion_descuento),
+            tipo: 'AUTORIZACION_DESCUENTO',
           },
         },
         registro_tipo: 'CANONICA_PROYECTADA',
@@ -10849,7 +10973,7 @@ export const updateNominaNovedad = async (
       nextRange?.fecha_inicio ?? nextFechaInicio,
       nextRange?.fecha_fin ?? nextFechaFin ?? nextFechaInicio
     );
-    if (operativeRange) {
+    if (operativeRange && !toBooleanValue(tipoNovedad.permite_asistencia_simultanea)) {
       await replaceNominaAsistenciaPresentePorNovedad(
         client,
         current.periodo_id,
@@ -10891,6 +11015,11 @@ export const updateNominaNovedad = async (
     });
     await assertNominaLinkedCoverageScope(client, current.periodo_id, coverageInput, tenant);
 
+    const nextRevisado = input.revisado ?? toBooleanValue(current.revisado);
+    if (nextRevisado && !toBooleanValue(current.revisado)) {
+      await assertNovedadRequiredDocuments(Number(parsedId.entidad_id), tenant);
+    }
+
     await nominaNovedadRepository.update({
       activo: input.activo ?? toBooleanValue(current.activo),
       categoria_anterior_id: input.categoria_anterior_id !== undefined
@@ -10908,7 +11037,7 @@ export const updateNominaNovedad = async (
       id: parsedId.entidad_id,
       observacion: input.observacion !== undefined ? input.observacion : current.observacion,
       requiere_cobertura: coverageFlags.requiere_cobertura,
-      revisado: input.revisado ?? toBooleanValue(current.revisado),
+      revisado: nextRevisado,
       tipo_novedad_codigo_operativo: tipoNovedad.codigo_operativo,
       tipo_novedad_id: tipoNovedad.id,
       valor_manual: nextValorManual
@@ -11060,6 +11189,20 @@ export const deactivateNominaNovedad = async (
         periodo_id: periodoId,
         nomina_empleado_id: empleadoRow?.id ?? '',
         vinculacion_id: current.vinculacion_id,
+        contexto_operativo: empleadoRow?.contexto_operativo
+          ? {
+              cargo_id: empleadoRow.cargo?.id ?? null,
+              cargo_nombre: empleadoRow.cargo?.nombre_cargo ?? null,
+              municipio_id: null,
+              municipio: empleadoRow.contexto_operativo.municipio,
+              institucion_id: null,
+              institucion: empleadoRow.contexto_operativo.institucion,
+              sede_id: null,
+              sede: empleadoRow.contexto_operativo.sede,
+              modalidad_id: empleadoRow.contexto_operativo.modalidad_id,
+              modalidad: empleadoRow.contexto_operativo.modalidad_descripcion ?? empleadoRow.contexto_operativo.modalidad_codigo,
+            }
+          : null,
         documento_persona_id: current.documento_persona_id,
         fecha_inicio: toDateString(current.fecha_inicio),
         fecha_fin: toDateString(current.fecha_fin),
@@ -11082,13 +11225,19 @@ export const deactivateNominaNovedad = async (
             cargado: Boolean(current.documento_persona_id),
             documento_persona_id: current.documento_persona_id,
             requerido: toBooleanValue(tipo.requiere_soporte),
-            tipo: 'SOPORTE',
-          },
-          SOLICITUD_PERMISO: {
+        tipo: 'SOPORTE',
+      },
+      SOLICITUD_PERMISO: {
             cargado: false,
             documento_persona_id: null,
             requerido: toBooleanValue(tipo.requiere_solicitud_permiso),
-            tipo: 'SOLICITUD_PERMISO',
+        tipo: 'SOLICITUD_PERMISO',
+      },
+          AUTORIZACION_DESCUENTO: {
+            cargado: false,
+            documento_persona_id: null,
+            requerido: toBooleanValue(tipo.requiere_autorizacion_descuento),
+            tipo: 'AUTORIZACION_DESCUENTO',
           },
         },
         registro_tipo: 'CANONICA_PROYECTADA',

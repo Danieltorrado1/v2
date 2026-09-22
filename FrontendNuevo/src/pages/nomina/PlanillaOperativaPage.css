@@ -822,3 +822,557 @@
 .op-population-empty p { color: var(--text-secondary); margin: 12px 0; }
 .op-population-empty button, .op-population-actions button { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; margin: 6px; border: 1px solid var(--border-color); border-radius: 10px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; }
 .op-population-empty button:disabled, .op-population-actions button:disabled { opacity: .6; cursor: wait; }
+
+/* -------------------------------------------------------------------------
+   Fase visual Planilla Operativa
+   Esta capa solo modifica la presentación de la pantalla. Los controles
+   conservan sus nombres, eventos y estados reales definidos en JSX.
+   ------------------------------------------------------------------------- */
+.op-sheet-page {
+  gap: 12px;
+  padding-bottom: 14px;
+}
+
+/* The shell bounds this page to the viewport. Keep controls fixed and let
+   only the matrix body consume the remaining height. */
+.nomina-module-shell--planilla .op-sheet-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.nomina-module-shell--planilla .op-sheet-page > .op-toolbar,
+.nomina-module-shell--planilla .op-sheet-page > .op-summary {
+  flex: 0 0 auto;
+}
+
+.op-period-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.op-sheet-page > .np-flow-nav {
+  min-height: 42px;
+  gap: 20px;
+  border-bottom-color: color-mix(in srgb, var(--border-color) 82%, transparent);
+}
+
+.op-sheet-page > .np-flow-nav a {
+  position: relative;
+  padding: 11px 2px 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.op-sheet-page > .np-flow-nav a.active {
+  border-bottom-color: transparent;
+  color: var(--text-primary);
+}
+
+.op-sheet-page > .np-flow-nav a.active::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: var(--color-primary);
+  content: "";
+}
+
+.op-sheet-title {
+  align-items: flex-end;
+  gap: 18px;
+  padding: 8px 2px 0;
+}
+
+.op-sheet-title span {
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.op-sheet-title h1 {
+  margin-top: 6px;
+  color: var(--text-primary);
+  font-size: clamp(21px, 2vw, 27px);
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+
+.op-period-picker {
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.op-period-picker label {
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.op-period-picker select {
+  min-width: 238px;
+  min-height: 40px;
+  border-radius: 11px;
+  background: var(--bg-secondary);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--text-primary) 5%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.op-period-state {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.op-period-state.open {
+  background: color-mix(in srgb, var(--color-success) 13%, var(--bg-secondary));
+  border-color: color-mix(in srgb, var(--color-success) 32%, var(--border-color));
+  color: var(--color-success);
+}
+
+.op-period-state.locked {
+  background: color-mix(in srgb, var(--color-danger) 11%, var(--bg-secondary));
+  border-color: color-mix(in srgb, var(--color-danger) 28%, var(--border-color));
+  color: var(--color-danger);
+}
+
+.op-period-meta {
+  margin-top: -4px;
+  padding: 0 2px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.op-summary {
+  min-height: 64px;
+  gap: 0;
+  padding: 0;
+  border-radius: 16px;
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-soft);
+  white-space: normal;
+}
+
+.op-summary > * {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 18px;
+  border-right: 1px solid var(--border-color);
+}
+
+.op-summary > *:last-child { border-right: 0; }
+.op-summary strong { color: var(--text-primary); font-size: 14px; }
+.op-summary span { font-size: 11px; font-weight: 700; }
+.op-summary span:first-of-type { color: var(--color-primary); }
+
+.op-toolbar {
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-soft);
+}
+
+.op-search {
+  min-width: 245px;
+  max-width: 360px;
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--border-color);
+  border-radius: 11px;
+  background: var(--bg-primary);
+}
+
+.op-search svg { color: var(--color-primary); }
+.op-search input { min-height: 36px; border: 0; outline: 0; background: transparent; color: var(--text-primary); font-size: 12px; }
+
+.op-toolbar > select {
+  min-height: 38px;
+  min-width: 112px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 11px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.op-toolbar button,
+.op-population-actions button {
+  min-height: 38px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+
+.op-toolbar button:last-child {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--border-color));
+  color: var(--color-primary-active);
+}
+
+.op-range-banner,
+.op-locked,
+.op-error,
+.op-inline-note,
+.op-success {
+  border-radius: 13px;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--text-primary) 4%, transparent);
+}
+
+.op-viewport {
+  min-height: 320px;
+  border-radius: 16px;
+  border-color: color-mix(in srgb, var(--border-color) 88%, var(--color-primary));
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-soft);
+}
+
+.op-head {
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--bg-secondary));
+  border-bottom-color: color-mix(in srgb, var(--color-primary) 26%, var(--border-color));
+}
+
+.op-head > div {
+  min-height: 48px;
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .05em;
+}
+
+.op-day-head b { color: var(--text-primary); font-size: 12px; }
+.op-day-head small { font-size: 9px; font-weight: 800; }
+.op-row { border-bottom-color: color-mix(in srgb, var(--border-color) 78%, transparent); }
+.op-row:hover { background: color-mix(in srgb, var(--color-primary) 5%, var(--bg-secondary)); }
+.op-name strong { font-size: 12px; font-weight: 800; }
+.op-name small { font-size: 10px; }
+.op-context-accent { color: var(--color-primary-active) !important; }
+
+.op-matrix-card { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; border: 1px solid var(--border-color); border-radius: 16px; background: var(--bg-secondary); box-shadow: var(--shadow-soft); }
+.op-matrix-card .op-viewport { flex: 1 1 auto; height: auto; min-height: 0; border: 0; border-radius: 0; box-shadow: none; overflow-y: auto; }
+.op-matrix-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 14px; border-top: 1px solid var(--border-color); color: var(--text-secondary); font-size: 11px; }
+.op-matrix-footer-note { color: var(--text-muted); font-size: 10px; }
+.op-pagination { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.op-pagination button { min-width: 28px; height: 28px; padding: 0 7px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 10px; }
+.op-pagination button:hover:not(:disabled), .op-pagination button.active { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-secondary)); color: var(--text-primary); }
+.op-pagination button:disabled { cursor: not-allowed; opacity: .45; }
+.op-sync-action { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; min-height: 28px; padding: 0 10px; border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--border-color)); border-radius: 8px; background: var(--bg-secondary); color: var(--color-primary-active); cursor: pointer; font-size: 10px; font-weight: 800; }
+.op-sync-action:hover { background: color-mix(in srgb, var(--color-primary) 8%, var(--bg-secondary)); }
+.op-name { overflow: visible; justify-content: flex-start; overflow-wrap: anywhere; }
+.op-name strong, .op-name small { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+.op-name strong { line-height: 1.25; }
+.op-modality-badge { width: fit-content !important; padding: 1px 5px; border-radius: 5px; background: color-mix(in srgb, var(--color-primary) 12%, var(--bg-secondary)); font-weight: 800; }
+.op-gestor { color: var(--text-secondary) !important; }
+
+[data-theme="dark"] .op-sheet-page > .np-flow-nav a.active { color: var(--text-primary); }
+[data-theme="dark"] .op-summary,
+[data-theme="dark"] .op-toolbar,
+[data-theme="dark"] .op-viewport { box-shadow: var(--shadow-soft); }
+[data-theme="dark"] .op-toolbar > select,
+[data-theme="dark"] .op-search { background: var(--bg-input); }
+
+@media (max-width: 900px) {
+  .op-sheet-title { align-items: flex-start; padding-top: 4px; }
+  .op-period-picker { align-items: stretch; flex-wrap: wrap; }
+  .op-period-picker select { min-width: 0; }
+  .op-summary > * { flex: 1 1 50%; min-height: 34px; padding: 0 12px; }
+  .op-summary > *:nth-child(2n) { border-right: 0; }
+  .op-toolbar { align-items: stretch; }
+  .op-search { max-width: none; flex-basis: 100%; }
+  .op-toolbar > select, .op-toolbar button { flex: 1 1 135px; }
+  .op-matrix-footer { align-items: flex-start; flex-direction: column; }
+}
+
+/* Orden de la composición Figma: toolbar, resumen compacto y matriz. */
+.op-sheet-page > .op-toolbar { order: 1; }
+.op-sheet-page > .op-summary { order: 2; }
+.op-sheet-page > .op-range-banner,
+.op-sheet-page > .op-matrix-card,
+.op-sheet-page > .op-population-empty,
+.op-sheet-page > .op-state { order: 3; }
+
+/* Acabado cromático Figma para Planilla: solo color, superficies y estados. */
+.op-sheet-page {
+  --op-accent: #00c4d4;
+  --op-accent-dark: #087c89;
+  --op-navy: #0a1628;
+  --op-page: #f5f7fa;
+  --op-card: #ffffff;
+  --op-input: #f8fbfd;
+  --op-border: #dfe7ee;
+  --op-muted: #607487;
+  color: var(--op-navy);
+}
+
+.op-sheet-page > .np-flow-nav {
+  border-bottom-color: var(--op-border);
+}
+
+.op-sheet-page > .np-flow-nav a {
+  color: var(--op-muted);
+}
+
+.op-sheet-page > .np-flow-nav a.active,
+.op-sheet-page > .np-flow-nav a.active::after {
+  color: var(--op-accent);
+  background: var(--op-accent);
+}
+
+.op-sheet-page > .np-flow-nav a.active {
+  background: transparent;
+}
+
+.op-period-picker select,
+.op-toolbar,
+.op-toolbar > select,
+.op-search,
+.op-summary,
+.op-matrix-card,
+.op-viewport,
+.op-row,
+.op-toolbar button {
+  background: var(--op-card);
+  border-color: var(--op-border);
+}
+
+.op-period-picker select,
+.op-toolbar > select,
+.op-search,
+.op-toolbar button {
+  background: var(--op-input);
+}
+
+.op-period-picker select:focus,
+.op-toolbar input:focus,
+.op-toolbar select:focus,
+.op-search:focus-within,
+.op-toolbar button:focus-visible,
+.op-pagination button:focus-visible,
+.op-cell:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--op-accent) 38%, transparent);
+  outline-offset: 1px;
+}
+
+.op-toolbar button:last-child,
+.op-sync-action,
+.op-context-accent,
+.op-search svg {
+  color: var(--op-accent-dark);
+}
+
+.op-toolbar button:last-child,
+.op-sync-action {
+  border-color: color-mix(in srgb, var(--op-accent) 48%, var(--op-border));
+  background: var(--op-card);
+}
+
+.op-toolbar button:hover,
+.op-toolbar button:last-child:hover,
+.op-sync-action:hover,
+.op-pagination button:hover:not(:disabled),
+.op-pagination button.active {
+  border-color: color-mix(in srgb, var(--op-accent) 58%, var(--op-border));
+  background: color-mix(in srgb, var(--op-accent) 10%, var(--op-card));
+  color: var(--op-accent-dark);
+}
+
+.op-summary {
+  border-color: var(--op-border);
+}
+
+.op-summary > * {
+  border-right-color: color-mix(in srgb, var(--op-border) 76%, transparent);
+}
+
+.op-summary strong,
+.op-summary span {
+  color: var(--op-navy);
+}
+
+.op-summary span:first-of-type {
+  color: var(--op-accent-dark);
+}
+
+.op-summary > .op-sync-action {
+  color: var(--op-accent-dark);
+}
+
+.op-head {
+  background: color-mix(in srgb, var(--op-accent) 7%, var(--op-card));
+  border-bottom-color: color-mix(in srgb, var(--op-accent) 22%, var(--op-border));
+}
+
+.op-head > div,
+.op-day-head small,
+.op-name small,
+.op-period-meta,
+.op-matrix-footer {
+  color: var(--op-muted);
+}
+
+.op-head > div,
+.op-day-head b,
+.op-name strong,
+.op-doc,
+.op-review {
+  color: var(--op-navy);
+}
+
+.op-row {
+  border-bottom-color: color-mix(in srgb, var(--op-border) 82%, transparent);
+}
+
+.op-row:hover {
+  background: color-mix(in srgb, var(--op-accent) 4%, var(--op-card));
+}
+
+.op-cell:hover,
+.op-cell:focus {
+  outline-color: color-mix(in srgb, var(--op-accent) 70%, transparent);
+}
+
+.op-cell.pending-attendance {
+  background: color-mix(in srgb, var(--op-accent) 13%, var(--op-card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--op-accent) 62%, transparent);
+}
+
+.op-attendance-pending-mark {
+  color: var(--op-accent-dark);
+}
+
+.op-cell b,
+.op-modality-badge {
+  background: color-mix(in srgb, var(--op-accent) 12%, var(--op-card));
+  color: var(--op-accent-dark);
+}
+
+.op-cell.has-active-novelty {
+  background: color-mix(in srgb, #f59e0b 9%, var(--op-card));
+}
+
+.op-cell.has-active-novelty .op-novelty-mark {
+  background: #fff7e6;
+  border-color: #f0b44d;
+  color: #9a6500;
+}
+
+.op-cell.has-active-novelty::after {
+  background: #d99016;
+}
+
+.op-matrix-footer {
+  border-top-color: var(--op-border);
+}
+
+.op-pagination button {
+  color: var(--op-muted);
+}
+
+.op-pagination button.active {
+  border-color: color-mix(in srgb, var(--op-accent) 54%, var(--op-border));
+  background: color-mix(in srgb, var(--op-accent) 13%, var(--op-card));
+  color: var(--op-accent-dark);
+}
+
+/* Visual identity per operational novelty code. The shared palette lives in
+   nominaNovedadVisual.css and is used by Planilla and Novedades. */
+.op-cell[class*="op-novelty-code-"] {
+  background: color-mix(in srgb, var(--op-novelty-color) 15%, var(--op-card));
+}
+
+.op-cell[class*="op-novelty-code-"] .op-novelty-mark {
+  background: color-mix(in srgb, var(--op-novelty-color) 22%, var(--op-card));
+  border-color: color-mix(in srgb, var(--op-novelty-color) 62%, var(--op-border));
+  color: var(--op-novelty-text);
+}
+
+.planilla-facet {
+  flex: 1 1 130px;
+  min-width: 0;
+  position: relative;
+}
+
+.planilla-facet-trigger {
+  align-items: center;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-color, #d0d7e2);
+  border-radius: 8px;
+  color: inherit;
+  display: flex;
+  font: inherit;
+  gap: 8px;
+  justify-content: space-between;
+  min-height: 34px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.planilla-facet-trigger span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planilla-facet-menu {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-color, #d0d7e2);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgb(10 22 40 / 16%);
+  display: grid;
+  gap: 2px;
+  left: 0;
+  max-height: 280px;
+  min-width: 100%;
+  overflow-y: auto;
+  padding: 5px;
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 30;
+}
+
+.planilla-facet-menu button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  display: flex;
+  font: inherit;
+  gap: 8px;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 5px 8px;
+  text-align: left;
+  white-space: normal;
+  width: 100%;
+}
+
+.planilla-facet-menu button:hover,
+.planilla-facet-menu button.is-selected {
+  background: color-mix(in srgb, var(--accent, #00c4d4) 12%, transparent);
+}

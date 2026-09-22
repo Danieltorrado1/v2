@@ -345,10 +345,7 @@ select.np-form-control option:focus {
 
 .np-table-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-gutter: stable; }
 
-.np-turns-table-grid {
-  grid-template-columns: minmax(150px,1.2fr) minmax(82px,.6fr) minmax(150px,1.2fr) minmax(145px,1.1fr) minmax(150px,1.1fr) minmax(105px,.85fr) minmax(105px,.85fr) minmax(65px,.5fr) minmax(115px,.9fr) minmax(115px,.9fr) minmax(110px,.8fr) minmax(170px,1.25fr) minmax(170px,1.2fr);
-  min-width: 0;
-}
+.np-turns-table-grid { min-width: 0; }
 .np-turns-table-scroll { overflow-x:auto; }
 .np-table-stack { min-width:0; display:flex; flex-direction:column; gap:3px; }
 .np-table-stack strong,.np-table-stack small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -1035,6 +1032,223 @@ select.np-form-control {
 .nomina-turnos-consolidated-list .np-icon-button:disabled { opacity:.45; cursor:not-allowed; }
 @media(max-width:900px) { .nomina-turnos-consolidated-head, .nomina-turnos-person-row { grid-template-columns:minmax(115px,1.4fr) 75px 45px 85px minmax(85px,1fr) 90px 92px; padding:10px; gap:6px; } }
 @media(max-width:680px) { .nomina-turnos-consolidated-head { display:none; } .nomina-turnos-person-row { grid-template-columns:1fr auto; gap:8px; padding:12px; } .nomina-turnos-person-row > span:nth-child(2), .nomina-turnos-person-row > strong:nth-child(3), .nomina-turnos-person-row > span:nth-child(4), .nomina-turnos-person-row > span:nth-child(5), .nomina-turnos-person-row > strong:nth-child(6) { font-size:11px; } .nomina-turnos-actions { grid-column:2; grid-row:1 / span 2; } .nomina-turnos-history-head { display:none; } .nomina-turnos-history-row { grid-template-columns:1fr 1fr; gap:7px; } .nomina-turnos-history-row > span { white-space:normal; overflow:visible; } .nomina-turnos-history-row > span:nth-child(4), .nomina-turnos-history-row > span:nth-child(8) { grid-column:1 / -1; } }
+
+/* -------------------------------------------------------------------------
+   Fase visual Turnos
+   Presentación alineada con Planilla Operativa; no altera datos ni acciones.
+   ------------------------------------------------------------------------- */
+.turnos-page-shell {
+  gap: 12px;
+  padding-bottom: 14px;
+}
+
+.turnos-page-shell > .np-flow-nav {
+  min-height: 42px;
+  gap: 20px;
+}
+
+.turnos-page-shell > .np-flow-nav a {
+  position: relative;
+  padding: 11px 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.turnos-page-shell > .np-flow-nav a.active {
+  border-bottom-color: transparent;
+  color: var(--text-primary);
+}
+
+.turnos-page-shell > .np-flow-nav a.active::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: var(--color-primary);
+  content: "";
+}
+
+.turnos-page-shell > .np-header {
+  align-items: flex-end;
+  padding: 8px 2px 0;
+}
+
+.turnos-page-shell .np-header-text h1 {
+  margin-bottom: 5px;
+  font-size: clamp(21px, 2vw, 27px);
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+
+.turnos-page-shell .np-header-text p {
+  font-size: 12px;
+}
+
+.turnos-period-bar {
+  display: grid;
+  grid-template-columns: minmax(210px, 1fr) minmax(210px, 280px) auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-soft);
+}
+
+.turnos-period-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.turnos-period-heading .np-eyebrow { color: var(--color-primary); }
+.turnos-period-heading strong { overflow: hidden; color: var(--text-primary); font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.turnos-period-heading small { color: var(--text-secondary); font-size: 11px; font-weight: 600; }
+.turnos-period-bar > .np-select-wrap { width: 100%; min-width: 0; height: 40px; }
+
+.turnos-period-status {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.turnos-period-status.open {
+  background: color-mix(in srgb, var(--color-success) 13%, var(--bg-secondary));
+  border-color: color-mix(in srgb, var(--color-success) 32%, var(--border-color));
+  color: var(--color-success);
+}
+
+.turnos-period-status.locked {
+  background: color-mix(in srgb, var(--color-danger) 11%, var(--bg-secondary));
+  border-color: color-mix(in srgb, var(--color-danger) 28%, var(--border-color));
+  color: var(--color-danger);
+}
+
+.turnos-page-shell > .np-kpis { gap: 12px; }
+.turnos-page-shell > .np-kpis .np-kpi { min-height: 86px; border-radius: 16px; padding: 14px 16px; }
+.turnos-page-shell > .np-kpis .np-kpi-body strong { font-size: 17px; }
+
+.turnos-page-shell > .np-toolbar {
+  gap: 10px;
+  padding: 11px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+}
+
+.turnos-page-shell .np-toolbar-left { gap: 8px; }
+.turnos-page-shell .np-search { height: 40px; border-radius: 11px; }
+.turnos-page-shell .np-search svg { color: var(--color-primary); }
+.turnos-page-shell .np-search input { font-size: 12px; }
+.turnos-page-shell .np-select-wrap { height: 40px; border-radius: 11px; }
+.turnos-page-shell .np-select { font-size: 11px; }
+.turnos-page-shell .np-toolbar-right { gap: 8px; }
+
+.turnos-page-shell .np-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  border-radius: 11px;
+  background: var(--bg-primary);
+}
+
+.turnos-page-shell .np-segmented button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.turnos-page-shell .np-segmented button.active {
+  background: var(--bg-secondary);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--text-primary) 8%, transparent);
+  color: var(--color-primary-active);
+}
+
+.turnos-page-shell .np-toolbar-right > .np-badge {
+  height: 30px;
+  padding-inline: 9px;
+  font-size: 9px;
+}
+
+.turnos-page-shell .np-clear-btn { height: 40px; border-radius: 11px; font-size: 11px; }
+.turnos-page-shell > .np-external-summary { margin: 0; padding: 16px; border-radius: 16px; box-shadow: var(--shadow-soft); }
+.turnos-page-shell .np-section-heading { margin-bottom: 12px; }
+.turnos-page-shell .np-section-heading h2 { font-size: 16px; }
+.turnos-page-shell .np-external-summary-row { border-radius: 12px; background: var(--bg-primary); }
+.turnos-page-shell .np-external-actions .np-btn { min-height: 36px; padding-inline: 12px; font-size: 11px; }
+
+.turnos-page-shell > .turnos-operational-table {
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+}
+
+.turnos-page-shell .nomina-turnos-consolidated-head {
+  min-height: 46px;
+  padding-block: 10px;
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--bg-secondary));
+  font-size: 9px;
+  letter-spacing: .06em;
+}
+
+.turnos-page-shell .nomina-turnos-person-row {
+  min-height: 68px;
+  padding-block: 10px;
+}
+
+.turnos-page-shell .nomina-turnos-person-row:hover,
+.turnos-page-shell .nomina-turnos-person-card.is-expanded .nomina-turnos-person-row {
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--bg-secondary));
+}
+
+.turnos-page-shell .nomina-turnos-history {
+  margin-inline: 12px;
+  border-radius: 11px;
+  background: var(--bg-primary);
+}
+
+.turnos-page-shell .nomina-turnos-history-head { font-size: 9px; letter-spacing: .04em; }
+.turnos-page-shell .nomina-turnos-history-row { min-height: 42px; }
+.turnos-page-shell .np-detail-panel { border-radius: 16px; padding: 18px; }
+.turnos-page-shell .np-detail-panel h3 { font-size: 17px; }
+.turnos-page-shell .np-form-grid { gap: 12px; }
+.turnos-page-shell .np-form-control { border-radius: 11px; }
+.turnos-page-shell .np-checkbox-grid { border-radius: 12px; }
+
+@media (max-width: 1100px) {
+  .turnos-period-bar { grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto; }
+  .turnos-page-shell > .np-toolbar { align-items: stretch; }
+  .turnos-page-shell .np-toolbar-left, .turnos-page-shell .np-toolbar-right { width: 100%; }
+  .turnos-page-shell .np-toolbar-right { flex-wrap: wrap; }
+}
+
+@media (max-width: 700px) {
+  .turnos-period-bar { grid-template-columns: 1fr; gap: 10px; }
+  .turnos-period-status { justify-self: start; }
+  .turnos-page-shell .np-toolbar-left { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .turnos-page-shell .np-search { grid-column: 1 / -1; max-width: none; }
+  .turnos-page-shell .np-toolbar-left .np-select-wrap { min-width: 0; }
+  .turnos-page-shell .np-toolbar-right > * { flex: 1 1 auto; }
+  .turnos-page-shell .np-segmented { justify-content: center; }
+}
 .np-export-menu-panel {
   position: fixed;
   z-index: 2000;
@@ -1050,3 +1264,585 @@ select.np-form-control {
 .np-export-menu-panel strong { padding: 4px 8px; font-size: 12px; }
 .np-export-menu-panel button { border: 0; border-radius: 5px; background: transparent; padding: 7px 8px; text-align: left; cursor: pointer; color: inherit; }
 .np-export-menu-panel button:hover { background: var(--surface-hover, rgba(127,127,127,.14)); }
+
+/* Liquidaciones: real-data workspace aligned with the Nomina visual language. */
+.liquidacion-page-shell { gap: 14px; padding-bottom: 18px; }
+.liquidacion-page-shell .np-flow-nav { margin-bottom: 2px; }
+.liquidacion-page-shell .np-header { align-items: center; padding: 2px 2px 0; }
+.liquidacion-eyebrow { display: block; margin-bottom: 5px; color: var(--color-primary); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.liquidacion-page-shell .np-header-text h1 { margin-bottom: 5px; font-size: clamp(22px, 2.4vw, 30px); letter-spacing: -.03em; }
+.liquidacion-period-context { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 15px; border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--border-color)); border-radius: 16px; background: color-mix(in srgb, var(--color-primary) 4%, var(--bg-secondary)); box-shadow: var(--shadow-soft); }
+.liquidacion-period-context > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.liquidacion-period-context > div > span { color: var(--text-secondary); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.liquidacion-period-context strong { overflow: hidden; color: var(--text-primary); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.liquidacion-period-context small { color: var(--text-secondary); font-size: 10px; }
+.liquidacion-period-status { display: inline-flex; align-items: center; min-height: 25px; flex: 0 0 auto; padding: 0 10px; border-radius: 999px; font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+.liquidacion-period-status.open { background: color-mix(in srgb, var(--color-success) 15%, var(--bg-primary)); color: var(--color-success); }
+.liquidacion-period-status.locked { background: color-mix(in srgb, var(--text-secondary) 14%, var(--bg-primary)); color: var(--text-secondary); }
+.liquidacion-page-shell .np-kpi, .liquidacion-page-shell .np-toolbar, .liquidacion-page-shell .np-table-card, .liquidacion-page-shell .np-detail-panel { border-color: color-mix(in srgb, var(--color-primary) 12%, var(--border-color)); }
+.liquidacion-page-shell .np-kpi { transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; }
+.liquidacion-page-shell .np-kpi:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--color-primary) 30%, var(--border-color)); }
+.liquidacion-page-shell .np-toolbar { gap: 9px; padding: 11px 13px; border-radius: 16px; }
+.liquidacion-page-shell .np-search, .liquidacion-page-shell .np-select-wrap, .liquidacion-page-shell .np-clear-btn, .liquidacion-page-shell .np-btn { height: 40px; border-radius: 11px; }
+.liquidacion-page-shell .np-search:focus-within, .liquidacion-page-shell .np-select-wrap:focus-within { border-color: var(--color-primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 12%, transparent); }
+.liquidacion-page-shell .np-table-card { border-radius: 17px; }
+.liquidacion-page-shell .np-table-head { position: sticky; top: 0; z-index: 2; min-width: 1240px; padding-block: 12px; background: color-mix(in srgb, var(--color-primary) 7%, var(--bg-panel)); border-bottom-color: color-mix(in srgb, var(--color-primary) 24%, var(--border-color)); font-size: 10px; }
+.liquidacion-page-shell .np-table-row { min-width: 1240px; padding-block: 14px; }
+.liquidacion-page-shell .np-table-row:hover, .liquidacion-page-shell .np-table-row.is-selected { background: color-mix(in srgb, var(--color-primary) 6%, var(--bg-panel)); }
+.liquidacion-page-shell .np-table-text-net { color: var(--color-primary-active); }
+.liquidacion-page-shell .np-detail-panel { border-radius: 17px; box-shadow: var(--shadow-elevated, var(--shadow-soft)); }
+@media (max-width: 760px) {
+  .liquidacion-period-context { align-items: flex-start; flex-direction: column; }
+  .liquidacion-period-status { align-self: flex-start; }
+  .liquidacion-page-shell .np-header-actions { width: 100%; }
+  .liquidacion-page-shell .np-header-actions .np-btn { flex: 1 1 180px; justify-content: center; }
+  .liquidacion-page-shell .np-toolbar-left, .liquidacion-page-shell .np-toolbar-right { width: 100%; }
+  .liquidacion-page-shell .np-clear-btn { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .liquidacion-page-shell .np-kpi { transition: none; } }
+
+/* Composición Figma: una superficie de trabajo después de tabs + período. */
+.turnos-page-shell > .np-header,
+.liquidacion-page-shell > .np-header { min-height: 0; margin: 0; padding: 0; }
+.turnos-page-shell > .np-header.turnos-header-actions,
+.turnos-page-shell > .np-header .turnos-header-actions { display: none; }
+.turnos-page-shell > .np-header .np-header-text,
+.liquidacion-page-shell > .np-header .np-header-text { display: none; }
+.turnos-page-shell > .np-header .np-header-actions,
+.liquidacion-page-shell > .np-header .np-header-actions { width: auto; margin-left: auto; gap: 6px; }
+.turnos-page-shell > .np-kpis,
+.liquidacion-page-shell > .np-kpis { display: none; }
+.turnos-page-shell > .np-toolbar,
+.liquidacion-page-shell > .np-toolbar {
+  flex: 0 0 auto;
+  gap: 8px;
+  min-height: 46px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(16, 32, 51, .05);
+}
+.turnos-page-shell > .np-toolbar .np-search,
+.liquidacion-page-shell > .np-toolbar .np-search,
+.turnos-page-shell > .np-toolbar .np-select-wrap,
+.liquidacion-page-shell > .np-toolbar .np-select-wrap,
+.turnos-page-shell > .np-toolbar .np-btn,
+.liquidacion-page-shell > .np-toolbar .np-btn,
+.turnos-page-shell > .np-toolbar .np-clear-btn,
+.liquidacion-page-shell > .np-toolbar .np-clear-btn { min-height: 30px; height: 30px; border-radius: 8px; font-size: 11px; }
+.turnos-page-shell > .np-toolbar .np-search { flex: 0 0 176px; }
+.turnos-page-shell > .np-toolbar .np-toolbar-left,
+.liquidacion-page-shell > .np-toolbar .np-toolbar-left { gap: 8px; }
+.turnos-page-shell > .np-toolbar .np-toolbar-right,
+.liquidacion-page-shell > .np-toolbar .np-toolbar-right { gap: 8px; }
+.turnos-page-shell > .turnos-operational-table,
+.liquidacion-page-shell > .np-table-card { flex: 0 0 auto; min-height: 0; border-radius: 12px; box-shadow: 0 2px 10px rgba(16, 32, 51, .05); }
+.turnos-page-shell > .turnos-operational-table { overflow: visible; display: flex; flex-direction: column; }
+.turnos-page-shell > .turnos-operational-table .np-table-scroll { flex: 0 0 auto; min-height: 0; overflow: auto; }
+.turnos-page-shell > .np-external-summary { order: 5; }
+.turnos-page-shell > .turnos-operational-table { order: 4; }
+.turnos-page-shell > .np-detail-panel { order: 6; }
+.turnos-page-shell > .np-toolbar .np-badge.info,
+.turnos-page-shell > .np-toolbar .np-segmented { display: none; }
+.turnos-page-shell > .np-toolbar .turnos-toolbar-action { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; min-width: 0; padding-inline: 10px; }
+.turnos-card-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex: 0 0 auto; min-height: 52px; padding: 10px 14px; border-bottom: 1px solid var(--border-color); background: var(--bg-secondary); }
+.turnos-card-summary { display: flex; align-items: center; gap: 0; min-width: 0; color: var(--text-secondary); font-size: 11px; }
+.turnos-card-summary > * { padding: 0 12px; border-left: 1px solid var(--border-color); white-space: nowrap; }
+.turnos-card-summary > :first-child { padding-left: 0; border-left: 0; color: var(--text-primary); font-weight: 700; }
+.turnos-card-toolbar > .np-segmented { flex: 0 0 auto; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-panel); }
+.turnos-card-toolbar > .np-segmented button { min-height: 28px; padding: 5px 10px; font-size: 11px; }
+.liquidacion-page-shell > .np-table-card { overflow: hidden; }
+.liquidacion-page-shell > .np-table-card .np-table-scroll { max-height: none; }
+.turnos-page-shell .np-table-head,
+.liquidacion-page-shell .np-table-head { font-size: 9px; letter-spacing: .08em; background: var(--bg-panel); }
+.turnos-page-shell .np-table-row,
+.liquidacion-page-shell .np-table-row { font-size: 11px; padding-block: 12px; }
+.turnos-page-shell .np-segmented { border-radius: 8px; background: var(--bg-panel); }
+.turnos-page-shell .np-segmented button.active { background: #0a1628; color: #fff; }
+
+/* Main Turnos table: use the available canvas and keep operational details readable. */
+.turnos-page-shell .nomina-turnos-legacy-table { min-width: 0; }
+.turnos-page-shell .np-turns-table-grid { min-width: 1180px; }
+.turnos-page-shell .np-turns-table-grid > span,
+.turnos-page-shell .np-turns-table-grid > div { min-width: 0; }
+.turnos-page-shell .np-turns-table-grid .np-table-stack strong { color: #0a1628; font-size: 12px; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
+.turnos-page-shell .np-turns-table-grid .np-table-stack small { color: #607487; font-size: 10px; white-space: normal; overflow-wrap: anywhere; }
+.turnos-page-shell .np-turns-table-grid .np-table-ellipsis { white-space: normal; overflow-wrap: anywhere; }
+.turnos-page-shell .np-turns-table-grid .np-badge { border-radius: 6px; font-size: 9px; letter-spacing: .04em; }
+.turnos-page-shell .np-turns-table-grid .np-turn-status-actions { min-width: 0; }
+.turnos-page-shell .np-turns-table-grid { counter-reset: turn-row; }
+.turnos-page-shell .np-turns-table-grid.np-table-row { counter-increment: turn-row; }
+.turnos-page-shell .np-turns-table-grid.np-table-row > :first-child::before { content: none; display: none; }
+.turnos-page-shell .np-turn-status-actions { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.turnos-page-shell .np-row-status { display: inline-flex; align-items: center; gap: 4px; }
+.turnos-page-shell .np-doc-indicators { display: inline-flex; flex-wrap: wrap; gap: 4px; color: #607487; font-size: 9px; font-weight: 800; }
+.turnos-page-shell .np-doc-indicators span { padding: 2px 4px; border: 1px solid var(--border-color); border-radius: 5px; background: var(--bg-primary); }
+.turnos-page-shell .np-doc-indicators .is-ready { color: #18794e; border-color: color-mix(in srgb, #18794e 28%, var(--border-color)); }
+.turnos-page-shell .np-doc-indicators .is-pending { color: #9a6500; border-color: color-mix(in srgb, #d99016 35%, var(--border-color)); }
+.turnos-page-shell .np-turn-index { color: #607487; font-size: 10px; font-weight: 800; }
+.turnos-page-shell .np-turn-period { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; color: #0a1628; font-size: 10px; }
+.turnos-page-shell .np-turn-period > span:nth-child(2) { color: #607487; }
+.turnos-page-shell .np-days-badge { display: inline-flex; padding: 3px 6px; border-radius: 6px; background: color-mix(in srgb, #00c4d4 12%, var(--bg-secondary)); color: #087c89; font-size: 10px; white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .turnos-page-shell > .np-header .np-header-actions,
+  .liquidacion-page-shell > .np-header .np-header-actions { width: 100%; }
+  .turnos-page-shell > .np-toolbar .np-search { flex-basis: auto; }
+}
+
+/* Turnos: canonical Figma table geometry. The row keeps real Empiria fields,
+   while the grid exposes only the ten presentation columns of the reference. */
+.turnos-page-shell .np-turns-table-grid {
+  min-width: 1180px;
+}
+.turnos-page-shell .np-table-head.np-turns-table-grid {
+  min-height: 42px;
+  padding: 0 14px;
+  align-items: center;
+  color: #607487;
+  font-size: 9px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.turnos-page-shell .np-table-row.np-turns-table-grid {
+  align-items: center;
+  border-top: 1px solid color-mix(in srgb, #0a1628 7%, transparent);
+}
+.turnos-page-shell .np-table-row.np-turns-table-grid:nth-of-type(even) {
+  background: color-mix(in srgb, #eef3f8 36%, transparent);
+}
+.turnos-page-shell .np-table-row.np-turns-table-grid:hover,
+.turnos-page-shell .np-table-row.np-turns-table-grid.is-selected {
+  background: color-mix(in srgb, #00c4d4 7%, #fff);
+}
+.turnos-page-shell .np-person-cell { display: inline-flex; align-items: center; min-width: 0; gap: 8px; }
+.turnos-page-shell .np-avatar { width: 24px; height: 24px; flex: 0 0 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 9px; font-weight: 900; }
+.turnos-page-shell .np-person-copy { min-width: 0; display: grid; gap: 2px; }
+.turnos-page-shell .np-person-copy strong { color: #0a1628; font-size: 12px; line-height: 1.2; overflow-wrap: anywhere; }
+.turnos-page-shell .np-person-copy small { color: #607487; font-size: 10px; line-height: 1.2; }
+.turnos-page-shell .np-location-cell { display: grid; gap: 2px; min-width: 0; }
+.turnos-page-shell .np-location-municipio { color: #00aabd !important; font-size: 11px !important; }
+.turnos-page-shell .np-location-institution { color: #0a1628; font-size: 11px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.turnos-page-shell .np-location-cell small { color: #607487; font-size: 10px; line-height: 1.2; }
+.turnos-page-shell .np-location-modality { width: fit-content; padding: 2px 5px; border-radius: 5px; background: color-mix(in srgb, #00c4d4 12%, #fff); color: #087c89; font-size: 9px; font-weight: 800; }
+.turnos-page-shell .np-turn-period { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 10px; }
+.turnos-page-shell .np-turn-days { width: fit-content; padding: 4px 6px; border-radius: 6px; background: color-mix(in srgb, #00c4d4 12%, #fff); color: #087c89; font-size: 10px; white-space: nowrap; }
+.turnos-page-shell .np-table-row .np-table-text { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; }
+.turnos-page-shell .np-table-row .np-turn-status-actions { align-items: center; }
+.turnos-page-shell .np-section-heading-actions { display: flex; align-items: center; gap: 8px; }
+.turnos-page-shell .turnos-table-footer { display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 14px; border-top: 1px solid var(--border-color); color: #607487; font-size: 10px; }
+.turnos-page-shell .turnos-table-footer-actions { display: inline-flex; gap: 6px; }
+.turnos-page-shell .turnos-table-footer button { min-width: 30px; height: 28px; border: 1px solid var(--border-color); border-radius: 7px; background: #fff; color: #607487; }
+
+/* Turnos: compact row density and shared vertical rhythm. */
+.turnos-page-shell .np-table-row.np-turns-table-grid {
+  align-items: center;
+}
+
+.turnos-page-shell .np-table-row.np-turns-table-grid > * {
+  min-width: 0;
+}
+
+.turnos-page-shell .np-turn-index {
+  white-space: nowrap;
+  text-align: center;
+}
+
+.turnos-page-shell .np-person-cell,
+.turnos-page-shell .np-person-copy,
+.turnos-page-shell .np-turn-status-actions,
+.turnos-page-shell .np-doc-indicators,
+.turnos-page-shell .np-row-status {
+  align-items: center;
+}
+
+.turnos-page-shell .np-turn-status-actions {
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 5px;
+}
+
+.turnos-page-shell .np-turn-status-actions .np-doc-indicators {
+  flex-wrap: nowrap;
+}
+
+.turnos-page-shell .np-row-status {
+  justify-content: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.turnos-page-shell .np-table-row .np-table-text {
+  line-height: 1.2;
+  max-height: 2.4em;
+}
+.turnos-page-shell .np-turn-index {
+  min-width: 2ch;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.turnos-page-shell .np-turns-table-grid.np-table-row > :first-child::before {
+  content: none;
+  display: none;
+}
+.turnos-page-shell .np-table-stack {
+  gap: 1px;
+}
+.turnos-page-shell .np-person-cell {
+  gap: 7px;
+}
+.turnos-page-shell .np-person-copy {
+  gap: 1px;
+}
+.turnos-page-shell .np-person-copy strong,
+.turnos-page-shell .np-person-copy small,
+.turnos-page-shell .np-location-institution,
+.turnos-page-shell .np-location-cell small {
+  line-height: 1.15;
+}
+.turnos-page-shell .np-location-cell {
+  gap: 1px;
+}
+.turnos-page-shell .np-table-row .np-table-text {
+  line-height: 1.2;
+}
+.turnos-page-shell .np-turn-period {
+  justify-content: center;
+  line-height: 1.15;
+}
+.turnos-page-shell .np-turn-days {
+  line-height: 1.1;
+}
+.turnos-page-shell .np-turn-status-actions {
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  line-height: 1.1;
+}
+.turnos-page-shell .np-turns-table-grid .np-badge {
+  min-height: 20px;
+  height: 20px;
+  line-height: 1;
+}
+.turnos-page-shell .np-doc-indicators {
+  justify-content: center;
+  gap: 3px;
+  line-height: 1;
+}
+.turnos-page-shell .np-doc-indicators span {
+  padding: 2px 4px;
+  line-height: 1;
+}
+.turnos-page-shell .np-row-status {
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.turnos-page-shell .np-turns-table-grid .np-icon-button {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+}
+
+/* Turnos: one shared vertical axis for the complete movement row. */
+.turnos-page-shell .np-table-row.np-turns-table-grid {
+  align-items: center;
+  min-height: 76px;
+  padding: 8px 14px;
+}
+
+.turnos-page-shell .np-table-row.np-turns-table-grid > .turnos-row-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding-block: 0;
+}
+
+.turnos-page-shell .turnos-row-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.turnos-page-shell .turnos-row-cell > .turnos-row-stack {
+  width: 100%;
+}
+
+.turnos-page-shell .turnos-row-stack.np-person-cell {
+  display: flex;
+  align-items: center;
+}
+
+.turnos-page-shell .turnos-row-stack .np-person-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.turnos-page-shell .turnos-row-cell.np-table-text {
+  justify-content: center;
+  line-height: 1.3;
+}
+
+.turnos-page-shell .turnos-row-cell.np-turn-period,
+.turnos-page-shell .turnos-row-cell.np-turn-days {
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.turnos-page-shell .turnos-row-stack.np-location-cell,
+.turnos-page-shell .turnos-row-stack.np-turn-status-actions {
+  flex-direction: column;
+  justify-content: center;
+}
+
+.turnos-page-shell .turnos-row-stack.np-turn-status-actions {
+  align-items: center;
+  gap: 3px;
+}
+
+.turnos-page-shell .turnos-row-cell.np-row-status {
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* Turnos compact table: one geometry for header, body, and every movement. */
+.turnos-page-shell .np-turns-table-grid {
+  --turnos-columns: 4% 7% 16% 16% 9% 15% 13% 5% 7% 8%;
+  grid-template-columns: var(--turnos-columns);
+  column-gap: 0;
+}
+
+.turnos-page-shell .np-table-row.np-turns-table-grid {
+  min-height: 96px;
+  box-sizing: border-box;
+  padding: 8px 14px;
+  align-items: center;
+}
+
+.turnos-page-shell .np-table-row.np-turns-table-grid > .turnos-row-cell {
+  height: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.turnos-page-shell .np-table-head.np-turns-table-grid > span {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 10px;
+}
+
+.turnos-page-shell .turnos-row-stack {
+  max-width: 100%;
+}
+
+.turnos-page-shell .turnos-row-stack.np-person-cell {
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+}
+
+.turnos-page-shell .turnos-row-stack .np-person-copy {
+  gap: 1px;
+  line-height: 1.15;
+}
+
+.turnos-page-shell .turnos-row-stack .np-person-copy strong,
+.turnos-page-shell .turnos-row-stack .np-person-copy small {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+
+.turnos-page-shell .turnos-row-stack.np-location-cell {
+  gap: 1px;
+  line-height: 1.05;
+}
+
+.turnos-page-shell .turnos-row-stack.np-location-cell > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.turnos-page-shell .turnos-row-stack.np-location-cell .np-location-modality {
+  white-space: normal;
+  line-height: 1.05;
+}
+
+.turnos-page-shell .turnos-row-cell.np-table-text {
+  justify-content: center;
+  max-height: none;
+  overflow: visible;
+  white-space: normal;
+}
+
+.turnos-page-shell .turnos-row-motivo-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  width: 100%;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+}
+
+.turnos-page-shell .turnos-row-cell.np-turn-period {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+.turnos-page-shell .turnos-row-cell.np-turn-period > span {
+  white-space: nowrap;
+}
+
+.turnos-page-shell .turnos-row-cell.np-turn-days {
+  flex-wrap: nowrap;
+  line-height: 1;
+}
+
+.turnos-page-shell .turnos-row-stack.np-turn-status-actions {
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 100%;
+  line-height: 1;
+}
+
+.turnos-page-shell .turnos-economic-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 5px;
+  color: var(--text-secondary);
+  font-size: 9px;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.turnos-page-shell .turnos-economic-summary small {
+  white-space: nowrap;
+}
+
+.turnos-page-shell .np-doc-indicators {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.turnos-page-shell .turnos-row-cell.np-row-status {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.turnos-page-shell .turnos-row-cell.np-row-status .np-icon-button {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+}
+
+/* Turnos actions live in a fixed right drawer; the table remains in place. */
+.turnos-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: color-mix(in srgb, #06131f 42%, transparent);
+}
+
+.turnos-page-shell .turnos-drawer-panel {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 121;
+  width: 600px;
+  max-width: calc(100vw - 32px);
+  height: 100dvh;
+  max-height: 100dvh;
+  box-sizing: border-box;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--border-color));
+  border-radius: 0;
+  background: var(--bg-secondary);
+  box-shadow: -12px 0 30px color-mix(in srgb, #06131f 16%, transparent);
+}
+
+.turnos-page-shell .np-detail-panel.turnos-drawer-panel {
+  padding: 22px;
+}
+
+.turnos-page-shell .np-external-summary.turnos-drawer-panel {
+  padding: 22px;
+}
+
+.turnos-drawer-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+}
+
+.turnos-page-shell .turnos-drawer-panel .np-section-heading {
+  padding-right: 42px;
+}
+
+.turnos-page-shell .turnos-document-context {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 14px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, var(--border-color));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-primary) 4%, var(--bg-primary));
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.turnos-page-shell .turnos-document-context strong {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.turnos-page-shell .turnos-drawer-panel .np-external-summary-list {
+  min-width: 0;
+}
+
+.turnos-page-shell .turnos-drawer-panel .np-external-summary-row {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1.25fr) repeat(2, minmax(72px, .7fr)) minmax(0, 1.4fr);
+}
+
+@media (min-width: 561px) and (max-width: 1024px) {
+  .turnos-page-shell .turnos-drawer-panel {
+    width: 78vw;
+    max-width: calc(100vw - 32px);
+  }
+}
+
+@media (max-width: 560px) {
+  .turnos-page-shell .turnos-drawer-panel {
+    width: 100%;
+    max-width: 100%;
+  }
+}

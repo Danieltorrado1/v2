@@ -19,11 +19,12 @@ const sectionFrom = (marker: string) => {
   return source.slice(start, nextExport === -1 ? source.length : nextExport);
 };
 
-test('el aseguramiento mensual calcula mes completo y conserva ABIERTO', () => {
+test('el aseguramiento mensual calcula el corte 26-25 y conserva ABIERTO', () => {
   const section = sectionFrom('export const ensureCurrentNominaPeriods');
 
-  assert.match(section, /date_trunc\('month', CURRENT_DATE\)/);
-  assert.match(section, /interval '1 month - 1 day'/);
+  assert.match(section, /getNominaPeriodRange\(calendarMonth\.anio, calendarMonth\.mes\)/);
+  assert.match(readFileSync(path.resolve(process.cwd(), 'src/modules/nomina/nomina-periodos.ts'), 'utf8'), /fecha_inicio: dateOnly\(year, month - 2, 26\)/);
+  assert.match(readFileSync(path.resolve(process.cwd(), 'src/modules/nomina/nomina-periodos.ts'), 'utf8'), /fecha_fin: dateOnly\(year, month - 1, 25\)/);
   assert.match(section, /tipo_periodo = 'MENSUAL'/);
   assert.match(section, /'ABIERTO'/);
   assert.match(section, /NOMINA_PERIODO_CREATE_AUTOMATICO/);

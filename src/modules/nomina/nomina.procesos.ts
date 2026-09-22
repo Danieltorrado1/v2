@@ -807,6 +807,91 @@ export async function assertNominaEmpleadoCoberturaScope(
   }
 }
 
+/**
+ * Protege los recursos de Cobertura que se identifican por externo/cuenta,
+ * en vez de por nomina_empleado. El alcance se resuelve contra los turnos
+ * asociados y sus fechas de periodo usando la misma regla canónica de Nómina.
+ */
+export async function assertNominaExternoCoberturaScope(
+  externoId: string | number,
+  periodoId?: string | number,
+  tenant?: TenantAccessContext,
+  client: any = dbPool
+): Promise<void> {
+  if (!tenant || tenant.isGlobalAdmin || isTenantAdmin(tenant)) return;
+
+  if (!tenant.userId) {
+    throw new AppError(
+      'Usuario sin responsabilidad para este proceso',
+      403,
+      'NOMINA_RESPONSABILIDAD_FORBIDDEN'
+    );
+  }
+
+  const movementConditions = [
+    'nm.externo_id = $1::bigint',
+    "nm.tipo_movimiento = 'TURNO_EXTERNO'",
+    'COALESCE(nm.activo, TRUE) = TRUE'
+  ];
+  const movementParams: unknown[] = [externoId];
+  if (periodoId !== undefined) {
+    movementParams.push(periodoId);
+    movementConditions.push(`nm.periodo_id = $${movementParams.length}::bigint`);
+  }
+  appendNominaCoberturaScope(movementConditions, movementParams, tenant);
+
+  const movement = await client.query(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM nomina_movimientos nm
+        INNER JOIN nomina_periodos np ON np.id = nm.periodo_id
+        INNER JOIN vinculaciones v ON v.id = nm.vinculacion_id
+        INNER JOIN contratos c ON c.id = np.contrato_id
+        WHERE ${movementConditions.join(' AND ')}
+      ) allowed
+    `,
+    movementParams
+  );
+
+  if (movement.rows[0]?.allowed === true) return;
+
+  const noveltyConditions = [
+    'nnt.externo_id = $1::bigint',
+    "nnt.tipo_turno = 'EXTERNO'",
+    'COALESCE(nnt.activo, TRUE) = TRUE'
+  ];
+  const noveltyParams: unknown[] = [externoId];
+  if (periodoId !== undefined) {
+    noveltyParams.push(periodoId);
+    noveltyConditions.push(`nnt.periodo_id = $${noveltyParams.length}::bigint`);
+  }
+  appendNominaCoberturaScope(noveltyConditions, noveltyParams, tenant);
+
+  const novelty = await client.query(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM nomina_novedad_turnos nnt
+        INNER JOIN nomina_empleados ne ON ne.id = nnt.nomina_empleado_id
+        INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
+        INNER JOIN nomina_periodos np ON np.id = nnt.periodo_id
+        INNER JOIN contratos c ON c.id = np.contrato_id
+        WHERE ${noveltyConditions.join(' AND ')}
+      ) allowed
+    `,
+    noveltyParams
+  );
+
+  if (!novelty.rows[0]?.allowed) {
+    throw new AppError(
+      'Registro fuera del alcance de nomina',
+      403,
+      'NOMINA_SCOPE_FORBIDDEN'
+    );
+  }
+}
+
 export async function assertNominaPeriodoCoberturaScope(
   periodoId: string | number,
   tenant?: TenantAccessContext,

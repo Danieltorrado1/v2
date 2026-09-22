@@ -44,6 +44,7 @@
     "db:migrate:nomina-5b1-cobertura-externos": "tsx src/scripts/migrate-nomina-5b1-cobertura-externos.ts",
     "db:migrate:nomina-cobertura-cuentas-sync": "tsx src/scripts/migrate-nomina-cobertura-cuentas-sync.ts",
     "db:migrate:nomina-ajustes-manuales": "tsx src/scripts/migrate-nomina-ajustes-manuales.ts",
+    "db:migrate:nomina-dco-ta": "tsx src/scripts/migrate-nomina-dco-ta.ts",
     "db:migrate:vinculacion-cotiza-pension": "tsx src/scripts/migrate-vinculacion-cotiza-pension.ts",
     "db:backfill:nomina-turnos": "npm run build && node dist/scripts/backfill-nomina-turnos.js",
     "db:migrate:organizaciones-contexto-empresarial": "tsx src/scripts/migrate-organizaciones-contexto-empresarial.ts",

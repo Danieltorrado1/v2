@@ -4,11 +4,21 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildTramos, dateKey, dedupeNominaNovedades, isOutsideEmployment, mergeAttendance, movimientosOnDate, novedadesOnDate, novedadState, upsertNominaNovedad, matchesPlanillaFilters, normalizePlanillaSearch, persistedPlanillaFiltersMatchPeriod } from './planillaOperativa.domain';
 import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from './nominaPeriods';
+import { addDaysToDateOnly } from './dateOnly';
 import type { NominaEmpleadoApi, NominaMovimientoApi, NominaNovedadApi } from '../../types/nomina.types';
 const employee={id:'1',vinculacion_id:'10',persona:{id:'7',nombre_completo:'MARIA PEREZ',numero_documento:'1234',primer_nombre:'MARIA',segundo_nombre:null,primer_apellido:'PEREZ',segundo_apellido:null},vinculacion:{id:'10',empresa_id:'15',contrato_id:'24',estado_vinculacion:'ACTIVA',fecha_inicio:'2026-08-10',fecha_fin:'2026-08-22',metodo_pago:'COBERTURA'},sede:{id:'1',municipio:'GRANADA',nombre_sede:'CENTRAL'},modalidad:'A'} as NominaEmpleadoApi;
 const source=readFileSync(resolve(process.cwd(),'FrontendNuevo/src/pages/nomina/PlanillaOperativaPage.tsx'),'utf8');
 const css=readFileSync(resolve(process.cwd(),'FrontendNuevo/src/pages/nomina/PlanillaOperativaPage.css'),'utf8');
+const shellCss=readFileSync(resolve(process.cwd(),'FrontendNuevo/src/pages/nomina/NominaModuleShell.css'),'utf8');
+const layoutCss=readFileSync(resolve(process.cwd(),'FrontendNuevo/src/layouts/MainLayout.css'),'utf8');
 test('calendario expone dia 31',()=>assert.equal(dateKey(2026,8,31),'2026-08-31'));
+test('rango 26 a 25 cruza el cambio de mes sin colapsar los dias',()=>{
+  const days:string[]=[]; let cursor='2026-08-26';
+  while(cursor<='2026-09-25'){days.push(cursor);cursor=addDaysToDateOnly(cursor,1);}
+  assert.equal(days.length,31);
+  assert.equal(days[0],'2026-08-26');
+  assert.equal(days.at(-1),'2026-09-25');
+});
 test('ingreso y retiro sombrean fuera de vinculacion',()=>{assert.equal(isOutsideEmployment(employee,'2026-08-09'),true);assert.equal(isOutsideEmployment(employee,'2026-08-10'),false);assert.equal(isOutsideEmployment(employee,'2026-08-23'),true);});
 test('ingreso intrames conserva la fila y habilita solo los dias vigentes',()=>{
   const cases=[
@@ -28,6 +38,14 @@ test('ingreso intrames conserva la fila y habilita solo los dias vigentes',()=>{
 });
 test('tres tramos siguen en una fila',()=>{const e={...employee,vinculacion:{...employee.vinculacion,fecha_inicio:'2026-08-01',fecha_fin:null}};const t=buildTramos(e,'2026-08-01','2026-08-31',[{id:'1',vinculacion_id:'10',fecha_inicio_efectiva:'2026-08-11',contexto_anterior:{modalidad:'A'},contexto_nuevo:{modalidad:'B'},tipo:'CAMBIO_DE_MODALIDAD',activo:true},{id:'2',vinculacion_id:'10',fecha_inicio_efectiva:'2026-08-21',contexto_anterior:{modalidad:'B'},contexto_nuevo:{modalidad:'C'},tipo:'CAMBIO_COMBINADO',activo:true}]);assert.deepEqual(t.map(x=>[x.inicio,x.fin,x.contexto.modalidad]),[['2026-08-01','2026-08-10','A'],['2026-08-11','2026-08-20','B'],['2026-08-21','2026-08-31','C']]);});
 test('virtualiza 771 filas y usa un grid sticky',()=>{assert.ok(source.includes('filtered.slice(startIndex,startIndex+visibleCount)'));assert.ok(css.includes('.op-head{position:sticky'));assert.ok(css.includes('.op-doc,.op-name{position:sticky!important'));assert.equal(source.includes('<table'),false);assert.equal(Array.from({length:771}).length,771);});
+test('la matriz es el unico scroll vertical de Planilla',()=>{
+  assert.ok(source.includes('className="nomina-module-shell--planilla"'));
+  assert.equal(source.includes('style={{ height: VIEWPORT_HEIGHT }}'),false);
+  assert.match(shellCss,/\.nomina-module-shell--planilla[\s\S]*?display:\s*flex/);
+  assert.match(layoutCss,/\.page-scroll--planilla-operativa[\s\S]*?overflow:\s*hidden/);
+  assert.match(css,/\.op-matrix-card\s*\{[\s\S]*?display:\s*flex[\s\S]*?min-height:\s*0/);
+  assert.match(css,/\.op-matrix-card \.op-viewport\s*\{[\s\S]*?flex:\s*1 1 auto[\s\S]*?overflow-y:\s*auto/);
+});
 test('incluye saltos y teclado requeridos',()=>{for(const token of ['[1,7]','[8,14]','[15,21]','[22,28]','[29,31]','ArrowDown','ArrowUp','ArrowRight','ArrowLeft','Enter','Escape'])assert.ok(source.includes(token),token);});
 test('PNR y licencia se proyectan por rango sin registros diarios',()=>{const base={activo:true,fecha_inicio:'2026-08-09',fecha_fin:'2026-08-12',fecha_inicio_evento_canonico:null,fecha_fin_evento_canonico:null} as NominaNovedadApi;assert.equal(novedadesOnDate([base],'2026-08-10').length,1);assert.equal(novedadesOnDate([base],'2026-08-13').length,0);const licencia={...base,fecha_inicio_evento_canonico:'2026-07-20',fecha_fin_evento_canonico:'2026-09-20'};assert.equal(novedadesOnDate([licencia],'2026-08-31').length,1);});
 test('PR1 activo se proyecta visualmente en su celda DATE',()=>{const pr1={id:'8',activo:true,fecha_inicio:'2099-08-21',fecha_fin:'2099-08-21',fecha_inicio_evento_canonico:null,fecha_fin_evento_canonico:null,tipo_novedad:{codigo_operativo:'PR1'}} as NominaNovedadApi;assert.equal(novedadesOnDate([pr1],'2099-08-21')[0]?.id,'8');assert.equal(novedadesOnDate([pr1],'2099-08-20').length,0);});

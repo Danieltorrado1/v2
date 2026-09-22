@@ -54,3 +54,15 @@ test('Drawer usa usuarios asociados a empresa activa y expone estados reales', (
   assert.match(drawer, /user\.name} \$\{user\.email/);
   assert.match(drawer, /apiClient\.put\('\/nomina\/procesos\/responsabilidades'/);
 });
+
+test('Turnos protegen externos y cuentas por alcance municipal', () => {
+  assert.match(procesos, /assertNominaExternoCoberturaScope/);
+  assert.match(externos, /listCoberturaExternos[\s\S]*filterCoberturaExternosByScope/);
+  assert.match(externos, /uploadCoberturaExternoDocumento[\s\S]*assertNominaExternoCoberturaScope/);
+  assert.match(externos, /generateCoberturaCuenta[\s\S]*assertNominaExternoCoberturaScope/);
+  assert.match(externos, /getCoberturaCuentaDownload[\s\S]*assertNominaExternoCoberturaScope/);
+  assert.match(externos, /uploadCoberturaCuentaFirmada[\s\S]*assertNominaExternoCoberturaScope/);
+  assert.match(routes, /cobertura\/externos\/:id\/documentos/);
+  assert.match(routes, /cobertura\/cuentas-cobro\/:id\/download/);
+  assert.match(routes, /cobertura\/cuentas-cobro\/:id\/firmada/);
+});

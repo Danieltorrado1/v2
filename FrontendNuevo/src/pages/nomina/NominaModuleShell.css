@@ -1,0 +1,156 @@
+.nomina-module-shell {
+  --nomina-ink: var(--text-primary, #0a1628);
+  --nomina-muted: var(--text-secondary, #667085);
+  --nomina-line: var(--border-color, #dce5ed);
+  --nomina-surface: var(--bg-secondary, #ffffff);
+  --nomina-cyan: var(--color-primary, #00aebe);
+  min-height: 100%;
+  width: 100%;
+  background: var(--bg-primary, #f5f7fa);
+  color: var(--nomina-ink);
+}
+
+/* Planilla owns the available workspace height; its matrix is the only
+   scrolling region. Other Nomina tabs keep the shared shell behaviour. */
+.nomina-module-shell--planilla {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.nomina-module-shell--planilla .nomina-module-tab-row {
+  flex: 0 0 auto;
+}
+
+.nomina-module-shell--planilla .nomina-module-canvas {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 12px;
+}
+
+.nomina-module-tab-row {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 18px;
+  background: transparent;
+  border-bottom: 1px solid var(--nomina-line);
+  box-shadow: none;
+}
+.nomina-module-tab-row > .np-flow-nav {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  max-height: 50px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.nomina-module-tab-row > .np-flow-nav a {
+  position: relative;
+  min-height: 48px;
+  padding: 15px 17px 14px;
+  border: 0;
+  border-radius: 0;
+  color: var(--nomina-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.nomina-module-tab-row > .np-flow-nav a:first-child { padding-left: 0; }
+.nomina-module-tab-row > .np-flow-nav a:hover,
+.nomina-module-tab-row > .np-flow-nav a:focus-visible { color: var(--nomina-ink); background: transparent; }
+.nomina-module-tab-row > .np-flow-nav a.active { color: var(--nomina-cyan); background: transparent; }
+.nomina-module-tab-row > .np-flow-nav a.active::after {
+  content: "";
+  position: absolute;
+  right: 17px;
+  bottom: -1px;
+  left: 17px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--nomina-cyan);
+}
+.nomina-module-tab-row > .np-flow-nav a:first-child.active::after { left: 0; }
+
+.nomina-module-period-slot {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  min-height: 48px;
+  padding-left: 16px;
+  color: var(--nomina-muted);
+  font-size: 11px;
+}
+.nomina-module-period-slot > label { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.nomina-module-period-slot select { height: 30px; max-width: 210px; border: 1px solid var(--nomina-line); border-radius: 8px; padding: 0 9px; background: var(--nomina-surface); color: var(--nomina-ink); font-size: 11px; }
+.nomina-module-period-slot .nomina-period-status { display: inline-flex; align-items: center; min-height: 24px; padding: 0 9px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+.nomina-module-period-slot .nomina-period-status.open { background: #dcfce7; color: #15803d; }
+.nomina-module-period-slot .nomina-period-status.locked { background: #eef2f6; color: var(--nomina-muted); }
+
+.nomina-module-canvas {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 16px 0 32px;
+}
+.nomina-module-canvas > .np-page,
+.nomina-module-canvas > .nomina-page,
+.nomina-module-canvas > .op-sheet-page { min-height: 0; }
+
+.nomina-module-shell--planilla .nomina-module-canvas > .op-sheet-page {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.nomina-module-shell--gestion {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.nomina-module-shell--gestion .nomina-module-canvas {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px 0 0;
+}
+
+.nomina-module-shell--gestion .nomina-module-canvas > .nomina-page {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+@media (max-width: 760px) {
+  .nomina-module-tab-row { align-items: stretch; flex-direction: column; gap: 0; }
+  .nomina-module-tab-row > .np-flow-nav { padding: 0 20px; overflow-x: auto; }
+  .nomina-module-tab-row > .np-flow-nav a { white-space: nowrap; padding-right: 14px; padding-left: 14px; }
+  .nomina-module-tab-row > .np-flow-nav a:first-child { padding-left: 0; }
+  .nomina-module-tab-row > .np-flow-nav a.active::after { right: 14px; left: 14px; }
+  .nomina-module-tab-row > .np-flow-nav a:first-child.active::after { left: 0; }
+  .nomina-module-period-slot { padding: 8px 20px; min-height: 0; justify-content: flex-start; flex-wrap: wrap; }
+  .nomina-module-canvas { padding: 12px 0 28px; }
+}
+
+[data-theme="dark"] .nomina-module-shell {
+  --nomina-line: #263449;
+  --nomina-surface: #111b2c;
+  --nomina-muted: var(--text-secondary, #9aa8ba);
+  background: var(--bg-primary, #0b1423);
+}
+[data-theme="dark"] .nomina-module-tab-row > .np-flow-nav a { color: #9aa8ba; }
+[data-theme="dark"] .nomina-module-tab-row > .np-flow-nav a.active,
+[data-theme="dark"] .nomina-module-tab-row > .np-flow-nav a:hover { color: #f5f7fb; }

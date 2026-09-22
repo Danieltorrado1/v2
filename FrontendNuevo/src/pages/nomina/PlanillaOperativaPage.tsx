@@ -46,13 +46,13 @@ import type {
 } from "../../types/nomina.types";
 import type { NominaAsistenciaBulkChange } from "../../services/nominaApi";
 import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from "./nominaPeriods";
+import { addDaysToDateOnly } from "./dateOnly";
 import { getColombianCalendarDay } from "./colombiaHolidays";
-import CoberturaFlowNav from "./CoberturaFlowNav";
+import NominaModuleShell from "./NominaModuleShell";
 import CambioOperativoFields from './CambioOperativoFields';
 import { tipoCambioOperativo } from './cambioOperativo.domain';
 import {
   buildTramos,
-  dateKey,
   employeeBaseContext,
   getEmploymentStatusMessage,
   isOutsideEmployment,
@@ -68,11 +68,13 @@ import {
   persistedPlanillaFiltersMatchPeriod,
   upsertNominaNovedad,
   novedadState,
+  novedadVisualClass,
   type PlanillaAsistencia,
   type PlanillaCambio,
   type PlanillaContexto,
 } from "./planillaOperativa.domain";
 import "./PlanillaOperativaPage.css";
+import "./nominaNovedadVisual.css";
 
 const formatTurnAmount = (value: number) => new Intl.NumberFormat("es-CO", {
   style: "currency",
@@ -80,15 +82,16 @@ const formatTurnAmount = (value: number) => new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
 }).format(value);
 
-const ROW_HEIGHT = 78;
+const ROW_HEIGHT = 112;
 const VIEWPORT_HEIGHT = 620;
 const MAX_PAGE = 100;
 const ATTENDANCE_BATCH_LIMIT = 5000;
 const ATTENDANCE_SAVE_BATCH_SIZE = 25;
+const PLANILLA_PAGE_SIZE = 50;
 const CANONICAL_RANGE_MODEL = "EVENTO_CANONICO_RANGO";
 const REVIEW_WIDTH = 56;
 const DOCUMENT_WIDTH = 112;
-const NAME_WIDTH = 300;
+const NAME_WIDTH = 400;
 const DAY_WIDTH = 22;
 const PLANILLA_GRID_TEMPLATE = (dayCount: number) =>
   `${REVIEW_WIDTH}px ${DOCUMENT_WIDTH}px minmax(${NAME_WIDTH}px,1.35fr) repeat(${dayCount},minmax(${DAY_WIDTH}px,1fr))`;
@@ -121,12 +124,59 @@ type PersistedFilters = {
   periodId?: string;
   eventFilter: EventFilter;
   gestor: string;
+  institucion: string;
+  sede: string;
   modalidad: string;
   municipio: string;
   query: string;
   reviewFilter: ReviewFilter;
   sortMode: SortMode;
 };
+
+type PlanillaFacetOption = { value: string; label: string };
+
+function PlanillaFacetDropdown({
+  label,
+  value,
+  options,
+  open,
+  onToggle,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: PlanillaFacetOption[];
+  open: boolean;
+  onToggle: () => void;
+  onChange: (value: string) => void;
+}) {
+  const selected = options.find((option) => option.value === value);
+  return (
+    <div className="planilla-facet" data-planilla-facet="true">
+      <button type="button" className="planilla-facet-trigger" aria-expanded={open} onClick={onToggle}>
+        <span>{selected?.label ?? label}</span>
+        <span aria-hidden="true">⌄</span>
+      </button>
+      {open ? (
+        <div className="planilla-facet-menu" role="listbox" aria-label={label}>
+          {options.map((option) => (
+            <button
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              className={option.value === value ? "is-selected" : ""}
+              key={`${label}-${option.value || "all"}`}
+              onClick={() => onChange(option.value)}
+            >
+              <span>{option.label}</span>
+              {option.value === value ? <Check size={14} aria-hidden="true" /> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 type AttendanceRangeResult = {
   marcados?: string[];
   omitidos?: Array<{ fecha: string; motivo: string }>;
@@ -313,6 +363,8 @@ function readPersistedFilters(empresaId: number | null, periodId: string): Persi
   const defaults: PersistedFilters = {
     eventFilter: "TODOS",
     gestor: GESTOR_ALL,
+    institucion: "",
+    sede: "",
     modalidad: "",
     municipio: "",
     query: "",
@@ -334,6 +386,8 @@ function readPersistedFilters(empresaId: number | null, periodId: string): Persi
     return {
       eventFilter: parsed.eventFilter ?? "TODOS",
       gestor: parsed.gestor ?? GESTOR_ALL,
+      institucion: parsed.institucion ?? "",
+      sede: parsed.sede ?? "",
       modalidad: parsed.modalidad ?? "",
       municipio: parsed.municipio ?? "",
       query: parsed.query ?? "",
@@ -516,12 +570,16 @@ export default function PlanillaOperativaPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [query, setQuery] = useState("");
   const [municipio, setMunicipio] = useState("");
+  const [institucion, setInstitucion] = useState("");
+  const [sede, setSede] = useState("");
   const [gestorFilter, setGestorFilter] = useState(GESTOR_ALL);
   const [modalidad, setModalidad] = useState("");
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("TODOS");
   const [eventFilter, setEventFilter] = useState<EventFilter>("TODOS");
   const [sortMode, setSortMode] = useState<SortMode>("NOMBRE_ASC");
   const [scrollTop, setScrollTop] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [openFacet, setOpenFacet] = useState<"municipio" | "institucion" | "sede" | "modalidad" | "gestor" | null>(null);
 
   const [selected, setSelected] = useState<SelectedCell | null>(null);
   const [rangeSelection, setRangeSelection] = useState<RangeSelection>(null);
@@ -551,6 +609,7 @@ export default function PlanillaOperativaPage() {
   );
 
   const viewport = useRef<HTMLDivElement>(null);
+  const facetToolbarRef = useRef<HTMLElement>(null);
   const canCreate = user?.permissions.includes("nomina.novedades.create") === true;
   const canUpdate = user?.permissions.includes("nomina.novedades.update") === true;
   const canClose = user?.permissions.includes("nomina.periodos.close") === true;
@@ -630,6 +689,8 @@ export default function PlanillaOperativaPage() {
       const defaults = emptyPlanillaFilters();
       setQuery(defaults.query);
       setMunicipio(defaults.municipio);
+      setInstitucion(defaults.institucion);
+      setSede(defaults.sede);
       setGestorFilter(defaults.gestor);
       setModalidad(defaults.modalidad);
       setReviewFilter(defaults.review);
@@ -641,6 +702,8 @@ export default function PlanillaOperativaPage() {
       const saved = readPersistedFilters(empresaId, periodId);
       setQuery(saved.query);
       setMunicipio(saved.municipio);
+      setInstitucion(saved.institucion);
+      setSede(saved.sede);
       setGestorFilter(saved.gestor);
       setModalidad(saved.modalidad);
       setReviewFilter(saved.reviewFilter);
@@ -664,6 +727,8 @@ export default function PlanillaOperativaPage() {
         periodId,
         eventFilter,
         gestor: gestorFilter,
+        institucion,
+        sede,
         modalidad,
         municipio,
         query,
@@ -671,7 +736,23 @@ export default function PlanillaOperativaPage() {
         sortMode,
       }),
     );
-  }, [empresaId, eventFilter, gestorFilter, modalidad, municipio, periodId, query, reviewFilter, sortMode]);
+  }, [empresaId, eventFilter, gestorFilter, institucion, modalidad, municipio, periodId, query, reviewFilter, sede, sortMode]);
+
+  useEffect(() => {
+    if (!openFacet) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!facetToolbarRef.current?.contains(event.target as Node)) setOpenFacet(null);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenFacet(null);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [openFacet]);
 
   useEffect(() => {
     if (!periodId || typeof window === "undefined") {
@@ -940,13 +1021,13 @@ export default function PlanillaOperativaPage() {
       return [];
     }
 
-    const firstDay = Number(start.slice(8));
-    const lastDay = Number(end.slice(8));
-
-    return Array.from(
-      { length: Math.max(0, lastDay - firstDay + 1) },
-      (_, index) => dateKey(Number(start.slice(0, 4)), Number(start.slice(5, 7)), firstDay + index),
-    );
+    const result: string[] = [];
+    let cursor = start;
+    while (cursor <= end) {
+      result.push(cursor);
+      cursor = addDaysToDateOnly(cursor, 1);
+    }
+    return result;
   }, [end, start]);
 
   const gridMinWidth = REVIEW_WIDTH + DOCUMENT_WIDTH + NAME_WIDTH + days.length * DAY_WIDTH;
@@ -972,37 +1053,73 @@ export default function PlanillaOperativaPage() {
     [attendance],
   );
 
-  const municipalityOptions = useMemo(
-    () =>
-      [...new Set(employees.map((item) => getEmployeeMunicipioLabel(item)).filter((item) => item !== "No disponible"))].sort(
-        (left, right) => left.localeCompare(right, "es", { sensitivity: "base" }),
-      ),
-    [employees],
-  );
-  const modalityOptions = useMemo(
-    () =>
-      [...new Set(employees.map((item) => getEmployeeModalidadCode(item)).filter((item) => item !== "No disponible"))].sort(
-        (left, right) => left.localeCompare(right, "es", { sensitivity: "base" }),
-      ),
-    [employees],
-  );
-  const gestorOptions = useMemo(() => {
-    const seen = new Map<string, string>();
+  const facetRows = useMemo(() => employees.map((employee) => {
+    const visible = buildVisibleContext(employee, employeeBaseContext(employee));
+    const employeeNovelties = noveltyByEmployee.get(employee.id) ?? [];
+    const searchText = normalizeSearchValue(
+      employee.persona.nombre_completo,
+      employee.persona.numero_documento,
+      visible.municipio,
+      visible.institucion,
+      visible.sede,
+      visible.modalidad,
+      visible.gestor,
+    );
+    const hasInconsistencies = (movementByEmployee.get(employee.id) ?? []).some(
+      (item) => item.posible_duplicado || item.alertas_validacion.length > 0,
+    );
+    return {
+      employee,
+      searchText,
+      municipio: visible.municipio,
+      institucion: visible.institucion,
+      sede: visible.sede,
+      modalidad: visible.modalidad,
+      gestorId: getEmployeeGestorId(employee),
+      reviewState: resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null),
+      needsReview: reviewByEmployee.get(employee.id)?.estado_revision === "REQUIERE_REVISION",
+      noveltyCount: employeeNovelties.length + (changesByLink.get(employee.vinculacion_id)?.filter(change => change.activo).length ?? 0),
+      hasInconsistencies,
+    };
+  }), [changesByLink, employees, movementByEmployee, noveltyByEmployee, reviewByEmployee]);
 
-    employees.forEach((employee) => {
-      const gestorId = getEmployeeGestorId(employee);
-      const gestorName = normalizeLabel(employee.gestor?.nombre_completo);
-      if (gestorId && gestorName) {
-        seen.set(String(gestorId), gestorName);
-      }
+  const facetOptions = useMemo(() => {
+    const normalizeOption = (value: string | null | undefined) => {
+      const label = normalizeLabel(value);
+      if (!label || label === "No disponible") return null;
+      return { key: normalizePlanillaSearch(label), label };
+    };
+    const matchesExcept = (row: (typeof facetRows)[number], except: string) => matchesPlanillaFilters(row, {
+      query,
+      municipio: except === "municipio" ? "" : municipio,
+      institucion: except === "institucion" ? "" : institucion,
+      sede: except === "sede" ? "" : sede,
+      gestor: except === "gestor" ? GESTOR_ALL : gestorFilter,
+      modalidad: except === "modalidad" ? "" : modalidad,
+      review: reviewFilter,
+      events: eventFilter,
     });
+    const values = (field: "municipio" | "institucion" | "sede" | "modalidad" | "gestor") => {
+      const seen = new Map<string, PlanillaFacetOption>();
+      facetRows.filter((row) => matchesExcept(row, field)).forEach((row) => {
+        const raw = field === "gestor"
+          ? (row.gestorId ? getEmployeeGestorLabel(row.employee) : "Sin gestor asignado")
+          : row[field];
+        const option = normalizeOption(raw);
+        if (option && !seen.has(option.key)) seen.set(option.key, { value: field === "gestor" ? (row.gestorId ? String(row.gestorId) : GESTOR_NONE) : raw!, label: option.label });
+      });
+      return [...seen.values()].sort((left, right) => left.label.localeCompare(right.label, "es", { sensitivity: "base" }));
+    };
+    return {
+      municipio: [{ value: "", label: "Todos los municipios" }, ...values("municipio")],
+      institucion: [{ value: "", label: "Todas las instituciones" }, ...values("institucion")],
+      sede: [{ value: "", label: "Todas las sedes" }, ...values("sede")],
+      modalidad: [{ value: "", label: "Todas las modalidades" }, ...values("modalidad")],
+      gestor: [{ value: GESTOR_ALL, label: "Todos los gestores" }, { value: GESTOR_NONE, label: "Sin gestor asignado" }, ...values("gestor").filter((item) => item.value !== GESTOR_NONE)],
+    };
+  }, [eventFilter, facetRows, gestorFilter, institucion, modalidad, municipio, query, reviewFilter, sede]);
 
-    return [...seen.entries()]
-      .map(([value, label]) => ({ label, value }))
-      .sort((left, right) => left.label.localeCompare(right.label, "es", { sensitivity: "base" }));
-  }, [employees]);
-
-  const filtered = useMemo(
+  const filteredEmployees = useMemo(
     () =>
       employees.filter((employee) => {
         const employeeNovelties = noveltyByEmployee.get(employee.id) ?? [];
@@ -1026,6 +1143,8 @@ export default function PlanillaOperativaPage() {
           {
             searchText: searchValue,
             municipio: visible.municipio,
+            institucion: visible.institucion,
+            sede: visible.sede,
             gestorId: getEmployeeGestorId(employee),
             modalidad: visible.modalidad,
             reviewState,
@@ -1033,14 +1152,14 @@ export default function PlanillaOperativaPage() {
             noveltyCount: employeeNovelties.length + (changesByLink.get(employee.vinculacion_id)?.filter(change => change.activo).length ?? 0),
             hasInconsistencies,
           },
-          { query, municipio, gestor: gestorFilter, modalidad, review: reviewFilter, events: eventFilter },
+          { query, municipio, institucion, sede, gestor: gestorFilter, modalidad, review: reviewFilter, events: eventFilter },
         );
       }),
-    [employees, eventFilter, gestorFilter, modalidad, movementByEmployee, municipio, noveltyByEmployee, changesByLink, query, reviewByEmployee, reviewFilter],
+    [employees, eventFilter, gestorFilter, institucion, modalidad, movementByEmployee, municipio, noveltyByEmployee, changesByLink, query, reviewByEmployee, reviewFilter, sede],
   );
 
   const ordered = useMemo(() => {
-    const items = [...filtered];
+    const items = [...filteredEmployees];
     items.sort((left, right) => {
       const leftContext = employeeBaseContext(left);
       const rightContext = employeeBaseContext(right);
@@ -1074,7 +1193,7 @@ export default function PlanillaOperativaPage() {
       return sortMode === "NOMBRE_DESC" || sortMode === "DOCUMENTO_DESC" ? -result : result;
     });
     return items;
-  }, [filtered, sortMode]);
+  }, [filteredEmployees, sortMode]);
 
   const summary = useMemo(
     () => ({
@@ -1087,8 +1206,22 @@ export default function PlanillaOperativaPage() {
 
   const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 6);
   const visibleCount = Math.ceil(VIEWPORT_HEIGHT / ROW_HEIGHT) + 12;
-  // Virtualizacion equivalente a filtered.slice(startIndex,startIndex+visibleCount).
-  const visibleEmployees = ordered.slice(startIndex, startIndex + visibleCount);
+  const totalPages = Math.max(1, Math.ceil(ordered.length / PLANILLA_PAGE_SIZE));
+  const pageStart = (currentPage - 1) * PLANILLA_PAGE_SIZE;
+  const pagedEmployees = ordered.slice(pageStart, pageStart + PLANILLA_PAGE_SIZE);
+  // La paginación es solo una vista del conjunto ya cargado; la virtualización
+  // sigue operando sobre la página visible sin crear otra fuente de datos.
+  const filtered = pagedEmployees;
+  const visibleEmployees = filtered.slice(startIndex,startIndex+visibleCount);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setScrollTop(0);
+  }, [query, municipio, institucion, sede, gestorFilter, modalidad, reviewFilter, eventFilter, sortMode, periodId]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   const coverageCandidates = useMemo(() => {
     if (!noveltyCell) {
@@ -1221,7 +1354,7 @@ export default function PlanillaOperativaPage() {
     const activeNovelty = novedadesOnDate(noveltyByEmployee.get(employee.id) ?? [], date).find(
       (item) => item.activo,
     );
-    if (!remove && activeNovelty) {
+    if (!remove && activeNovelty && activeNovelty.tipo_novedad.permite_asistencia_simultanea !== true) {
       const message = `No puedes marcar asistencia el ${shortDateLabel(date) ?? date} porque existe una novedad activa: ${novedadCode(activeNovelty)}.`;
       setAttendanceFailures((current) => {
         const next = new Map(current);
@@ -1440,7 +1573,7 @@ export default function PlanillaOperativaPage() {
         horas: selectedType.requiere_horas ? Number(hours || 0) : null,
         valor_manual: selectedType.requiere_valor ? Number(manualValue || 0) : null,
         observacion: normalizeLabel(observacion) ?? "Captura desde planilla",
-        reemplazar_asistencia_confirmado: present.has(`${noveltyCell.employee.vinculacion_id}|${noveltyCell.date}`)
+        reemplazar_asistencia_confirmado: selectedType.permite_asistencia_simultanea !== true && present.has(`${noveltyCell.employee.vinculacion_id}|${noveltyCell.date}`)
           ? window.confirm(`Este dia esta marcado como asistencia.\n\nRegistrar ${selectedType.codigo_operativo ?? "la novedad"} reemplazara la asistencia del dia ${dateLabel(noveltyCell.date)}.`)
           : false,
         documento_persona_id: normalizeLabel(documentoPersonaId),
@@ -1471,7 +1604,7 @@ export default function PlanillaOperativaPage() {
                   },
       };
 
-      if (present.has(`${noveltyCell.employee.vinculacion_id}|${noveltyCell.date}`) && !basePayload.reemplazar_asistencia_confirmado) return;
+      if (selectedType.permite_asistencia_simultanea !== true && present.has(`${noveltyCell.employee.vinculacion_id}|${noveltyCell.date}`) && !basePayload.reemplazar_asistencia_confirmado) return;
 
       const response =
         editingNovelty
@@ -1599,6 +1732,8 @@ export default function PlanillaOperativaPage() {
   const clearFilters = () => {
     setQuery("");
     setMunicipio("");
+    setInstitucion("");
+    setSede("");
     setGestorFilter(GESTOR_ALL);
     setModalidad("");
     setReviewFilter("TODOS");
@@ -1607,7 +1742,7 @@ export default function PlanillaOperativaPage() {
   };
 
   const activeFilterCount = countActivePlanillaFilters({
-    query, municipio, gestor: gestorFilter, modalidad, review: reviewFilter, events: eventFilter,
+    query, municipio, institucion, sede, gestor: gestorFilter, modalidad, review: reviewFilter, events: eventFilter,
   });
 
   const nextPending = () => {
@@ -1641,46 +1776,21 @@ export default function PlanillaOperativaPage() {
   };
 
   return (
-    <section className="op-sheet-page">
-      <CoberturaFlowNav periodId={periodId} />
-      <header className="op-sheet-title">
-        <div>
-          <span>Nomina</span>
-          <h1>Planilla operativa 1-31</h1>
-        </div>
-
-        <div className="op-period-picker">
-          <label>
-            Periodo
-            <select
-              value={periodId}
-              disabled={isNominaPeriodSelectorDisabled(periods, periodsLoading)}
-              onChange={(event) => setPeriodId(event.target.value)}
-            >
-              {periods.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre_periodo} | {item.tipo_periodo}
-                </option>
-              ))}
-            </select>
-          </label>
-          <strong className={`op-period-state ${period?.estado === "ABIERTO" ? "open" : "locked"}`}>
-            {period?.estado ?? "CARGANDO"}
-          </strong>
-        </div>
-      </header>
-
-      {period ? (
-        <div className="op-period-meta">
-          {dateLabel(period.fecha_inicio)} - {dateLabel(period.fecha_fin)} | {period.tipo_periodo} | Contrato{" "}
-          {period.contrato_id ?? "-"}
-        </div>
-      ) : null}
-
-      <div className="op-summary">
+    <NominaModuleShell className="nomina-module-shell--planilla" periodId={periodId} periodSlot={(
+      <>
+        <label>Período
+          <select value={periodId} disabled={isNominaPeriodSelectorDisabled(periods, periodsLoading)} onChange={(event) => setPeriodId(event.target.value)}>
+            {periods.map((item) => <option key={item.id} value={item.id}>{item.nombre_periodo} · {item.fecha_inicio} - {item.fecha_fin}</option>)}
+          </select>
+        </label>
+        <span className={`nomina-period-status ${period?.estado === "ABIERTO" ? "open" : "locked"}`}>{period?.estado ?? "CARGANDO"}</span>
+      </>
+    )}>
+      <section className="op-sheet-page">
+      <section className="op-summary" aria-label="Resumen de la planilla">
         <strong>{employees.length} trabajadores</strong>
         <span aria-live="polite">
-          {filtered.length} personas · {activeFilterCount} {activeFilterCount === 1 ? "filtro activo" : "filtros activos"}
+          {filteredEmployees.length} personas · {activeFilterCount} {activeFilterCount === 1 ? "filtro activo" : "filtros activos"}
         </span>
         <span>
           REVISION {summary.reviewed}/{employees.length} |{" "}
@@ -1688,9 +1798,11 @@ export default function PlanillaOperativaPage() {
         </span>
         <span>{summary.pending} pendientes</span>
         <span>{summary.needsReview} requieren revision</span>
-      </div>
+        {employees.length > 0 && period?.estado === "ABIERTO" && user?.permissions.includes("nomina.empleados.import") ?
+          <button type="button" className="op-sync-action" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={15} />{isSyncingPersonal ? "Sincronizando..." : "SINCRONIZAR AHORA"}</button> : null}
+      </section>
 
-      <div className="op-toolbar">
+      <section className="op-toolbar" aria-label="Filtros de planilla" ref={facetToolbarRef}>
         <label className="op-search">
           <Search size={15} />
           <input
@@ -1700,33 +1812,11 @@ export default function PlanillaOperativaPage() {
           />
         </label>
 
-        <select value={municipio} onChange={(event) => setMunicipio(event.target.value)}>
-          <option value="">Municipio</option>
-          {municipalityOptions.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-
-        <select value={gestorFilter} onChange={(event) => setGestorFilter(event.target.value)}>
-          <option value={GESTOR_ALL}>Gestor</option>
-          <option value={GESTOR_NONE}>Sin gestor asignado</option>
-          {gestorOptions.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-
-        <select value={modalidad} onChange={(event) => setModalidad(event.target.value)}>
-          <option value="">Modalidad</option>
-          {modalityOptions.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
+        <PlanillaFacetDropdown label="Municipio" value={municipio} options={facetOptions.municipio} open={openFacet === "municipio"} onToggle={() => setOpenFacet(openFacet === "municipio" ? null : "municipio")} onChange={setMunicipio} />
+        <PlanillaFacetDropdown label="Institución" value={institucion} options={facetOptions.institucion} open={openFacet === "institucion"} onToggle={() => setOpenFacet(openFacet === "institucion" ? null : "institucion")} onChange={setInstitucion} />
+        <PlanillaFacetDropdown label="Sede" value={sede} options={facetOptions.sede} open={openFacet === "sede"} onToggle={() => setOpenFacet(openFacet === "sede" ? null : "sede")} onChange={setSede} />
+        <PlanillaFacetDropdown label="Modalidad" value={modalidad} options={facetOptions.modalidad} open={openFacet === "modalidad"} onToggle={() => setOpenFacet(openFacet === "modalidad" ? null : "modalidad")} onChange={setModalidad} />
+        <PlanillaFacetDropdown label="Gestor" value={gestorFilter} options={facetOptions.gestor} open={openFacet === "gestor"} onToggle={() => setOpenFacet(openFacet === "gestor" ? null : "gestor")} onChange={setGestorFilter} />
 
         <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value as ReviewFilter)}>
           <option value="TODOS">Revision</option>
@@ -1760,7 +1850,7 @@ export default function PlanillaOperativaPage() {
         <button type="button" onClick={clearFilters} disabled={activeFilterCount === 0}>
           LIMPIAR FILTROS
         </button>
-      </div>
+      </section>
 
       {rangeSelection ? (
         <div className="op-range-banner">
@@ -1796,10 +1886,6 @@ export default function PlanillaOperativaPage() {
         </div>
       ) : null}
 
-      <div className="op-inline-note compact" role="status">
-        {attendanceSaveState === "saving" ? "Guardando asistencia..." : pendingAttendanceChanges.size ? `${pendingAttendanceChanges.size} cambios pendientes` : attendanceSaveState === "error" ? <><span>Error al guardar asistencia.</span> <button type="button" onClick={() => void attendanceFlushRef.current()}>Reintentar</button></> : "Todos los cambios de asistencia guardados"}
-      </div>
-
       {successMessage ? (
         <div className="op-success" role="status">
           <Check size={16} />
@@ -1808,8 +1894,6 @@ export default function PlanillaOperativaPage() {
         </div>
       ) : null}
 
-      {employees.length > 0 && period?.estado === "ABIERTO" && user?.permissions.includes("nomina.empleados.import") ?
-        <div className="op-population-actions"><button type="button" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={17} />{isSyncingPersonal ? "Sincronizando..." : "SINCRONIZAR AHORA"}</button></div> : null}
       {(Boolean(periodId) && loading) || periodsLoading ? (
         <div className="op-loading" role="status">Cargando trabajadores y eventos...</div>
       ) : !periodId ? <div className="op-population-empty" role="status"><h2>Sin periodo disponible</h2><p>Selecciona una empresa y un periodo para consultar la planilla.</p><button type="button" onClick={() => setReloadVersion(value => value + 1)}>Reintentar</button></div>
@@ -1820,11 +1904,11 @@ export default function PlanillaOperativaPage() {
         {!error && availableEmployees !== 0 && period?.estado === "ABIERTO" ? user?.permissions.includes("nomina.empleados.import") ? <button type="button" onClick={() => void syncPersonal()} disabled={isSyncingPersonal}><RefreshCw size={17} />{isSyncingPersonal ? "Cargando personal..." : "CARGAR PERSONAL"}</button> : <p>Solicita la carga a un usuario con permiso para importar personal.</p> : null}
         <button type="button" onClick={() => setReloadVersion(value => value + 1)} disabled={isSyncingPersonal}>Reintentar</button>
       </div> : ordered.length === 0 ? <div className="op-population-empty" role="status"><h2>Sin coincidencias</h2><p>No hay trabajadores que coincidan con los filtros actuales.</p></div> : (
+        <div className="op-matrix-card">
         <div
           ref={viewport}
           className="op-viewport"
           onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
-          style={{ height: VIEWPORT_HEIGHT }}
         >
           <div className="op-grid op-head" style={{ gridTemplateColumns: PLANILLA_GRID_TEMPLATE(days.length), minWidth: gridMinWidth }}>
             <div>REV</div>
@@ -1838,7 +1922,7 @@ export default function PlanillaOperativaPage() {
             ))}
           </div>
 
-          <div className="op-virtual-space" style={{ height: ordered.length * ROW_HEIGHT, minWidth: gridMinWidth }}>
+          <div className="op-virtual-space" style={{ height: pagedEmployees.length * ROW_HEIGHT, minWidth: gridMinWidth }}>
             {visibleEmployees.map((employee, offset) => {
               const index = startIndex + offset;
               const review = reviewByEmployee.get(employee.id) ?? null;
@@ -1888,9 +1972,8 @@ export default function PlanillaOperativaPage() {
                     <small>{visible.municipio}</small>
                     <small>{visible.institucion}</small>
                     <small>{visible.sede}</small>
-                    <small className="op-context-accent" title={buildContextTitle(employee, baseContext)}>
-                      {visible.modalidad} | Gestor: {visible.gestor}
-                    </small>
+                    <small className="op-context-accent op-modality-badge">{visible.modalidad}</small>
+                    <small className="op-gestor" title={buildContextTitle(employee, baseContext)}>Gestor: {visible.gestor}</small>
                   </button>
 
                   {days.map((day) => {
@@ -1915,7 +1998,7 @@ export default function PlanillaOperativaPage() {
                       <button
                         type="button"
                         key={day}
-                        className={`op-cell ${calendarDay.className} ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""} ${activeNoveltiesOnThisDay.length ? "has-active-novelty" : ""} ${isPendingAttendance ? "pending-attendance" : ""} ${hasAttendanceFailure ? "attendance-error" : ""}`}
+                        className={`op-cell ${calendarDay.className} ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""} ${activeNoveltiesOnThisDay.length ? "has-active-novelty" : ""} ${noveltiesOnThisDay[0] ? novedadVisualClass(noveltiesOnThisDay[0]) : ""} ${isPendingAttendance ? "pending-attendance" : ""} ${hasAttendanceFailure ? "attendance-error" : ""}`}
                         data-active-novelty={activeNoveltiesOnThisDay.length ? novedadCode(activeNoveltiesOnThisDay[0]) : undefined}
                         title={`${outsideMessage ? `${outsideMessage} | ` : ""}${noveltiesOnThisDay.length ? `${novedadCode(noveltiesOnThisDay[0])} | ${noveltiesOnThisDay[0]?.tipo_novedad?.nombre ?? "Novedad"} | ${dateLabel(day)} | ${noveltiesOnThisDay[0]?.fecha_inicio ?? day} a ${noveltiesOnThisDay[0]?.fecha_fin ?? day} | ${noveltiesOnThisDay[0]?.observacion ?? "Sin observacion"}` : `${dateLabel(day)} | ${buildContextTitle(employee, dayContext)}`}`}
                         onContextMenu={(event) => {
@@ -1937,7 +2020,7 @@ export default function PlanillaOperativaPage() {
                         {isPendingAttendance && !isPresent ? <span className="op-attendance-pending-mark">...</span> : null}
                         {activeNoveltiesOnThisDay.length === 0 && isPresent ? <b className="op-attendance-mark">OK</b> : null}
                         {noveltiesOnThisDay.slice(0, 2).map((item) => (
-                          <b className="op-novelty-mark" key={item.id} data-state={novedadState(item)}>
+                          <b className={`op-novelty-mark ${novedadVisualClass(item)}`} key={item.id} data-state={novedadState(item)}>
                             {novedadCode(item)}
                           </b>
                         ))}
@@ -1951,6 +2034,17 @@ export default function PlanillaOperativaPage() {
               );
             })}
           </div>
+        </div>
+        <footer className="op-matrix-footer">
+          <span>Mostrando {ordered.length ? pageStart + 1 : 0}–{Math.min(pageStart + PLANILLA_PAGE_SIZE, ordered.length)} de {ordered.length} trabajadores</span>
+          <nav className="op-pagination" aria-label="Paginación de trabajadores">
+            <button type="button" onClick={() => { setCurrentPage((page) => Math.max(1, page - 1)); setScrollTop(0); }} disabled={currentPage === 1}>Anterior</button>
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+              <button key={page} type="button" className={page === currentPage ? "active" : ""} aria-current={page === currentPage ? "page" : undefined} onClick={() => { setCurrentPage(page); setScrollTop(0); }}>{page}</button>
+            ))}
+            <button type="button" onClick={() => { setCurrentPage((page) => Math.min(totalPages, page + 1)); setScrollTop(0); }} disabled={currentPage === totalPages}>Siguiente</button>
+          </nav>
+        </footer>
         </div>
       )}
 
@@ -2349,7 +2443,8 @@ export default function PlanillaOperativaPage() {
           </div>
         </div>
       ) : null}
-    </section>
+      </section>
+    </NominaModuleShell>
   );
 }
 

@@ -538,6 +538,27 @@
 .layout { height: 100dvh; min-height: 100dvh; }
 .content, .page-scroll, .page-content { min-height: 0; }
 
+/* All Nómina routes share the full workspace width; management keeps its
+   existing bounded-height rules through page-content--nomina-gestion. */
+.page-scroll--nomina-module { padding-inline: 20px; }
+.page-content--nomina-module { max-width: none; }
+
+/* Planilla keeps the outer workspace fixed; only its matrix body scrolls. */
+.page-scroll--planilla-operativa {
+  overflow: hidden;
+}
+
+.page-content--planilla-operativa {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.page-content--planilla-operativa > .nomina-module-shell {
+  height: 100%;
+  min-height: 0;
+}
+
 /* =========================
    RESPONSIVE
 ========================= */

@@ -21,6 +21,7 @@ export interface NominaTipoNovedadRepositoryRow extends QueryResultRow {
 
 export interface ListNominaNovedadRepositoryInput {
   activo?: boolean;
+  excludeInformative?: boolean;
   nominaEmpleadoId?: string | null;
   periodoId?: string | null;
   personaId?: string | null;
@@ -94,7 +95,11 @@ const noveltySelect = `
     nn.categoria_nueva_id::text AS categoria_nueva_id,
     nn.documento_persona_id::text AS documento_persona_id,
     COALESCE(soporte_doc.documento_persona_id::text, nn.documento_persona_id::text) AS soporte_documento_persona_id,
+    soporte_doc.estado_revision AS soporte_documento_estado_revision,
     permiso_doc.documento_persona_id::text AS solicitud_permiso_documento_persona_id,
+    permiso_doc.estado_revision AS solicitud_permiso_documento_estado_revision,
+    autorizacion_doc.documento_persona_id::text AS autorizacion_descuento_documento_persona_id,
+    autorizacion_doc.estado_revision AS autorizacion_descuento_documento_estado_revision,
     nn.observacion,
     COALESCE(nn.revisado, FALSE) AS revisado,
     COALESCE(nn.activo, TRUE) AS activo,
@@ -138,6 +143,7 @@ const noveltySelect = `
     COALESCE(ntn.permite_rango, FALSE) AS tipo_novedad_permite_rango,
     COALESCE(ntn.requiere_revision, FALSE) AS tipo_novedad_requiere_revision,
     COALESCE(ntn.requiere_solicitud_permiso, FALSE) AS tipo_novedad_requiere_solicitud_permiso,
+    COALESCE(ntn.requiere_autorizacion_descuento, FALSE) AS tipo_novedad_requiere_autorizacion_descuento,
     COALESCE(ntn.es_incapacidad, FALSE) AS tipo_novedad_es_incapacidad,
     COALESCE(ntn.es_accidente_laboral, FALSE) AS tipo_novedad_es_accidente_laboral,
     COALESCE(ntn.es_permiso, FALSE) AS tipo_novedad_es_permiso,
@@ -154,6 +160,16 @@ const noveltySelect = `
     p.segundo_nombre,
     p.primer_apellido,
     p.segundo_apellido,
+    contexto_novedad.contexto_municipio,
+    contexto_novedad.contexto_municipio_id::text AS contexto_municipio_id,
+    contexto_novedad.contexto_institucion,
+    contexto_novedad.contexto_institucion_id::text AS contexto_institucion_id,
+    contexto_novedad.contexto_sede,
+    contexto_novedad.contexto_sede_id::text AS contexto_sede_id,
+    contexto_novedad.contexto_modalidad,
+    contexto_novedad.contexto_modalidad_id::text AS contexto_modalidad_id,
+    contexto_novedad.contexto_cargo_id::text AS contexto_cargo_id,
+    contexto_novedad.contexto_cargo,
     pc.numero_documento AS cobertura_persona_numero_documento,
     pc.primer_nombre AS cobertura_primer_nombre,
     pc.segundo_nombre AS cobertura_segundo_nombre,
@@ -166,23 +182,116 @@ const noveltySelect = `
   INNER JOIN personas p ON p.id = v.persona_id
   INNER JOIN nomina_periodos np ON np.id = nn.periodo_id
   INNER JOIN contratos c ON c.id = np.contrato_id
+  LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
   LEFT JOIN LATERAL (
-    SELECT nd.documento_persona_id
+    SELECT nd.documento_persona_id, nd.estado_revision
     FROM nomina_novedad_documentos nd
     WHERE nd.nomina_novedad_id = nn.id AND nd.tipo_relacion = 'SOPORTE_NOVEDAD'
       AND COALESCE(nd.activo, TRUE) = TRUE
     ORDER BY nd.id DESC LIMIT 1
   ) soporte_doc ON TRUE
   LEFT JOIN LATERAL (
-    SELECT nd.documento_persona_id
+    SELECT nd.documento_persona_id, nd.estado_revision
     FROM nomina_novedad_documentos nd
     WHERE nd.nomina_novedad_id = nn.id AND nd.tipo_relacion = 'SOLICITUD_PERMISO'
       AND COALESCE(nd.activo, TRUE) = TRUE
     ORDER BY nd.id DESC LIMIT 1
   ) permiso_doc ON TRUE
+  LEFT JOIN LATERAL (
+    SELECT nd.documento_persona_id, nd.estado_revision
+    FROM nomina_novedad_documentos nd
+    WHERE nd.nomina_novedad_id = nn.id AND nd.tipo_relacion = 'AUTORIZACION_DESCUENTO'
+      AND COALESCE(nd.activo, TRUE) = TRUE
+    ORDER BY nd.id DESC LIMIT 1
+  ) autorizacion_doc ON TRUE
   LEFT JOIN nomina_novedad_coberturas nnc
     ON nnc.nomina_novedad_id = nn.id AND COALESCE(nnc.activo, TRUE) = TRUE
   LEFT JOIN personas pc ON pc.id = nnc.persona_cubre_id
+  LEFT JOIN LATERAL (
+    SELECT
+      COALESCE(exacta.municipio, cambio.contexto_nuevo ->> 'municipio', base.contexto ->> 'municipio', historica.municipio) AS contexto_municipio,
+      COALESCE(exacta.municipio_id, NULLIF(cambio.contexto_nuevo ->> 'municipio_id', '')::bigint, NULLIF(base.contexto ->> 'municipio_id', '')::bigint, historica.municipio_id) AS contexto_municipio_id,
+      COALESCE(exacta.institucion, cambio.contexto_nuevo ->> 'institucion', base.contexto ->> 'institucion', historica.institucion) AS contexto_institucion,
+      COALESCE(exacta.institucion_id, NULLIF(cambio.contexto_nuevo ->> 'institucion_id', '')::bigint, NULLIF(base.contexto ->> 'institucion_id', '')::bigint, historica.institucion_id) AS contexto_institucion_id,
+      COALESCE(exacta.sede, cambio.contexto_nuevo ->> 'sede', base.contexto ->> 'sede', historica.sede) AS contexto_sede,
+      COALESCE(exacta.sede_id, NULLIF(cambio.contexto_nuevo ->> 'sede_id', '')::bigint, NULLIF(base.contexto ->> 'sede_id', '')::bigint, historica.sede_id) AS contexto_sede_id,
+      COALESCE(exacta.modalidad, cambio.contexto_nuevo ->> 'modalidad', base.contexto ->> 'modalidad', historica.modalidad) AS contexto_modalidad,
+      COALESCE(exacta.modalidad_id, NULLIF(cambio.contexto_nuevo ->> 'modalidad_id', '')::bigint, NULLIF(base.contexto ->> 'modalidad_id', '')::bigint, historica.modalidad_id) AS contexto_modalidad_id,
+      COALESCE(cargo_exacta.cargo_id, NULLIF(base.contexto ->> 'cargo_id', '')::bigint, cargo_historica.cargo_id) AS contexto_cargo_id,
+      COALESCE(cargo_exacta.cargo, NULLIF(base.contexto ->> 'cargo', ''), cargo_historica.cargo) AS contexto_cargo
+    FROM (SELECT 1) anchor
+    LEFT JOIN nomina_contextos_operativos_base base
+      ON base.periodo_id = nn.periodo_id
+     AND base.nomina_empleado_id = nn.nomina_empleado_id
+    LEFT JOIN LATERAL (
+      SELECT nm.contexto_nuevo
+      FROM nomina_movimientos nm
+      WHERE nm.nomina_empleado_id = nn.nomina_empleado_id
+        AND nm.vinculacion_id = nn.vinculacion_id
+        AND nm.familia_movimiento = 'CAMBIO_OPERATIVO'
+        AND COALESCE(nm.activo, TRUE) = TRUE
+        AND COALESCE(nm.estado, 'PENDIENTE') <> 'RECHAZADO'
+        AND nm.fecha <= COALESCE(nn.fecha_inicio, np.fecha_inicio)
+        AND (nm.fecha_fin_efectiva IS NULL OR nm.fecha_fin_efectiva >= COALESCE(nn.fecha_inicio, np.fecha_inicio))
+      ORDER BY nm.fecha DESC, nm.id DESC
+      LIMIT 1
+    ) cambio ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(ff.municipio_texto, mu.nombre_municipio) AS municipio,
+        COALESCE(ff.municipio_id, ca.municipio_id) AS municipio_id,
+        COALESCE(ff.institucion_final, i.nombre_institucion, ca.institucion) AS institucion,
+        ff.institucion_id AS institucion_id,
+        COALESCE(ff.sede_final, s.nombre_sede, ca.sede) AS sede,
+        COALESCE(ff.sede_id, s.id) AS sede_id,
+        COALESCE(ff.modalidad_final, mo.nombre_modalidad, ca.modalidad) AS modalidad,
+        ff.modalidad_id AS modalidad_id
+      FROM cobertura_asignaciones ca
+      LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+      LEFT JOIN municipios mu ON mu.id = COALESCE(ff.municipio_id, ca.municipio_id)
+      LEFT JOIN instituciones i ON i.id = ff.institucion_id
+      LEFT JOIN sedes s ON s.id = ff.sede_id
+      LEFT JOIN modalidades mo ON mo.id = ff.modalidad_id
+      WHERE ca.vinculacion_id = nn.vinculacion_id
+        AND ca.fecha_inicio <= COALESCE(nn.fecha_inicio, np.fecha_inicio)
+        AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= COALESCE(nn.fecha_inicio, np.fecha_inicio))
+        AND COALESCE(ca.activo, TRUE) = TRUE
+      ORDER BY ca.fecha_inicio DESC, ca.id DESC
+      LIMIT 1
+    ) exacta ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(ff.municipio_texto, mu.nombre_municipio) AS municipio,
+        COALESCE(ff.municipio_id, ca.municipio_id) AS municipio_id,
+        COALESCE(ff.institucion_final, i.nombre_institucion, ca.institucion) AS institucion,
+        ff.institucion_id AS institucion_id,
+        COALESCE(ff.sede_final, s.nombre_sede, ca.sede) AS sede,
+        ff.sede_id AS sede_id,
+        COALESCE(ff.modalidad_final, mo.nombre_modalidad, ca.modalidad) AS modalidad,
+        ff.modalidad_id AS modalidad_id
+      FROM cobertura_asignaciones ca
+      LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+      LEFT JOIN municipios mu ON mu.id = COALESCE(ff.municipio_id, ca.municipio_id)
+      LEFT JOIN instituciones i ON i.id = ff.institucion_id
+      LEFT JOIN sedes s ON s.id = ff.sede_id
+      LEFT JOIN modalidades mo ON mo.id = ff.modalidad_id
+      WHERE ca.vinculacion_id = nn.vinculacion_id
+        AND ca.fecha_inicio <= COALESCE(nn.fecha_inicio, np.fecha_inicio)
+        AND COALESCE(ca.activo, TRUE) = TRUE
+      ORDER BY ca.fecha_inicio DESC, ca.id DESC
+      LIMIT 1
+    ) historica ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT v.contrato_cargo_id AS cargo_id, cc.nombre_cargo AS cargo
+      WHERE v.fecha_inicio <= COALESCE(nn.fecha_inicio, np.fecha_inicio)
+        AND (v.fecha_fin IS NULL OR v.fecha_fin >= COALESCE(nn.fecha_inicio, np.fecha_inicio))
+    ) cargo_exacta ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT v.contrato_cargo_id AS cargo_id, cc.nombre_cargo AS cargo
+      WHERE v.fecha_inicio <= COALESCE(nn.fecha_inicio, np.fecha_inicio)
+    ) cargo_historica ON TRUE
+    LIMIT 1
+  ) contexto_novedad ON TRUE
 `;
 
 const typeSelect = `
@@ -196,12 +305,14 @@ const typeSelect = `
     modelo_registro, COALESCE(proyecta_periodos, FALSE) AS proyecta_periodos,
     COALESCE(bloquea_otras_novedades, FALSE) AS bloquea_otras_novedades,
     grupo_exclusividad, observacion_plantilla,
+    COALESCE(permite_asistencia_simultanea, FALSE) AS permite_asistencia_simultanea,
     COALESCE(es_adicion, FALSE) AS es_adicion,
     COALESCE(es_deduccion, FALSE) AS es_deduccion,
     COALESCE(requiere_soporte, FALSE) AS requiere_soporte,
     COALESCE(permite_rango, FALSE) AS permite_rango,
     COALESCE(requiere_revision, FALSE) AS requiere_revision,
     COALESCE(requiere_solicitud_permiso, FALSE) AS requiere_solicitud_permiso,
+    COALESCE(requiere_autorizacion_descuento, FALSE) AS requiere_autorizacion_descuento,
     COALESCE(es_incapacidad, FALSE) AS es_incapacidad,
     COALESCE(es_accidente_laboral, FALSE) AS es_accidente_laboral,
     COALESCE(es_permiso, FALSE) AS es_permiso,
@@ -239,13 +350,17 @@ const appendTenantScope = (
 
 const buildNoveltyWhere = (
   input: ListNominaNovedadRepositoryInput,
-  includeCoverageScope = true
+  includeCoverageScope = true,
+  excludeInformative = false
 ): { conditions: string[]; params: unknown[] } => {
   const conditions: string[] = [];
   const params: unknown[] = [];
   appendTenantScope(conditions, params, input.tenant);
   if (includeCoverageScope) {
     appendNominaCoberturaScope(conditions, params, input.tenant);
+  }
+  if (excludeInformative) {
+    conditions.push("UPPER(COALESCE(ntn.codigo_operativo, '')) NOT IN ('DNC', 'DCO')");
   }
   if (input.periodoId) { params.push(input.periodoId); conditions.push(`nn.periodo_id = $${params.length}::bigint`); }
   if (input.nominaEmpleadoId) { params.push(input.nominaEmpleadoId); conditions.push(`nn.nomina_empleado_id = $${params.length}::bigint`); }
@@ -277,7 +392,7 @@ export class NominaNovedadRepository {
     input: ListNominaNovedadRepositoryInput,
     executor?: NominaNovedadRepositoryExecutor
   ): Promise<NominaNovedadRepositoryRow[]> {
-    const { conditions, params } = buildNoveltyWhere(input);
+    const { conditions, params } = buildNoveltyWhere(input, true, input.excludeInformative);
     const result = await getExecutor(executor).query<NominaNovedadRepositoryRow>(
       `${noveltySelect} ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
        ORDER BY nn.created_at DESC, nn.id DESC`, params
