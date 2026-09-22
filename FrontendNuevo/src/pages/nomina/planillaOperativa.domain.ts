@@ -203,12 +203,12 @@ export const matchesPlanillaFilters = (
 ) => {
   const query = normalizePlanillaSearch(filters.query);
   if (query && !item.searchText.includes(query)) return false;
-  if (filters.municipio && item.municipio !== filters.municipio) return false;
-  if (filters.institucion && item.institucion !== filters.institucion) return false;
-  if (filters.sede && item.sede !== filters.sede) return false;
+  if (filters.municipio && normalizePlanillaSearch(item.municipio) !== normalizePlanillaSearch(filters.municipio)) return false;
+  if (filters.institucion && normalizePlanillaSearch(item.institucion) !== normalizePlanillaSearch(filters.institucion)) return false;
+  if (filters.sede && normalizePlanillaSearch(item.sede) !== normalizePlanillaSearch(filters.sede)) return false;
   if (filters.gestor === '__SIN_GESTOR__' && item.gestorId) return false;
-  if (filters.gestor && filters.gestor !== '__SIN_GESTOR__' && item.gestorId !== filters.gestor) return false;
-  if (filters.modalidad && item.modalidad !== filters.modalidad) return false;
+  if (filters.gestor && filters.gestor !== '__SIN_GESTOR__' && String(item.gestorId ?? '') !== String(filters.gestor)) return false;
+  if (filters.modalidad && normalizePlanillaSearch(item.modalidad) !== normalizePlanillaSearch(filters.modalidad)) return false;
   const reviewMatches = filters.review === 'PENDIENTES'
     ? item.reviewState === 'PENDIENTE'
     : filters.review === 'REVISADOS'

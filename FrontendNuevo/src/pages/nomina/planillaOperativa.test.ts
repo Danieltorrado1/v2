@@ -68,6 +68,12 @@ test('asistencia multidia conserva cada fecha y permite quitar una sola',()=>{le
 test('header y body usan una geometria comun',()=>{assert.ok(source.includes('const PLANILLA_GRID_TEMPLATE'));assert.ok(source.includes('gridTemplateColumns: PLANILLA_GRID_TEMPLATE(days.length)'));assert.ok(source.includes('PLANILLA_GRID_TEMPLATE(days.length),'));});
 test('workspace nomina expone rutas reales para cada area',()=>{const router=readFileSync(resolve(process.cwd(),'FrontendNuevo/src/router/AppRouter.tsx'),'utf8');for(const entry of ['nomina/novedades','nomina/cambios-operativos','nomina/validacion','nomina/liquidacion','nomina/pago','nomina/documentos'])assert.ok(router.includes(entry),entry);});
 test('filtros integran gestor y ordenar en la misma barra',()=>{assert.ok(source.includes('value={gestorFilter}'));assert.ok(source.includes('Ordenar por'));assert.equal(source.includes('op-sort-floating'),false);});
+test('toolbar de filtros conserva una sola fila y popovers fuera del flujo',()=>{
+  assert.match(css,/\.op-toolbar\s*\{[\s\S]*?flex-wrap:\s*nowrap/);
+  assert.match(css,/\.planilla-facet-menu\s*\{[\s\S]*?max-height:\s*280px/);
+  assert.match(css,/\.planilla-facet-menu\s*\{[\s\S]*?position:\s*absolute/);
+  assert.match(css,/\.planilla-facet\[data-planilla-facet\^="Instituci"\][\s\S]*?width:\s*max\(100%, 300px\)/);
+});
 test('modal de novedad concentra la cobertura sin panel externo',()=>{for(const token of ['Cobertura del turno','Sin reemplazo / No aplica','Cubierto por personal vinculado','Cubierto por persona externa'])assert.ok(source.includes(token),token);assert.equal(source.includes('op-coverage-panel'),false);});
 test('dedupe y upsert evitan render duplicado del mismo registro',()=>{const novelty={id:'dup',activo:true,fecha_inicio:'2026-08-11',fecha_fin:'2026-08-11',fecha_inicio_evento_canonico:null,fecha_fin_evento_canonico:null} as NominaNovedadApi;assert.equal(dedupeNominaNovedades([novelty,novelty]).length,1);assert.equal(upsertNominaNovedad([novelty],{...novelty,observacion:'corregida'} as NominaNovedadApi)[0]?.observacion,'corregida');});
 test('celda con novedad prioriza correccion y celda vacia conserva asistencia rapida',()=>{assert.ok(source.includes('if (activeNovelties.length === 1) {'));assert.ok(source.includes('openNovelty(cell, activeNovelties[0] ?? null);'));assert.ok(source.includes('void toggleAttendance(employee, date);'));assert.ok(source.includes('if (activeNoveltiesOnThisDay.length > 1) {'));});
