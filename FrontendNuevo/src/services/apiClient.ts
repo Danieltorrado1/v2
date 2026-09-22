@@ -27,8 +27,8 @@ export class ApiClientError extends Error {
   }
 }
 
-function resolveErrorMessage(status: number): string {
-  if (status === 401) return 'Sesión expirada. Inicia sesión nuevamente.';
+function resolveErrorMessage(status: number, path?: string): string {
+  if (status === 401) return path === '/auth/login' ? 'Correo o contraseña incorrectos.' : 'Sesión expirada. Inicia sesión nuevamente.';
   if (status === 403) return 'No tienes permisos para realizar esta acción.';
   if (status === 404) return 'Recurso no encontrado.';
   if (status === 500) return 'Error interno del servidor.';
@@ -110,14 +110,14 @@ async function request<T>(
   clearTimeout(timeoutId);
   options.signal?.removeEventListener('abort', abort);
 
-  if (response.status === 401) {
+  if (response.status === 401 && path !== '/auth/login') {
     clearAuthSession();
     window.dispatchEvent(new CustomEvent('empiria:unauthorized'));
-    throw new ApiClientError(resolveErrorMessage(401), 401);
+    throw new ApiClientError(resolveErrorMessage(401, path), 401);
   }
 
   if (!response.ok) {
-    const defaultMessage = resolveErrorMessage(response.status);
+    const defaultMessage = resolveErrorMessage(response.status, path);
     let serverMessage: string | undefined;
     let serverCode: string | undefined;
     let details: unknown;

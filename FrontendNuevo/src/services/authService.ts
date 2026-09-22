@@ -15,6 +15,7 @@ export async function login(credentials: LoginInput): Promise<AuthSession> {
   const response = await apiClient.post<ApiResponse<AuthSession>>(
     '/auth/login',
     credentials,
+    { skipAuth: true },
   );
   return response.data;
 }
