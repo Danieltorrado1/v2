@@ -18,7 +18,6 @@ import PersonalOpsPage from "../pages/nomina/PersonalOpsPage";
 import CorreccionNominaPage from "../pages/nomina/CorreccionNominaPage";
 import CambiosOperativosPage from "../pages/nomina/CambiosOperativosPage";
 import PlanillaOperativaPage from "../pages/nomina/PlanillaOperativaPage";
-import NominaHubPage from "../pages/nomina/NominaHubPage";
 import AjustesManualesPage from "../pages/nomina/AjustesManualesPage";
 import CuentasCobroPage from "../pages/nomina/CuentasCobroPage";
 import SstPage from "../pages/sst/SstPage";
@@ -61,7 +60,7 @@ export default function AppRouter() {
             <Route path="admin-global/planes" element={<section className="workspace-page"><PlanesModulosTab initialCompanyId={null} catalogOnly /></section>} />
             <Route path="admin-global/modulos" element={<ModuleCatalogPage />} />
             <Route path="admin-global/configuracion" element={<ProductConfigurationPage />} />
-            {tenantEntries.filter(entry => !entry.children.length).map(entry => <Route key={entry.code} path={entry.route.slice(1)} element={<WorkspacePage entry={entry} />} />)}
+            {tenantEntries.filter(entry => !entry.children.length && entry.code !== 'NOMINA').map(entry => <Route key={entry.code} path={entry.route.slice(1)} element={<WorkspacePage entry={entry} />} />)}
             <Route path="configuracion/nomina" element={<Navigate to="/configuracion/nomina/asignaciones" replace />} />
             <Route path="operacion" element={<TenantHome moduleCode="OPERACION" />} />
             <Route path="logistica" element={<TenantHome moduleCode="LOGISTICA" />} />
@@ -76,7 +75,7 @@ export default function AppRouter() {
             <Route path="configuracion" element={<TenantHome moduleCode="CONFIGURACION_EMPRESA" />} />
             <Route path="dashboard" element={<ModuleRoute code="DASHBOARD" requiredPermissions={["dashboard.read"]}><DashboardPage /></ModuleRoute>} />
             <Route path="personal" element={<ModuleRoute code="PERSONAL" requiredPermissions={["vinculaciones.read"]}><OperationalPersonalPage /></ModuleRoute>} />
-            <Route path="nomina" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaHubPage /></ModuleRoute>} />
+            <Route path="nomina" element={<Navigate to="/nomina/planilla-operativa" replace />} />
             <Route path="nomina/cobertura" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.operativa.read", "nomina.read"]}><PlanillaOperativaPage /></ModuleRoute>} />
             <Route path="nomina/asistencia" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.read"]} denyRoles={["GESTOR"]}><NominaPage /></ModuleRoute>} />
             <Route path="nomina/ops" element={<ModuleRoute code="NOMINA" requiredPermissions={["nomina.cuentas_cobro_ops.read"]} denyRoles={["GESTOR"]}><PersonalOpsPage /></ModuleRoute>} />
