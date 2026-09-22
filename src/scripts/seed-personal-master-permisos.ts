@@ -39,6 +39,7 @@ const ROLE_ASSIGNMENTS: Record<string, string[]> = {
   ADMINISTRADOR: PERMISOS.map(([modulo, accion]) => `${modulo}.${accion}`),
   TALENTO_HUMANO: [
     'persona.ver',
+    'persona.editar',
     'vinculacion.ver',
     'vinculacion.editar_asignacion',
     'importaciones.preparar',

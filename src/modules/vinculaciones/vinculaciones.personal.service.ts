@@ -12,6 +12,7 @@ import {
   buildLicitacionQuotaDelta,
   deriveCumpleRequisitosState,
   looksLikeManipuladoraCargo,
+  gestorApplicableCargoSql,
   rangesOverlap,
   validateVigenciaRange
 } from './vinculaciones.personal.domain';
@@ -573,24 +574,35 @@ export const replaceAsignacionOperativaPersonal = async (
     }
     if (tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('TALENTO_HUMANO')) {
       const currentScope = await client.query<{ allowed: boolean }>(
-        `SELECT EXISTS (SELECT 1
-           FROM cobertura_asignaciones ca
-           INNER JOIN gestor_municipio_asignaciones gma
-             ON gma.municipio_id = ca.municipio_id
-            AND gma.usuario_id = $1::bigint
-            AND gma.contrato_id = $2::bigint
-            AND COALESCE(gma.activo, TRUE) = TRUE
-            AND gma.vigencia_desde <= $3::date
-            AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= $3::date)
-          WHERE ca.vinculacion_id = $4::bigint
-            AND ca.contrato_id = $2::bigint
-            AND COALESCE(ca.activo, TRUE) = TRUE
-            AND ca.fecha_inicio <= $3::date
-            AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $3::date)) AS allowed`,
+        `SELECT (
+          NOT EXISTS (
+            SELECT 1 FROM cobertura_asignaciones ca0
+            WHERE ca0.vinculacion_id = $4::bigint
+              AND COALESCE(ca0.activo, TRUE) = TRUE
+              AND ca0.fecha_inicio <= $3::date
+              AND (ca0.fecha_fin IS NULL OR ca0.fecha_fin >= $3::date)
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM cobertura_asignaciones ca0
+            INNER JOIN gestor_municipio_asignaciones gma0
+              ON gma0.municipio_id = ca0.municipio_id
+             AND gma0.usuario_id = $1::bigint
+             AND gma0.contrato_id = $2::bigint
+             AND COALESCE(gma0.activo, TRUE) = TRUE
+             AND gma0.vigencia_desde <= $3::date
+             AND (gma0.vigencia_hasta IS NULL OR gma0.vigencia_hasta >= $3::date)
+            WHERE ca0.vinculacion_id = $4::bigint
+              AND ca0.contrato_id = $2::bigint
+              AND COALESCE(ca0.activo, TRUE) = TRUE
+              AND ca0.fecha_inicio <= $3::date
+              AND (ca0.fecha_fin IS NULL OR ca0.fecha_fin >= $3::date)
+          )
+        ) AS allowed`,
         [tenant.userId, vinculacion.contrato_id, fechaDesde, vinculacionId]
       );
       if (!currentScope.rows[0]?.allowed) {
-        throw new AppError('No tienes permiso para asignar personal a ese municipio.',403,'VINCULACION_SCOPE_FORBIDDEN');
+        throw new AppError('No tienes permiso para editar el municipio origen de esta asignación.',403,'VINCULACION_SCOPE_FORBIDDEN');
       }
       const allowed = await client.query<{ allowed: boolean }>(
         `SELECT EXISTS (SELECT 1 FROM gestor_municipio_asignaciones gma
@@ -752,23 +764,40 @@ export const getVinculacionPersonalContext = async (
     const gestorResult = await client.query<{ id: string; nombre: string }>(
       `SELECT usuario_id::text AS id, nombre_completo AS nombre
        FROM (
-         SELECT gpa.usuario_id, u.nombre_completo, 0 AS prioridad, gpa.vigencia_desde, gpa.id
+         SELECT gpa.usuario_id, u.nombre_completo, 3 AS prioridad, gpa.vigencia_desde, gpa.id
          FROM gestor_personal_asignaciones gpa
          INNER JOIN usuarios u ON u.id = gpa.usuario_id
-         WHERE gpa.vinculacion_id = $1::bigint AND gpa.contrato_id = $2::bigint
+         INNER JOIN contrato_cargos cc ON cc.id = $4::bigint
+         WHERE ${gestorApplicableCargoSql('cc')} AND gpa.vinculacion_id = $1::bigint AND gpa.contrato_id = $2::bigint
            AND COALESCE(gpa.activo, TRUE) = TRUE AND gpa.vigencia_desde <= CURRENT_DATE
            AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= CURRENT_DATE)
+         UNION ALL
+         SELECT gia.usuario_id, u.nombre_completo, 2, gia.vigencia_desde, gia.id
+         FROM gestor_institucion_asignaciones gia
+         INNER JOIN usuarios u ON u.id = gia.usuario_id
+         INNER JOIN cobertura_asignaciones ca ON ca.vinculacion_id = $1::bigint AND COALESCE(ca.activo, TRUE) = TRUE
+           AND ca.fecha_inicio <= CURRENT_DATE AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= CURRENT_DATE)
+         INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+           AND ff.municipio_id = gia.municipio_id AND ff.institucion_id = gia.institucion_id
+         INNER JOIN contrato_cargos cc ON cc.id = $4::bigint
+         WHERE ${gestorApplicableCargoSql('cc')} AND gia.contrato_id = $2::bigint
+           AND COALESCE(gia.activo, TRUE) = TRUE AND gia.vigencia_desde <= CURRENT_DATE
+           AND (gia.vigencia_hasta IS NULL OR gia.vigencia_hasta >= CURRENT_DATE)
          UNION ALL
          SELECT gma.usuario_id, u.nombre_completo, 1, gma.vigencia_desde, gma.id
          FROM gestor_municipio_asignaciones gma
          INNER JOIN usuarios u ON u.id = gma.usuario_id
-         WHERE gma.contrato_id = $2::bigint AND gma.municipio_id = $3::bigint
+         INNER JOIN cobertura_asignaciones ca ON ca.vinculacion_id = $1::bigint AND COALESCE(ca.activo, TRUE) = TRUE
+           AND ca.fecha_inicio <= CURRENT_DATE AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= CURRENT_DATE)
+         INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id AND ff.municipio_id = gma.municipio_id
+         INNER JOIN contrato_cargos cc ON cc.id = $4::bigint
+         WHERE ${gestorApplicableCargoSql('cc')} AND gma.contrato_id = $2::bigint
            AND COALESCE(gma.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
            AND COALESCE(gma.activo, TRUE) = TRUE AND gma.vigencia_desde <= CURRENT_DATE
            AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
        ) effective
        ORDER BY prioridad, vigencia_desde DESC, id DESC LIMIT 1`,
-      [vinculacionId, vinculacion.contrato_id, asignacionActual?.municipio_id ?? null]
+      [vinculacionId, vinculacion.contrato_id, asignacionActual?.municipio_id ?? null, vinculacion.contrato_cargo_id]
     );
 
     return {
