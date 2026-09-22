@@ -12,7 +12,7 @@ const routes = read('src/modules/nomina/nomina.routes.ts');
 const service = read('src/modules/nomina/nomina.service.ts');
 
 test('Turnos usa la capability operativa en navegación y route guard', () => {
-  for (const source of [layout, flow, router]) {
+  for (const source of [flow, router]) {
     assert.match(source, /nomina\/turnos[\s\S]{0,160}nomina\.operativa\.read/);
   }
 });

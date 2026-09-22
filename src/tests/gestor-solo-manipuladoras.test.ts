@@ -4,7 +4,6 @@ import test from 'node:test';
 
 import { isGestorApplicableCargo } from '../modules/vinculaciones/vinculaciones.personal.domain';
 
-const personalService = readFileSync('src/modules/vinculaciones/vinculaciones.personal.service.ts', 'utf8');
 const personalListService = readFileSync('src/modules/vinculaciones/vinculaciones.service.ts', 'utf8');
 const nominaService = readFileSync('src/modules/nomina/nomina.service.ts', 'utf8');
 const nominaPage = readFileSync('FrontendNuevo/src/pages/nomina/NominaPage.tsx', 'utf8');
@@ -21,11 +20,12 @@ test('gestor solo aplica al cargo canónico de manipuladora de alimentos', () =>
   assert.equal(isGestorApplicableCargo('Profesional de apoyo'), false);
 });
 
-test('Personal resuelve gestor vigente por municipio y contrato sin exigir TODO_MUNICIPIO', () => {
-  assert.match(personalService, /gestorApplicableCargoSql/);
-  assert.match(personalService, /gma\.contrato_id = \$2::bigint/);
-  assert.match(personalService, /gma\.municipio_id = \$3::bigint/);
-  assert.doesNotMatch(personalService, /gma\.alcance_personal.*TODO_MUNICIPIO/);
+test('Personal resuelve el alcance vigente con el helper canónico de cargo', () => {
+  assert.match(personalListService, /gestorApplicableCargoSql/);
+  assert.match(personalListService, /COUNT\(DISTINCT usuario_id\) = 1/);
+  assert.match(personalListService, /gestor_municipio_asignaciones/);
+  assert.match(personalListService, /gestor_institucion_asignaciones/);
+  assert.match(personalListService, /gestor_personal_asignaciones/);
 });
 
 test('Personal y Nómina comparten filtro de aplicabilidad y no muestran gestor para otros cargos', () => {
