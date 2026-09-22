@@ -1,6 +1,7 @@
 import { dbPool } from '../../config/db';
 import { AppError } from '../../utils/AppError';
 import { isTenantAdmin, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
+import { buildGestorMunicipalityScopeExistsSql } from '../users/municipal-scope.service';
 
 export const NOMINA_PROCESOS = ['COBERTURA', 'ASISTENCIA', 'OPS'] as const;
 export type NominaProceso = (typeof NOMINA_PROCESOS)[number];
@@ -46,6 +47,18 @@ const isTalentoHumanoUser = async (userId: string | number): Promise<boolean> =>
   return result.rows[0]?.is_th === true;
 };
 
+const isGestorUser = async (userId: string | number): Promise<boolean> => {
+  const result = await dbPool.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM usuario_roles ur JOIN roles r ON r.id = ur.rol_id
+       WHERE ur.usuario_id = $1::bigint AND r.nombre_rol = 'GESTOR'
+         AND COALESCE(ur.activo, TRUE) = TRUE AND COALESCE(r.activo, TRUE) = TRUE
+     ) AS is_gestor`,
+    [userId],
+  );
+  return result.rows[0]?.is_gestor === true;
+};
+
 const isTenantAdminUser = async (userId: string | number, empresaId: string | number, contratoId: string | number): Promise<boolean> => {
   const result = await dbPool.query(
     `SELECT EXISTS (
@@ -77,7 +90,7 @@ export async function getEffectivePayrollMunicipalityIds(
     );
     return result.rows.map((row) => Number(row.municipio_id));
   }
-  if (await isTalentoHumanoUser(userId)) {
+  if (await isTalentoHumanoUser(userId) || await isGestorUser(userId)) {
     const result = await dbPool.query<{ municipio_id: string | number }>(
       `
         SELECT DISTINCT gma.municipio_id
@@ -182,45 +195,13 @@ const buildGestorPersonalScopeSql = (
   contratoSql: string,
   periodoInicioSql: string,
   periodoFinSql: string
-): string => `
-  (
-    EXISTS (
-      SELECT 1
-      FROM gestor_personal_asignaciones gpa_scope
-      WHERE gpa_scope.vinculacion_id = ${vinculacionSql}
-        AND gpa_scope.contrato_id = ${contratoSql}
-        AND gpa_scope.usuario_id = ${userParamSql}::bigint
-        AND COALESCE(gpa_scope.activo, TRUE) = TRUE
-        AND gpa_scope.vigencia_desde <= CURRENT_DATE
-        AND (
-          gpa_scope.vigencia_hasta IS NULL
-          OR gpa_scope.vigencia_hasta >= CURRENT_DATE
-        )
-    )
-    OR EXISTS (
-      SELECT 1
-      FROM gestor_municipio_asignaciones gma_scope
-      JOIN cobertura_asignaciones cas_scope
-        ON cas_scope.vinculacion_id = ${vinculacionSql}
-      JOIN focalizacion_final cff_scope
-        ON cff_scope.id = cas_scope.focalizacion_final_id
-      WHERE gma_scope.usuario_id = ${userParamSql}::bigint
-        AND gma_scope.contrato_id = ${contratoSql}
-        AND COALESCE(gma_scope.activo, TRUE) = TRUE
-        AND gma_scope.vigencia_desde <= CURRENT_DATE
-        AND (
-          gma_scope.vigencia_hasta IS NULL
-          OR gma_scope.vigencia_hasta >= CURRENT_DATE
-        )
-        AND cas_scope.fecha_inicio <= ${periodoFinSql}
-        AND (
-          cas_scope.fecha_fin IS NULL
-          OR cas_scope.fecha_fin >= ${periodoInicioSql}
-        )
-        AND cff_scope.municipio_id = gma_scope.municipio_id
-    )
-  )
-`;
+): string => buildGestorMunicipalityScopeExistsSql(
+  userParamSql,
+  vinculacionSql,
+  contratoSql,
+  periodoInicioSql,
+  periodoFinSql,
+);
 
 const buildNominaCoberturaScopeSql = (
   userParamSql: string,

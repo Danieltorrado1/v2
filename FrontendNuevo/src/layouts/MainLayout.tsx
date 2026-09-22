@@ -7,21 +7,23 @@ import { useCompanyContext } from "../context/CompanyContext";
 import { NotificationsPanel } from "../components/notifications/NotificationsPanel";
 import { notificacionesApi } from "../services/notificacionesApi";
 import "./MainLayout.css";
+import { promotedPersonalCodes, topbarNavigation } from "../architecture/topbarNavigation";
 import { adminModules } from "../architecture/moduleCatalog";
 import { isGlobalAdministrator, resolveCatalogLocation, visibleTenantModules } from "../architecture/moduleAccess";
 import { WorkspaceAccess } from "../architecture/WorkspaceAccess";
+import { TopbarContractContext } from "./TopbarContractSlot";
 import { NavDropdown } from './NavDropdown';
 import "../architecture/Workspace.css";
 import { subscribeModuleVisibility } from '../services/moduleVisibilityStore';
 
 export default function MainLayout() {
   const location = useLocation();
+  const [contractSlot, setContractSlot] = useState<HTMLDivElement | null>(null);
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const { empresasDisponibles, empresaId, empresaActual, organizacionActual, isLoading, setEmpresaActual, capabilities, hasModule } = useCompanyContext();
   const [notifOpen, setNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [logoFallback, setLogoFallback] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -41,21 +43,16 @@ export default function MainLayout() {
   useEffect(() => subscribeModuleVisibility(() => setVisibilityVersion((version) => version + 1)), [empresaId]);
   const current = resolveCatalogLocation(location.pathname, location.search);
   const activeModule = adminScope ? [...adminModules].reverse().find(item => location.pathname === item.route || location.pathname.startsWith(`${item.route}/`)) : modules.find(item => item.code === current?.module.code);
+  const personalModule = modules.find(item => item.code === 'PERSONAL');
+  const navigation = adminScope ? modules : topbarNavigation(modules);
+  const activeNavigationCode = promotedPersonalCodes.includes(current?.entry.code ?? '') ? current?.entry.code : activeModule?.code;
+  const personalExtraLinks = personalModule?.children.filter(child => ![...promotedPersonalCodes, 'PERSONAL_BASE_DATOS', 'PERSONAL_REPOSITORIO'].includes(child.code)) ?? [];
   const homePath = adminScope ? '/admin-global' : modules[0]?.route ?? (legacyNavigation.PERSONAL ? '/personal' : '/');
   const displayName = user?.name ?? "Usuario";
   const roleLabel = user?.roles?.[0] ?? "Usuario";
   const initials = displayName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "US";
   const permissions = user?.permissions ?? [];
   const canSeeNotifications = !adminScope && permissions.includes("notificaciones.read");
-  const logoSrc =
-    theme === "dark"
-      ? "/branding/empiria-logo-horizontal-dark-web.png"
-      : "/branding/empiria-logo-horizontal-light-web.png";
-
-  useEffect(() => {
-    setLogoFallback(false);
-  }, [logoSrc]);
-
   useEffect(() => {
     let cancelled = false;
 
@@ -110,27 +107,20 @@ export default function MainLayout() {
   }
 
   return (
+    <TopbarContractContext.Provider value={contractSlot}>
     <div className="layout">
       <header className="topbar">
         <Link to={homePath} className="logo-area logo-link" aria-label="Empiria">
-          {logoFallback ? (
-            <span className="logo-fallback">EMPIRIA</span>
-          ) : (
-            <img
-              src={logoSrc}
-              alt="Empiria"
-              className={`logo-image logo-image--${theme}`}
-              onError={() => setLogoFallback(true)}
-            />
-          )}
+          <span className="topbar-brand-mark"><img src="/branding/empiria-make-mark.svg" alt="" /></span>
+          <span className="topbar-brand-name">Empiria</span>
         </Link>
 
         <nav className="menu workspace-primary-nav" aria-label={adminScope ? 'Empiria Admin' : 'Empiria Empresa'}>
-          {modules.map(item => item.children.length > 0 ? (
+          {navigation.map(item => item.children.length > 0 ? (
             <NavDropdown
               key={item.code}
               label={item.label}
-              active={activeModule?.code === item.code}
+              active={activeNavigationCode === item.code}
               links={item.children.map(child => ({
                 to: child.route,
                 label: child.label,
@@ -138,8 +128,8 @@ export default function MainLayout() {
               }))}
             />
           ) : (
-            <Link key={item.code} to={item.route} aria-current={activeModule?.code === item.code ? 'page' : undefined}
-              className={`menu-navlink${activeModule?.code === item.code ? ' active' : ''}`}>{item.label}</Link>
+            <Link key={item.code} to={item.route} aria-current={activeNavigationCode === item.code ? 'page' : undefined}
+              className={`menu-navlink${activeNavigationCode === item.code ? ' active' : ''}`}>{item.code === 'AGENDA_OPERATIVA' ? 'Agenda' : item.label}</Link>
           ))}
         </nav>
 
@@ -170,31 +160,16 @@ export default function MainLayout() {
             {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
           </button>
 
-          {!adminScope && empresasDisponibles.length > 1 && (
-            <label className="company-context-control" title={empresaActual?.nombre_empresa ?? "Empresa activa"}>
-              <Building2 size={16} aria-hidden="true" />
-              <select
-                value={empresaId ?? ""}
-                onChange={(event) => setEmpresaActual(event.target.value ? Number(event.target.value) : null)}
-                disabled={isLoading}
-                aria-label="Empresa activa"
-              >
-                {empresasDisponibles.map((empresa) => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}
+          {!adminScope && <div className="topbar-business-context">
+            {empresasDisponibles.length > 1 ? (
+              <select className="topbar-company" value={empresaId ?? ''} disabled={isLoading}
+                aria-label="Empresa activa" title={empresaActual?.nombre_empresa}
+                onChange={event => setEmpresaActual(event.target.value ? Number(event.target.value) : null)}>
+                {empresasDisponibles.map(empresa => <option key={empresa.id} value={empresa.id}>{empresa.nombre_empresa}</option>)}
               </select>
-              <ChevronDown size={14} aria-hidden="true" />
-            </label>
-          )}
-
-          {!adminScope && empresasDisponibles.length === 1 && empresaActual && (
-            <div
-              className="company-context-control"
-              title={organizacionActual?.nombre ?? empresaActual.nombre_empresa}
-              aria-label="Empresa activa"
-            >
-              <Building2 size={16} aria-hidden="true" />
-              <span>{empresaActual.nombre_empresa}</span>
-            </div>
-          )}
+            ) : empresasDisponibles.length === 1 && empresaActual && <strong className="topbar-company" title={organizacionActual?.nombre ?? empresaActual?.nombre_empresa}>{empresaActual?.nombre_empresa}</strong>}
+            <div className="topbar-contract" ref={setContractSlot} />
+          </div>}
 
           <div className="account-area" ref={accountRef}>
             <button
@@ -214,13 +189,14 @@ export default function MainLayout() {
             </button>
             {accountOpen && (
               <div className="account-menu" role="menu">
-                <div className="account-menu-heading">
+                <div className="account-menu-heading" title={globalAdmin ? "Modo administrador global" : undefined}>
                   <span className="account-avatar account-avatar-large" aria-hidden="true">{initials}</span>
                   <div><strong>{displayName}</strong><small>{roleLabel}</small></div>
                 </div>
                 {globalAdmin && <Link className="account-menu-item" role="menuitem" to={adminScope ? '/empresa' : '/admin-global'} onClick={() => setAccountOpen(false)}>
                   <Building2 size={16} />{adminScope ? 'Entrar a empresa' : 'Empiria Admin'}
                 </Link>}
+                {personalExtraLinks.map(item => <Link key={item.code} className="account-menu-item" role="menuitem" to={item.route} onClick={() => setAccountOpen(false)}>{item.label}</Link>)}
                 {accountDetailsOpen && (
                   <div className="account-details">
                     <span>Correo</span><strong>{user?.email ?? "No disponible"}</strong>
@@ -256,5 +232,6 @@ export default function MainLayout() {
         </div>
       </main>
     </div>
+    </TopbarContractContext.Provider>
   );
 }

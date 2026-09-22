@@ -36,6 +36,13 @@ export const getExpedienteLaboralConsolidadoHandler = asyncHandler(
       getAuditRequestMeta(req)
     );
 
+    // The consolidated expediente is also readable by operational roles, but
+    // its global audit trail is administrator-only.
+    if (!(req.user?.roles ?? []).includes('ADMINISTRADOR')) {
+      expediente.auditoria = [];
+      expediente.indicadores.auditoria_eventos = 0;
+    }
+
     return successResponse(res, {
       message: 'Expediente laboral consolidado retrieved successfully',
       data: expediente

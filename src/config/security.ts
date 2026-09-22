@@ -33,6 +33,7 @@ export const helmetMiddleware = helmet({
 });
 
 export const corsMiddleware = cors({
+  exposedHeaders: ['Retry-After'],
   origin: (origin, callback) => {
     if (!origin) {
       callback(null, true);

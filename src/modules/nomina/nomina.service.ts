@@ -52,6 +52,7 @@ import {
   type NominaMovimientoEstado
 } from './nomina.movimientos';
 import { appendNominaCoberturaScope, assertNominaEmpleadoCoberturaScope, assertNominaPeriodoCoberturaScope } from './nomina.procesos';
+import { buildAnyGestorMunicipalityScopeExistsSql, buildGestorMunicipalityScopeExistsSql } from '../users/municipal-scope.service';
 import {
   buildNominaCanonicalProjectedRecordId,
   parseNominaNovedadRecordId,
@@ -6473,74 +6474,34 @@ export const listNominaEmpleados = async (
 
   if (query.gestor_usuario_id) {
     params.push(query.gestor_usuario_id);
-    conditions.push(`(
-      EXISTS (
-        SELECT 1
-        FROM gestor_personal_asignaciones gpa_f
-        INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
-        WHERE gpa_f.vinculacion_id = ne.vinculacion_id
-          AND gpa_f.contrato_id = v.contrato_id
-          AND gpa_f.usuario_id = $${params.length}::bigint
-          AND COALESCE(gpa_f.activo, TRUE) = TRUE
-          AND gpa_f.vigencia_desde <= np_f.fecha_fin
-          AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= np_f.fecha_inicio)
-      )
-      OR EXISTS (
-        SELECT 1
-        FROM gestor_municipio_asignaciones gma_f
-        INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
-        INNER JOIN cobertura_asignaciones cas_f ON cas_f.vinculacion_id = ne.vinculacion_id
-        INNER JOIN focalizacion_final cff_f ON cff_f.id = cas_f.focalizacion_final_id
-        WHERE gma_f.contrato_id = v.contrato_id
-          AND gma_f.usuario_id = $${params.length}::bigint
-          AND COALESCE(gma_f.activo, TRUE) = TRUE
-          AND COALESCE(gma_f.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
-          AND gma_f.vigencia_desde <= np_f.fecha_fin
-          AND (gma_f.vigencia_hasta IS NULL OR gma_f.vigencia_hasta >= np_f.fecha_inicio)
-          AND cas_f.fecha_inicio <= np_f.fecha_fin
-          AND (cas_f.fecha_fin IS NULL OR cas_f.fecha_fin >= np_f.fecha_inicio)
-          AND cff_f.municipio_id = gma_f.municipio_id
-      )
-    )`);
+    conditions.push(buildGestorMunicipalityScopeExistsSql(
+      `$${params.length}`,
+      'ne.vinculacion_id',
+      'v.contrato_id',
+      'np.fecha_inicio',
+      'np.fecha_fin',
+    ));
   }
 
   if (tenant && !tenant.isGlobalAdmin && tenant.userId && tenant.roleNames.includes('GESTOR')) {
     params.push(tenant.userId);
     const gestorScopeParam = params.length;
-    conditions.push(`(
-      EXISTS (SELECT 1 FROM gestor_personal_asignaciones gpa_scope INNER JOIN nomina_periodos np_scope ON np_scope.id = ne.periodo_id WHERE gpa_scope.vinculacion_id = ne.vinculacion_id AND gpa_scope.contrato_id = v.contrato_id AND gpa_scope.usuario_id = $${gestorScopeParam}::bigint AND COALESCE(gpa_scope.activo, TRUE) = TRUE AND gpa_scope.vigencia_desde <= CURRENT_DATE AND (gpa_scope.vigencia_hasta IS NULL OR gpa_scope.vigencia_hasta >= CURRENT_DATE))
-      OR EXISTS (SELECT 1 FROM gestor_municipio_asignaciones gma_scope INNER JOIN nomina_periodos np_scope ON np_scope.id = ne.periodo_id WHERE gma_scope.usuario_id = $${gestorScopeParam}::bigint AND gma_scope.contrato_id = v.contrato_id AND COALESCE(gma_scope.activo, TRUE) = TRUE AND gma_scope.vigencia_desde <= CURRENT_DATE AND (gma_scope.vigencia_hasta IS NULL OR gma_scope.vigencia_hasta >= CURRENT_DATE) AND EXISTS (SELECT 1 FROM cobertura_asignaciones ca_scope INNER JOIN focalizacion_final ff_scope ON ff_scope.id = ca_scope.focalizacion_final_id WHERE ca_scope.vinculacion_id = ne.vinculacion_id AND COALESCE(ca_scope.activo, TRUE) = TRUE AND ca_scope.fecha_inicio <= np_scope.fecha_fin AND (ca_scope.fecha_fin IS NULL OR ca_scope.fecha_fin >= np_scope.fecha_inicio) AND ff_scope.municipio_id = gma_scope.municipio_id))
-    )`);
+    conditions.push(buildGestorMunicipalityScopeExistsSql(
+      `$${gestorScopeParam}`,
+      'ne.vinculacion_id',
+      'v.contrato_id',
+      'np.fecha_inicio',
+      'np.fecha_fin',
+    ));
   }
 
   if (query.sin_gestor === true) {
-    conditions.push(`NOT (
-      EXISTS (
-        SELECT 1
-        FROM gestor_personal_asignaciones gpa_f
-        INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
-        WHERE gpa_f.vinculacion_id = ne.vinculacion_id
-          AND gpa_f.contrato_id = v.contrato_id
-          AND COALESCE(gpa_f.activo, TRUE) = TRUE
-          AND gpa_f.vigencia_desde <= np_f.fecha_fin
-          AND (gpa_f.vigencia_hasta IS NULL OR gpa_f.vigencia_hasta >= np_f.fecha_inicio)
-      )
-      OR EXISTS (
-        SELECT 1
-        FROM gestor_municipio_asignaciones gma_f
-        INNER JOIN nomina_periodos np_f ON np_f.id = ne.periodo_id
-        INNER JOIN cobertura_asignaciones cas_f ON cas_f.vinculacion_id = ne.vinculacion_id
-        INNER JOIN focalizacion_final cff_f ON cff_f.id = cas_f.focalizacion_final_id
-        WHERE gma_f.contrato_id = v.contrato_id
-          AND COALESCE(gma_f.activo, TRUE) = TRUE
-          AND COALESCE(gma_f.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
-          AND gma_f.vigencia_desde <= np_f.fecha_fin
-          AND (gma_f.vigencia_hasta IS NULL OR gma_f.vigencia_hasta >= np_f.fecha_inicio)
-          AND cas_f.fecha_inicio <= np_f.fecha_fin
-          AND (cas_f.fecha_fin IS NULL OR cas_f.fecha_fin >= np_f.fecha_inicio)
-          AND cff_f.municipio_id = gma_f.municipio_id
-      )
-    )`);
+    conditions.push(`NOT ${buildAnyGestorMunicipalityScopeExistsSql(
+      'ne.vinculacion_id',
+      'v.contrato_id',
+      'np.fecha_inicio',
+      'np.fecha_fin',
+    )}`);
   }
 
   const whereSql = buildSqlWhere(conditions);

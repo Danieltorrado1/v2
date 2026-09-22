@@ -1,4 +1,5 @@
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 
 import type { CatalogoItem, Municipio } from '../../types/configuracion.types';
 import {
@@ -78,6 +79,14 @@ export default function ChangeIdentificationModal({
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !submitting) onClose();
+    }
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose, submitting]);
+
   function setField<K extends keyof CreatePersonaIdentificacionPayload>(
     field: K,
     value: CreatePersonaIdentificacionPayload[K],
@@ -126,12 +135,18 @@ export default function ChangeIdentificationModal({
     }
   }
 
-  return (
+  const modal = (
     <div style={overlayStyle} onClick={onClose}>
-      <div style={boxStyle} onClick={(event) => event.stopPropagation()}>
+      <div
+        style={boxStyle}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="change-identification-title"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 20 }}>Cambiar identificación vigente</h3>
+            <h3 id="change-identification-title" style={{ margin: 0, fontSize: 20 }}>Cambiar identificación vigente</h3>
             <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
               Se conservará el historial anterior y solo la nueva identificación quedará vigente.
             </p>
@@ -287,4 +302,6 @@ export default function ChangeIdentificationModal({
       </div>
     </div>
   );
+
+  return typeof document === 'undefined' ? null : createPortal(modal, document.body);
 }

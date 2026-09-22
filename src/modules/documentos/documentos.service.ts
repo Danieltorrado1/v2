@@ -1,3 +1,4 @@
+import { prepareDocumentUpload, persistUploadReview } from './documentos.review.service';
 ﻿import { randomUUID } from 'node:crypto';
 import { PoolClient, QueryResultRow } from 'pg';
 
@@ -439,6 +440,9 @@ export const uploadPersonaDocumento = async (
     await ensurePersonaExists(personaId, client);
     await assertTenantAccessForPersonaId(tenant, personaId);
     await ensureTipoDocumentoExists(input.tipo_documento_id, client);
+    const prepared = await prepareDocumentUpload(input.tipo_documento_id,input,client);
+    input = {...input,fecha_expedicion:prepared.fecha_expedicion,fecha_vencimiento:prepared.fecha_vencimiento};
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['document:persona:'+personaId+':'+input.tipo_documento_id]);
 
     const latestVersion = await getLatestPersonaDocumentoVersion(
       client,
@@ -451,7 +455,7 @@ export const uploadPersonaDocumento = async (
       input.tipo_documento_id
     );
 
-    if (latestVigente) {
+    if (latestVigente && prepared.rule.code !== 'CERT_LABORAL') {
       await client.query(
         `
           UPDATE documentos_persona
@@ -543,7 +547,7 @@ export const uploadPersonaDocumento = async (
         input.fecha_expedicion,
         input.fecha_vencimiento,
         Number(latestVersion?.version ?? 0) + 1,
-        latestVigente?.id ?? null
+        prepared.rule.code === 'CERT_LABORAL' ? null : latestVigente?.id ?? null
       ]
     );
 
@@ -555,17 +559,10 @@ export const uploadPersonaDocumento = async (
 
     const document = mapDocumentoPersona(created);
 
-    void registerDocumentAudit({
-      action: 'DOCUMENT_UPLOAD',
-      actorUserId,
-      after: document,
-      descripcion: 'Carga de documento de persona',
-      registroId: document.id,
-      tabla: 'documentos_persona'
-    });
+    await persistUploadReview(client, 'persona', created.id, actorUserId, prepared.metadata);
 
     await client.query('COMMIT');
-    return document;
+    return { ...document, estado_revision: 'PENDIENTE_REVISION' } as typeof document;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -769,7 +766,12 @@ export const uploadVinculacionDocumento = async (
     await ensureVinculacionExists(vinculacionId, client);
     await assertTenantAccessForVinculacionId(tenant, vinculacionId);
     await ensureTipoDocumentoExists(input.tipo_documento_id, client);
+    const prepared = await prepareDocumentUpload(input.tipo_documento_id,input,client);
+    input = {...input,fecha_expedicion:prepared.fecha_expedicion,fecha_vencimiento:prepared.fecha_vencimiento};
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['document:vinculacion:'+vinculacionId+':'+input.tipo_documento_id]);
 
+    const previous = await client.query(`SELECT id,version FROM documentos_vinculacion WHERE vinculacion_id=$1::bigint AND tipo_documento_id=$2::bigint ORDER BY version DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId,input.tipo_documento_id]);
+    if(prepared.rule.code !== 'CERT_LABORAL') await client.query(`UPDATE documentos_vinculacion SET es_vigente=FALSE WHERE vinculacion_id=$1::bigint AND tipo_documento_id=$2::bigint AND es_vigente`,[vinculacionId,input.tipo_documento_id]);
     const storage = await uploadDocumentToStorage({
       scope: 'vinculaciones',
       targetId: vinculacionId,
@@ -852,19 +854,13 @@ export const uploadVinculacionDocumento = async (
       );
     }
 
+    await client.query(`UPDATE documentos_vinculacion SET version=$2,documento_reemplaza_id=$3::bigint WHERE id=$1::bigint`,[created.id,Number(previous.rows[0]?.version??0)+1,prepared.rule.code === 'CERT_LABORAL'?null:previous.rows[0]?.id??null]);
     const document = mapDocumentoVinculacion(created);
 
-    void registerDocumentAudit({
-      action: 'DOCUMENT_UPLOAD',
-      actorUserId,
-      after: document,
-      descripcion: 'Carga de documento de vinculacion',
-      registroId: document.id,
-      tabla: 'documentos_vinculacion'
-    });
+    await persistUploadReview(client, 'vinculacion', created.id, actorUserId, prepared.metadata);
 
     await client.query('COMMIT');
-    return document;
+    return { ...document, estado_revision: 'PENDIENTE_REVISION' } as typeof document;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -1024,6 +1020,8 @@ export const updatePersonaDocumento = async (
         : toDateString(current.fecha_vencimiento);
     const nextActivo = input.activo ?? current.activo;
 
+    const storedMetadata = await client.query(`SELECT metadatos_revision FROM documentos_persona WHERE id=$1::bigint`,[documentoId]);
+    const normalized = await prepareDocumentUpload(nextTipoDocumentoId,{...storedMetadata.rows[0]?.metadatos_revision,fecha_expedicion:nextFechaExpedicion?.slice(0,10),fecha_vencimiento:nextFechaVencimiento?.slice(0,10)},client);
     const result = await client.query<DocumentoPersonaRow>(
       `
         UPDATE documentos_persona
@@ -1031,6 +1029,7 @@ export const updatePersonaDocumento = async (
           tipo_documento_id = $2::bigint,
           fecha_expedicion = $3,
           fecha_vencimiento = $4,
+          estado_revision = 'PENDIENTE_REVISION', revisado_por = NULL, revisado_en = NULL, motivo_rechazo = NULL,
           activo = $5
         WHERE id::text = $1
         RETURNING
@@ -1056,8 +1055,8 @@ export const updatePersonaDocumento = async (
       [
         documentoId,
         nextTipoDocumentoId,
-        nextFechaExpedicion,
-        nextFechaVencimiento,
+        normalized.fecha_expedicion,
+        normalized.fecha_vencimiento,
         nextActivo
       ]
     );
@@ -1127,6 +1126,8 @@ export const updateVinculacionDocumento = async (
         : toDateString(current.fecha_vencimiento);
     const nextActivo = input.activo ?? current.activo;
 
+    const storedMetadata = await client.query(`SELECT metadatos_revision FROM documentos_vinculacion WHERE id=$1::bigint`,[documentoId]);
+    const normalized = await prepareDocumentUpload(nextTipoDocumentoId,{...storedMetadata.rows[0]?.metadatos_revision,fecha_expedicion:nextFechaExpedicion?.slice(0,10),fecha_vencimiento:nextFechaVencimiento?.slice(0,10)},client);
     const result = await client.query<DocumentoVinculacionRow>(
       `
         UPDATE documentos_vinculacion
@@ -1134,6 +1135,7 @@ export const updateVinculacionDocumento = async (
           tipo_documento_id = $2::bigint,
           fecha_expedicion = $3,
           fecha_vencimiento = $4,
+          estado_revision = 'PENDIENTE_REVISION', revisado_por = NULL, revisado_en = NULL, motivo_rechazo = NULL,
           activo = $5
         WHERE id::text = $1
         RETURNING
@@ -1158,8 +1160,8 @@ export const updateVinculacionDocumento = async (
       [
         documentoId,
         nextTipoDocumentoId,
-        nextFechaExpedicion,
-        nextFechaVencimiento,
+        normalized.fecha_expedicion,
+        normalized.fecha_vencimiento,
         nextActivo
       ]
     );

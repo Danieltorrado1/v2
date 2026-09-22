@@ -45,7 +45,8 @@ export async function getVinculaciones(filters: VinculacionFilters = {}): Promis
 }
 
 export async function getContractPersonal(
-  filters: ContractPersonalFilters
+  filters: ContractPersonalFilters,
+  signal?: AbortSignal
 ): Promise<ContractPersonalListResponse> {
   const params: Record<string, string | number | boolean | undefined> = {
     contrato_id: filters.contrato_id,
@@ -65,9 +66,11 @@ export async function getContractPersonal(
     licitacion: filters.licitacion,
     gestor_usuario_id: filters.gestor_usuario_id,
     sin_gestor: filters.sin_gestor,
+    sort_by: filters.sort_by,
+    sort_dir: filters.sort_dir,
   };
   const res = await apiClient.get<ApiResponse<ContractPersonalListResponse>>('/vinculaciones/personal', {
-    params,
+    params, signal,
   });
   return res.data;
 }

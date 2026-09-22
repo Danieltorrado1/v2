@@ -44,6 +44,7 @@ export interface ApiErrorResponse {
 }
 
 export interface ApiRequestOptions {
+  signal?: AbortSignal;
   headers?: Record<string, string>;
   params?: ApiQueryParams;
   timeout?: number;
