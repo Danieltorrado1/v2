@@ -354,6 +354,7 @@ export default function PersonalMasterDrawer({
   const [assignmentOptions, setAssignmentOptions] = useState<OperativeAssignmentOption[]>([]);
   const [assignmentId, setAssignmentId] = useState('');
   const [currentAssignmentId, setCurrentAssignmentId] = useState('');
+  const [assignmentMunicipality, setAssignmentMunicipality] = useState('');
   const [assignmentInstitution, setAssignmentInstitution] = useState('');
   const [assignmentSite, setAssignmentSite] = useState('');
   const [assignmentModality, setAssignmentModality] = useState('');
@@ -459,6 +460,7 @@ export default function PersonalMasterDrawer({
     setBankError('');
     setAssignmentId('');
     setCurrentAssignmentId('');
+    setAssignmentMunicipality('');
     setAssignmentInstitution('');
     setAssignmentSite('');
     setAssignmentModality('');
@@ -484,6 +486,7 @@ export default function PersonalMasterDrawer({
       setAssignmentOptionsError('');
       setAssignmentId('');
       setCurrentAssignmentId('');
+      setAssignmentMunicipality('');
       setAssignmentInstitution('');
       setAssignmentSite('');
       setAssignmentModality('');
@@ -491,7 +494,7 @@ export default function PersonalMasterDrawer({
       return;
     }
     const currentAssignment = expediente.personal_contexto.asignacion_operativa_actual;
-    setAssignmentScopeAllowed(!isTalentHumano || Boolean(currentAssignment?.focalizacion_final_id));
+    setAssignmentScopeAllowed(!isTalentHumano || !currentAssignment || Boolean(currentAssignment.focalizacion_final_id));
     setCurrentAssignmentId(currentAssignment?.id ? String(currentAssignment.id) : '');
     setAssignmentId(currentAssignment?.focalizacion_final_id ? String(currentAssignment.focalizacion_final_id) : '');
     setAssignmentType(currentAssignment?.id ? 'CORRECCION_DIGITACION' : 'CAMBIO_REAL');
@@ -500,10 +503,11 @@ export default function PersonalMasterDrawer({
       setAssignmentOptions(cached);
       const current = expediente.personal_contexto.asignacion_operativa_actual?.focalizacion_final_id;
       const currentOption = cached.find((item) => Number(item.id) === current);
+      setAssignmentMunicipality(currentOption?.municipio_id ?? '');
       setAssignmentInstitution(currentOption?.institucion_id ?? '');
       setAssignmentSite(currentOption?.sede_id ?? '');
       setAssignmentModality(currentOption?.modalidad_id ?? '');
-      setAssignmentScopeAllowed(!isTalentHumano || Boolean(currentOption));
+      setAssignmentScopeAllowed(!isTalentHumano || cached.length > 0);
       setAssignmentOptionsLoading(false);
       return;
     }
@@ -515,13 +519,14 @@ export default function PersonalMasterDrawer({
         setAssignmentOptions(options);
         const current = expediente.personal_contexto.asignacion_operativa_actual?.focalizacion_final_id;
         const currentRecordId = expediente.personal_contexto.asignacion_operativa_actual?.id;
+        const currentOption = options.find((item) => Number(item.id) === current);
         setCurrentAssignmentId(currentRecordId ? String(currentRecordId) : '');
         setAssignmentId(current ? String(current) : '');
-        const currentOption = options.find((item) => Number(item.id) === current);
+        setAssignmentMunicipality(currentOption?.municipio_id ?? '');
         setAssignmentInstitution(currentOption?.institucion_id ?? '');
         setAssignmentSite(currentOption?.sede_id ?? '');
         setAssignmentModality(currentOption?.modalidad_id ?? '');
-        setAssignmentScopeAllowed(!isTalentHumano || Boolean(currentOption));
+        setAssignmentScopeAllowed(!isTalentHumano || options.length > 0);
       })
       .catch((error) => {
         setAssignmentOptions([]);
@@ -774,6 +779,7 @@ export default function PersonalMasterDrawer({
     setCurrentAssignmentId(currentRecordId ? String(currentRecordId) : '');
     setAssignmentType(currentRecordId ? 'CORRECCION_DIGITACION' : 'CAMBIO_REAL');
     setAssignmentId(current ? String(current) : '');
+    setAssignmentMunicipality(currentOption?.municipio_id ?? '');
     setAssignmentInstitution(currentOption?.institucion_id ?? '');
     setAssignmentSite(currentOption?.sede_id ?? '');
     setAssignmentModality(currentOption?.modalidad_id ?? '');
@@ -919,9 +925,11 @@ export default function PersonalMasterDrawer({
   function renderUnifiedEditor() {
     const currentAssignment = activeExpediente.personal_contexto.asignacion_operativa_actual;
     const assignmentChanged = assignmentSelectionChanged();
-    const institutions = Array.from(new Map(assignmentOptions.map((item) => [item.institucion_id, item.institucion])).entries());
-    const sites = Array.from(new Map(assignmentOptions.filter((item) => !assignmentInstitution || item.institucion_id === assignmentInstitution).map((item) => [item.sede_id, item.sede])).entries());
-    const modalities = Array.from(new Map(assignmentOptions.filter((item) => item.institucion_id === assignmentInstitution && item.sede_id === assignmentSite).map((item) => [item.modalidad_id, item.modalidad])).entries());
+    const municipalities = Array.from(new Map(assignmentOptions.map((item) => [item.municipio_id, item.municipio])).entries());
+    const scopedOptions = assignmentOptions.filter((item) => !assignmentMunicipality || item.municipio_id === assignmentMunicipality);
+    const institutions = Array.from(new Map(scopedOptions.map((item) => [item.institucion_id, item.institucion])).entries());
+    const sites = Array.from(new Map(scopedOptions.filter((item) => !assignmentInstitution || item.institucion_id === assignmentInstitution).map((item) => [item.sede_id, item.sede])).entries());
+    const modalities = Array.from(new Map(scopedOptions.filter((item) => item.institucion_id === assignmentInstitution && item.sede_id === assignmentSite).map((item) => [item.modalidad_id, item.modalidad])).entries());
     return <div className="pmd-stack">
       <section className="pmd-card"><div className="pmd-card-header"><div><h3>Datos personales</h3><p>Campos de persona y contacto. El motivo es obligatorio si hay cambios.</p></div></div>
         <div className="pmd-grid two">
@@ -956,8 +964,9 @@ export default function PersonalMasterDrawer({
       <section className="pmd-card"><div className="pmd-card-header"><div><h3>Asignación operativa</h3><p>Catálogos reales dependientes; la modalidad se limita a combinaciones válidas.</p></div></div>
         {!assignmentEditable ? <p className="pmd-readonly-note">{!canUpdateAssignment ? 'No tienes permiso para editar institución, sede o modalidad. Estos datos se muestran solo como lectura.' : 'Este trabajador está fuera de tus municipios asignados. La asignación se muestra solo como lectura.'}</p> : <>
           <div className="pmd-info-grid compact-three"><DataItem label="Institución actual" value={displayValue(currentAssignment?.institucion)} /><DataItem label="Sede actual" value={displayValue(currentAssignment?.sede)} /><DataItem label="Modalidad actual" value={displayValue(currentAssignment?.modalidad)} /></div>
+          {!currentAssignment ? <p className="pmd-readonly-note">Esta persona no tiene una asignación operativa vigente. Al guardar se creará una nueva asignación.</p> : null}
           {assignmentOptionsLoading ? <p className="pmd-readonly-note">Cargando instituciones, sedes y modalidades...</p> : assignmentOptionsError ? <p className="pmd-readonly-note">Error al cargar opciones operativas: {assignmentOptionsError}</p> : assignmentOptions.length === 0 ? <p className="pmd-readonly-note">No hay opciones operativas disponibles.</p> : null}
-          <div className="pmd-grid two"><Field label="Institución"><select value={assignmentInstitution} onChange={(e) => { const institution = e.target.value; setAssignmentInstitution(institution); if (assignmentSite && !assignmentOptions.some((item) => item.institucion_id === institution && item.sede_id === assignmentSite)) setAssignmentSite(''); setAssignmentModality(''); setAssignmentId(''); }} disabled={assignmentOptionsLoading}><option value="">{assignmentOptionsLoading ? 'Cargando instituciones...' : institutions.length === 0 ? 'No hay instituciones disponibles' : 'Seleccionar'}</option>{institutions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field><Field label="Sede"><select value={assignmentSite} disabled={assignmentOptionsLoading || sites.length === 0} onChange={(e) => { setAssignmentSite(e.target.value); setAssignmentModality(''); setAssignmentId(''); }}><option value="">{assignmentOptionsLoading ? 'Cargando sedes...' : sites.length === 0 ? 'No hay sedes disponibles' : 'Seleccionar'}</option>{sites.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field><Field label="Modalidad"><select value={assignmentModality} disabled={assignmentOptionsLoading || !assignmentSite} onChange={(e) => { const modality = e.target.value; setAssignmentModality(modality); const option = assignmentOptions.find((item) => item.institucion_id === assignmentInstitution && item.sede_id === assignmentSite && item.modalidad_id === modality); setAssignmentId(option?.id ?? ''); }}><option value="">{assignmentOptionsLoading ? 'Cargando modalidades...' : modalities.length === 0 ? 'No hay modalidades disponibles' : 'Seleccionar'}</option>{modalities.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field></div>
+          <div className="pmd-grid two"><Field label="Municipio"><select value={assignmentMunicipality} onChange={(e) => { setAssignmentMunicipality(e.target.value); setAssignmentInstitution(''); setAssignmentSite(''); setAssignmentModality(''); setAssignmentId(''); }} disabled={assignmentOptionsLoading}><option value="">{assignmentOptionsLoading ? 'Cargando municipios...' : municipalities.length === 0 ? 'No hay municipios disponibles' : 'Seleccionar'}</option>{municipalities.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field><Field label="Institución"><select value={assignmentInstitution} onChange={(e) => { const institution = e.target.value; setAssignmentInstitution(institution); if (assignmentSite && !scopedOptions.some((item) => item.institucion_id === institution && item.sede_id === assignmentSite)) setAssignmentSite(''); setAssignmentModality(''); setAssignmentId(''); }} disabled={assignmentOptionsLoading || !assignmentMunicipality}><option value="">{assignmentOptionsLoading ? 'Cargando instituciones...' : institutions.length === 0 ? 'No hay instituciones disponibles' : 'Seleccionar'}</option>{institutions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field><Field label="Sede"><select value={assignmentSite} disabled={assignmentOptionsLoading || !assignmentInstitution || sites.length === 0} onChange={(e) => { setAssignmentSite(e.target.value); setAssignmentModality(''); setAssignmentId(''); }}><option value="">{assignmentOptionsLoading ? 'Cargando sedes...' : sites.length === 0 ? 'No hay sedes disponibles' : 'Seleccionar'}</option>{sites.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field><Field label="Modalidad"><select value={assignmentModality} disabled={assignmentOptionsLoading || !assignmentSite} onChange={(e) => { const modality = e.target.value; setAssignmentModality(modality); const option = scopedOptions.find((item) => item.institucion_id === assignmentInstitution && item.sede_id === assignmentSite && item.modalidad_id === modality); setAssignmentId(option?.id ?? ''); }}><option value="">{assignmentOptionsLoading ? 'Cargando modalidades...' : modalities.length === 0 ? 'No hay modalidades disponibles' : 'Seleccionar'}</option>{modalities.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></Field></div>
           {assignmentChanged && <div className="pmd-subcard"><strong>TIPO DE CAMBIO</strong>{currentAssignment?.id ? <label className="pmd-radio"><input type="radio" checked={assignmentType === 'CORRECCION_DIGITACION'} onChange={() => setAssignmentType('CORRECCION_DIGITACION')} /> Corrección de dato mal digitado</label> : <p className="pmd-readonly-note">Esta vinculación no tiene una asignación histórica vigente; se registrará una nueva asignación operativa.</p>}<label className="pmd-radio"><input type="radio" checked={assignmentType === 'CAMBIO_REAL'} onChange={() => setAssignmentType('CAMBIO_REAL')} /> Cambio real desde una fecha</label>{assignmentType === 'CAMBIO_REAL' && <Field label="Fecha efectiva *"><input type="date" value={assignmentDate} onChange={(e) => setAssignmentDate(e.target.value)} /></Field>}<Field label="Motivo *"><textarea value={assignmentReason} onChange={(e) => setAssignmentReason(e.target.value)} /></Field><Field label="Observación"><textarea value={assignmentObservation} onChange={(e) => setAssignmentObservation(e.target.value)} /></Field></div>}
         </>}
       </section>
