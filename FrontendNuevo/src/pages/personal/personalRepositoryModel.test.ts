@@ -29,6 +29,15 @@ test('selector documental reutiliza los tipos reales incluyendo aliases de ident
   const source = readFileSync(resolve('FrontendNuevo/src/pages/personal/PersonalDocumentReview.tsx'),'utf8');
   assert.match(source,/data.types.map/);assert.match(source,/t.nombre/);
 });
+test('Manipulación expone modalidad y permite reutilizar un soporte existente', () => {
+  const source = readFileSync(resolve('FrontendNuevo/src/pages/personal/PersonalDocumentReview.tsx'),'utf8');
+  assert.match(source,/Un solo PDF/);
+  assert.match(source,/Dos archivos/);
+  assert.match(source,/reutilizar_documento_id/);
+  assert.match(source,/Usar este PDF como Curso \+ Exámenes/);
+  assert.match(source,/Modalidad actual: Un solo PDF/);
+  assert.match(source,/Modalidad actual: Dos PDFs separados/);
+});
 test('evidencia sin revisi?n nunca se presenta completa',()=>{
  const column=canonicalColumns([type(1,'HV')]).find(c=>c.canonical_code==='HOJA_VIDA')!;
  assert.equal(repositoryCell(row([],[{tipo_documento_id:1,origen:'persona',documento_id:9,estado_documental:'vigente'}]),column).estado_detallado,'PENDIENTE_REVISION');

@@ -53,6 +53,7 @@ export interface ChecklistItemApi {
   cuenta_numerador?: boolean;
   motivo_aplicabilidad?: string;
   documentos?: { documento_id: number; tipo_documento_id: number; nombre: string }[];
+  componentes_documentales?: { codigo: string; documento_id: number | null; estado: ChecklistEstadoDetallado }[];
   ambito_documental: 'PERSONA' | 'VINCULACION';
   codigo: string | null;
   contrato_cargo_id: number | null;

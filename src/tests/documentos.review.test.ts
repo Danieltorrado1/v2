@@ -17,8 +17,8 @@ for(const code of ['SISBEN','HOJA_VIDA','IDENTIDAD','CERT_BANCARIA','EPS','ARL',
 test('SISBEN requiere clasificación; experiencia no es vigencia y acumula períodos sin solapes',()=>{assert.throws(()=>normalizeDocumentMetadata(documentPolicy('SISBEN'),{}));const p=documentPolicy('CERT_LABORAL');const data=normalizeDocumentMetadata(p,{experiencia_inicio:'2020-01-01',experiencia_fin:'2020-01-31'});assert.equal(documentState({...data,estado_revision:'APROBADO'},p),'APROBADO');assert.equal(experienceDays([data.metadata,{experiencia_inicio:'2020-01-15',experiencia_fin:'2020-02-02'}]),33);});
 test('manipulación necesita ambos componentes aprobados y vigentes; aliases no duplican componente',()=>{
  const extra={codigo:'MANIPULACION',tipo_documento_ids:[1,2,3],componentes:{1:'CURSO',2:'EXAMENES',3:'CURSO'}};
- assert.equal(snapshot([document('PENDIENTE_REVISION'),document('PENDIENTE_REVISION',2)],extra).requisitos[0]?.estado_detallado,'PENDIENTE');
- assert.equal(snapshot([document('APROBADO'),document('RECHAZADO',2)],extra).requisitos[0]?.estado_detallado,'PARCIAL');
+ assert.equal(snapshot([document('PENDIENTE_REVISION'),document('PENDIENTE_REVISION',2)],extra).requisitos[0]?.estado_detallado,'PENDIENTE_REVISION');
+ assert.equal(snapshot([document('APROBADO'),document('RECHAZADO',2)],extra).requisitos[0]?.estado_detallado,'RECHAZADO');
  assert.equal(snapshot([document('APROBADO'),document('APROBADO',2)],extra).cumplimiento_porcentaje,100);
  assert.equal(snapshot([document('APROBADO'),{...document('APROBADO',2),policy_type:{requiere_fecha_vencimiento:true},fecha_vencimiento:'2020-01-01'}],extra).cumplimiento_porcentaje,0);
 });
