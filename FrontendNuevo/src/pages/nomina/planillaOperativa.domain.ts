@@ -139,6 +139,11 @@ export const movimientosOnDate = (items: NominaMovimientoApi[], date: string) =>
 export const novedadCode = (item: NominaNovedadApi) =>
   item.tipo_novedad.codigo_operativo ?? item.tipo_novedad.nombre ?? "NOV";
 
+export const novedadVisualClass = (item: NominaNovedadApi) => {
+  const code = novedadCode(item).toUpperCase().replace(/[^A-Z0-9]+/g, "-");
+  return `op-novelty-code-${code || "NOV"}`;
+};
+
 export const novedadState = (item: NominaNovedadApi) =>
   item.revisado ? "VALIDADA" : item.tipo_novedad.requiere_revision ? "REQUIERE_REVISION" : "REGISTRADA";
 
@@ -183,7 +188,7 @@ export const normalizePlanillaSearch = (...values: unknown[]) => values
   .trim();
 
 export const emptyPlanillaFilters = () => ({
-  query: '', municipio: '', gestor: '', modalidad: '', review: 'TODOS' as const, events: 'TODOS' as const
+  query: '', municipio: '', institucion: '', sede: '', gestor: '', modalidad: '', review: 'TODOS' as const, events: 'TODOS' as const
 });
 
 export const countActivePlanillaFilters = (filters: Record<string, unknown>) => Object.values(filters)
@@ -193,12 +198,14 @@ export const persistedPlanillaFiltersMatchPeriod = (periodId: unknown, currentPe
   typeof periodId === 'string' && periodId.length > 0 && periodId === currentPeriodId;
 
 export const matchesPlanillaFilters = (
-  item: { searchText: string; municipio: string | null | undefined; gestorId: string | null | undefined; modalidad: string | null | undefined; reviewState: string; needsReview: boolean; noveltyCount: number; hasInconsistencies: boolean },
-  filters: { query: string; municipio: string; gestor: string; modalidad: string; review: string; events: string }
+  item: { searchText: string; municipio: string | null | undefined; institucion: string | null | undefined; sede: string | null | undefined; gestorId: string | null | undefined; modalidad: string | null | undefined; reviewState: string; needsReview: boolean; noveltyCount: number; hasInconsistencies: boolean },
+  filters: { query: string; municipio: string; institucion: string; sede: string; gestor: string; modalidad: string; review: string; events: string }
 ) => {
   const query = normalizePlanillaSearch(filters.query);
   if (query && !item.searchText.includes(query)) return false;
   if (filters.municipio && item.municipio !== filters.municipio) return false;
+  if (filters.institucion && item.institucion !== filters.institucion) return false;
+  if (filters.sede && item.sede !== filters.sede) return false;
   if (filters.gestor === '__SIN_GESTOR__' && item.gestorId) return false;
   if (filters.gestor && filters.gestor !== '__SIN_GESTOR__' && item.gestorId !== filters.gestor) return false;
   if (filters.modalidad && item.modalidad !== filters.modalidad) return false;

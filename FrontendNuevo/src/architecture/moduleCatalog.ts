@@ -45,18 +45,18 @@ export const moduleCatalog: ModuleEntry[] = [
   ].map(([code, label, route, icon], order) => entry({ code: code as string, label: label as string, route: route as string, icon: icon as LucideIcon, scope: 'GLOBAL', state: 'PRODUCCION' }, order)),
   entry({ code: 'AGENDA_OPERATIVA', label: 'AGENDA', icon: CalendarDays, route: '/agenda', permission: ['agenda.read'],
     description: 'Organiza las tareas y los pendientes de tu operación.', sections: ['Hoy', 'Mi semana', 'Tareas', 'Pendientes', 'Recordatorios', 'Actividad próxima', 'Pendientes por módulo'] }, 0),
-  entry({ code: 'PERSONAL', label: 'Personal', icon: Users, route: '/personal/estadisticas', legacyCodes: ['PERSONAL', 'NOMINA', 'COBERTURA', 'REPOSITORIO', 'PORTAL_COLABORADOR', 'DASHBOARD'],
+  entry({ code: 'PERSONAL', label: 'Personal', icon: Users, route: '/personal/estadisticas', legacyCodes: ['PERSONAL', 'COBERTURA', 'REPOSITORIO', 'PORTAL_COLABORADOR', 'DASHBOARD'],
     children: children('PERSONAL', '/personal', [
       ['ESTADISTICAS', 'Estadísticas', 'estadisticas', { permission: ['vinculaciones.read'], legacyCodes: ['PERSONAL'], view: 'personal-statistics', sections: ['Personal activo', 'Ingresos', 'Retiros', 'Contratos por vencer', 'Documentos pendientes', 'Distribución por cargo', 'Distribución por municipio', 'Distribución por modalidad'] }],
       ['BASE_DATOS', 'Base de datos', 'base-datos', { permission: ['vinculaciones.read'], legacyCodes: ['PERSONAL'], target: '/personal', aliases: ['/personal', '/administracion/vinculaciones', '/vinculaciones'], state: 'PRODUCCION' }],
       ['REPOSITORIO', 'Repositorio', 'repositorio', { permission: ['documentos.*'], legacyCodes: ['REPOSITORIO'], target: '/repositorio', aliases: ['/repositorio'], state: 'PRODUCCION' }],
       ['COBERTURA', 'Cobertura', 'cobertura', { permission: ['cobertura.read', 'cobertura.update'], legacyCodes: ['COBERTURA'], target: '/herramientas/cobertura', aliases: ['/herramientas/cobertura', '/herramientas/calculadora-cobertura'], state: 'PRODUCCION' }],
-      ['NOMINA', 'Nómina', 'nomina', { permission: ['nomina.*'], legacyCodes: ['NOMINA'], target: '/nomina', aliases: ['/nomina'], state: 'PRODUCCION' }],
       ['PORTAL_SERVICIOS', 'Portal de servicios', 'portal', { permission: ['portal.read', 'portal.*'], legacyCodes: ['PORTAL_COLABORADOR'], view: 'portal', aliases: ['/portal'], sections: ['Bandeja', 'Certificaciones', 'Cesantías', 'Vacaciones', 'Permisos', 'Actualización de datos', 'Solicitudes documentales', 'Historial'] }],
       ['EVALUACION_DESEMPENO', 'Evaluación de desempeño', 'evaluacion', { permission: ['evaluacion.read'], sections: ['Dashboard', 'Ciclos', 'Pendientes', 'Realizadas', 'Competencias', 'Planes de mejora', 'Historial'] }],
       ['LEGISLACION', 'Legislación', 'legislacion', { permission: ['legislacion.read'], sections: ['Normatividad vigente', 'Obligaciones', 'Cambios', 'Cumplimiento', 'Evidencias', 'Alertas'] }],
       ['HERRAMIENTAS', 'Herramientas', 'herramientas', { permission: ['cobertura.read', 'cobertura.update', 'nomina.read'], legacyCodes: ['COBERTURA', 'NOMINA'], view: 'tools', aliases: ['/herramientas/calculadora-salario'], sections: ['Calculadora salarial'] }],
-    ]) }, 1),
+  ]) }, 1),
+  entry({ code: 'NOMINA', label: 'Nómina', icon: Boxes, route: '/nomina', permission: ['nomina.*'], legacyCodes: ['NOMINA'], state: 'PRODUCCION' }, 2),
   entry({ code: 'OPERACION', label: 'Operación', icon: Workflow, route: '/operacion/estadisticas', children: children('OPERACION', '/operacion', [
     ['ESTADISTICAS', 'Estadísticas', 'estadisticas', { permission: ['operacion.read'], sections: ['Servicios programados', 'Servicios entregados', 'Novedades', 'Distribución por municipio'] }],
     ['INSTITUCIONES', 'Instituciones', 'instituciones', { permission: ['vinculaciones.read'], view: 'institutions', sections: ['Institución', 'Centro educativo', 'Sede', 'Municipio', 'Dirección', 'Modalidad', 'Cupos', 'Jornada', 'Estado'] }],
@@ -65,7 +65,7 @@ export const moduleCatalog: ModuleEntry[] = [
     ['DESCUENTOS_SEMANALES', 'Descuentos semanales', 'descuentos-semanales', { permission: ['operacion.read'], sections: ['Semana', 'Institución', 'Sede', 'Motivo', 'Cantidad', 'Valor', 'Soporte', 'Estado', 'Aprobación'] }],
     ['PLANILLA_FINAL', 'Planilla final', 'planilla-final', { permission: ['operacion.read'], sections: ['Institución', 'Sede', 'Modalidad', 'Días', 'Servicios', 'Descuentos', 'Novedades', 'Valor final', 'Revisión', 'Aprobación', 'Exportación'] }],
     ['EVALUACION', 'Evaluación operacional', 'evaluacion', { permission: ['operacion.read'], sections: ['Ciclos', 'Criterios operacionales', 'Resultados', 'Planes de mejora'] }],
-  ]) }, 2),
+  ]) }, 3),
   entry({ code: 'LOGISTICA', label: 'Logística', icon: Truck, route: '/logistica/estadisticas', children: children('LOGISTICA', '/logistica', [
     ['ESTADISTICAS', 'Estadísticas', 'estadisticas', { permission: ['logistica.read'], sections: ['Despachos', 'Recepciones', 'Existencias', 'Vencimientos'] }],
     ['REMISIONES', 'Generador de remisiones', 'remisiones', { permission: ['logistica.read'], sections: ['Remisión', 'Institución', 'Sede', 'Modalidad', 'Ruta', 'Paquete', 'Persona', 'QR', 'Stickers', 'Impresión', 'Despacho', 'Recepción'] }],
@@ -74,7 +74,7 @@ export const moduleCatalog: ModuleEntry[] = [
     ['BODEGAS', 'Bodegas', 'bodegas', { permission: ['logistica.read'], sections: ['Listado de bodegas', 'Responsable', 'Inventario', 'Movimientos', 'Documentos', 'Despachos', 'Recepciones'] }],
     ['DOCUMENTOS_BODEGA', 'Documentos de bodega', 'documentos-bodega', { permission: ['logistica.read'], sections: ['Documentos', 'Vigencias', 'Responsables', 'Historial'] }],
     ['CONDUCTORES_VEHICULOS', 'Conductores y vehículos', 'conductores-vehiculos', { permission: ['logistica.read'], sections: ['Conductores', 'Licencias', 'Vehículos', 'SOAT', 'Técnico-mecánica', 'Documentos', 'Vencimientos', 'Historial'] }],
-  ]) }, 3),
+  ]) }, 4),
   entry({ code: 'SST', label: 'SST', icon: ShieldCheck, route: '/sst/clasificacion', legacyCodes: ['SST'], children: children('SST', '/sst', [
     ['CLASIFICACION', 'Clasificación de empresa', 'clasificacion', { permission: ['sst.*'], legacyCodes: ['SST'], view: 'sst-classification', sections: ['Tamaño de empresa', 'Trabajadores', 'Actividad económica', 'Clase de riesgo', 'Centros de trabajo', 'Contratistas', 'Características especiales'] }],
     ['ESTADISTICAS', 'Estadísticas', 'estadisticas', { permission: ['sst.*'], legacyCodes: ['SST'], target: '/sst?tab=indicadores', aliases: ['/sst?tab=resumen', '/sst?tab=indicadores', '/sst/indicadores'], state: 'PRODUCCION' }],
@@ -87,7 +87,7 @@ export const moduleCatalog: ModuleEntry[] = [
     ['CAPACITACIONES', 'Capacitaciones', 'formacion', { permission: ['sst.*'], sections: ['Programación', 'Participantes', 'Evidencias', 'Historial'] }],
     ['COMITES', 'Comités', 'comites', { permission: ['sst.*'], sections: ['Integrantes', 'Reuniones', 'Actas', 'Compromisos'] }],
     ['AUDITORIA', 'Auditoría', 'auditoria', { permission: ['sst.*'], sections: ['Programa', 'Hallazgos', 'Evidencias', 'Seguimiento'] }],
-  ]) }, 4),
+  ]) }, 5),
   entry({ code: 'CONFIGURACION_EMPRESA', label: 'Configuración', icon: Settings, route: '/configuracion/empresa', children: children('CONFIG_EMPRESA', '/configuracion', [
     ['GENERAL', 'Empresa', 'empresa', { permission: ['configuracion.read', 'empresas.read'], view: 'company-settings' }],
     ['CONTRATOS', 'Contratos', 'contratos', { permission: ['configuracion.read', 'contratos.read', 'contracts.read'], view: 'contracts' }],
@@ -99,7 +99,7 @@ export const moduleCatalog: ModuleEntry[] = [
     ['ROLES', 'Roles y permisos', 'roles', { permission: ['configuracion.read', 'roles.read'], view: 'roles' }],
     ['CATALOGOS', 'Catálogos', 'catalogos', { permission: ['configuracion.read', 'catalogos.read'], view: 'catalogs' }],
     ['INTEGRACIONES', 'Integraciones', 'integraciones', { permission: ['configuracion.read'], sections: ['Conexiones', 'Credenciales', 'Sincronización', 'Historial'] }],
-  ]) }, 5),
+  ]) }, 6),
 ];
 
 export const adminModules = moduleCatalog.filter(item => item.scope === 'GLOBAL');

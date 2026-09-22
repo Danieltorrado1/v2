@@ -46,6 +46,7 @@ import type {
   UpdateNominaTurnoPayload,
   CoberturaExternoResumenApi,
 } from '../types/nomina.types';
+import { normalizeNominaPeriods } from '../pages/nomina/nominaPeriods';
 import { ApiClientError } from './apiClient';
 import { env } from '../config/env';
 import { clearAuthSession, getAuthToken } from './tokenStorage';
@@ -257,18 +258,28 @@ function normalizeNominaPeriodosResponse(
   data: PaginatedNominaPeriodosApi | NominaPeriodoApi[],
 ): PaginatedNominaPeriodosApi {
   if (Array.isArray(data)) {
+    const items = normalizeNominaPeriods(data);
     return {
-      items: data.map(period => ({ ...period, id: String(period.id) })),
+      items,
       pagination: {
         page: 1,
-        limit: data.length,
-        total: data.length,
-        total_pages: 1,
+        limit: items.length,
+        total: items.length,
+        total_pages: items.length === 0 ? 0 : 1,
       },
     };
   }
 
-  return { ...data, items: data.items.map(period => ({ ...period, id: String(period.id) })) };
+  const items = normalizeNominaPeriods(data.items);
+  return {
+    ...data,
+    items,
+    pagination: {
+      ...data.pagination,
+      total: items.length,
+      total_pages: items.length === 0 ? 0 : Math.ceil(items.length / Math.max(1, data.pagination.limit)),
+    },
+  };
 }
 
 export async function getNominaPeriodos(
@@ -879,7 +890,7 @@ export async function getNovedadDocumentos(novedadId: string) {
 
 export async function uploadNovedadDocumento(
   novedadId: string,
-  tipo: 'SOPORTE' | 'SOLICITUD_PERMISO',
+  tipo: 'SOPORTE' | 'SOLICITUD_PERMISO' | 'AUTORIZACION_DESCUENTO',
   file: File,
 ) {
   const form = new FormData();
@@ -887,6 +898,19 @@ export async function uploadNovedadDocumento(
   const response = await apiClient.post<ApiResponse<NominaNovedadDocumentosApi>>(
     `/nomina/novedades/${novedadId}/documentos/${tipo}`,
     form,
+  );
+  return response.data;
+}
+
+export async function reviewNovedadDocumento(
+  novedadId: string,
+  tipo: 'SOPORTE' | 'SOLICITUD_PERMISO' | 'AUTORIZACION_DESCUENTO',
+  decision: 'APROBADO' | 'RECHAZADO',
+  motivo_rechazo?: string,
+) {
+  const response = await apiClient.post<ApiResponse<NominaNovedadDocumentosApi>>(
+    `/nomina/novedades/${novedadId}/documentos/${tipo}/revision`,
+    { decision, motivo_rechazo: motivo_rechazo || null },
   );
   return response.data;
 }

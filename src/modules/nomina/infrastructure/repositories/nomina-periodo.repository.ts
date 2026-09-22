@@ -146,7 +146,8 @@ export class NominaPeriodoRepository {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
-    appendScope(conditions, params, input.tenant);
+  appendScope(conditions, params, input.tenant);
+  conditions.push('COALESCE(np.activo, TRUE) = TRUE');
 
     if (input.contratoId) {
       params.push(input.contratoId);
@@ -218,6 +219,7 @@ export class NominaPeriodoRepository {
           AND np.fecha_inicio = $2::date
           AND np.fecha_fin = $3::date
           AND np.tipo_periodo = $4
+          AND COALESCE(np.activo, TRUE) = TRUE
         ORDER BY np.id ASC
         LIMIT 1
       `,

@@ -10,6 +10,7 @@ import {
   type NominaNovedadDocumentSlot,
   uploadNovedadDocument,
   uploadNovedadSupport,
+  reviewNovedadDocument,
 } from './cobertura.novedad-documentos';
 
 const noveltyId = (req: Request) => {
@@ -66,6 +67,23 @@ export const uploadNovedadDocumentHandler = asyncHandler(async (req: Request, re
     ),
     message: 'Novedad document uploaded successfully',
   });
+});
+
+export const reviewNovedadDocumentHandler = asyncHandler(async (req: Request, res: Response) => {
+  const decision = String(req.body?.decision ?? '').trim().toUpperCase();
+  if (decision !== 'APROBADO' && decision !== 'RECHAZADO') {
+    throw new AppError('Decisión documental inválida', 400, 'NOMINA_NOVEDAD_DOCUMENT_DECISION_INVALIDA');
+  }
+  const data = await reviewNovedadDocument(
+    noveltyId(req),
+    parseSlot(req),
+    decision,
+    actor(req),
+    typeof req.body?.motivo_rechazo === 'string' ? req.body.motivo_rechazo : null,
+    req.tenant,
+    { ip: req.ip, user_agent: req.get('user-agent') }
+  );
+  return successResponse(res, { data, message: 'Novedad document reviewed successfully' });
 });
 
 export const getNovedadSupportHandler = asyncHandler(async (req: Request, res: Response) => successResponse(res, { data: await getNovedadSupport(noveltyId(req), req.tenant), message: 'Novedad support retrieved successfully' }));

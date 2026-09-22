@@ -58,8 +58,10 @@ function matches(route: string, pathname: string, search: string) {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 export function resolveCatalogLocation(pathname: string, search = ''): { module: ModuleEntry; entry: ModuleEntry } | null {
-  const candidates = tenantModules.flatMap(module => module.children.flatMap(entry =>
-    [entry.route, ...entry.aliases].map(route => ({ module, entry, route }))));
+  const candidates = tenantModules.flatMap(module => [
+    ...(module.children.length ? [] : [module]),
+    ...module.children,
+  ].flatMap(entry => [entry.route, ...entry.aliases].map(route => ({ module, entry, route }))));
   // /personal is a legacy exact leaf, not a catch-all for disabled new submodules.
   const match = candidates.filter(item => item.route === '/personal' ? pathname === '/personal' : matches(item.route, pathname, search))
     .sort((a, b) => b.route.length - a.route.length)[0];

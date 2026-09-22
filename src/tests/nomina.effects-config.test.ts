@@ -49,3 +49,28 @@ test('buildNominaEffectMatrixFromConfig respeta efectos explicitos y no los reem
   assert.equal(matrix.efecto_salario, 'SIN_EFECTO');
   assert.equal(matrix.efecto_transporte, 'DESCUENTA_DIA');
 });
+
+test('DCO conserva neutralidad económica en la matriz de efectos', () => {
+  const matrix = buildNominaEffectMatrixFromConfig({
+    bloquea_otras_novedades: false,
+    codigo_operativo: 'DCO',
+    afecta_salario: false,
+    afecta_transporte: false,
+    efecto_auxilio_transporte: 'SIN_EFECTO',
+    efecto_cobertura_config: 'SIN_EFECTO',
+    efecto_liquidacion: 'SIN_EFECTO',
+    efecto_operativo: 'SIN_EFECTO',
+    efecto_recargos_detallado: 'SIN_EFECTO',
+    efecto_salario: 'SIN_EFECTO',
+    grupo_exclusividad: 'NINGUNA',
+    modelo_registro: 'POR_PERIODO',
+    nombre: 'Día compensatorio',
+    observacion_plantilla: null,
+    proyecta_periodos: false,
+  });
+
+  assert.equal(matrix.efecto_salario, 'SIN_EFECTO');
+  assert.equal(matrix.efecto_transporte, 'SIN_EFECTO');
+  assert.equal(matrix.efecto_recargos, 'SIN_EFECTO');
+  assert.equal(matrix.efecto_liquidacion, 'SIN_EFECTO');
+});

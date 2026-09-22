@@ -6,6 +6,7 @@ import { calculateCoberturaPayroll } from '../modules/nomina/nomina.cobertura';
 
 const migration = readFileSync(resolve('sql/phase-35-nomina-5b1-cobertura-externos.sql'), 'utf8');
 const syncMigration = readFileSync(resolve('sql/phase-36-3-nomina-cobertura-cuentas-sync.sql'), 'utf8');
+const pdfMigration = readFileSync(resolve('sql/phase-46-nomina-cuenta-cobro-turnos-pdf.sql'), 'utf8');
 const externalService = readFileSync(resolve('src/modules/nomina/cobertura.externos.service.ts'), 'utf8');
 const nominaService = readFileSync(resolve('src/modules/nomina/nomina.service.ts'), 'utf8');
 const routes = readFileSync(resolve('src/modules/nomina/nomina.routes.ts'), 'utf8');
@@ -71,6 +72,19 @@ test('5B.1 detalle de cuenta conserva snapshot de tarifa, modalidad e institucio
   assert.match(externalService, /modalidad/);
   assert.match(externalService, /institucion/);
   assert.match(externalService, /sede/);
+});
+
+test('5B.1 cuenta de cobro genera un PDF dinámico desde movimientos únicos y conserva el snapshot operativo', () => {
+  assert.match(pdfMigration, /ADD COLUMN IF NOT EXISTS titular_referencia TEXT/);
+  assert.match(pdfMigration, /ADD COLUMN IF NOT EXISTS municipio TEXT/);
+  assert.match(externalService, /COUNT\(DISTINCT nm\.id\)/);
+  assert.match(externalService, /buildCoberturaCuentaPdf/);
+  assert.match(externalService, /input\.turnos\.forEach/);
+  assert.match(externalService, /CuentaCobroPdfInput/);
+  assert.match(externalService, /numberToSpanishWords/);
+  assert.match(externalService, /AND nm\.valor_total IS NOT NULL/);
+  assert.match(externalService, /FIRMADA_REGENERACION_INVALIDA/);
+  assert.match(externalService, /movimiento_id/);
 });
 
 test('5B.1 turno desde novedad resuelve snapshot tarifario y recalcula sin crear valores en cero', () => {

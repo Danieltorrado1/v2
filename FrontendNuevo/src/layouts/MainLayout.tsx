@@ -249,8 +249,8 @@ export default function MainLayout() {
 
       <main className="content content--workspace">
         {globalAdmin && !adminScope && empresaActual && <div className="global-tenant-banner"><strong>MODO ADMINISTRADOR GLOBAL</strong><span>EMPRESA: {empresaActual.nombre_empresa}</span><Link to="/admin-global/empresas">VOLVER A EMPIRIA ADMIN</Link></div>}
-        <div className={`page-scroll${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-scroll--nomina-gestion" : ""}`}>
-          <div className={`page-content${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-content--nomina-gestion" : ""}`}>
+        <div className={`page-scroll${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-scroll--nomina-gestion" : ""}${location.pathname.startsWith("/nomina") ? " page-scroll--nomina-module" : ""}${location.pathname === "/nomina/planilla-operativa" ? " page-scroll--planilla-operativa" : ""}`}>
+          <div className={`page-content${["/nomina/asistencia", "/nomina/pago", "/nomina/documentos", "/nomina/gestion"].includes(location.pathname) ? " page-content--nomina-gestion" : ""}${location.pathname.startsWith("/nomina") ? " page-content--nomina-module" : ""}${location.pathname === "/nomina/planilla-operativa" ? " page-content--planilla-operativa" : ""}`}>
             <WorkspaceAccess><Outlet /></WorkspaceAccess>
           </div>
         </div>
