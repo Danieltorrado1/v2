@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildTramos, dateKey, dedupeNominaNovedades, isOutsideEmployment, mergeAttendance, movimientosOnDate, novedadesOnDate, novedadState, upsertNominaNovedad, matchesPlanillaFilters, normalizePlanillaSearch, persistedPlanillaFiltersMatchPeriod } from './planillaOperativa.domain';
+import { buildTramos, dateKey, dedupeNominaNovedades, isOutsideEmployment, mergeAttendance, movimientosOnDate, novedadesOnDate, novedadState, upsertNominaNovedad, matchesPlanillaFilters, normalizePlanillaSearch, persistedPlanillaFiltersMatchPeriod, slicePlanillaPage } from './planillaOperativa.domain';
 import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from './nominaPeriods';
 import { addDaysToDateOnly } from './dateOnly';
 import type { NominaEmpleadoApi, NominaMovimientoApi, NominaNovedadApi } from '../../types/nomina.types';
@@ -37,7 +37,7 @@ test('ingreso intrames conserva la fila y habilita solo los dias vigentes',()=>{
   assert.deepEqual(buildTramos({...employee,vinculacion:{...employee.vinculacion,fecha_inicio:'2026-07-01',fecha_fin:'2026-07-31'}},'2026-08-01','2026-08-31',[]),[]);
 });
 test('tres tramos siguen en una fila',()=>{const e={...employee,vinculacion:{...employee.vinculacion,fecha_inicio:'2026-08-01',fecha_fin:null}};const t=buildTramos(e,'2026-08-01','2026-08-31',[{id:'1',vinculacion_id:'10',fecha_inicio_efectiva:'2026-08-11',contexto_anterior:{modalidad:'A'},contexto_nuevo:{modalidad:'B'},tipo:'CAMBIO_DE_MODALIDAD',activo:true},{id:'2',vinculacion_id:'10',fecha_inicio_efectiva:'2026-08-21',contexto_anterior:{modalidad:'B'},contexto_nuevo:{modalidad:'C'},tipo:'CAMBIO_COMBINADO',activo:true}]);assert.deepEqual(t.map(x=>[x.inicio,x.fin,x.contexto.modalidad]),[['2026-08-01','2026-08-10','A'],['2026-08-11','2026-08-20','B'],['2026-08-21','2026-08-31','C']]);});
-test('virtualiza 771 filas y usa un grid sticky',()=>{assert.ok(source.includes('filtered.slice(startIndex,startIndex+visibleCount)'));assert.ok(css.includes('.op-head{position:sticky'));assert.ok(css.includes('.op-doc,.op-name{position:sticky!important'));assert.equal(source.includes('<table'),false);assert.equal(Array.from({length:771}).length,771);});
+test('virtualiza 771 filas y usa un grid sticky',()=>{assert.ok(source.includes('pageRows.slice(startIndex, startIndex + visibleCount)'));assert.ok(css.includes('.op-head{position:sticky'));assert.ok(css.includes('.op-doc,.op-name{position:sticky!important'));assert.equal(source.includes('<table'),false);assert.equal(Array.from({length:771}).length,771);});
 test('la matriz es el unico scroll vertical de Planilla',()=>{
   assert.ok(source.includes('className="nomina-module-shell--planilla"'));
   assert.equal(source.includes('style={{ height: VIEWPORT_HEIGHT }}'),false);
@@ -71,8 +71,43 @@ test('filtros integran gestor y ordenar en la misma barra',()=>{assert.ok(source
 test('toolbar de filtros conserva una sola fila y popovers fuera del flujo',()=>{
   assert.match(css,/\.op-toolbar\s*\{[\s\S]*?flex-wrap:\s*nowrap/);
   assert.match(css,/\.planilla-facet-menu\s*\{[\s\S]*?max-height:\s*280px/);
-  assert.match(css,/\.planilla-facet-menu\s*\{[\s\S]*?position:\s*absolute/);
+  assert.match(css,/\.planilla-facet-menu\s*\{[\s\S]*?position:\s*absolute[\s\S]*?z-index:\s*100/);
   assert.match(css,/\.planilla-facet\[data-planilla-facet\^="Instituci"\][\s\S]*?width:\s*max\(100%, 300px\)/);
+  assert.match(css,/\.op-head\s*\{[\s\S]*?position:\s*sticky[\s\S]*?z-index:\s*10/);
+});
+test('pipeline filtra antes de paginar y las filas renderizadas derivan de la pagina filtrada',()=>{
+  const population = [
+    { id: 'g1', municipio: 'GRANADA', sede: 'SEDE X' },
+    { id: 'g2', municipio: 'GRANADA', sede: 'SEDE Y' },
+    { id: 'v1', municipio: 'VILLAVICENCIO', sede: 'SEDE X' },
+    { id: 'a1', municipio: 'ACACIAS', sede: 'SEDE Z' },
+  ];
+  const row = (item: typeof population[number]) => ({
+    searchText: normalizePlanillaSearch(item.id, item.municipio, item.sede),
+    municipio: item.municipio,
+    institucion: 'I',
+    sede: item.sede,
+    gestorId: null,
+    modalidad: 'A',
+    reviewState: 'PENDIENTE',
+    needsReview: false,
+    noveltyCount: 0,
+    hasInconsistencies: false,
+  });
+  const filteredPopulation = population.filter((item) => matchesPlanillaFilters(row(item), { query: '', municipio: 'GRANADA', institucion: '', sede: '', gestor: '', modalidad: '', review: 'TODOS', events: 'TODOS' }));
+  const pageRows = slicePlanillaPage(filteredPopulation, 1, 1);
+  assert.equal(filteredPopulation.length, 2);
+  assert.equal(pageRows.length, 1);
+  assert.equal(pageRows.every((item) => normalizePlanillaSearch(item.municipio) === 'granada'), true);
+  const sedeRows = filteredPopulation.filter((item) => matchesPlanillaFilters(row(item), { query: '', municipio: 'GRANADA', institucion: '', sede: 'SEDE Y', gestor: '', modalidad: '', review: 'TODOS', events: 'TODOS' }));
+  assert.deepEqual(sedeRows.map((item) => item.id), ['g2']);
+  assert.match(source,/const filteredPopulation = useMemo/);
+  assert.match(source,/const sortedPopulation = useMemo/);
+  assert.match(source,/const pageRows = slicePlanillaPage\(sortedPopulation/);
+  assert.match(source,/const renderedRows = pageRows\.slice/);
+  assert.match(source,/renderedRows\.map\(/);
+  assert.match(source,/viewport\.current\.scrollTop = 0/);
+  assert.match(source,/key=\{\[periodId, query, municipio, institucion, sede/);
 });
 test('modal de novedad concentra la cobertura sin panel externo',()=>{for(const token of ['Cobertura del turno','Sin reemplazo / No aplica','Cubierto por personal vinculado','Cubierto por persona externa'])assert.ok(source.includes(token),token);assert.equal(source.includes('op-coverage-panel'),false);});
 test('dedupe y upsert evitan render duplicado del mismo registro',()=>{const novelty={id:'dup',activo:true,fecha_inicio:'2026-08-11',fecha_fin:'2026-08-11',fecha_inicio_evento_canonico:null,fecha_fin_evento_canonico:null} as NominaNovedadApi;assert.equal(dedupeNominaNovedades([novelty,novelty]).length,1);assert.equal(upsertNominaNovedad([novelty],{...novelty,observacion:'corregida'} as NominaNovedadApi)[0]?.observacion,'corregida');});

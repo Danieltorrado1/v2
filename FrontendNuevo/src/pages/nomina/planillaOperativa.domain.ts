@@ -194,6 +194,12 @@ export const emptyPlanillaFilters = () => ({
 export const countActivePlanillaFilters = (filters: Record<string, unknown>) => Object.values(filters)
   .filter((value) => value !== '' && value !== 'TODOS' && value !== null && value !== undefined).length;
 
+export const slicePlanillaPage = <T>(items: T[], page: number, pageSize: number) => {
+  const safePage = Math.max(1, page);
+  const start = (safePage - 1) * pageSize;
+  return items.slice(start, start + pageSize);
+};
+
 export const persistedPlanillaFiltersMatchPeriod = (periodId: unknown, currentPeriodId: string) =>
   typeof periodId === 'string' && periodId.length > 0 && periodId === currentPeriodId;
 

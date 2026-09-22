@@ -66,6 +66,7 @@ import {
   matchesPlanillaFilters,
   normalizePlanillaSearch,
   persistedPlanillaFiltersMatchPeriod,
+  slicePlanillaPage,
   upsertNominaNovedad,
   novedadState,
   novedadVisualClass,
@@ -154,7 +155,7 @@ function PlanillaFacetDropdown({
 }) {
   const selected = options.find((option) => option.value === value);
   return (
-    <div className="planilla-facet" data-planilla-facet={facetKey ?? label}>
+    <div className={`planilla-facet${open ? " is-open" : ""}`} data-planilla-facet={facetKey ?? label}>
       <button type="button" className="planilla-facet-trigger" aria-expanded={open} onClick={onToggle}>
         <span>{selected?.label ?? label}</span>
         <span aria-hidden="true">⌄</span>
@@ -1123,7 +1124,7 @@ export default function PlanillaOperativaPage() {
     };
   }, [eventFilter, facetRows, gestorFilter, institucion, modalidad, municipio, query, reviewFilter, sede]);
 
-  const filteredEmployees = useMemo(
+  const filteredPopulation = useMemo(
     () =>
       employees.filter((employee) => {
         const employeeNovelties = noveltyByEmployee.get(employee.id) ?? [];
@@ -1162,8 +1163,8 @@ export default function PlanillaOperativaPage() {
     [employees, eventFilter, gestorFilter, institucion, modalidad, movementByEmployee, municipio, noveltyByEmployee, changesByLink, query, reviewByEmployee, reviewFilter, sede],
   );
 
-  const ordered = useMemo(() => {
-    const items = [...filteredEmployees];
+  const sortedPopulation = useMemo(() => {
+    const items = [...filteredPopulation];
     items.sort((left, right) => {
       const leftContext = employeeBaseContext(left);
       const rightContext = employeeBaseContext(right);
@@ -1197,7 +1198,7 @@ export default function PlanillaOperativaPage() {
       return sortMode === "NOMBRE_DESC" || sortMode === "DOCUMENTO_DESC" ? -result : result;
     });
     return items;
-  }, [filteredEmployees, sortMode]);
+  }, [filteredPopulation, sortMode]);
 
   const summary = useMemo(
     () => ({
@@ -1210,17 +1211,18 @@ export default function PlanillaOperativaPage() {
 
   const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 6);
   const visibleCount = Math.ceil(VIEWPORT_HEIGHT / ROW_HEIGHT) + 12;
-  const totalPages = Math.max(1, Math.ceil(ordered.length / PLANILLA_PAGE_SIZE));
+  const totalFiltered = sortedPopulation.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / PLANILLA_PAGE_SIZE));
   const pageStart = (currentPage - 1) * PLANILLA_PAGE_SIZE;
-  const pagedEmployees = ordered.slice(pageStart, pageStart + PLANILLA_PAGE_SIZE);
+  const pageRows = slicePlanillaPage(sortedPopulation, currentPage, PLANILLA_PAGE_SIZE);
   // La paginación es solo una vista del conjunto ya cargado; la virtualización
   // sigue operando sobre la página visible sin crear otra fuente de datos.
-  const filtered = pagedEmployees;
-  const visibleEmployees = filtered.slice(startIndex,startIndex+visibleCount);
+  const renderedRows = pageRows.slice(startIndex, startIndex + visibleCount);
 
   useEffect(() => {
     setCurrentPage(1);
     setScrollTop(0);
+    if (viewport.current) viewport.current.scrollTop = 0;
   }, [query, municipio, institucion, sede, gestorFilter, modalidad, reviewFilter, eventFilter, sortMode, periodId]);
 
   useEffect(() => {
@@ -1758,14 +1760,14 @@ export default function PlanillaOperativaPage() {
           : reviewFilter === "CERRADOS"
             ? "CERRADO"
             : "PENDIENTE";
-    const eligible = ordered
+    const eligible = sortedPopulation
       .map((employee, index) => ({ employee, index }))
       .filter(({ employee }) => {
         const state = resolveOperativeState(employee, reviewByEmployee.get(employee.id) ?? null);
         return state === wanted;
       });
 
-    const currentIndex = selected ? ordered.findIndex((employee) => employee.id === selected.employee.id) : -1;
+    const currentIndex = selected ? sortedPopulation.findIndex((employee) => employee.id === selected.employee.id) : -1;
     const next = eligible.find((item) => item.index > currentIndex) ?? eligible[0];
 
     if (next) {
@@ -1794,7 +1796,7 @@ export default function PlanillaOperativaPage() {
       <section className="op-summary" aria-label="Resumen de la planilla">
         <strong>{employees.length} trabajadores</strong>
         <span aria-live="polite">
-          {filteredEmployees.length} personas · {activeFilterCount} {activeFilterCount === 1 ? "filtro activo" : "filtros activos"}
+          {totalFiltered} personas · {activeFilterCount} {activeFilterCount === 1 ? "filtro activo" : "filtros activos"}
         </span>
         <span>
           REVISION {summary.reviewed}/{employees.length} |{" "}
@@ -1907,7 +1909,7 @@ export default function PlanillaOperativaPage() {
         {availabilityError ? <p role="alert">{availabilityError}</p> : null}
         {!error && availableEmployees !== 0 && period?.estado === "ABIERTO" ? user?.permissions.includes("nomina.empleados.import") ? <button type="button" onClick={() => void syncPersonal()} disabled={isSyncingPersonal}><RefreshCw size={17} />{isSyncingPersonal ? "Cargando personal..." : "CARGAR PERSONAL"}</button> : <p>Solicita la carga a un usuario con permiso para importar personal.</p> : null}
         <button type="button" onClick={() => setReloadVersion(value => value + 1)} disabled={isSyncingPersonal}>Reintentar</button>
-      </div> : ordered.length === 0 ? <div className="op-population-empty" role="status"><h2>Sin coincidencias</h2><p>No hay trabajadores que coincidan con los filtros actuales.</p></div> : (
+      </div> : totalFiltered === 0 ? <div className="op-population-empty" role="status"><h2>Sin coincidencias</h2><p>No hay trabajadores que coincidan con los filtros actuales.</p></div> : (
         <div className="op-matrix-card">
         <div
           ref={viewport}
@@ -1926,8 +1928,12 @@ export default function PlanillaOperativaPage() {
             ))}
           </div>
 
-          <div className="op-virtual-space" style={{ height: pagedEmployees.length * ROW_HEIGHT, minWidth: gridMinWidth }}>
-            {visibleEmployees.map((employee, offset) => {
+          <div
+            key={[periodId, query, municipio, institucion, sede, modalidad, gestorFilter, reviewFilter, eventFilter, sortMode, currentPage].join("|")}
+            className="op-virtual-space"
+            style={{ height: pageRows.length * ROW_HEIGHT, minWidth: gridMinWidth }}
+          >
+            {renderedRows.map((employee, offset) => {
               const index = startIndex + offset;
               const review = reviewByEmployee.get(employee.id) ?? null;
               const state = resolveOperativeState(employee, review);
@@ -2040,7 +2046,7 @@ export default function PlanillaOperativaPage() {
           </div>
         </div>
         <footer className="op-matrix-footer">
-          <span>Mostrando {ordered.length ? pageStart + 1 : 0}–{Math.min(pageStart + PLANILLA_PAGE_SIZE, ordered.length)} de {ordered.length} trabajadores</span>
+          <span>Mostrando {totalFiltered ? pageStart + 1 : 0}–{Math.min(pageStart + PLANILLA_PAGE_SIZE, totalFiltered)} de {totalFiltered} trabajadores</span>
           <nav className="op-pagination" aria-label="Paginación de trabajadores">
             <button type="button" onClick={() => { setCurrentPage((page) => Math.max(1, page - 1)); setScrollTop(0); }} disabled={currentPage === 1}>Anterior</button>
             {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
