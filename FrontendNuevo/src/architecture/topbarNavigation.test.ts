@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { moduleCatalog, type ModuleEntry } from "./moduleCatalog";
+import { visibleTenantModules } from "./moduleAccess";
+import type { EmpresaCapabilities } from "../services/saasApi";
 import { topbarNavigation } from "./topbarNavigation";
 
 const minimal = (code: string, route: string, children: ModuleEntry[] = []): ModuleEntry => ({
@@ -42,4 +44,26 @@ test("Nómina es un módulo top-level del catálogo", () => {
 
   assert.equal(nomina?.route, "/nomina");
   assert.equal(personal?.children.some((child) => child.code === "NOMINA"), false);
+});
+
+test("Talento Humano ve Personal y Nómina, sin elevar acceso a otros módulos", () => {
+  const user = {
+    roles: ["TALENTO_HUMANO"],
+    permissions: ["vinculaciones.read", "nomina.read", "nomina.operativa.read"],
+  };
+  const capabilities = {
+    empresa: { id: 8, nombre: "Empresa" },
+    organizacion: null,
+    legacy: true,
+    suscripcion: null,
+    modulos: { PERSONAL: true, NOMINA: true, OPERACION: true, LOGISTICA: true, SST: true },
+    modulos_habilitados: [],
+    modulos_deshabilitados: [],
+    modulos_plan: [],
+    overrides: [],
+  } as EmpresaCapabilities;
+  const visible = topbarNavigation(visibleTenantModules(user, capabilities, 8));
+
+  assert.deepEqual(visible.map((item) => item.code), ["PERSONAL", "NOMINA"]);
+  assert.equal(visible.find((item) => item.code === "NOMINA")?.route, "/nomina/planilla-operativa");
 });
