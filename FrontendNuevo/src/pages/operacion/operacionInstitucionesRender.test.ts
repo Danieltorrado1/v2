@@ -11,7 +11,7 @@ test('success con 50 items monta buscador, ocho filtros, encabezados y filas', (
   assert.match(source, /instituciones-search-row/);
   for (const text of ['Municipio', 'Institución', 'Sede', 'Modalidad', 'Rector', 'Gestor', 'Estado']) assert.match(source, new RegExp(text));
   assert.match(source, /rows\.map/);
-  assert.match(source, /row\.focalizacion\?\.id/);
+  assert.match(source, /row\.periodo_focalizacion\?\.id/);
 });
 
 test('success vacío conserva filtros y muestra el estado vacío', () => {
@@ -24,6 +24,21 @@ test('loading y error no mezclan resultados residuales', () => {
   assert.match(source, /status === 'loading'/);
   assert.match(source, /status === 'error'/);
   assert.match(source, /setResult\(empty\)/);
+});
+
+test('renderiza y filtra el estado SIN_SERVICIO_FOCALIZADO', () => {
+  assert.match(source, /SIN_SERVICIO_FOCALIZADO/);
+  assert.match(source, /sin_servicio_focalizado/);
+  assert.match(source, /personal_sin_servicio/);
+});
+
+test('presenta resumen en tarjetas, SIMAT ausente y detalle operativo', () => {
+  assert.match(source, /instituciones-summary-grid/);
+  assert.match(source, /Sin datos SIMAT/);
+  assert.match(source, /Ver detalle/);
+  assert.match(source, /instituciones-detail-panel/);
+  assert.match(source, /Vista histórica/);
+  assert.match(source, /defaultFocalizacionApplied/);
 });
 
 test('cambio de focalización y paginación usan el contrato actual', () => {

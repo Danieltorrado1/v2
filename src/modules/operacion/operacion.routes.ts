@@ -19,7 +19,7 @@ import {
   updateSedeHandler,
   validateImportHandler,
 } from './operacion.controller';
-import { getInstitucionesHandler, updateInstitucionFocalizacionHandler } from './operacion.instituciones.controller';
+import { getCoberturaRulesHandler, getInstitucionesHandler, updateInstitucionFocalizacionHandler } from './operacion.instituciones.controller';
 
 const router = Router();
 
@@ -57,6 +57,7 @@ const read = requireAnyPermissions(
  * filtros + búsqueda + paginación + sede/modalidad/cupos.
  */
 router.get('/instituciones', read, getInstitucionesHandler);
+router.get('/instituciones/cobertura/reglas', requireAnyPermissions('operacion.cobertura.read'), getCoberturaRulesHandler);
 
 router.patch(
   '/instituciones/focalizaciones/:id',

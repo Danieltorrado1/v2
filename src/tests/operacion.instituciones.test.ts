@@ -11,6 +11,7 @@ test('instituciones: la consulta de períodos no envía parámetros de filtros e
   );
 
   assert.match(query.text, /focalizacion_id/);
+  assert.match(query.text, /DISTINCT ON \(fv\.vigente_desde\)/);
   assert.match(query.text, /ff\.contrato_id=\$2::bigint/);
   assert.deepEqual(query.params, [[15], 24]);
   assert.equal(query.params.length, 2);

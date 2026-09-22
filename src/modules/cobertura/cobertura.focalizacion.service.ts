@@ -1452,8 +1452,8 @@ const syncFocalizacionFinal = async (
   }
 
   const existing = await client.query<QueryResultRow>(
-    `SELECT id::text AS id FROM focalizacion_final WHERE contrato_id = $1::bigint AND sede_modalidad_id = $2::bigint LIMIT 1`,
-    [contratoId, sedeModalidadId],
+    `SELECT id::text AS id FROM focalizacion_final WHERE contrato_id = $1::bigint AND sede_modalidad_id = $2::bigint AND carga_id = $3::bigint LIMIT 1`,
+    [contratoId, sedeModalidadId, latest.carga_id],
   );
 
   if (existing.rows[0]?.id) {
@@ -2312,8 +2312,10 @@ export const uploadHistoricalFocalizacionFile = async (
   actorUserId: string,
   contratoId: number,
   tenant?: TenantAccessContext,
+  vigenciaOverride?: { fecha_inicio_vigencia: string; fecha_fin_vigencia: string },
 ): Promise<FocalizacionUploadResult> => {
-  const parsed = parseWorkbookRows(fileBuffer);
+  const detected = parseWorkbookRows(fileBuffer);
+  const parsed = vigenciaOverride ? { ...detected, fechaDetectada: vigenciaOverride } : detected;
   const sha256 = createHash('sha256').update(fileBuffer).digest('hex');
   const client = await dbPool.connect();
 

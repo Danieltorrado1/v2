@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../../utils/asyncHandler';
 import { successResponse } from '../../utils/apiResponse';
-import { listInstituciones, updateInstitucionFocalizacion } from './operacion.instituciones.service';
+import { listCoberturaRules, listInstituciones, updateInstitucionFocalizacion } from './operacion.instituciones.service';
 
 const positive = (value: unknown, fallback: number) => { const n = Number(value); return Number.isInteger(n) && n > 0 ? n : fallback; };
 export const getInstitucionesHandler = asyncHandler(async (req: Request, res: Response) => successResponse(res, {
@@ -17,3 +17,4 @@ export const updateInstitucionFocalizacionHandler = asyncHandler(async (req: Req
   const data = await updateInstitucionFocalizacion(id, { matriculados_primaria: integer('matriculados_primaria'), matriculados_secundaria: integer('matriculados_secundaria'), cupos_primaria: integer('cupos_primaria'), cupos_secundaria: integer('cupos_secundaria'), estado: typeof body.estado === 'string' ? body.estado : undefined }, req.tenant!, actor(req));
   return successResponse(res, { data, message: 'Focalización mensual actualizada.' });
 });
+export const getCoberturaRulesHandler = asyncHandler(async (req: Request, res: Response) => successResponse(res, { data: await listCoberturaRules(req.tenant!), message: 'Reglas contractuales retrieved successfully' }));

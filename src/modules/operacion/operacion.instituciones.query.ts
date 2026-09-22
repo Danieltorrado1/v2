@@ -8,7 +8,7 @@ export const formatFocalizacionName = (year: unknown, month: unknown) => {
 
 export function buildInstitutionPeriodsQuery(source: string, tenantScope: string, contractParam: number, params: unknown[]) {
   return {
-    text: `SELECT DISTINCT fv.id::text focalizacion_id,EXTRACT(YEAR FROM fv.vigente_desde)::int anio,EXTRACT(MONTH FROM fv.vigente_desde)::int mes ${source} WHERE ${tenantScope} AND ff.contrato_id=$${contractParam}::bigint ORDER BY anio DESC,mes DESC`,
+    text: `SELECT DISTINCT ON (fv.carga_id,fv.vigente_desde,fv.vigente_hasta) fv.carga_id::text focalizacion_id,fv.vigente_desde::date desde,fv.vigente_hasta::date hasta,EXTRACT(YEAR FROM fv.vigente_desde)::int anio,EXTRACT(MONTH FROM fv.vigente_desde)::int mes,fc.nombre_archivo ${source} JOIN focalizacion_cargas fc ON fc.id=fv.carga_id WHERE ${tenantScope} AND ff.contrato_id=$${contractParam}::bigint AND fv.carga_id IS NOT NULL ORDER BY fv.carga_id,fv.vigente_desde,fv.vigente_hasta,fv.id DESC`,
     params: params.slice(0, contractParam),
   };
 }
