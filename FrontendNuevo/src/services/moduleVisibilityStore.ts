@@ -13,7 +13,9 @@ function defaultConfig(role?: string): ModuleVisibilityConfig {
   const modules: Record<string, boolean> = {};
   const children: Record<string, boolean> = {};
   tenantModules.forEach((module) => {
-    modules[module.code] = role === 'TALENTO_HUMANO' ? module.code === 'PERSONAL' : true;
+    modules[module.code] = role === 'TALENTO_HUMANO'
+      ? module.code === 'PERSONAL' || module.code === 'NOMINA'
+      : true;
     module.children.forEach((child) => { children[child.code] = true; });
   });
   return { modules, children };
