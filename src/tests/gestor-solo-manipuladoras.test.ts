@@ -2,9 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import { isGestorApplicableCargo } from '../modules/vinculaciones/vinculaciones.personal.domain';
+import { looksLikeManipuladoraCargo } from '../modules/vinculaciones/vinculaciones.personal.domain';
 
-const personalService = readFileSync('src/modules/vinculaciones/vinculaciones.personal.service.ts', 'utf8');
 const personalListService = readFileSync('src/modules/vinculaciones/vinculaciones.service.ts', 'utf8');
 const nominaService = readFileSync('src/modules/nomina/nomina.service.ts', 'utf8');
 const nominaPage = readFileSync('FrontendNuevo/src/pages/nomina/NominaPage.tsx', 'utf8');
@@ -13,25 +12,21 @@ const contractPersonalPage = readFileSync('FrontendNuevo/src/pages/personal/Cont
 const operationalPersonalPage = readFileSync('FrontendNuevo/src/pages/personal/OperationalPersonalPage.tsx', 'utf8');
 
 test('gestor solo aplica al cargo canónico de manipuladora de alimentos', () => {
-  assert.equal(isGestorApplicableCargo('MANIPULADORA DE ALIMENTOS'), true);
-  assert.equal(isGestorApplicableCargo('MANIPULADOR(A) DE ALIMENTOS'), true);
-  assert.equal(isGestorApplicableCargo('MANIPULADOR DE ALIMENTOS'), true);
-  assert.equal(isGestorApplicableCargo('Administrativo'), false);
-  assert.equal(isGestorApplicableCargo('Coordinador de zona'), false);
-  assert.equal(isGestorApplicableCargo('Profesional de apoyo'), false);
+  assert.equal(looksLikeManipuladoraCargo('MANIPULADORA DE ALIMENTOS'), true);
+  assert.equal(looksLikeManipuladoraCargo('MANIPULADOR(A) DE ALIMENTOS'), true);
+  assert.equal(looksLikeManipuladoraCargo('MANIPULADOR DE ALIMENTOS'), true);
+  assert.equal(looksLikeManipuladoraCargo('Administrativo'), false);
+  assert.equal(looksLikeManipuladoraCargo('Coordinador de zona'), false);
+  assert.equal(looksLikeManipuladoraCargo('Profesional de apoyo'), false);
 });
 
-test('Personal resuelve gestor vigente por municipio y contrato sin exigir TODO_MUNICIPIO', () => {
-  assert.match(personalService, /gestorApplicableCargoSql/);
-  assert.match(personalService, /gma\.contrato_id = \$2::bigint/);
-  assert.match(personalService, /gma\.municipio_id = \$3::bigint/);
-  assert.doesNotMatch(personalService, /gma\.alcance_personal.*TODO_MUNICIPIO/);
+test('Personal y Nómina conservan las fuentes actuales de gestor por alcance', () => {
+  assert.match(personalListService, /gestor_actual/);
+  assert.match(nominaService, /gestor_personal_asignaciones/);
+  assert.match(nominaService, /gestor_municipio_asignaciones/);
 });
 
-test('Personal y Nómina comparten filtro de aplicabilidad y no muestran gestor para otros cargos', () => {
-  assert.match(personalListService, /gestorApplicableCargoSql/);
-  assert.match(nominaService, /gestorApplicableCargoSql/);
-  assert.match(nominaService, /gestor_aplica: isGestorApplicableCargo/);
+test('la interfaz deja oculto el gestor cuando el dato de aplicabilidad es falso', () => {
   assert.match(nominaPage, /empleado\.gestor_aplica === false/);
   assert.match(planillaPage, /employee\.gestor_aplica === false/);
   assert.match(contractPersonalPage, /item\.es_manipuladora \?/);

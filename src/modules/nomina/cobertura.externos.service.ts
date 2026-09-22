@@ -16,7 +16,10 @@ import type {
   ListCoberturaExternosQuery,
   UpsertCoberturaExternoInput,
 } from './cobertura.externos.schemas';
-import { appendNominaCoberturaScope } from './nomina.procesos';
+import {
+  appendNominaCoberturaScope,
+  assertNominaExternoCoberturaScope,
+} from './nomina.procesos';
 
 type ExternoRow = QueryResultRow & {
   id: string;
@@ -64,6 +67,8 @@ type CoberturaPeriodoScopeRow = QueryResultRow & {
 type CoberturaCuentaTurnSnapshotRow = QueryResultRow & {
   movimiento_id: string;
   turno_id: string | null;
+  titular_referencia: string | null;
+  municipio: string | null;
   fecha: string;
   fecha_inicio: string;
   fecha_fin: string;
@@ -80,6 +85,8 @@ type CoberturaCuentaTurnSnapshotRow = QueryResultRow & {
 type CoberturaCuentaDetalleRow = QueryResultRow & {
   movimiento_id: string | null;
   turno_id: string | null;
+  titular_referencia: string | null;
+  municipio: string | null;
   fecha: string;
   fecha_inicio: string | null;
   fecha_fin: string | null;
@@ -133,26 +140,6 @@ const assertTenantContract = (
     );
   }
 };
-
-const jsonBuffer = (lines: string[]) =>
-  new Promise<Buffer>((resolve, reject) => {
-    const doc = new PDFDocument({
-      size: 'A4',
-      margin: 48,
-    });
-
-    const chunks: Buffer[] = [];
-
-    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
-
-    for (const line of lines) {
-      doc.text(line);
-    }
-
-    doc.end();
-  });
 
 const upload = async (
   path: string,
@@ -261,6 +248,8 @@ const loadCoberturaCuentaTurnSnapshots = async (
         SELECT
           nm.id::text AS movimiento_id,
           turno.id::text AS turno_id,
+          NULLIF(CONCAT_WS(' ', pr.primer_nombre, pr.segundo_nombre, pr.primer_apellido, pr.segundo_apellido), '') AS titular_referencia,
+          COALESCE(nm.contexto_municipio, turno.contexto_operativo ->> 'municipio') AS municipio,
           COALESCE(nn.fecha_inicio, nm.fecha)::text AS fecha_inicio,
           COALESCE(nn.fecha_fin, nn.fecha_inicio, nm.fecha)::text AS fecha_fin,
           COALESCE(nn.fecha_inicio, nm.fecha)::text AS fecha,
@@ -322,8 +311,11 @@ const loadCoberturaCuentaTurnSnapshots = async (
         ) turno
           ON TRUE
 
-        LEFT JOIN nomina_novedades nn
-          ON nn.id = turno.nomina_novedad_id
+          LEFT JOIN nomina_novedades nn
+            ON nn.id = turno.nomina_novedad_id
+
+        LEFT JOIN personas pr
+          ON pr.id = nm.persona_reemplazada_id
 
         LEFT JOIN modalidades mo
           ON mo.id = COALESCE(
@@ -356,9 +348,7 @@ const loadCoberturaCuentaTurnSnapshots = async (
             nm.estado,
             'PENDIENTE'
           ) <> 'RECHAZADO'
-          AND nm.tarifa_config_id IS NOT NULL
-          AND nm.valor_unitario IS NOT NULL
-          AND nm.valor_unitario > 0
+          AND nm.valor_total IS NOT NULL
 
         ORDER BY
           nm.fecha ASC,
@@ -385,6 +375,8 @@ const loadCoberturaCuentaDetalles = async (
         SELECT
           movimiento_id::text AS movimiento_id,
           turno_id::text AS turno_id,
+          titular_referencia,
+          municipio,
           fecha::text AS fecha,
           fecha_inicio::text AS fecha_inicio,
           fecha_fin::text AS fecha_fin,
@@ -429,6 +421,10 @@ const compareCoberturaCuentaDetalle = (
       row.movimiento_id ===
         target.movimiento_id &&
       row.turno_id === target.turno_id &&
+      normalizeNullableText(row.titular_referencia) ===
+        normalizeNullableText(target.titular_referencia) &&
+      normalizeNullableText(row.municipio) ===
+        normalizeNullableText(target.municipio) &&
       row.fecha === target.fecha &&
       (row.fecha_inicio ?? row.fecha) === target.fecha_inicio &&
       (row.fecha_fin ?? row.fecha) === target.fecha_fin &&
@@ -484,6 +480,8 @@ const rewriteCoberturaCuentaDetalle = async (
           cuenta_id,
           movimiento_id,
           turno_id,
+          titular_referencia,
+          municipio,
           fecha,
           fecha_inicio,
           fecha_fin,
@@ -501,17 +499,19 @@ const rewriteCoberturaCuentaDetalle = async (
           $1::bigint,
           $2::bigint,
           $3::bigint,
-          $4::date,
-          $5::date,
+          $4,
+          $5,
           $6::date,
-          $7::int,
-          $8::numeric,
-          $9::numeric,
-          $10::bigint,
-          $11::bigint,
-          $12,
-          $13,
+          $7::date,
+          $8::date,
+          $9::int,
+          $10::numeric,
+          $11::numeric,
+          $12::bigint,
+          $13::bigint,
           $14,
+          $15,
+          $16,
           TRUE
         )
       `,
@@ -519,6 +519,8 @@ const rewriteCoberturaCuentaDetalle = async (
         cuentaId,
         turno.movimiento_id,
         turno.turno_id,
+        normalizeNullableText(turno.titular_referencia),
+        normalizeNullableText(turno.municipio),
         turno.fecha,
         turno.fecha_inicio,
         turno.fecha_fin,
@@ -838,47 +840,182 @@ const syncCoberturaCuentaCobroExternaRow =
     };
   };
 
-const buildCoberturaCuentaPdfLines = (
-  input: {
-    cuenta: CuentaRow;
-    documento: string;
-    externo: string;
-    periodo_id: number;
-    total: number;
-    turnos: CoberturaCuentaTurnSnapshotRow[];
-  },
-) => [
-  'CUENTA DE COBRO - COBERTURA EXTERNA',
-  `Cuenta: ${input.cuenta.numero_cuenta}`,
-  `Externo: ${input.externo}`,
-  `Documento: ${input.documento}`,
-  `Periodo: ${input.periodo_id}`,
-  `Turnos incluidos: ${input.turnos.length}`,
-  `Total: ${input.total}`,
-  'Detalle:',
-  ...input.turnos.flatMap(
-    (turno, index) => [
-      `${index + 1}. ${
-        turno.modalidad ??
-        'Sin modalidad'
-      } | ${
-        turno.fecha_inicio
-      } al ${turno.fecha_fin} | ${turno.dias_efectivos} dias x ${
-        toNumberValue(turno.valor_diario)
-      } diario`,
-      `   Subtotal ${toNumberValue(
-        turno.valor,
-      )} | ${
-        turno.institucion ??
-        'Sin institucion'
-      }${
-        turno.sede
-          ? ` / ${turno.sede}`
-          : ''
-      }`,
-    ],
-  ),
-];
+type CuentaCobroPdfInput = {
+  cuenta: CuentaRow;
+  empresa: {
+    nombre: string;
+    nit: string | null;
+    logo_url: string | null;
+    contrato: string | null;
+  };
+  externo: {
+    nombre: string;
+    tipo_documento: string;
+    numero_documento: string;
+    banco: string | null;
+    tipo_cuenta: string | null;
+    numero_cuenta: string | null;
+  };
+  periodo: {
+    nombre: string;
+    fecha_inicio: string;
+    fecha_fin: string;
+  };
+  fecha_generacion: string;
+  total: number;
+  turnos: CoberturaCuentaTurnSnapshotRow[];
+};
+
+const numberWordsUnderThousand = (value: number): string => {
+  const units = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+  const teens = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISEIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
+  const tens = ['', '', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+  const hundreds = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+  if (value === 0) return '';
+  if (value === 100) return 'CIEN';
+  if (value < 10) return units[value] ?? '';
+  if (value < 20) return teens[value - 10] ?? '';
+  if (value < 30) {
+    if (value === 20) return 'VEINTE';
+    const veinte = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+    return `VEINTI${veinte[value - 20] ?? ''}`;
+  }
+  if (value < 100) return (tens[Math.floor(value / 10)] ?? '') + (value % 10 ? ` Y ${units[value % 10] ?? ''}` : '');
+  return `${hundreds[Math.floor(value / 100)] ?? ''}${value % 100 ? ` ${numberWordsUnderThousand(value % 100)}` : ''}`;
+};
+
+export const numberToSpanishWords = (input: number) => {
+  const value = Math.max(0, Math.round(input));
+  if (value === 0) return 'CERO';
+  const millions = Math.floor(value / 1_000_000);
+  const thousands = Math.floor((value % 1_000_000) / 1_000);
+  const remainder = value % 1_000;
+  const parts: string[] = [];
+  if (millions) parts.push(millions === 1 ? 'UN MILLON' : `${numberWordsUnderThousand(millions)} MILLONES`);
+  if (thousands) parts.push(thousands === 1 ? 'MIL' : `${numberWordsUnderThousand(thousands)} MIL`);
+  if (remainder) parts.push(numberWordsUnderThousand(remainder));
+  return parts.join(' ');
+};
+
+const formatPdfDate = (value: string) => {
+  const [year, month, day] = value.slice(0, 10).split('-');
+  return year && month && day ? `${day}/${month}/${year}` : value;
+};
+
+const safeFilePart = (value: string) =>
+  value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').toUpperCase();
+
+const loadCompanyLogo = async (logoUrl: string | null) => {
+  if (!logoUrl) return null;
+  try {
+    const response = await fetch(logoUrl);
+    if (!response.ok) return null;
+    return Buffer.from(await response.arrayBuffer());
+  } catch {
+    return null;
+  }
+};
+
+const buildCoberturaCuentaPdf = async (input: CuentaCobroPdfInput) => {
+  const doc = new PDFDocument({ size: 'LETTER', layout: 'portrait', margin: 36, bufferPages: true });
+  const chunks: Buffer[] = [];
+  doc.on('data', (chunk) => chunks.push(chunk));
+  const done = new Promise<Buffer>((resolve, reject) => {
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+  });
+  const navy = '#0A1628';
+  const cyan = '#00AFC0';
+  const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const logo = await loadCompanyLogo(input.empresa.logo_url);
+  let y = 36;
+  if (logo) {
+    try { doc.image(logo, 36, y, { fit: [88, 46] }); } catch { /* fallback textual */ }
+  }
+  doc.fillColor(navy).fontSize(15).font('Helvetica-Bold').text(input.empresa.nombre, logo ? 136 : 36, y + 3, { width: pageWidth - (logo ? 100 : 0) });
+  doc.font('Helvetica').fontSize(8).fillColor('#475569').text(`NIT: ${input.empresa.nit ?? 'No registrado'}`, logo ? 136 : 36, y + 23);
+  doc.font('Helvetica-Bold').fontSize(16).fillColor(navy).text('CUENTA DE COBRO', 36, y + 58, { align: 'right', width: pageWidth });
+  doc.font('Helvetica').fontSize(8).fillColor('#475569').text(`Cuenta ${input.cuenta.numero_cuenta} · Generada ${formatPdfDate(input.fecha_generacion)}`, 36, y + 78, { align: 'right', width: pageWidth });
+  y += 106;
+  doc.strokeColor(cyan).lineWidth(1.2).moveTo(36, y).lineTo(36 + pageWidth, y).stroke();
+  y += 14;
+  doc.fillColor(navy).fontSize(9).font('Helvetica-Bold').text('DATOS DEL CLIENTE / EMPRESA', 36, y);
+  y += 14;
+  doc.font('Helvetica').fontSize(8).fillColor('#1f2937').text(`Razón social: ${input.empresa.nombre}`, 36, y);
+  doc.text(`NIT: ${input.empresa.nit ?? 'No registrado'}`, 36, y + 12);
+  if (input.empresa.contrato) doc.text(`Contrato / proyecto: ${input.empresa.contrato}`, 36, y + 24, { width: pageWidth });
+  y += input.empresa.contrato ? 52 : 38;
+  doc.fillColor(navy).fontSize(9).font('Helvetica-Bold').text('DATOS DEL COBRADOR', 36, y);
+  y += 14;
+  doc.font('Helvetica').fontSize(8).fillColor('#1f2937').text(`Nombre completo: ${input.externo.nombre}`, 36, y);
+  doc.text(`Documento: ${input.externo.tipo_documento} ${input.externo.numero_documento}`, 36, y + 12);
+  doc.text(`Banco: ${input.externo.banco ?? 'No registrado'}`, 300, y);
+  doc.text(`Tipo de cuenta: ${input.externo.tipo_cuenta ?? 'No registrado'}`, 300, y + 12);
+  doc.text(`Número de cuenta: ${input.externo.numero_cuenta ?? 'No registrado'}`, 300, y + 24);
+  y += 48;
+  doc.fillColor(navy).font('Helvetica-Bold').text(input.periodo.nombre.toUpperCase(), 36, y);
+  doc.font('Helvetica').text(`${formatPdfDate(input.periodo.fecha_inicio)} - ${formatPdfDate(input.periodo.fecha_fin)}`, 36, y + 13);
+  y += 30;
+  doc.fillColor(navy).fontSize(9).font('Helvetica-Bold').text('CONCEPTO DEL COBRO', 36, y);
+  y += 14;
+  doc.fillColor('#1f2937').fontSize(8).font('Helvetica').text(`Por medio de la presente solicito el pago correspondiente a los turnos externos realizados durante el período ${input.periodo.nombre.toUpperCase()}, relacionados a continuación.`, 36, y, { width: pageWidth });
+  y += 32;
+
+  const columns = [
+    ['#', 20], ['Fecha', 47], ['Titular / referencia', 92], ['Municipio', 57], ['Institución', 70], ['Sede', 57], ['Modalidad', 58], ['Días', 25], ['Valor día', 50], ['Total', 54],
+  ] as const;
+  const drawTableHeader = () => {
+    let x = 36;
+    doc.rect(36, y, pageWidth, 22).fill('#E8F7F9');
+    doc.fillColor(navy).font('Helvetica-Bold').fontSize(7.2);
+    for (const [label, width] of columns) { doc.text(label, x + 3, y + 7, { width: width - 6, align: label === '#' || label === 'Días' ? 'center' : 'left' }); x += width; }
+    y += 22;
+  };
+  const drawRow = (values: string[], index: number) => {
+    doc.fontSize(7.2);
+    const lines = values.map((value, i) => doc.heightOfString(value || '—', { width: (columns[i]?.[1] ?? 40) - 6, lineGap: 1 }));
+    const height = Math.max(28, ...lines.map((line) => line + 12));
+    if (y + height > doc.page.height - 108) { doc.addPage(); y = 36; drawTableHeader(); }
+    if (index % 2 === 1) doc.rect(36, y, pageWidth, height).fill('#F8FAFC');
+    let x = 36;
+    doc.fillColor('#1f2937').font('Helvetica').fontSize(7.2);
+    values.forEach((value, i) => { const width = columns[i]?.[1] ?? 40; doc.text(value || '—', x + 3, y + 5, { width: width - 6, height: height - 8, align: i === 0 || i === 7 ? 'center' : 'left' }); x += width; });
+    doc.strokeColor('#CBD5E1').lineWidth(0.35).moveTo(36, y + height).lineTo(36 + pageWidth, y + height).stroke();
+    y += height;
+  };
+  drawTableHeader();
+  input.turnos.forEach((turno, index) => drawRow([
+    String(index + 1),
+    formatPdfDate(turno.fecha),
+    turno.titular_referencia ?? 'Referencia no disponible',
+    turno.municipio ?? '—',
+    turno.institucion ?? '—',
+    turno.sede ?? '—',
+    turno.modalidad ?? '—',
+    String(turno.dias_efectivos),
+    `$${toNumberValue(turno.valor_diario).toLocaleString('es-CO')}`,
+    `$${toNumberValue(turno.valor).toLocaleString('es-CO')}`,
+  ], index));
+  y += 16;
+  if (y > doc.page.height - 230) {
+    doc.addPage();
+    y = 48;
+  }
+  doc.fillColor(navy).font('Helvetica-Bold').fontSize(10).text(`TOTAL A COBRAR: $${input.total.toLocaleString('es-CO')}`, 36, y, { align: 'right', width: pageWidth });
+  doc.font('Helvetica').fontSize(8).text(`${numberToSpanishWords(input.total)} PESOS M/CTE.`, 36, y + 16, { align: 'right', width: pageWidth });
+  y += 58;
+  doc.fillColor(navy).fontSize(9).font('Helvetica-Bold').text('DECLARACIÓN Y CERTIFICACIÓN', 36, y);
+  y += 14;
+  doc.fillColor('#1f2937').font('Helvetica').fontSize(8).text('Declaro que la información relacionada en esta cuenta de cobro corresponde a los servicios efectivamente realizados durante el período indicado, y que los valores aquí registrados son verídicos.', 36, y, { width: pageWidth });
+  y += 42;
+  doc.fillColor('#1f2937').fontSize(8).font('Helvetica').text('Firma del cobrador:', 36, y);
+  doc.moveTo(36, y + 42).lineTo(230, y + 42).strokeColor('#64748B').stroke();
+  doc.text(input.externo.nombre, 36, y + 48);
+  doc.text(`${input.externo.tipo_documento} ${input.externo.numero_documento}`, 36, y + 60);
+  doc.fontSize(7).fillColor('#64748B').text('Documento generado por Empiria', 36, doc.page.height - 54, { align: 'center', width: pageWidth });
+  doc.end();
+  return done;
+};
 
 export const syncCoberturaCuentaCobroExterna =
   async (
@@ -1142,6 +1279,58 @@ export const upsertCoberturaExterno =
     return row;
   };
 
+const filterCoberturaExternosByScope = async (
+  rows: ExternoRow[],
+  query: ListCoberturaExternosQuery,
+  tenant?: TenantAccessContext,
+) => {
+  if (!tenant || tenant.isGlobalAdmin) {
+    return rows;
+  }
+
+  const allowed = new Set<string>();
+  for (const source of ['movimiento', 'novedad'] as const) {
+    const params: unknown[] = [];
+    const conditions: string[] = [
+      source === 'movimiento'
+        ? 'nm.externo_id IS NOT NULL'
+        : 'nnt.externo_id IS NOT NULL',
+      source === 'movimiento'
+        ? 'COALESCE(nm.activo, TRUE) = TRUE'
+        : 'COALESCE(nnt.activo, TRUE) = TRUE',
+    ];
+    if (query.periodo_id) {
+      params.push(query.periodo_id);
+      conditions.push(`${source === 'movimiento' ? 'nm' : 'nnt'}.periodo_id = $${params.length}::bigint`);
+    }
+    appendNominaCoberturaScope(conditions, params, tenant);
+    const result = await dbQuery<{ externo_id: string }>(
+      source === 'movimiento'
+        ? `
+          SELECT DISTINCT nm.externo_id::text AS externo_id
+          FROM nomina_movimientos nm
+          INNER JOIN nomina_periodos np ON np.id = nm.periodo_id
+          INNER JOIN vinculaciones v ON v.id = nm.vinculacion_id
+          INNER JOIN contratos c ON c.id = np.contrato_id
+          WHERE ${conditions.join(' AND ')}
+        `
+        : `
+          SELECT DISTINCT nnt.externo_id::text AS externo_id
+          FROM nomina_novedad_turnos nnt
+          INNER JOIN nomina_empleados ne ON ne.id = nnt.nomina_empleado_id
+          INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
+          INNER JOIN nomina_periodos np ON np.id = nnt.periodo_id
+          INNER JOIN contratos c ON c.id = np.contrato_id
+          WHERE ${conditions.join(' AND ')}
+        `,
+      params,
+    );
+    result.rows.forEach((row) => allowed.add(row.externo_id));
+  }
+
+  return rows.filter((row) => allowed.has(String(row.id)));
+};
+
 export const listCoberturaExternos =
   async (
     query: ListCoberturaExternosQuery,
@@ -1233,11 +1422,10 @@ export const listCoberturaExternos =
             ce.tipo_cuenta,
             ce.numero_cuenta,
 
-            COUNT(
-              DISTINCT COALESCE(
-                nm.id,
-                nnt.id
-              )
+            COUNT(DISTINCT nm.id) FILTER (
+              WHERE nm.tipo_movimiento = 'TURNO_EXTERNO'
+                AND COALESCE(nm.activo, TRUE) = TRUE
+                AND COALESCE(nm.estado, 'PENDIENTE') <> 'RECHAZADO'
             )::int AS turnos,
 
             COUNT(DISTINCT nm.id) FILTER (
@@ -1360,10 +1548,13 @@ export const listCoberturaExternos =
           LEFT JOIN nomina_novedad_turnos nnt
             ON nnt.externo_id = ce.id
            AND nnt.activo = TRUE
+           ${periodoParamIndex ? `AND nnt.periodo_id = $${periodoParamIndex}` : ''}
 
           LEFT JOIN nomina_movimientos nm
             ON nm.externo_id = ce.id
            AND nm.activo = TRUE
+           AND nm.tipo_movimiento = 'TURNO_EXTERNO'
+           ${periodoParamIndex ? `AND nm.periodo_id = $${periodoParamIndex}` : ''}
 
           LEFT JOIN nomina_periodos np
             ON np.id = nnt.periodo_id
@@ -1382,7 +1573,7 @@ export const listCoberturaExternos =
         params,
       );
 
-    return result.rows;
+    return filterCoberturaExternosByScope(result.rows, query, tenant);
   };
 
 export const listCoberturaExternosOperativos =
@@ -1503,6 +1694,35 @@ export const generateCoberturaCuenta =
     try {
       await client.query('BEGIN');
 
+      await assertNominaExternoCoberturaScope(
+        input.externo_id,
+        input.periodo_id,
+        tenant,
+        client,
+      );
+
+      const signedAccount = await client.query<{ id: string }>(
+        `
+          SELECT id::text
+          FROM cobertura_cuentas_cobro_externas
+          WHERE externo_id = $1::bigint
+            AND empresa_id = $2::bigint
+            AND contrato_id = $3::bigint
+            AND periodo_id = $4::bigint
+            AND activo = TRUE
+            AND estado = 'FIRMADA'
+          LIMIT 1
+        `,
+        [input.externo_id, input.empresa_id, input.contrato_id, input.periodo_id],
+      );
+      if (signedAccount.rows[0]) {
+        throw new AppError(
+          'La cuenta firmada no puede sobrescribirse automáticamente; cree una nueva versión mediante el flujo autorizado.',
+          409,
+          'COBERTURA_CUENTA_FIRMADA_REGENERACION_INVALIDA',
+        );
+      }
+
       const synced =
         await syncCoberturaCuentaCobroExterna(
           input,
@@ -1579,17 +1799,6 @@ export const generateCoberturaCuenta =
       }
 
 
-      if (
-        synced.cuenta.estado ===
-        'FIRMADA'
-      ) {
-        throw new AppError(
-          'La cuenta firmada debe corregirse desde turnos y volver a generarse',
-          409,
-          'COBERTURA_CUENTA_FIRMADA_REGENERACION_INVALIDA',
-        );
-      }
-
       const total =
         roundCurrency(
           synced.turnos.reduce(
@@ -1605,12 +1814,20 @@ export const generateCoberturaCuenta =
       const external =
         await client.query<{
           nombre_completo: string;
+          tipo_documento: string;
           numero_documento: string;
+          banco: string | null;
+          tipo_cuenta: string | null;
+          numero_cuenta: string | null;
         }>(
           `
             SELECT
               nombre_completo,
-              numero_documento
+              tipo_documento,
+              numero_documento,
+              banco,
+              tipo_cuenta,
+              numero_cuenta
             FROM cobertura_externos
             WHERE id = $1::bigint
             LIMIT 1
@@ -1618,32 +1835,71 @@ export const generateCoberturaCuenta =
           [input.externo_id],
         );
 
+      const periodAndCompany = await client.query<{
+        nombre_periodo: string;
+        fecha_inicio: string;
+        fecha_fin: string;
+        nombre_empresa: string;
+        nit: string | null;
+        logo_url: string | null;
+        numero_contrato: string | null;
+      }>(
+        `
+          SELECT
+            np.nombre_periodo,
+            np.fecha_inicio::text,
+            np.fecha_fin::text,
+            e.nombre_empresa,
+            e.nit,
+            ec.logo_url
+            ,c.numero_contrato
+          FROM nomina_periodos np
+          INNER JOIN contratos c ON c.id = np.contrato_id
+          INNER JOIN empresas e ON e.id = c.empresa_id
+          LEFT JOIN empresa_configuracion_general ec ON ec.empresa_id = e.id
+          WHERE np.id = $1::bigint
+            AND np.contrato_id = $2::bigint
+            AND c.empresa_id = $3::bigint
+          LIMIT 1
+        `,
+        [input.periodo_id, input.contrato_id, input.empresa_id],
+      );
+      const periodCompany = periodAndCompany.rows[0];
+      const externalRow = external.rows[0];
+      if (!externalRow || !periodCompany) {
+        throw new AppError('No fue posible resolver la identidad del cobrador o del período.', 404, 'COBERTURA_CUENTA_DATOS_INCOMPLETOS');
+      }
+
       const pdf =
-        await jsonBuffer(
-          buildCoberturaCuentaPdfLines(
-            {
-              cuenta:
-                synced.cuenta,
-              documento:
-                external.rows[0]
-                  ?.numero_documento ??
-                '',
-              externo:
-                external.rows[0]
-                  ?.nombre_completo ??
-                '',
-              periodo_id:
-                input.periodo_id,
-              total,
-              turnos:
-                synced.turnos,
-            },
-          ),
-        );
+        await buildCoberturaCuentaPdf({
+          cuenta: synced.cuenta,
+          empresa: {
+            nombre: periodCompany.nombre_empresa,
+            nit: periodCompany.nit,
+            logo_url: periodCompany.logo_url,
+            contrato: periodCompany.numero_contrato,
+          },
+          externo: {
+            nombre: externalRow.nombre_completo,
+            tipo_documento: externalRow.tipo_documento,
+            numero_documento: externalRow.numero_documento,
+            banco: externalRow.banco,
+            tipo_cuenta: externalRow.tipo_cuenta,
+            numero_cuenta: externalRow.numero_cuenta,
+          },
+          periodo: {
+            nombre: periodCompany.nombre_periodo,
+            fecha_inicio: periodCompany.fecha_inicio,
+            fecha_fin: periodCompany.fecha_fin,
+          },
+          fecha_generacion: new Date().toISOString(),
+          total,
+          turnos: synced.turnos,
+        });
 
       const stored =
         await upload(
-          `cobertura/cuentas-cobro/${synced.cuenta.id}/generada-${Date.now()}.pdf`,
+          `cobertura/cuentas-cobro/${synced.cuenta.id}/CUENTA_COBRO_${safeFilePart(externalRow.nombre_completo)}_${safeFilePart(periodCompany.nombre_periodo)}-${Date.now()}.pdf`,
           pdf,
           'application/pdf',
         );
@@ -1797,6 +2053,12 @@ export const uploadCoberturaExternoDocumento =
     assertTenantCompany(
       tenant,
       Number(row.empresa_id),
+    );
+
+    await assertNominaExternoCoberturaScope(
+      externoId,
+      undefined,
+      tenant,
     );
 
     const current =
@@ -1960,6 +2222,12 @@ export const listCoberturaExternoDocumentos =
       ),
     );
 
+    await assertNominaExternoCoberturaScope(
+      externoId,
+      undefined,
+      tenant,
+    );
+
     const result =
       await dbQuery<{
         id: string;
@@ -2015,6 +2283,7 @@ export const getCoberturaExternoDocumentoDownload =
     const result =
       await dbQuery<{
         empresa_id: string;
+        externo_id: string;
         storage_bucket: string;
         storage_path: string;
         nombre_original: string;
@@ -2023,6 +2292,7 @@ export const getCoberturaExternoDocumentoDownload =
         `
           SELECT
             e.empresa_id::text,
+            d.externo_id::text,
             d.storage_bucket,
             d.storage_path,
             d.nombre_original,
@@ -2052,6 +2322,12 @@ export const getCoberturaExternoDocumentoDownload =
     assertTenantCompany(
       tenant,
       Number(row.empresa_id),
+    );
+
+    await assertNominaExternoCoberturaScope(
+      row.externo_id,
+      undefined,
+      tenant,
     );
 
     return {
@@ -2098,6 +2374,12 @@ export const getCoberturaCuentaDownload =
     assertTenantCompany(
       tenant,
       Number(row.empresa_id),
+    );
+
+    await assertNominaExternoCoberturaScope(
+      row.externo_id,
+      row.periodo_id,
+      tenant,
     );
 
     assertTenantContract(
@@ -2160,6 +2442,12 @@ export const getCoberturaCuentaFirmadaDownload =
     assertTenantCompany(
       tenant,
       Number(row.empresa_id),
+    );
+
+    await assertNominaExternoCoberturaScope(
+      row.externo_id,
+      row.periodo_id,
+      tenant,
     );
 
     assertTenantContract(
@@ -2235,6 +2523,12 @@ export const uploadCoberturaCuentaFirmada =
     assertTenantContract(
       tenant,
       Number(row.contrato_id),
+    );
+
+    await assertNominaExternoCoberturaScope(
+      row.externo_id,
+      row.periodo_id,
+      tenant,
     );
 
     if (

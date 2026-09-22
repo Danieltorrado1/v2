@@ -7,12 +7,15 @@ import {
   Banknote,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Download,
-  Edit3,
+  Ban,
   Eye,
   Plus,
-  Paperclip,
+  FileText,
+  Pencil,
   Printer,
   Search,
   Trash2,
@@ -48,7 +51,7 @@ import { pickAvailableScopedId } from "../../context/companyScope";
 import { NOMINA_TURNO_MOVIMIENTO_TIPO } from "../../types/nomina.types";
 import { formatDateOnly, todayDateOnly } from "./dateOnly";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
-import CoberturaFlowNav from "./CoberturaFlowNav";
+import NominaModuleShell from "./NominaModuleShell";
 import type {
   NominaMovimientoTipo,
   CreateNominaTurnoPayload,
@@ -63,6 +66,7 @@ import type {
   CoberturaExternoResumenApi,
 } from "../../types/nomina.types";
 import "./NominaPages.css";
+import NominaActionIconButton from "../../components/nomina/NominaActionIconButton";
 
 type AsyncState<T> = {
   loading: boolean;
@@ -87,6 +91,7 @@ type FeedbackState = {
 type ExternalSummaryState = AsyncState<CoberturaExternoResumenApi[]>;
 type TurnoView = "todos" | "internos" | "externos";
 type TurnoSort = "name_asc" | "name_desc" | "count_desc" | "count_asc";
+type TurnosDrawerMode = "detail" | "documents" | "edit" | "create";
 
 type TurnoGroup = {
   key: string;
@@ -113,6 +118,12 @@ type TurnoFormState = {
   valor_calculado: string;
   valor_unitario: string;
 };
+
+const TURNO_MOTIVO_OPTIONS = [
+  { value: "REEMPLAZO_AUSENCIA", label: "Reemplazo por ausencia" },
+  { value: "APOYO_MERCADO", label: "Apoyo adicional por mercado" },
+  { value: "OTRO", label: "Otro motivo operativo" },
+] as const;
 
 type Kpi = {
   tone: Tone;
@@ -144,6 +155,35 @@ function formatCOP(value: number | null) {
 
 function formatNumber(value: number) {
   return value.toLocaleString("es-CO");
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "?";
+}
+
+function avatarColor(value: string) {
+  const palette = ["#2563eb", "#7c3aed", "#0f766e", "#b45309", "#be123c", "#0369a1"];
+  const hash = Array.from(value).reduce((total, character) => total + character.charCodeAt(0), 0);
+  return palette[hash % palette.length];
+}
+
+function getTurnoContextValue(
+  movimiento: NominaTurno,
+  relation: NominaNovedadTurnoOperativoApi | null,
+  field: "municipio" | "institucion" | "sede" | "modalidad" | "turno",
+) {
+  if (field === "municipio") return relation?.municipio ?? movimiento.contexto_operativo?.municipio ?? "";
+  if (field === "institucion") return relation?.institucion ?? movimiento.contexto_operativo?.institucion ?? "";
+  if (field === "sede") return relation?.sede ?? movimiento.contexto_operativo?.sede ?? "";
+  if (field === "modalidad") return relation?.modalidad ?? movimiento.contexto_operativo?.modalidad ?? "";
+  const context = movimiento.contexto_operativo as Record<string, unknown> | null;
+  const turno = context?.turno ?? context?.turno_tipo ?? context?.jornada;
+  return typeof turno === "string" ? turno : "";
 }
 
 function formatDate(value: string | null) {
@@ -391,7 +431,7 @@ function TurnosConsolidatedTable({
   return (
     <div className="nomina-turnos-consolidated-list">
       <div className="nomina-turnos-consolidated-head">
-        <span>PERSONA</span><span>TIPO(S)</span><span>TURNOS</span><span>ÃšLTIMO TURNO</span>
+        <span>PERSONA</span><span>TIPO(S)</span><span>TURNOS</span><span>ÚLTIMO TURNO</span>
         <span>ESTADO GENERAL</span><span>VALOR TOTAL DEL MES</span><span>ACCIONES</span>
       </div>
       {groups.map((group) => {
@@ -412,9 +452,9 @@ function TurnosConsolidatedTable({
               <span className="nomina-turnos-status-summary">{Array.from(statusCounts.entries()).map(([status, count]) => <small key={status}>{count} {status.toLowerCase()}</small>)}</span>
               <strong>{canSeeEconomic ? formatCOP(group.total) : "No disponible"}</strong>
               <span className="nomina-turnos-actions">
-                <button type="button" className="np-icon-button" title="Ver detalle" aria-label={`Ver detalle de ${group.personName}`} onClick={() => onToggle(group.key)}><Eye size={14} /></button>
-                <button type="button" className="np-icon-button" title="Subir documentos (disponible en el detalle externo)" aria-label={`Subir documentos de ${group.personName}`} disabled><Paperclip size={14} /></button>
-                <button type="button" className="np-icon-button" title="Imprimir historial" aria-label={`Imprimir historial de ${group.personName}`} onClick={() => window.print()}><Printer size={14} /></button>
+                <NominaActionIconButton icon={Eye} label={`Ver detalle de ${group.personName}`} onClick={() => onToggle(group.key)} />
+                <NominaActionIconButton icon={FileText} label={`Ver documentos de ${group.personName}`} title="Subir documentos (disponible en el detalle externo)" disabled />
+                <NominaActionIconButton icon={Printer} label={`Imprimir historial de ${group.personName}`} onClick={() => window.print()} />
               </span>
             </div>
             {isExpanded ? (
@@ -429,7 +469,7 @@ function TurnosConsolidatedTable({
                   return (
                     <div className="nomina-turnos-history-row" key={movement.id}>
                       <span>{formatDate(relation?.fecha_inicio ?? movement.fecha)}</span><span><b className={`np-badge ${type === "INTERNO" ? "info" : "primary"}`}>{type}</b></span><span>{modality}</span><span>{relation?.trabajador_reemplazado ?? movement.persona_reemplazada?.nombre_completo ?? "No disponible"}</span><span>{canSeeEconomic && !unpriced ? `${formatCOP(movement.valor_unitario)}/día` : "SIN TARIFA"}</span><span>{canSeeEconomic && !unpriced ? formatCOP(movement.valor_total) : "—"}</span><span className={unpriced ? "np-text-danger" : ""}>{unpriced ? "SIN TARIFA" : relation?.estado ?? getMovementStatusLabel(movement)}</span>
-                      <span className="nomina-turnos-history-actions"><button type="button" className="np-icon-button" title="Editar" aria-label={`Editar turno de ${group.personName}`} hidden={!canEdit} onClick={() => onEdit(movement)} disabled={movement.tipo_movimiento !== "TURNO_EXTERNO" || !movement.activo || !canMutatePeriod || isSubmitting || employeesLoading || employeesCount === 0}><Edit3 size={13} /></button><button type="button" className="np-icon-button" title="Desactivar" aria-label={`Desactivar turno de ${group.personName}`} hidden={!canEdit} onClick={() => onDeactivate(movement)} disabled={movement.tipo_movimiento !== "TURNO_EXTERNO" || !movement.activo || !canMutatePeriod || isSubmitting}><Trash2 size={13} /></button></span>
+                      <span className="nomina-turnos-history-actions"><NominaActionIconButton icon={Pencil} label={`Editar turno de ${group.personName}`} hidden={!canEdit} onClick={() => onEdit(movement)} disabled={movement.tipo_movimiento !== "TURNO_EXTERNO" || !movement.activo || !canMutatePeriod || isSubmitting || employeesLoading || employeesCount === 0} /><NominaActionIconButton icon={Ban} label={`Desactivar turno de ${group.personName}`} variant="danger" hidden={!canEdit} onClick={() => onDeactivate(movement)} disabled={movement.tipo_movimiento !== "TURNO_EXTERNO" || !movement.activo || !canMutatePeriod || isSubmitting} /></span>
                     </div>
                   );
                 })}
@@ -465,6 +505,10 @@ export default function TurnosPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
   const [municipioFilter, setMunicipioFilter] = useState("");
+  const [institucionFilter, setInstitucionFilter] = useState("");
+  const [sedeFilter, setSedeFilter] = useState("");
+  const [modalidadFilter, setModalidadFilter] = useState("");
+  const [turnoFilter, setTurnoFilter] = useState("");
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -477,6 +521,7 @@ export default function TurnosPage() {
   const [externalSummaryState, setExternalSummaryState] = useState<ExternalSummaryState>({
     ...EMPTY_ASYNC_STATE,
   });
+  const [drawerMode, setDrawerMode] = useState<TurnosDrawerMode | null>(null);
   const [externalBusy, setExternalBusy] = useState<string | null>(null);
   const [turnoView, setTurnoView] = useState<TurnoView>("todos");
   const [turnoSort, setTurnoSort] = useState<TurnoSort>("name_asc");
@@ -518,6 +563,11 @@ export default function TurnosPage() {
   const selectedTurnRelation = selectedMovement
     ? turnRelationByMovementId.get(selectedMovement.id) ?? null
     : null;
+  const selectedExternalId = selectedTurnRelation?.externo_id ?? selectedMovement?.externo_id ?? null;
+  const selectedExternalSummary = selectedMovement?.tipo_movimiento === "TURNO_EXTERNO" && selectedExternalId
+    ? externalSummaryState.data?.find((item) => item.id === selectedExternalId) ?? null
+    : null;
+  const turnosDrawerOpen = drawerMode !== null;
 
   const backendActiveFilter =
     activeFilter === "" ? undefined : activeFilter === "true" ? true : false;
@@ -602,6 +652,17 @@ export default function TurnosPage() {
     [movimientos, turnRelationByMovementId],
   );
 
+  const localFilterOptions = useCallback((field: "institucion" | "sede" | "modalidad" | "turno") => {
+    return [...new Set(movimientos.map((movimiento) => getTurnoContextValue(movimiento, turnRelationByMovementId.get(movimiento.id) ?? null, field)).filter(Boolean))]
+      .sort((left, right) => left.localeCompare(right, "es-CO"))
+      .map((item) => ({ value: item, label: item }));
+  }, [movimientos, turnRelationByMovementId]);
+
+  const institucionOptions = useMemo(() => localFilterOptions("institucion"), [localFilterOptions]);
+  const sedeOptions = useMemo(() => localFilterOptions("sede"), [localFilterOptions]);
+  const modalidadOptions = useMemo(() => localFilterOptions("modalidad"), [localFilterOptions]);
+  const turnoOptions = useMemo(() => localFilterOptions("turno"), [localFilterOptions]);
+
   const employeeOptions = useMemo<FilterOption[]>(
     () =>
       empleados.map((empleado) => ({
@@ -639,6 +700,11 @@ export default function TurnosPage() {
         movimiento.contexto_operativo?.municipio ??
         "";
 
+      if (institucionFilter && getTurnoContextValue(movimiento, turnRelation, "institucion") !== institucionFilter) return false;
+      if (sedeFilter && getTurnoContextValue(movimiento, turnRelation, "sede") !== sedeFilter) return false;
+      if (modalidadFilter && getTurnoContextValue(movimiento, turnRelation, "modalidad") !== modalidadFilter) return false;
+      if (turnoFilter && getTurnoContextValue(movimiento, turnRelation, "turno") !== turnoFilter) return false;
+
       if (municipioFilter && movimientoMunicipio !== municipioFilter) {
         return false;
       }
@@ -668,7 +734,7 @@ export default function TurnosPage() {
 
       return haystack.includes(normalizedSearch);
     });
-  }, [employeeByNominaId, movimientos, municipioFilter, searchTerm, turnoView, turnRelationByMovementId]);
+  }, [employeeByNominaId, institucionFilter, modalidadFilter, movimientos, municipioFilter, searchTerm, sedeFilter, turnoFilter, turnoView, turnRelationByMovementId]);
 
   const groupedMovimientos = useMemo<TurnoGroup[]>(() => {
     const groups = new Map<string, TurnoGroup>();
@@ -782,6 +848,7 @@ export default function TurnosPage() {
     ];
     return items.slice(0, 4);
   }, [canSeeEconomic, displayedMovimientos, employeeByNominaId, selectedPeriod, turnRelationByMovementId]);
+  void kpis;
 
   const byTypeSummary = useMemo(() => {
     const map = new Map<string, { count: number; total: number }>();
@@ -910,6 +977,7 @@ export default function TurnosPage() {
         error: null,
       });
       setSelectedMovementId(null);
+      setDrawerMode(null);
 
       try {
         const data = canSeeEconomic
@@ -1002,6 +1070,7 @@ export default function TurnosPage() {
       setSelectedMovementId(null);
       setEditorMode(null);
       setEditingMovementId(null);
+      setDrawerMode(null);
       return;
     }
 
@@ -1051,6 +1120,7 @@ export default function TurnosPage() {
     setSelectedMovementId(null);
     setEditorMode(null);
     setEditingMovementId(null);
+    setDrawerMode(null);
     setSearchTerm("");
     setActiveFilter("");
     setMunicipioFilter("");
@@ -1091,6 +1161,7 @@ export default function TurnosPage() {
     setEditorMode("create");
     setEditingMovementId(null);
     setSelectedMovementId(null);
+    setDrawerMode("create");
     setForm(emptyForm(defaultEmployeeId));
     setFormError(null);
     setFeedback(null);
@@ -1114,6 +1185,7 @@ export default function TurnosPage() {
     setEditorMode("edit");
     setEditingMovementId(movimiento.id);
     setSelectedMovementId(null);
+    setDrawerMode("edit");
     setForm(nextForm);
     setFormError(null);
     setFeedback(null);
@@ -1124,6 +1196,21 @@ export default function TurnosPage() {
     setEditingMovementId(null);
     setFormError(null);
   };
+
+  const closeDrawer = () => {
+    setDrawerMode(null);
+    setSelectedMovementId(null);
+    closeEditor();
+  };
+
+  useEffect(() => {
+    if (!turnosDrawerOpen) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeDrawer();
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [turnosDrawerOpen]);
 
   const handleFormChange = <K extends keyof TurnoFormState>(key: K, value: TurnoFormState[K]) => {
     setForm((current) => ({
@@ -1397,7 +1484,7 @@ export default function TurnosPage() {
         periodo_id: selectedPeriodId,
         activo: backendActiveFilter,
       });
-      closeEditor();
+      closeDrawer();
     } catch (error) {
       setFormError(toMessage(error));
     } finally {
@@ -1473,6 +1560,10 @@ export default function TurnosPage() {
     setSearchTerm("");
     setActiveFilter("");
     setMunicipioFilter("");
+    setInstitucionFilter("");
+    setSedeFilter("");
+    setModalidadFilter("");
+    setTurnoFilter("");
   };
 
   const canCreate = Boolean(selectedPeriodId) && !employeesState.loading && empleados.length > 0;
@@ -1488,15 +1579,26 @@ export default function TurnosPage() {
   void byPersonModalitySummary;
   void valueByNature;
   void topEmployees;
+  void TurnosConsolidatedTable;
+  void expandedPersonKey;
+  void setExpandedPersonKey;
+  void groupedMovimientos;
   return (
-    <div className="np-page turnos-page-shell">
-      <CoberturaFlowNav periodId={selectedPeriodId} />
+    <NominaModuleShell periodId={selectedPeriodId} periodSlot={(
+      <>
+        <label>Período
+          <NpSelect label="Seleccionar período" value={selectedPeriodId ?? ""} onChange={handleSelectPeriod} options={periodOptions} disabled={periodsState.loading || periodOptions.length === 0} />
+        </label>
+        <span className={`nomina-period-status ${canMutatePeriod ? "open" : "locked"}`}>{selectedPeriod?.estado ?? (periodsState.loading ? "CARGANDO" : "SIN PERÍODO")}</span>
+      </>
+    )}>
+      <div className="np-page turnos-page-shell">
       <header className="np-header">
         <div className="np-header-text">
           <h1>Turnos</h1>
           <p>Consulta las coberturas del periodo y revisa los turnos registrados.</p>
         </div>
-        <div className="np-header-actions">
+        <div className="np-header-actions turnos-header-actions">
           <button
             type="button"
             className="np-btn primary"
@@ -1575,55 +1677,29 @@ export default function TurnosPage() {
         </div>
       ) : null}
 
-      <div className="np-kpis">
-        {kpis.map((kpi) => {
-          const Icon = kpi.icon;
-          return (
-            <div key={kpi.label} className={`np-kpi ${kpi.tone}`}>
-              <div className="np-kpi-icon">
-                <Icon size={20} />
-              </div>
-              <div className="np-kpi-body">
-                <span>{kpi.label}</span>
-                <strong>{kpi.value}</strong>
-                <small>{kpi.caption}</small>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       <div className="np-toolbar">
         <div className="np-toolbar-left">
           <div className="np-search">
-            <Search size={16} />
+            <Search size={13} />
             <input
-              placeholder="Buscar por nombre o cédula..."
+              placeholder="Buscar trabajador..."
+              aria-label="Buscar trabajador"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
               disabled={!selectedPeriodId}
             />
           </div>
-          <NpSelect
-            label={periodsState.loading ? "Cargando períodos..." : "Período"}
-            value={selectedPeriodId ?? ""}
-            onChange={handleSelectPeriod}
-            options={periodOptions}
-            disabled={periodsState.loading || periodOptions.length === 0}
-          />
+          <NpSelect label="Municipio" value={municipioFilter} onChange={setMunicipioFilter} options={municipioOptions} disabled={!selectedPeriodId || municipioOptions.length === 0} />
+          <NpSelect label="Institución" value={institucionFilter} onChange={setInstitucionFilter} options={institucionOptions} disabled={!selectedPeriodId || institucionOptions.length === 0} />
+          <NpSelect label="Sede" value={sedeFilter} onChange={setSedeFilter} options={sedeOptions} disabled={!selectedPeriodId || sedeOptions.length === 0} />
+          <NpSelect label="Modalidad" value={modalidadFilter} onChange={setModalidadFilter} options={modalidadOptions} disabled={!selectedPeriodId || modalidadOptions.length === 0} />
+          <NpSelect label="Turno" value={turnoFilter} onChange={setTurnoFilter} options={turnoOptions} disabled={!selectedPeriodId || turnoOptions.length === 0} />
           <NpSelect
             label="Estado"
             value={activeFilter}
             onChange={setActiveFilter}
             options={activeOptions}
             disabled={!selectedPeriodId}
-          />
-          <NpSelect
-            label="Municipio"
-            value={municipioFilter}
-            onChange={setMunicipioFilter}
-            options={municipioOptions}
-            disabled={!selectedPeriodId || municipioOptions.length === 0}
           />
           <NpSelect
             label="Ordenar"
@@ -1639,41 +1715,50 @@ export default function TurnosPage() {
           />
         </div>
         <div className="np-toolbar-right">
-          <div className="np-segmented" role="tablist" aria-label="Tipo de turno">
-            {([['todos', 'Todos'], ['internos', 'Internos'], ['externos', 'Externos']] as const).map(([value, label]) => (
-              <button key={value} type="button" role="tab" aria-selected={turnoView === value} className={turnoView === value ? "active" : ""} onClick={() => setTurnoView(value)}>{label}</button>
-            ))}
-          </div>
-          <span className="np-badge info">TURNO_INTERNO / TURNO_EXTERNO</span>
           <button
             type="button"
             className="np-clear-btn"
             onClick={clearFilters}
-            disabled={!searchTerm && !activeFilter && !municipioFilter}
+            disabled={!searchTerm && !activeFilter && !municipioFilter && !institucionFilter && !sedeFilter && !modalidadFilter && !turnoFilter}
           >
             Limpiar
+          </button>
+          <button type="button" className="np-btn primary turnos-toolbar-action" hidden={!canSeeEconomic} onClick={openCreateEditor} disabled={!canCreate || !canMutatePeriod || isSubmitting}>
+            <Plus size={14} /> Nuevo turno
+          </button>
+          <button type="button" className="np-btn turnos-toolbar-action" ref={exportButtonRef} onClick={() => setExportMenuOpen((open) => !open)} disabled={!canExport}>
+            <Download size={14} /> {isExporting ? "Generando archivo..." : "Exportar"}
           </button>
         </div>
       </div>
 
-      {turnoView !== "internos" ? <section className="np-external-summary" aria-labelledby="external-summary-title">
+      {turnosDrawerOpen ? <div className="turnos-drawer-overlay" onClick={closeDrawer} aria-hidden="true" /> : null}
+
+      {drawerMode === "documents" ? <section className="np-external-summary turnos-drawer-panel" aria-labelledby="external-summary-title">
+        <NominaActionIconButton className="turnos-drawer-close" icon={X} label="Cerrar panel" onClick={closeDrawer} />
         <div className="np-section-heading">
           <div>
             <span className="np-eyebrow">COBERTURA</span>
-            <h2 id="external-summary-title">Externos consolidados</h2>
+            <h2 id="external-summary-title">Documentos del turno</h2>
           </div>
           <span className="np-badge info">Identidad + turnos del período</span>
         </div>
+        {selectedMovement ? <div className="turnos-document-context">
+          <strong>{selectedExternalSummary?.nombre_completo ?? selectedMovement.externo_nombre ?? "Reemplazante externo"}</strong>
+          <span>{selectedExternalSummary?.tipo_documento ?? "Documento"} {selectedExternalSummary?.numero_documento ?? selectedMovement.externo_numero_documento ?? "No disponible"}</span>
+          <span>{formatDate(selectedTurnRelation?.fecha_inicio ?? selectedMovement.fecha)} · {selectedTurnRelation?.trabajador_reemplazado ?? selectedMovement.persona_reemplazada?.nombre_completo ?? "Titular no disponible"}</span>
+          <span>{selectedTurnRelation?.municipio ?? selectedMovement.contexto_operativo?.municipio ?? "Municipio no disponible"} · {selectedTurnRelation?.institucion ?? selectedMovement.contexto_operativo?.institucion ?? "Institución no disponible"} · {selectedTurnRelation?.sede ?? selectedMovement.contexto_operativo?.sede ?? "Sede no disponible"}</span>
+        </div> : null}
         {externalSummaryState.loading ? <div className="np-empty">Cargando externos...</div> : null}
         {externalSummaryState.error ? (
           <div className="np-inline-state error" role="alert">No fue posible cargar el resumen de externos: {externalSummaryState.error}</div>
         ) : null}
-        {!externalSummaryState.loading && !externalSummaryState.error && selectedPeriodId && (externalSummaryState.data?.length ?? 0) === 0 ? (
+        {!externalSummaryState.loading && !externalSummaryState.error && !selectedExternalSummary ? (
           <div className="np-empty">No hay identidades externas asociadas al período.</div>
         ) : null}
-        {(externalSummaryState.data?.length ?? 0) > 0 ? (
+        {selectedExternalSummary ? (
           <div className="np-external-summary-list">
-            {externalSummaryState.data?.map((externo) => (
+            {[selectedExternalSummary].map((externo) => (
               <article className="np-external-summary-row" key={externo.id}>
                 <div>
                   <strong>{externo.nombre_completo}</strong>
@@ -1712,6 +1797,18 @@ export default function TurnosPage() {
       </section> : null}
 
       <div className="np-table-card turnos-operational-table">
+        <div className="turnos-card-toolbar">
+          <div className="turnos-card-summary">
+            <strong>{displayedMovimientos.length} reemplazos en el período</strong>
+            <span>{displayedMovimientos.filter((item) => item.tipo_movimiento === "TURNO_INTERNO").length} internos</span>
+            <span>{displayedMovimientos.filter((item) => item.tipo_movimiento === "TURNO_EXTERNO").length} externos</span>
+          </div>
+          <div className="np-segmented" role="tablist" aria-label="Tipo de turno">
+            {([['todos', 'Todos'], ['internos', 'Interno'], ['externos', 'Externo']] as const).map(([value, label]) => (
+              <button key={value} type="button" role="tab" aria-selected={turnoView === value} className={turnoView === value ? "active" : ""} onClick={() => setTurnoView(value)}>{label}</button>
+            ))}
+          </div>
+        </div>
         {!hasPeriods && !periodsState.loading ? (
           <StateCard
             title="Sin períodos disponibles"
@@ -1751,104 +1848,126 @@ export default function TurnosPage() {
           />
         ) : (
           <>
-          <TurnosConsolidatedTable
-            groups={groupedMovimientos}
-            relationByMovementId={turnRelationByMovementId}
-            expandedKey={expandedPersonKey}
-            onToggle={(key) => setExpandedPersonKey((current) => current === key ? null : key)}
-            canSeeEconomic={canSeeEconomic}
-            canEdit={canSeeEconomic}
-            canMutatePeriod={canMutatePeriod}
-            isSubmitting={isSubmitting}
-            employeesLoading={employeesState.loading}
-            employeesCount={empleados.length}
-            onEdit={openEditEditor}
-            onDeactivate={(movement) => void handleDeactivate(movement)}
-          />
-          <div className="np-table-scroll np-turns-table-scroll nomina-turnos-legacy-table">
+          <div className="np-table-scroll np-turns-table-scroll">
             <div
               className="np-table-head np-turns-table-grid"
             >
-              <span>Persona que cubre</span><span>Tipo</span><span>Persona cubierta</span>
-              <span>Institucion / Sede</span><span>Modalidad</span><span>Fecha inicio</span>
-              <span>Fecha fin</span><span>Dias</span><span>Tarifa diaria</span><span>Valor total</span>
-              <span>Motivo</span><span>Estado</span><span>Cuenta / Acciones</span>
+              <span>#</span><span>Tipo</span><span>Titular / referencia</span><span>Reemplazante</span>
+              <span>Motivo</span><span>Ubicacion operativa</span><span>Periodo</span><span>Dias</span><span>Estado</span><span>Acciones</span>
             </div>
 
             {displayedMovimientos.map((movimiento) => {
               const turnRelation = turnRelationByMovementId.get(movimiento.id) ?? null;
               const tipoTurno = movimiento.tipo_movimiento === "TURNO_INTERNO" ? "INTERNO" : "EXTERNO";
-              const cubreNombre = turnRelation?.trabajador_cubre ?? movimiento.persona.nombre_completo;
-              const cubreDocumento = turnRelation?.trabajador_cubre_documento ?? movimiento.persona.numero_documento;
-              const reemplazadoNombre =
+              const titularNombre =
                 turnRelation?.trabajador_reemplazado ?? movimiento.persona_reemplazada?.nombre_completo ?? "No disponible";
-              const reemplazadoDocumento =
+              const titularDocumento =
                 turnRelation?.trabajador_reemplazado_documento ?? movimiento.persona_reemplazada?.numero_documento ?? null;
-              const documentosLabel =
-                tipoTurno === "INTERNO"
-                  ? "No aplica"
-                  : turnRelation?.documentos_completos
-                    ? "Completo"
-                    : "Pendiente";
+              const reemplazanteNombre =
+                turnRelation?.trabajador_cubre ??
+                (tipoTurno === "EXTERNO" ? movimiento.externo_nombre : movimiento.persona.nombre_completo) ??
+                "No disponible";
+              const reemplazanteDocumento =
+                turnRelation?.trabajador_cubre_documento ??
+                (tipoTurno === "EXTERNO" ? movimiento.externo_numero_documento : movimiento.persona.numero_documento) ??
+                null;
               const diasEfectivos = countInclusiveDays(turnRelation?.fecha_inicio ?? movimiento.fecha, turnRelation?.fecha_fin ?? movimiento.fecha) || movimiento.cantidad || 0;
               const modalidad = turnRelation?.modalidad ?? movimiento.contexto_operativo?.modalidad ?? "No disponible";
               const tarifaPendiente = movimiento.valor_unitario === null || movimiento.valor_unitario <= 0 || movimiento.tarifa_config_id === null;
               const tarifaCausa = movimiento.tarifa_config_id === null
                 ? (modalidad === "No disponible" ? "modalidad histórica no normalizada" : "tarifa inexistente o snapshot faltante")
                 : "";
+              const externo = tipoTurno === "EXTERNO";
+              const externalSummary = externo && turnRelation?.externo_id
+                ? externalSummaryState.data?.find((item) => item.id === turnRelation.externo_id) ?? null
+                : null;
 
               return (
               <div
                 key={movimiento.id}
                 className={`np-table-row np-turns-table-grid${selectedMovementId === movimiento.id ? " is-selected" : ""}`}
               >
-                <span className="np-table-stack">
-                  <strong>{cubreNombre}</strong>
-                  <small>{cubreDocumento ?? "Sin documento"}</small>
+                <span className="turnos-row-cell np-turn-index">{displayedMovimientos.indexOf(movimiento) + 1}</span>
+                <span className="turnos-row-cell">
+                  <strong className={`np-badge ${tipoTurno === "INTERNO" ? "info" : "primary"}`}>{tipoTurno === "INTERNO" ? "↔ Interno" : "↑ Externo"}</strong>
                 </span>
-                <span className="np-table-stack" title={[cubreNombre, cubreDocumento].filter(Boolean).join(" · ")}>
-                  <strong className={`np-badge ${tipoTurno === "INTERNO" ? "info" : "primary"}`}>{tipoTurno}</strong>
-                </span>
-                <span className="np-table-stack" title={[reemplazadoNombre, reemplazadoDocumento].filter(Boolean).join(" · ")}>
-                  <strong>{reemplazadoNombre}</strong>
-                  <small>{reemplazadoDocumento ?? "Sin documento"}</small>
-                </span>
-                <span className="np-table-stack" title={[turnRelation?.municipio ?? movimiento.contexto_operativo?.municipio, turnRelation?.sede ?? movimiento.contexto_operativo?.sede].filter(Boolean).join(" · ")}>
-                  <strong>{turnRelation?.institucion ?? movimiento.contexto_operativo?.institucion ?? "No disponible"}</strong>
-                  <small>{turnRelation?.sede ?? movimiento.contexto_operativo?.sede ?? "Sin sede"}</small>
-                </span>
-                <span className="np-table-text np-table-ellipsis" title={modalidad}>{modalidad}</span>
-                <span>{formatDate(turnRelation?.fecha_inicio ?? movimiento.fecha)}</span>
-                <span>{formatDate(turnRelation?.fecha_fin ?? movimiento.fecha)}</span>
-                <span><strong>{formatNumber(diasEfectivos)}</strong> días</span>
-                <span title={tarifaPendiente ? tarifaCausa : undefined}>{canSeeEconomic && !tarifaPendiente ? `${formatCOP(movimiento.valor_unitario)}/día` : "SIN TARIFA"}</span>
-                <span>{canSeeEconomic && !tarifaPendiente ? formatCOP(movimiento.valor_total) : "TARIFA PENDIENTE"}</span>
-                <span className="np-table-text np-table-ellipsis" title={turnRelation?.motivo ?? movimiento.descripcion ?? "No disponible"}>
-                  {turnRelation?.motivo ?? movimiento.descripcion ?? "No disponible"}
-                </span>
-                <div className="np-turn-status-actions">
-                  <span className={`np-badge ${tarifaPendiente ? "danger" : getMovementStatusTone(movimiento)}`} title={tarifaPendiente ? tarifaCausa : undefined}>
-                    {tarifaPendiente ? "SIN TARIFA · " : ""}{turnRelation?.estado ?? getMovementStatusLabel(movimiento)}
+                <span className="turnos-row-cell">
+                  <span className="turnos-row-stack np-person-cell">
+                    <span className="np-avatar" style={{ background: avatarColor(titularNombre) }}>{getInitials(titularNombre)}</span>
+                    <span className="np-person-copy"><strong>{titularNombre}</strong>
+                    <small>{titularDocumento ?? "Sin documento"}</small></span>
                   </span>
-                  <small title="Estado documental">Cuenta: {documentosLabel}</small>
-                  <span className="np-row-status">
-                  <button
-                    type="button"
-                    className="np-icon-button"
-                    title="Ver detalle"
-                    aria-label={`Ver detalle de ${cubreNombre}`}
-                    onClick={() =>
-                      setSelectedMovementId((current) => (current === movimiento.id ? null : movimiento.id))
-                    }
-                  >
-                    <Eye size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    className="np-icon-button"
-                    hidden={!canSeeEconomic}
-                    title="Editar"
-                    aria-label={`Editar ${cubreNombre}`}
+                </span>
+                <span className="turnos-row-cell" title={[reemplazanteNombre, reemplazanteDocumento].filter(Boolean).join(" · ")}>
+                  <span className="turnos-row-stack np-person-cell">
+                    <span className="np-avatar" style={{ background: avatarColor(reemplazanteNombre) }}>{getInitials(reemplazanteNombre)}</span>
+                    <span className="np-person-copy"><strong>{reemplazanteNombre}</strong>
+                    <small>{reemplazanteDocumento ?? "Sin documento"}</small></span>
+                  </span>
+                </span>
+                <span className="turnos-row-cell np-table-text" title={turnRelation?.motivo ?? movimiento.descripcion ?? "No disponible"}>
+                  <span className="turnos-row-stack turnos-row-motivo-text">
+                    {turnRelation?.motivo ?? movimiento.descripcion ?? "No disponible"}
+                  </span>
+                </span>
+                <span className="turnos-row-cell">
+                  <span className="turnos-row-stack np-location-cell">
+                    <strong className="np-location-municipio">{turnRelation?.municipio ?? movimiento.contexto_operativo?.municipio ?? "No disponible"}</strong>
+                    <span className="np-location-institution">{turnRelation?.institucion ?? movimiento.contexto_operativo?.institucion ?? "No disponible"}</span>
+                    <small>{turnRelation?.sede ?? movimiento.contexto_operativo?.sede ?? "Sin sede"}</small>
+                    <span className="np-location-modality">{modalidad}</span>
+                  </span>
+                </span>
+                <span className="turnos-row-cell np-turn-period"><span>{formatDate(turnRelation?.fecha_inicio ?? movimiento.fecha)}</span><span aria-hidden="true">→</span><span>{formatDate(turnRelation?.fecha_fin ?? movimiento.fecha)}</span></span>
+                <span className="turnos-row-cell np-turn-days"><strong>{formatNumber(diasEfectivos)}</strong> días</span>
+                <span className="turnos-row-cell">
+                  <span className="turnos-row-stack np-turn-status-actions">
+                    <span className={`np-badge ${tarifaPendiente ? "danger" : getMovementStatusTone(movimiento)}`} title={tarifaPendiente ? tarifaCausa : undefined}>
+                      {tarifaPendiente ? "SIN TARIFA · " : ""}{turnRelation?.estado ?? getMovementStatusLabel(movimiento)}
+                    </span>
+                    {externo && externalSummary ? (
+                      <span className="np-doc-indicators" aria-label="Estado documental externo">
+                        <span className={externalSummary.cedula ? "is-ready" : "is-pending"} title={externalSummary.cedula ? "Cedula cargada" : "Cedula pendiente"}>C {externalSummary.cedula ? "✓" : "!"}</span>
+                        <span className={externalSummary.banco_doc ? "is-ready" : "is-pending"} title={externalSummary.banco_doc ? "Certificacion bancaria cargada" : "Certificacion bancaria pendiente"}>B {externalSummary.banco_doc ? "✓" : "!"}</span>
+                        <span className={externalSummary.cuenta_estado === "FIRMADA" ? "is-ready" : "is-pending"} title={`Cuenta de cobro ${externalSummary.cuenta_estado.toLowerCase()}`}>CC {externalSummary.cuenta_estado === "FIRMADA" ? "✓" : "!"}</span>
+                      </span>
+                    ) : null}
+                    <span className="turnos-economic-summary" title={tarifaPendiente ? tarifaCausa : undefined}>
+                      <small>{canSeeEconomic && !tarifaPendiente ? `${formatCOP(movimiento.valor_unitario)}/día` : "SIN TARIFA"}</small>
+                      <small>{canSeeEconomic && !tarifaPendiente ? formatCOP(movimiento.valor_total) : "TOTAL PENDIENTE"}</small>
+                    </span>
+                  </span>
+                </span>
+                <div className="turnos-row-cell turnos-actions-cell np-row-status">
+                  <NominaActionIconButton
+                    icon={Eye}
+                    label={`Ver detalle de ${titularNombre}`}
+                    onClick={() => {
+                      if (drawerMode === "detail" && selectedMovementId === movimiento.id) {
+                        closeDrawer();
+                        return;
+                      }
+                      setEditorMode(null);
+                      setSelectedMovementId(movimiento.id);
+                      setDrawerMode("detail");
+                    }}
+                   />
+                   {externo && canSeeEconomic ? (
+                     <NominaActionIconButton
+                       icon={FileText}
+                       label={`Ver documentos de ${reemplazanteNombre}`}
+                       title="Ver documentos y cuenta de cobro"
+                       onClick={() => {
+                         setEditorMode(null);
+                         setSelectedMovementId(movimiento.id);
+                         setDrawerMode("documents");
+                       }}
+                     />
+                   ) : null}
+                   <NominaActionIconButton
+                    icon={Pencil}
+                    label={`Editar ${reemplazanteNombre}`}
+                     hidden={!canSeeEconomic || !externo}
                     onClick={() => openEditEditor(movimiento)}
                     disabled={
                       movimiento.tipo_movimiento !== "TURNO_EXTERNO" ||
@@ -1858,32 +1977,33 @@ export default function TurnosPage() {
                       employeesState.loading ||
                       empleados.length === 0
                     }
-                  >
-                    <Edit3 size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    className="np-icon-button"
-                    hidden={!canSeeEconomic}
-                    title="Desactivar"
-                    aria-label={`Desactivar ${cubreNombre}`}
+                  />
+                  <NominaActionIconButton
+                    icon={Ban}
+                    label={`Desactivar ${reemplazanteNombre}`}
+                    variant="danger"
+                    hidden={!canSeeEconomic || !externo}
                     onClick={() => void handleDeactivate(movimiento)}
                     disabled={movimiento.tipo_movimiento !== "TURNO_EXTERNO" || !movimiento.activo || !canMutatePeriod || isSubmitting}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                  </span>
+                  />
                 </div>
               </div>
               );
             })}
           </div>
+          <div className="turnos-table-footer">
+            <span>1–{displayedMovimientos.length} de {displayedMovimientos.length}</span>
+            <div className="turnos-table-footer-actions">
+              <NominaActionIconButton icon={ChevronLeft} label="Página anterior" disabled />
+              <NominaActionIconButton icon={ChevronRight} label="Página siguiente" disabled />
+            </div>
+          </div>
           </>
         )}
       </div>
 
-      {selectedMovement ? (
-        <div className="np-detail-panel">
+      {drawerMode === "detail" && selectedMovement ? (
+        <div className="np-detail-panel turnos-drawer-panel">
           <div className="np-detail-header">
             <div>
               <h3>Detalle del turno</h3>
@@ -1891,15 +2011,7 @@ export default function TurnosPage() {
                 {selectedMovement.persona.nombre_completo} · {selectedMovement.periodo.nombre_periodo}
               </p>
             </div>
-            <button
-              type="button"
-              className="np-icon-button"
-              onClick={() => setSelectedMovementId(null)}
-              title="Cerrar detalle"
-              aria-label="Cerrar detalle"
-            >
-              <X size={14} />
-            </button>
+            <NominaActionIconButton icon={X} label="Cerrar detalle" onClick={closeDrawer} />
           </div>
 
           <div className="np-detail-grid">
@@ -2081,22 +2193,14 @@ export default function TurnosPage() {
         </div>
       ) : null}
 
-      {editorMode ? (
-        <div className="np-detail-panel">
+      {(drawerMode === "edit" || drawerMode === "create") && editorMode ? (
+        <div className="np-detail-panel turnos-drawer-panel">
           <div className="np-detail-header">
             <div>
               <h3>{editorMode === "create" ? "Registrar turno externo" : "Editar turno externo"}</h3>
               <p>{selectedPeriod?.nombre_periodo ?? "Periodo no disponible"} · Turno externo del periodo seleccionado.</p>
             </div>
-            <button
-              type="button"
-              className="np-icon-button"
-              onClick={closeEditor}
-              title="Cerrar formulario"
-              aria-label="Cerrar formulario"
-            >
-              <X size={14} />
-            </button>
+            <NominaActionIconButton icon={X} label="Cerrar formulario" onClick={closeDrawer} />
           </div>
 
           <div className="np-form-grid">
@@ -2216,8 +2320,8 @@ export default function TurnosPage() {
             </label>
           </div>
 
-          <label className="np-form-field">
-            <span>Descripcion</span>
+            <label className="np-form-field">
+              <span>Descripcion</span>
             <textarea
               className="np-form-control np-form-textarea"
               value={form.descripcion}
@@ -2226,7 +2330,26 @@ export default function TurnosPage() {
               placeholder="Observacion opcional para el turno"
               disabled={isSubmitting}
             />
-          </label>
+            </label>
+
+            <label className="np-form-field">
+              <span>Motivo operativo</span>
+              <select
+                className="np-form-control"
+                value={form.descripcion.startsWith("Apoyo adicional por mercado") || form.descripcion.startsWith("Reemplazo / apoyo por mercado") ? "APOYO_MERCADO" : form.descripcion.startsWith("Reemplazo por ausencia") ? "REEMPLAZO_AUSENCIA" : "OTRO"}
+                onChange={(event) => {
+                  const option = TURNO_MOTIVO_OPTIONS.find((item) => item.value === event.target.value);
+                  if (!option) return;
+                  const current = form.descripcion.trim();
+                  const detail = current.includes(" — ") ? current.slice(current.indexOf(" — ") + 3) : "";
+                  handleFormChange("descripcion", detail ? `${option.label} — ${detail}` : option.label);
+                }}
+                disabled={isSubmitting}
+              >
+                {TURNO_MOTIVO_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              <small>El apoyo adicional por mercado no marca ausente a la titular ni crea una novedad de ausencia.</small>
+            </label>
 
           <div className="np-form-grid">
             <label className="np-form-field">
@@ -2306,7 +2429,7 @@ export default function TurnosPage() {
           ) : null}
 
           <div className="np-form-actions">
-            <button type="button" className="np-btn" onClick={closeEditor} disabled={isSubmitting}>
+            <button type="button" className="np-btn" onClick={closeDrawer} disabled={isSubmitting}>
               Cancelar
             </button>
             <button
@@ -2327,7 +2450,8 @@ export default function TurnosPage() {
         </div>
       ) : null}
 
-    </div>
+      </div>
+    </NominaModuleShell>
   );
 }
 

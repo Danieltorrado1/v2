@@ -707,6 +707,7 @@ export interface NominaTipoNovedad {
   proyecta_periodos: boolean;
   bloquea_otras_novedades: boolean;
   grupo_exclusividad: string;
+  permite_asistencia_simultanea: boolean;
   observacion_plantilla: string | null;
   es_adicion: boolean;
   es_incapacidad: boolean;
@@ -719,6 +720,7 @@ export interface NominaTipoNovedad {
   permite_rango: boolean;
   requiere_revision: boolean;
   requiere_solicitud_permiso: boolean;
+  requiere_autorizacion_descuento: boolean;
   soporte_documento_tipo: string | null;
   requiere_fechas: boolean;
   requiere_dias: boolean;
@@ -758,6 +760,18 @@ export interface NominaNovedadApi {
   periodo_id: string;
   nomina_empleado_id: string;
   vinculacion_id: string;
+  contexto_operativo: {
+    cargo_id: string | null;
+    cargo_nombre: string | null;
+    municipio_id: string | null;
+    municipio: string | null;
+    institucion_id: string | null;
+    institucion: string | null;
+    sede_id: string | null;
+    sede: string | null;
+    modalidad_id: string | null;
+    modalidad: string | null;
+  } | null;
   documento_persona_id: string | null;
   fecha_inicio: string | null;
   fecha_fin: string | null;
@@ -797,12 +811,21 @@ export interface NominaNovedadApi {
       documento_persona_id: string | null;
       requerido: boolean;
       tipo: 'SOLICITUD_PERMISO';
+      estado_revision: NominaNovedadDocumentReviewState | 'PENDIENTE_CARGA';
+    };
+    AUTORIZACION_DESCUENTO: {
+      cargado: boolean;
+      documento_persona_id: string | null;
+      requerido: boolean;
+      tipo: 'AUTORIZACION_DESCUENTO';
+      estado_revision: NominaNovedadDocumentReviewState | 'PENDIENTE_CARGA';
     };
     SOPORTE: {
       cargado: boolean;
       documento_persona_id: string | null;
       requerido: boolean;
       tipo: 'SOPORTE';
+      estado_revision: NominaNovedadDocumentReviewState | 'PENDIENTE_CARGA';
     };
   };
   registro_tipo: 'ORDINARIA' | 'CANONICA_PROYECTADA';
@@ -812,20 +835,34 @@ export interface NominaNovedadApi {
 }
 
 export interface NominaNovedadDocumentoDetalleApi {
+  aprobado_en: string | null;
+  aprobado_por: string | null;
+  cargado_en: string | null;
+  cargado_por: string | null;
   documento_persona_id: string;
   id: string;
   mime_type: string;
   nombre_original: string;
-  tipo: 'SOPORTE' | 'SOLICITUD_PERMISO';
+  tipo: 'SOPORTE' | 'SOLICITUD_PERMISO' | 'AUTORIZACION_DESCUENTO';
   url: string;
   version: number;
+  estado_revision: NominaNovedadDocumentReviewState;
+  motivo_rechazo: string | null;
+  rechazado_en: string | null;
+  rechazado_por: string | null;
 }
+
+export type NominaNovedadDocumentReviewState =
+  | 'PENDIENTE_VALIDACION'
+  | 'APROBADO'
+  | 'RECHAZADO';
 
 export interface NominaNovedadDocumentoEstadoApi {
   cargado: boolean;
   documento: NominaNovedadDocumentoDetalleApi | null;
   requerido: boolean;
-  tipo: 'SOPORTE' | 'SOLICITUD_PERMISO';
+  tipo: 'SOPORTE' | 'SOLICITUD_PERMISO' | 'AUTORIZACION_DESCUENTO';
+  estado_revision: NominaNovedadDocumentReviewState | 'PENDIENTE_CARGA';
 }
 
 export interface NominaNovedadDocumentosApi {
@@ -833,6 +870,7 @@ export interface NominaNovedadDocumentosApi {
   slots: {
     SOPORTE: NominaNovedadDocumentoEstadoApi;
     SOLICITUD_PERMISO: NominaNovedadDocumentoEstadoApi;
+    AUTORIZACION_DESCUENTO: NominaNovedadDocumentoEstadoApi;
   };
 }
 

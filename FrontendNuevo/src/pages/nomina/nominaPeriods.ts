@@ -30,6 +30,49 @@ export function pickDefaultNominaPeriod(periodos: NominaPeriodoApi[]) {
   );
 }
 
+/**
+ * The only normalization boundary for the payroll period catalog.
+ * IDs are strings at the UI boundary so URL/session values cannot create a
+ * second representation of the selected period.
+ */
+export function normalizeNominaPeriods(periods: NominaPeriodoApi[]): NominaPeriodoApi[] {
+  const canonical = new Map<string, NominaPeriodoApi>();
+
+  for (const rawPeriod of periods) {
+    const periodFlags = rawPeriod as NominaPeriodoApi & { residual?: boolean; es_residual?: boolean };
+    if (rawPeriod.activo === false || periodFlags.residual === true || periodFlags.es_residual === true) {
+      continue;
+    }
+
+    const period: NominaPeriodoApi = { ...rawPeriod, id: String(rawPeriod.id) };
+    const key = [
+      String(period.contrato_id ?? ""),
+      period.fecha_inicio,
+      period.fecha_fin,
+      String(period.tipo_periodo ?? ""),
+    ].join("|");
+    const current = canonical.get(key);
+
+    if (!current || compareCanonicalNominaPeriods(period, current) < 0) {
+      canonical.set(key, period);
+    }
+  }
+
+  const normalized = [...canonical.values()].sort((left, right) =>
+    toTimestamp(right.fecha_inicio) - toTimestamp(left.fecha_inicio) ||
+    toTimestamp(right.fecha_fin) - toTimestamp(left.fecha_fin) ||
+    Number(right.id) - Number(left.id),
+  );
+
+  return normalized;
+}
+
+function compareCanonicalNominaPeriods(left: NominaPeriodoApi, right: NominaPeriodoApi) {
+  return Number(right.activo) - Number(left.activo) ||
+    toTimestamp(left.created_at) - toTimestamp(right.created_at) ||
+    Number(left.id) - Number(right.id);
+}
+
 export function isNominaPeriodSelectorDisabled(
   periodos: NominaPeriodoApi[],
   periodsLoading: boolean,

@@ -4,7 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 const read = (file: string) => readFileSync(path.resolve(file), 'utf8');
-const layout = read('FrontendNuevo/src/layouts/MainLayout.tsx');
+const payrollNavigation = read('FrontendNuevo/src/architecture/payrollNavigation.ts');
 const flow = read('FrontendNuevo/src/pages/nomina/CoberturaFlowNav.tsx');
 const router = read('FrontendNuevo/src/router/AppRouter.tsx');
 const turnos = read('FrontendNuevo/src/pages/nomina/TurnosPage.tsx');
@@ -12,7 +12,7 @@ const routes = read('src/modules/nomina/nomina.routes.ts');
 const service = read('src/modules/nomina/nomina.service.ts');
 
 test('Turnos usa la capability operativa en navegación y route guard', () => {
-  for (const source of [layout, flow, router]) {
+  for (const source of [payrollNavigation, flow, router]) {
     assert.match(source, /nomina\/turnos[\s\S]{0,160}nomina\.operativa\.read/);
   }
 });

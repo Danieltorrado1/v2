@@ -21,6 +21,10 @@ temp/
 # Carpeta temporal
 tmp-sst-qa/
 
+# Figma references and local audit helpers
+figma-reference/
+tmp/audit-dco-ta.cjs
+
 # Dependencias
 node_modules/
 

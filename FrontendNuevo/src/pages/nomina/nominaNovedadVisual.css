@@ -1,0 +1,53 @@
+/* Shared novelty palette. Planilla Operativa and Novedades intentionally use
+   the same code classes so a novelty remains recognizable across views. */
+.op-novelty-code-PR1 { --op-novelty-color: #2563eb; --op-novelty-text: #1d4ed8; }
+.op-novelty-code-PR2 { --op-novelty-color: #7c3aed; --op-novelty-text: #6d28d9; }
+.op-novelty-code-PR3 { --op-novelty-color: #ea580c; --op-novelty-text: #c2410c; }
+.op-novelty-code-PR4 { --op-novelty-color: #0f766e; --op-novelty-text: #0f766e; }
+.op-novelty-code-PNR { --op-novelty-color: #dc2626; --op-novelty-text: #b91c1c; }
+.op-novelty-code-S { --op-novelty-color: #d97706; --op-novelty-text: #a16207; }
+.op-novelty-code-L50 { --op-novelty-color: #475569; --op-novelty-text: #334155; }
+.op-novelty-code-DNC { --op-novelty-color: #0891b2; --op-novelty-text: #0e7490; }
+.op-novelty-code-INC-GENERAL { --op-novelty-color: #9333ea; --op-novelty-text: #7e22ce; }
+.op-novelty-code-INC-ARL,
+.op-novelty-code-INCAP-ACL { --op-novelty-color: #c026d3; --op-novelty-text: #a21caf; }
+.op-novelty-code-FNJ { --op-novelty-color: #be123c; --op-novelty-text: #9f1239; }
+.op-novelty-code-DCO { --op-novelty-color: #16a34a; --op-novelty-text: #15803d; }
+.op-novelty-code-TA { --op-novelty-color: #4338ca; --op-novelty-text: #3730a3; }
+.op-novelty-code-NOV { --op-novelty-color: #64748b; --op-novelty-text: #475569; }
+.op-novelty-code-LUTO,
+.op-novelty-code-FECHA-DE-INGRESO,
+.op-novelty-code-FECHA-DE-RETIRO,
+.op-novelty-code-CAMBIO-DE-MODALIDAD,
+.op-novelty-code-CAMBIO-DE-SEDE,
+.op-novelty-code-CAMBIO-COMBINADO {
+  --op-novelty-color: #64748b;
+  --op-novelty-text: #475569;
+}
+.op-novelty-code-LICENCIA,
+.op-novelty-code-LICENCIA-MATERNIDAD,
+.op-novelty-code-LICENCIA-PATERNIDAD,
+.op-novelty-code-LICENCIA-MATERNIDAD-PATERNIDAD,
+.op-novelty-code-ACCIDENTE-DE-TRABAJO,
+.op-novelty-code-ACCIDENTE-TRABAJO {
+  --op-novelty-color: #c026d3;
+  --op-novelty-text: #a21caf;
+}
+
+.nomina-page--novedades .novedad-type-cell[class*="op-novelty-code-"] strong,
+.novedad-type-badge[class*="op-novelty-code-"] {
+  background: color-mix(in srgb, var(--op-novelty-color) 12%, var(--bg-secondary, #fff));
+  border: 1px solid color-mix(in srgb, var(--op-novelty-color) 34%, var(--border-color, #d0d7e2));
+  color: var(--op-novelty-text);
+}
+
+.novedad-type-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+}

@@ -153,6 +153,7 @@ import {
   getNovedadDocumentsHandler,
   getNovedadSupportHandler,
   uploadNovedadDocumentHandler,
+  reviewNovedadDocumentHandler,
   uploadNovedadSupportHandler,
 } from './cobertura.novedad-documentos.controller';
 
@@ -188,6 +189,7 @@ nominaRoutes.post('/cobertura/cuentas-cobro/:id/firmada', requirePermissions('no
 nominaRoutes.get('/novedades/:id/documentos', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNovedadDocumentsHandler);
 nominaRoutes.get('/novedades/:id/documentos/:tipo', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNovedadDocumentHandler);
 nominaRoutes.post('/novedades/:id/documentos/:tipo', requirePermissions('nomina.novedades.update'), coberturaUpload.single('file'), uploadNovedadDocumentHandler);
+nominaRoutes.post('/novedades/:id/documentos/:tipo/revision', requirePermissions('nomina.novedades.update'), reviewNovedadDocumentHandler);
 nominaRoutes.get('/novedades/:id/soporte', requireAnyPermissions('nomina.operativa.read', 'nomina.read'), getNovedadSupportHandler);
 nominaRoutes.post('/novedades/:id/soporte', requirePermissions('nomina.novedades.update'), coberturaUpload.single('file'), uploadNovedadSupportHandler);
 

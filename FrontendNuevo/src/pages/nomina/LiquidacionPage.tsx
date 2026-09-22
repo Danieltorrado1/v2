@@ -23,7 +23,7 @@ import { useSearchParams } from "react-router-dom";
 import { pickAvailableScopedId } from "../../context/companyScope";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
 import { formatDateOnly } from "./dateOnly";
-import CoberturaFlowNav from "./CoberturaFlowNav";
+import NominaModuleShell from "./NominaModuleShell";
 import type {
   GenerateNominaLiquidacionesResponse,
   NominaLiquidacion,
@@ -561,10 +561,18 @@ export default function LiquidacionPage() {
     displayedLiquidaciones.length === 0;
 
   return (
-    <div className="np-page">
-      <CoberturaFlowNav periodId={selectedPeriodId} />
+    <NominaModuleShell periodId={selectedPeriodId} periodSlot={(
+      <>
+        <label>Período
+          <NpSelect label="Seleccionar período" value={selectedPeriodId ?? ""} onChange={handleSelectPeriod} options={periodOptions} disabled={periodsState.loading || periodOptions.length === 0} />
+        </label>
+        <span className={`nomina-period-status ${selectedPeriod?.estado === "ABIERTO" ? "open" : "locked"}`}>{selectedPeriod?.estado ?? (periodsState.loading ? "CARGANDO" : "SIN PERÍODO")}</span>
+      </>
+    )}>
+      <div className="np-page liquidacion-page-shell">
       <header className="np-header">
         <div className="np-header-text">
+          <span className="liquidacion-eyebrow">NÓMINA · LIQUIDACIONES</span>
           <h1>Liquidación laboral</h1>
           <p>Calcula, revisa y genera liquidaciones de retiro del personal.</p>
         </div>
@@ -895,6 +903,7 @@ export default function LiquidacionPage() {
           </div>
         </div>
       ) : null}
-    </div>
+      </div>
+    </NominaModuleShell>
   );
 }

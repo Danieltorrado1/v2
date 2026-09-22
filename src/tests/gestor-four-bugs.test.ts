@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const router = readFileSync('FrontendNuevo/src/router/AppRouter.tsx', 'utf8');
-const layout = readFileSync('FrontendNuevo/src/layouts/MainLayout.tsx', 'utf8');
 const login = readFileSync('FrontendNuevo/src/pages/auth/LoginPage.tsx', 'utf8');
 const drawer = readFileSync('FrontendNuevo/src/pages/admin/ConfiguracionGeneral/tabs/NominaProcesosTab.tsx', 'utf8');
 const routes = readFileSync('src/modules/nomina/nomina.routes.ts', 'utf8');
@@ -11,18 +10,22 @@ const procesos = readFileSync('src/modules/nomina/nomina.procesos.ts', 'utf8');
 const nomina = readFileSync('src/modules/nomina/nomina.service.ts', 'utf8');
 const externos = readFileSync('src/modules/nomina/cobertura.externos.service.ts', 'utf8');
 const navigation = readFileSync('FrontendNuevo/src/router/roleNavigation.ts', 'utf8');
+const moduleRoute = readFileSync('FrontendNuevo/src/router/ModuleRoute.tsx', 'utf8');
 
-test('GESTOR aterriza en Planilla y no puede cargar Dashboard', () => {
-  assert.match(navigation, /isGestorOnly\(user\).*GESTOR_HOME_PATH/s);
-  assert.match(navigation, /!isGestorOnly\(user\).*dashboard\.read/s);
+test('GESTOR queda restringido a cobertura y no puede cargar Dashboard', () => {
+  assert.match(navigation, /GESTOR_HOME_PATH = "\/nomina\/cobertura"/);
+  assert.match(navigation, /roles\.includes\("GESTOR"\).*roles\.includes\("TALENTO_HUMANO"\) !== true/s);
+  assert.match(navigation, /return !isGestorOnly\(user\) && user\?\.permissions\.includes\("dashboard\.read"\)/);
+  assert.match(moduleRoute, /input\.roles\.includes\('GESTOR'\) \? '\/nomina\/cobertura' : '\/nomina'/);
   assert.match(router, /path="dashboard"[\s\S]*code="DASHBOARD"[\s\S]*dashboard\.read/);
-  assert.match(layout, /canAccessDashboard\(user\)/);
+  assert.match(moduleRoute, /canAccessDashboard\(user\)/);
   assert.match(login, /resolveAuthenticatedHome\(user\)/);
 });
 
 test('ADMIN y TH conservan Dashboard cuando tienen permiso', () => {
-  assert.match(navigation, /if \(canAccessDashboard\(user\)\) return "\/dashboard"/);
-  assert.doesNotMatch(navigation, /TALENTO_HUMANO.*GESTOR_HOME_PATH/);
+  assert.match(navigation, /roles\.includes\("ADMINISTRADOR"\)\) return "\/admin-global"/);
+  assert.match(navigation, /return "\/empresa"/);
+  assert.match(navigation, /return !isGestorOnly\(user\) && user\?\.permissions\.includes\("dashboard\.read"\)/);
 });
 
 test('Turnos reutilizan scope canónico en listado y mutaciones por empleado', () => {
@@ -53,4 +56,16 @@ test('Drawer usa usuarios asociados a empresa activa y expone estados reales', (
   assert.match(drawer, /No fue posible cargar los usuarios:/);
   assert.match(drawer, /user\.name} \$\{user\.email/);
   assert.match(drawer, /apiClient\.put\('\/nomina\/procesos\/responsabilidades'/);
+});
+
+test('Turnos protegen externos y cuentas por alcance municipal', () => {
+  assert.match(procesos, /assertNominaExternoCoberturaScope/);
+  assert.match(externos, /listCoberturaExternos[\s\S]*filterCoberturaExternosByScope/);
+  assert.match(externos, /uploadCoberturaExternoDocumento[\s\S]*assertNominaExternoCoberturaScope/);
+  assert.match(externos, /generateCoberturaCuenta[\s\S]*assertNominaExternoCoberturaScope/);
+  assert.match(externos, /getCoberturaCuentaDownload[\s\S]*assertNominaExternoCoberturaScope/);
+  assert.match(externos, /uploadCoberturaCuentaFirmada[\s\S]*assertNominaExternoCoberturaScope/);
+  assert.match(routes, /cobertura\/externos\/:id\/documentos/);
+  assert.match(routes, /cobertura\/cuentas-cobro\/:id\/download/);
+  assert.match(routes, /cobertura\/cuentas-cobro\/:id\/firmada/);
 });
