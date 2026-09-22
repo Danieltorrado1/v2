@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { reviewLabel } from './PersonalDocumentReview';
+import { repositoryOptionalLabel } from './personalRepositoryModel';
 import type { CSSProperties, FormEvent } from "react";
 import { Eye, FileText, Loader2, Upload, XCircle } from "lucide-react";
 import type { CatalogoItem } from "../../types/configuracion.types";
@@ -801,7 +803,7 @@ function ChecklistView({
     return <div style={S.center}>No hay requisitos documentales configurados para este contexto.</div>;
   }
 
-  const { cumplimiento_porcentaje, total_requisitos, cargados, faltantes, vencidos, requisitos } =
+  const { cumplimiento_porcentaje, total_requisitos, cumplidos, faltantes, vencidos, requisitos } =
     checklist;
 
   return (
@@ -811,7 +813,7 @@ function ChecklistView({
           <strong>{Math.round(cumplimiento_porcentaje)}%</strong> cumplimiento
         </span>
         <span>
-          {cargados}/{total_requisitos} cargados
+          {cumplidos}/{total_requisitos} exigibles cumplidos
         </span>
         {faltantes > 0 && (
           <span style={{ color: "#dc2626" }}>{faltantes} faltantes</span>
@@ -835,6 +837,7 @@ function ChecklistView({
             <tr key={req.requisito_id}>
               <td style={S.td}>
                 {req.nombre_requisito}
+                {repositoryOptionalLabel(req)&&<small> · {repositoryOptionalLabel(req)}</small>}
                 {req.obligatorio && (
                   <span style={{ color: "#dc2626", marginLeft: "4px" }} title="Obligatorio">
                     *
@@ -845,8 +848,8 @@ function ChecklistView({
                 {req.tipo_documento_nombre ?? "—"}
               </td>
               <td style={S.td}>
-                <span style={{ ...S.badge, ...(CHECKLIST_STYLE[req.estado] ?? {}) }}>
-                  {req.estado}
+                <span style={{ ...S.badge, ...(CHECKLIST_STYLE[req.estado_detallado] ?? {}) }}>
+                  {req.estado_detallado==='SIN_DOCUMENTO' ? repositoryOptionalLabel(req)??reviewLabel(req.estado_detallado) : reviewLabel(req.estado_detallado)}
                 </span>
               </td>
               <td style={{ ...S.td, fontSize: "0.74rem", color: "var(--text-secondary)" }}>

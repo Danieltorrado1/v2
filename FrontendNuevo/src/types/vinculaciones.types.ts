@@ -53,6 +53,7 @@ export interface ContractPersonalFilters {
   ubicacion_laboral_id?: number;
   cobertura?: "SI" | "NO" | "RETIRADA";
   licitacion?: "PRESENTADA" | "NO_PRESENTADA";
+  estado_documental?: 'PENDIENTE_REVISION';
   sort_by?: "nombre" | "ingreso" | "municipio" | "institucion" | "cargo" | "cumplimiento";
   sort_dir?: "asc" | "desc";
 }
@@ -63,6 +64,7 @@ export interface ContractPersonalListItem {
   numero_documento: string;
   nombre_completo: string;
   es_manipuladora: boolean;
+  gestor_aplica: boolean;
   gestor_actual: {
     nombre: string | null;
     usuario_id: number | null;
@@ -160,6 +162,22 @@ export interface GestorAssignmentUser {
   id: number;
   nombre: string;
   roles: string[];
+}
+
+export interface GestorWizardData {
+  gestores: GestorAssignmentUser[];
+  municipios: Array<{ id: number; nombre: string; departamento_nombre: string | null }>;
+  instituciones: Array<{ id: number; nombre: string; municipio_id: number }>;
+  personas: Array<{ id: number; nombre: string; documento: string | null; municipio_id: number; institucion_id: number | null }>;
+  current: { municipios: number[]; instituciones: number[]; vinculaciones: number[] };
+}
+
+export interface SaveGestorWizardPayload {
+  contrato_id: number;
+  gestor_usuario_id: number;
+  fecha?: string;
+  observacion?: string | null;
+  municipios: Array<{ municipio_id: number; alcance: 'FULL' | 'PARTIAL'; institucion_ids: number[]; vinculacion_ids: number[] }>;
 }
 
 export interface GestorMunicipioAssignment {

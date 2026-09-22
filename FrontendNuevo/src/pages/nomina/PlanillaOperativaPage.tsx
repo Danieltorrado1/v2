@@ -247,11 +247,14 @@ function getEmployeeSedeLabel(employee: NominaEmpleadoApi) {
   return normalizeLabel(employee.sede?.nombre_sede) ?? normalizeLabel(employee.contexto_operativo?.sede) ?? "No disponible";
 }
 
-function getEmployeeGestorLabel(employee: NominaEmpleadoApi) {
+function getEmployeeGestorLabel(employee: NominaEmpleadoApi): string | null {
+  if (employee.gestor_aplica === false) return null;
   return normalizeLabel(employee.gestor?.nombre_completo) ?? "Sin gestor asignado";
 }
 
 function getEmployeeGestorId(employee: NominaEmpleadoApi) {
+  if (employee.gestor_aplica === false) return null;
+
   return employee.gestor?.id === null || employee.gestor?.id === undefined
     ? null
     : String(employee.gestor.id);
@@ -282,7 +285,7 @@ function buildContextTitle(employee: NominaEmpleadoApi, context: PlanillaContext
     visible.municipio,
     visible.institucion,
     visible.sede,
-    `Gestor: ${visible.gestor}`,
+    visible.gestor ? `Gestor: ${visible.gestor}` : null,
   ]
     .filter(Boolean)
     .join(" | ");
@@ -1190,7 +1193,7 @@ export default function PlanillaOperativaPage() {
         }
       };
 
-      const result = pickValue(left, leftContext).localeCompare(pickValue(right, rightContext), "es", {
+      const result = (pickValue(left, leftContext) ?? "").localeCompare(pickValue(right, rightContext) ?? "", "es", {
         numeric: true,
         sensitivity: "base",
       });
@@ -1983,7 +1986,14 @@ export default function PlanillaOperativaPage() {
                     <small>{visible.institucion}</small>
                     <small>{visible.sede}</small>
                     <small className="op-context-accent op-modality-badge">{visible.modalidad}</small>
-                    <small className="op-gestor" title={buildContextTitle(employee, baseContext)}>Gestor: {visible.gestor}</small>
+                    {visible.gestor ? (
+                      <small
+                        className="op-gestor"
+                        title={buildContextTitle(employee, baseContext)}
+                      >
+                        Gestor: {visible.gestor}
+                      </small>
+                    ) : null}
                   </button>
 
                   {days.map((day) => {
@@ -2082,7 +2092,7 @@ export default function PlanillaOperativaPage() {
             <span>Institucion: {text(buildVisibleContext(selected.employee, selected.context).institucion)}</span>
             <span>Sede: {text(buildVisibleContext(selected.employee, selected.context).sede)}</span>
             <span>Modalidad: {text(buildVisibleContext(selected.employee, selected.context).modalidad)}</span>
-            <span>Gestor: {text(getEmployeeGestorLabel(selected.employee))}</span>
+            {getEmployeeGestorLabel(selected.employee) ? <span>Gestor: {getEmployeeGestorLabel(selected.employee)}</span> : null}
             <span>Estado: {resolveOperativeState(selected.employee, reviewByEmployee.get(selected.employee.id) ?? null)}</span>
           </div>
 
@@ -2399,8 +2409,8 @@ export default function PlanillaOperativaPage() {
                               {getEmployeeMunicipioLabel(employee)} | {getEmployeeInstitucionLabel(employee)}
                             </small>
                             <small>
-                              {getEmployeeSedeLabel(employee)} | {getEmployeeModalidadCode(employee)} |{" "}
-                              {getEmployeeGestorLabel(employee)}
+                              {getEmployeeSedeLabel(employee)} | {getEmployeeModalidadCode(employee)}
+                              {getEmployeeGestorLabel(employee) ? ` | ${getEmployeeGestorLabel(employee)}` : ""}
                             </small>
                           </button>
                         ))}

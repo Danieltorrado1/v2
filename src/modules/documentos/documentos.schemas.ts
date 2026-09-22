@@ -93,6 +93,7 @@ export const testDocumentoPersonaSchema = z
   );
 
 export const uploadDocumentoSchema = z.object({
+  manipulacion_modalidad: z.enum(['COMBINADO','SEPARADO']).optional(),
   tipo_documento_id: trimmedStringSchema,
   experiencia_inicio: nullableDateSchema.optional(),
   experiencia_fin: nullableDateSchema.optional(),

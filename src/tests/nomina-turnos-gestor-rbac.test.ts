@@ -4,7 +4,6 @@ import path from 'node:path';
 import test from 'node:test';
 
 const read = (file: string) => readFileSync(path.resolve(file), 'utf8');
-const layout = read('FrontendNuevo/src/layouts/MainLayout.tsx');
 const payrollNavigation = read('FrontendNuevo/src/architecture/payrollNavigation.ts');
 const flow = read('FrontendNuevo/src/pages/nomina/CoberturaFlowNav.tsx');
 const router = read('FrontendNuevo/src/router/AppRouter.tsx');

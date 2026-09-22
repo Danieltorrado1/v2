@@ -1,5 +1,7 @@
-import { documentPolicy, documentState, countsAsApproved, type DocumentState } from './documentos.review.domain';
-﻿import { randomUUID } from 'node:crypto';
+import { resolvePersonalRequirement } from './documentos.applicability.domain';
+import { aggregateManipulation, isCombined, type ManipulationMetadata } from './documentos.manipulacion.domain';
+import { documentPolicy, documentState, type DocumentState } from './documentos.review.domain';
+import { randomUUID } from 'node:crypto';
 import type { QueryResultRow } from 'pg';
 
 import { dbQuery } from '../../config/db';
@@ -12,6 +14,8 @@ import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import { ensureVinculacionExists } from './documentos.validator';
 
 interface ChecklistRequirementRow extends QueryResultRow {
+  cargo_nombre: string | null;
+  regla_obligatorio: boolean | null;
   regla_aplica: boolean | null;
   cotiza_pension: boolean | null;
   aplica: boolean;
@@ -37,6 +41,8 @@ interface ChecklistRequirementRow extends QueryResultRow {
 }
 
 interface ChecklistLoadedRow extends QueryResultRow {
+  dotacion_evidencia?: boolean;
+  metadatos_revision?: ManipulationMetadata | null;
   estado_revision?: string | null;
   policy_type?: { requiere_fecha_expedicion?:boolean; requiere_fecha_vencimiento?:boolean; tiene_vencimiento?:boolean; vigencia_dias_default?:number|null; dias_alerta_amarilla?:number };
 
@@ -59,6 +65,9 @@ type ChecklistDetailedState =
   | 'NO_APLICA' | 'SIN_DOCUMENTO' | 'PENDIENTE_REVISION' | 'APROBADO' | 'RECHAZADO' | 'POR_VENCER' | 'PARCIAL';
 
 export interface ContextualChecklistItem {
+  aplica: boolean;
+  motivo_aplicabilidad?: string;
+  cuenta_numerador: boolean;
   ambito_documental: 'PERSONA' | 'VINCULACION';
   codigo: string | null;
   contrato_cargo_id: number | null;
@@ -66,6 +75,7 @@ export interface ContextualChecklistItem {
   dias_para_vencimiento: number | null;
   documento_id: number | null;
   documentos?: { documento_id: number; tipo_documento_id: number; nombre: string; estado?: DocumentState }[];
+  componentes_documentales?: { codigo: string; documento_id: number | null; estado: DocumentState }[];
   estado: LegacyChecklistState;
   estado_detallado: ChecklistDetailedState;
   fecha_vencimiento: string | null;
@@ -89,6 +99,7 @@ export interface ContextualChecklistItem {
 }
 
 export interface ContextualChecklistRequirementInput {
+  motivo_aplicabilidad?: string;
   aplica?: boolean;
   ambito_documental: 'PERSONA' | 'VINCULACION';
   codigo: string | null;
@@ -111,6 +122,9 @@ export interface ContextualChecklistRequirementInput {
 }
 
 export interface ContextualChecklistDocumentInput {
+  fuente_documento?: 'PERSONA'|'VINCULACION';
+  dotacion_evidencia?: boolean;
+  metadatos_revision?: ManipulationMetadata | null;
   estado_revision?: string | null;
   policy_type?: { requiere_fecha_expedicion?:boolean; requiere_fecha_vencimiento?:boolean; tiene_vencimiento?:boolean; vigencia_dias_default?:number|null; dias_alerta_amarilla?:number };
 
@@ -125,6 +139,8 @@ export interface ContextualChecklistDocumentInput {
 }
 
 export interface ContextualVinculacionChecklist {
+  exigibles: number;
+  cumplidos: number;
   cargados: number;
   completos: number;
   contrato_cargo_id: number;
@@ -226,44 +242,87 @@ export const buildContextualChecklistSnapshot = (input: {
   const vinculacionDocumentIndex = buildDocumentIndex(input.vinculacionDocuments);
   const todayIso = input.todayIso ?? new Date().toISOString().slice(0, 10);
 
-  const requisitos = input.requirements.map((requirement) => {
+  // One canonical position; duplicate contextual rows must not create additional obligations.
+  const byCanonical = new Map<string,ContextualChecklistRequirementInput>();
+  for(const requirement of input.requirements){
+    const key=requirement.codigo??`id:${requirement.id}`;
+    const previous=byCanonical.get(key);
+    byCanonical.set(key,previous ? {...requirement,tipo_documento_ids:[...new Set([
+      ...(previous.tipo_documento_ids??[previous.tipo_documento_id]),...(requirement.tipo_documento_ids??[requirement.tipo_documento_id]),
+    ])],componentes:{...previous.componentes,...requirement.componentes}} : requirement);
+  }
+  const uniqueRequirements = [...byCanonical.values()];
+  const requisitos = uniqueRequirements.map((requirement) => {
+    const aplica = requirement.aplica !== false;
+    const excluded = ['OPCIONAL','ACREDITABLE','HISTORICO','PROCESS_SUPPORT','SYSTEM_GENERATED'].includes(requirement.tipo_requisito ?? '');
+    const obligatorio = aplica && requirement.obligatorio && !excluded;
+    const isDotacion = ['DOTACION','DOTACION_HISTORICA'].includes(requirement.codigo ?? '');
     const documentIndex = requirement.ambito_documental === 'PERSONA' ? personaDocumentIndex : vinculacionDocumentIndex;
-    const candidateDocuments = (requirement.tipo_documento_ids ?? [requirement.tipo_documento_id])
+    let candidateDocuments = (requirement.tipo_documento_ids ?? [requirement.tipo_documento_id])
       .map(typeId => documentIndex.get(typeId) ?? null)
       .filter((document): document is ContextualChecklistDocumentInput => Boolean(document))
       .sort((a,b)=>String(b.fecha_carga).localeCompare(String(a.fecha_carga)) || b.id-a.id);
     const composite = requirement.codigo === 'MANIPULACION';
-    const sourceDocument = candidateDocuments[0] ?? null;
-    const evaluate = (d: ContextualChecklistDocumentInput) => documentState({...d,fecha_expedicion:toDateString(d.fecha_expedicion),fecha_vencimiento:toDateString(d.fecha_vencimiento)},documentPolicy(requirement.codigo ?? '',d.policy_type),todayIso);
+    if(isDotacion) candidateDocuments = [
+      ...input.personaDocuments.map(d=>({...d,fuente_documento:'PERSONA' as const})),
+      ...input.vinculacionDocuments.map(d=>({...d,fuente_documento:'VINCULACION' as const})),
+    ].filter(d=>d.activo && (d.dotacion_evidencia || (requirement.tipo_documento_ids ?? []).includes(d.tipo_documento_id)))
+      .sort((a,b)=>String(b.fecha_carga).localeCompare(String(a.fecha_carga))||b.id-a.id);
+    const evaluate = (d: ContextualChecklistDocumentInput) => documentState({...d,fecha_expedicion:toDateString(d.fecha_expedicion),fecha_vencimiento:toDateString(d.fecha_vencimiento)},(isCombined(d.metadatos_revision) ? d.metadatos_revision?.manipulacion_policy : null) ?? documentPolicy(requirement.codigo ?? '',d.policy_type),todayIso);
+    const sourceDocument = (!composite ? candidateDocuments.find(d=>['APROBADO','POR_VENCER'].includes(evaluate(d))) : null) ?? candidateDocuments[0] ?? null;
     const computedFechaVencimiento = sourceDocument && documentPolicy(requirement.codigo ?? '',sourceDocument.policy_type).kind !== 'NORMAL' ? toDateString(sourceDocument.fecha_vencimiento) : null;
     const diasParaVencimiento = computedFechaVencimiento ? daysBetween(todayIso,computedFechaVencimiento) : null;
     const origin = resolveOrigin(requirement.contrato_cargo_id,requirement.tipo_vinculacion_id);
     let estadoDetallado: ChecklistDetailedState = sourceDocument ? evaluate(sourceDocument) : 'SIN_DOCUMENTO';
     let observacion: string | null = null;
-    if (requirement.aplica === false || (!sourceDocument && !requirement.obligatorio && requirement.tipo_requisito !== 'ACREDITABLE')) {
+    let componentEvidence: ContextualChecklistItem['componentes_documentales'];
+    if (!aplica) {
       estadoDetallado='NO_APLICA';
     } else if (composite) {
-      const componentKey = (id:number) => requirement.componentes?.[String(id)] ?? String(id);
-      const required = new Set(requirement.componentes ? Object.values(requirement.componentes).filter(Boolean) : (requirement.tipo_documento_ids ?? []).map(String));
       const latestByComponent = new Map<string,ContextualChecklistDocumentInput>();
-      for(const d of candidateDocuments) if(!latestByComponent.has(componentKey(d.tipo_documento_id)))latestByComponent.set(componentKey(d.tipo_documento_id),d);
-      const compliant=[...latestByComponent.values()].filter(d=>countsAsApproved(evaluate(d))).length;
-      estadoDetallado = required.size >= 2 && compliant === required.size ? 'COMPLETO' : compliant > 0 ? 'PARCIAL' : 'PENDIENTE';
+      const explicitComponents = new Set(
+        candidateDocuments
+          .map(d => requirement.componentes?.[String(d.tipo_documento_id)] ?? null)
+          .filter((component): component is string => Boolean(component))
+      );
+      const legacyGeneral = requirement.componentes && Object.keys(requirement.componentes).length
+        ? candidateDocuments.filter(d => !requirement.componentes?.[String(d.tipo_documento_id)])
+        : [];
+      const legacyCombined = legacyGeneral.length === 1 && explicitComponents.size === 0
+        ? legacyGeneral[0]
+        : null;
+      for (const d of candidateDocuments) {
+        const components = isCombined(d.metadatos_revision) || d === legacyCombined ? ['CURSO','EXAMENES'] :
+          [requirement.componentes?.[String(d.tipo_documento_id)] ?? String(d.tipo_documento_id)];
+        for (const component of components) if (!latestByComponent.has(component)) latestByComponent.set(component,d);
+      }
+      const required = requirement.componentes && Object.keys(requirement.componentes).length ?
+        [...new Set(Object.values(requirement.componentes))] : (requirement.tipo_documento_ids ?? []).map(String);
+      const combined = candidateDocuments.find(d=>isCombined(d.metadatos_revision)) ?? legacyCombined;
+      componentEvidence = (combined ? ['CURSO','EXAMENES'] : required).map(codigo=>{
+        const document=latestByComponent.get(codigo);
+        return {codigo,documento_id:document?.id ?? null,estado:document ? evaluate(document) : 'SIN_DOCUMENTO'};
+      });
+      estadoDetallado = combined ? evaluate(combined) :
+        aggregateManipulation(required.map(component => latestByComponent.has(component) ? evaluate(latestByComponent.get(component)!) : 'SIN_DOCUMENTO'));
+
     }
     const estado: LegacyChecklistState = estadoDetallado === 'VENCIDO' ? 'VENCIDO' : sourceDocument ? 'CARGADO' : 'FALTANTE';
 
     return {
+      aplica, obligatorio, motivo_aplicabilidad:requirement.motivo_aplicabilidad,
+      cuenta_numerador:obligatorio&&['APROBADO','POR_VENCER'].includes(estadoDetallado),
       requisito_id: requirement.id,
+      componentes_documentales: componentEvidence,
       nombre_requisito: requirement.nombre_requisito,
       codigo: requirement.codigo,
       tipo_documento_id: requirement.tipo_documento_id,
-      tipo_documento_ids: requirement.tipo_documento_ids ?? [requirement.tipo_documento_id],
+      tipo_documento_ids: [...new Set([...(requirement.tipo_documento_ids ?? [requirement.tipo_documento_id]),...(isDotacion ? candidateDocuments.filter(d=>d.fuente_documento===(sourceDocument?.fuente_documento??requirement.ambito_documental)).map(d=>d.tipo_documento_id):[])])],
       tipo_documento_nombre: requirement.nombre_documento,
       tipo_requisito: requirement.tipo_requisito ?? null,
-      cuenta_cumplimiento: requirement.cuenta_cumplimiento ?? requirement.obligatorio,
+      cuenta_cumplimiento: obligatorio,
       grupo_visual: requirement.grupo_visual ?? null,
-      ambito_documental: requirement.ambito_documental,
-      obligatorio: requirement.obligatorio,
+      ambito_documental: sourceDocument?.fuente_documento ?? requirement.ambito_documental,
       requiere_fecha_expedicion: requirement.requiere_fecha_expedicion,
       requiere_fecha_vencimiento: requirement.requiere_fecha_vencimiento,
       vigencia_meses: requirement.vigencia_meses,
@@ -271,11 +330,11 @@ export const buildContextualChecklistSnapshot = (input: {
       tipo_vinculacion_id: requirement.tipo_vinculacion_id,
       origen: origin,
       detalle_contexto: origin,
-      documentos: (requirement.ambito_documental === 'PERSONA' ? input.personaDocuments : input.vinculacionDocuments)
-        .filter(d => d.activo && (requirement.tipo_documento_ids ?? [requirement.tipo_documento_id]).includes(d.tipo_documento_id))
+      documentos: (isDotacion ? candidateDocuments : requirement.ambito_documental === 'PERSONA' ? input.personaDocuments : input.vinculacionDocuments)
+        .filter(d => d.activo && (isDotacion || (requirement.tipo_documento_ids ?? [requirement.tipo_documento_id]).includes(d.tipo_documento_id)))
         .map(d => ({ documento_id: d.id, tipo_documento_id: d.tipo_documento_id, nombre: d.nombre_original, estado: evaluate(d) })),
       documento_id: sourceDocument ? sourceDocument.id : null,
-      fuente_documento: sourceDocument ? requirement.ambito_documental : null,
+      fuente_documento: sourceDocument ? sourceDocument.fuente_documento ?? requirement.ambito_documental : null,
       fecha_vencimiento: computedFechaVencimiento,
       dias_para_vencimiento: diasParaVencimiento,
       estado,
@@ -284,9 +343,9 @@ export const buildContextualChecklistSnapshot = (input: {
     } satisfies ContextualChecklistItem;
   });
 
-  const exigibles = requisitos.filter((item) => item.cuenta_cumplimiento !== false && item.estado_detallado !== 'NO_APLICA');
+  const exigibles = requisitos.filter((item) => item.aplica && item.obligatorio);
   const totalRequisitos = exigibles.length;
-  const completos = exigibles.filter((item) => (item.estado_detallado === 'COMPLETO' || item.estado_detallado === 'APROBADO')).length;
+  const completos = exigibles.filter((item) => item.estado_detallado === 'APROBADO').length;
   const proximosVencer = exigibles.filter(
     (item) => item.estado_detallado === 'POR_VENCER'
   ).length;
@@ -304,6 +363,8 @@ export const buildContextualChecklistSnapshot = (input: {
     persona_id: input.personaId,
     contrato_id: input.contratoId,
     contrato_cargo_id: input.contratoCargoId,
+    exigibles: totalRequisitos,
+    cumplidos: completos + proximosVencer,
     total_requisitos: totalRequisitos,
     tiene_configuracion: totalRequisitos > 0,
     completos,
@@ -318,12 +379,10 @@ export const buildContextualChecklistSnapshot = (input: {
   };
 };
 
-export function resolveCanonicalApplicability(
-  code: string | null, type: string, configured: boolean | null, cotizaPension: boolean | null
-): { aplica: boolean; obligatorio: boolean } {
-  const aplica = !(code === 'PENSION' && cotizaPension === false) &&
-    (configured ?? (type === 'OBLIGATORIO' || type === 'ACREDITABLE'));
-  return { aplica, obligatorio: aplica && (type === 'OBLIGATORIO' || configured === true) };
+// Compatibility export for callers; the canonical policy lives in the domain module.
+export function resolveCanonicalApplicability(code:string|null,type:string,configured:boolean|null,cotizaPension:boolean|null,cargoNombre?:string|null) {
+  const {aplica,obligatorio}=resolvePersonalRequirement(code,type,configured,cotizaPension,cargoNombre);
+  return {aplica,obligatorio};
 }
 
 export const buildContextualVinculacionChecklist = async (
@@ -356,7 +415,7 @@ export const buildContextualVinculacionChecklist = async (
       `
         SELECT
           c.id::text AS id, c.nombre AS nombre_requisito,
-          rr.aplica AS regla_aplica, v.cotiza_pension, c.activo,
+          COALESCE(rr.aplica,legacy.aplica) AS regla_aplica, legacy.obligatorio AS regla_obligatorio, v.cotiza_pension, cc.nombre_cargo AS cargo_nombre, c.activo,
           'PERSONA'::text AS ambito_documental,
           false AS requiere_fecha_expedicion, false AS requiere_fecha_vencimiento,
           NULL::int AS vigencia_meses, 30 AS dias_proximo_vencimiento,
@@ -370,6 +429,7 @@ export const buildContextualVinculacionChecklist = async (
         LEFT JOIN documentos_requisitos_aliases a ON a.requisito_canonico_id = c.id
         LEFT JOIN tipos_documentos td ON td.id = a.tipo_documento_id
         JOIN vinculaciones v ON v.id::text = $4
+        LEFT JOIN contrato_cargos cc ON cc.id::text = $2
         LEFT JOIN LATERAL (
           SELECT r.aplica FROM documentos_requisitos_reglas r
           WHERE r.requisito_canonico_id = c.id
@@ -380,9 +440,17 @@ export const buildContextualVinculacionChecklist = async (
             + (r.tipo_vinculacion_id IS NOT NULL)::int) DESC, r.id DESC
           LIMIT 1
         ) rr ON TRUE
-        WHERE c.activo = TRUE AND c.tipo_requisito <> 'HISTORICO'
+        LEFT JOIN LATERAL (
+          SELECT true AS aplica,r.obligatorio FROM contrato_documento_requisitos r
+          WHERE r.activo AND r.objetivo_requisito='VINCULACION' AND r.contrato_id::text=$1
+            AND (r.contrato_cargo_id IS NULL OR r.contrato_cargo_id::text=$2)
+            AND (r.tipo_vinculacion_id IS NULL OR r.tipo_vinculacion_id::text=$3)
+            AND r.tipo_documento_id IN (SELECT ax.tipo_documento_id FROM documentos_requisitos_aliases ax WHERE ax.requisito_canonico_id=c.id)
+          ORDER BY ((r.contrato_cargo_id IS NOT NULL)::int+(r.tipo_vinculacion_id IS NOT NULL)::int) DESC,r.id DESC LIMIT 1
+        ) legacy ON TRUE
+        WHERE c.activo = TRUE AND (c.tipo_requisito <> 'HISTORICO' OR c.codigo='DOTACION_HISTORICA')
         GROUP BY c.id, c.codigo, c.nombre, c.tipo_requisito, c.cuenta_cumplimiento, c.grupo_visual,
-          rr.aplica, v.cotiza_pension
+          rr.aplica, legacy.aplica, legacy.obligatorio, v.cotiza_pension, cc.nombre_cargo
         ORDER BY
           c.id ASC
       `,
@@ -398,7 +466,7 @@ export const buildContextualVinculacionChecklist = async (
           dv.fecha_expedicion,
           dv.fecha_vencimiento,
           dv.fecha_carga,
-          dv.activo, dv.estado_revision, to_jsonb(td) AS policy_type
+          dv.activo, dv.metadatos_revision, dv.estado_revision, to_jsonb(td) AS policy_type
         FROM documentos_vinculacion dv
         INNER JOIN tipos_documentos td ON td.id = dv.tipo_documento_id
         WHERE dv.vinculacion_id::text = $1
@@ -418,7 +486,13 @@ export const buildContextualVinculacionChecklist = async (
           dp.fecha_expedicion,
           dp.fecha_vencimiento,
           dp.fecha_carga,
-          dp.activo, dp.estado_revision, to_jsonb(td) AS policy_type
+          EXISTS(SELECT 1 FROM sst_dotacion_epp_entregas e JOIN sst_dotacion_epp i ON i.id=e.item_id
+            JOIN vinculaciones vc ON vc.id::text=$2 JOIN contratos ct ON ct.id=vc.contrato_id
+            WHERE e.documento_persona_id=dp.id AND e.persona_id=dp.persona_id AND e.activo AND i.activo
+              AND i.tipo_item='DOTACION' AND e.estado_entrega IN ('ENTREGADO','REPUESTO')
+              AND i.empresa_id=ct.empresa_id AND (i.contrato_id IS NULL OR i.contrato_id=vc.contrato_id)
+              AND (e.vinculacion_id=vc.id OR (e.vinculacion_id IS NULL AND i.contrato_id=vc.contrato_id))) AS dotacion_evidencia,
+          dp.activo, dp.metadatos_revision, dp.estado_revision, to_jsonb(td) AS policy_type
         FROM documentos_persona dp
         INNER JOIN tipos_documentos td ON td.id = dp.tipo_documento_id
         WHERE dp.persona_id::text = $1
@@ -427,7 +501,7 @@ export const buildContextualVinculacionChecklist = async (
           AND COALESCE(NULLIF(dp.storage_path,''),NULLIF(dp.archivo_path,'')) IS NOT NULL
         ORDER BY dp.fecha_carga DESC, dp.version DESC, dp.id DESC
       `,
-      [vinculacion.persona_id]
+      [vinculacion.persona_id,vinculacionId]
     )
   ]);
 
@@ -439,7 +513,7 @@ export const buildContextualVinculacionChecklist = async (
     requirements: requirementsResult.rows.map((requirement) => ({
       id: toNumber(requirement.id),
       nombre_requisito: requirement.nombre_requisito,
-      ...resolveCanonicalApplicability(requirement.codigo, requirement.tipo_requisito, requirement.regla_aplica, requirement.cotiza_pension),
+      ...resolvePersonalRequirement(requirement.codigo, requirement.tipo_requisito, requirement.regla_aplica, requirement.cotiza_pension, requirement.cargo_nombre, requirement.regla_obligatorio),
       ambito_documental: requirement.ambito_documental,
       requiere_fecha_expedicion: requirement.requiere_fecha_expedicion,
       requiere_fecha_vencimiento: requirement.requiere_fecha_vencimiento,
@@ -456,8 +530,6 @@ export const buildContextualVinculacionChecklist = async (
       codigo: requirement.codigo,
       componentes: requirement.componentes,
       nombre_documento: requirement.nombre_documento,
-      tipo_requisito: requirement.tipo_requisito,
-      cuenta_cumplimiento: requirement.cuenta_cumplimiento,
       grupo_visual: requirement.grupo_visual
     })),
     vinculacionDocuments: vinculacionDocumentsResult.rows.map((document) => ({
@@ -469,6 +541,8 @@ export const buildContextualVinculacionChecklist = async (
       fecha_vencimiento: document.fecha_vencimiento,
       fecha_carga: document.fecha_carga,
       activo: document.activo,
+      dotacion_evidencia: document.dotacion_evidencia,
+      metadatos_revision: document.metadatos_revision,
       estado_revision: document.estado_revision,
       policy_type: document.policy_type
     })),
@@ -481,6 +555,8 @@ export const buildContextualVinculacionChecklist = async (
       fecha_vencimiento: document.fecha_vencimiento,
       fecha_carga: document.fecha_carga,
       activo: document.activo,
+      dotacion_evidencia: document.dotacion_evidencia,
+      metadatos_revision: document.metadatos_revision,
       estado_revision: document.estado_revision,
       policy_type: document.policy_type
     }))

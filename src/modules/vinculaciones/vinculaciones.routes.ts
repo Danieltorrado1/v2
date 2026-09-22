@@ -9,6 +9,7 @@ import {
   createGestorMunicipioAssignmentHandler,
   createVinculacionHandler,
   getGestorAssignmentWorkspaceHandler,
+  getGestorWizardHandler,
   getGestorPersonalHistoryHandler,
   listGestoresHandler,
   listGestorMunicipiosHandler,
@@ -24,6 +25,7 @@ import {
   reactivarVinculacionHandler,
   retirarVinculacionHandler,
   saveGestorAssignmentsHandler,
+  saveGestorWizardHandler,
   suspenderVinculacionHandler,
   updateVinculacionHandler
 } from './vinculaciones.controller';
@@ -53,10 +55,12 @@ vinculacionesRoutes.get('/personal/resumen', requirePermissions('vinculaciones.r
 vinculacionesRoutes.get('/gestores', requirePermissions('vinculaciones.read'), listGestoresHandler);
 vinculacionesRoutes.get('/gestores/municipios', requirePermissions('vinculaciones.read'), listGestorMunicipiosHandler);
 vinculacionesRoutes.get('/gestores/workspace', requirePermissions('vinculaciones.read'), getGestorAssignmentWorkspaceHandler);
+vinculacionesRoutes.get('/gestores/wizard', requirePermissions('vinculaciones.read'), getGestorWizardHandler);
 vinculacionesRoutes.get('/gestores/personal/historial', requirePermissions('vinculaciones.read'), getGestorPersonalHistoryHandler);
 vinculacionesRoutes.post('/gestores/municipios', requirePermissions('vinculaciones.update'), createGestorMunicipioAssignmentHandler);
 vinculacionesRoutes.patch('/gestores/municipios/:id/cerrar', requirePermissions('vinculaciones.update'), closeGestorMunicipioAssignmentHandler);
 vinculacionesRoutes.post('/gestores/personal', requirePermissions('vinculaciones.update'), saveGestorAssignmentsHandler);
+vinculacionesRoutes.post('/gestores/wizard', requirePermissions('vinculaciones.update'), saveGestorWizardHandler);
 vinculacionesRoutes.patch('/gestores/personal/:id/cerrar', requirePermissions('vinculaciones.update'), closeGestorPersonalAssignmentHandler);
 
 vinculacionesRoutes.get('/personal/opciones', requirePermissions('vinculaciones.read'), getContractPersonalFilterOptionsHandler);

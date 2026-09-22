@@ -141,6 +141,7 @@ export const listContractPersonalQuerySchema = z.object({
   fecha: z.string().date().optional(),
   sort_by: z.enum(['nombre', 'ingreso', 'municipio', 'institucion', 'cargo', 'cumplimiento']).optional(),
   sort_dir: z.enum(['asc', 'desc']).optional(),
+  estado_documental: z.enum(['PENDIENTE_REVISION']).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(25)
 });
@@ -160,6 +161,29 @@ export const gestorAssignmentWorkspaceQuerySchema = z.object({
 
 export const gestorAssignmentModeSchema = z.enum(['SELECCION', 'REEMPLAZAR_MUNICIPIO']);
 export const gestorMunicipioPersonalScopeSchema = z.enum(['PERSONAL_SELECCIONADO', 'TODO_MUNICIPIO']);
+export const gestorWizardScopeTypeSchema = z.enum(['FULL', 'PARTIAL']);
+
+const gestorWizardMunicipioSchema = z.object({
+  municipio_id: numericIdSchema.transform((value) => Number(value)),
+  alcance: gestorWizardScopeTypeSchema,
+  institucion_ids: z.array(numericIdSchema.transform((value) => Number(value))).max(500).default([]),
+  vinculacion_ids: z.array(numericIdSchema.transform((value) => Number(value))).max(5000).default([])
+});
+
+export const gestorWizardQuerySchema = z.object({
+  contrato_id: numericIdSchema.transform((value) => Number(value)),
+  gestor_usuario_id: nullableNumericIdSchema.optional(),
+  search: nullableTrimmedString.optional(),
+  fecha: z.string().date().optional()
+});
+
+export const saveGestorWizardSchema = z.object({
+  contrato_id: numericIdSchema.transform((value) => Number(value)),
+  gestor_usuario_id: numericIdSchema.transform((value) => Number(value)),
+  fecha: z.string().date().optional(),
+  observacion: nullableTrimmedString.optional().default(null),
+  municipios: z.array(gestorWizardMunicipioSchema).min(1).max(100)
+});
 
 export const listGestorMunicipiosQuerySchema = z.object({
   contrato_id: numericIdSchema.transform((value) => Number(value)),
@@ -278,3 +302,6 @@ export type RetirarVinculacionInput = z.infer<typeof retirarVinculacionSchema>;
 export type SuspenderVinculacionInput = z.infer<typeof suspenderVinculacionSchema>;
 export type ReactivarVinculacionInput = z.infer<typeof reactivarVinculacionSchema>;
 export type GestorMunicipioPersonalScope = z.infer<typeof gestorMunicipioPersonalScopeSchema>;
+export type GestorWizardScopeType = z.infer<typeof gestorWizardScopeTypeSchema>;
+export type GestorWizardQuery = z.infer<typeof gestorWizardQuerySchema>;
+export type SaveGestorWizardInput = z.infer<typeof saveGestorWizardSchema>;

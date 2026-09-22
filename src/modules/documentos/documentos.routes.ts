@@ -1,3 +1,4 @@
+import { setManipulationMode } from './documentos.manipulacion.service';
 import { documentReviewDossier, reviewDocument } from './documentos.review.service';
 import multer from 'multer';
 import { Router } from 'express';
@@ -44,6 +45,11 @@ documentosRoutes.get('/repositorio/resumen', requirePermissions('documentos.read
 }));
 
 const reviewParams = z.object({scope:z.enum(['persona','vinculacion']),id:z.string().regex(/^\d+$/)});
+documentosRoutes.post('/manipulacion/:scope/:id/modalidad', requirePermissions('documentos.upload'), asyncHandler(async(req,res)=>{
+  const {scope,id}=reviewParams.parse(req.params);
+  const input=z.object({modalidad:z.enum(['COMBINADO','SEPARADO']),confirmado:z.boolean().default(false),reutilizar_documento_id:z.string().regex(/^\d+$/).nullable().optional()}).parse(req.body);
+  return successResponse(res,{data:await setManipulationMode(scope,id,input.modalidad,input.confirmado,req.user!.userId,req.tenant,{reutilizarDocumentoId:input.reutilizar_documento_id}),message:'Modalidad guardada'});
+}));
 documentosRoutes.get('/revision/:scope/:id', requirePermissions('documentos.read'), asyncHandler(async(req,res)=>{
   const {scope,id}=reviewParams.parse(req.params);
   const ids=z.string().transform(v=>v.split(',').map(Number)).pipe(z.array(z.number().int().positive()).min(1).max(50)).parse(req.query.tipos);

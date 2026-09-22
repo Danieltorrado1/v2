@@ -1,3 +1,4 @@
+import { prepareManipulationUpload } from './documentos.manipulacion.service';
 import { prepareDocumentUpload, persistUploadReview } from './documentos.review.service';
 ﻿import { randomUUID } from 'node:crypto';
 import { PoolClient, QueryResultRow } from 'pg';
@@ -442,6 +443,7 @@ export const uploadPersonaDocumento = async (
     await ensureTipoDocumentoExists(input.tipo_documento_id, client);
     const prepared = await prepareDocumentUpload(input.tipo_documento_id,input,client);
     input = {...input,fecha_expedicion:prepared.fecha_expedicion,fecha_vencimiento:prepared.fecha_vencimiento};
+    const manipulationMetadata = await prepareManipulationUpload(client, 'persona', personaId, prepared.rule.code, prepared.rule.component, input.manipulacion_modalidad, file);
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['document:persona:'+personaId+':'+input.tipo_documento_id]);
 
     const latestVersion = await getLatestPersonaDocumentoVersion(
@@ -547,7 +549,7 @@ export const uploadPersonaDocumento = async (
         input.fecha_expedicion,
         input.fecha_vencimiento,
         Number(latestVersion?.version ?? 0) + 1,
-        prepared.rule.code === 'CERT_LABORAL' ? null : latestVigente?.id ?? null
+        prepared.rule.code === 'CERT_LABORAL' ? null : latestVigente?.id ?? latestVersion?.id ?? null
       ]
     );
 
@@ -559,7 +561,7 @@ export const uploadPersonaDocumento = async (
 
     const document = mapDocumentoPersona(created);
 
-    await persistUploadReview(client, 'persona', created.id, actorUserId, prepared.metadata);
+    await persistUploadReview(client, 'persona', created.id, actorUserId, {...prepared.metadata,...manipulationMetadata});
 
     await client.query('COMMIT');
     return { ...document, estado_revision: 'PENDIENTE_REVISION' } as typeof document;
@@ -768,6 +770,7 @@ export const uploadVinculacionDocumento = async (
     await ensureTipoDocumentoExists(input.tipo_documento_id, client);
     const prepared = await prepareDocumentUpload(input.tipo_documento_id,input,client);
     input = {...input,fecha_expedicion:prepared.fecha_expedicion,fecha_vencimiento:prepared.fecha_vencimiento};
+    const manipulationMetadata = await prepareManipulationUpload(client, 'vinculacion', vinculacionId, prepared.rule.code, prepared.rule.component, input.manipulacion_modalidad, file);
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', ['document:vinculacion:'+vinculacionId+':'+input.tipo_documento_id]);
 
     const previous = await client.query(`SELECT id,version FROM documentos_vinculacion WHERE vinculacion_id=$1::bigint AND tipo_documento_id=$2::bigint ORDER BY version DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId,input.tipo_documento_id]);
@@ -857,7 +860,7 @@ export const uploadVinculacionDocumento = async (
     await client.query(`UPDATE documentos_vinculacion SET version=$2,documento_reemplaza_id=$3::bigint WHERE id=$1::bigint`,[created.id,Number(previous.rows[0]?.version??0)+1,prepared.rule.code === 'CERT_LABORAL'?null:previous.rows[0]?.id??null]);
     const document = mapDocumentoVinculacion(created);
 
-    await persistUploadReview(client, 'vinculacion', created.id, actorUserId, prepared.metadata);
+    await persistUploadReview(client, 'vinculacion', created.id, actorUserId, {...prepared.metadata,...manipulationMetadata});
 
     await client.query('COMMIT');
     return { ...document, estado_revision: 'PENDIENTE_REVISION' } as typeof document;

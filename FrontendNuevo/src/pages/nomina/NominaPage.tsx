@@ -542,7 +542,8 @@ function getEmployeeInstitucionLabel(empleado: NominaEmpleadoApi) {
   );
 }
 
-function getEmployeeGestorLabel(empleado: NominaEmpleadoApi) {
+function getEmployeeGestorLabel(empleado: NominaEmpleadoApi): string | null {
+  if (empleado.gestor_aplica === false) return null;
   return normalizeOptionalLabel(empleado.gestor?.nombre_completo) ?? "Sin gestor";
 }
 
@@ -1779,11 +1780,11 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
     () =>
       Array.from(
         new Map(
-          allEmployees.map((employee) => [
+          allEmployees.filter((employee) => employee.gestor_aplica !== false).map((employee) => [
             employee.gestor?.id ?? "sin_gestor",
             {
               value: employee.gestor?.id ?? "sin_gestor",
-              label: getEmployeeGestorLabel(employee),
+              label: getEmployeeGestorLabel(employee) ?? "",
             },
           ]),
         ).values(),
@@ -1815,7 +1816,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
     const filtered = allEmployees.filter((empleado) => {
       const clasificacion = (getEmployeeClassificationValue(empleado) ?? "").toLowerCase();
       const municipio = getEmployeeMunicipioLabel(empleado);
-      const gestor = empleado.gestor?.id ?? "sin_gestor";
+      const gestor = empleado.gestor_aplica === false ? "no_aplica" : empleado.gestor?.id ?? "sin_gestor";
       const modalidad = getEmployeeModalidadCode(empleado);
       const reviewed = empleado.revisado ? "revisado" : "pendiente";
       const novedadesTotal =
@@ -1886,7 +1887,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
         case "sede":
           return getEmployeeSedeLabel(left).localeCompare(getEmployeeSedeLabel(right), "es-CO");
         case "gestor":
-          return getEmployeeGestorLabel(left).localeCompare(getEmployeeGestorLabel(right), "es-CO");
+          return (getEmployeeGestorLabel(left) ?? "").localeCompare(getEmployeeGestorLabel(right) ?? "", "es-CO");
         default:
           return left.persona.nombre_completo.localeCompare(right.persona.nombre_completo, "es-CO");
       }
@@ -3387,9 +3388,12 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
                                         </div>
                                         <small
                                           className="cell-context-accent"
-                                          title={`${getEmployeeModalidadDescription(empleado)} · ${getEmployeeGestorLabel(empleado)}`}
+                                          title={getEmployeeGestorLabel(empleado)
+                                            ? `${getEmployeeModalidadDescription(empleado)} | Gestor: ${getEmployeeGestorLabel(empleado)}`
+                                            : getEmployeeModalidadDescription(empleado)}
                                         >
-                                          {getEmployeeModalidadCode(empleado)} · Gestor: {getEmployeeGestorLabel(empleado)}
+                                          {getEmployeeModalidadCode(empleado)}
+                                          {getEmployeeGestorLabel(empleado) ? ` | Gestor: ${getEmployeeGestorLabel(empleado)}` : ""}
                                         </small>
                                       </div>
                                     </div>
@@ -4377,7 +4381,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
                           Seleccionado: {selectedCoverageEmployee.persona.nombre_completo} ·{" "}
                           {selectedCoverageEmployee.persona.numero_documento ?? "Documento no disponible"} ·{" "}
                           {getEmployeeMunicipioLabel(selectedCoverageEmployee)} ·{" "}
-                          {getEmployeeGestorLabel(selectedCoverageEmployee)}
+                          {getEmployeeGestorLabel(selectedCoverageEmployee) ? ` | Gestor: ${getEmployeeGestorLabel(selectedCoverageEmployee)}` : ""}
                         </p>
                       </div>
                     ) : null}
@@ -4399,8 +4403,8 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
                             {getEmployeeMunicipioLabel(employee)} · {getEmployeeInstitucionLabel(employee)}
                           </small>
                           <small>
-                            {getEmployeeSedeLabel(employee)} · {getEmployeeModalidadCode(employee)} ·{" "}
-                            {getEmployeeGestorLabel(employee)}
+                            {getEmployeeSedeLabel(employee)} | {getEmployeeModalidadCode(employee)}
+                            {getEmployeeGestorLabel(employee) ? ` | ${getEmployeeGestorLabel(employee)}` : ""}
                           </small>
                         </button>
                       ))}

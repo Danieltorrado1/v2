@@ -28,6 +28,22 @@ const normalizeText = (value: string): string =>
     .replace(/\s+/g, ' ')
     .toLowerCase();
 
+const normalizeCargoKey = (value: string): string =>
+  normalizeText(value).replace(/[^a-z0-9]+/g, '');
+
+/** Cargo único para el que aplica la asignación y trazabilidad de gestor. */
+export const GESTOR_APPLICABLE_CARGO_KEYS = new Set([
+  'manipuladoradealimentos',
+  'manipuladordealimentos'
+]);
+
+export const isGestorApplicableCargo = (nombreCargo: string | null | undefined): boolean =>
+  Boolean(nombreCargo && GESTOR_APPLICABLE_CARGO_KEYS.has(normalizeCargoKey(nombreCargo)));
+
+/** Misma regla expresada para las consultas SQL que resuelven Personal/Nómina. */
+export const gestorApplicableCargoSql = (alias = 'cc'): string =>
+  `REGEXP_REPLACE(LOWER(COALESCE(${alias}.nombre_cargo, '')), '[^a-z0-9]+', '', 'g') IN ('manipuladoradealimentos', 'manipuladordealimentos')`;
+
 const toEpochDay = (value: string): number => {
   const parsed = Date.parse(`${value}T00:00:00.000Z`);
 
@@ -39,12 +55,7 @@ const toEpochDay = (value: string): number => {
 };
 
 export const looksLikeManipuladoraCargo = (nombreCargo: string | null | undefined): boolean => {
-  if (!nombreCargo) {
-    return false;
-  }
-
-  const normalized = normalizeText(nombreCargo);
-  return normalized.includes('manipulador') || normalized.includes('manipuladora');
+  return isGestorApplicableCargo(nombreCargo);
 };
 
 export const validateVigenciaRange = (range: VigenciaRange): void => {

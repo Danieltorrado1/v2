@@ -43,6 +43,7 @@ import PersonalMasterDrawer from "./PersonalMasterDrawer";
 import PersonalExportModal from "./PersonalExportModal";
 import OperationalImportModal from "./OperationalImportModal";
 import PersonalRepositoryPanel from "./PersonalRepositoryPanel";
+import GestorManagementWizard from "./GestorManagementWizard";
 import "./OperationalPersonalPage.css";
 
 const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
@@ -64,6 +65,7 @@ type PersonalRow = {
   persona_id: number;
   numero_documento: string;
   nombre_completo: string;
+  gestor_aplica: boolean;
   gestor_actual: {
     nombre: string | null;
     usuario_id: number | null;
@@ -149,7 +151,7 @@ export default function OperationalPersonalPage() {
   ]);
   const canReadPersonal = permissions.includes("vinculaciones.read");
   const canCreateVinculacion = permissions.includes("vinculaciones.create");
-  const canManageGestores = permissions.includes("vinculaciones.update");
+  const canManageGestores = permissions.includes("vinculaciones.update") && (user?.roles ?? []).includes("ADMINISTRADOR");
   const canPrepareImport = permissions.includes("importaciones.preparar");
   const canApplyImport = permissions.includes("importaciones.aplicar");
   const canExportPersonal = permissions.includes("exportaciones.generar");
@@ -188,6 +190,7 @@ export default function OperationalPersonalPage() {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<"base" | "repository">("base");
   const [showAssignGestorModal, setShowAssignGestorModal] = useState(false);
+  const [showGestorWizard, setShowGestorWizard] = useState(false);
   const [assignmentGestorId, setAssignmentGestorId] = useState("");
   const [assignmentMunicipioId, setAssignmentMunicipioId] = useState("");
   const [assignmentObservacion, setAssignmentObservacion] = useState("");
@@ -450,6 +453,7 @@ export default function OperationalPersonalPage() {
             persona_id: item.persona_id,
             numero_documento: item.numero_documento,
             nombre_completo: item.nombre_completo,
+            gestor_aplica: item.gestor_aplica,
             gestor_actual: item.gestor_actual,
             cargo_nombre: item.cargo.nombre_cargo,
             estado_vinculacion: item.estado_vinculacion,
@@ -934,7 +938,7 @@ export default function OperationalPersonalPage() {
           <button
             type="button"
             className="op-button secondary"
-            onClick={() => navigate(buildManagementUrl(false))}
+            onClick={() => setShowGestorWizard(true)}
             disabled={!contratoId || !canManageGestores}
           >
             Gestionar gestores
@@ -967,6 +971,14 @@ export default function OperationalPersonalPage() {
       </header>
 
       {contextError && <div className="op-state error" role="alert">{contextError}</div>}
+      {showGestorWizard && contratoId && (
+        <GestorManagementWizard
+          contratoId={contratoId}
+          fecha={fechaConsulta}
+          onClose={() => setShowGestorWizard(false)}
+          onSaved={() => { setShowGestorWizard(false); setRefreshIndex((value) => value + 1); }}
+        />
+      )}
       {activeTab === "repository" && canReadRepository ? <PersonalRepositoryPanel contratoId={contratoId} /> : <>
 
       <section className="op-tools-bar">
@@ -1214,7 +1226,7 @@ export default function OperationalPersonalPage() {
                   setSinGestorOnly(false);
                 }}
               >
-                {sinGestorOnly ? "Sin gestor" : "Gestor"} Ã—
+                {sinGestorOnly ? "Sin gestor" : "Gestor"} ×
               </button>
             )}
             {municipioId && (
@@ -1492,7 +1504,7 @@ export default function OperationalPersonalPage() {
                       </td>
                       <td className="is-assignment">
                         <div className="op-assignment-cell">
-                          {item.asignacion_actual.institucion ? (
+                          {item.gestor_aplica ? (
                             <>
                               <strong title={item.asignacion_actual.institucion ?? undefined}>{item.asignacion_actual.institucion}</strong>
                               {item.asignacion_actual.sede && (<small className="op-sede-name" title={item.asignacion_actual.sede}>Sede: {item.asignacion_actual.sede}</small>)}
@@ -1512,9 +1524,6 @@ export default function OperationalPersonalPage() {
                                 {item.asignacion_actual.nombre ?? "Sin ubicacion laboral"}
                               </strong>
                               <small>Personal administrativo</small>
-                              <span className={`op-gestor-chip${item.gestor_actual?.nombre ? "" : " is-unassigned"}`}>
-                                {item.gestor_actual?.nombre ?? "Sin gestor"}
-                              </span>
                             </>
                           )}
                         </div>
