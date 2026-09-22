@@ -136,6 +136,7 @@ type PersistedFilters = {
 type PlanillaFacetOption = { value: string; label: string };
 
 function PlanillaFacetDropdown({
+  facetKey,
   label,
   value,
   options,
@@ -143,6 +144,7 @@ function PlanillaFacetDropdown({
   onToggle,
   onChange,
 }: {
+  facetKey?: string;
   label: string;
   value: string;
   options: PlanillaFacetOption[];
@@ -152,7 +154,7 @@ function PlanillaFacetDropdown({
 }) {
   const selected = options.find((option) => option.value === value);
   return (
-    <div className="planilla-facet" data-planilla-facet="true">
+    <div className="planilla-facet" data-planilla-facet={facetKey ?? label}>
       <button type="button" className="planilla-facet-trigger" aria-expanded={open} onClick={onToggle}>
         <span>{selected?.label ?? label}</span>
         <span aria-hidden="true">⌄</span>
@@ -249,7 +251,9 @@ function getEmployeeGestorLabel(employee: NominaEmpleadoApi) {
 }
 
 function getEmployeeGestorId(employee: NominaEmpleadoApi) {
-  return employee.gestor?.id ?? null;
+  return employee.gestor?.id === null || employee.gestor?.id === undefined
+    ? null
+    : String(employee.gestor.id);
 }
 
 function getEmployeeModalidadCode(employee: NominaEmpleadoApi) {
