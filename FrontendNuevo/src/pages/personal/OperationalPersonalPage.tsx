@@ -43,6 +43,7 @@ import PersonalMasterDrawer from "./PersonalMasterDrawer";
 import PersonalExportModal from "./PersonalExportModal";
 import OperationalImportModal from "./OperationalImportModal";
 import PersonalRepositoryPanel from "./PersonalRepositoryPanel";
+import GestorManagementWizard from "./GestorManagementWizard";
 import "./OperationalPersonalPage.css";
 
 const EMPTY_FILTER_OPTIONS: ContractPersonalFilterOptions = {
@@ -150,7 +151,7 @@ export default function OperationalPersonalPage() {
   ]);
   const canReadPersonal = permissions.includes("vinculaciones.read");
   const canCreateVinculacion = permissions.includes("vinculaciones.create");
-  const canManageGestores = permissions.includes("vinculaciones.update");
+  const canManageGestores = permissions.includes("vinculaciones.update") && (user?.roles ?? []).includes("ADMINISTRADOR");
   const canPrepareImport = permissions.includes("importaciones.preparar");
   const canApplyImport = permissions.includes("importaciones.aplicar");
   const canExportPersonal = permissions.includes("exportaciones.generar");
@@ -189,6 +190,7 @@ export default function OperationalPersonalPage() {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<"base" | "repository">("base");
   const [showAssignGestorModal, setShowAssignGestorModal] = useState(false);
+  const [showGestorWizard, setShowGestorWizard] = useState(false);
   const [assignmentGestorId, setAssignmentGestorId] = useState("");
   const [assignmentMunicipioId, setAssignmentMunicipioId] = useState("");
   const [assignmentObservacion, setAssignmentObservacion] = useState("");
@@ -936,7 +938,7 @@ export default function OperationalPersonalPage() {
           <button
             type="button"
             className="op-button secondary"
-            onClick={() => navigate(buildManagementUrl(false))}
+            onClick={() => setShowGestorWizard(true)}
             disabled={!contratoId || !canManageGestores}
           >
             Gestionar gestores
@@ -969,6 +971,14 @@ export default function OperationalPersonalPage() {
       </header>
 
       {contextError && <div className="op-state error" role="alert">{contextError}</div>}
+      {showGestorWizard && contratoId && (
+        <GestorManagementWizard
+          contratoId={contratoId}
+          fecha={fechaConsulta}
+          onClose={() => setShowGestorWizard(false)}
+          onSaved={() => { setShowGestorWizard(false); setRefreshIndex((value) => value + 1); }}
+        />
+      )}
       {activeTab === "repository" && canReadRepository ? <PersonalRepositoryPanel contratoId={contratoId} /> : <>
 
       <section className="op-tools-bar">
@@ -1216,7 +1226,7 @@ export default function OperationalPersonalPage() {
                   setSinGestorOnly(false);
                 }}
               >
-                {sinGestorOnly ? "Sin gestor" : "Gestor"} Ã—
+                {sinGestorOnly ? "Sin gestor" : "Gestor"} ×
               </button>
             )}
             {municipioId && (

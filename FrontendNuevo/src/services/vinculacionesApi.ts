@@ -7,6 +7,8 @@ import type {
   ContractPersonalFilterOptions,
   GestorAssignmentUser,
   GestorAssignmentWorkspace,
+  GestorWizardData,
+  SaveGestorWizardPayload,
   GestorMunicipioAssignment,
   GestorPersonalAssignment,
   PersonalResumen,
@@ -129,6 +131,17 @@ export async function getGestorAssignmentWorkspace(filters: {
   const res = await apiClient.get<ApiResponse<GestorAssignmentWorkspace>>('/vinculaciones/gestores/workspace', {
     params: filters,
   });
+  return res.data;
+}
+
+export async function getGestorWizardData(filters: { contrato_id: number; gestor_usuario_id?: number; search?: string; fecha?: string }): Promise<GestorWizardData> {
+  const res = await apiClient.get<ApiResponse<GestorWizardData>>('/vinculaciones/gestores/wizard', { params: filters });
+  return res.data;
+}
+
+export async function saveGestorWizard(payload: SaveGestorWizardPayload): Promise<{ gestor_usuario_id: number; municipios: number; instituciones: number; vinculaciones: number }> {
+  const res = await apiClient.post<ApiResponse<{ gestor_usuario_id: number; municipios: number; instituciones: number; vinculaciones: number }>>('/vinculaciones/gestores/wizard', payload);
+  emitPersonalInvalidation({ kind: 'POBLACION' });
   return res.data;
 }
 

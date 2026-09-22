@@ -53,6 +53,7 @@ import {
 } from './nomina.movimientos';
 import { appendNominaCoberturaScope, assertNominaEmpleadoCoberturaScope, assertNominaPeriodoCoberturaScope } from './nomina.procesos';
 import { buildAnyGestorMunicipalityScopeExistsSql, buildGestorMunicipalityScopeExistsSql } from '../users/municipal-scope.service';
+import { gestorApplicableCargoSql, isGestorApplicableCargo } from '../vinculaciones/vinculaciones.personal.domain';
 import {
   buildNominaCanonicalProjectedRecordId,
   parseNominaNovedadRecordId,
@@ -690,6 +691,7 @@ interface NominaAuditRow extends QueryResultRow {
 export type { NominaPeriodo } from './domain/nomina-periodo.mapper';
 
 export interface NominaEmpleado {
+  gestor_aplica: boolean;
   activo: boolean;
   auxilio_transporte: number;
   categoria_salarial: {
@@ -1997,59 +1999,49 @@ const getNominaEmpleadosRealSelect = (): string => {
         scope.gestor_nombre_completo,
         scope.gestor_origen
       FROM (
-        SELECT
-          gpa.usuario_id::text AS gestor_usuario_id,
-          u.nombre_completo AS gestor_nombre_completo,
-          'PERSONAL'::text AS gestor_origen,
-          gpa.vigencia_desde,
-          gpa.id,
-          0 AS prioridad
-        FROM gestor_personal_asignaciones gpa
-        INNER JOIN usuarios u ON u.id = gpa.usuario_id
-        WHERE gpa.vinculacion_id = v.id
-          AND gpa.contrato_id = v.contrato_id
-          AND COALESCE(gpa.activo, TRUE) = TRUE
-          AND gpa.vigencia_desde <= CURRENT_DATE
-          AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= CURRENT_DATE)
-          AND EXISTS (
-            SELECT 1 FROM usuario_roles ur_gestor
-            JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
-            WHERE ur_gestor.usuario_id = gpa.usuario_id
-              AND r_gestor.nombre_rol = 'GESTOR'
-              AND COALESCE(ur_gestor.activo, TRUE) = TRUE
-              AND COALESCE(r_gestor.activo, TRUE) = TRUE
-          )
-        UNION ALL
-        SELECT
-          CASE WHEN COUNT(DISTINCT gma.usuario_id) = 1 THEN MIN(gma.usuario_id)::text ELSE 'MULTIPLE' END AS gestor_usuario_id,
-          CASE WHEN COUNT(DISTINCT gma.usuario_id) = 1 THEN MIN(u.nombre_completo) ELSE 'Múltiples gestores' END AS gestor_nombre_completo,
-          CASE WHEN COUNT(DISTINCT gma.usuario_id) = 1 THEN 'MUNICIPIO'::text ELSE 'MUNICIPIO_AMBIGUO'::text END AS gestor_origen,
-          MAX(gma.vigencia_desde) AS vigencia_desde,
-          MAX(gma.id) AS id,
-          1 AS prioridad
+        SELECT DISTINCT gma.usuario_id AS gestor_usuario_id, u.nombre_completo AS gestor_nombre_completo,
+          'MUNICIPIO'::text AS gestor_origen, gma.vigencia_desde, gma.id, 1 AS prioridad
         FROM gestor_municipio_asignaciones gma
         INNER JOIN usuarios u ON u.id = gma.usuario_id
-        INNER JOIN cobertura_asignaciones cas_scope
-          ON cas_scope.vinculacion_id = v.id
-         AND COALESCE(cas_scope.activo, TRUE) = TRUE
-         AND cas_scope.fecha_inicio <= np.fecha_fin
-         AND (cas_scope.fecha_fin IS NULL OR cas_scope.fecha_fin >= np.fecha_inicio)
-        INNER JOIN focalizacion_final cff_scope
-          ON cff_scope.id = cas_scope.focalizacion_final_id
-         AND cff_scope.municipio_id = gma.municipio_id
-        WHERE gma.contrato_id = v.contrato_id
-          AND COALESCE(gma.activo, TRUE) = TRUE
-          AND gma.vigencia_desde <= CURRENT_DATE
-          AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
-          AND EXISTS (
-            SELECT 1 FROM usuario_roles ur_gestor
-            JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
-            WHERE ur_gestor.usuario_id = gma.usuario_id
-              AND r_gestor.nombre_rol = 'GESTOR'
-              AND COALESCE(ur_gestor.activo, TRUE) = TRUE
-              AND COALESCE(r_gestor.activo, TRUE) = TRUE
-          )
-        HAVING COUNT(DISTINCT gma.usuario_id) > 0
+        INNER JOIN cobertura_asignaciones cas_scope ON cas_scope.vinculacion_id = v.id
+          AND COALESCE(cas_scope.activo, TRUE) = TRUE
+          AND cas_scope.fecha_inicio <= np.fecha_fin
+          AND (cas_scope.fecha_fin IS NULL OR cas_scope.fecha_fin >= np.fecha_inicio)
+        INNER JOIN focalizacion_final cff_scope ON cff_scope.id = cas_scope.focalizacion_final_id
+          AND cff_scope.municipio_id = gma.municipio_id
+        WHERE ${gestorApplicableCargoSql('cc')}
+          AND gma.contrato_id = v.contrato_id AND COALESCE(gma.activo, TRUE) = TRUE
+          AND gma.vigencia_desde <= CURRENT_DATE AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
+          AND EXISTS (SELECT 1 FROM usuario_roles ur_gestor JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
+            WHERE ur_gestor.usuario_id = gma.usuario_id AND r_gestor.nombre_rol = 'GESTOR'
+              AND COALESCE(ur_gestor.activo, TRUE) = TRUE AND COALESCE(r_gestor.activo, TRUE) = TRUE)
+        UNION ALL
+        SELECT DISTINCT gia.usuario_id, u.nombre_completo, 'INSTITUCION'::text, gia.vigencia_desde, gia.id, 2
+        FROM gestor_institucion_asignaciones gia
+        INNER JOIN usuarios u ON u.id = gia.usuario_id
+        INNER JOIN cobertura_asignaciones cas_scope ON cas_scope.vinculacion_id = v.id
+          AND COALESCE(cas_scope.activo, TRUE) = TRUE
+          AND cas_scope.fecha_inicio <= np.fecha_fin
+          AND (cas_scope.fecha_fin IS NULL OR cas_scope.fecha_fin >= np.fecha_inicio)
+        INNER JOIN focalizacion_final cff_scope ON cff_scope.id = cas_scope.focalizacion_final_id
+          AND cff_scope.municipio_id = gia.municipio_id AND cff_scope.institucion_id = gia.institucion_id
+        WHERE ${gestorApplicableCargoSql('cc')}
+          AND gia.contrato_id = v.contrato_id AND COALESCE(gia.activo, TRUE) = TRUE
+          AND gia.vigencia_desde <= CURRENT_DATE AND (gia.vigencia_hasta IS NULL OR gia.vigencia_hasta >= CURRENT_DATE)
+          AND EXISTS (SELECT 1 FROM usuario_roles ur_gestor JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
+            WHERE ur_gestor.usuario_id = gia.usuario_id AND r_gestor.nombre_rol = 'GESTOR'
+              AND COALESCE(ur_gestor.activo, TRUE) = TRUE AND COALESCE(r_gestor.activo, TRUE) = TRUE)
+        UNION ALL
+        SELECT DISTINCT gpa.usuario_id, u.nombre_completo, 'PERSONA'::text, gpa.vigencia_desde, gpa.id, 3
+        FROM gestor_personal_asignaciones gpa
+        INNER JOIN usuarios u ON u.id = gpa.usuario_id
+        WHERE ${gestorApplicableCargoSql('cc')}
+          AND gpa.contrato_id = v.contrato_id AND gpa.vinculacion_id = v.id
+          AND COALESCE(gpa.activo, TRUE) = TRUE
+          AND gpa.vigencia_desde <= CURRENT_DATE AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= CURRENT_DATE)
+          AND EXISTS (SELECT 1 FROM usuario_roles ur_gestor JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
+            WHERE ur_gestor.usuario_id = gpa.usuario_id AND r_gestor.nombre_rol = 'GESTOR'
+              AND COALESCE(ur_gestor.activo, TRUE) = TRUE AND COALESCE(r_gestor.activo, TRUE) = TRUE)
       ) scope
       ORDER BY scope.prioridad ASC, scope.vigencia_desde DESC, scope.id DESC
       LIMIT 1
@@ -2359,6 +2351,7 @@ const mapRealEmpleado = (row: NominaEmpleadoRealRow): NominaEmpleado => {
       : null;
 
   return {
+    gestor_aplica: isGestorApplicableCargo(row.cargo_nombre),
     id: row.id,
     periodo_id: row.periodo_id,
     vinculacion_id: row.vinculacion_id,

@@ -164,6 +164,22 @@ export interface GestorAssignmentUser {
   roles: string[];
 }
 
+export interface GestorWizardData {
+  gestores: GestorAssignmentUser[];
+  municipios: Array<{ id: number; nombre: string; departamento_nombre: string | null }>;
+  instituciones: Array<{ id: number; nombre: string; municipio_id: number }>;
+  personas: Array<{ id: number; nombre: string; documento: string | null; municipio_id: number; institucion_id: number | null }>;
+  current: { municipios: number[]; instituciones: number[]; vinculaciones: number[] };
+}
+
+export interface SaveGestorWizardPayload {
+  contrato_id: number;
+  gestor_usuario_id: number;
+  fecha?: string;
+  observacion?: string | null;
+  municipios: Array<{ municipio_id: number; alcance: 'FULL' | 'PARTIAL'; institucion_ids: number[]; vinculacion_ids: number[] }>;
+}
+
 export interface GestorMunicipioAssignment {
   activo: boolean;
   alcance_personal: "PERSONAL_SELECCIONADO" | "TODO_MUNICIPIO";
