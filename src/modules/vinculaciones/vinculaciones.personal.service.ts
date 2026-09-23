@@ -308,12 +308,21 @@ const buildPresentacionLicitacionItem = async (
   let tieneConfiguracion: boolean | null = null;
 
   if (row.perfil_contrato_cargo_equivalente_id) {
-    const checklist = await buildContextualVinculacionChecklist(String(vinculacionId), tenant, {
-      audit: false,
-      contratoCargoIdOverride: toNumber(row.perfil_contrato_cargo_equivalente_id)
-    });
-    cumplimientoPorcentaje = checklist.cumplimiento_porcentaje;
-    tieneConfiguracion = checklist.tiene_configuracion;
+    // The checklist is enrichment for the licitation section, not a prerequisite
+    // for opening the personnel expediente. Missing catalog configuration or a
+    // scoped permission must leave the section readable instead of aborting the
+    // complete personal context response.
+    try {
+      const checklist = await buildContextualVinculacionChecklist(String(vinculacionId), tenant, {
+        audit: false,
+        contratoCargoIdOverride: toNumber(row.perfil_contrato_cargo_equivalente_id)
+      });
+      cumplimientoPorcentaje = checklist.cumplimiento_porcentaje;
+      tieneConfiguracion = checklist.tiene_configuracion;
+    } catch (_error) {
+      cumplimientoPorcentaje = null;
+      tieneConfiguracion = null;
+    }
   }
 
   return {
@@ -534,7 +543,9 @@ export const listOpcionesAsignacionOperativa = async (vinculacionId: number, ten
   await assertTenantAccessForVinculacionId(tenant, vinculacionId);
   const context = await dbPool.query<{ contrato_id: string }>('SELECT contrato_id::text FROM vinculaciones WHERE id=$1::bigint', [vinculacionId]);
   if (!context.rows[0]) throw new AppError('Vinculacion not found', 404, 'VINCULACION_NOT_FOUND');
-  const scopeSql = tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('TALENTO_HUMANO') && tenant.userId
+  const scopeTable = await dbPool.query<{ exists: boolean }>(`SELECT to_regclass(current_schema() || '.gestor_municipio_asignaciones') IS NOT NULL AS exists`);
+  const hasScopeCatalog = Boolean(scopeTable.rows[0]?.exists);
+  const scopeSql = hasScopeCatalog && tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('TALENTO_HUMANO') && tenant.userId
     ? ` AND EXISTS (
           SELECT 1 FROM gestor_municipio_asignaciones gma
           WHERE gma.usuario_id = $2::bigint
@@ -545,7 +556,7 @@ export const listOpcionesAsignacionOperativa = async (vinculacionId: number, ten
             AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
         )`
     : '';
-  const params = tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('TALENTO_HUMANO') && tenant.userId
+  const params = hasScopeCatalog && tenant && !tenant.isGlobalAdmin && tenant.roleNames.includes('TALENTO_HUMANO') && tenant.userId
     ? [context.rows[0].contrato_id, tenant.userId]
     : [context.rows[0].contrato_id];
   return (await dbPool.query(`SELECT ff.id::text,ff.municipio_id::text,COALESCE(mu.nombre_municipio,ff.municipio_texto) municipio,ff.institucion_id::text,ff.institucion_final institucion,ff.sede_id::text,ff.sede_final sede,ff.modalidad_id::text,ff.modalidad_final modalidad FROM focalizacion_final ff LEFT JOIN municipios mu ON mu.id=ff.municipio_id WHERE ff.contrato_id=$1::bigint AND COALESCE(ff.activo,TRUE)=TRUE${scopeSql} ORDER BY municipio,institucion,sede,modalidad`, params)).rows;

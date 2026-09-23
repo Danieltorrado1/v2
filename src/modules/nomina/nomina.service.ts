@@ -2054,7 +2054,7 @@ const getNominaEmpleadosRealSelect = (): string => {
           AND cff_scope.municipio_id = gma.municipio_id
         WHERE ${gestorApplicableCargoSql('cc')}
           AND gma.contrato_id = v.contrato_id AND COALESCE(gma.activo, TRUE) = TRUE
-          AND gma.vigencia_desde <= CURRENT_DATE AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
+          AND gma.vigencia_desde <= np.fecha_fin AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= np.fecha_inicio)
           AND EXISTS (SELECT 1 FROM usuario_roles ur_gestor JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
             WHERE ur_gestor.usuario_id = gma.usuario_id AND r_gestor.nombre_rol = 'GESTOR'
               AND COALESCE(ur_gestor.activo, TRUE) = TRUE AND COALESCE(r_gestor.activo, TRUE) = TRUE)
@@ -2070,7 +2070,7 @@ const getNominaEmpleadosRealSelect = (): string => {
           AND cff_scope.municipio_id = gia.municipio_id AND cff_scope.institucion_id = gia.institucion_id
         WHERE ${gestorApplicableCargoSql('cc')}
           AND gia.contrato_id = v.contrato_id AND COALESCE(gia.activo, TRUE) = TRUE
-          AND gia.vigencia_desde <= CURRENT_DATE AND (gia.vigencia_hasta IS NULL OR gia.vigencia_hasta >= CURRENT_DATE)
+          AND gia.vigencia_desde <= np.fecha_fin AND (gia.vigencia_hasta IS NULL OR gia.vigencia_hasta >= np.fecha_inicio)
           AND EXISTS (SELECT 1 FROM usuario_roles ur_gestor JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
             WHERE ur_gestor.usuario_id = gia.usuario_id AND r_gestor.nombre_rol = 'GESTOR'
               AND COALESCE(ur_gestor.activo, TRUE) = TRUE AND COALESCE(r_gestor.activo, TRUE) = TRUE)
@@ -2081,7 +2081,7 @@ const getNominaEmpleadosRealSelect = (): string => {
         WHERE ${gestorApplicableCargoSql('cc')}
           AND gpa.contrato_id = v.contrato_id AND gpa.vinculacion_id = v.id
           AND COALESCE(gpa.activo, TRUE) = TRUE
-          AND gpa.vigencia_desde <= CURRENT_DATE AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= CURRENT_DATE)
+          AND gpa.vigencia_desde <= np.fecha_fin AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= np.fecha_inicio)
           AND EXISTS (SELECT 1 FROM usuario_roles ur_gestor JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
             WHERE ur_gestor.usuario_id = gpa.usuario_id AND r_gestor.nombre_rol = 'GESTOR'
               AND COALESCE(ur_gestor.activo, TRUE) = TRUE AND COALESCE(r_gestor.activo, TRUE) = TRUE)
@@ -2107,8 +2107,8 @@ const getNominaEmpleadosRealSelect = (): string => {
        AND ff_th.municipio_id = gma_th.municipio_id
       WHERE gma_th.contrato_id = v.contrato_id
         AND COALESCE(gma_th.activo, TRUE) = TRUE
-        AND gma_th.vigencia_desde <= CURRENT_DATE
-        AND (gma_th.vigencia_hasta IS NULL OR gma_th.vigencia_hasta >= CURRENT_DATE)
+        AND gma_th.vigencia_desde <= np.fecha_fin
+        AND (gma_th.vigencia_hasta IS NULL OR gma_th.vigencia_hasta >= np.fecha_inicio)
       HAVING COUNT(DISTINCT gma_th.usuario_id) > 0
     ) responsable_th ON TRUE
     LEFT JOIN LATERAL (

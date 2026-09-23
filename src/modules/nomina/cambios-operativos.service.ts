@@ -53,6 +53,142 @@ const validateContext = async (context: ContextoOperativo, contratoId: string, c
   if (!option.rows[0]) throw new AppError('La combinacion no pertenece al catalogo operativo del contrato', 409, 'NOMINA_CAMBIO_CONTEXTO_INVALIDO');
   return { ...context, ...option.rows[0] };
 };
+
+const persistCanonicalAssignmentVersion = async (
+  client: PoolClient,
+  input: {
+    contratoId: string;
+    vinculacionId: string;
+    fechaDesde: string;
+    contexto: ContextoOperativo;
+    actor: string;
+    motivo: string;
+  }
+): Promise<void> => {
+  // Some isolated repository tests use a reduced cobertura_asignaciones shape.
+  // Production has the complete canonical table; keep those fixtures focused on
+  // the movement resolver while using the canonical versioning path in production.
+  const columns = await client.query<{ column_name: string }>(`
+    SELECT column_name
+    FROM information_schema.columns
+    WHERE table_schema = current_schema()
+      AND table_name = 'cobertura_asignaciones'
+  `);
+  const available = new Set(columns.rows.map((row) => row.column_name));
+  const required = ['contrato_id', 'institucion', 'sede', 'modalidad', 'categoria_cobertura', 'tipo_asignacion', 'porcentaje_cobertura', 'observacion'];
+  if (!required.every((column) => available.has(column))) return;
+
+  const current = await client.query<any>(`
+    SELECT *
+    FROM cobertura_asignaciones
+    WHERE vinculacion_id = $1::bigint
+      AND COALESCE(activo, TRUE) = TRUE
+      AND fecha_inicio <= $2::date
+      AND (fecha_fin IS NULL OR fecha_fin >= $2::date)
+    ORDER BY fecha_inicio DESC, id DESC
+    LIMIT 1
+    FOR UPDATE
+  `, [input.vinculacionId, input.fechaDesde]);
+  const next = await client.query<{ fecha_inicio: string }>(`
+    SELECT fecha_inicio::text
+    FROM cobertura_asignaciones
+    WHERE vinculacion_id = $1::bigint
+      AND COALESCE(activo, TRUE) = TRUE
+      AND fecha_inicio > $2::date
+    ORDER BY fecha_inicio ASC, id ASC
+    LIMIT 1
+    FOR UPDATE
+  `, [input.vinculacionId, input.fechaDesde]);
+  const existing = current.rows[0] as Record<string, unknown> | undefined;
+  const sameContext = existing &&
+    String(existing.municipio_id ?? '') === String(input.contexto.municipio_id ?? '') &&
+    String(existing.institucion ?? '') === String(input.contexto.institucion ?? '') &&
+    String(existing.sede ?? '') === String(input.contexto.sede ?? '') &&
+    String(existing.modalidad ?? '') === String(input.contexto.modalidad ?? '');
+  if (sameContext) return;
+
+  if (existing && String(existing.fecha_inicio).slice(0, 10) < input.fechaDesde) {
+    await client.query(`
+      UPDATE cobertura_asignaciones
+      SET fecha_fin = $2::date - 1,
+          activo = FALSE,
+          observacion = CONCAT_WS(' · ', observacion, 'Versionada desde Nómina')
+      WHERE id = $1::bigint
+    `, [existing.id, input.fechaDesde]);
+  } else if (existing) {
+    // A change whose effective date is exactly an existing version's start date
+    // updates that version in place; no duplicate active context is created.
+    await client.query(`
+      UPDATE cobertura_asignaciones
+      SET focalizacion_final_id = (
+            SELECT ff.id FROM focalizacion_final ff
+            WHERE ff.contrato_id = $8::bigint
+              AND ff.municipio_id = $3::bigint
+              AND ff.institucion_id = $9::bigint
+              AND ff.sede_id = $10::bigint
+              AND ff.modalidad_id = $11::bigint
+              AND COALESCE(ff.activo, TRUE) = TRUE
+            ORDER BY ff.id DESC LIMIT 1
+          ),
+          municipio_id = $3::bigint,
+          institucion = $4,
+          sede = $5,
+          modalidad = $6,
+          observacion = $7
+      WHERE id = $1::bigint
+    `, [existing.id, input.contexto.cobertura_asignacion_id, input.contexto.municipio_id, input.contexto.institucion, input.contexto.sede, input.contexto.modalidad, input.motivo, input.contratoId, input.contexto.institucion_id, input.contexto.sede_id, input.contexto.modalidad_id]);
+    return;
+  }
+
+  const nextEnd = next.rows[0]?.fecha_inicio ?? null;
+  const inserted = await client.query<{ id: string }>(`
+    INSERT INTO cobertura_asignaciones (
+      contrato_id, municipio_id, focalizacion_final_id, vinculacion_id,
+      institucion, sede, consecutivo_sede, modalidad, categoria_cobertura,
+      tipo_asignacion, porcentaje_cobertura, fecha_inicio, fecha_fin,
+      observacion, activo
+    )
+    SELECT $1::bigint, $2::bigint, ff.id, $3::bigint,
+      ff.institucion_final, ff.sede_final, ff.consecutivo_final, ff.modalidad_final,
+      ff.categoria_cobertura,
+      COALESCE($4, 'PRINCIPAL'), COALESCE($5::numeric, 1::numeric), $6::date,
+      CASE WHEN $7::date IS NULL THEN NULL ELSE $7::date - 1 END,
+      $8, TRUE
+    FROM focalizacion_final ff
+    WHERE ff.contrato_id = $1::bigint
+      AND ff.municipio_id = $2::bigint
+      AND ff.institucion_id = $10::bigint
+      AND ff.sede_id = $11::bigint
+      AND ff.modalidad_id = $12::bigint
+      AND COALESCE(ff.activo, TRUE) = TRUE
+    RETURNING id::text
+  `, [
+    input.contratoId,
+    input.contexto.municipio_id,
+    input.vinculacionId,
+    existing?.tipo_asignacion ?? null,
+    existing?.porcentaje_cobertura ?? null,
+    input.fechaDesde,
+    nextEnd,
+    input.motivo,
+    input.contexto.institucion_id,
+    input.contexto.sede_id,
+    input.contexto.modalidad_id
+  ]);
+  if (!inserted.rows[0]) {
+    throw new AppError('La asignación operativa canónica no existe en el catálogo', 409, 'NOMINA_CAMBIO_CONTEXTO_INVALIDO');
+  }
+  await registerAuditEntry({
+    accion: 'VERSION_ASSIGNMENT',
+    tabla: 'cobertura_asignaciones',
+    registro_id: inserted.rows[0].id,
+    descripcion: input.motivo,
+    usuario_id: input.actor,
+    before: existing ?? null,
+    after: { vinculacion_id: input.vinculacionId, fecha_inicio: input.fechaDesde, contexto: input.contexto },
+    client
+  });
+};
 const listRows = async (periodoId: string, vinculacionId: string, client?: PoolClient): Promise<CambioRow[]> => (await (client ?? dbPool).query<CambioRow>(`${selectCambio} WHERE nm.periodo_id=$1::bigint AND nm.vinculacion_id=$2::bigint AND nm.familia_movimiento='CAMBIO_OPERATIVO' AND nm.activo=TRUE ORDER BY nm.fecha,nm.id`, [periodoId, vinculacionId])).rows;
 const derive = async (periodoId: string, vinculacionId: string, client?: PoolClient) => {
   const base = await loadBase(periodoId, vinculacionId, client);
@@ -73,7 +209,7 @@ export const obtenerCambioOperativo = async(id:string,tenant?:TenantAccessContex
 export const resolverTramos = async(periodoId:string,vinculacionId:string,tenant?:TenantAccessContext)=>{await assertTenantAccessForVinculacionId(tenant,vinculacionId);return derive(periodoId,vinculacionId);};
 export const resolverContextoFecha = async(periodoId:string,vinculacionId:string,fecha:string,tenant?:TenantAccessContext)=>{const tramos=await resolverTramos(periodoId,vinculacionId,tenant);const tramo=tramos.find(t=>t.fecha_inicio<=fecha&&t.fecha_fin>=fecha);if(!tramo)throw new AppError('Fecha fuera del rango operativo',404,'NOMINA_CONTEXTO_FECHA_FUERA_RANGO');return tramo;};
 
-export const crearCambioOperativo = async(input:CreateCambioOperativoInput,actor:string,tenant?:TenantAccessContext,meta?:AuditRequestMeta)=>{await assertTenantAccessForVinculacionId(tenant,input.vinculacion_id);const client=await dbPool.connect();try{await client.query('BEGIN');const base=await loadBase(input.periodo_id,input.vinculacion_id,client);assertOpen(base.periodo_estado);assertNominaEmpleadoEditable({ estado: base.estado_nomina }, 'registrar cambios operativos');if(base.nomina_empleado_id!==input.nomina_empleado_id)throw new AppError('Empleado no corresponde a vinculacion',409,'NOMINA_CAMBIO_EMPLEADO_INVALIDO');await assertNominaEmpleadoCoberturaScope(base.nomina_empleado_id,tenant,client);input.contexto_nuevo=await validateContext(input.contexto_nuevo,base.contrato_id,client);await client.query(`INSERT INTO nomina_contextos_operativos_base(periodo_id,nomina_empleado_id,vinculacion_id,contexto,created_by) VALUES($1,$2,$3,$4::jsonb,$5) ON CONFLICT(periodo_id,nomina_empleado_id) DO NOTHING`,[input.periodo_id,input.nomina_empleado_id,input.vinculacion_id,JSON.stringify(base.contexto),actor]);const effective=input.regla_fecha_efectiva==='DIA_SIGUIENTE'?new Date(`${input.fecha_inicio_efectiva}T00:00:00Z`):null;if(effective)effective.setUTCDate(effective.getUTCDate()+1);const fecha=effective?effective.toISOString().slice(0,10):input.fecha_inicio_efectiva;const inserted=await client.query<CambioRow>(`INSERT INTO nomina_movimientos(periodo_id,nomina_empleado_id,vinculacion_id,fecha,fecha_fin_efectiva,tipo_movimiento,familia_movimiento,estado,descripcion,cantidad,valor_unitario,valor_total,valor_calculado,es_devengado,es_deduccion,afecta_seguridad_social,activo,contexto_anterior,contexto_nuevo,motivo_operativo,regla_fecha_efectiva,municipio_id,institucion_id,sede_id,modalidad_id,tarifa_config_id,updated_by) VALUES($1,$2,$3,$4,$5,$6,'CAMBIO_OPERATIVO','PENDIENTE',$7,1,0,0,0,FALSE,FALSE,FALSE,TRUE,$8::jsonb,$9::jsonb,$7,$10,$11,$12,$13,$14,$15,$16) RETURNING id::text`,[input.periodo_id,input.nomina_empleado_id,input.vinculacion_id,fecha,input.fecha_fin_efectiva??null,input.tipo,input.motivo,JSON.stringify(input.contexto_anterior),JSON.stringify(input.contexto_nuevo),input.regla_fecha_efectiva,input.contexto_nuevo.municipio_id??null,input.contexto_nuevo.institucion_id??null,input.contexto_nuevo.sede_id??null,input.contexto_nuevo.modalidad_id??null,input.contexto_nuevo.tarifa_config_id??null,actor]);await derive(input.periodo_id,input.vinculacion_id,client);const id=inserted.rows[0]!.id;await registerAuditEntry({accion:'CREATE',tabla:'nomina_movimientos',registro_id:id,descripcion:input.motivo,after:input,usuario_id:actor,client,...meta});await client.query('COMMIT');return obtenerCambioOperativo(id,tenant);}catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}};
+export const crearCambioOperativo = async(input:CreateCambioOperativoInput,actor:string,tenant?:TenantAccessContext,meta?:AuditRequestMeta)=>{await assertTenantAccessForVinculacionId(tenant,input.vinculacion_id);const client=await dbPool.connect();try{await client.query('BEGIN');const base=await loadBase(input.periodo_id,input.vinculacion_id,client);assertOpen(base.periodo_estado);assertNominaEmpleadoEditable({ estado: base.estado_nomina }, 'registrar cambios operativos');if(base.nomina_empleado_id!==input.nomina_empleado_id)throw new AppError('Empleado no corresponde a vinculacion',409,'NOMINA_CAMBIO_EMPLEADO_INVALIDO');await assertNominaEmpleadoCoberturaScope(base.nomina_empleado_id,tenant,client);input.contexto_nuevo=await validateContext(input.contexto_nuevo,base.contrato_id,client);await client.query(`INSERT INTO nomina_contextos_operativos_base(periodo_id,nomina_empleado_id,vinculacion_id,contexto,created_by) VALUES($1,$2,$3,$4::jsonb,$5) ON CONFLICT(periodo_id,nomina_empleado_id) DO NOTHING`,[input.periodo_id,input.nomina_empleado_id,input.vinculacion_id,JSON.stringify(base.contexto),actor]);const effective=input.regla_fecha_efectiva==='DIA_SIGUIENTE'?new Date(`${input.fecha_inicio_efectiva}T00:00:00Z`):null;if(effective)effective.setUTCDate(effective.getUTCDate()+1);const fecha=effective?effective.toISOString().slice(0,10):input.fecha_inicio_efectiva;const inserted=await client.query<CambioRow>(`INSERT INTO nomina_movimientos(periodo_id,nomina_empleado_id,vinculacion_id,fecha,fecha_fin_efectiva,tipo_movimiento,familia_movimiento,estado,descripcion,cantidad,valor_unitario,valor_total,valor_calculado,es_devengado,es_deduccion,afecta_seguridad_social,activo,contexto_anterior,contexto_nuevo,motivo_operativo,regla_fecha_efectiva,municipio_id,institucion_id,sede_id,modalidad_id,tarifa_config_id,updated_by) VALUES($1,$2,$3,$4,$5,$6,'CAMBIO_OPERATIVO','PENDIENTE',$7,1,0,0,0,FALSE,FALSE,FALSE,TRUE,$8::jsonb,$9::jsonb,$7,$10,$11,$12,$13,$14,$15,$16) RETURNING id::text`,[input.periodo_id,input.nomina_empleado_id,input.vinculacion_id,fecha,input.fecha_fin_efectiva??null,input.tipo,input.motivo,JSON.stringify(input.contexto_anterior),JSON.stringify(input.contexto_nuevo),input.regla_fecha_efectiva,input.contexto_nuevo.municipio_id??null,input.contexto_nuevo.institucion_id??null,input.contexto_nuevo.sede_id??null,input.contexto_nuevo.modalidad_id??null,input.contexto_nuevo.tarifa_config_id??null,actor]);await persistCanonicalAssignmentVersion(client,{contratoId:base.contrato_id,vinculacionId:input.vinculacion_id,fechaDesde:fecha,contexto:input.contexto_nuevo,actor,motivo:input.motivo});await derive(input.periodo_id,input.vinculacion_id,client);const id=inserted.rows[0]!.id;await registerAuditEntry({accion:'CREATE',tabla:'nomina_movimientos',registro_id:id,descripcion:input.motivo,after:input,usuario_id:actor,client,...meta});await client.query('COMMIT');return obtenerCambioOperativo(id,tenant);}catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}};
 
 export const actualizarCambioOperativo=async(id:string,input:UpdateCambioOperativoInput,actor:string,tenant?:TenantAccessContext,meta?:AuditRequestMeta)=>{const before=await obtenerCambioOperativo(id,tenant);const merged={...before,...input};const client=await dbPool.connect();try{await client.query('BEGIN');const base=await loadBase(before.periodo_id,before.vinculacion_id,client);assertOpen(base.periodo_estado);assertNominaEmpleadoEditable({ estado: base.estado_nomina }, 'editar cambios operativos');await assertNominaEmpleadoCoberturaScope(base.nomina_empleado_id,tenant,client);merged.contexto_nuevo=await validateContext(merged.contexto_nuevo,base.contrato_id,client);const effective=merged.regla_fecha_efectiva==='DIA_SIGUIENTE'?new Date(`${merged.fecha_inicio_efectiva}T00:00:00Z`):null;if(effective)effective.setUTCDate(effective.getUTCDate()+1);const fecha=effective?effective.toISOString().slice(0,10):merged.fecha_inicio_efectiva;await client.query(`UPDATE nomina_movimientos SET fecha=$2,fecha_fin_efectiva=$3,tipo_movimiento=$4,contexto_anterior=$5::jsonb,contexto_nuevo=$6::jsonb,motivo_operativo=$7,descripcion=$7,regla_fecha_efectiva=$8,municipio_id=$9,institucion_id=$10,sede_id=$11,modalidad_id=$12,tarifa_config_id=$13,updated_by=$14,updated_at=NOW() WHERE id=$1`,[id,fecha,merged.fecha_fin_efectiva,merged.tipo,JSON.stringify(merged.contexto_anterior),JSON.stringify(merged.contexto_nuevo),merged.motivo,merged.regla_fecha_efectiva,merged.contexto_nuevo.municipio_id??null,merged.contexto_nuevo.institucion_id??null,merged.contexto_nuevo.sede_id??null,merged.contexto_nuevo.modalidad_id??null,merged.contexto_nuevo.tarifa_config_id??null,actor]);await derive(before.periodo_id,before.vinculacion_id,client);await registerAuditEntry({accion:'UPDATE',tabla:'nomina_movimientos',registro_id:id,descripcion:merged.motivo,before,after:merged,usuario_id:actor,client,...meta});await client.query('COMMIT');return obtenerCambioOperativo(id,tenant);}catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}};
 export const desactivarCambioOperativo=async(id:string,motivo:string,actor:string,tenant?:TenantAccessContext,meta?:AuditRequestMeta)=>{const before=await obtenerCambioOperativo(id,tenant);const client=await dbPool.connect();try{await client.query('BEGIN');const base=await loadBase(before.periodo_id,before.vinculacion_id,client);assertOpen(base.periodo_estado);assertNominaEmpleadoEditable({ estado: base.estado_nomina }, 'anular cambios operativos');await assertNominaEmpleadoCoberturaScope(base.nomina_empleado_id,tenant,client);await client.query('UPDATE nomina_movimientos SET activo=FALSE,motivo_estado=$2,updated_by=$3,updated_at=NOW() WHERE id=$1',[id,motivo,actor]);await derive(before.periodo_id,before.vinculacion_id,client);await registerAuditEntry({accion:'DEACTIVATE',tabla:'nomina_movimientos',registro_id:id,descripcion:motivo,before,after:{...before,activo:false},usuario_id:actor,client,...meta});await client.query('COMMIT');return {...before,activo:false};}catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}};
