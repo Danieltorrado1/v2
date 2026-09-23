@@ -778,7 +778,7 @@ export const getVinculacionPersonalContext = async (
          SELECT gpa.usuario_id, u.nombre_completo, 3 AS prioridad, gpa.vigencia_desde, gpa.id
          FROM gestor_personal_asignaciones gpa
          INNER JOIN usuarios u ON u.id = gpa.usuario_id
-         INNER JOIN contrato_cargos cc ON cc.id = $4::bigint
+         INNER JOIN contrato_cargos cc ON cc.id = $3::bigint
          WHERE ${gestorApplicableCargoSql('cc')} AND gpa.vinculacion_id = $1::bigint AND gpa.contrato_id = $2::bigint
            AND COALESCE(gpa.activo, TRUE) = TRUE AND gpa.vigencia_desde <= CURRENT_DATE
            AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= CURRENT_DATE)
@@ -790,7 +790,7 @@ export const getVinculacionPersonalContext = async (
            AND ca.fecha_inicio <= CURRENT_DATE AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= CURRENT_DATE)
          INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
            AND ff.municipio_id = gia.municipio_id AND ff.institucion_id = gia.institucion_id
-         INNER JOIN contrato_cargos cc ON cc.id = $4::bigint
+         INNER JOIN contrato_cargos cc ON cc.id = $3::bigint
          WHERE ${gestorApplicableCargoSql('cc')} AND gia.contrato_id = $2::bigint
            AND COALESCE(gia.activo, TRUE) = TRUE AND gia.vigencia_desde <= CURRENT_DATE
            AND (gia.vigencia_hasta IS NULL OR gia.vigencia_hasta >= CURRENT_DATE)
@@ -801,14 +801,14 @@ export const getVinculacionPersonalContext = async (
          INNER JOIN cobertura_asignaciones ca ON ca.vinculacion_id = $1::bigint AND COALESCE(ca.activo, TRUE) = TRUE
            AND ca.fecha_inicio <= CURRENT_DATE AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= CURRENT_DATE)
          INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id AND ff.municipio_id = gma.municipio_id
-         INNER JOIN contrato_cargos cc ON cc.id = $4::bigint
+         INNER JOIN contrato_cargos cc ON cc.id = $3::bigint
          WHERE ${gestorApplicableCargoSql('cc')} AND gma.contrato_id = $2::bigint
            AND COALESCE(gma.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
            AND COALESCE(gma.activo, TRUE) = TRUE AND gma.vigencia_desde <= CURRENT_DATE
            AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
        ) effective
        ORDER BY prioridad, vigencia_desde DESC, id DESC LIMIT 1`,
-      [vinculacionId, vinculacion.contrato_id, asignacionActual?.municipio_id ?? null, vinculacion.contrato_cargo_id]
+      [vinculacionId, vinculacion.contrato_id, vinculacion.contrato_cargo_id]
     );
 
     return {
