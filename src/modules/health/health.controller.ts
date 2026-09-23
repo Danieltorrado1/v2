@@ -7,6 +7,8 @@ import { QueryResultRow } from 'pg';
 import { dbQuery } from '../../config/db';
 import { env } from '../../config/env';
 import { asyncHandler } from '../../utils/asyncHandler';
+import { assertIntegracionOutboxSchema } from '../integracion/integracion.service';
+import { getIntegracionWorkerHealth } from '../../jobs/integracion-outbox.job';
 
 interface HealthRow extends QueryResultRow {
   now: Date;
@@ -49,6 +51,13 @@ export const getHealthStatus = asyncHandler(async (_req: Request, res: Response)
     const result = await dbQuery<HealthRow>('SELECT NOW() AS now');
     const databaseTime = result.rows[0]?.now;
 
+    let integracion = getIntegracionWorkerHealth();
+    if (env.INTEGRACION_OUTBOX_ENABLED) {
+      await assertIntegracionOutboxSchema();
+      integracion = { ...integracion, schema: 'ok' };
+    } else {
+      integracion = { ...integracion, schema: 'disabled' };
+    }
     return res.status(200).json({
       success: true,
       message: 'Health check successful',
@@ -57,15 +66,17 @@ export const getHealthStatus = asyncHandler(async (_req: Request, res: Response)
         database: {
           status: 'ok',
           time: databaseTime instanceof Date ? databaseTime.toISOString() : null
-        }
+        },
+        integracion_outbox: integracion
       }
     });
   } catch (error) {
+    const outboxError = error instanceof Error && 'code' in error && (error as { code?: string }).code === 'INTEGRACION_OUTBOX_SCHEMA_UNAVAILABLE';
     return res.status(503).json({
       success: false,
       message: 'Health check failed',
       error: {
-        code: 'DATABASE_UNAVAILABLE',
+        code: outboxError ? 'INTEGRACION_OUTBOX_SCHEMA_UNAVAILABLE' : 'DATABASE_UNAVAILABLE',
         message: 'Database unavailable'
       },
       data: {
@@ -74,7 +85,8 @@ export const getHealthStatus = asyncHandler(async (_req: Request, res: Response)
         database: {
           status: 'down',
           time: null
-        }
+        },
+        integracion_outbox: getIntegracionWorkerHealth()
       }
     });
   }

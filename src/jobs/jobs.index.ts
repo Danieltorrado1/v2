@@ -4,6 +4,7 @@ import { registerCoberturaJob, runCoberturaJobNow } from './cobertura.job';
 import { registerDocumentosJob, runDocumentosJobNow } from './documentos.job';
 import { registerNominaJob, runNominaJobNow } from './nomina.job';
 import { registerSstJob, runSstJobNow } from './sst.job';
+import { startIntegracionWorker } from './integracion-outbox.job';
 
 export const jobRunners = {
   alertas: runAlertasJobNow,
@@ -29,4 +30,5 @@ export const registerJobs = (): void => {
   registerCoberturaJob();
   registerNominaJob();
   registerSstJob();
+  startIntegracionWorker();
 };

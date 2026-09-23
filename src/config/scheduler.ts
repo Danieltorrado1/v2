@@ -1,5 +1,6 @@
 import { env } from './env';
 import { registerJobs } from '../jobs/jobs.index';
+import { stopIntegracionWorker } from '../jobs/integracion-outbox.job';
 
 let schedulerStarted = false;
 
@@ -21,4 +22,8 @@ export const startScheduler = (): void => {
   } catch (error) {
     console.error('Failed to start scheduler:', error);
   }
+};
+
+export const stopScheduler = async (): Promise<void> => {
+  await stopIntegracionWorker();
 };

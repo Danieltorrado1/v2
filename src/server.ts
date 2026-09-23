@@ -4,7 +4,7 @@ import { app } from './app';
 import { dbPool } from './config/db';
 import { env } from './config/env';
 import { logger } from './config/logger';
-import { startScheduler } from './config/scheduler';
+import { startScheduler, stopScheduler } from './config/scheduler';
 
 const server: Server = app.listen(env.PORT, '0.0.0.0', () => {
   logger.info(
@@ -18,6 +18,7 @@ const shutdown = (signal: NodeJS.Signals): void => {
 
   server.close(async () => {
     try {
+      await stopScheduler();
       await dbPool.end();
       logger.info('Database pool closed.');
       process.exit(0);
