@@ -40,6 +40,7 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']),
   ENABLE_JOBS: booleanFromEnvSchema,
   INTEGRACION_OUTBOX_ENABLED: booleanFromEnvSchema.default(false),
+  INTEGRACION_SYNC_ENABLED: booleanFromEnvSchema.default(false),
   INTEGRACION_WORKER_INTERVAL_MS: z.coerce.number().int().min(250).max(300000).default(5000),
   INTEGRACION_LOCK_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(1440).default(10),
   INTEGRACION_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(5),

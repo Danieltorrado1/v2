@@ -30,6 +30,7 @@ export interface NominaPoblacionLegacyTestDependencies<TResult> {
   syncWithinTransaction:(context:{client:PoolClient})=>Promise<{result:TResult;recalculableEmployeeIds:string[]}>;
   recalculate:(id:string)=>Promise<void>;
 }
+export type SelectiveNominaSyncStatus = 'APLICADO' | 'SIN_CAMBIOS' | 'BLOQUEADO_CIERRE';
 const dateString=(value:Date|string|null|undefined):string|null=>value==null?null:value instanceof Date?value.toISOString().slice(0,10):String(value);
 const numberValue=(value:string|number|null|undefined):number=>{if(value==null)return 0;const parsed=typeof value==='number'?value:Number(value);if(!Number.isFinite(parsed))throw new AppError('Invalid numeric value returned by database',500,'INVALID_NUMERIC_VALUE');return parsed;};
 
@@ -47,6 +48,41 @@ export class NominaPoblacionService<TPeriodo=unknown>{
   const client=await dbPool.connect();
   try{await client.query('BEGIN');const {result,recalculableEmployeeIds}=await dependencies.syncWithinTransaction({client});await client.query('COMMIT');for(const id of new Set(recalculableEmployeeIds))await dependencies.recalculate(id);return result;}
   catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
+ }
+ public async syncSelective(input:{periodoId:string;vinculacionId:string;effectiveDate:string;eventType:string;actorUserId?:string;context?:Record<string,unknown>|null;retirementDate?:string|null}):Promise<{status:SelectiveNominaSyncStatus;before:Record<string,unknown>|null;after:Record<string,unknown>|null}> {
+  const client=await dbPool.connect(); const actorUserId=input.actorUserId ?? '0';
+  try {
+   await client.query('BEGIN');
+   const periodResult=await client.query<{id:string;estado:string;fecha_inicio:string;fecha_fin:string}>(`SELECT id::text,estado,fecha_inicio::text,fecha_fin::text FROM nomina_periodos WHERE id=$1::bigint FOR UPDATE`,[input.periodoId]);
+   const period=periodResult.rows[0]; if(!period) throw new AppError('Periodo de nomina no encontrado',404,'NOMINA_PERIODO_NOT_FOUND');
+   if(period.estado!=='ABIERTO'){await client.query('COMMIT');return {status:'BLOQUEADO_CIERRE',before:null,after:null};}
+   const existingResult=await client.query<Record<string,unknown>>(`SELECT * FROM nomina_empleados WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint FOR UPDATE`,[input.periodoId,input.vinculacionId]);
+   const before=existingResult.rows[0] ?? null; let after=before; let changed=false;
+   if(input.eventType==='CONDICION_PENSION_CAMBIADA'){
+    const table=await client.query<{exists:boolean}>(`SELECT to_regclass('public.nomina_liquidaciones') IS NOT NULL AS exists`);
+    if(table.rows[0]?.exists){
+     const updated=await client.query<Record<string,unknown>>(`UPDATE nomina_liquidaciones SET requiere_recalculo=TRUE, estado=CASE WHEN estado='GENERADA' THEN 'PENDIENTE' ELSE estado END WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint AND COALESCE(activo,TRUE)=TRUE AND EXISTS (SELECT 1 FROM nomina_periodos p WHERE p.id=nomina_liquidaciones.periodo_id AND p.estado='ABIERTO') RETURNING id::text,requiere_recalculo,estado`,[input.periodoId,input.vinculacionId]);
+     changed=(updated.rowCount ?? 0)>0; after=updated.rows[0] ?? before;
+    }
+   } else if(input.eventType==='ASIGNACION_OPERATIVA_CAMBIADA'){
+    if(before){await nominaPoblacionRepository.repairOperationalSnapshots({periodoId:input.periodoId,actorUserId,vinculacionId:input.vinculacionId},client); changed=true;}
+    const snapshotTable=await client.query<{exists:boolean}>(`SELECT to_regclass('public.nomina_contextos_operativos_base') IS NOT NULL AS exists`);
+    if(snapshotTable.rows[0]?.exists){const snapshot=await client.query<Record<string,unknown>>(`SELECT contexto FROM nomina_contextos_operativos_base WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint LIMIT 1`,[input.periodoId,input.vinculacionId]); after=snapshot.rows[0] ?? before;}
+   } else {
+    const vinc=await client.query<{fecha_inicio:string;fecha_fin:string|null;metodo_pago:string|null}>(`SELECT fecha_inicio::text,fecha_fin::text,metodo_pago FROM vinculaciones WHERE id=$1::bigint FOR SHARE`,[input.vinculacionId]);
+    const row=vinc.rows[0]; if(!row) throw new AppError('Vinculacion no encontrada',404,'VINCULACION_NOT_FOUND');
+    const start=maxDateString(row.fecha_inicio,period.fecha_inicio); const end=minDateString(row.fecha_fin ?? period.fecha_fin,period.fecha_fin);
+    if(start<=end){
+     if(!before){
+      const inserted=await nominaPoblacionRepository.insert({periodoId:input.periodoId,vinculacionId:input.vinculacionId,metodoLiquidacion:resolveNominaMetodoLiquidacion({metodo_pago:row.metodo_pago}),categoriaSalarialId:null,salarioBase:0,auxilioTransporte:0,fechaInicioPago:start,fechaFinPago:end,diasPeriodo:inclusiveDaysBetween(period.fecha_inicio,period.fecha_fin),diasPagados:inclusiveDaysBetween(start,end),estado:'PENDIENTE'},client); after={id:inserted,vinculacion_id:input.vinculacionId,periodo_id:input.periodoId,fecha_inicio_pago:start,fecha_fin_pago:end}; changed=true;
+     } else if(input.eventType==='VINCULACION_RETIRADA') {
+      const limit=input.retirementDate ?? input.effectiveDate; const updated=await client.query<Record<string,unknown>>(`UPDATE nomina_empleados SET fecha_fin_pago=LEAST(COALESCE(fecha_fin_pago,$3::date),$3::date), activo=TRUE, estado='PENDIENTE', revisado=FALSE WHERE id=$1::bigint AND periodo_id=$2::bigint RETURNING *`,[before.id,input.periodoId,limit]); after=updated.rows[0] ?? before; changed=(updated.rowCount ?? 0)>0;
+    } else { const updated=await client.query<Record<string,unknown>>(`UPDATE nomina_empleados SET fecha_inicio_pago=GREATEST(fecha_inicio_pago,$3::date), fecha_fin_pago=LEAST(COALESCE(fecha_fin_pago,$4::date),$4::date), activo=TRUE, estado='PENDIENTE', revisado=FALSE WHERE id=$1::bigint AND periodo_id=$2::bigint RETURNING *`,[before.id,input.periodoId,start,end]); after=updated.rows[0] ?? before; changed=(updated.rowCount ?? 0)>0; }
+    }
+   }
+   if(input.actorUserId && input.actorUserId !== '0') await recordNominaAudit(client,input.periodoId,actorUserId,'INTEGRACION_SYNC_SELECTIVA',{before,after,event_type:input.eventType,vinculacion_id:input.vinculacionId});
+   await client.query('COMMIT'); return {status:changed?'APLICADO':'SIN_CAMBIOS',before,after};
+  } catch(error){await client.query('ROLLBACK');throw error;} finally{client.release();}
  }
  private async syncPopulation(client:PoolClient,input:{periodoId:string;actorUserId:string;tenant?:TenantAccessContext;auditMeta?:AuditRequestMeta;personaId?:string;vinculacionId?:string},dependencies:NominaPoblacionDependencies<TPeriodo>):Promise<{result:NominaPopulationSyncResult<TPeriodo>;recalculableEmployeeIds:string[]}>{
   const {periodoId,actorUserId,tenant,auditMeta,personaId,vinculacionId}=input;

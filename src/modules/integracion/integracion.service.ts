@@ -6,9 +6,10 @@ import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { AppError } from '../../utils/AppError';
 import { env } from '../../config/env';
 import { resolveContextoLaboralForClient } from './contexto-laboral.service';
+import { nominaPoblacionService } from '../nomina/application/nomina-poblacion.service';
 
 export const INTEGRACION_EVENT_TYPES = [
-  'VINCULACION_ACTUALIZADA', 'VINCULACION_RETIRADA',
+  'VINCULACION_CREADA', 'VINCULACION_ACTUALIZADA', 'VINCULACION_RETIRADA',
   'ASIGNACION_OPERATIVA_CAMBIADA', 'CONDICION_PENSION_CAMBIADA'
 ] as const;
 export type IntegracionEventType = typeof INTEGRACION_EVENT_TYPES[number];
@@ -72,12 +73,13 @@ export const publicarEventoOutbox = async (client: PoolClient, input: PublicarEv
 
 export const assertIntegracionOutboxSchema = async (executor: Pick<PoolClient, 'query'> | typeof dbPool = dbPool): Promise<void> => {
   if (!env.INTEGRACION_OUTBOX_ENABLED) return;
-  const result = await executor.query<{ eventos: string | null; impactos: string | null }>(
+  const result = await executor.query<{ eventos: string | null; impactos: string | null; sync_estado: string | null }>(
     `SELECT to_regclass('public.integracion_eventos')::text eventos,
-            to_regclass('public.integracion_evento_impactos')::text impactos`
+            to_regclass('public.integracion_evento_impactos')::text impactos,
+            (SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='integracion_evento_impactos' AND column_name='estado') sync_estado`
   );
   const row = result.rows[0];
-  if (!row?.eventos || !row.impactos) {
+  if (!row?.eventos || !row.impactos || (env.INTEGRACION_SYNC_ENABLED && !row.sync_estado)) {
     throw new AppError('La integración Outbox está habilitada pero su esquema no está instalado.', 503, 'INTEGRACION_OUTBOX_SCHEMA_UNAVAILABLE');
   }
 };
@@ -120,7 +122,7 @@ const previousDate = (value: string): string => {
   return date.toISOString().slice(0, 10);
 };
 
-export const processNextIntegracionEvent = async (workerId: string, tenant?: TenantAccessContext): Promise<IntegracionEventRow | null> => {
+const processNextIntegracionEventObservation = async (workerId: string, tenant?: TenantAccessContext): Promise<IntegracionEventRow | null> => {
   await assertIntegracionOutboxSchema();
   const client = await dbPool.connect();
   try {
@@ -172,6 +174,50 @@ export const processNextIntegracionEvent = async (workerId: string, tenant?: Ten
     }
   } finally { client.release(); }
 };
+
+const processNextIntegracionEventSelective = async (workerId: string, tenant?: TenantAccessContext): Promise<IntegracionEventRow | null> => {
+  await assertIntegracionOutboxSchema();
+  const claimClient = await dbPool.connect(); let event: IntegracionEventRow | null = null;
+  try { await claimClient.query('BEGIN'); event=await claimNextIntegracionEvent(workerId,claimClient); await claimClient.query('COMMIT'); }
+  catch(error){await claimClient.query('ROLLBACK');throw error;} finally{claimClient.release();}
+  if(!event) return null;
+  try {
+    const effectiveDate=normalizeEffectiveDate(event.effective_date);
+    if(!event.vinculacion_id || !event.contrato_id) throw new AppError('Evento sin vinculacion o contrato',422,'INTEGRACION_EVENT_CONTEXT_INVALID');
+    const periodResult=await dbPool.query<PeriodRow>(`SELECT id::text,contrato_id::text,fecha_inicio::text,fecha_fin::text,estado FROM nomina_periodos WHERE contrato_id=$1::bigint AND fecha_inicio <= $2::date AND fecha_fin >= $2::date ORDER BY fecha_inicio,id`,[event.contrato_id,effectiveDate]);
+    for(const period of periodResult.rows){
+      const client=await dbPool.connect();
+      try{
+        await client.query('BEGIN');
+        const context=await resolveContextoLaboralForClient({vinculacion_id:Number(event.vinculacion_id),contrato_id:Number(event.contrato_id),empresa_id:event.empresa_id?Number(event.empresa_id):undefined,fecha:effectiveDate},tenant,client);
+        const contextBefore=event.payload_before ?? null;
+        const open=period.estado==='ABIERTO';
+        const inserted=await client.query<{id:string;estado:string}>(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,requiere_recalculo,bloqueado_por_cierre,contexto_antes,contexto_despues,estado,version_esperada) VALUES($1,$2,$3,$4::date,$4::date,$5,$6,FALSE,$7,$8::jsonb,$9::jsonb,$10,$1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO UPDATE SET updated_at=NOW() RETURNING id::text,estado`,[event.id,period.id,event.vinculacion_id,effectiveDate,period.estado,open?'REQUIERE_SINCRONIZACION':'REQUIERE_AJUSTE_AUTORIZADO',!open,contextBefore?JSON.stringify(contextBefore):null,JSON.stringify(context),open?'PENDIENTE':'BLOQUEADO_CIERRE']);
+        const impact=inserted.rows[0];
+        await client.query('COMMIT');
+        if(open && impact?.estado!=='APLICADO' && impact?.estado!=='SIN_CAMBIOS'){
+          const result=await nominaPoblacionService.syncSelective({periodoId:period.id,vinculacionId:String(event.vinculacion_id),effectiveDate,eventType:event.event_type,actorUserId:'0',context:context as unknown as Record<string,unknown>,retirementDate:typeof event.payload_after?.fecha_fin==='string'?event.payload_after.fecha_fin:null});
+          await client.query('BEGIN');
+          await client.query(`UPDATE integracion_evento_impactos SET estado=$2,applied_at=CASE WHEN $2 IN ('APLICADO','SIN_CAMBIOS') THEN NOW() ELSE applied_at END,attempts=attempts+1,updated_at=NOW() WHERE id=$1::bigint AND version_esperada=$3::bigint`,[impact?.id,result.status,event.id]);
+          await client.query('COMMIT');
+        } else if(open && impact?.estado==='APLICADO') {
+          await client.query('BEGIN');
+          await client.query(`UPDATE integracion_evento_impactos SET estado='SIN_CAMBIOS',attempts=attempts+1,updated_at=NOW() WHERE id=$1::bigint AND version_esperada=$2::bigint`,[impact.id,event.id]);
+          await client.query('COMMIT');
+        }
+      }catch(error){await client.query('ROLLBACK'); const code=error instanceof AppError?error.code:'INTEGRACION_IMPACTO_ERROR'; const message=String(error instanceof Error?error.message:error).replace(/[\r\n\t]/g,' ').slice(0,500); await dbPool.query(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,bloqueado_por_cierre,estado,version_esperada,last_error_code,last_error_message,attempts) VALUES($1,$2,$3,$4::date,$4::date,$5,'REQUIERE_SINCRONIZACION',FALSE,'ERROR',$1,$6,$7,1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO UPDATE SET estado='ERROR',attempts=integracion_evento_impactos.attempts+1,last_error_code=EXCLUDED.last_error_code,last_error_message=EXCLUDED.last_error_message,updated_at=NOW()`,[event.id,period.id,event.vinculacion_id,effectiveDate,period.estado,code,message]); throw error;} finally{client.release();}
+    }
+    if(periodResult.rows.length===0){
+      await dbPool.query(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,requiere_recalculo,bloqueado_por_cierre,estado,version_esperada) VALUES($1,NULL,$2,$3::date,$3::date,'SIN_INTERSECCION','SIN_IMPACTO',FALSE,FALSE,'SIN_CAMBIOS',$1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO NOTHING`,[event.id,event.vinculacion_id,effectiveDate]);
+    }
+    await dbPool.query(`INSERT INTO auditoria_eventos(empresa_id,contrato_id,modulo,entidad,entidad_id,accion,descripcion,datos_anteriores,datos_nuevos) VALUES($1,$2,'INTEGRACION','integracion_eventos',$3,'PROCESS','Evento sincronizado selectivamente',$4::jsonb,$5::jsonb)`,[event.empresa_id,event.contrato_id,event.id,event.payload_before?JSON.stringify(event.payload_before):null,JSON.stringify({status:'PROCESADO',sync:true})]);
+    await dbPool.query(`UPDATE integracion_eventos SET status='PROCESADO',processed_at=NOW(),locked_at=NULL,locked_by=NULL,updated_at=NOW() WHERE id=$1`,[event.id]);
+    return {...event,status:'PROCESADO',processed_at:new Date().toISOString()};
+  } catch(error){const code=error instanceof AppError?error.code:'INTEGRACION_PROCESSING_ERROR';const message=String(error instanceof Error?error.message:error).replace(/[\r\n\t]/g,' ').slice(0,500);await dbPool.query(`UPDATE integracion_eventos SET status='ERROR',available_at=NOW()+($2::int*INTERVAL '1 minute'),locked_at=NULL,locked_by=NULL,last_error_code=$3,last_error_message=$4,updated_at=NOW() WHERE id=$1`,[event.id,nextBackoffMinutes(event.attempts),code,message]);return {...event,status:'ERROR',last_error_code:code,last_error_message:message};}
+};
+
+export const processNextIntegracionEvent = async (workerId: string, tenant?: TenantAccessContext): Promise<IntegracionEventRow | null> =>
+  env.INTEGRACION_SYNC_ENABLED ? processNextIntegracionEventSelective(workerId,tenant) : processNextIntegracionEventObservation(workerId,tenant);
 
 export const listIntegracionEvents = async (filters: Record<string, unknown>, tenant?: TenantAccessContext) => {
   const params: unknown[] = []; const where: string[] = ['TRUE'];

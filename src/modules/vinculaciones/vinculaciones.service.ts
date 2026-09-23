@@ -3591,6 +3591,14 @@ export const createVinculacion = async (
       }
     });
 
+    await publicarEventoOutbox(client, {
+      event_type: 'VINCULACION_CREADA', aggregate_type: 'vinculacion', aggregate_id: createdVinculacion.id,
+      empresa_id: createdVinculacion.empresa_id, contrato_id: createdVinculacion.contrato_id,
+      persona_id: createdVinculacion.persona_id, vinculacion_id: createdVinculacion.id,
+      effective_date: createdVinculacion.fecha_inicio,
+      after: { estado_vinculacion: createdVinculacion.estado_vinculacion, fecha_inicio: createdVinculacion.fecha_inicio, fecha_fin: createdVinculacion.fecha_fin, contrato_cargo_id: createdVinculacion.contrato_cargo_id, cotiza_pension: createdVinculacion.cotiza_pension }
+    });
+
     await client.query('COMMIT');
     return createdVinculacion;
   } catch (error) {
