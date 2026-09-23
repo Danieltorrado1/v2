@@ -19,6 +19,7 @@ import {
   getOpsCatalogosHandler,
   getOpsVinculacionesHandler,
   getVinculacionExpedienteHandler,
+  getActividadLaboralHandler,
   getVinculacion,
   getVinculaciones,
   getVinculacionesByPersona,
@@ -77,6 +78,7 @@ vinculacionesRoutes.get(
   requirePermissions('vinculaciones.read'),
   getVinculacionExpedienteHandler
 );
+vinculacionesRoutes.get('/:id/actividad-laboral', requirePermissions('vinculaciones.read'), getActividadLaboralHandler);
 vinculacionesRoutes.get(
   '/:id/contexto-personal',
   requirePermissions('vinculaciones.read'),

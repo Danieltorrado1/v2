@@ -10,7 +10,10 @@ import { nominaPoblacionService } from '../nomina/application/nomina-poblacion.s
 
 export const INTEGRACION_EVENT_TYPES = [
   'VINCULACION_CREADA', 'VINCULACION_ACTUALIZADA', 'VINCULACION_RETIRADA',
-  'ASIGNACION_OPERATIVA_CAMBIADA', 'CONDICION_PENSION_CAMBIADA'
+  'ASIGNACION_OPERATIVA_CAMBIADA', 'CONDICION_PENSION_CAMBIADA',
+  'ASISTENCIA_CAMBIADA', 'NOVEDAD_CREADA', 'NOVEDAD_ACTUALIZADA', 'NOVEDAD_DESACTIVADA',
+  'TURNO_CREADO', 'TURNO_ACTUALIZADO', 'TURNO_DESACTIVADO',
+  'LIQUIDACION_RECALCULADA', 'LIQUIDACION_FINALIZADA'
 ] as const;
 export type IntegracionEventType = typeof INTEGRACION_EVENT_TYPES[number];
 export type IntegracionEventStatus = 'PENDIENTE' | 'PROCESANDO' | 'PROCESADO' | 'ERROR';
@@ -41,7 +44,7 @@ export interface IntegracionEventRow extends QueryResultRow {
 
 const stablePayload = (payload: Record<string, unknown> | null | undefined): Record<string, unknown> | null => {
   if (!payload) return null;
-  const allowed = ['estado_vinculacion', 'fecha_inicio', 'fecha_fin', 'contrato_cargo_id', 'cotiza_pension', 'tipo_condicion', 'vigencia_desde', 'vigencia_hasta', 'asignacion_id', 'fecha_inicio_efectiva', 'fecha_fin_efectiva'];
+  const allowed = ['estado_vinculacion', 'fecha_inicio', 'fecha_fin', 'contrato_cargo_id', 'cotiza_pension', 'tipo_condicion', 'vigencia_desde', 'vigencia_hasta', 'asignacion_id', 'fecha_inicio_efectiva', 'fecha_fin_efectiva', 'operacion_id', 'dias_afectados', 'fecha_desde', 'fecha_hasta', 'cantidad', 'origen'];
   return Object.fromEntries(Object.entries(payload).filter(([key]) => allowed.includes(key)));
 };
 
@@ -195,7 +198,12 @@ const processNextIntegracionEventSelective = async (workerId: string, tenant?: T
         const inserted=await client.query<{id:string;estado:string}>(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,requiere_recalculo,bloqueado_por_cierre,contexto_antes,contexto_despues,estado,version_esperada) VALUES($1,$2,$3,$4::date,$4::date,$5,$6,FALSE,$7,$8::jsonb,$9::jsonb,$10,$1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO UPDATE SET updated_at=NOW() RETURNING id::text,estado`,[event.id,period.id,event.vinculacion_id,effectiveDate,period.estado,open?'REQUIERE_SINCRONIZACION':'REQUIERE_AJUSTE_AUTORIZADO',!open,contextBefore?JSON.stringify(contextBefore):null,JSON.stringify(context),open?'PENDIENTE':'BLOQUEADO_CIERRE']);
         const impact=inserted.rows[0];
         await client.query('COMMIT');
-        if(open && impact?.estado!=='APLICADO' && impact?.estado!=='SIN_CAMBIOS'){
+        const reverseTraceabilityEvent = ['ASISTENCIA_CAMBIADA','NOVEDAD_CREADA','NOVEDAD_ACTUALIZADA','NOVEDAD_DESACTIVADA','TURNO_CREADO','TURNO_ACTUALIZADO','TURNO_DESACTIVADO','LIQUIDACION_RECALCULADA','LIQUIDACION_FINALIZADA'].includes(event.event_type);
+        if(reverseTraceabilityEvent){
+          await client.query('BEGIN');
+          await client.query(`UPDATE integracion_evento_impactos SET estado='SIN_CAMBIOS',accion_requerida='TRAZABILIDAD_PERSONAL',attempts=attempts+1,applied_at=NOW(),updated_at=NOW() WHERE id=$1::bigint AND version_esperada=$2::bigint`,[impact?.id,event.id]);
+          await client.query('COMMIT');
+        } else if(open && impact?.estado!=='APLICADO' && impact?.estado!=='SIN_CAMBIOS'){
           const result=await nominaPoblacionService.syncSelective({periodoId:period.id,vinculacionId:String(event.vinculacion_id),effectiveDate,eventType:event.event_type,actorUserId:'0',context:context as unknown as Record<string,unknown>,retirementDate:typeof event.payload_after?.fecha_fin==='string'?event.payload_after.fecha_fin:null});
           await client.query('BEGIN');
           await client.query(`UPDATE integracion_evento_impactos SET estado=$2,applied_at=CASE WHEN $2 IN ('APLICADO','SIN_CAMBIOS') THEN NOW() ELSE applied_at END,attempts=attempts+1,updated_at=NOW() WHERE id=$1::bigint AND version_esperada=$3::bigint`,[impact?.id,result.status,event.id]);
@@ -218,6 +226,14 @@ const processNextIntegracionEventSelective = async (workerId: string, tenant?: T
 
 export const processNextIntegracionEvent = async (workerId: string, tenant?: TenantAccessContext): Promise<IntegracionEventRow | null> =>
   env.INTEGRACION_SYNC_ENABLED ? processNextIntegracionEventSelective(workerId,tenant) : processNextIntegracionEventObservation(workerId,tenant);
+
+export const registrarEventoActividadLaboral = async (
+  client: PoolClient,
+  input: Omit<PublicarEventoInput, 'event_type'> & { event_type: Exclude<IntegracionEventType, 'VINCULACION_CREADA' | 'VINCULACION_ACTUALIZADA' | 'VINCULACION_RETIRADA' | 'ASIGNACION_OPERATIVA_CAMBIADA' | 'CONDICION_PENSION_CAMBIADA'>; resumen?: Record<string, unknown> }
+): Promise<string> => publicarEventoOutbox(client, {
+  ...input,
+  after: { ...(input.after ?? {}), ...(input.resumen ?? {}) }
+});
 
 export const listIntegracionEvents = async (filters: Record<string, unknown>, tenant?: TenantAccessContext) => {
   const params: unknown[] = []; const where: string[] = ['TRUE'];

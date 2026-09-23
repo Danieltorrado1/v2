@@ -24,7 +24,9 @@ import {
   updateVinculacionSchema,
   vinculacionIdParamSchema,
   vinculacionPersonaParamSchema
+  ,actividadLaboralQuerySchema
 } from './vinculaciones.schemas';
+import { canReadActividadEconomica, getActividadLaboral } from './actividad-laboral.service';
 import {
   closeGestorMunicipioAssignment,
   closeGestorPersonalAssignment,
@@ -323,6 +325,13 @@ export const getVinculacionExpedienteHandler = asyncHandler(async (req: Request,
     message: 'Vinculacion expediente retrieved successfully',
     data: expediente
   });
+});
+
+export const getActividadLaboralHandler = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = vinculacionIdParamSchema.parse(req.params) as { id: number };
+  const query = actividadLaboralQuerySchema.parse(req.query);
+  const data = await getActividadLaboral(id, { ...query, includeEconomic: canReadActividadEconomica(req.user?.permissions ?? []) }, req.tenant);
+  return successResponse(res, { message: 'Actividad laboral retrieved successfully', data });
 });
 
 export const getVinculacionesByPersona = asyncHandler(async (req: Request, res: Response) => {

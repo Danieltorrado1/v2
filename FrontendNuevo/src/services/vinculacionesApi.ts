@@ -23,6 +23,7 @@ import type {
   ReactivarVinculacionPayload,
 } from '../types/vinculaciones.types';
 import { emitPersonalInvalidation } from '../events/personalInvalidation';
+import type { ActividadLaboralResponse } from '../types/actividadLaboral.types';
 
 function toParams(f: VinculacionFilters): Record<string, string | number | boolean | undefined> {
   const p: Record<string, string | number | boolean | undefined> = {};
@@ -220,6 +221,11 @@ export async function getVinculacionExpediente(id: number): Promise<VinculacionE
   const res = await apiClient.get<ApiResponse<VinculacionExpedienteApi>>(
     `/vinculaciones/${id}/expediente`
   );
+  return res.data;
+}
+
+export async function getActividadLaboral(id: number, params: { contrato_id?: number; page?: number; limit?: number } = {}, signal?: AbortSignal): Promise<ActividadLaboralResponse> {
+  const res = await apiClient.get<ApiResponse<ActividadLaboralResponse>>(`/vinculaciones/${id}/actividad-laboral`, { params, signal });
   return res.data;
 }
 
