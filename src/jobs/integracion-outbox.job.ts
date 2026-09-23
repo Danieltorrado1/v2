@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 
 import { env } from '../config/env';
-import { assertIntegracionOutboxSchema, processNextIntegracionEvent } from '../modules/integracion/integracion.service';
+import { assertIntegracionOutboxSchema, integracionRecalcState, processNextIntegracionEvent } from '../modules/integracion/integracion.service';
 
 const BATCH_SIZE = 10;
 let timer: NodeJS.Timeout | undefined;
@@ -12,14 +12,15 @@ let lastError: string | null = null;
 let processed = 0;
 const workerId = `integracion-${process.pid}-${crypto.randomUUID()}`;
 
-export const getIntegracionWorkerHealth = (): { enabled: boolean; running: boolean; stopping: boolean; worker_id: string; last_run_at: string | null; last_error: string | null; processed: number; schema?: 'ok' | 'disabled' } => ({
+export const getIntegracionWorkerHealth = (): { enabled: boolean; running: boolean; stopping: boolean; worker_id: string; last_run_at: string | null; last_error: string | null; processed: number; schema?: 'ok' | 'disabled'; recalc: ReturnType<typeof integracionRecalcState> } => ({
   enabled: env.INTEGRACION_OUTBOX_ENABLED,
   running,
   stopping,
   worker_id: workerId,
   last_run_at: lastRunAt,
   last_error: lastError,
-  processed
+  processed,
+  recalc: integracionRecalcState()
 });
 
 export const runIntegracionWorkerCycle = async (): Promise<number> => {

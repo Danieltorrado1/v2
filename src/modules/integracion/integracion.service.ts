@@ -3,10 +3,13 @@ import type { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool } from '../../config/db';
 import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
+import { assertTenantAccessForVinculacionId } from '../../middlewares/tenantMiddleware';
 import { AppError } from '../../utils/AppError';
 import { env } from '../../config/env';
 import { resolveContextoLaboralForClient } from './contexto-laboral.service';
 import { nominaPoblacionService } from '../nomina/application/nomina-poblacion.service';
+import { resolveIntegracionFlagState } from './integracion.flags';
+export { resolveIntegracionFlagState } from './integracion.flags';
 
 export const INTEGRACION_EVENT_TYPES = [
   'VINCULACION_CREADA', 'VINCULACION_ACTUALIZADA', 'VINCULACION_RETIRADA',
@@ -44,7 +47,7 @@ export interface IntegracionEventRow extends QueryResultRow {
 
 const stablePayload = (payload: Record<string, unknown> | null | undefined): Record<string, unknown> | null => {
   if (!payload) return null;
-  const allowed = ['estado_vinculacion', 'fecha_inicio', 'fecha_fin', 'contrato_cargo_id', 'cotiza_pension', 'tipo_condicion', 'vigencia_desde', 'vigencia_hasta', 'asignacion_id', 'fecha_inicio_efectiva', 'fecha_fin_efectiva', 'operacion_id', 'dias_afectados', 'fecha_desde', 'fecha_hasta', 'cantidad', 'origen'];
+  const allowed = ['estado_vinculacion', 'fecha_inicio', 'fecha_fin', 'contrato_cargo_id', 'cotiza_pension', 'tipo_condicion', 'vigencia_desde', 'vigencia_hasta', 'asignacion_id', 'fecha_inicio_efectiva', 'fecha_fin_efectiva', 'operacion_id', 'dias_afectados', 'fecha_desde', 'fecha_hasta', 'cantidad', 'origen', 'source_event_id', 'version', 'componentes_afectados'];
   return Object.fromEntries(Object.entries(payload).filter(([key]) => allowed.includes(key)));
 };
 
@@ -76,13 +79,14 @@ export const publicarEventoOutbox = async (client: PoolClient, input: PublicarEv
 
 export const assertIntegracionOutboxSchema = async (executor: Pick<PoolClient, 'query'> | typeof dbPool = dbPool): Promise<void> => {
   if (!env.INTEGRACION_OUTBOX_ENABLED) return;
-  const result = await executor.query<{ eventos: string | null; impactos: string | null; sync_estado: string | null }>(
+  const result = await executor.query<{ eventos: string | null; impactos: string | null; sync_estado: string | null; recalc_estado: string | null }>(
     `SELECT to_regclass('public.integracion_eventos')::text eventos,
             to_regclass('public.integracion_evento_impactos')::text impactos,
-            (SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='integracion_evento_impactos' AND column_name='estado') sync_estado`
+            (SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='integracion_evento_impactos' AND column_name='estado') sync_estado,
+            (SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='integracion_evento_impactos' AND column_name='recalc_estado') recalc_estado`
   );
   const row = result.rows[0];
-  if (!row?.eventos || !row.impactos || (env.INTEGRACION_SYNC_ENABLED && !row.sync_estado)) {
+  if (!row?.eventos || !row.impactos || (env.INTEGRACION_SYNC_ENABLED && !row.sync_estado) || (integracionRecalcState().active && !row.recalc_estado)) {
     throw new AppError('La integración Outbox está habilitada pero su esquema no está instalado.', 503, 'INTEGRACION_OUTBOX_SCHEMA_UNAVAILABLE');
   }
 };
@@ -92,6 +96,8 @@ interface ImpactRow extends QueryResultRow { id: string; evento_id: string; peri
 
 const MAX_ATTEMPTS = env.INTEGRACION_MAX_ATTEMPTS;
 const LOCK_TIMEOUT_MINUTES = env.INTEGRACION_LOCK_TIMEOUT_MINUTES;
+const traceabilityEventTypes = ['ASISTENCIA_CAMBIADA', 'NOVEDAD_CREADA', 'NOVEDAD_ACTUALIZADA', 'NOVEDAD_DESACTIVADA', 'TURNO_CREADO', 'TURNO_ACTUALIZADO', 'TURNO_DESACTIVADO', 'LIQUIDACION_RECALCULADA', 'LIQUIDACION_FINALIZADA'];
+const traceabilityEventSql = traceabilityEventTypes.map((_, index) => `$${index + 4}`).join(',');
 
 export const claimNextIntegracionEvent = async (workerId: string, client: PoolClient): Promise<IntegracionEventRow | null> => {
   const result = await client.query<IntegracionEventRow>(`
@@ -106,6 +112,7 @@ export const claimNextIntegracionEvent = async (workerId: string, client: PoolCl
         SELECT 1 FROM integracion_eventos prior
         WHERE prior.aggregate_type=e.aggregate_type AND prior.aggregate_id=e.aggregate_id
           AND prior.id < e.id AND prior.status <> 'PROCESADO'
+          AND prior.event_type NOT IN (${traceabilityEventSql})
       )
       ORDER BY e.id
       FOR UPDATE SKIP LOCKED LIMIT 1
@@ -113,7 +120,7 @@ export const claimNextIntegracionEvent = async (workerId: string, client: PoolCl
     UPDATE integracion_eventos e
     SET status='PROCESANDO', attempts=e.attempts+1, locked_at=NOW(), locked_by=$3, updated_at=NOW(), last_error_code=NULL, last_error_message=NULL
     FROM candidate c WHERE e.id=c.id RETURNING e.*
-  `, [LOCK_TIMEOUT_MINUTES, MAX_ATTEMPTS, workerId]);
+  `, [LOCK_TIMEOUT_MINUTES, MAX_ATTEMPTS, workerId, ...traceabilityEventTypes]);
   return result.rows[0] ?? null;
 };
 
@@ -123,6 +130,109 @@ const previousDate = (value: string): string => {
   const date = new Date(`${value}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() - 1);
   return date.toISOString().slice(0, 10);
+};
+
+export const integracionRecalcState = (): { requested: boolean; active: boolean; reason: 'ACTIVE' | 'DISABLED' | 'DEPENDENCIES_REQUIRED' } => {
+  const state = resolveIntegracionFlagState({ outbox: env.INTEGRACION_OUTBOX_ENABLED, sync: env.INTEGRACION_SYNC_ENABLED, recalc: env.INTEGRACION_RECALC_ENABLED });
+  if (!state.recalc) return { requested: env.INTEGRACION_RECALC_ENABLED, active: false, reason: state.recalc_reason };
+  return { requested: true, active: true, reason: 'ACTIVE' };
+};
+
+const recalcEventTypes = new Set(['VINCULACION_CREADA', 'VINCULACION_ACTUALIZADA', 'VINCULACION_RETIRADA', 'ASIGNACION_OPERATIVA_CAMBIADA', 'CONDICION_PENSION_CAMBIADA', 'ASISTENCIA_CAMBIADA', 'NOVEDAD_CREADA', 'NOVEDAD_ACTUALIZADA', 'NOVEDAD_DESACTIVADA', 'TURNO_CREADO', 'TURNO_ACTUALIZADO', 'TURNO_DESACTIVADO']);
+
+const financialSnapshot = async (periodoId: string, vinculacionId: string): Promise<Record<string, unknown>> => {
+  const employee = await dbPool.query(`
+    SELECT ne.id::text AS nomina_empleado_id, ne.salario_base, ne.auxilio_transporte,
+           ne.dias_pagados, ne.devengado_basico, ne.devengado_transporte,
+           ne.total_adiciones, ne.total_deducciones, ne.neto_pagar,
+           ne.salud, ne.pension
+    FROM nomina_empleados ne
+    WHERE ne.periodo_id=$1::bigint AND ne.vinculacion_id=$2::bigint
+    ORDER BY ne.id LIMIT 1`, [periodoId, vinculacionId]);
+  const liquidation = await dbPool.query(`
+    SELECT id::text, estado, requiere_recalculo, total_liquidacion,
+           deducciones
+    FROM nomina_liquidaciones
+    WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint
+    ORDER BY id DESC LIMIT 1`, [periodoId, vinculacionId]);
+  return { empleado: employee.rows[0] ?? null, liquidacion: liquidation.rows[0] ?? null };
+};
+
+const recalcSelectiveImpact = async (event: IntegracionEventRow, period: PeriodRow, impactId: string, tenant?: TenantAccessContext): Promise<void> => {
+  const state = integracionRecalcState();
+  if (!state.active || !recalcEventTypes.has(event.event_type)) return;
+  if (!event.vinculacion_id || !event.contrato_id) throw new AppError('Recálculo sin vinculación o contrato', 422, 'INTEGRACION_RECALC_CONTEXT_INVALID');
+  await assertTenantAccessForVinculacionId(tenant, Number(event.vinculacion_id));
+
+  const client = await dbPool.connect();
+  let employeeId: string | null = null;
+  try {
+    await client.query('BEGIN');
+    await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1, 55055))`, [`${event.vinculacion_id}:${period.id}`]);
+    const scope = await client.query<{ contrato_id: string; empresa_id: string }>(
+      `SELECT v.contrato_id::text, c.empresa_id::text FROM vinculaciones v JOIN contratos c ON c.id=v.contrato_id WHERE v.id=$1::bigint`, [event.vinculacion_id]);
+    if (!scope.rows[0] || scope.rows[0].contrato_id !== String(event.contrato_id) || (event.empresa_id && scope.rows[0].empresa_id !== String(event.empresa_id))) {
+      throw new AppError('El contexto del recálculo no coincide con el evento', 409, 'INTEGRACION_RECALC_SCOPE_MISMATCH');
+    }
+    const newer = await client.query<{ exists: boolean }>(`SELECT EXISTS(
+      SELECT 1 FROM integracion_eventos newer
+      WHERE newer.aggregate_type=$1 AND newer.aggregate_id=$2 AND newer.id>$3::bigint
+        AND newer.event_type = ANY($4::text[]) AND newer.status IN ('PENDIENTE','PROCESANDO')
+    ) exists`, [event.aggregate_type, event.aggregate_id, event.id, Array.from(recalcEventTypes)]);
+    if (newer.rows[0]?.exists) {
+      await client.query(`UPDATE integracion_evento_impactos SET recalc_estado='VERSION_DESACTUALIZADA',recalc_version_esperada=$2::bigint,recalc_completed_at=NOW(),updated_at=NOW() WHERE id=$1::bigint`, [impactId, event.id]);
+      await client.query('COMMIT');
+      return;
+    }
+    const periodState = await client.query<{ estado: string; finalized: boolean }>(`SELECT np.estado, COALESCE(bool_or(UPPER(COALESCE(nl.estado,'')) IN ('FINALIZADA','FINALIZADO')),FALSE) finalized FROM nomina_periodos np LEFT JOIN nomina_liquidaciones nl ON nl.periodo_id=np.id AND nl.vinculacion_id=$2::bigint WHERE np.id=$1::bigint GROUP BY np.id,np.estado`, [period.id, event.vinculacion_id]);
+    if (periodState.rows[0]?.finalized) {
+      await client.query(`UPDATE integracion_evento_impactos SET recalc_estado='BLOQUEADA_FINALIZADA',recalc_version_esperada=$2::bigint,recalc_completed_at=NOW(),updated_at=NOW() WHERE id=$1::bigint`, [impactId, event.id]);
+      await client.query('COMMIT');
+      return;
+    }
+    if (periodState.rows[0]?.estado !== 'ABIERTO') {
+      await client.query(`UPDATE integracion_evento_impactos SET recalc_estado='BLOQUEADA_CIERRE',recalc_version_esperada=$2::bigint,recalc_completed_at=NOW(),updated_at=NOW() WHERE id=$1::bigint`, [impactId, event.id]);
+      await client.query('COMMIT');
+      return;
+    }
+    const current = await client.query<{ recalc_estado: string; recalc_attempts: number }>(`SELECT recalc_estado,recalc_attempts FROM integracion_evento_impactos WHERE id=$1::bigint FOR UPDATE`, [impactId]);
+    const row = current.rows[0];
+    const version = await client.query<{ recalc_version_esperada: string | null }>(`SELECT recalc_version_esperada::text FROM integracion_evento_impactos WHERE id=$1::bigint`, [impactId]);
+    if (row && ['RECALCULADA','SIN_CAMBIOS'].includes(row.recalc_estado) && version.rows[0]?.recalc_version_esperada === String(event.id)) { await client.query('COMMIT'); return; }
+    if ((row?.recalc_attempts ?? 0) >= env.INTEGRACION_MAX_ATTEMPTS) throw new AppError('Máximo de intentos de recálculo alcanzado', 409, 'INTEGRACION_RECALC_MAX_ATTEMPTS');
+    const employee = await client.query<{ id: string }>(`SELECT id::text FROM nomina_empleados WHERE periodo_id=$1::bigint AND vinculacion_id=$2::bigint ORDER BY id LIMIT 1`, [period.id, event.vinculacion_id]);
+    employeeId = employee.rows[0]?.id ?? null;
+    if (!employeeId) {
+      await client.query(`UPDATE integracion_evento_impactos SET recalc_estado='SIN_CAMBIOS',recalc_version_esperada=$2::bigint,recalc_attempts=recalc_attempts+1,recalc_completed_at=NOW(),updated_at=NOW() WHERE id=$1::bigint`, [impactId, event.id]);
+      await client.query('COMMIT');
+      return;
+    }
+    await client.query(`UPDATE integracion_evento_impactos SET recalc_estado='PROCESANDO',recalc_version_esperada=$2::bigint,recalc_attempts=recalc_attempts+1,recalc_started_at=NOW(),updated_at=NOW() WHERE id=$1::bigint`, [impactId, event.id]);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally { client.release(); }
+
+  let before: Record<string, unknown>;
+  try {
+    before = await financialSnapshot(period.id, event.vinculacion_id);
+    const { recalculateNominaPeriodo } = await import('../nomina/nomina.service.js');
+    await recalculateNominaPeriodo(period.id, { force: true, nomina_empleado_id: employeeId! }, '0', tenant);
+    const after = await financialSnapshot(period.id, event.vinculacion_id);
+    const audit = await dbPool.connect();
+    try {
+      await audit.query('BEGIN');
+      await audit.query(`UPDATE integracion_evento_impactos SET recalc_estado='RECALCULADA',recalc_completed_at=NOW(),recalc_before=$2::jsonb,recalc_after=$3::jsonb,recalc_last_error_code=NULL,recalc_last_error_message=NULL,updated_at=NOW() WHERE id=$1::bigint`, [impactId, JSON.stringify(before), JSON.stringify(after)]);
+      await audit.query(`INSERT INTO auditoria_eventos(empresa_id,contrato_id,modulo,entidad,entidad_id,accion,descripcion,datos_anteriores,datos_nuevos) VALUES($1,$2,'INTEGRACION','integracion_evento_impactos',$3,'RECALC','Recálculo selectivo canónico aplicado',$4::jsonb,$5::jsonb)`, [event.empresa_id, event.contrato_id, impactId, JSON.stringify(before), JSON.stringify(after)]);
+      await registrarEventoActividadLaboral(audit, { event_type: 'LIQUIDACION_RECALCULADA', aggregate_type: 'vinculacion', aggregate_id: event.vinculacion_id, empresa_id: Number(event.empresa_id), contrato_id: Number(event.contrato_id), persona_id: event.persona_id ? Number(event.persona_id) : null, vinculacion_id: Number(event.vinculacion_id), effective_date: normalizeEffectiveDate(event.effective_date), periodo_id: Number(period.id), idempotency_key: `integracion-recalc:${event.id}:${event.vinculacion_id}:${period.id}`, resumen: { source_event_id: event.id, version: event.id, componentes_afectados: event.event_type } });
+      await audit.query('COMMIT');
+    } catch (error) { await audit.query('ROLLBACK').catch(() => undefined); throw error; } finally { audit.release(); }
+  } catch (error) {
+    const failed = await dbPool.connect();
+    try { await failed.query(`UPDATE integracion_evento_impactos SET recalc_estado='ERROR',recalc_last_error_code=$2,recalc_last_error_message=$3,recalc_completed_at=NOW(),updated_at=NOW() WHERE id=$1::bigint`, [impactId, error instanceof AppError ? error.code : 'INTEGRACION_RECALC_ERROR', String(error instanceof Error ? error.message : error).slice(0, 500)]); } finally { failed.release(); }
+    throw error;
+  }
 };
 
 const processNextIntegracionEventObservation = async (workerId: string, tenant?: TenantAccessContext): Promise<IntegracionEventRow | null> => {
@@ -195,10 +305,11 @@ const processNextIntegracionEventSelective = async (workerId: string, tenant?: T
         const context=await resolveContextoLaboralForClient({vinculacion_id:Number(event.vinculacion_id),contrato_id:Number(event.contrato_id),empresa_id:event.empresa_id?Number(event.empresa_id):undefined,fecha:effectiveDate},tenant,client);
         const contextBefore=event.payload_before ?? null;
         const open=period.estado==='ABIERTO';
-        const inserted=await client.query<{id:string;estado:string}>(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,requiere_recalculo,bloqueado_por_cierre,contexto_antes,contexto_despues,estado,version_esperada) VALUES($1,$2,$3,$4::date,$4::date,$5,$6,FALSE,$7,$8::jsonb,$9::jsonb,$10,$1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO UPDATE SET updated_at=NOW() RETURNING id::text,estado`,[event.id,period.id,event.vinculacion_id,effectiveDate,period.estado,open?'REQUIERE_SINCRONIZACION':'REQUIERE_AJUSTE_AUTORIZADO',!open,contextBefore?JSON.stringify(contextBefore):null,JSON.stringify(context),open?'PENDIENTE':'BLOQUEADO_CIERRE']);
+        const inserted=await client.query<{id:string;estado:string}>(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,requiere_recalculo,bloqueado_por_cierre,contexto_antes,contexto_despues,estado,version_esperada) VALUES($1,$2,$3,$4::date,$4::date,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,$1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO UPDATE SET updated_at=NOW() RETURNING id::text,estado`,[event.id,period.id,event.vinculacion_id,effectiveDate,period.estado,open?'REQUIERE_SINCRONIZACION':'REQUIERE_AJUSTE_AUTORIZADO',integracionRecalcState().active && recalcEventTypes.has(event.event_type),!open,contextBefore?JSON.stringify(contextBefore):null,JSON.stringify(context),open?'PENDIENTE':'BLOQUEADO_CIERRE']);
         const impact=inserted.rows[0];
         await client.query('COMMIT');
         const reverseTraceabilityEvent = ['ASISTENCIA_CAMBIADA','NOVEDAD_CREADA','NOVEDAD_ACTUALIZADA','NOVEDAD_DESACTIVADA','TURNO_CREADO','TURNO_ACTUALIZADO','TURNO_DESACTIVADO','LIQUIDACION_RECALCULADA','LIQUIDACION_FINALIZADA'].includes(event.event_type);
+        let syncApplied = false;
         if(reverseTraceabilityEvent){
           await client.query('BEGIN');
           await client.query(`UPDATE integracion_evento_impactos SET estado='SIN_CAMBIOS',accion_requerida='TRAZABILIDAD_PERSONAL',attempts=attempts+1,applied_at=NOW(),updated_at=NOW() WHERE id=$1::bigint AND version_esperada=$2::bigint`,[impact?.id,event.id]);
@@ -208,11 +319,13 @@ const processNextIntegracionEventSelective = async (workerId: string, tenant?: T
           await client.query('BEGIN');
           await client.query(`UPDATE integracion_evento_impactos SET estado=$2,applied_at=CASE WHEN $2 IN ('APLICADO','SIN_CAMBIOS') THEN NOW() ELSE applied_at END,attempts=attempts+1,updated_at=NOW() WHERE id=$1::bigint AND version_esperada=$3::bigint`,[impact?.id,result.status,event.id]);
           await client.query('COMMIT');
+          syncApplied = result.status === 'APLICADO' || result.status === 'SIN_CAMBIOS';
         } else if(open && impact?.estado==='APLICADO') {
           await client.query('BEGIN');
           await client.query(`UPDATE integracion_evento_impactos SET estado='SIN_CAMBIOS',attempts=attempts+1,updated_at=NOW() WHERE id=$1::bigint AND version_esperada=$2::bigint`,[impact.id,event.id]);
           await client.query('COMMIT');
         }
+        if (impact?.id && integracionRecalcState().active && recalcEventTypes.has(event.event_type) && (syncApplied || reverseTraceabilityEvent || !open)) await recalcSelectiveImpact(event, period, impact.id, tenant);
       }catch(error){await client.query('ROLLBACK'); const code=error instanceof AppError?error.code:'INTEGRACION_IMPACTO_ERROR'; const message=String(error instanceof Error?error.message:error).replace(/[\r\n\t]/g,' ').slice(0,500); await dbPool.query(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,bloqueado_por_cierre,estado,version_esperada,last_error_code,last_error_message,attempts) VALUES($1,$2,$3,$4::date,$4::date,$5,'REQUIERE_SINCRONIZACION',FALSE,'ERROR',$1,$6,$7,1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO UPDATE SET estado='ERROR',attempts=integracion_evento_impactos.attempts+1,last_error_code=EXCLUDED.last_error_code,last_error_message=EXCLUDED.last_error_message,updated_at=NOW()`,[event.id,period.id,event.vinculacion_id,effectiveDate,period.estado,code,message]); throw error;} finally{client.release();}
     }
     if(periodResult.rows.length===0){
@@ -225,7 +338,7 @@ const processNextIntegracionEventSelective = async (workerId: string, tenant?: T
 };
 
 export const processNextIntegracionEvent = async (workerId: string, tenant?: TenantAccessContext): Promise<IntegracionEventRow | null> =>
-  env.INTEGRACION_SYNC_ENABLED ? processNextIntegracionEventSelective(workerId,tenant) : processNextIntegracionEventObservation(workerId,tenant);
+  !env.INTEGRACION_OUTBOX_ENABLED ? Promise.resolve(null) : env.INTEGRACION_SYNC_ENABLED ? processNextIntegracionEventSelective(workerId,tenant) : processNextIntegracionEventObservation(workerId,tenant);
 
 export const registrarEventoActividadLaboral = async (
   client: PoolClient,
