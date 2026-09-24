@@ -85,7 +85,6 @@ SET estado='SUPERSEDED', accion_requerida='SUPERSEDED', superseded_at=COALESCE(s
     superseded_reason=COALESCE(superseded_reason,'Periodo 6 atraviesa dos ciclos 26-25; superseded sin canon unico'),
     superseded_by_impact_id=NULL, updated_at=NOW()
 WHERE periodo_id=6;
-
 DO $$
 BEGIN
   IF (SELECT COUNT(*) FROM public.nomina_revision_operativa WHERE periodo_id=4) <> 47 THEN RAISE EXCEPTION 'RECONCILIACION_REVISIONES_MODIFICADAS'; END IF;
