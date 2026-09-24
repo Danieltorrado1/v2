@@ -41,12 +41,13 @@ import type { PersonaCuentaBancariaApi, PersonaHistorialCambioApi, PersonaApi, P
 import ChangeIdentificationModal from './ChangeIdentificationModal';
 import ExpedienteDocumentosPanel from './ExpedienteDocumentosPanel';
 import PersonalSstProfilePanel from './PersonalSstProfilePanel';
+import ActividadLaboralPanel from './ActividadLaboralPanel';
 import { useAuth } from '../../context/AuthContext';
 import { canReadPersonalHistory } from './personalHistoryAccess';
 import './PersonalMasterDrawer.css';
 import { generateExpedientePdf } from '../../services/expedienteApi';
 
-type MasterTab = 'personal' | 'academico' | 'familia' | 'sst' | 'laboral' | 'documentos' | 'historial';
+type MasterTab = 'personal' | 'academico' | 'familia' | 'sst' | 'laboral' | 'actividad' | 'documentos' | 'historial';
 
 type PersonalFormState = {
   primer_nombre: string;
@@ -117,6 +118,7 @@ const API_MAX_PAGE_SIZE = 100;
 const TAB_META: Array<{ id: MasterTab; label: string; icon: typeof UserCircle2 }> = [
   { id: 'personal', label: 'General', icon: UserCircle2 },
   { id: 'laboral', label: 'Laboral', icon: BriefcaseBusiness },
+  { id: 'actividad', label: 'Actividad laboral', icon: BriefcaseBusiness },
   { id: 'academico', label: 'Académico', icon: ClipboardList },
   { id: 'familia', label: 'Familia / Contactos', icon: UserCircle2 },
   { id: 'sst', label: 'SST', icon: ClipboardList },
@@ -1560,6 +1562,8 @@ export default function PersonalMasterDrawer({
             renderSstTab()
           ) : activeTab === 'laboral' ? (
             renderLaboralTab()
+          ) : activeTab === 'actividad' && activeExpediente ? (
+            <ActividadLaboralPanel vinculacionId={activeExpediente.vinculacion.id} contratoId={activeExpediente.vinculacion.contrato_id} permissions={permissions} />
           ) : activeTab === 'documentos' ? (
             renderDocumentosTab()
           ) : (

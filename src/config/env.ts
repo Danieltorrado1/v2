@@ -39,6 +39,13 @@ const envSchema = z.object({
   RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().min(1),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']),
   ENABLE_JOBS: booleanFromEnvSchema,
+  INTEGRACION_OUTBOX_ENABLED: booleanFromEnvSchema.default(false),
+  INTEGRACION_SYNC_ENABLED: booleanFromEnvSchema.default(false),
+  INTEGRACION_RECALC_ENABLED: booleanFromEnvSchema.default(false),
+  INTEGRACION_WORKER_INTERVAL_MS: z.coerce.number().int().min(250).max(300000).default(5000),
+  INTEGRACION_LOCK_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(1440).default(10),
+  INTEGRACION_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(5),
+  INTEGRACION_BACKOFF_MAX_MINUTES: z.coerce.number().int().min(1).max(1440).default(60),
   SUPABASE_URL: z.url('SUPABASE_URL must be a valid URL'),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
   SUPABASE_STORAGE_BUCKET: z.string().min(1, 'SUPABASE_STORAGE_BUCKET is required')

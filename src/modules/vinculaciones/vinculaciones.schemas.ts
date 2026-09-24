@@ -85,6 +85,12 @@ export const vinculacionIdParamSchema = z.object({
   id: z.coerce.number().int()
 });
 
+export const actividadLaboralQuerySchema = z.object({
+  contrato_id: z.coerce.number().int().positive().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10)
+});
+
 export const vinculacionPersonaParamSchema = z.object({
   persona_id: z.coerce.number().int()
 });

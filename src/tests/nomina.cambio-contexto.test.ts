@@ -46,6 +46,8 @@ test('catálogo y persistencia SQL del servicio existente de cambios', async t =
     '../../config/db': { dbPool: pool, dbQuery: query }, '../../utils/AppError': { AppError },
     '../../middlewares/tenantMiddleware': tenant,
     '../auditoria/auditoria.helper': { registerAuditEntry: async () => undefined },
+    '../integracion/integracion.service': { publicarEventoOutbox: async () => '1' },
+    '../cobertura/cobertura-asignacion.service': { persistCanonicalAssignmentVersion: async () => undefined },
     './nomina.operativa': { assertNominaEmpleadoEditable: ({ estado }: any) => { if (estado === 'CERRADO') throw new AppError('Cerrado', 409); }, invalidateNominaEmpleadoRevisionState: async () => undefined },
     './nomina.procesos': { assertNominaEmpleadoCoberturaScope: async (id: string) => { assert.equal(id, '20'); } },
     './nomina.tramos': tramos,

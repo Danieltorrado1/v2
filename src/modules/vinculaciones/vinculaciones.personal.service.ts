@@ -7,6 +7,8 @@ import {
 } from '../../middlewares/tenantMiddleware';
 import { AppError } from '../../utils/AppError';
 import { registerAuditEntry } from '../auditoria/auditoria.helper';
+import { publicarEventoOutbox } from '../integracion/integracion.service';
+import { persistCanonicalAssignmentVersion } from '../cobertura/cobertura-asignacion.service';
 import { buildContextualVinculacionChecklist } from '../documentos/documentos.checklist.service';
 import {
   buildLicitacionQuotaDelta,
@@ -634,8 +636,10 @@ export const replaceAsignacionOperativaPersonal = async (
       throw new AppError('La asignación histórica seleccionada no existe para esta vinculación',404,'ASIGNACION_OPERATIVA_NOT_FOUND');
     }
     if (input.tipo_cambio === 'CORRECCION_DIGITACION' && current.rows[0]) {
-      const corrected = await client.query<any>(`UPDATE cobertura_asignaciones SET focalizacion_final_id=$2::bigint, municipio_id=$3::bigint, institucion=$4, sede=$5, modalidad=$6, observacion=$7 WHERE id=$1::bigint RETURNING *`, [current.rows[0].id, focalizacionFinalId, f.municipio_id, f.institucion_final, f.sede_final, f.modalidad_final, input.observacion ?? input.motivo]);
+      await persistCanonicalAssignmentVersion(client, { contratoId: vinculacion.contrato_id, vinculacionId, fechaDesde, contexto: { cobertura_asignacion_id: current.rows[0].id, municipio_id: f.municipio_id, institucion_id: f.institucion_id, institucion: f.institucion_final, sede_id: f.sede_id, sede: f.sede_final, modalidad_id: f.modalidad_id, modalidad: f.modalidad_final }, actor: String(actorUserId), motivo: input.observacion ?? input.motivo });
+      const corrected = await client.query<any>('SELECT * FROM cobertura_asignaciones WHERE id=$1::bigint', [current.rows[0].id]);
       await registerAuditEntry({client,usuario_id:String(actorUserId),accion:'PERSONAL_ASIGNACION_OPERATIVA_CORRECTION',tabla:'cobertura_asignaciones',registro_id:String(current.rows[0].id),descripcion:input.motivo,before:current.rows[0],after:corrected.rows[0]});
+      await publicarEventoOutbox(client, { event_type: 'ASIGNACION_OPERATIVA_CAMBIADA', aggregate_type: 'vinculacion', aggregate_id: vinculacionId, empresa_id: Number(vinculacion.empresa_id), contrato_id: Number(vinculacion.contrato_id), persona_id: Number(vinculacion.persona_id), vinculacion_id: vinculacionId, effective_date: fechaDesde, before: { asignacion_id: current.rows[0].id, fecha_inicio_efectiva: current.rows[0].fecha_inicio, fecha_fin_efectiva: current.rows[0].fecha_fin }, after: { asignacion_id: corrected.rows[0].id, fecha_inicio_efectiva: corrected.rows[0].fecha_inicio, fecha_fin_efectiva: corrected.rows[0].fecha_fin } });
       await client.query('COMMIT'); return corrected.rows[0];
     }
     if(String(current.rows[0]?.focalizacion_final_id)===String(focalizacionFinalId)){await client.query('COMMIT');return current.rows[0];}
@@ -672,6 +676,7 @@ export const replaceAsignacionOperativaPersonal = async (
       );
     }
     await registerAuditEntry({client,usuario_id:String(actorUserId),accion:'PERSONAL_ASIGNACION_OPERATIVA_UPDATE',tabla:'cobertura_asignaciones',registro_id:String(inserted.rows[0].id),descripcion:input.observacion ?? 'Correccion versionada de municipio, institucion y sede desde Personal',before:current.rows[0]??null,after:inserted.rows[0]});
+    await publicarEventoOutbox(client, { event_type: 'ASIGNACION_OPERATIVA_CAMBIADA', aggregate_type: 'vinculacion', aggregate_id: vinculacionId, empresa_id: Number(vinculacion.empresa_id), contrato_id: Number(vinculacion.contrato_id), persona_id: Number(vinculacion.persona_id), vinculacion_id: vinculacionId, effective_date: fechaDesde, before: current.rows[0] ? { asignacion_id: current.rows[0].id, fecha_inicio_efectiva: current.rows[0].fecha_inicio, fecha_fin_efectiva: current.rows[0].fecha_fin } : null, after: { asignacion_id: inserted.rows[0].id, fecha_inicio_efectiva: inserted.rows[0].fecha_inicio, fecha_fin_efectiva: inserted.rows[0].fecha_fin } });
     await client.query('COMMIT');return inserted.rows[0];
   }catch(error){await client.query('ROLLBACK');throw error;}finally{client.release();}
 };

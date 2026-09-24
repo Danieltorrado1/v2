@@ -2,6 +2,7 @@ import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
 import { registerAuditEntry } from '../auditoria/auditoria.helper';
+import { publicarEventoOutbox } from '../integracion/integracion.service';
 import { AppError } from '../../utils/AppError';
 import { isTenantAdmin, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { buildGestorMunicipalityScopeExistsSql, buildAnyGestorMunicipalityScopeExistsSql } from '../users/municipal-scope.service';
@@ -3590,6 +3591,14 @@ export const createVinculacion = async (
       }
     });
 
+    await publicarEventoOutbox(client, {
+      event_type: 'VINCULACION_CREADA', aggregate_type: 'vinculacion', aggregate_id: createdVinculacion.id,
+      empresa_id: createdVinculacion.empresa_id, contrato_id: createdVinculacion.contrato_id,
+      persona_id: createdVinculacion.persona_id, vinculacion_id: createdVinculacion.id,
+      effective_date: createdVinculacion.fecha_inicio,
+      after: { estado_vinculacion: createdVinculacion.estado_vinculacion, fecha_inicio: createdVinculacion.fecha_inicio, fecha_fin: createdVinculacion.fecha_fin, contrato_cargo_id: createdVinculacion.contrato_cargo_id, cotiza_pension: createdVinculacion.cotiza_pension }
+    });
+
     await client.query('COMMIT');
     return createdVinculacion;
   } catch (error) {
@@ -3729,6 +3738,25 @@ export const updateVinculacion = async (
       }
     });
 
+    const effectiveDate = nextValues.fecha_inicio;
+    await publicarEventoOutbox(client, {
+      event_type: nextValues.estado_vinculacion === 'RETIRADA' ? 'VINCULACION_RETIRADA' : 'VINCULACION_ACTUALIZADA',
+      aggregate_type: 'vinculacion', aggregate_id: vinculacionId,
+      empresa_id: updatedVinculacion.empresa_id, contrato_id: updatedVinculacion.contrato_id,
+      persona_id: updatedVinculacion.persona_id, vinculacion_id: vinculacionId,
+      effective_date: effectiveDate,
+      before: { estado_vinculacion: current.estado_vinculacion, fecha_inicio: current.fecha_inicio, fecha_fin: current.fecha_fin, contrato_cargo_id: current.contrato_cargo_id, cotiza_pension: current.cotiza_pension },
+      after: { estado_vinculacion: updatedVinculacion.estado_vinculacion, fecha_inicio: updatedVinculacion.fecha_inicio, fecha_fin: updatedVinculacion.fecha_fin, contrato_cargo_id: updatedVinculacion.contrato_cargo_id, cotiza_pension: updatedVinculacion.cotiza_pension }
+    });
+    if (current.cotiza_pension !== updatedVinculacion.cotiza_pension) {
+      await publicarEventoOutbox(client, {
+        event_type: 'CONDICION_PENSION_CAMBIADA', aggregate_type: 'vinculacion', aggregate_id: vinculacionId,
+        empresa_id: updatedVinculacion.empresa_id, contrato_id: updatedVinculacion.contrato_id,
+        persona_id: updatedVinculacion.persona_id, vinculacion_id: vinculacionId, effective_date: effectiveDate,
+        before: { cotiza_pension: current.cotiza_pension }, after: { cotiza_pension: updatedVinculacion.cotiza_pension }
+      });
+    }
+
     await client.query('COMMIT');
     return updatedVinculacion;
   } catch (error) {
@@ -3806,6 +3834,14 @@ export const retirarVinculacion = async (
       metadata: {
         campo_modificado: 'estado_vinculacion'
       }
+    });
+
+    await publicarEventoOutbox(client, {
+      event_type: 'VINCULACION_RETIRADA', aggregate_type: 'vinculacion', aggregate_id: vinculacionId,
+      empresa_id: retiredVinculacion.empresa_id, contrato_id: retiredVinculacion.contrato_id,
+      persona_id: retiredVinculacion.persona_id, vinculacion_id: vinculacionId, effective_date: input.fecha_retiro,
+      before: { estado_vinculacion: current.estado_vinculacion, fecha_inicio: current.fecha_inicio, fecha_fin: current.fecha_fin },
+      after: { estado_vinculacion: retiredVinculacion.estado_vinculacion, fecha_inicio: retiredVinculacion.fecha_inicio, fecha_fin: retiredVinculacion.fecha_fin }
     });
 
     await client.query('COMMIT');

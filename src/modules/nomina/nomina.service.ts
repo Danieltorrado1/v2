@@ -7,6 +7,7 @@ import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { AppError } from '../../utils/AppError';
 import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditoria.helper';
 import { registerAuditEvent } from '../auditoria/auditoria.service';
+import { registrarEventoActividadLaboral, type IntegracionEventType } from '../integracion/integracion.service';
 import {
   assertNominaEmpleadoEditable,
   assertNominaFechaDentroDeVigencia,
@@ -1263,6 +1264,19 @@ export interface NominaImportEmployeesResult {
   skipped_duplicates: number;
   skipped_requires_review?: number;
 }
+
+const registrarEventoLaboralNomina = async (
+  client: PoolClient,
+  input: { eventType: Extract<IntegracionEventType, 'ASISTENCIA_CAMBIADA' | 'NOVEDAD_CREADA' | 'NOVEDAD_ACTUALIZADA' | 'NOVEDAD_DESACTIVADA' | 'TURNO_CREADO' | 'TURNO_ACTUALIZADO' | 'TURNO_DESACTIVADO' | 'LIQUIDACION_RECALCULADA' | 'LIQUIDACION_FINALIZADA'>; periodoId: string; vinculacionId: string; effectiveDate: string; operationId: string; summary: Record<string, unknown> }
+): Promise<void> => {
+  const row = await client.query<{ empresa_id: string; contrato_id: string; persona_id: string }>(
+    `SELECT c.empresa_id::text,v.contrato_id::text,v.persona_id::text FROM vinculaciones v JOIN contratos c ON c.id=v.contrato_id WHERE v.id=$1::bigint LIMIT 1`,
+    [input.vinculacionId]
+  );
+  const context = row.rows[0];
+  if (!context) throw new AppError('Vinculación no encontrada', 404, 'VINCULACION_NOT_FOUND');
+  await registrarEventoActividadLaboral(client, { event_type: input.eventType, aggregate_type: 'vinculacion', aggregate_id: input.vinculacionId, empresa_id: Number(context.empresa_id), contrato_id: Number(context.contrato_id), persona_id: Number(context.persona_id), vinculacion_id: Number(input.vinculacionId), effective_date: input.effectiveDate, periodo_id: Number(input.periodoId), idempotency_key: `nomina:${input.eventType}:${input.operationId}:${input.vinculacionId}:${input.periodoId}`, resumen: { operacion_id: input.operationId, ...input.summary } });
+};
 
 const isFechaRetiroNominaType = (tipo: { nombre?: string | null; codigo_operativo?: string | null }): boolean =>
   [tipo.nombre, tipo.codigo_operativo]
@@ -9324,6 +9338,10 @@ export const updateNominaMovimiento = async (
       user_agent: auditMeta?.user_agent ?? null
     });
 
+    if (isTurnMovement || isNominaTurnMovementType(current.tipo_movimiento)) {
+      await registrarEventoLaboralNomina(client, { eventType: 'TURNO_ACTUALIZADO', periodoId: current.periodo_id, vinculacionId: current.vinculacion_id, effectiveDate: nextFecha ?? (toDateString(periodo.fecha_inicio) ?? ''), operationId: `movimiento-update:${movimientoId}:${nextFecha ?? ''}`, summary: { cantidad: 1, origen: 'Turnos' } });
+    }
+
     await client.query('COMMIT');
     if (shouldRecalculate) {
       await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
@@ -9439,6 +9457,10 @@ export const deactivateNominaMovimiento = async (
       ip: auditMeta?.ip ?? null,
       user_agent: auditMeta?.user_agent ?? null
     });
+
+    if (shouldRecalculate) {
+      await registrarEventoLaboralNomina(client, { eventType: 'TURNO_DESACTIVADO', periodoId: current.periodo_id, vinculacionId: current.vinculacion_id, effectiveDate: toDateString(current.fecha) ?? (toDateString(periodo.fecha_inicio) ?? ''), operationId: `movimiento-deactivate:${movimientoId}`, summary: { cantidad: 1, origen: 'Turnos' } });
+    }
 
     await client.query('COMMIT');
     if (shouldRecalculate) {
@@ -9608,6 +9630,7 @@ export const generarNominaLiquidaciones = async (
         }, client);
 
         updatedCount += 1;
+        await registrarEventoLaboralNomina(client, { eventType: 'LIQUIDACION_RECALCULADA', periodoId, vinculacionId: empleado.vinculacion_id, effectiveDate: periodoFechaInicio, operationId: `liquidacion-recalculada:${periodoId}:${empleado.vinculacion_id}`, summary: { cantidad: 1, origen: 'Nómina' } });
         continue;
       }
 
@@ -9635,6 +9658,7 @@ export const generarNominaLiquidaciones = async (
       }, client);
 
       generatedCount += 1;
+      await registrarEventoLaboralNomina(client, { eventType: 'LIQUIDACION_RECALCULADA', periodoId, vinculacionId: empleado.vinculacion_id, effectiveDate: periodoFechaInicio, operationId: `liquidacion-recalculada:${periodoId}:${empleado.vinculacion_id}`, summary: { cantidad: 1, origen: 'Nómina' } });
     }
 
     await registerAuditEntry({
@@ -9694,6 +9718,15 @@ export const finalizeNominaLiquidaciones = async (
     }
 
     await nominaLiquidacionRepository.updateStateByPeriodo(periodoId, 'FINALIZADA', client);
+
+    const finalizedLinks = await client.query<{ vinculacion_id: string }>(
+      `SELECT DISTINCT vinculacion_id::text FROM nomina_liquidaciones WHERE periodo_id=$1::bigint AND COALESCE(activo,TRUE)=TRUE`,
+      [periodoId]
+    );
+    const liquidationEffectiveDate = toDateString(periodo.fecha_inicio) ?? '';
+    for (const link of finalizedLinks.rows) {
+      await registrarEventoLaboralNomina(client, { eventType: 'LIQUIDACION_FINALIZADA', periodoId, vinculacionId: link.vinculacion_id, effectiveDate: liquidationEffectiveDate, operationId: `liquidacion-finalizada:${periodoId}:${link.vinculacion_id}`, summary: { cantidad: 1, origen: 'Nómina' } });
+    }
 
     await registerAuditEntry({
       client,
@@ -10151,6 +10184,9 @@ export const createNominaNovedad = async (
       user_agent: auditMeta?.user_agent ?? null
     });
 
+    const noveltyEffectiveDate = input.fecha_inicio ?? (periodo.fecha_inicio instanceof Date ? periodo.fecha_inicio.toISOString().slice(0, 10) : periodo.fecha_inicio);
+    await registrarEventoLaboralNomina(client, { eventType: 'NOVEDAD_CREADA', periodoId: input.periodo_id, vinculacionId: input.vinculacion_id, effectiveDate: noveltyEffectiveDate, operationId: `novedad:${created.id}`, summary: { fecha_desde: input.fecha_inicio, fecha_hasta: input.fecha_fin, cantidad: 1, origen: 'Novedades' } });
+
     if (ownsClient) await client.query('COMMIT');
     return created;
   } catch (error) {
@@ -10185,6 +10221,7 @@ export const markNominaAsistencia = async (periodoId: string, vinculacionId: str
     }, client);
     await invalidateNominaEmpleadoRevisionState(client, empleado.nomina_empleado_id);
     await registerAuditEntry({ client, usuario_id: actorUserId, accion: presente ? 'NOMINA_ASISTENCIA_CREATE' : 'NOMINA_ASISTENCIA_UPDATE', tabla: 'nomina_asistencia_diaria', registro_id: persisted.id ?? `${periodoId}:${vinculacionId}:${fecha}`, descripcion: 'Marcacion rapida de asistencia desde planilla', after: { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha, presente }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
+    await registrarEventoLaboralNomina(client, { eventType: 'ASISTENCIA_CAMBIADA', periodoId, vinculacionId, effectiveDate: fecha, operationId: `single:${fecha}`, summary: { fecha_desde: fecha, fecha_hasta: fecha, dias_afectados: [fecha], cantidad: 1, origen: 'Planilla' } });
     await client.query('COMMIT');
     return { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha, estado_dia: presente ? 'PRESENTE' : 'PENDIENTE', activo: presente };
   } catch (error) {
@@ -10227,6 +10264,7 @@ export const markNominaAsistenciaRango = async (periodoId: string, vinculacionId
     }
     await invalidateNominaEmpleadoRevisionState(client, empleado.nomina_empleado_id);
     await registerAuditEntry({ client, usuario_id: actorUserId, accion: 'NOMINA_ASISTENCIA_RANGE_UPDATE', tabla: 'nomina_asistencia_diaria', registro_id: `${periodoId}:${vinculacionId}:${fechaInicio}:${fechaFin}`, descripcion: 'Marcacion atomica de asistencia por rango desde planilla', after: { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha_inicio: fechaInicio, fecha_fin: fechaFin, marcados }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
+    await registrarEventoLaboralNomina(client, { eventType: 'ASISTENCIA_CAMBIADA', periodoId, vinculacionId, effectiveDate: fechaInicio, operationId: `range:${fechaInicio}:${fechaFin}`, summary: { fecha_desde: fechaInicio, fecha_hasta: fechaFin, dias_afectados: marcados, cantidad: marcados.length, origen: 'Planilla' } });
     await client.query('COMMIT');
     return { marcados, omitidos: [], total_marcados: marcados.length, total_omitidos: 0 };
   } catch (error) {
@@ -10314,6 +10352,10 @@ export const markNominaAsistenciaBulk = async (
       ip: auditMeta?.ip ?? null,
       user_agent: auditMeta?.user_agent ?? null,
     });
+    for (const vinculacionId of new Set(confirmados.map((item) => item.vinculacion_id))) {
+      const days = confirmados.filter((item) => item.vinculacion_id === vinculacionId).map((item) => item.fecha).sort();
+      await registrarEventoLaboralNomina(client, { eventType: 'ASISTENCIA_CAMBIADA', periodoId, vinculacionId, effectiveDate: days[0]!, operationId: `bulk:${days.join(',')}`, summary: { fecha_desde: days[0], fecha_hasta: days.at(-1), dias_afectados: days, cantidad: days.length, origen: 'Planilla' } });
+    }
     await client.query('COMMIT');
     return { confirmados, total_confirmados: confirmados.length };
   } catch (error) { await client.query('ROLLBACK'); throw error; }
@@ -10597,6 +10639,7 @@ export const createNominaNovedadConTurno = async (
       }
     }
     await registerAuditEntry({ client, usuario_id: actorUserId, accion: 'NOMINA_NOVEDAD_TURNO_CREATE', tabla: 'nomina_novedad_turnos', registro_id: turnoRow.id, descripcion: 'Relacion de novedad con turno operativo', before: null, after: { novedad_id: novedad.id, tipo: turno.tipo }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
+    await registrarEventoLaboralNomina(client, { eventType: turno.tipo === 'INTERNO' ? 'TURNO_CREADO' : 'TURNO_CREADO', periodoId: input.periodo_id, vinculacionId: turnoVinculacionId, effectiveDate: fechaTurno ?? (periodo.fecha_inicio instanceof Date ? periodo.fecha_inicio.toISOString().slice(0, 10) : periodo.fecha_inicio), operationId: `turno:${turnoRow.id}`, summary: { fecha_desde: fechaTurno, fecha_hasta: fechaFinTurno, cantidad: diasTurno, origen: 'Turnos' } });
     await client.query('COMMIT');
 
     // A novelty with coverage affects at most the covered employee and the
@@ -10828,6 +10871,8 @@ export const updateNominaNovedad = async (
         ip: auditMeta?.ip ?? null,
         user_agent: auditMeta?.user_agent ?? null
       });
+
+      await registrarEventoLaboralNomina(client, { eventType: 'NOVEDAD_ACTUALIZADA', periodoId, vinculacionId: current.vinculacion_id, effectiveDate: toDateString(updatedCanonical.fecha_inicio) ?? (toDateString(periodo.fecha_inicio) ?? ''), operationId: `novedad-canonica-update:${current.id}:${updatedCanonical.updated_at?.toString() ?? ''}`, summary: { fecha_desde: toDateString(updatedCanonical.fecha_inicio), fecha_hasta: toDateString(updatedCanonical.fecha_fin), cantidad: 1, origen: 'Novedades' } });
 
       await client.query('COMMIT');
       await recalculateNominaPeriodo(periodoId, { force: true }, actorUserId, tenant, auditMeta);
@@ -11062,6 +11107,8 @@ export const updateNominaNovedad = async (
       user_agent: auditMeta?.user_agent ?? null
     });
 
+    await registrarEventoLaboralNomina(client, { eventType: 'NOVEDAD_ACTUALIZADA', periodoId: current.periodo_id, vinculacionId: current.vinculacion_id, effectiveDate: nextFechaInicio ?? (toDateString(periodo.fecha_inicio) ?? ''), operationId: `novedad-update:${parsedId.entidad_id}:${nextFechaInicio ?? ''}`, summary: { fecha_desde: nextFechaInicio, fecha_hasta: nextFechaFin, cantidad: 1, origen: 'Novedades' } });
+
     await client.query('COMMIT');
     await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
     return updated;
@@ -11169,6 +11216,8 @@ export const deactivateNominaNovedad = async (
         ip: auditMeta?.ip ?? null,
         user_agent: auditMeta?.user_agent ?? null
       });
+
+      await registrarEventoLaboralNomina(client, { eventType: 'NOVEDAD_DESACTIVADA', periodoId, vinculacionId: current.vinculacion_id, effectiveDate: toDateString(current.fecha_inicio) ?? (toDateString(periodo.fecha_inicio) ?? ''), operationId: `novedad-canonica-deactivate:${current.id}`, summary: { fecha_desde: toDateString(current.fecha_inicio), fecha_hasta: toDateString(current.fecha_fin), cantidad: 1, origen: 'Novedades' } });
 
       await client.query('COMMIT');
       await recalculateNominaPeriodo(periodoId, { force: true }, actorUserId, tenant, auditMeta);
@@ -11311,6 +11360,8 @@ export const deactivateNominaNovedad = async (
       ip: auditMeta?.ip ?? null,
       user_agent: auditMeta?.user_agent ?? null
     });
+
+    await registrarEventoLaboralNomina(client, { eventType: 'NOVEDAD_DESACTIVADA', periodoId: current.periodo_id, vinculacionId: current.vinculacion_id, effectiveDate: toDateString(current.fecha_inicio) ?? (toDateString(periodo.fecha_inicio) ?? ''), operationId: `novedad-deactivate:${parsedId.entidad_id}`, summary: { fecha_desde: toDateString(current.fecha_inicio), fecha_hasta: toDateString(current.fecha_fin), cantidad: 1, origen: 'Novedades' } });
 
     await client.query('COMMIT');
     await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
