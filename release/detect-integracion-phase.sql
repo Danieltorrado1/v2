@@ -64,12 +64,26 @@ phase55_bits AS (
     (SELECT COUNT(*) FROM pg_indexes WHERE schemaname='public' AND indexname='idx_integracion_impactos_recalc') AS index_present,
     (SELECT COUNT(*) = 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_integracion_impactos_recalc') AS index_ok
 ),
+phase56_bits AS (
+  SELECT
+    (SELECT COUNT(*) = 1 FROM pg_constraint c JOIN pg_class r ON r.oid=c.conrelid
+      WHERE r.relname='integracion_evento_impactos' AND c.conname='chk_integracion_evento_impacto_estado'
+      AND pg_get_constraintdef(c.oid) LIKE '%BLOQUEADO_PERIODIZACION%') AS state_ok,
+    (SELECT COUNT(*) = 1 FROM pg_constraint c JOIN pg_class r ON r.oid=c.conrelid
+      WHERE r.relname='integracion_evento_impactos' AND c.conname='chk_integracion_evento_impacto_accion'
+      AND pg_get_constraintdef(c.oid) LIKE '%BLOQUEADO_PERIODIZACION%') AS action_ok,
+    (SELECT COUNT(*) = 1 FROM pg_indexes WHERE schemaname='public' AND indexname='idx_integracion_impactos_periodizacion') AS index_ok
+),
 state AS (
   SELECT CASE
-    WHEN t.present < 2 AND (t.present > 0 OR p52.ok OR p53.columns_ok OR p53.liquidacion_column_ok OR p53.constraints_ok OR p53.index_ok OR p54.action_ok OR p54.index_ok OR p55.columns_ok OR p55.constraints_ok OR p55.index_ok) THEN 'PARTIAL_INVALID'
+    WHEN t.present < 2 AND (t.present > 0 OR p52.ok OR p53.columns_ok OR p53.liquidacion_column_ok OR p53.constraints_ok OR p53.index_ok OR p54.action_ok OR p54.index_ok OR p55.columns_ok OR p55.constraints_ok OR p55.index_ok OR p56.state_ok OR p56.action_ok OR p56.index_ok) THEN 'PARTIAL_INVALID'
     WHEN t.present = 0 THEN 'NONE'
     WHEN t.present = 2 AND p52.ok AND p53.columns_ok AND p53.liquidacion_column_ok AND p53.constraints_ok AND p53.index_ok
-      AND p54.action_ok AND p54.index_ok AND p55.columns_ok AND p55.constraints_ok AND p55.index_ok THEN 'PHASE_55'
+      AND p54.action_ok AND p54.index_ok AND p55.columns_ok AND p55.constraints_ok AND p55.index_ok
+      AND NOT p56.state_ok AND NOT p56.action_ok AND NOT p56.index_ok THEN 'PHASE_55'
+    WHEN t.present = 2 AND p52.ok AND p53.columns_ok AND p53.liquidacion_column_ok AND p53.constraints_ok AND p53.index_ok
+      AND p54.action_ok AND p54.index_ok AND p55.columns_ok AND p55.constraints_ok AND p55.index_ok
+      AND p56.state_ok AND p56.action_ok AND p56.index_ok THEN 'PHASE_56'
     WHEN t.present = 2 AND p52.ok AND p53.columns_ok AND p53.liquidacion_column_ok AND p53.constraints_ok AND p53.index_ok
       AND p54.action_ok AND p54.index_ok AND p55.columns_present=0 AND p55.constraints_present=0 AND p55.index_present=0 THEN 'PHASE_54'
     WHEN t.present = 2 AND p52.ok AND p53.columns_ok AND p53.liquidacion_column_ok AND p53.constraints_ok AND p53.index_ok
@@ -81,6 +95,6 @@ state AS (
     ELSE 'PARTIAL_INVALID'
   END AS phase
   FROM tables_ok t CROSS JOIN phase52_objects p52 CROSS JOIN phase53_bits p53
-  CROSS JOIN phase54_bits p54 CROSS JOIN phase55_bits p55
+  CROSS JOIN phase54_bits p54 CROSS JOIN phase55_bits p55 CROSS JOIN phase56_bits p56
 )
 SELECT phase FROM state;

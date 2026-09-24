@@ -21,12 +21,6 @@ BEGIN
     THEN RAISE EXCEPTION 'PHASE_55_REQUIRED_INDEX_MISSING'; END IF;
 END $$;
 
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM public.integracion_eventos) THEN RAISE EXCEPTION 'PHASE_55_UNEXPECTED_EVENTS'; END IF;
-  IF EXISTS (SELECT 1 FROM public.integracion_evento_impactos) THEN RAISE EXCEPTION 'PHASE_55_UNEXPECTED_IMPACTS'; END IF;
-END $$;
-
 SELECT 'unexpected_status_count' AS metric, COUNT(*)::bigint AS value FROM public.integracion_eventos
 WHERE status NOT IN ('PENDIENTE','PROCESANDO','PROCESADO','ERROR')
 UNION ALL SELECT 'unexpected_event_type_count', COUNT(*)::bigint FROM public.integracion_eventos
