@@ -48,6 +48,32 @@ function Invoke-PsqlCommand([string]$sql) {
   return $out
 }
 
+function Assert-WindowPreconditions {
+  $rows = Invoke-PsqlCommand @'
+SELECT 'events' AS metric, COUNT(*)::text AS value FROM public.integracion_eventos
+UNION ALL SELECT 'impacts', COUNT(*)::text FROM public.integracion_evento_impactos
+UNION ALL SELECT 'impacts_period_3', COUNT(*)::text FROM public.integracion_evento_impactos WHERE periodo_id=3
+UNION ALL SELECT 'impacts_period_4', COUNT(*)::text FROM public.integracion_evento_impactos WHERE periodo_id=4
+UNION ALL SELECT 'impacts_period_6', COUNT(*)::text FROM public.integracion_evento_impactos WHERE periodo_id=6
+UNION ALL SELECT 'revisions_period_4', COUNT(*)::text FROM public.nomina_revision_operativa WHERE periodo_id=4;
+'@
+  $expected = @{
+    events = '5'; impacts = '15'; impacts_period_3 = '5'; impacts_period_4 = '5';
+    impacts_period_6 = '5'; revisions_period_4 = '47'
+  }
+  $actual = @{}
+  foreach ($row in $rows) {
+    $parts = $row.ToString().Trim().Split('|', 2)
+    if ($parts.Count -eq 2) { $actual[$parts[0]] = $parts[1] }
+  }
+  foreach ($key in $expected.Keys) {
+    if ($actual[$key] -ne $expected[$key]) {
+      throw "PHASE_57_WINDOW_PRECONDITION_MISMATCH: $key esperado=$($expected[$key]) actual=$($actual[$key])"
+    }
+  }
+  Write-Host 'Precondiciones de ventana 5 eventos / 15 impactos / 5-5-5 / 47 revisiones: OK.'
+}
+
 try {
   $connection = Get-PsqlConnectionParameters -ConnectionString $databaseUrl -ExpectedProjectRef $projectRef -AllowLocalValidation:$AllowLocalValidation
   $psqlPath = Get-Psql17Path
@@ -60,6 +86,7 @@ try {
   $has56 = (Invoke-PsqlCommand "SELECT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='chk_integracion_evento_impacto_estado' AND pg_get_constraintdef(oid) LIKE '%BLOQUEADO_PERIODIZACION%')" | Select-Object -Last 1).ToString().Trim() -eq 't'
   $has57 = (Invoke-PsqlCommand "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='nomina_calendarios_contractuales')" | Select-Object -Last 1).ToString().Trim() -eq 't'
   if ($has57) { Invoke-PsqlFile $post57; Write-Host 'PHASE_57 ALREADY_APPLIED y verificada.'; exit 0 }
+  Assert-WindowPreconditions
   $confirmation = Read-Host "Escriba exactamente APLICAR PHASE 56 Y 57 PERIODIZACION $projectRef"
   if ($confirmation -cne "APLICAR PHASE 56 Y 57 PERIODIZACION $projectRef") { throw 'Confirmación inválida; no se ejecutó ninguna escritura.' }
   if (!$has56) { Invoke-PsqlFile $migration56 -Write; Invoke-PsqlFile $post56 }
