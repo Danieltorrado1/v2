@@ -216,6 +216,10 @@ export interface NominaPeriodoApi {
   activo: boolean;
   created_at: string;
   contrato: NominaPeriodoContratoApi | null;
+  anulado_at?: string | null;
+  anulado_por?: string | null;
+  motivo_anulacion?: string | null;
+  periodo_canonico_id?: string | null;
 }
 
 export interface PaginatedNominaPeriodosApi {

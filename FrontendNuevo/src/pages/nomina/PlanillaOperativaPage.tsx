@@ -619,7 +619,8 @@ export default function PlanillaOperativaPage() {
   const viewport = useRef<HTMLDivElement>(null);
   const facetToolbarRef = useRef<HTMLElement>(null);
   const canCreate = user?.permissions.includes("nomina.novedades.create") === true;
-  const canUpdate = user?.permissions.includes("nomina.novedades.update") === true;
+  const canUpdate = user?.permissions.includes("nomina.novedades.update") === true &&
+    periods.find((item) => String(item.id) === periodId)?.estado === "ABIERTO";
   const canClose = user?.permissions.includes("nomina.periodos.close") === true;
   const canReopen = user?.permissions.includes("nomina.periodos.reopen") === true;
   const canReadPopulationDashboard = user?.permissions.includes("nomina.dashboard.read") === true;

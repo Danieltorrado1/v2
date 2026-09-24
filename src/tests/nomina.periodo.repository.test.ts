@@ -38,6 +38,10 @@ test('repositorio V1 de periodos conserva filtros, orden y paginacion del servic
         requiere_asistencia boolean,
         estado text,
         activo boolean,
+        anulado_at timestamptz,
+        anulado_por bigint,
+        motivo_anulacion text,
+        periodo_canonico_id bigint,
         created_at timestamptz DEFAULT now()
       );
       INSERT INTO nomina_periodos

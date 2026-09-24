@@ -91,13 +91,55 @@ export const assertIntegracionOutboxSchema = async (executor: Pick<PoolClient, '
   }
 };
 
-interface PeriodRow extends QueryResultRow { id: string; contrato_id: string; fecha_inicio: string; fecha_fin: string; estado: string; }
+interface PeriodRow extends QueryResultRow { id: string; empresa_id: string; contrato_id: string; fecha_inicio: string; fecha_fin: string; estado: string; }
 interface ImpactRow extends QueryResultRow { id: string; evento_id: string; periodo_id: string | null; vinculacion_id: string; fecha_desde: string; fecha_hasta: string; periodo_estado: string; accion_requerida: string; requiere_recalculo: boolean; bloqueado_por_cierre: boolean; contexto_antes: Record<string, unknown> | null; contexto_despues: Record<string, unknown> | null; }
 
 const MAX_ATTEMPTS = env.INTEGRACION_MAX_ATTEMPTS;
 const LOCK_TIMEOUT_MINUTES = env.INTEGRACION_LOCK_TIMEOUT_MINUTES;
-const traceabilityEventTypes = ['ASISTENCIA_CAMBIADA', 'NOVEDAD_CREADA', 'NOVEDAD_ACTUALIZADA', 'NOVEDAD_DESACTIVADA', 'TURNO_CREADO', 'TURNO_ACTUALIZADO', 'TURNO_DESACTIVADO', 'LIQUIDACION_RECALCULADA', 'LIQUIDACION_FINALIZADA'];
+const traceabilityEventTypes = ['ASISTENCIA_CAMBIADA', 'NOVEDAD_CREADA', 'NOVEDAD_ACTUALIZADA', 'NOVEDAD_DESACTIVADA', 'TURNO_CREADO', 'TURNO_ACTUALIZADO', 'TURNO_DESACTIVADO', 'LIQUIDACION_RECALCULADA', 'LIQUIDACION_FINALIZADA'] as const;
+const traceabilityEventTypeSet = new Set<string>(traceabilityEventTypes);
 const traceabilityEventSql = traceabilityEventTypes.map((_, index) => `$${index + 4}`).join(',');
+
+interface PeriodSelection { rows: PeriodRow[]; blockedReason: string | null; }
+
+export const resolvePeriodSelection = async (event: IntegracionEventRow, effectiveDate: string, executor: Pick<PoolClient, 'query'>): Promise<PeriodSelection> => {
+  const params = [event.contrato_id, event.empresa_id, effectiveDate];
+  if (traceabilityEventTypeSet.has(event.event_type) && event.periodo_id) {
+    const result = await executor.query<PeriodRow>(`
+      SELECT np.id::text, c.empresa_id::text, np.contrato_id::text, np.fecha_inicio::text, np.fecha_fin::text, np.estado
+      FROM nomina_periodos np
+      JOIN contratos c ON c.id=np.contrato_id
+      WHERE np.id=$4::bigint AND np.contrato_id=$1::bigint AND c.empresa_id=$2::bigint
+        AND np.fecha_inicio <= $3::date AND np.fecha_fin >= $3::date
+    `, [params[0], params[1], params[2], event.periodo_id]);
+    if (!result.rows[0]) throw new AppError('El periodo de origen no coincide con empresa y contrato del evento', 409, 'INTEGRACION_SOURCE_PERIOD_SCOPE_MISMATCH');
+    return { rows: [result.rows[0]], blockedReason: null };
+  }
+
+  const result = await executor.query<PeriodRow>(`
+    SELECT np.id::text, c.empresa_id::text, np.contrato_id::text, np.fecha_inicio::text, np.fecha_fin::text, np.estado
+    FROM nomina_periodos np
+    JOIN contratos c ON c.id=np.contrato_id
+    WHERE np.contrato_id=$1::bigint AND c.empresa_id=$2::bigint
+      AND np.fecha_inicio <= $3::date AND np.fecha_fin >= $3::date
+    ORDER BY np.fecha_inicio, np.id
+  `, params);
+  if (result.rows.length > 1) {
+    const ids = result.rows.map(row => row.id).join(',');
+    return { rows: [], blockedReason: `PERIODIZACION_AMBIGUA contrato=${event.contrato_id} empresa=${event.empresa_id} fecha=${effectiveDate} periodos=${ids}` };
+  }
+  return { rows: result.rows, blockedReason: null };
+};
+
+const insertBlockedPeriodizationImpact = async (event: IntegracionEventRow, effectiveDate: string, reason: string, executor: Pick<PoolClient, 'query'>): Promise<void> => {
+  await executor.query(`
+    INSERT INTO integracion_evento_impactos
+      (evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,requiere_recalculo,bloqueado_por_cierre,estado,version_esperada,last_error_code,last_error_message,attempts,applied_at,updated_at)
+    VALUES ($1,NULL,$2,$3::date,$3::date,'BLOQUEADO_PERIODIZACION','BLOQUEADO_PERIODIZACION',FALSE,FALSE,'BLOQUEADO_PERIODIZACION',$1,'INTEGRACION_PERIODIZATION_AMBIGUOUS',$4,0,NULL,NOW())
+    ON CONFLICT (evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO UPDATE
+      SET estado='BLOQUEADO_PERIODIZACION', accion_requerida='BLOQUEADO_PERIODIZACION', last_error_code=EXCLUDED.last_error_code, last_error_message=EXCLUDED.last_error_message, updated_at=NOW()
+  `, [event.id, event.vinculacion_id, effectiveDate, reason.slice(0, 500)]);
+};
 
 export const claimNextIntegracionEvent = async (workerId: string, client: PoolClient): Promise<IntegracionEventRow | null> => {
   const result = await client.query<IntegracionEventRow>(`
@@ -250,22 +292,20 @@ const processNextIntegracionEventObservation = async (workerId: string, tenant?:
       try {
         contextBefore = await resolveContextoLaboralForClient({ vinculacion_id: Number(event.vinculacion_id), contrato_id: Number(event.contrato_id), empresa_id: event.empresa_id ? Number(event.empresa_id) : undefined, fecha: previousDate(effectiveDate) }, tenant, client);
       } catch { /* Un ingreso nuevo puede no tener contexto el día anterior. */ }
-      const periods = await client.query<PeriodRow>(`
-        SELECT id::text, contrato_id::text, fecha_inicio::text, fecha_fin::text, estado
-        FROM nomina_periodos
-        WHERE contrato_id=$1::bigint AND fecha_inicio <= $2::date AND fecha_fin >= $2::date
-        ORDER BY fecha_inicio, id
-      `, [event.contrato_id, effectiveDate]);
-      for (const period of periods.rows) {
+      const selection = await resolvePeriodSelection(event, effectiveDate, client);
+      const periods = { rows: selection.blockedReason ? [selection.blockedReason] : selection.rows };
+      if (selection.blockedReason) await insertBlockedPeriodizationImpact(event, effectiveDate, selection.blockedReason, client);
+      for (const period of selection.rows) {
         const open = period.estado === 'ABIERTO';
+        const traceability = traceabilityEventTypeSet.has(event.event_type);
         await client.query(`
           INSERT INTO integracion_evento_impactos
-            (evento_id, periodo_id, vinculacion_id, fecha_desde, fecha_hasta, periodo_estado, accion_requerida, requiere_recalculo, bloqueado_por_cierre, contexto_antes, contexto_despues)
-          VALUES ($1,$2,$3,$4::date,$5::date,$6,$7,FALSE,$8,$9::jsonb,$10::jsonb)
+            (evento_id, periodo_id, vinculacion_id, fecha_desde, fecha_hasta, periodo_estado, accion_requerida, requiere_recalculo, bloqueado_por_cierre, contexto_antes, contexto_despues, estado, version_esperada)
+          VALUES ($1,$2,$3,$4::date,$5::date,$6,$7,FALSE,$8,$9::jsonb,$10::jsonb,$11,$1)
           ON CONFLICT (evento_id, periodo_id, vinculacion_id, fecha_desde, fecha_hasta) DO NOTHING
-        `, [event.id, period.id, event.vinculacion_id, effectiveDate, effectiveDate, period.estado, open ? 'REQUIERE_SINCRONIZACION' : 'REQUIERE_AJUSTE_AUTORIZADO', !open, contextBefore ? JSON.stringify(contextBefore) : null, JSON.stringify(context)]);
+        `, [event.id, period.id, event.vinculacion_id, effectiveDate, effectiveDate, period.estado, traceability ? 'TRAZABILIDAD_PERSONAL' : (open ? 'REQUIERE_SINCRONIZACION' : 'REQUIERE_AJUSTE_AUTORIZADO'), !open, contextBefore ? JSON.stringify(contextBefore) : null, JSON.stringify(context), traceability ? 'SIN_CAMBIOS' : 'PENDIENTE']);
       }
-      if (periods.rows.length === 0) {
+      if (selection.rows.length === 0 && !selection.blockedReason) {
         await client.query(`
           INSERT INTO integracion_evento_impactos
             (evento_id, periodo_id, vinculacion_id, fecha_desde, fecha_hasta, periodo_estado, accion_requerida, requiere_recalculo, bloqueado_por_cierre, contexto_antes, contexto_despues)
@@ -297,8 +337,14 @@ const processNextIntegracionEventSelective = async (workerId: string, tenant?: T
   try {
     const effectiveDate=normalizeEffectiveDate(event.effective_date);
     if(!event.vinculacion_id || !event.contrato_id) throw new AppError('Evento sin vinculacion o contrato',422,'INTEGRACION_EVENT_CONTEXT_INVALID');
-    const periodResult=await dbPool.query<PeriodRow>(`SELECT id::text,contrato_id::text,fecha_inicio::text,fecha_fin::text,estado FROM nomina_periodos WHERE contrato_id=$1::bigint AND fecha_inicio <= $2::date AND fecha_fin >= $2::date ORDER BY fecha_inicio,id`,[event.contrato_id,effectiveDate]);
-    for(const period of periodResult.rows){
+    const selection=await resolvePeriodSelection(event,effectiveDate,dbPool);
+    if(selection.blockedReason){
+      await insertBlockedPeriodizationImpact(event,effectiveDate,selection.blockedReason,dbPool);
+      await dbPool.query(`INSERT INTO auditoria_eventos(empresa_id,contrato_id,modulo,entidad,entidad_id,accion,descripcion,datos_anteriores,datos_nuevos) VALUES($1,$2,'INTEGRACION','integracion_eventos',$3,'PROCESS','Evento bloqueado por periodización ambigua',$4::jsonb,$5::jsonb)`,[event.empresa_id,event.contrato_id,event.id,event.payload_before?JSON.stringify(event.payload_before):null,JSON.stringify({status:'PROCESADO',periodizacion:'BLOQUEADA'})]);
+      await dbPool.query(`UPDATE integracion_eventos SET status='PROCESADO',processed_at=NOW(),locked_at=NULL,locked_by=NULL,updated_at=NOW() WHERE id=$1`,[event.id]);
+      return {...event,status:'PROCESADO',processed_at:new Date().toISOString()};
+    }
+    for(const period of selection.rows){
       const client=await dbPool.connect();
       try{
         await client.query('BEGIN');
@@ -308,7 +354,7 @@ const processNextIntegracionEventSelective = async (workerId: string, tenant?: T
         const inserted=await client.query<{id:string;estado:string}>(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,requiere_recalculo,bloqueado_por_cierre,contexto_antes,contexto_despues,estado,version_esperada) VALUES($1,$2,$3,$4::date,$4::date,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,$1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO UPDATE SET updated_at=NOW() RETURNING id::text,estado`,[event.id,period.id,event.vinculacion_id,effectiveDate,period.estado,open?'REQUIERE_SINCRONIZACION':'REQUIERE_AJUSTE_AUTORIZADO',integracionRecalcState().active && recalcEventTypes.has(event.event_type),!open,contextBefore?JSON.stringify(contextBefore):null,JSON.stringify(context),open?'PENDIENTE':'BLOQUEADO_CIERRE']);
         const impact=inserted.rows[0];
         await client.query('COMMIT');
-        const reverseTraceabilityEvent = ['ASISTENCIA_CAMBIADA','NOVEDAD_CREADA','NOVEDAD_ACTUALIZADA','NOVEDAD_DESACTIVADA','TURNO_CREADO','TURNO_ACTUALIZADO','TURNO_DESACTIVADO','LIQUIDACION_RECALCULADA','LIQUIDACION_FINALIZADA'].includes(event.event_type);
+        const reverseTraceabilityEvent = traceabilityEventTypeSet.has(event.event_type);
         let syncApplied = false;
         if(reverseTraceabilityEvent){
           await client.query('BEGIN');
@@ -328,7 +374,7 @@ const processNextIntegracionEventSelective = async (workerId: string, tenant?: T
         if (impact?.id && integracionRecalcState().active && recalcEventTypes.has(event.event_type) && (syncApplied || reverseTraceabilityEvent || !open)) await recalcSelectiveImpact(event, period, impact.id, tenant);
       }catch(error){await client.query('ROLLBACK'); const code=error instanceof AppError?error.code:'INTEGRACION_IMPACTO_ERROR'; const message=String(error instanceof Error?error.message:error).replace(/[\r\n\t]/g,' ').slice(0,500); await dbPool.query(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,bloqueado_por_cierre,estado,version_esperada,last_error_code,last_error_message,attempts) VALUES($1,$2,$3,$4::date,$4::date,$5,'REQUIERE_SINCRONIZACION',FALSE,'ERROR',$1,$6,$7,1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO UPDATE SET estado='ERROR',attempts=integracion_evento_impactos.attempts+1,last_error_code=EXCLUDED.last_error_code,last_error_message=EXCLUDED.last_error_message,updated_at=NOW()`,[event.id,period.id,event.vinculacion_id,effectiveDate,period.estado,code,message]); throw error;} finally{client.release();}
     }
-    if(periodResult.rows.length===0){
+    if(selection.rows.length===0){
       await dbPool.query(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,requiere_recalculo,bloqueado_por_cierre,estado,version_esperada) VALUES($1,NULL,$2,$3::date,$3::date,'SIN_INTERSECCION','SIN_IMPACTO',FALSE,FALSE,'SIN_CAMBIOS',$1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO NOTHING`,[event.id,event.vinculacion_id,effectiveDate]);
     }
     await dbPool.query(`INSERT INTO auditoria_eventos(empresa_id,contrato_id,modulo,entidad,entidad_id,accion,descripcion,datos_anteriores,datos_nuevos) VALUES($1,$2,'INTEGRACION','integracion_eventos',$3,'PROCESS','Evento sincronizado selectivamente',$4::jsonb,$5::jsonb)`,[event.empresa_id,event.contrato_id,event.id,event.payload_before?JSON.stringify(event.payload_before):null,JSON.stringify({status:'PROCESADO',sync:true})]);
