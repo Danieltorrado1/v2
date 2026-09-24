@@ -1,5 +1,7 @@
 -- Fase 3: trazabilidad inversa de actividad laboral.
--- Exclusivamente local/de pruebas; no ejecutar en producción.
+-- Aplicar únicamente mediante el runner de release controlado, después de Phase 53.
+BEGIN;
+
 ALTER TABLE public.integracion_evento_impactos
   DROP CONSTRAINT IF EXISTS chk_integracion_evento_impacto_accion;
 
@@ -9,3 +11,5 @@ ALTER TABLE public.integracion_evento_impactos
 
 CREATE INDEX IF NOT EXISTS idx_integracion_eventos_actividad_laboral
   ON public.integracion_eventos (vinculacion_id, periodo_id, event_type, created_at DESC);
+
+COMMIT;
