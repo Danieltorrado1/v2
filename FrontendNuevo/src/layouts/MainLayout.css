@@ -64,7 +64,8 @@
 .logo-image--dark {
   width: 188px;
   height: 48px;
-  transform: translateX(-1px) scale(1.04);
+  object-fit: cover;
+  transform: translateX(-2px) scale(1.08);
   transform-origin: left center;
 }
 
