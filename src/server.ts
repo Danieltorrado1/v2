@@ -5,15 +5,23 @@ import { dbPool } from './config/db';
 import { env } from './config/env';
 import { logger } from './config/logger';
 import { startScheduler, stopScheduler } from './config/scheduler';
+import { startIntegracionWorker } from './jobs/integracion-outbox.job';
 
 const server: Server = app.listen(env.PORT, '0.0.0.0', () => {
   logger.info(
     `${env.APP_NAME} listening on http://0.0.0.0:${env.PORT}`,
   );
+  startIntegracionWorker();
   startScheduler();
 });
 
+let shutdownStarted = false;
 const shutdown = (signal: NodeJS.Signals): void => {
+  if (shutdownStarted) {
+    logger.warn(`Shutdown already in progress; ignoring ${signal}.`);
+    return;
+  }
+  shutdownStarted = true;
   logger.warn(`Received ${signal}. Shutting down gracefully...`);
 
   server.close(async () => {
