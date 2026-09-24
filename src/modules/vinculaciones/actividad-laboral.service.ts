@@ -1,6 +1,7 @@
 import type { QueryResultRow } from 'pg';
 
 import { dbQuery } from '../../config/db';
+import { logger } from '../../config/logger';
 import { assertTenantAccessForVinculacionId, type TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { AppError } from '../../utils/AppError';
 
@@ -48,6 +49,42 @@ interface EventRow extends QueryResultRow {
 
 const economicPermissions = ['nomina.economico.read', 'nomina.read'];
 
+const actividadLaboralSchema: Record<string, string[]> = {
+  integracion_eventos: ['vinculacion_id', 'event_type', 'status', 'effective_date', 'periodo_id', 'created_at'],
+  integracion_evento_impactos: ['evento_id', 'periodo_id', 'estado'],
+  nomina_periodos: ['id', 'contrato_id', 'fecha_inicio', 'fecha_fin', 'estado'],
+  nomina_asistencia_diaria: ['periodo_id', 'vinculacion_id', 'fecha', 'estado_dia', 'activo'],
+  nomina_novedades: ['periodo_id', 'vinculacion_id', 'tipo_novedad_id', 'fecha_inicio', 'fecha_fin', 'activo'],
+  nomina_tipos_novedad: ['id', 'codigo_operativo'],
+  nomina_movimientos: ['periodo_id', 'vinculacion_id', 'externo_id', 'valor_total', 'activo'],
+  nomina_liquidaciones: ['periodo_id', 'vinculacion_id', 'estado', 'total_liquidacion', 'deducciones', 'salario_base'],
+  nomina_revision_operativa: ['periodo_id', 'vinculacion_id', 'estado_revision']
+};
+
+export const validateActividadLaboralSchemaRows = (rows: Array<{ table_name: string; column_name: string }>): string[] => {
+  const present = new Set(rows.map((row) => `${row.table_name}.${row.column_name}`));
+  return Object.entries(actividadLaboralSchema).flatMap(([table, columns]) => columns
+    .filter((column) => !present.has(`${table}.${column}`))
+    .map((column) => `${table}.${column}`));
+};
+
+export const createActividadLaboralSchemaNotReadyError = (_missing: string[]): AppError =>
+  new AppError('La actividad laboral aún no está disponible.', 503, 'INTEGRATION_SCHEMA_NOT_READY');
+
+const assertActividadLaboralSchema = async (): Promise<void> => {
+  const result = await dbQuery<{ table_name: string; column_name: string }>(
+    `SELECT table_name, column_name FROM information_schema.columns
+     WHERE table_schema='public' AND table_name = ANY($1::text[])
+       AND column_name = ANY($2::text[])`,
+    [Object.keys(actividadLaboralSchema), Object.values(actividadLaboralSchema).flat()]
+  );
+  const missing = validateActividadLaboralSchemaRows(result.rows);
+  if (missing.length) {
+    logger.warn('Actividad laboral schema is not ready', { missing });
+    throw createActividadLaboralSchemaNotReadyError(missing);
+  }
+};
+
 const jsonValue = (value: unknown, fallback: unknown): unknown => value ?? fallback;
 
 export const getActividadLaboral = async (
@@ -67,6 +104,7 @@ export const getActividadLaboral = async (
   `, params);
   const context = header.rows[0];
   if (!context) throw new AppError('Vinculación no encontrada', 404, 'VINCULACION_NOT_FOUND');
+  await assertActividadLaboralSchema();
 
   const offset = (query.page - 1) * query.limit;
   const periodParams = [Number(context.contrato_id), vinculacionId, query.limit, offset];

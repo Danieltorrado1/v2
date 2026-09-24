@@ -21,6 +21,9 @@ temp/
 # Carpeta temporal
 tmp-sst-qa/
 
+# Sesiones QA locales (nunca versionar tokens)
+tmp/*session*.json
+
 # Figma references and local audit helpers
 figma-reference/
 tmp/audit-dco-ta.cjs
