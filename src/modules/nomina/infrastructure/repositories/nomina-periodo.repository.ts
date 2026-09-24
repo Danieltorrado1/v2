@@ -3,6 +3,10 @@ import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { dbPool } from '../../../../config/db';
 
 export interface NominaPeriodoRepositoryRow extends QueryResultRow {
+  anulado_at?: Date | string | null;
+  anulado_por?: string | null;
+  motivo_anulacion?: string | null;
+  periodo_canonico_id?: string | null;
   activo: boolean;
   contrato_empresa_id: string | null;
   contrato_entidad_contratante: string | null;
@@ -87,6 +91,10 @@ const periodSelect = `
     COALESCE(np.requiere_asistencia, FALSE) AS requiere_asistencia,
     np.estado,
     COALESCE(np.activo, TRUE) AS activo,
+    np.anulado_at,
+    np.anulado_por::text AS anulado_por,
+    np.motivo_anulacion,
+    np.periodo_canonico_id::text AS periodo_canonico_id,
     np.created_at,
     c.empresa_id::text AS contrato_empresa_id,
     c.numero_contrato AS contrato_numero,
@@ -148,6 +156,7 @@ export class NominaPeriodoRepository {
 
   appendScope(conditions, params, input.tenant);
   conditions.push('COALESCE(np.activo, TRUE) = TRUE');
+  conditions.push("np.estado <> 'ANULADO'");
 
     if (input.contratoId) {
       params.push(input.contratoId);
@@ -316,16 +325,20 @@ export class NominaPeriodoRepository {
   public async updateState(
     periodoId: string,
     estado: string,
-    executor: NominaPeriodoRepositoryExecutor
+    executor: NominaPeriodoRepositoryExecutor,
+    annulment?: { actorUserId?: string; reason?: string }
   ): Promise<string> {
     const result = await executor.query<{ id: string }>(
       `
         UPDATE nomina_periodos
-        SET estado = $2
+        SET estado = $2,
+            anulado_at = CASE WHEN $2 = 'ANULADO' THEN COALESCE(anulado_at, NOW()) ELSE anulado_at END,
+            anulado_por = CASE WHEN $2 = 'ANULADO' THEN COALESCE($3::bigint, anulado_por) ELSE anulado_por END,
+            motivo_anulacion = CASE WHEN $2 = 'ANULADO' THEN COALESCE(NULLIF($4, ''), motivo_anulacion, 'Anulacion solicitada') ELSE motivo_anulacion END
         WHERE id = $1::bigint
         RETURNING id::text AS id
       `,
-      [periodoId, estado]
+      [periodoId, estado, annulment?.actorUserId ?? null, annulment?.reason ?? null]
     );
 
     const row = result.rows[0];

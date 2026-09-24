@@ -1,6 +1,8 @@
 import type { NominaPeriodoRepositoryRow } from '../infrastructure/repositories/nomina-periodo.repository';
 
 export interface NominaPeriodo {
+  anulado_at?: string | null;
+  anulado_por?: string | null;
   activo: boolean;
   contrato: {
     empresa_id: string | null;
@@ -17,6 +19,8 @@ export interface NominaPeriodo {
   fecha_inicio: string;
   id: string;
   nombre_periodo: string;
+  motivo_anulacion?: string | null;
+  periodo_canonico_id?: string | null;
   requiere_asistencia: boolean;
   tipo_periodo: string;
   descripcion?: string | null;
@@ -32,7 +36,7 @@ const dateString = (value: Date | string | null): string | null => {
 };
 
 const booleanValue = (value: boolean | null | undefined): boolean => Boolean(value);
-const isoString = (value: Date | string | null): string | null => {
+const isoString = (value: Date | string | null | undefined): string | null => {
   if (!value) return null;
   return value instanceof Date ? value.toISOString() : value;
 };
@@ -60,6 +64,10 @@ export const mapNominaPeriodo = (row: NominaPeriodoRepositoryRow): NominaPeriodo
     estado: row.estado,
     activo: booleanValue(row.activo),
     created_at: isoString(row.created_at) ?? '',
+    anulado_at: isoString(row.anulado_at),
+    anulado_por: row.anulado_por,
+    motivo_anulacion: row.motivo_anulacion,
+    periodo_canonico_id: row.periodo_canonico_id,
     contrato
   };
 };

@@ -40,7 +40,7 @@ export function normalizeNominaPeriods(periods: NominaPeriodoApi[]): NominaPerio
 
   for (const rawPeriod of periods) {
     const periodFlags = rawPeriod as NominaPeriodoApi & { residual?: boolean; es_residual?: boolean };
-    if (rawPeriod.activo === false || periodFlags.residual === true || periodFlags.es_residual === true) {
+    if (rawPeriod.activo === false || rawPeriod.estado === "ANULADO" || periodFlags.residual === true || periodFlags.es_residual === true) {
       continue;
     }
 

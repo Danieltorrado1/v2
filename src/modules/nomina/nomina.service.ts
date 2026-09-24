@@ -1674,6 +1674,10 @@ const normalizePeriodoEstado = (estado: string | null | undefined): string => {
 const assertPeriodoAllowsOpenMutations = (estado: string, action: string): void => {
   const normalizedEstado = normalizePeriodoEstado(estado);
 
+  if (normalizedEstado === 'ANULADO') {
+    throw new AppError('Payroll period is annulled and read-only', 409, 'NOMINA_PERIODO_ANULADO');
+  }
+
   if (NOMINA_PERIODO_ESTADOS_EDITABLES.has(normalizedEstado)) {
     return;
   }
@@ -5684,11 +5688,12 @@ const updateNominaPeriodoEstado = async (
   client: PoolClient,
   periodoId: string,
   estado: string,
-  tenant?: TenantAccessContext
+  tenant?: TenantAccessContext,
+  annulment?: { actorUserId?: string; reason?: string }
 ): Promise<NominaPeriodo> => {
   let updatedId: string;
   try {
-    updatedId = await nominaPeriodoRepository.updateState(periodoId, estado, client);
+    updatedId = await nominaPeriodoRepository.updateState(periodoId, estado, client, annulment);
   } catch (error) {
     if (error instanceof Error && error.message === 'NominaPeriodoRepository.updateState returned no id') {
       throw new AppError('Failed to update payroll period state', 500, 'NOMINA_PERIODO_STATE_UPDATE_FAILED');
@@ -5770,6 +5775,29 @@ const lockNominaPeriodoIdentity = async (
   input: { contrato_id: string; fecha_inicio: string; fecha_fin: string; tipo_periodo: string }
 ): Promise<void> => {
   await nominaPeriodoRepository.lockIdentity(input, client);
+};
+
+const lockNominaPeriodoContract = async (client: PoolClient, contratoId: string): Promise<void> => {
+  await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`nomina-calendar:${contratoId}`]);
+};
+
+const assertNoActivePeriodOverlap = async (
+  client: PoolClient,
+  input: { contrato_id: string; fecha_inicio: string; fecha_fin: string; tipo_periodo: string; periodo_id?: string }
+): Promise<void> => {
+  const result = await client.query<{ id: string }>(
+    `SELECT id::text FROM nomina_periodos
+      WHERE contrato_id=$1::bigint AND tipo_periodo=$2
+        AND COALESCE(activo, TRUE)=TRUE
+        AND estado IN ('ABIERTO','EN_PROCESO','REVISADO')
+        AND fecha_inicio <= $3::date AND fecha_fin >= $4::date
+        AND ($5::bigint IS NULL OR id <> $5::bigint)
+      ORDER BY fecha_inicio, id LIMIT 1`,
+    [input.contrato_id, input.tipo_periodo, input.fecha_fin, input.fecha_inicio, input.periodo_id ?? null]
+  );
+  if (result.rows[0]) {
+    throw new AppError('El rango del periodo se solapa con otro periodo activo', 409, 'NOMINA_PERIODO_SOLAPADO');
+  }
 };
 
 type EnsureCurrentNominaPeriodsInput = {
@@ -5868,12 +5896,14 @@ export const ensureCurrentNominaPeriods = async ({
         tipo_periodo: 'MENSUAL'
       };
       await lockNominaPeriodoIdentity(client, identity);
+      await lockNominaPeriodoContract(client, contract.id);
 
       const existing = await findExistingNominaPeriodoByContractAndRange(identity, tenant, client);
       if (existing) {
         createdOrExisting.push(existing);
         continue;
       }
+      await assertNoActivePeriodOverlap(client, identity);
 
       const inserted = await client.query<{ id: string }>(
         `
@@ -5975,6 +6005,7 @@ export const createNominaPeriodo = async (
       fecha_fin: input.fecha_fin,
       tipo_periodo: input.tipo_periodo
     });
+    await lockNominaPeriodoContract(client, input.contrato_id);
 
     const existing = await findExistingNominaPeriodoByContractAndRange(
       {
@@ -5991,6 +6022,8 @@ export const createNominaPeriodo = async (
       await client.query('COMMIT');
       return existing;
     }
+
+    await assertNoActivePeriodOverlap(client, input);
 
     let createdId: string;
     try {
@@ -6050,6 +6083,14 @@ export const updateNominaPeriodo = async (
     const nextContratoId = input.contrato_id ?? current.contrato_id;
     await ensureContratoExists(nextContratoId, client);
     await assertTenantAccessForContrato(nextContratoId, tenant, client);
+    await lockNominaPeriodoContract(client, nextContratoId);
+    await assertNoActivePeriodOverlap(client, {
+      periodo_id: periodoId,
+      contrato_id: nextContratoId,
+      fecha_inicio: nextFechaInicio,
+      fecha_fin: nextFechaFin,
+      tipo_periodo: input.tipo_periodo ?? current.tipo_periodo
+    });
 
     let updatedId: string;
     try {
@@ -6332,7 +6373,10 @@ export const cancelNominaPeriodo = async (
       );
     }
 
-    const canceled = await updateNominaPeriodoEstado(client, periodoId, 'ANULADO', tenant);
+    const canceled = await updateNominaPeriodoEstado(client, periodoId, 'ANULADO', tenant, {
+      actorUserId,
+      reason: 'Anulacion solicitada desde el flujo administrativo'
+    });
 
     await recordNominaAudit(
       client,
