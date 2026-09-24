@@ -91,10 +91,10 @@ const periodSelect = `
     COALESCE(np.requiere_asistencia, FALSE) AS requiere_asistencia,
     np.estado,
     COALESCE(np.activo, TRUE) AS activo,
-    np.anulado_at,
-    np.anulado_por::text AS anulado_por,
-    np.motivo_anulacion,
-    np.periodo_canonico_id::text AS periodo_canonico_id,
+    NULLIF(to_jsonb(np)->>'anulado_at', '') AS anulado_at,
+    NULLIF(to_jsonb(np)->>'anulado_por', '') AS anulado_por,
+    NULLIF(to_jsonb(np)->>'motivo_anulacion', '') AS motivo_anulacion,
+    NULLIF(to_jsonb(np)->>'periodo_canonico_id', '') AS periodo_canonico_id,
     np.created_at,
     c.empresa_id::text AS contrato_empresa_id,
     c.numero_contrato AS contrato_numero,
@@ -328,18 +328,27 @@ export class NominaPeriodoRepository {
     executor: NominaPeriodoRepositoryExecutor,
     annulment?: { actorUserId?: string; reason?: string }
   ): Promise<string> {
-    const result = await executor.query<{ id: string }>(
-      `
-        UPDATE nomina_periodos
-        SET estado = $2,
-            anulado_at = CASE WHEN $2 = 'ANULADO' THEN COALESCE(anulado_at, NOW()) ELSE anulado_at END,
-            anulado_por = CASE WHEN $2 = 'ANULADO' THEN COALESCE($3::bigint, anulado_por) ELSE anulado_por END,
-            motivo_anulacion = CASE WHEN $2 = 'ANULADO' THEN COALESCE(NULLIF($4, ''), motivo_anulacion, 'Anulacion solicitada') ELSE motivo_anulacion END
-        WHERE id = $1::bigint
-        RETURNING id::text AS id
-      `,
-      [periodoId, estado, annulment?.actorUserId ?? null, annulment?.reason ?? null]
+    const capability = await executor.query<{ exists: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1 FROM information_schema.columns
+          WHERE table_schema='public' AND table_name='nomina_periodos'
+            AND column_name='motivo_anulacion'
+       ) AS exists`
     );
+    const result = capability.rows[0]?.exists
+      ? await executor.query<{ id: string }>(
+        `UPDATE nomina_periodos
+            SET estado = $2,
+                anulado_at = CASE WHEN $2 = 'ANULADO' THEN COALESCE(anulado_at, NOW()) ELSE anulado_at END,
+                anulado_por = CASE WHEN $2 = 'ANULADO' THEN COALESCE($3::bigint, anulado_por) ELSE anulado_por END,
+                motivo_anulacion = CASE WHEN $2 = 'ANULADO' THEN COALESCE(NULLIF($4, ''), motivo_anulacion, 'Anulacion solicitada') ELSE motivo_anulacion END
+          WHERE id = $1::bigint RETURNING id::text AS id`,
+        [periodoId, estado, annulment?.actorUserId ?? null, annulment?.reason ?? null]
+      )
+      : await executor.query<{ id: string }>(
+        `UPDATE nomina_periodos SET estado = $2 WHERE id = $1::bigint RETURNING id::text AS id`,
+        [periodoId, estado]
+      );
 
     const row = result.rows[0];
     if (!row) {

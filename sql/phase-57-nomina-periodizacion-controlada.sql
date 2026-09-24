@@ -12,7 +12,7 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='fk_nomina_periodo_anulado_por') THEN
     ALTER TABLE public.nomina_periodos
-      ADD CONSTRAINT fk_nomina_periodo_anulado_por FOREIGN KEY (anulado_por) REFERENCES public.users(id);
+      ADD CONSTRAINT fk_nomina_periodo_anulado_por FOREIGN KEY (anulado_por) REFERENCES public.usuarios(id);
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='fk_nomina_periodo_canonico') THEN
     ALTER TABLE public.nomina_periodos
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.nomina_calendarios_contractuales (
   vigencia_desde date NOT NULL,
   vigencia_hasta date,
   activo boolean NOT NULL DEFAULT true,
-  created_by bigint REFERENCES public.users(id),
+  created_by bigint REFERENCES public.usuarios(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CHECK (vigencia_hasta IS NULL OR vigencia_hasta >= vigencia_desde),

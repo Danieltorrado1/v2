@@ -12,6 +12,8 @@ test('Phase 57 modela anulacion trazable y calendario contractual sin hardcodear
   assert.match(phase57, /motivo_anulacion/);
   assert.match(phase57, /periodo_canonico_id/);
   assert.match(phase57, /nomina_calendarios_contractuales/);
+  assert.match(phase57, /REFERENCES public\.usuarios\(id\)/);
+  assert.doesNotMatch(phase57, /REFERENCES public\.users\(id\)/);
   assert.match(phase57, /validate_nomina_periodo_anulacion/);
   assert.match(phase57, /SUPERSEDED/);
   assert.doesNotMatch(phase57, /contrato_id\s*=\s*24/);
