@@ -2,7 +2,7 @@
 BEGIN;
 
 DO $$
-DECLARE actor_id bigint := current_setting('app.fix_actor_user_id')::bigint;
+DECLARE actor_id bigint := regexp_replace(current_setting('application_name'), '^fix-actor-', '')::bigint;
     already_set bigint;
     mismatched bigint;
 BEGIN
@@ -43,7 +43,7 @@ DECLARE updated_count bigint; audit_count bigint;
 BEGIN
   WITH updated AS (
     UPDATE public.nomina_periodos
-    SET anulado_por=current_setting('app.fix_actor_user_id')::bigint
+    SET anulado_por=regexp_replace(current_setting('application_name'), '^fix-actor-', '')::bigint
     WHERE id IN (4,6) AND anulado_por IS NULL
     RETURNING id
   ) SELECT COUNT(*) INTO updated_count FROM updated;
@@ -54,7 +54,7 @@ BEGIN
     INSERT INTO public.auditoria_eventos(modulo,entidad,entidad_id,accion,descripcion,datos_anteriores,datos_nuevos)
     SELECT 'NOMINA','nomina_periodos',p.id,'NOMINA_PERIODO_ANULACION_TRAZABILIDAD_CORREGIDA',
       'Correccion controlada exclusiva de anulado_por tras reconciliacion; no se alteraron otros campos',
-      jsonb_build_object('anulado_por',NULL),jsonb_build_object('anulado_por',current_setting('app.fix_actor_user_id')::bigint)
+      jsonb_build_object('anulado_por',NULL),jsonb_build_object('anulado_por',regexp_replace(current_setting('application_name'), '^fix-actor-', '')::bigint)
     FROM public.nomina_periodos p WHERE p.id IN (4,6);
     GET DIAGNOSTICS audit_count = ROW_COUNT;
     IF audit_count <> 2 THEN RAISE EXCEPTION 'FIX_ANULADO_POR_AUDIT_ROWCOUNT: %', audit_count; END IF;

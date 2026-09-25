@@ -61,7 +61,7 @@ try {
   $connection = Get-PsqlConnectionParameters -ConnectionString $databaseUrl -ExpectedProjectRef $projectRef
   $psqlPath = Get-Psql17Path
   Set-PsqlEnvironment
-  if (-not $PreflightOnly) { [Environment]::SetEnvironmentVariable('PGOPTIONS', ('-c app.reconcile_actor_user_id={0}' -f $ActorUserId), 'Process') }
+  if (-not $PreflightOnly) { [Environment]::SetEnvironmentVariable('PGOPTIONS', ('-c application_name=reconcile-actor-{0}' -f $ActorUserId), 'Process') }
   $mode = if ($PreflightOnly) { 'PREFLIGHT_ONLY' } else { 'RECONCILIACION_ESCRITURA' }
   Write-Host ("Modo={0}; conexión validada: host={1}, port={2}, database={3}, user={4}, sslmode=require; cliente={5}" -f $mode, $connection.Host, $connection.Port, (Get-SanitizedPsqlValue $connection.Database), (Get-SanitizedPsqlValue $connection.User), (& $psqlPath --version).Trim())
   if ($PreflightOnly) {
