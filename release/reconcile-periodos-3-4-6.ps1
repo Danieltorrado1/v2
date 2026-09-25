@@ -52,7 +52,7 @@ function Restore-PsqlEnvironment { foreach ($name in $pgEnvNames) { [Environment
 
 function Invoke-PsqlFile([string]$file, [long]$Actor = 0) {
   $args = @('-h', $connection.Host, '-p', [string]$connection.Port, '-U', $connection.User, '-d', $connection.Database, '--no-psqlrc', '--quiet', '--set=ON_ERROR_STOP=1', '--file', $file)
-  if ($Actor -gt 0) { $args += @('--set=actor_user_id=' + [string]$Actor) }
+  if ($Actor -gt 0) { $args += @('--set', 'actor_user_id=' + [string]$Actor) }
   & $psqlPath @args
   if ($LASTEXITCODE -ne 0) { throw "psql falló para $([IO.Path]::GetFileName($file))." }
 }
