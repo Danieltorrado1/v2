@@ -44,7 +44,19 @@ test('Planilla resuelve el alcance canónico con prioridad y desempate estable',
   assert.match(nomina, /'PERSONA'::text[\s\S]*3/);
   assert.match(nomina, /scope\.prioridad ASC, scope\.vigencia_desde DESC, scope\.id DESC/);
   assert.match(nomina, /LIMIT 1/);
-  assert.match(nomina, /gma\.vigencia_desde <= CURRENT_DATE/);
+  assert.match(nomina, /gma\.vigencia_desde <= np\.fecha_fin/);
+  assert.match(nomina, /gma\.vigencia_hasta IS NULL OR gma\.vigencia_hasta >= np\.fecha_inicio/);
+
+  const overlapsPeriod = (start: string, end: string | null, periodStart: string, periodEnd: string) =>
+    start <= periodEnd && (end === null || end >= periodStart);
+  assert.equal(overlapsPeriod('2026-08-26', '2026-09-25', '2026-08-26', '2026-09-25'), true);
+  assert.equal(overlapsPeriod('2026-08-01', '2026-08-25', '2026-08-26', '2026-09-25'), false);
+  assert.equal(overlapsPeriod('2026-09-26', null, '2026-08-26', '2026-09-25'), false);
+  assert.equal(overlapsPeriod('2026-08-26', '2026-08-27', '2026-09-01', '2026-09-25'), false);
+  assert.equal(overlapsPeriod('2026-08-01', '2026-09-01', '2026-08-26', '2026-09-25'), true);
+  assert.equal(overlapsPeriod('2026-08-26', '2026-09-25', '2026-08-26', '2026-09-25'), true);
+  assert.match(nomina, /assertPeriodoAllowsOpenMutations/);
+  assert.match(nomina, /np\.contrato_id = v\.contrato_id/);
 });
 
 test('Drawer usa usuarios asociados a empresa activa y expone estados reales', () => {

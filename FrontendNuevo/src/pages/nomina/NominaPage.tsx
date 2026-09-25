@@ -1765,7 +1765,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
       catalogoTiposNovedad
         .filter((tipo) => {
           const codigo = (tipo.codigo_operativo ?? "").trim().toUpperCase();
-          return codigo !== "DNC" && codigo !== "DCO";
+          return true;
         })
         .map((tipo) => ({
           value: (tipo.codigo_operativo ?? tipo.nombre ?? "").trim(),
