@@ -25,7 +25,7 @@ foreach ($name in @('INTEGRACION_OUTBOX_ENABLED', 'INTEGRACION_SYNC_ENABLED', 'I
 $connection = $null
 $psqlPath = $null
 $previousEnv = @{}
-$pgEnvNames = @('PGHOST', 'PGPORT', 'PGDATABASE', 'PGUSER', 'PGPASSWORD', 'PGSSLMODE', 'PGCONNECT_TIMEOUT')
+$pgEnvNames = @('PGHOST', 'PGPORT', 'PGDATABASE', 'PGUSER', 'PGPASSWORD', 'PGSSLMODE', 'PGCONNECT_TIMEOUT', 'PGOPTIONS')
 
 function Get-Psql17Path {
   $candidates = @('C:\Program Files\PostgreSQL\17\bin\psql.exe', ((Get-Command psql -ErrorAction SilentlyContinue).Source)) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
@@ -61,6 +61,7 @@ try {
   $connection = Get-PsqlConnectionParameters -ConnectionString $databaseUrl -ExpectedProjectRef $projectRef
   $psqlPath = Get-Psql17Path
   Set-PsqlEnvironment
+  if (-not $PreflightOnly) { [Environment]::SetEnvironmentVariable('PGOPTIONS', ('-c app.reconcile_actor_user_id={0}' -f $ActorUserId), 'Process') }
   $mode = if ($PreflightOnly) { 'PREFLIGHT_ONLY' } else { 'RECONCILIACION_ESCRITURA' }
   Write-Host ("Modo={0}; conexión validada: host={1}, port={2}, database={3}, user={4}, sslmode=require; cliente={5}" -f $mode, $connection.Host, $connection.Port, (Get-SanitizedPsqlValue $connection.Database), (Get-SanitizedPsqlValue $connection.User), (& $psqlPath --version).Trim())
   if ($PreflightOnly) {
