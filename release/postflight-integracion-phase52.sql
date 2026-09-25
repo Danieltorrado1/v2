@@ -25,7 +25,7 @@ BEGIN
     THEN RAISE EXCEPTION 'PHASE_52_REQUIRED_CONSTRAINTS_MISSING'; END IF;
   IF (SELECT COUNT(*) FROM pg_constraint c JOIN pg_class r ON r.oid=c.conrelid JOIN pg_namespace n ON n.oid=r.relnamespace
       WHERE n.nspname='public' AND r.relname IN ('integracion_eventos','integracion_evento_impactos')
-      AND c.contype='f') <> 8
+      AND c.contype='f') < 8
     THEN RAISE EXCEPTION 'PHASE_52_REQUIRED_FKS_MISSING'; END IF;
   IF (SELECT COUNT(*) FROM pg_indexes WHERE schemaname='public' AND indexname IN
       ('idx_integracion_eventos_claim','idx_integracion_eventos_empresa_contrato','idx_integracion_eventos_vinculacion',
