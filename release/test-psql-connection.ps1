@@ -19,6 +19,9 @@ try { Get-PsqlConnectionParameters -ConnectionString 'postgresql://u:p@127.0.0.1
 try { Get-PsqlConnectionParameters -ConnectionString 'postgresql://u:p@pooler.example:6543/postgres' -ExpectedProjectRef 'expected-ref' | Out-Null; throw 'Debió rechazar project ref' } catch { Assert-True ($_.Exception.Message -match 'project ref') 'No rechazó project ref incorrecto' }
 
 $runner = Get-Content (Join-Path $PSScriptRoot 'reconcile-periodos-3-4-6.ps1') -Raw
+$mainSql = Get-Content (Join-Path $PSScriptRoot 'reconcile-periodos-3-4-6.sql') -Raw
+$fixRunner = Get-Content (Join-Path $PSScriptRoot 'fix-periodos-4-6-anulado-por.ps1') -Raw
+$fixSql = Get-Content (Join-Path $PSScriptRoot 'fix-periodos-4-6-anulado-por.sql') -Raw
 $preflight = Get-Content (Join-Path $PSScriptRoot 'preflight-reconciliacion-periodos.sql') -Raw
 $postflight = Get-Content (Join-Path $PSScriptRoot 'postflight-reconciliacion-periodos.sql') -Raw
 Assert-True ($runner -match "psql-connection\.ps1") 'Falta importación obligatoria del helper'
@@ -29,12 +32,18 @@ Assert-True ($runner -match 'PostgreSQL\\\)\\s\+17\\\.') 'Falta guardia de clien
 Assert-True ($runner -match 'PreflightOnly') 'Falta modo PreflightOnly'
 Assert-True ($runner -match 'IdempotencyCheck') 'Falta bloqueo explícito de segunda ejecución no formal'
 Assert-True ($runner -match 'RECONCILIAR PERIODOS 3 4 6 SOLO CON FLAGS APAGADAS') 'Falta confirmación de escritura'
+Assert-True ($runner -match 'ActorUserId' -and $mainSql -match 'anulado_por') 'El reconciliador no exige actor explícito'
 Assert-True ($runner -match 'preflight-reconciliacion-periodos\.sql' -and $runner -match 'reconcile-periodos-3-4-6\.sql') 'Rutas de preflight/mutador incompletas'
 Assert-True ($preflight -match 'BEGIN READ ONLY' -and $preflight -notmatch '(?im)^\s*(INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|MERGE)\b') 'El preflight no es read-only'
 foreach ($marker in @('PREFLIGHT_PERIOD_ALREADY_CANCELLED','PREFLIGHT_IMPACT_DISTRIBUTION_NOT_5_5_5','PREFLIGHT_REVISIONS_4_NOT_47','PREFLIGHT_EVENT_ORPHAN','PREFLIGHT_AMBIGUOUS_CANONICAL_MATCH','PREFLIGHT_PHASE56_INDEX_MISSING','PREFLIGHT_PHASE57_CALENDAR_MISSING')) { Assert-True ($preflight -match $marker) "Falta prueba/guardia $marker" }
 Assert-True ($preflight -match 'recalc_attempts <> 0' -and $preflight -match 'PREFLIGHT_LOCKS_WAITING') 'Faltan guardias de recálculo/locks'
 foreach ($marker in @('POSTFLIGHT_IMPACTOS_4_TRAZABILIDAD_INVALIDA','POSTFLIGHT_IMPACTOS_6_CANONICO_AMBIGUO','POSTFLIGHT_VINCULOS_4_INVALIDOS','POSTFLIGHT_REVISIONES_4_INVALIDAS','POSTFLIGHT_DUPLICADOS','POSTFLIGHT_CICLOS')) { Assert-True ($postflight -match $marker) "Falta validación postflight $marker" }
 Assert-True ($runner -notmatch 'Write-Host[^\r\n]*(Password|ConnectionString)') 'Secreto potencial en logs'
+Assert-True ($fixRunner -match 'ActorUserId' -and $fixRunner -match 'PGPASSWORD' -and $fixRunner -match 'finally') 'Correctivo sin actor/limpieza segura'
+Assert-True ($fixRunner -match 'fix-periodos-4-6-anulado-por\.sql') 'Correctivo no usa SQL separado'
+Assert-True ($fixSql -match 'FIX_ANULADO_POR_ACTOR_INVALIDO' -and $fixSql -match 'FIX_ANULADO_POR_ROWCOUNT' -and $fixSql -match 'FIX_ANULADO_POR_IDEMPOTENT_NOOP') 'Guardias de actor/rowcount/idempotencia incompletas'
+Assert-True ($fixSql -match 'SET anulado_por' -and $fixSql -notmatch '(?im)^\s*UPDATE\s+public\.nomina_periodos\s+SET\s+(?!anulado_por)') 'Correctivo puede modificar campos adicionales'
+Assert-True ($fixSql -match 'NOMINA_PERIODO_ANULACION_TRAZABILIDAD_CORREGIDA') 'Falta auditoría específica del correctivo'
 
 $psql16 = 'C:\Program Files\PostgreSQL\16\bin\psql.exe'
 $psql17 = 'C:\Program Files\PostgreSQL\17\bin\psql.exe'
