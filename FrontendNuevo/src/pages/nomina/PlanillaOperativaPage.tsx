@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AlertTriangle, Check, Plus, RefreshCw, Search, X } from "lucide-react";
+import { AlertTriangle, Check, Clock3, Plus, RefreshCw, Search, X } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
 import { onPersonalInvalidation } from "../../events/personalInvalidation";
@@ -47,7 +47,7 @@ import type {
 import type { NominaAsistenciaBulkChange } from "../../services/nominaApi";
 import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from "./nominaPeriods";
 import { addDaysToDateOnly } from "./dateOnly";
-import { classifyAttendanceFailure, migrateAttendanceQueue, type AttendanceSyncState } from "./attendanceQueue";
+import { attendanceDiagnosticCsv, buildAttendanceDiagnostic, classifyAttendanceFailure, migrateAttendanceQueue, type AttendanceSyncState } from "./attendanceQueue";
 import { getColombianCalendarDay } from "./colombiaHolidays";
 import NominaModuleShell from "./NominaModuleShell";
 import CambioOperativoFields from './CambioOperativoFields';
@@ -563,6 +563,7 @@ export default function PlanillaOperativaPage() {
   const pendingAttendanceChangesRef = useRef<Map<string, NominaAsistenciaBulkChange>>(new Map());
   const [pendingAttendanceHydratedKey, setPendingAttendanceHydratedKey] = useState("");
   const [attendanceSaveState, setAttendanceSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [lastAttendanceAck, setLastAttendanceAck] = useState<string | null>(null);
   const [attendanceSyncStates, setAttendanceSyncStates] = useState<Map<string, AttendanceSyncState>>(new Map());
   const attendanceFlushTimerRef = useRef<number | null>(null);
   const attendanceFlushRef = useRef<() => Promise<void>>(async () => undefined);
@@ -1362,6 +1363,7 @@ export default function PlanillaOperativaPage() {
         const batch = changes.slice(offset, offset + ATTENDANCE_SAVE_BATCH_SIZE);
         const response = await markNominaAsistenciaBulk(periodId, batch);
         const confirmed = new Set((response.confirmados ?? []).map((item) => `${item.vinculacion_id}|${item.fecha}`));
+        const rejected = new Map<string, AttendanceSyncState>((response.rechazados ?? []).map((item) => [`${item.vinculacion_id}|${item.fecha}`, item.estado as AttendanceSyncState]));
         const next = new Map(pendingAttendanceChangesRef.current);
         for (const item of batch) {
           const key = `${item.vinculacion_id}|${item.fecha}`;
@@ -1370,11 +1372,13 @@ export default function PlanillaOperativaPage() {
             next.delete(key);
             setAttendanceSyncStates((states) => new Map(states).set(key, "CONFIRMADO_SERVIDOR"));
           }
+          if (rejected.has(key)) setAttendanceSyncStates((states) => new Map(states).set(key, rejected.get(key)!));
         }
         pendingAttendanceChangesRef.current = next;
         setPendingAttendanceChanges(next);
         setPendingAttendance(new Set(next.keys()));
       }
+      if (pendingAttendanceChangesRef.current.size < changes.length) setLastAttendanceAck(new Date().toISOString());
       const remaining = pendingAttendanceChangesRef.current.size;
       setAttendanceSaveState(remaining ? "error" : "saved");
       if (remaining) setError("Algunos cambios no fueron confirmados. Revisa y reintenta.");
@@ -1391,6 +1395,32 @@ export default function PlanillaOperativaPage() {
     }
   };
   attendanceFlushRef.current = flushAttendance;
+
+  const exportAttendanceDiagnostic = (format: "json" | "csv") => {
+    const period = periods.find((item) => String(item.id) === periodId);
+    const context = {
+      empresaId: String(empresaId ?? "global"),
+      contratoId: period?.contrato_id ? String(period.contrato_id) : null,
+      periodoId: String(periodId ?? ""),
+    };
+    const items = Array.from(pendingAttendanceChanges.values()).map((item) => ({
+      ...item,
+      idempotency_key: item.idempotency_key ?? `${item.vinculacion_id}:${item.fecha}`,
+      context,
+      state: attendanceSyncStates.get(`${item.vinculacion_id}|${item.fecha}`) ?? "PENDIENTE_LOCAL",
+      error: null,
+      updated_at: new Date().toISOString(),
+    }));
+    const body = format === "json"
+      ? JSON.stringify(buildAttendanceDiagnostic(items, context, lastAttendanceAck), null, 2)
+      : attendanceDiagnosticCsv(items);
+    const url = URL.createObjectURL(new Blob([body], { type: format === "json" ? "application/json" : "text/csv" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `diagnostico-planilla-${periodId}.${format}`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   const toggleAttendance = (employee: NominaEmpleadoApi, date: string, remove = false) => {
     if (!editable || isOutsideEmployment(employee, date)) {
@@ -1854,6 +1884,10 @@ export default function PlanillaOperativaPage() {
           {pendingAttendanceChanges.size ? `${pendingAttendanceChanges.size} cambios pendientes · ${attendanceSaveState === "saving" ? "guardando" : attendanceSaveState === "error" ? "error" : "pendiente"}` : attendanceSaveState === "saved" ? "Asistencia guardada por el servidor" : "Sin cambios de asistencia pendientes"}
         </span>
         {attendanceSaveState === "error" ? <button type="button" onClick={() => void attendanceFlushRef.current()}>REINTENTAR</button> : null}
+        {pendingAttendanceChanges.size ? <>
+          <button type="button" onClick={() => exportAttendanceDiagnostic("json")}>Exportar diagnóstico JSON</button>
+          <button type="button" onClick={() => exportAttendanceDiagnostic("csv")}>Exportar diagnóstico CSV</button>
+        </> : null}
         {employees.length > 0 && period?.estado === "ABIERTO" && user?.permissions.includes("nomina.empleados.import") ?
           <button type="button" className="op-sync-action" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={15} />{isSyncingPersonal ? "Sincronizando..." : "SINCRONIZAR AHORA"}</button> : null}
       </section>
@@ -2092,7 +2126,13 @@ export default function PlanillaOperativaPage() {
                             {novedadCode(item)}
                           </b>
                         ))}
-                        {additionalTurnsOnThisDay.length > 0 ? <em>{`+${additionalTurnsOnThisDay.length}TA`}</em> : null}
+                        {additionalTurnsOnThisDay.length > 0 ? <span
+                          className="op-internal-turn-indicator"
+                          role="img"
+                          tabIndex={0}
+                          title={additionalTurnsOnThisDay.length === 1 ? "1 turno adicional interno" : `${additionalTurnsOnThisDay.length} turnos adicionales internos`}
+                          aria-label={additionalTurnsOnThisDay.length === 1 ? "1 turno adicional interno" : `${additionalTurnsOnThisDay.length} turnos adicionales internos`}
+                        ><Clock3 size={12} aria-hidden="true" />+{additionalTurnsOnThisDay.length}T</span> : null}
                         {additionalTurnsOnThisDay.length === 0 && movementsOnThisDay.some((item) => item.familia_movimiento === "ADICION_DEVENGO") ? <em>TA</em> : null}
                         {tramo?.cambioId ? <i>C</i> : null}
                       </button>

@@ -1836,11 +1836,17 @@ const assertNominaAsistenciaSinNovedadActiva = async (
   }
 
   const first = conflicts[0]!;
+  const attendance = await listNominaAsistenciaPresentePorRango(client, periodoId, vinculacionId, rango);
   throw new AppError(
     `El dia ${first.fecha} tiene una novedad activa: ${first.codigo ?? first.nombre ?? 'NOVEDAD'} (${first.fecha_inicio} a ${first.fecha_fin}). Para marcar asistencia primero debes editar o anular la novedad.`,
     409,
     'NOMINA_ASISTENCIA_INCOMPATIBLE',
-    { conflictos: conflicts.map(({ fecha, codigo, nombre, fecha_inicio, fecha_fin, origen }) => ({ fecha, codigo, nombre, fecha_inicio, fecha_fin, origen })) }
+    {
+      periodo_solicitado: periodoId,
+      rango_solicitado: rango,
+      asistencia_existente: attendance.map(({ fecha }) => fecha),
+      conflictos: conflicts.map(({ fecha, codigo, nombre, fecha_inicio, fecha_fin, origen }) => ({ fecha, codigo, nombre, fecha_inicio, fecha_fin, origen }))
+    }
   );
 };
 
@@ -10364,6 +10370,7 @@ export const markNominaAsistenciaBulk = async (
   const idempotencyKeys = unique.map((item) => item.idempotency_key).filter((value): value is string => Boolean(value));
   const client = await dbPool.connect();
   const confirmados: Array<{ vinculacion_id: string; fecha: string; presente: boolean; idempotency_key?: string | null }> = [];
+  const rechazados: Array<{ vinculacion_id: string; fecha: string; presente: boolean; idempotency_key?: string | null; estado: 'ERROR_REINTENTABLE' | 'ERROR_REQUIERE_USUARIO'; motivo: string }> = [];
     const empleadosAfectados = new Set<string>();
     const persistenceBatch: Array<{
       fecha: string;
@@ -10375,43 +10382,65 @@ export const markNominaAsistenciaBulk = async (
     }> = [];
   try {
     await client.query('BEGIN');
+    const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
+    assertPeriodoAllowsOpenMutations(periodo.estado, 'marking payroll attendance in bulk');
     if (idempotencyKeys.length > 0) {
+      for (const key of idempotencyKeys) {
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [key]);
+      }
       const replay = await client.query<{ id: string }>(
         `
           SELECT id::text AS id
           FROM auditoria_eventos
           WHERE accion = 'NOMINA_ASISTENCIA_BULK_UPDATE'
+            AND datos_nuevos ->> 'periodo_id' = $2
             AND datos_nuevos -> 'idempotency_keys' ?| $1::text[]
           ORDER BY id DESC
           LIMIT 1
         `,
-        [idempotencyKeys]
+        [idempotencyKeys, String(periodoId)]
       );
       if (replay.rows[0]) {
         await client.query('COMMIT');
-        return { confirmados: unique, total_confirmados: unique.length, idempotente: true };
+        return {
+          confirmados: unique,
+          operaciones: unique.map((item) => ({ ...item, estado: 'CONFIRMADO_SERVIDOR' as const })),
+          total_confirmados: unique.length,
+          idempotente: true
+        };
       }
     }
-    const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
-    assertPeriodoAllowsOpenMutations(periodo.estado, 'marking payroll attendance in bulk');
     for (const cambio of unique) {
-      const empleado = await loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow(client, periodoId, cambio.vinculacion_id);
-      await assertNominaEmpleadoCoberturaScope(empleado.nomina_empleado_id, tenant, client);
-      assertNominaEmpleadoEditable(empleado, 'modificar la asistencia');
-      const vinc = await client.query<{ fecha_inicio: string; fecha_fin: string | null }>('SELECT fecha_inicio::text, fecha_fin::text FROM vinculaciones WHERE id=$1::bigint', [cambio.vinculacion_id]);
-      if (!vinc.rows[0]) throw new AppError('Vinculacion no encontrada', 404, 'NOMINA_ASISTENCIA_VINCULACION_INVALIDA');
-      assertNominaFechaDentroDeVigencia(cambio.fecha, periodo, vinc.rows[0]);
-      if (cambio.presente) await assertNominaAsistenciaSinNovedadActiva(client, periodoId, cambio.vinculacion_id, { fecha_inicio: cambio.fecha, fecha_fin: cambio.fecha });
-      persistenceBatch.push({
-        periodoId,
-        vinculacionId: cambio.vinculacion_id,
-        fecha: cambio.fecha,
-        presente: cambio.presente,
-        observacionPresentada: 'Asistencia confirmada desde planilla (lote)',
-        observacionPendiente: 'Asistencia desmarcada desde planilla (lote)'
-      });
-      empleadosAfectados.add(empleado.nomina_empleado_id);
-      confirmados.push(cambio);
+      await client.query('SAVEPOINT asistencia_bulk_item');
+      try {
+        const empleado = await loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow(client, periodoId, cambio.vinculacion_id);
+        await assertNominaEmpleadoCoberturaScope(empleado.nomina_empleado_id, tenant, client);
+        assertNominaEmpleadoEditable(empleado, 'modificar la asistencia');
+        const vinc = await client.query<{ fecha_inicio: string; fecha_fin: string | null }>('SELECT fecha_inicio::text, fecha_fin::text FROM vinculaciones WHERE id=$1::bigint', [cambio.vinculacion_id]);
+        if (!vinc.rows[0]) throw new AppError('Vinculacion no encontrada', 404, 'NOMINA_ASISTENCIA_VINCULACION_INVALIDA');
+        assertNominaFechaDentroDeVigencia(cambio.fecha, periodo, vinc.rows[0]);
+        if (cambio.presente) await assertNominaAsistenciaSinNovedadActiva(client, periodoId, cambio.vinculacion_id, { fecha_inicio: cambio.fecha, fecha_fin: cambio.fecha });
+        persistenceBatch.push({
+          periodoId,
+          vinculacionId: cambio.vinculacion_id,
+          fecha: cambio.fecha,
+          presente: cambio.presente,
+          observacionPresentada: 'Asistencia confirmada desde planilla (lote)',
+          observacionPendiente: 'Asistencia desmarcada desde planilla (lote)'
+        });
+        empleadosAfectados.add(empleado.nomina_empleado_id);
+        confirmados.push(cambio);
+        await client.query('RELEASE SAVEPOINT asistencia_bulk_item');
+      } catch (error) {
+        await client.query('ROLLBACK TO SAVEPOINT asistencia_bulk_item');
+        await client.query('RELEASE SAVEPOINT asistencia_bulk_item');
+        const status = error instanceof AppError ? error.statusCode : null;
+        rechazados.push({
+          ...cambio,
+          estado: status === 401 || status === 403 || status === 409 ? 'ERROR_REQUIERE_USUARIO' : 'ERROR_REINTENTABLE',
+          motivo: error instanceof Error ? error.message : 'No se pudo procesar la operación'
+        });
+      }
     }
     await nominaAsistenciaRepository.bulkUpsert(persistenceBatch, client);
     if (empleadosAfectados.size) {
@@ -10432,6 +10461,7 @@ export const markNominaAsistenciaBulk = async (
       after: {
         periodo_id: periodoId,
         cambios: confirmados,
+        rechazados,
         idempotency_keys: confirmados.map((item) => item.idempotency_key).filter(Boolean),
         empleados_afectados: [...empleadosAfectados]
       },
@@ -10443,7 +10473,17 @@ export const markNominaAsistenciaBulk = async (
       await registrarEventoLaboralNomina(client, { eventType: 'ASISTENCIA_CAMBIADA', periodoId, vinculacionId, effectiveDate: days[0]!, operationId: `bulk:${days.join(',')}`, summary: { fecha_desde: days[0], fecha_hasta: days.at(-1), dias_afectados: days, cantidad: days.length, origen: 'Planilla' } });
     }
     await client.query('COMMIT');
-    return { confirmados, total_confirmados: confirmados.length };
+    return {
+      confirmados,
+      operaciones: [
+        ...confirmados.map((item) => ({ ...item, estado: 'CONFIRMADO_SERVIDOR' as const })),
+        ...rechazados
+      ],
+      rechazados,
+      total_confirmados: confirmados.length,
+      total_rechazados: rechazados.length,
+      idempotente: false
+    };
   } catch (error) { await client.query('ROLLBACK'); throw error; }
   finally { client.release(); }
 };

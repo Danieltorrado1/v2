@@ -50,6 +50,7 @@ export function migrateAttendanceQueue(
       : null;
     const sameContext = !candidateContext || (
       String(candidateContext.empresaId ?? context.empresaId) === context.empresaId &&
+      String(candidateContext.contratoId ?? context.contratoId ?? "") === String(context.contratoId ?? "") &&
       String(candidateContext.periodoId ?? context.periodoId) === context.periodoId
     );
     if (!sameContext) { discarded += 1; continue; }
@@ -76,4 +77,33 @@ export function queueStatusLabel(items: AttendanceQueueItem[]): string {
   if (items.some((item) => item.state === "ENVIANDO")) return "Guardando…";
   if (items.some((item) => item.state.startsWith("ERROR_"))) return "Error de sincronización";
   return "Cambios pendientes";
+}
+
+export function applyAttendanceAcks(items: AttendanceQueueItem[], acknowledgedKeys: Iterable<string>): AttendanceQueueItem[] {
+  const acknowledged = new Set(acknowledgedKeys);
+  return items.filter((item) => !acknowledged.has(item.idempotency_key));
+}
+
+export function buildAttendanceDiagnostic(items: AttendanceQueueItem[], context: AttendanceQueueContext, lastAck: string | null) {
+  return {
+    generated_at: new Date().toISOString(),
+    context,
+    counts: {
+      pending: items.filter((item) => item.state === "PENDIENTE_LOCAL").length,
+      sending: items.filter((item) => item.state === "ENVIANDO").length,
+      retryable: items.filter((item) => item.state === "ERROR_REINTENTABLE").length,
+      requires_user: items.filter((item) => item.state === "ERROR_REQUIERE_USUARIO").length,
+      confirmed: items.filter((item) => item.state === "CONFIRMADO_SERVIDOR").length,
+    },
+    last_ack: lastAck,
+    entries: items.map(({ vinculacion_id, fecha, presente, idempotency_key, state, error }) => ({ vinculacion_id, fecha, presente, idempotency_key, state, error })),
+  };
+}
+
+export function attendanceDiagnosticCsv(items: AttendanceQueueItem[]): string {
+  const escape = (value: string | boolean | null) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+  return [
+    "vinculacion_id,fecha,presente,idempotency_key,state,error",
+    ...items.map((item) => [item.vinculacion_id, item.fecha, item.presente, item.idempotency_key, item.state, item.error].map(escape).join(",")),
+  ].join("\n");
 }

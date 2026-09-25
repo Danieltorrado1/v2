@@ -36,3 +36,20 @@ test('la cola intenta flush al abandonar contexto y advierte antes de cerrar', (
   assert.match(planilla, /beforeunload/);
   assert.match(planilla, /event\.returnValue/);
 });
+
+test('el indicador de turno interno es accesible y coexiste con asistencia y novedad', () => {
+  assert.match(planilla, /className="op-internal-turn-indicator"/);
+  assert.match(planilla, /aria-label=\{additionalTurnsOnThisDay.length === 1/);
+  assert.match(planilla, /title=\{additionalTurnsOnThisDay.length === 1/);
+  assert.match(planilla, /Clock3/);
+  assert.match(planilla, /op-attendance-mark/);
+  assert.match(planilla, /op-novelty-mark/);
+  assert.match(planilla, /getNominaNovedadTurnosOperativos/);
+});
+
+test('el diagnóstico de la cola es exportable y no incluye identidad personal', () => {
+  const queue = readFileSync('FrontendNuevo/src/pages/nomina/attendanceQueue.ts', 'utf8');
+  assert.match(queue, /buildAttendanceDiagnostic/);
+  assert.match(queue, /attendanceDiagnosticCsv/);
+  assert.doesNotMatch(queue, /nombre_completo|numero_documento/);
+});
