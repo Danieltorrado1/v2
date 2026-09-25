@@ -47,6 +47,7 @@ import type {
 import type { NominaAsistenciaBulkChange } from "../../services/nominaApi";
 import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from "./nominaPeriods";
 import { addDaysToDateOnly } from "./dateOnly";
+import { classifyAttendanceFailure, migrateAttendanceQueue, type AttendanceSyncState } from "./attendanceQueue";
 import { getColombianCalendarDay } from "./colombiaHolidays";
 import NominaModuleShell from "./NominaModuleShell";
 import CambioOperativoFields from './CambioOperativoFields';
@@ -229,6 +230,7 @@ function group<T>(items: T[], key: (item: T) => string) {
 
 function coverageTurnsOnDate(items: NominaNovedadTurnoOperativoApi[], date: string) {
   return items.filter((item) => {
+    if (item.tipo_turno !== "INTERNO" || item.activo === false || item.estado === "ANULADO") return false;
     const start = item.fecha ?? item.fecha_inicio ?? item.fecha_fin;
     const end = item.fecha_fin ?? item.fecha_inicio ?? item.fecha ?? start;
     return Boolean(start && end && start <= date && end >= date);
@@ -561,6 +563,7 @@ export default function PlanillaOperativaPage() {
   const pendingAttendanceChangesRef = useRef<Map<string, NominaAsistenciaBulkChange>>(new Map());
   const [pendingAttendanceHydratedKey, setPendingAttendanceHydratedKey] = useState("");
   const [attendanceSaveState, setAttendanceSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [attendanceSyncStates, setAttendanceSyncStates] = useState<Map<string, AttendanceSyncState>>(new Map());
   const attendanceFlushTimerRef = useRef<number | null>(null);
   const attendanceFlushRef = useRef<() => Promise<void>>(async () => undefined);
   const [attendanceFailures, setAttendanceFailures] = useState<Map<string, string>>(new Map());
@@ -660,14 +663,23 @@ export default function PlanillaOperativaPage() {
     setPendingAttendanceChanges(empty);
     setPendingAttendance(new Set());
     try {
-      const saved = JSON.parse(window.sessionStorage.getItem(storageKey) ?? "[]") as NominaAsistenciaBulkChange[];
-      const next = new Map(saved.map((item) => [`${item.vinculacion_id}|${item.fecha}`, item]));
+      const saved = JSON.parse(window.sessionStorage.getItem(storageKey) ?? "[]") as unknown;
+      const migrated = migrateAttendanceQueue(saved, {
+        empresaId: String(empresaId ?? "global"),
+        contratoId: periods.find((item) => String(item.id) === periodId)?.contrato_id ? String(periods.find((item) => String(item.id) === periodId)?.contrato_id) : null,
+        periodoId: String(periodId),
+      }, () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`));
+      const next = new Map(migrated.items.map((item) => [
+        `${item.vinculacion_id}|${item.fecha}`,
+        { vinculacion_id: item.vinculacion_id, fecha: item.fecha, presente: item.presente, idempotency_key: item.idempotency_key },
+      ]));
       pendingAttendanceChangesRef.current = next;
       setPendingAttendanceChanges(next);
       setPendingAttendance(new Set(next.keys()));
+      setAttendanceSyncStates(new Map(migrated.items.map((item) => [`${item.vinculacion_id}|${item.fecha}`, item.state])));
     } catch { /* cola corrupta: no afecta la asistencia ya confirmada */ }
     setPendingAttendanceHydratedKey(storageKey);
-  }, [empresaId, periodId]);
+  }, [empresaId, periodId, periods]);
 
   useEffect(() => {
     if (!periodId || typeof window === "undefined") return;
@@ -683,6 +695,24 @@ export default function PlanillaOperativaPage() {
   }, [empresaId, periodId, pendingAttendanceChanges, pendingAttendanceHydratedKey, attendanceSaveState]);
 
   useEffect(() => () => { void attendanceFlushRef.current(); }, [periodId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const flushWhenLeaving = () => { void attendanceFlushRef.current(); };
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!pendingAttendanceChangesRef.current.size) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    document.addEventListener("visibilitychange", flushWhenLeaving);
+    window.addEventListener("pagehide", flushWhenLeaving);
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => {
+      document.removeEventListener("visibilitychange", flushWhenLeaving);
+      window.removeEventListener("pagehide", flushWhenLeaving);
+      window.removeEventListener("beforeunload", warnBeforeUnload);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || !periodId) {
@@ -1326,6 +1356,7 @@ export default function PlanillaOperativaPage() {
     const changes = Array.from(pendingAttendanceChangesRef.current.values());
     if (!periodId || !changes.length || attendanceSaveState === "saving") return;
     setAttendanceSaveState("saving");
+    setAttendanceSyncStates((current) => new Map(changes.reduce((map, item) => map.set(`${item.vinculacion_id}|${item.fecha}`, "ENVIANDO"), new Map(current))));
     try {
       for (let offset = 0; offset < changes.length; offset += ATTENDANCE_SAVE_BATCH_SIZE) {
         const batch = changes.slice(offset, offset + ATTENDANCE_SAVE_BATCH_SIZE);
@@ -1335,7 +1366,10 @@ export default function PlanillaOperativaPage() {
         for (const item of batch) {
           const key = `${item.vinculacion_id}|${item.fecha}`;
           const current = next.get(key);
-          if (confirmed.has(key) && current?.presente === item.presente) next.delete(key);
+          if (confirmed.has(key) && current?.presente === item.presente) {
+            next.delete(key);
+            setAttendanceSyncStates((states) => new Map(states).set(key, "CONFIRMADO_SERVIDOR"));
+          }
         }
         pendingAttendanceChangesRef.current = next;
         setPendingAttendanceChanges(next);
@@ -1346,6 +1380,13 @@ export default function PlanillaOperativaPage() {
       if (remaining) setError("Algunos cambios no fueron confirmados. Revisa y reintenta.");
     } catch (value) {
       setAttendanceSaveState("error");
+      const status = value instanceof ApiClientError ? value.status : null;
+      const failureState = classifyAttendanceFailure(status);
+      setAttendanceSyncStates((states) => {
+        const next = new Map(states);
+        for (const item of changes) next.set(`${item.vinculacion_id}|${item.fecha}`, failureState);
+        return next;
+      });
       setError(formatPlanillaErrorMessage(value, "Error al guardar asistencia. Los cambios siguen pendientes."));
     }
   };
@@ -1395,7 +1436,8 @@ export default function PlanillaOperativaPage() {
     setAttendanceFailures((current) => { const next = new Map(current); next.delete(key); return next; });
     invalidateReviewLocally(employee, "ASISTENCIA_MODIFICADA");
     const nextChanges = new Map(pendingAttendanceChangesRef.current);
-    nextChanges.set(key, { vinculacion_id: employee.vinculacion_id, fecha: date, presente: shouldPresent });
+    nextChanges.set(key, { vinculacion_id: employee.vinculacion_id, fecha: date, presente: shouldPresent, idempotency_key: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}` });
+    setAttendanceSyncStates((states) => new Map(states).set(key, "PENDIENTE_LOCAL"));
     pendingAttendanceChangesRef.current = nextChanges;
     setPendingAttendanceChanges(nextChanges);
   };
@@ -1808,6 +1850,10 @@ export default function PlanillaOperativaPage() {
         </span>
         <span>{summary.pending} pendientes</span>
         <span>{summary.needsReview} requieren revision</span>
+        <span role="status" aria-live="polite">
+          {pendingAttendanceChanges.size ? `${pendingAttendanceChanges.size} cambios pendientes · ${attendanceSaveState === "saving" ? "guardando" : attendanceSaveState === "error" ? "error" : "pendiente"}` : attendanceSaveState === "saved" ? "Asistencia guardada por el servidor" : "Sin cambios de asistencia pendientes"}
+        </span>
+        {attendanceSaveState === "error" ? <button type="button" onClick={() => void attendanceFlushRef.current()}>REINTENTAR</button> : null}
         {employees.length > 0 && period?.estado === "ABIERTO" && user?.permissions.includes("nomina.empleados.import") ?
           <button type="button" className="op-sync-action" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={15} />{isSyncingPersonal ? "Sincronizando..." : "SINCRONIZAR AHORA"}</button> : null}
       </section>
@@ -2011,6 +2057,7 @@ export default function PlanillaOperativaPage() {
                     const key = `${employee.vinculacion_id}|${day}`;
                     const isPresent = present.has(key);
                     const isPendingAttendance = pendingAttendance.has(key);
+                    const attendanceSyncState = attendanceSyncStates.get(key);
                     const hasAttendanceFailure = attendanceFailures.has(key);
                     const outside = isOutsideEmployment(employee, day);
                     const outsideMessage = getEmploymentStatusMessage(employee, day);
@@ -2019,7 +2066,7 @@ export default function PlanillaOperativaPage() {
                       <button
                         type="button"
                         key={day}
-                        className={`op-cell ${calendarDay.className} ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""} ${activeNoveltiesOnThisDay.length ? "has-active-novelty" : ""} ${noveltiesOnThisDay[0] ? novedadVisualClass(noveltiesOnThisDay[0]) : ""} ${isPendingAttendance ? "pending-attendance" : ""} ${hasAttendanceFailure ? "attendance-error" : ""}`}
+                        className={`op-cell ${calendarDay.className} ${outside ? "outside" : ""} ${tramo?.cambioId ? "change" : ""} ${activeNoveltiesOnThisDay.length ? "has-active-novelty" : ""} ${noveltiesOnThisDay[0] ? novedadVisualClass(noveltiesOnThisDay[0]) : ""} ${isPendingAttendance ? "pending-attendance" : ""} ${hasAttendanceFailure ? "attendance-error" : ""} ${attendanceSyncState === "ERROR_REQUIERE_USUARIO" ? "attendance-user-action" : ""}`}
                         data-active-novelty={activeNoveltiesOnThisDay.length ? novedadCode(activeNoveltiesOnThisDay[0]) : undefined}
                         title={`${outsideMessage ? `${outsideMessage} | ` : ""}${noveltiesOnThisDay.length ? `${novedadCode(noveltiesOnThisDay[0])} | ${noveltiesOnThisDay[0]?.tipo_novedad?.nombre ?? "Novedad"} | ${dateLabel(day)} | ${noveltiesOnThisDay[0]?.fecha_inicio ?? day} a ${noveltiesOnThisDay[0]?.fecha_fin ?? day} | ${noveltiesOnThisDay[0]?.observacion ?? "Sin observacion"}` : `${dateLabel(day)} | ${buildContextTitle(employee, dayContext)}`}`}
                         onContextMenu={(event) => {
