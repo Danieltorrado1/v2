@@ -1763,10 +1763,6 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
   const novedadTypeOptions = useMemo<FilterOption[]>(
     () =>
       catalogoTiposNovedad
-        .filter((tipo) => {
-          const codigo = (tipo.codigo_operativo ?? "").trim().toUpperCase();
-          return true;
-        })
         .map((tipo) => ({
           value: (tipo.codigo_operativo ?? tipo.nombre ?? "").trim(),
           label: getVisibleNovedadTipoLabel(tipo),
