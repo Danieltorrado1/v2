@@ -1726,6 +1726,9 @@ interface NominaNovedadDiariaConflictRow extends QueryResultRow {
   fecha: string;
   codigo: string | null;
   nombre: string | null;
+  fecha_inicio: string;
+  fecha_fin: string;
+  origen: 'ORDINARIA' | 'CANONICA';
 }
 
 interface NominaAsistenciaPresenteRow extends QueryResultRow {
@@ -1748,6 +1751,7 @@ const resolveNominaOperativaRango = (
 
 const listNominaNovedadesActivasPorRango = async (
   client: PoolClient,
+  periodoId: string,
   vinculacionId: string,
   rango: NominaOperativaRango
 ): Promise<NominaNovedadDiariaConflictRow[]> => {
@@ -1759,13 +1763,16 @@ const listNominaNovedadesActivasPorRango = async (
             n.fecha_inicio::date AS fecha_inicio,
             COALESCE(n.fecha_fin, n.fecha_inicio)::date AS fecha_fin,
             t.codigo_operativo AS codigo,
-            t.nombre AS nombre
+            t.nombre AS nombre,
+            'ORDINARIA'::text AS origen
           FROM nomina_novedades n
+          INNER JOIN nomina_periodos np ON np.id = n.periodo_id
           INNER JOIN nomina_tipos_novedad t ON t.id = n.tipo_novedad_id
           WHERE n.vinculacion_id = $1::bigint
+            AND n.periodo_id = $2::bigint
             AND COALESCE(n.activo, TRUE) = TRUE
-            AND n.fecha_inicio <= $3::date
-            AND COALESCE(n.fecha_fin, n.fecha_inicio) >= $2::date
+            AND n.fecha_inicio <= $4::date
+            AND COALESCE(n.fecha_fin, n.fecha_inicio) >= $3::date
 
           UNION ALL
 
@@ -1773,27 +1780,31 @@ const listNominaNovedadesActivasPorRango = async (
             c.fecha_inicio::date AS fecha_inicio,
             c.fecha_fin::date AS fecha_fin,
             c.tipo_novedad_codigo_operativo AS codigo,
-            t.nombre AS nombre
+            t.nombre AS nombre,
+            'CANONICA'::text AS origen
           FROM nomina_novedades_canonicas c
           INNER JOIN nomina_tipos_novedad t ON t.id = c.tipo_novedad_id
           WHERE c.vinculacion_id = $1::bigint
             AND COALESCE(c.activo, TRUE) = TRUE
-            AND c.fecha_inicio <= $3::date
-            AND c.fecha_fin >= $2::date
+            AND c.fecha_inicio <= $4::date
+            AND c.fecha_fin >= $3::date
         )
         SELECT DISTINCT
           gs::date::text AS fecha,
           novedades.codigo,
-          novedades.nombre
+          novedades.nombre,
+          novedades.fecha_inicio::text AS fecha_inicio,
+          novedades.fecha_fin::text AS fecha_fin,
+          novedades.origen
         FROM novedades
         CROSS JOIN LATERAL generate_series(
-          GREATEST(novedades.fecha_inicio, $2::date),
-          LEAST(novedades.fecha_fin, $3::date),
+          GREATEST(novedades.fecha_inicio, $3::date),
+          LEAST(novedades.fecha_fin, $4::date),
           interval '1 day'
         ) AS gs
         ORDER BY fecha ASC
       `,
-      [vinculacionId, rango.fecha_inicio, rango.fecha_fin]
+      [vinculacionId, periodoId, rango.fecha_inicio, rango.fecha_fin]
     )
   ).rows;
 };
@@ -1815,20 +1826,21 @@ const listNominaAsistenciaPresentePorRango = async (
 
 const assertNominaAsistenciaSinNovedadActiva = async (
   client: PoolClient,
+  periodoId: string,
   vinculacionId: string,
   rango: NominaOperativaRango
 ): Promise<void> => {
-  const conflicts = await listNominaNovedadesActivasPorRango(client, vinculacionId, rango);
+  const conflicts = await listNominaNovedadesActivasPorRango(client, periodoId, vinculacionId, rango);
   if (!conflicts.length) {
     return;
   }
 
   const first = conflicts[0]!;
   throw new AppError(
-    `El dia ${first.fecha} tiene una novedad activa: ${first.codigo ?? first.nombre ?? 'NOVEDAD'}. Para marcar asistencia primero debes editar o anular la novedad.`,
+    `El dia ${first.fecha} tiene una novedad activa: ${first.codigo ?? first.nombre ?? 'NOVEDAD'} (${first.fecha_inicio} a ${first.fecha_fin}). Para marcar asistencia primero debes editar o anular la novedad.`,
     409,
     'NOMINA_ASISTENCIA_INCOMPATIBLE',
-    { conflictos: conflicts }
+    { conflictos: conflicts.map(({ fecha, codigo, nombre, fecha_inicio, fecha_fin, origen }) => ({ fecha, codigo, nombre, fecha_inicio, fecha_fin, origen })) }
   );
 };
 
@@ -7007,6 +7019,7 @@ export const recalculateNominaPeriodo = async (
           AND nnt.tipo_turno = 'INTERNO'
           AND COALESCE(nnt.activo, TRUE) = TRUE
           AND COALESCE(nn.activo, TRUE) = TRUE
+          AND (nnt.movimiento_id IS NULL OR COALESCE(nm.activo, TRUE) = TRUE)
       `,
       [periodoId]
     );
@@ -8328,7 +8341,11 @@ export const listNominaNovedadTurnosOperativos = async (
   tenant?: TenantAccessContext
 ): Promise<PaginatedResponse<Record<string, unknown>>> => {
   const params: unknown[] = [];
-  const conditions: string[] = [];
+  const conditions: string[] = [
+    'COALESCE(nnt.activo, TRUE) = TRUE',
+    'COALESCE(nn.activo, TRUE) = TRUE',
+    '(nnt.movimiento_id IS NULL OR COALESCE(nm.activo, TRUE) = TRUE)'
+  ];
   if (query.periodo_id) {
     params.push(query.periodo_id);
     conditions.push(`nnt.periodo_id = $${params.length}::bigint`);
@@ -8352,10 +8369,12 @@ export const listNominaNovedadTurnosOperativos = async (
     `
       SELECT COUNT(*)::int AS total
       FROM nomina_novedad_turnos nnt
+      INNER JOIN nomina_novedades nn ON nn.id = nnt.nomina_novedad_id
       INNER JOIN nomina_empleados ne ON ne.id = nnt.nomina_empleado_id
       INNER JOIN vinculaciones v ON v.id = ne.vinculacion_id
       INNER JOIN nomina_periodos np ON np.id = nnt.periodo_id
       INNER JOIN contratos c ON c.id = np.contrato_id
+      LEFT JOIN nomina_movimientos nm ON nm.id = nnt.movimiento_id
       ${whereSql}
     `,
     params
@@ -10253,7 +10272,7 @@ export const markNominaAsistencia = async (periodoId: string, vinculacionId: str
     const v = vinc.rows[0];
     assertNominaFechaDentroDeVigencia(fecha, periodo, v);
     if (presente) {
-      await assertNominaAsistenciaSinNovedadActiva(client, vinculacionId, { fecha_inicio: fecha, fecha_fin: fecha });
+      await assertNominaAsistenciaSinNovedadActiva(client, periodoId, vinculacionId, { fecha_inicio: fecha, fecha_fin: fecha });
     }
     const persisted = await nominaAsistenciaRepository.upsert({
       periodoId,
@@ -10293,7 +10312,7 @@ export const markNominaAsistenciaRango = async (periodoId: string, vinculacionId
     const v = vinc.rows[0];
     assertNominaRangoDentroDePeriodo(fechaInicio, fechaFin, periodo, 'NOMINA_ASISTENCIA_FUERA_VIGENCIA');
     assertNominaRangoDentroDeVinculacion(fechaInicio, fechaFin, v, 'NOMINA_ASISTENCIA_FUERA_VIGENCIA');
-    await assertNominaAsistenciaSinNovedadActiva(client, vinculacionId, { fecha_inicio: fechaInicio, fecha_fin: fechaFin });
+    await assertNominaAsistenciaSinNovedadActiva(client, periodoId, vinculacionId, { fecha_inicio: fechaInicio, fecha_fin: fechaFin });
     const marcados: string[] = [];
     for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
       const fecha = cursor.toISOString().slice(0, 10);
@@ -10335,15 +10354,16 @@ export const markNominaAsistenciaMasiva = async (periodoId: string, vinculacione
 
 export const markNominaAsistenciaBulk = async (
   periodoId: string,
-  cambios: Array<{ vinculacion_id: string; fecha: string; presente: boolean }>,
+  cambios: Array<{ vinculacion_id: string; fecha: string; presente: boolean; idempotency_key?: string | null }>,
   actorUserId: string,
   tenant?: TenantAccessContext,
   auditMeta?: AuditRequestMeta,
 ) => {
   const unique = Array.from(new Map(cambios.map((item) => [`${item.vinculacion_id}|${item.fecha}`, item])).values());
   if (!unique.length) throw new AppError('Debe enviar cambios de asistencia', 400, 'NOMINA_ASISTENCIA_BULK_INPUT_INVALIDO');
+  const idempotencyKeys = unique.map((item) => item.idempotency_key).filter((value): value is string => Boolean(value));
   const client = await dbPool.connect();
-  const confirmados: Array<{ vinculacion_id: string; fecha: string; presente: boolean }> = [];
+  const confirmados: Array<{ vinculacion_id: string; fecha: string; presente: boolean; idempotency_key?: string | null }> = [];
     const empleadosAfectados = new Set<string>();
     const persistenceBatch: Array<{
       fecha: string;
@@ -10355,6 +10375,23 @@ export const markNominaAsistenciaBulk = async (
     }> = [];
   try {
     await client.query('BEGIN');
+    if (idempotencyKeys.length > 0) {
+      const replay = await client.query<{ id: string }>(
+        `
+          SELECT id::text AS id
+          FROM auditoria_eventos
+          WHERE accion = 'NOMINA_ASISTENCIA_BULK_UPDATE'
+            AND datos_nuevos -> 'idempotency_keys' ?| $1::text[]
+          ORDER BY id DESC
+          LIMIT 1
+        `,
+        [idempotencyKeys]
+      );
+      if (replay.rows[0]) {
+        await client.query('COMMIT');
+        return { confirmados: unique, total_confirmados: unique.length, idempotente: true };
+      }
+    }
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'marking payroll attendance in bulk');
     for (const cambio of unique) {
@@ -10364,7 +10401,7 @@ export const markNominaAsistenciaBulk = async (
       const vinc = await client.query<{ fecha_inicio: string; fecha_fin: string | null }>('SELECT fecha_inicio::text, fecha_fin::text FROM vinculaciones WHERE id=$1::bigint', [cambio.vinculacion_id]);
       if (!vinc.rows[0]) throw new AppError('Vinculacion no encontrada', 404, 'NOMINA_ASISTENCIA_VINCULACION_INVALIDA');
       assertNominaFechaDentroDeVigencia(cambio.fecha, periodo, vinc.rows[0]);
-      if (cambio.presente) await assertNominaAsistenciaSinNovedadActiva(client, cambio.vinculacion_id, { fecha_inicio: cambio.fecha, fecha_fin: cambio.fecha });
+      if (cambio.presente) await assertNominaAsistenciaSinNovedadActiva(client, periodoId, cambio.vinculacion_id, { fecha_inicio: cambio.fecha, fecha_fin: cambio.fecha });
       persistenceBatch.push({
         periodoId,
         vinculacionId: cambio.vinculacion_id,
@@ -10392,7 +10429,12 @@ export const markNominaAsistenciaBulk = async (
       tabla: 'nomina_asistencia_diaria',
       registro_id: `${periodoId}:BULK:${Date.now()}`,
       descripcion: 'Actualizacion de asistencia por lote desde planilla',
-      after: { periodo_id: periodoId, cambios: confirmados, empleados_afectados: [...empleadosAfectados] },
+      after: {
+        periodo_id: periodoId,
+        cambios: confirmados,
+        idempotency_keys: confirmados.map((item) => item.idempotency_key).filter(Boolean),
+        empleados_afectados: [...empleadosAfectados]
+      },
       ip: auditMeta?.ip ?? null,
       user_agent: auditMeta?.user_agent ?? null,
     });

@@ -8,6 +8,7 @@ import { registerAuditEntry, type AuditRequestMeta } from '../auditoria/auditori
 import {
   buildPersonaIdentificationCore,
   hasPersonaIdentificationChanged,
+  normalizeNumeroDocumento,
   type PersonaIdentificationCore
 } from './personas.identificaciones.helpers';
 import {
@@ -1049,17 +1050,20 @@ export const listPersonas = async (
   appendPersonaTenantScope(conditions, params, tenant);
 
   if (filters.search) {
-    params.push(`%${filters.search}%`);
-    const searchParam = `$${params.length}`;
+    const normalizedSearch = normalizeNumeroDocumento(filters.search);
+    params.push(`%${filters.search}%`, `%${normalizedSearch}%`);
+    const rawSearchParam = `$${params.length - 1}`;
+    const normalizedSearchParam = `$${params.length}`;
     conditions.push(`
       (
-        p.numero_documento ILIKE ${searchParam}
-        OR p.primer_nombre ILIKE ${searchParam}
-        OR COALESCE(p.segundo_nombre, '') ILIKE ${searchParam}
-        OR p.primer_apellido ILIKE ${searchParam}
-        OR COALESCE(p.segundo_apellido, '') ILIKE ${searchParam}
-        OR COALESCE(p.correo, '') ILIKE ${searchParam}
-        OR COALESCE(p.telefono, '') ILIKE ${searchParam}
+        regexp_replace(upper(COALESCE(p.numero_documento, '')), '[[:space:].,-]+', '', 'g') ILIKE ${normalizedSearchParam}
+        OR p.numero_documento ILIKE ${rawSearchParam}
+        OR p.primer_nombre ILIKE ${rawSearchParam}
+        OR COALESCE(p.segundo_nombre, '') ILIKE ${rawSearchParam}
+        OR p.primer_apellido ILIKE ${rawSearchParam}
+        OR COALESCE(p.segundo_apellido, '') ILIKE ${rawSearchParam}
+        OR COALESCE(p.correo, '') ILIKE ${rawSearchParam}
+        OR COALESCE(p.telefono, '') ILIKE ${rawSearchParam}
       )
     `);
   }
@@ -1067,8 +1071,8 @@ export const listPersonas = async (
   appendVisiblePersonScope(conditions, params, tenant, 'p.id');
 
   if (filters.numero_documento) {
-    params.push(filters.numero_documento);
-    conditions.push(`p.numero_documento = $${params.length}`);
+    params.push(normalizeNumeroDocumento(filters.numero_documento));
+    conditions.push(`regexp_replace(upper(COALESCE(p.numero_documento, '')), '[[:space:].,-]+', '', 'g') = $${params.length}`);
   }
 
   if (filters.municipio_residencia_id) {
@@ -1149,10 +1153,10 @@ export const getPersonaByNumeroDocumento = async (
   const result = await dbQuery<PersonaRow>(
     `
       ${getPersonaSelect()}
-      WHERE p.numero_documento = $1
+      WHERE regexp_replace(upper(COALESCE(p.numero_documento, '')), '[[:space:].,-]+', '', 'g') = $1
       LIMIT 1
     `,
-    [numeroDocumento.trim()]
+    [normalizeNumeroDocumento(numeroDocumento)]
   );
 
   const row = result.rows[0];
@@ -1195,8 +1199,10 @@ export const getPersonaForVinculacion = async (
   const result = await dbQuery<Pick<Persona, 'id' | 'tipo_documento_id' | 'numero_documento' | 'primer_nombre' | 'segundo_nombre' | 'primer_apellido' | 'segundo_apellido'>>(
     `SELECT id, tipo_documento_id, numero_documento, primer_nombre, segundo_nombre,
             primer_apellido, segundo_apellido
-       FROM personas WHERE numero_documento = $1 LIMIT 1`,
-    [numeroDocumento.trim()]
+       FROM personas
+       WHERE regexp_replace(upper(COALESCE(numero_documento, '')), '[[:space:].,-]+', '', 'g') = $1
+       LIMIT 1`,
+    [normalizeNumeroDocumento(numeroDocumento)]
   );
   return result.rows[0] ?? null;
 };
