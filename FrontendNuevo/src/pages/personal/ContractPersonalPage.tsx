@@ -1188,7 +1188,7 @@ export default function ContractPersonalPage() {
                 {foundPersona && (
                   <div className="cp-state success cp-modal-persona-summary">
                     <FolderOpen size={16} />
-                    Persona existente encontrada:
+                    La persona ya existe. Puedes vincularla a esta empresa.
                     <strong>{buildNombreCompleto(foundPersona)}</strong>
                     <span className="cp-mono">{foundPersona.numero_documento}</span>
                   </div>
