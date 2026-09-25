@@ -1,6 +1,5 @@
 \set ON_ERROR_STOP on
 BEGIN;
-SELECT set_config('app.reconcile_actor_user_id', :'actor_user_id', false);
 
 DO $$
 DECLARE actor_id bigint := current_setting('app.reconcile_actor_user_id')::bigint;
