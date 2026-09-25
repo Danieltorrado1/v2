@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
   [switch]$PreflightOnly,
-  [switch]$IdempotencyCheck
+  [switch]$IdempotencyCheck,
+  [long]$ActorUserId
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,6 +12,7 @@ $root = Split-Path -Parent $PSScriptRoot
 
 if ($PreflightOnly -and $IdempotencyCheck) { throw 'PreflightOnly e IdempotencyCheck son mutuamente excluyentes.' }
 if ($IdempotencyCheck) { throw 'No existe un modo de idempotencia formal aprobado para este reconciliador.' }
+if (-not $PreflightOnly -and $ActorUserId -le 0) { throw 'ActorUserId explícito es obligatorio para escritura.' }
 
 $databaseUrl = [Environment]::GetEnvironmentVariable('PRODUCTION_MIGRATION_DATABASE_URL', 'Process')
 if ([string]::IsNullOrWhiteSpace($databaseUrl)) { throw 'PRODUCTION_MIGRATION_DATABASE_URL es obligatorio.' }
@@ -48,8 +50,9 @@ function Set-PsqlEnvironment {
 
 function Restore-PsqlEnvironment { foreach ($name in $pgEnvNames) { [Environment]::SetEnvironmentVariable($name, $previousEnv[$name], 'Process') } }
 
-function Invoke-PsqlFile([string]$file) {
+function Invoke-PsqlFile([string]$file, [long]$Actor = 0) {
   $args = @('-h', $connection.Host, '-p', [string]$connection.Port, '-U', $connection.User, '-d', $connection.Database, '--no-psqlrc', '--quiet', '--set=ON_ERROR_STOP=1', '--file', $file)
+  if ($Actor -gt 0) { $args += @('--set=actor_user_id=' + [string]$Actor) }
   & $psqlPath @args
   if ($LASTEXITCODE -ne 0) { throw "psql falló para $([IO.Path]::GetFileName($file))." }
 }
@@ -67,7 +70,7 @@ try {
   }
   $confirmation = Read-Host "Escriba exactamente RECONCILIAR PERIODOS 3 4 6 SOLO CON FLAGS APAGADAS $projectRef"
   if ($confirmation -cne "RECONCILIAR PERIODOS 3 4 6 SOLO CON FLAGS APAGADAS $projectRef") { throw 'Confirmación inválida; no se ejecutaron escrituras.' }
-  Invoke-PsqlFile (Join-Path $PSScriptRoot 'reconcile-periodos-3-4-6.sql')
+  Invoke-PsqlFile (Join-Path $PSScriptRoot 'reconcile-periodos-3-4-6.sql') $ActorUserId
   Write-Host 'Reconciliación completada; no se procesaron eventos ni se ejecutaron recálculos.'
 } finally {
   if ($previousEnv.Count -gt 0) { Restore-PsqlEnvironment }
