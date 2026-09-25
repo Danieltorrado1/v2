@@ -9829,7 +9829,7 @@ export const listNominaNovedades = async (
   const ordinaryRows = (
     await nominaNovedadRepository.list({
       activo: query.activo,
-      excludeInformative: true,
+      excludeInformative: false,
       nominaEmpleadoId: query.nomina_empleado_id,
       periodoId: query.periodo_id,
       personaId: query.persona_id,
@@ -9872,10 +9872,6 @@ export const listNominaNovedades = async (
         }
 
         const codigoOperativo = tipo.codigo_operativo?.trim().toUpperCase();
-        if (codigoOperativo === 'DNC' || codigoOperativo === 'DCO') {
-          continue;
-        }
-
         if (query.tipo_novedad_id && canonicalRow.tipo_novedad_id !== query.tipo_novedad_id) {
           continue;
         }

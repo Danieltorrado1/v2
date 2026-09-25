@@ -6,6 +6,7 @@ import { normalizeNumeroDocumento } from '../modules/personas/personas.identific
 const nomina = readFileSync('src/modules/nomina/nomina.service.ts', 'utf8');
 const planilla = readFileSync('FrontendNuevo/src/pages/nomina/PlanillaOperativaPage.tsx', 'utf8');
 const personas = readFileSync('src/modules/personas/personas.service.ts', 'utf8');
+const personasController = readFileSync('src/modules/personas/personas.controller.ts', 'utf8');
 
 test('asistencia filtra novedades ordinarias por periodo y devuelve rango sanitizado', () => {
   assert.match(nomina, /n\.periodo_id = \$2::bigint/);
@@ -45,6 +46,21 @@ test('el indicador de turno interno es accesible y coexiste con asistencia y nov
   assert.match(planilla, /op-attendance-mark/);
   assert.match(planilla, /op-novelty-mark/);
   assert.match(planilla, /getNominaNovedadTurnosOperativos/);
+});
+
+test('fixture productivo sanitizado de DNC del 21-09-2026 es visible y bloqueante', () => {
+  assert.match(nomina, /excludeInformative: false/);
+  assert.doesNotMatch(nomina, /codigoOperativo === 'DNC' \|\| codigoOperativo === 'DCO'/);
+  assert.match(planilla, /novedadesOnDate\(noveltyByEmployee\.get\(employee\.id\) \?\? \[\], date\)/);
+  const fixture = { fecha_inicio: '2026-09-20', fecha_fin: '2026-09-22', activo: true };
+  assert.equal(fixture.fecha_inicio <= '2026-09-21' && fixture.fecha_fin >= '2026-09-21', true);
+});
+
+test('reutilización de persona exige búsqueda normalizada y vinculación autorizada, nunca duplicado', () => {
+  assert.match(personas, /getPersonaForVinculacion/);
+  assert.match(personas, /ensureNumeroDocumentoAvailable\(client, identificationCore\.numero_documento\)/);
+  assert.match(personasController, /getPersonaForVinculacion\(numero_documento, lookup\.empresa_id, lookup\.contrato_id/);
+  assert.match(personas, /regexp_replace\(upper\(COALESCE\(numero_documento/);
 });
 
 test('el diagnóstico de la cola es exportable y no incluye identidad personal', () => {
