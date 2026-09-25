@@ -25,7 +25,7 @@ BEGIN
     THEN RAISE EXCEPTION 'PHASE_52_REQUIRED_CONSTRAINTS_MISSING'; END IF;
   IF (SELECT COUNT(*) FROM pg_constraint c JOIN pg_class r ON r.oid=c.conrelid JOIN pg_namespace n ON n.oid=r.relnamespace
       WHERE n.nspname='public' AND r.relname IN ('integracion_eventos','integracion_evento_impactos')
-      AND c.contype='f') <> 8
+      AND c.contype='f') < 8
     THEN RAISE EXCEPTION 'PHASE_52_REQUIRED_FKS_MISSING'; END IF;
   IF (SELECT COUNT(*) FROM pg_indexes WHERE schemaname='public' AND indexname IN
       ('idx_integracion_eventos_claim','idx_integracion_eventos_empresa_contrato','idx_integracion_eventos_vinculacion',
@@ -35,9 +35,75 @@ BEGIN
 END $$;
 
 DO $$
+DECLARE
+  invalid_count bigint;
 BEGIN
-  IF EXISTS (SELECT 1 FROM public.integracion_eventos) THEN RAISE EXCEPTION 'PHASE_52_EVENTS_NOT_EMPTY'; END IF;
-  IF EXISTS (SELECT 1 FROM public.integracion_evento_impactos) THEN RAISE EXCEPTION 'PHASE_52_IMPACTS_NOT_EMPTY'; END IF;
+  -- El postflight es reutilizable: una instalación limpia puede tener cero filas,
+  -- pero una instalación operativa puede contener eventos legítimos.
+  SELECT COUNT(*) INTO invalid_count
+  FROM public.integracion_eventos
+  WHERE status NOT IN ('PENDIENTE','PROCESANDO','PROCESADO','ERROR')
+     OR attempts < 0
+     OR (status = 'ERROR' AND NULLIF(BTRIM(COALESCE(last_error_code,'')), '') IS NULL)
+     OR (status = 'PROCESANDO' AND (locked_at IS NULL OR NULLIF(BTRIM(COALESCE(locked_by,'')), '') IS NULL));
+  IF invalid_count > 0 THEN RAISE EXCEPTION 'PHASE_52_INVALID_EVENT_STATE: %', invalid_count; END IF;
+
+  SELECT COUNT(*) INTO invalid_count
+  FROM public.integracion_evento_impactos i
+  WHERE i.periodo_id IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM public.nomina_periodos p WHERE p.id = i.periodo_id);
+  IF invalid_count > 0 THEN RAISE EXCEPTION 'PHASE_52_IMPACT_PERIOD_ORPHAN: %', invalid_count; END IF;
+
+  SELECT COUNT(*) INTO invalid_count
+  FROM public.integracion_evento_impactos i
+  LEFT JOIN public.integracion_eventos e ON e.id = i.evento_id
+  WHERE e.id IS NULL;
+  IF invalid_count > 0 THEN RAISE EXCEPTION 'PHASE_52_IMPACT_EVENT_ORPHAN: %', invalid_count; END IF;
+
+  SELECT COUNT(*) INTO invalid_count
+  FROM public.integracion_eventos
+  WHERE idempotency_key IS NULL OR BTRIM(idempotency_key) = '';
+  IF invalid_count > 0 THEN RAISE EXCEPTION 'PHASE_52_IDEMPOTENCY_KEY_INVALID: %', invalid_count; END IF;
+
+  SELECT COUNT(*) INTO invalid_count
+  FROM (
+    SELECT idempotency_key FROM public.integracion_eventos
+    GROUP BY idempotency_key HAVING COUNT(*) > 1
+  ) duplicates;
+  IF invalid_count > 0 THEN RAISE EXCEPTION 'PHASE_52_IDEMPOTENCY_DUPLICATE: %', invalid_count; END IF;
+
+  SELECT COUNT(*) INTO invalid_count
+  FROM (
+    SELECT evento_id, vinculacion_id, periodo_id, fecha_desde, fecha_hasta
+    FROM public.integracion_evento_impactos
+    GROUP BY evento_id, vinculacion_id, periodo_id, fecha_desde, fecha_hasta
+    HAVING COUNT(*) > 1
+  ) duplicates;
+  IF invalid_count > 0 THEN RAISE EXCEPTION 'PHASE_52_IMPACT_DUPLICATE: %', invalid_count; END IF;
+
+  SELECT COUNT(*) INTO invalid_count
+  FROM public.integracion_eventos e
+  JOIN public.integracion_evento_impactos i ON i.evento_id = e.id
+  JOIN public.vinculaciones v ON v.id = i.vinculacion_id
+  JOIN public.contratos cv ON cv.id = v.contrato_id
+  LEFT JOIN public.nomina_periodos p ON p.id = i.periodo_id
+  LEFT JOIN public.contratos cp ON cp.id = p.contrato_id
+  WHERE (e.contrato_id IS NOT NULL AND e.contrato_id <> v.contrato_id)
+     OR (e.empresa_id IS NOT NULL AND e.empresa_id <> cv.empresa_id)
+     OR (p.id IS NOT NULL AND p.contrato_id <> v.contrato_id)
+     OR (p.id IS NOT NULL AND cp.empresa_id <> cv.empresa_id);
+  IF invalid_count > 0 THEN RAISE EXCEPTION 'PHASE_52_IMPACT_SCOPE_INCOHERENT: %', invalid_count; END IF;
+
+  SELECT COUNT(*) INTO invalid_count
+  FROM public.integracion_eventos e
+  WHERE lower(COALESCE(e.idempotency_key,'') || ' ' || COALESCE(e.aggregate_type,'') || ' ' ||
+              COALESCE(e.payload_before::text,'') || ' ' || COALESCE(e.payload_after::text,''))
+        ~ '(^|[^a-z])(fixture|synthetic|qa-session|test)([^a-z]|$)';
+  IF invalid_count > 0 THEN RAISE EXCEPTION 'PHASE_52_FIXTURE_MARKER: %', invalid_count; END IF;
+
+  IF EXISTS (SELECT 1 FROM public.integracion_evento_impactos WHERE requiere_recalculo IS TRUE)
+    THEN RAISE EXCEPTION 'PHASE_52_UNEXPECTED_RECALC_MARKER';
+  END IF;
 END $$;
 
 SELECT current_database() AS database_name, current_setting('server_version') AS postgres_version;

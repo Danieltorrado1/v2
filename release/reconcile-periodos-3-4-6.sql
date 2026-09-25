@@ -2,6 +2,19 @@
 BEGIN;
 
 DO $$
+DECLARE actor_id bigint := regexp_replace(current_setting('application_name'), '^reconcile-actor-', '')::bigint;
+BEGIN
+  IF actor_id IS NULL OR actor_id <= 0 THEN RAISE EXCEPTION 'RECONCILIACION_ACTOR_REQUIRED'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.usuarios u
+    JOIN public.usuario_roles ur ON ur.usuario_id=u.id AND COALESCE(ur.activo,TRUE)
+    JOIN public.roles r ON r.id=ur.rol_id AND COALESCE(r.activo,TRUE)
+    JOIN public.usuario_empresas ue ON ue.usuario_id=u.id AND ue.empresa_id=15 AND COALESCE(ue.activo,TRUE)
+    WHERE u.id=actor_id AND COALESCE(u.activo,TRUE) AND r.nombre_rol='ADMINISTRADOR'
+  ) THEN RAISE EXCEPTION 'RECONCILIACION_ACTOR_INVALIDO'; END IF;
+END $$;
+
+DO $$
 DECLARE
   revisions4 bigint;
   impacts3 bigint;
@@ -54,6 +67,7 @@ WHERE p.id IN (4,6)
 
 UPDATE public.nomina_periodos
 SET estado='ANULADO', activo=FALSE, anulado_at=COALESCE(anulado_at,NOW()),
+    anulado_por=regexp_replace(current_setting('application_name'), '^reconcile-actor-', '')::bigint,
     motivo_anulacion=COALESCE(motivo_anulacion,
       CASE WHEN id=4 THEN 'Duplicado exacto del periodo canonico 3; se conserva historial de revisiones.'
            ELSE 'Periodo solapado con dos ciclos 26-25; no se asigna un unico canonico.' END),
