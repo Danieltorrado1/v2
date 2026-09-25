@@ -2,7 +2,7 @@
 BEGIN;
 
 DO $$
-DECLARE actor_id bigint := current_setting('app.reconcile_actor_user_id')::bigint;
+DECLARE actor_id bigint := regexp_replace(current_setting('application_name'), '^reconcile-actor-', '')::bigint;
 BEGIN
   IF actor_id IS NULL OR actor_id <= 0 THEN RAISE EXCEPTION 'RECONCILIACION_ACTOR_REQUIRED'; END IF;
   IF NOT EXISTS (
@@ -67,7 +67,7 @@ WHERE p.id IN (4,6)
 
 UPDATE public.nomina_periodos
 SET estado='ANULADO', activo=FALSE, anulado_at=COALESCE(anulado_at,NOW()),
-    anulado_por=current_setting('app.reconcile_actor_user_id')::bigint,
+    anulado_por=regexp_replace(current_setting('application_name'), '^reconcile-actor-', '')::bigint,
     motivo_anulacion=COALESCE(motivo_anulacion,
       CASE WHEN id=4 THEN 'Duplicado exacto del periodo canonico 3; se conserva historial de revisiones.'
            ELSE 'Periodo solapado con dos ciclos 26-25; no se asigna un unico canonico.' END),
