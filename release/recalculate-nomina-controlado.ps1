@@ -3,6 +3,7 @@ param(
   [switch]$PreflightOnly,
   [switch]$PreviewOnly,
   [switch]$Resume,
+  [switch]$ResumeDryRun,
   [switch]$Mutate,
   [switch]$SecondPass,
   [string]$Confirmation,
@@ -18,12 +19,12 @@ $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $PSCommandPath
 $repoRoot = Split-Path -Parent $scriptRoot
 
-if (-not $PreflightOnly -and -not $PreviewOnly -and -not $Resume -and -not $Mutate) { $PreflightOnly = $true }
-if ((@($PreflightOnly, $PreviewOnly, $Resume, $Mutate) | Where-Object { $_ }).Count -gt 1) { throw 'Use un solo modo: -PreflightOnly, -PreviewOnly, -Resume o -Mutate.' }
+if (-not $PreflightOnly -and -not $PreviewOnly -and -not $Resume -and -not $ResumeDryRun -and -not $Mutate) { $PreflightOnly = $true }
+if ((@($PreflightOnly, $PreviewOnly, $Resume, $ResumeDryRun, $Mutate) | Where-Object { $_ }).Count -gt 1) { throw 'Use un solo modo: -PreflightOnly, -PreviewOnly, -Resume, -ResumeDryRun o -Mutate.' }
 if ($SecondPass -and -not $Mutate) { throw '-SecondPass sólo puede usarse con -Mutate.' }
-if (($Mutate -or $Resume) -and [string]::IsNullOrWhiteSpace($Confirmation)) { throw 'El modo mutador requiere -Confirmation.' }
+if (($Mutate -or $Resume -or $ResumeDryRun) -and [string]::IsNullOrWhiteSpace($Confirmation)) { throw 'El modo controlado requiere -Confirmation.' }
 if ($PreviewOnly -and [string]::IsNullOrWhiteSpace($PreviewIds)) { throw 'El modo preview requiere -PreviewIds.' }
-if ($Resume -and ([string]::IsNullOrWhiteSpace($RecoverySnapshot) -or [string]::IsNullOrWhiteSpace($RecoveryBackupManifest) -or [string]::IsNullOrWhiteSpace($RecoveryOriginalManifest))) { throw 'Resume requiere snapshot y ambos manifiestos de backup.' }
+if (($Resume -or $ResumeDryRun) -and ([string]::IsNullOrWhiteSpace($RecoverySnapshot) -or [string]::IsNullOrWhiteSpace($RecoveryBackupManifest) -or [string]::IsNullOrWhiteSpace($RecoveryOriginalManifest))) { throw 'Resume requiere snapshot y ambos manifiestos de backup.' }
 if ($ActorUserId -le 0) { throw 'El runner requiere -ActorUserId entero positivo.' }
 
 . (Join-Path $scriptRoot 'psql-connection.ps1')
@@ -71,12 +72,13 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "pg_restore --list falló: $($file.table)." }
   }
 
-  $mode = if ($Mutate) { 'mutate' } elseif ($Resume) { 'resume' } elseif ($PreviewOnly) { 'preview' } else { 'preflight' }
+  $mode = if ($Mutate) { 'mutate' } elseif ($Resume) { 'resume' } elseif ($ResumeDryRun) { 'resume-dry-run' } elseif ($PreviewOnly) { 'preview' } else { 'preflight' }
   $arguments = @((Join-Path $repoRoot 'src/scripts/recalculate-nomina-controlado.ts'), "--mode=$mode")
   if ($SecondPass) { $arguments += '--second-pass' }
   if ($Mutate) { $arguments += "--confirmation=$Confirmation" }
   if ($PreviewOnly) { $arguments += "--preview-ids=$PreviewIds" }
   if ($Resume) { $arguments += "--recovery-snapshot=$RecoverySnapshot"; $arguments += "--recovery-backup-manifest=$RecoveryBackupManifest"; $arguments += "--recovery-original-manifest=$RecoveryOriginalManifest"; $arguments += "--confirmation=$Confirmation" }
+  if ($ResumeDryRun) { $arguments += "--recovery-snapshot=$RecoverySnapshot"; $arguments += "--recovery-backup-manifest=$RecoveryBackupManifest"; $arguments += "--recovery-original-manifest=$RecoveryOriginalManifest"; $arguments += "--confirmation=$Confirmation" }
   $arguments += "--actor-user-id=$ActorUserId"
   $tsx = Join-Path $repoRoot 'node_modules\.bin\tsx.cmd'
   if (-not (Test-Path -LiteralPath $tsx -PathType Leaf)) { throw 'No se encontró el ejecutor local TypeScript.' }

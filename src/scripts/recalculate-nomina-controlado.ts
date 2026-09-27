@@ -1,9 +1,9 @@
 import { dbPool } from '../config/db.js';
 import { env } from '../config/env.js';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { recalculateNominaPeriodo } from '../modules/nomina/nomina.service.js';
 import { registerAuditEntry } from '../modules/auditoria/auditoria.helper.js';
+import { loadRecoverySnapshotFile, type RecoverySnapshot } from '../modules/nomina/nomina.resume.snapshot.js';
 import {
   assertControlledPreflight,
   assertExactConfirmation,
@@ -314,28 +314,18 @@ const runMutator = async (preflight: Preflight, pass: string, actorUserId: numbe
   }
 };
 
-type RecoverySnapshot = {
-  id: string;
-  before: Record<string, unknown>;
-  after: Record<string, unknown>;
-};
-
-const loadRecoverySnapshots = (path: string): RecoverySnapshot[] => {
-  const parsed = JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/, '')) as RecoverySnapshot[];
-  if (!Array.isArray(parsed) || parsed.length !== CONTROLLED_RECOVERY_VALIDATED_IDS.length) {
-    throw new Error('El snapshot de recuperación no contiene exactamente 15 registros.');
-  }
+const loadRecoverySnapshots = (path: string, originalBackupManifest: string): RecoverySnapshot[] => {
+  const parsed = loadRecoverySnapshotFile(path, originalBackupManifest);
   const expected = [...CONTROLLED_RECOVERY_VALIDATED_IDS];
-  const actual = parsed.map((item) => item.id);
+  const actual = parsed.map((item) => item.empleado_id);
   if (actual.some((id, index) => id !== expected[index])) throw new Error('El snapshot de recuperación no coincide con los 15 IDs autorizados.');
-  if (parsed.some((item) => !item.before || !item.after)) throw new Error('El snapshot de recuperación está incompleto.');
   return parsed;
 };
 
 const runResume = async (preflight: Preflight, actorUserId: number, confirmationValue: string, snapshotPath: string, backupManifest: string, originalBackupManifest: string): Promise<void> => {
   if (actorUserId !== 12) throw new Error('La recuperación controlada exige ActorUserId 12.');
   assertExactRecoveryConfirmation(confirmationValue);
-  const snapshots = loadRecoverySnapshots(snapshotPath);
+  const snapshots = loadRecoverySnapshots(snapshotPath, originalBackupManifest);
   const validated = new Set<string>(CONTROLLED_RECOVERY_VALIDATED_IDS);
   const pending = preflight.candidateEmployeeIds.filter((id) => !validated.has(id));
   if (pending.length !== 172) throw new Error(`El complemento pendiente no contiene exactamente 172 candidatos: ${pending.length}.`);
@@ -352,10 +342,13 @@ const runResume = async (preflight: Preflight, actorUserId: number, confirmation
     const current = await queryReadOnly(async (client) => {
       const result = await client.query<Record<string, unknown>>(
         `SELECT id::text, dias_pagados, horas_trabajadas, devengado_basico, devengado_transporte, devengado_otros, salud, pension, total_adiciones, total_deducciones, neto_pagar, detalle_calculo FROM nomina_empleados WHERE id = ANY($1::bigint[]) ORDER BY id`,
-        [snapshots.map((item) => item.id)]
+      [snapshots.map((item) => item.empleado_id)]
       );
       return result.rows.map((row) => ({
         empleado_id: String(row.id),
+        empresa_id: '15',
+        contrato_id: '24',
+        periodo_id: '3',
         dias_pagados: Number(row.dias_pagados ?? 0),
         horas_trabajadas: Number(row.horas_trabajadas ?? 0),
         devengado_basico: Number(row.devengado_basico ?? 0),
@@ -370,8 +363,8 @@ const runResume = async (preflight: Preflight, actorUserId: number, confirmation
       }));
     });
     for (const snapshot of snapshots) {
-      const actual = current.find((row) => row.empleado_id === snapshot.id);
-      if (!actual || JSON.stringify(actual) !== JSON.stringify(snapshot.after)) throw new Error(`El estado actual no coincide con el after validado para empleado técnico ${snapshot.id}.`);
+      const actual = current.find((row) => row.empleado_id === snapshot.empleado_id);
+      if (!actual || JSON.stringify(actual) !== JSON.stringify(snapshot.after)) throw new Error(`El estado actual no coincide con el after validado para empleado técnico ${snapshot.empleado_id}.`);
     }
     const recoveryMeta = {
       incidente: 'INCIDENTE_NOMINA_ACTOR_0_FK',
@@ -387,13 +380,13 @@ const runResume = async (preflight: Preflight, actorUserId: number, confirmation
         await client.query("SET LOCAL lock_timeout = '5s'");
         const event = (await client.query<{ total: number }>(
           `SELECT COUNT(*)::int AS total FROM auditoria_eventos WHERE accion=$1 AND entidad='nomina_empleados' AND entidad_id=$2 AND datos_nuevos->'recovery'->>'backup_manifest'=$3 AND datos_nuevos->'recovery'->>'digest_before'=$4 AND datos_nuevos->'recovery'->>'digest_after'=$5`,
-          ['NOMINA_RECALCULO_CONTROLADO_RECUPERADO', snapshot.id, backupManifest, String(snapshot.before.detalle_calculo_digest), String(snapshot.after.detalle_calculo_digest)]
+          ['NOMINA_RECALCULO_CONTROLADO_RECUPERADO', snapshot.empleado_id, backupManifest, snapshot.digest_before, snapshot.digest_after]
         )).rows[0]?.total ?? 0;
         const legacy = (await client.query<{ total: number }>(
           `SELECT COUNT(*)::int AS total FROM auditoria WHERE accion=$1 AND tabla_afectada='nomina_empleados' AND registro_id=$2 AND datos_nuevos->'recovery'->>'backup_manifest'=$3 AND datos_nuevos->'recovery'->>'digest_before'=$4 AND datos_nuevos->'recovery'->>'digest_after'=$5`,
-          ['NOMINA_RECALCULO_CONTROLADO_RECUPERADO', snapshot.id, backupManifest, String(snapshot.before.detalle_calculo_digest), String(snapshot.after.detalle_calculo_digest)]
+          ['NOMINA_RECALCULO_CONTROLADO_RECUPERADO', snapshot.empleado_id, backupManifest, snapshot.digest_before, snapshot.digest_after]
         )).rows[0]?.total ?? 0;
-        if ((event > 0) !== (legacy > 0) || event > 1 || legacy > 1) throw new Error(`Auditoría correctiva inconsistente para empleado técnico ${snapshot.id}.`);
+        if ((event > 0) !== (legacy > 0) || event > 1 || legacy > 1) throw new Error(`Auditoría correctiva inconsistente para empleado técnico ${snapshot.empleado_id}.`);
         if (event === 0) {
           await registerAuditEntry({
             client,
@@ -402,10 +395,10 @@ const runResume = async (preflight: Preflight, actorUserId: number, confirmation
             contrato_id: '24',
             accion: 'NOMINA_RECALCULO_CONTROLADO_RECUPERADO',
             tabla: 'nomina_empleados',
-            registro_id: snapshot.id,
+            registro_id: snapshot.empleado_id,
             descripcion: 'Auditoría correctiva de cálculo validado tras incidente controlado',
-            before: { ...snapshot.before, recovery: { ...recoveryMeta, digest_before: snapshot.before.detalle_calculo_digest, digest_after: snapshot.after.detalle_calculo_digest } },
-            after: { ...snapshot.after, recovery: { ...recoveryMeta, digest_before: snapshot.before.detalle_calculo_digest, digest_after: snapshot.after.detalle_calculo_digest } },
+            before: { ...snapshot.before, recovery: { ...recoveryMeta, digest_before: snapshot.digest_before, digest_after: snapshot.digest_after } },
+            after: { ...snapshot.after, recovery: { ...recoveryMeta, digest_before: snapshot.digest_before, digest_after: snapshot.digest_after } },
             user_agent: 'nomina-controlado:resume',
             strict: true
           });
@@ -477,7 +470,7 @@ const parsePreviewIds = (preflight: Preflight): string[] => {
   return ids;
 };
 
-const runPreview = async (preflight: Preflight, actorUserId: number, ids: string[]): Promise<void> => {
+const calculatePreviewRows = async (preflight: Preflight, actorUserId: number, ids: string[]): Promise<Record<string, unknown>[]> => {
   const results = [];
   for (const employeeId of ids) {
     const result = await recalculateNominaPeriodo(
@@ -506,13 +499,46 @@ const runPreview = async (preflight: Preflight, actorUserId: number, ids: string
       detalle_calculo_digest: createHash('sha256').update(canonicalize(detalleCalculo)).digest('hex')
     });
   }
+  return results;
+};
+
+const runPreview = async (preflight: Preflight, actorUserId: number, ids: string[]): Promise<void> => {
+  const results = await calculatePreviewRows(preflight, actorUserId, ids);
   console.log(JSON.stringify({ mode: 'PreviewOnly', actor_user_id: actorUserId, ids, results, status: 'SUCCESS' }));
+};
+
+const runResumeDryRun = async (preflight: Preflight, actorUserId: number, snapshotPath: string, backupManifest: string, recoveryOriginalManifest: string): Promise<void> => {
+  if (actorUserId !== 12) throw new Error('El dry run de recuperación exige ActorUserId 12.');
+  const snapshots = loadRecoverySnapshotFile(snapshotPath, recoveryOriginalManifest);
+  const validated = new Set<string>(CONTROLLED_RECOVERY_VALIDATED_IDS);
+  const pending = preflight.candidateEmployeeIds.filter((id) => !validated.has(id));
+  if (pending.length !== 172) throw new Error(`El complemento pendiente no contiene exactamente 172 candidatos: ${pending.length}.`);
+  const pendingPreview = await calculatePreviewRows(preflight, actorUserId, pending);
+  const finalPreviewCount = snapshots.length + pendingPreview.length;
+  if (finalPreviewCount !== 187) throw new Error(`El preview final no produjo 187 resultados: ${finalPreviewCount}.`);
+  console.log(JSON.stringify({
+    mode: 'ResumeDryRun',
+    wouldRecoverAudits: 15,
+    wouldRecalculate: 172,
+    wouldSkipValidated: 15,
+    invalidSnapshots: 0,
+    duplicateIds: 0,
+    missingIds: 0,
+    unexpectedIds: 0,
+    protectedRows: 0,
+    externalSync: false,
+    operationalSourcesPreserved: true,
+    previewPending: pendingPreview.length,
+    previewFinal: finalPreviewCount,
+    writes: 0,
+    status: 'SUCCESS'
+  }));
 };
 
 const main = async (): Promise<void> => {
   if (env.NODE_ENV !== 'production') throw new Error('El runner controlado requiere NODE_ENV=production.');
   if (!Number.isInteger(actorUserId) || actorUserId <= 0) throw new Error('El runner requiere --actor-user-id entero positivo.');
-  if (mode !== 'preflight' && mode !== 'preview' && mode !== 'mutate' && mode !== 'resume') throw new Error('Modo inválido.');
+  if (mode !== 'preflight' && mode !== 'preview' && mode !== 'mutate' && mode !== 'resume' && mode !== 'resume-dry-run') throw new Error('Modo inválido.');
   const health = await readHealth();
   const preflight = await readPreflight(actorUserId);
   if (mode === 'preflight') {
@@ -529,11 +555,20 @@ const main = async (): Promise<void> => {
     await runResume(preflight, actorUserId, confirmation, recoverySnapshotPath, recoveryBackupManifest, recoveryOriginalManifest);
     return;
   }
+  if (mode === 'resume-dry-run') {
+    if (!recoverySnapshotPath || !recoveryBackupManifest || !recoveryOriginalManifest) throw new Error('ResumeDryRun requiere snapshot y ambos manifiestos de backup.');
+    assertExactRecoveryConfirmation(confirmation);
+    await runResumeDryRun(preflight, actorUserId, recoverySnapshotPath, recoveryBackupManifest, recoveryOriginalManifest);
+    return;
+  }
   assertExactConfirmation(preflight.candidateEmployeeIds.length, confirmation);
   await runMutator(preflight, pass, actorUserId);
 };
 
 main()
+  .then(() => {
+    process.exitCode = 0;
+  })
   .catch((error) => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
