@@ -332,7 +332,7 @@ const loadRecoverySnapshots = (path: string): RecoverySnapshot[] => {
   return parsed;
 };
 
-const runResume = async (preflight: Preflight, actorUserId: number, confirmationValue: string, snapshotPath: string, backupManifest: string): Promise<void> => {
+const runResume = async (preflight: Preflight, actorUserId: number, confirmationValue: string, snapshotPath: string, backupManifest: string, originalBackupManifest: string): Promise<void> => {
   if (actorUserId !== 12) throw new Error('La recuperación controlada exige ActorUserId 12.');
   assertExactRecoveryConfirmation(confirmationValue);
   const snapshots = loadRecoverySnapshots(snapshotPath);
@@ -349,9 +349,34 @@ const runResume = async (preflight: Preflight, actorUserId: number, confirmation
     if (locked.candidateDigest !== preflight.candidateDigest || locked.noveltyDigest !== preflight.noveltyDigest || locked.movementDigest !== preflight.movementDigest || locked.candidateEmployeeIds.length !== 187) {
       throw new Error('El conjunto productivo cambió al adquirir el advisory lock.');
     }
+    const current = await queryReadOnly(async (client) => {
+      const result = await client.query<Record<string, unknown>>(
+        `SELECT id::text, dias_pagados, horas_trabajadas, devengado_basico, devengado_transporte, devengado_otros, salud, pension, total_adiciones, total_deducciones, neto_pagar, detalle_calculo FROM nomina_empleados WHERE id = ANY($1::bigint[]) ORDER BY id`,
+        [snapshots.map((item) => item.id)]
+      );
+      return result.rows.map((row) => ({
+        empleado_id: String(row.id),
+        dias_pagados: Number(row.dias_pagados ?? 0),
+        horas_trabajadas: Number(row.horas_trabajadas ?? 0),
+        devengado_basico: Number(row.devengado_basico ?? 0),
+        devengado_transporte: Number(row.devengado_transporte ?? 0),
+        devengado_otros: Number(row.devengado_otros ?? 0),
+        salud: Number(row.salud ?? 0),
+        pension: Number(row.pension ?? 0),
+        total_adiciones: Number(row.total_adiciones ?? 0),
+        total_deducciones: Number(row.total_deducciones ?? 0),
+        neto_pagar: Number(row.neto_pagar ?? 0),
+        detalle_calculo_digest: createHash('sha256').update(canonicalize(row.detalle_calculo)).digest('hex')
+      }));
+    });
+    for (const snapshot of snapshots) {
+      const actual = current.find((row) => row.empleado_id === snapshot.id);
+      if (!actual || JSON.stringify(actual) !== JSON.stringify(snapshot.after)) throw new Error(`El estado actual no coincide con el after validado para empleado técnico ${snapshot.id}.`);
+    }
     const recoveryMeta = {
       incidente: 'INCIDENTE_NOMINA_ACTOR_0_FK',
       backup_manifest: backupManifest,
+      original_backup_manifest: originalBackupManifest,
       operacion: 'NOMINA_RECALCULO_CONTROLADO_RECUPERADO'
     };
     for (const snapshot of snapshots) {
@@ -433,6 +458,7 @@ const actorUserId = Number(actorUserIdRaw);
 const previewIdsRaw = args.find((arg) => arg.startsWith('--preview-ids='))?.slice('--preview-ids='.length) ?? '';
 const recoverySnapshotPath = args.find((arg) => arg.startsWith('--recovery-snapshot='))?.slice('--recovery-snapshot='.length) ?? '';
 const recoveryBackupManifest = args.find((arg) => arg.startsWith('--recovery-backup-manifest='))?.slice('--recovery-backup-manifest='.length) ?? '';
+const recoveryOriginalManifest = args.find((arg) => arg.startsWith('--recovery-original-manifest='))?.slice('--recovery-original-manifest='.length) ?? '';
 
 const canonicalize = (value: unknown): string => {
   if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
@@ -499,8 +525,8 @@ const main = async (): Promise<void> => {
     return;
   }
   if (mode === 'resume') {
-    if (!recoverySnapshotPath || !recoveryBackupManifest) throw new Error('Resume requiere snapshot y manifiesto de backup.');
-    await runResume(preflight, actorUserId, confirmation, recoverySnapshotPath, recoveryBackupManifest);
+    if (!recoverySnapshotPath || !recoveryBackupManifest || !recoveryOriginalManifest) throw new Error('Resume requiere snapshot y ambos manifiestos de backup.');
+    await runResume(preflight, actorUserId, confirmation, recoverySnapshotPath, recoveryBackupManifest, recoveryOriginalManifest);
     return;
   }
   assertExactConfirmation(preflight.candidateEmployeeIds.length, confirmation);

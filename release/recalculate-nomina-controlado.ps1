@@ -10,6 +10,7 @@ param(
   [string]$PreviewIds = '',
   [string]$RecoverySnapshot = '',
   [string]$RecoveryBackupManifest = '',
+  [string]$RecoveryOriginalManifest = '',
   [string]$ManifestPath = 'C:\Users\CORE ULTRA\Documents\EmpiriaBackups\nomina-periodo3-pre-recalculo-20260927T011019Z\20260927T011019Z-manifest.json'
 )
 
@@ -22,7 +23,7 @@ if ((@($PreflightOnly, $PreviewOnly, $Resume, $Mutate) | Where-Object { $_ }).Co
 if ($SecondPass -and -not $Mutate) { throw '-SecondPass sólo puede usarse con -Mutate.' }
 if (($Mutate -or $Resume) -and [string]::IsNullOrWhiteSpace($Confirmation)) { throw 'El modo mutador requiere -Confirmation.' }
 if ($PreviewOnly -and [string]::IsNullOrWhiteSpace($PreviewIds)) { throw 'El modo preview requiere -PreviewIds.' }
-if ($Resume -and ([string]::IsNullOrWhiteSpace($RecoverySnapshot) -or [string]::IsNullOrWhiteSpace($RecoveryBackupManifest))) { throw 'Resume requiere -RecoverySnapshot y -RecoveryBackupManifest.' }
+if ($Resume -and ([string]::IsNullOrWhiteSpace($RecoverySnapshot) -or [string]::IsNullOrWhiteSpace($RecoveryBackupManifest) -or [string]::IsNullOrWhiteSpace($RecoveryOriginalManifest))) { throw 'Resume requiere snapshot y ambos manifiestos de backup.' }
 if ($ActorUserId -le 0) { throw 'El runner requiere -ActorUserId entero positivo.' }
 
 . (Join-Path $scriptRoot 'psql-connection.ps1')
@@ -75,7 +76,7 @@ try {
   if ($SecondPass) { $arguments += '--second-pass' }
   if ($Mutate) { $arguments += "--confirmation=$Confirmation" }
   if ($PreviewOnly) { $arguments += "--preview-ids=$PreviewIds" }
-  if ($Resume) { $arguments += "--recovery-snapshot=$RecoverySnapshot"; $arguments += "--recovery-backup-manifest=$RecoveryBackupManifest"; $arguments += "--confirmation=$Confirmation" }
+  if ($Resume) { $arguments += "--recovery-snapshot=$RecoverySnapshot"; $arguments += "--recovery-backup-manifest=$RecoveryBackupManifest"; $arguments += "--recovery-original-manifest=$RecoveryOriginalManifest"; $arguments += "--confirmation=$Confirmation" }
   $arguments += "--actor-user-id=$ActorUserId"
   $tsx = Join-Path $repoRoot 'node_modules\.bin\tsx.cmd'
   if (-not (Test-Path -LiteralPath $tsx -PathType Leaf)) { throw 'No se encontró el ejecutor local TypeScript.' }

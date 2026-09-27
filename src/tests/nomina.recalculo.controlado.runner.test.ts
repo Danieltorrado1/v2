@@ -26,6 +26,7 @@ test('controlled recalc skips operational snapshot repair and external account s
   assert.match(runner, /backup_manifest/);
   assert.match(releaseRunner, /\[switch\]\$Resume/);
   assert.match(releaseRunner, /RecoverySnapshot/);
+  assert.match(releaseRunner, /RecoveryOriginalManifest/);
   assert.match(backupRunner, /--format=custom/);
   assert.doesNotMatch(backupRunner, /--dbname/);
 });
