@@ -5,6 +5,20 @@ export const CONTROLLED_RECALC_SCOPE = {
   periodoId: '3'
 } as const;
 
+export const CONTROLLED_RECOVERY_VALIDATED_IDS = [
+  '1020', '1021', '1022', '1023', '1097', '1098', '1099', '1101',
+  '1102', '1104', '1105', '1106', '1107', '1108', '1109'
+] as const;
+
+export const expectedRecoveryConfirmation = (): string =>
+  `RECUPERAR AUDITORIA 15 Y RECALCULAR 172 EMPRESA 15 CONTRATO 24 PERIODO 3 ACTOR 12 PROJECT ${CONTROLLED_RECALC_PROJECT_REF} AUTORIZO ESCRITURA`;
+
+export const assertExactRecoveryConfirmation = (confirmation: string): void => {
+  if (confirmation !== expectedRecoveryConfirmation()) {
+    throw new Error('La confirmación exacta de recuperación no coincide.');
+  }
+};
+
 export type ControlledPreflight = {
   empresaId: string;
   contratoId: string;

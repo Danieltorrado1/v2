@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import { PoolClient, QueryResultRow } from 'pg';
+import { createHash } from 'node:crypto';
 
 import { dbPool, dbQuery } from '../../config/db';
 import { getSupabaseAdminClient } from '../../config/supabaseAdmin';
@@ -1305,6 +1306,71 @@ export interface NominaPreviewResult {
   neto_pagar: number;
   detalle_calculo: Record<string, unknown>;
 }
+
+const canonicalizeNominaAuditValue = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(canonicalizeNominaAuditValue).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value as Record<string, unknown>).sort().map((key) => `${JSON.stringify(key)}:${canonicalizeNominaAuditValue((value as Record<string, unknown>)[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+};
+
+const detailDigest = (value: unknown): string =>
+  createHash('sha256').update(canonicalizeNominaAuditValue(value)).digest('hex');
+
+const controlledEconomicAuditSnapshot = (input: {
+  id: string;
+  diasPagados: number;
+  horasTrabajadas: number;
+  devengadoBasico: number;
+  devengadoTransporte: number;
+  devengadoOtros: number;
+  salud: number;
+  pension: number;
+  totalAdiciones: number;
+  totalDeducciones: number;
+  netoPagar: number;
+  detalleCalculo: Record<string, unknown> | null;
+}): Record<string, unknown> => ({
+  empleado_id: input.id,
+  dias_pagados: input.diasPagados,
+  horas_trabajadas: input.horasTrabajadas,
+  devengado_basico: input.devengadoBasico,
+  devengado_transporte: input.devengadoTransporte,
+  devengado_otros: input.devengadoOtros,
+  salud: input.salud,
+  pension: input.pension,
+  total_adiciones: input.totalAdiciones,
+  total_deducciones: input.totalDeducciones,
+  neto_pagar: input.netoPagar,
+  detalle_calculo_digest: detailDigest(input.detalleCalculo)
+});
+
+const registerControlledEmployeeAudit = async (
+  client: PoolClient,
+  actorUserId: string,
+  employeeId: string,
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  action: string,
+  auditMeta?: AuditRequestMeta
+): Promise<void> => {
+  await registerAuditEntry({
+    client,
+    usuario_id: actorUserId,
+    empresa_id: '15',
+    contrato_id: '24',
+    accion: action,
+    tabla: 'nomina_empleados',
+    registro_id: employeeId,
+    descripcion: `Auditoria controlada de empleado ${action}`,
+    before,
+    after,
+    ip: auditMeta?.ip ?? null,
+    user_agent: auditMeta?.user_agent ?? null,
+    strict: true
+  });
+};
 
 export interface NominaRecalculateOptions {
   controlledScope?: {
@@ -7809,6 +7875,44 @@ export const recalculateNominaPeriodo = async (
           detalleCalculo: detalleCalculoCobertura
         }, client);
 
+        if (options?.controlledScope && !options.previewOnly) {
+          await registerControlledEmployeeAudit(
+            client,
+            actorUserId,
+            empleadoRow.id,
+            controlledEconomicAuditSnapshot({
+              id: empleadoRow.id,
+              diasPagados: Number(empleadoRow.dias_pagados ?? 0),
+              horasTrabajadas: Number(empleadoRow.horas_trabajadas ?? 0),
+              devengadoBasico: Number(empleadoRow.devengado_basico ?? 0),
+              devengadoTransporte: Number(empleadoRow.devengado_transporte ?? 0),
+              devengadoOtros: Number(empleadoRow.devengado_otros ?? 0),
+              salud: Number(empleadoRow.salud ?? 0),
+              pension: Number(empleadoRow.pension ?? 0),
+              totalAdiciones: Number(empleadoRow.total_adiciones ?? 0),
+              totalDeducciones: Number(empleadoRow.total_deducciones ?? 0),
+              netoPagar: Number(empleadoRow.neto_pagar ?? 0),
+              detalleCalculo: empleadoRow.detalle_calculo
+            }),
+            controlledEconomicAuditSnapshot({
+              id: previewResult.empleado_id,
+              diasPagados: previewResult.dias_pagados,
+              horasTrabajadas: previewResult.horas_trabajadas,
+              devengadoBasico: previewResult.devengado_basico,
+              devengadoTransporte: previewResult.devengado_transporte,
+              devengadoOtros: previewResult.devengado_otros,
+              salud: previewResult.salud,
+              pension: previewResult.pension,
+              totalAdiciones: previewResult.total_adiciones,
+              totalDeducciones: previewResult.total_deducciones,
+              netoPagar: previewResult.neto_pagar,
+              detalleCalculo: previewResult.detalle_calculo
+            }),
+            'NOMINA_RECALCULO_CONTROLADO',
+            auditMeta
+          );
+        }
+
         continue;
       }
 
@@ -7951,6 +8055,44 @@ export const recalculateNominaPeriodo = async (
         netoPagar,
         detalleCalculo
       }, client);
+
+      if (options?.controlledScope && !options.previewOnly) {
+        await registerControlledEmployeeAudit(
+          client,
+          actorUserId,
+          empleadoRow.id,
+          controlledEconomicAuditSnapshot({
+            id: empleadoRow.id,
+            diasPagados: Number(empleadoRow.dias_pagados ?? 0),
+            horasTrabajadas: Number(empleadoRow.horas_trabajadas ?? 0),
+            devengadoBasico: Number(empleadoRow.devengado_basico ?? 0),
+            devengadoTransporte: Number(empleadoRow.devengado_transporte ?? 0),
+            devengadoOtros: Number(empleadoRow.devengado_otros ?? 0),
+            salud: Number(empleadoRow.salud ?? 0),
+            pension: Number(empleadoRow.pension ?? 0),
+            totalAdiciones: Number(empleadoRow.total_adiciones ?? 0),
+            totalDeducciones: Number(empleadoRow.total_deducciones ?? 0),
+            netoPagar: Number(empleadoRow.neto_pagar ?? 0),
+            detalleCalculo: empleadoRow.detalle_calculo
+          }),
+          controlledEconomicAuditSnapshot({
+            id: previewResult.empleado_id,
+            diasPagados: previewResult.dias_pagados,
+            horasTrabajadas: previewResult.horas_trabajadas,
+            devengadoBasico: previewResult.devengado_basico,
+            devengadoTransporte: previewResult.devengado_transporte,
+            devengadoOtros: previewResult.devengado_otros,
+            salud: previewResult.salud,
+            pension: previewResult.pension,
+            totalAdiciones: previewResult.total_adiciones,
+            totalDeducciones: previewResult.total_deducciones,
+            netoPagar: previewResult.neto_pagar,
+            detalleCalculo: previewResult.detalle_calculo
+          }),
+          'NOMINA_RECALCULO_CONTROLADO',
+          auditMeta
+        );
+      }
     }
 
     if (!options?.previewOnly && !options?.nomina_empleado_id && !options?.controlledScope?.suppressExternalSync) {

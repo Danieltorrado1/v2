@@ -8,6 +8,7 @@ const auditService = readFileSync(join(process.cwd(), 'src/modules/nomina/applic
 const auditHelper = readFileSync(join(process.cwd(), 'src/modules/auditoria/auditoria.helper.ts'), 'utf8');
 const runner = readFileSync(join(process.cwd(), 'src/scripts/recalculate-nomina-controlado.ts'), 'utf8');
 const releaseRunner = readFileSync(join(process.cwd(), 'release/recalculate-nomina-controlado.ps1'), 'utf8');
+const backupRunner = readFileSync(join(process.cwd(), 'release/backup-nomina-controlado.ps1'), 'utf8');
 
 test('controlled recalc skips operational snapshot repair and external account sync', () => {
   assert.match(service, /if \(!options\?\.controlledScope\?\.preserveOperationalSources\)/);
@@ -19,6 +20,14 @@ test('controlled recalc skips operational snapshot repair and external account s
   assert.match(service, /if \(!options\?\.previewOnly\)/);
   assert.match(runner, /mode === 'preview'/);
   assert.match(runner, /preview-ids/);
+  assert.match(runner, /mode === 'resume'/);
+  assert.match(runner, /CONTROLLED_RECOVERY_VALIDATED_IDS/);
+  assert.match(runner, /NOMINA_RECALCULO_CONTROLADO_RECUPERADO/);
+  assert.match(runner, /backup_manifest/);
+  assert.match(releaseRunner, /\[switch\]\$Resume/);
+  assert.match(releaseRunner, /RecoverySnapshot/);
+  assert.match(backupRunner, /--format=custom/);
+  assert.doesNotMatch(backupRunner, /--dbname/);
 });
 
 test('controlled runner is scoped, protected and sanitizes its output', () => {
@@ -32,8 +41,8 @@ test('controlled runner is scoped, protected and sanitizes its output', () => {
 });
 
 test('default release mode is preflight and mutation requires exact confirmation', () => {
-  assert.match(releaseRunner, /if \(-not \$PreflightOnly -and -not \$PreviewOnly -and -not \$Mutate\) \{ \$PreflightOnly = \$true \}/);
-  assert.match(releaseRunner, /if \(\$Mutate -and \[string\]::IsNullOrWhiteSpace\(\$Confirmation\)\)/);
+  assert.match(releaseRunner, /if \(-not \$PreflightOnly -and -not \$PreviewOnly -and -not \$Resume -and -not \$Mutate\) \{ \$PreflightOnly = \$true \}/);
+  assert.match(releaseRunner, /if \(\(\$Mutate -or \$Resume\) -and \[string\]::IsNullOrWhiteSpace\(\$Confirmation\)\)/);
   assert.match(runner, /assertExactConfirmation\(preflight\.candidateEmployeeIds\.length, confirmation\)/);
   assert.match(runner, /status: 'FAILED'/);
   assert.match(runner, /completed/);
