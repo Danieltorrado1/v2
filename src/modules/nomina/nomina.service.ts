@@ -10252,7 +10252,23 @@ export const createNominaNovedad = async (
     const noveltyEffectiveDate = input.fecha_inicio ?? (periodo.fecha_inicio instanceof Date ? periodo.fecha_inicio.toISOString().slice(0, 10) : periodo.fecha_inicio);
     await registrarEventoLaboralNomina(client, { eventType: 'NOVEDAD_CREADA', periodoId: input.periodo_id, vinculacionId: input.vinculacion_id, effectiveDate: noveltyEffectiveDate, operationId: `novedad:${created.id}`, summary: { fecha_desde: input.fecha_inicio, fecha_hasta: input.fecha_fin, cantidad: 1, origen: 'Novedades' } });
 
-    if (ownsClient) await client.query('COMMIT');
+    if (ownsClient) {
+      await client.query('COMMIT');
+      // A period novelty changes salary, transport and/or surcharge days.  The
+      // write used to stop after persisting the novelty, leaving the employee
+      // totals stale until somebody recalculated the whole period manually.
+      // Recalculate only the affected employee after the novelty transaction
+      // has committed.  When this function participates in the transactional
+      // "novedad con turno" flow, its caller performs the recalculation after
+      // committing both records.
+      await recalculateNominaPeriodo(
+        input.periodo_id,
+        { force: true, nomina_empleado_id: input.nomina_empleado_id },
+        actorUserId,
+        tenant,
+        auditMeta
+      );
+    }
     return created;
   } catch (error) {
     if (ownsClient) await client.query('ROLLBACK');
