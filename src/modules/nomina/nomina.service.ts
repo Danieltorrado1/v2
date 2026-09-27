@@ -1290,6 +1290,18 @@ export interface NominaRecalculateResult {
   omitidas_fuera_periodo?: number;
 }
 
+export interface NominaRecalculateOptions {
+  controlledScope?: {
+    empresaId: string;
+    contratoId: string;
+    candidateEmployeeIds: readonly string[];
+    preserveOperationalSources: true;
+    suppressExternalSync: true;
+  };
+  force?: boolean;
+  nomina_empleado_id?: string;
+}
+
 export interface NominaExportResult {
   file?: Buffer;
   csv?: string;
@@ -6764,7 +6776,7 @@ export const importNominaEmpleados = async (
 
 export const recalculateNominaPeriodo = async (
   periodoId: string,
-  options: { force?: boolean; nomina_empleado_id?: string } | undefined,
+  options: NominaRecalculateOptions | undefined,
   actorUserId: string,
   tenant?: TenantAccessContext,
   auditMeta?: AuditRequestMeta
@@ -6780,6 +6792,23 @@ export const recalculateNominaPeriodo = async (
       options?.force === true,
       tenant
     );
+
+    if (options?.controlledScope) {
+      const controlled = options.controlledScope;
+      if (
+        periodo.contrato_id !== controlled.contratoId ||
+        periodo.contrato_empresa_id !== controlled.empresaId ||
+        periodo.estado !== 'ABIERTO' ||
+        !options.nomina_empleado_id ||
+        !controlled.candidateEmployeeIds.includes(options.nomina_empleado_id)
+      ) {
+        throw new AppError(
+          'Controlled payroll recalculation scope is invalid',
+          409,
+          'NOMINA_RECALCULO_CONTROLADO_ALCANCE_INVALIDO'
+        );
+      }
+    }
 
     const empleadosResult = {
       rows: await loadNominaEmpleadoRowsForPeriodo(periodoId, { nomina_empleado_id: options?.nomina_empleado_id }, tenant, client)
@@ -6839,12 +6868,14 @@ export const recalculateNominaPeriodo = async (
       [periodoId]
     );
 
-    await repairMissingNominaTurnMovementSnapshots(
-      periodoId,
-      actorUserId,
-      client,
-      options?.nomina_empleado_id ? [options.nomina_empleado_id] : undefined,
-    );
+    if (!options?.controlledScope?.preserveOperationalSources) {
+      await repairMissingNominaTurnMovementSnapshots(
+        periodoId,
+        actorUserId,
+        client,
+        options?.nomina_empleado_id ? [options.nomina_empleado_id] : undefined,
+      );
+    }
 
     const movimientosResult = await client.query<{
       movimientos_devengados: number | string | null;
@@ -7870,7 +7901,7 @@ export const recalculateNominaPeriodo = async (
       }, client);
     }
 
-    if (!options?.nomina_empleado_id) {
+    if (!options?.nomina_empleado_id && !options?.controlledScope?.suppressExternalSync) {
       await syncCoberturaCuentasCobroExternasPeriodo(
         Number(periodoId), actorUserId, tenant, auditMeta, client
       );

@@ -1,0 +1,243 @@
+import { dbPool } from '../config/db.js';
+import { env } from '../config/env.js';
+import { recalculateNominaPeriodo } from '../modules/nomina/nomina.service.js';
+import {
+  assertControlledPreflight,
+  assertExactConfirmation,
+  CONTROLLED_RECALC_PROJECT_REF,
+  CONTROLLED_RECALC_SCOPE,
+  isPostgres17,
+  type ControlledPreflight
+} from '../modules/nomina/nomina.recalculo.controlado.js';
+
+const HEALTH_URL = 'https://api.empiriasuite.com/api/health';
+const LOCK_KEY = 'empiria:nomina:controlled-recalc:15:24:3';
+
+type HealthResponse = {
+  success?: boolean;
+  data?: {
+    status?: string;
+    database?: { status?: string };
+    integracion_outbox?: {
+      configured?: boolean;
+      enabled?: boolean;
+      started?: boolean;
+      running?: boolean;
+      recalc?: { requested?: boolean; active?: boolean };
+    };
+  };
+};
+
+type Preflight = ControlledPreflight & {
+  serverVersion: string;
+  periodStates: Record<string, string>;
+  activeNoveltyCount: number;
+  employeesMaterialized: number;
+  movementCount: number;
+  activeMovementCount: number;
+  activeTurnRecordCount: number;
+  movementDigest: string;
+};
+
+const queryReadOnly = async <T>(fn: (client: import('pg').PoolClient) => Promise<T>): Promise<T> => {
+  const client = await dbPool.connect();
+  try {
+    await client.query('BEGIN READ ONLY');
+    await client.query("SET LOCAL statement_timeout = '30s'");
+    await client.query("SET LOCAL lock_timeout = '5s'");
+    return await fn(client);
+  } finally {
+    await client.query('ROLLBACK').catch(() => undefined);
+    client.release();
+  }
+};
+
+const readHealth = async (): Promise<HealthResponse> => {
+  const response = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(20_000) });
+  if (response.status !== 200) throw new Error(`Health público HTTP ${response.status}.`);
+  const body = await response.json() as HealthResponse;
+  const integration = body.data?.integracion_outbox;
+  if (
+    body.success !== true ||
+    body.data?.status !== 'ok' ||
+    body.data.database?.status !== 'ok' ||
+    integration?.configured !== false ||
+    integration.enabled !== false ||
+    integration.started !== false ||
+    integration.running !== false ||
+    integration.recalc?.requested !== false ||
+    integration.recalc.active !== false
+  ) {
+    throw new Error('Health público no cumple el estado seguro requerido.');
+  }
+  return body;
+};
+
+const readPreflight = async (): Promise<Preflight> => queryReadOnly(async (client) => {
+  const version = (await client.query<{ server_version: string }>(
+    "SELECT current_setting('server_version') AS server_version"
+  )).rows[0]?.server_version ?? '';
+  if (!isPostgres17(version)) throw new Error('El servidor PostgreSQL no es 17.x.');
+
+  const periodRows = (await client.query<{ id: string; estado: string; contrato_id: string; empresa_id: string }>(
+    `SELECT np.id::text AS id, np.estado, np.contrato_id::text AS contrato_id, c.empresa_id::text AS empresa_id
+       FROM nomina_periodos np JOIN contratos c ON c.id=np.contrato_id
+      WHERE np.id = ANY($1::bigint[]) ORDER BY np.id`, [[3, 4, 5, 6]]
+  )).rows;
+  const period3 = periodRows.find((row) => row.id === '3');
+  if (!period3) throw new Error('No existe el periodo 3.');
+
+  const candidates = (await client.query<{ id: string }>(
+    `SELECT DISTINCT ne.id::text AS id
+       FROM nomina_empleados ne
+       JOIN vinculaciones v ON v.id=ne.vinculacion_id
+       JOIN contratos c ON c.id=v.contrato_id
+      WHERE ne.periodo_id=$1::bigint AND c.id=$2::bigint AND c.empresa_id=$3::bigint
+        AND EXISTS (SELECT 1 FROM nomina_novedades n WHERE n.nomina_empleado_id=ne.id AND n.periodo_id=$1::bigint AND COALESCE(n.activo,TRUE)=TRUE)
+      ORDER BY 1`, [3, 24, 15]
+  )).rows.map((row) => row.id);
+
+  const counts = (await client.query<{ empleados: number; novedades: number }>(
+    `SELECT COUNT(DISTINCT ne.id)::int AS empleados,
+            COUNT(n.id) FILTER (WHERE COALESCE(n.activo,TRUE))::int AS novedades
+       FROM nomina_empleados ne
+       LEFT JOIN nomina_novedades n ON n.nomina_empleado_id=ne.id AND n.periodo_id=ne.periodo_id
+      WHERE ne.periodo_id=$1::bigint`, [3]
+  )).rows[0];
+  const protectedRows = (await client.query<{ liquidations: number; payslips: number; adjustments: number }>(
+    `SELECT
+       (SELECT COUNT(*)::int FROM nomina_liquidaciones l JOIN nomina_empleados e ON e.vinculacion_id=l.vinculacion_id AND e.periodo_id=3 WHERE l.periodo_id=3 AND COALESCE(l.activo,TRUE) AND l.estado IN ('FINALIZADA','LIQUIDADA','PAGADA','CERRADA')) AS liquidations,
+       (SELECT COUNT(*)::int FROM nomina_desprendibles d JOIN nomina_empleados e ON e.id=d.nomina_empleado_id AND e.periodo_id=3 WHERE d.periodo_id=3 AND COALESCE(d.activo,TRUE)) AS payslips,
+       (SELECT COUNT(*)::int FROM nomina_ajustes_manuales a JOIN nomina_empleados e ON e.id=a.nomina_empleado_id AND e.periodo_id=3 WHERE a.periodo_id=3 AND COALESCE(a.activo,TRUE)) AS adjustments`
+  )).rows[0] ?? { liquidations: 0, payslips: 0, adjustments: 0 };
+  const movement = (await client.query<{ count: number; active_count: number; active_turn_count: number; turn_record_count: number; digest: string }>(
+    `SELECT COUNT(*)::int AS count,
+            COUNT(*) FILTER (WHERE COALESCE(m.activo,TRUE) AND EXISTS (SELECT 1 FROM nomina_empleados e WHERE e.id=m.nomina_empleado_id AND e.periodo_id=3))::int AS active_count,
+            COUNT(*) FILTER (WHERE COALESCE(m.activo,TRUE) AND m.tipo_movimiento IN ('TURNO_INTERNO','TURNO_EXTERNO') AND EXISTS (SELECT 1 FROM nomina_empleados e WHERE e.id=m.nomina_empleado_id AND e.periodo_id=3))::int AS active_turn_count,
+            (SELECT COUNT(*)::int FROM nomina_novedad_turnos nnt JOIN nomina_empleados e ON e.id=nnt.nomina_empleado_id AND e.periodo_id=3 WHERE nnt.periodo_id=3 AND COALESCE(nnt.activo,TRUE)) AS turn_record_count,
+            md5(COALESCE(string_agg(to_jsonb(m)::text, '|' ORDER BY m.id), '')) AS digest
+       FROM nomina_movimientos m WHERE m.periodo_id=$1::bigint`, [3]
+  )).rows[0] ?? { count: 0, active_count: 0, active_turn_count: 0, turn_record_count: 0, digest: '' };
+
+  const scope: ControlledPreflight = {
+    empresaId: period3.empresa_id,
+    contratoId: period3.contrato_id,
+    periodoId: period3.id,
+    periodoEstado: period3.estado,
+    candidateEmployeeIds: candidates,
+    protectedLiquidations: Number(protectedRows.liquidations ?? 0),
+    protectedPayslips: Number(protectedRows.payslips ?? 0),
+    protectedManualAdjustments: Number(protectedRows.adjustments ?? 0)
+  };
+  assertControlledPreflight(scope);
+  if (periodRows.some((row) => (row.id === '4' || row.id === '6') && row.estado !== 'ANULADO')) {
+    throw new Error('Un periodo anulado de control no está ANULADO.');
+  }
+  return {
+    ...scope,
+    serverVersion: version,
+    periodStates: Object.fromEntries(periodRows.map((row) => [row.id, row.estado])),
+    activeNoveltyCount: Number(counts?.novedades ?? 0),
+    employeesMaterialized: Number(counts?.empleados ?? 0),
+    movementCount: Number(movement.count ?? 0),
+    activeMovementCount: Number(movement.active_count ?? 0),
+    activeTurnRecordCount: Number(movement.turn_record_count ?? movement.active_turn_count ?? 0),
+    movementDigest: movement.digest
+  };
+});
+
+const printPreflight = (health: HealthResponse, preflight: Preflight): void => {
+  console.log(JSON.stringify({
+    mode: 'PreflightOnly',
+    health: {
+      url: HEALTH_URL,
+      success: health.success,
+      status: health.data?.status,
+      database: health.data?.database?.status,
+      outbox: health.data?.integracion_outbox,
+      sync_efectivo: false,
+      recalc_efectivo: false
+    },
+    database: { server_version: preflight.serverVersion },
+    scope: { empresa: 15, contrato: 24, periodo: 3, estado: preflight.periodoEstado },
+    period_states: preflight.periodStates,
+    empleados_materializados: preflight.employeesMaterialized,
+    novedades_activas: preflight.activeNoveltyCount,
+    candidatos: preflight.candidateEmployeeIds.length,
+    protected: {
+      liquidaciones: preflight.protectedLiquidations,
+      desprendibles: preflight.protectedPayslips,
+      ajustes_manuales: preflight.protectedManualAdjustments
+    },
+    movimientos_snapshot: {
+      total: preflight.movementCount,
+      activos: preflight.activeMovementCount,
+      turnos_activos: preflight.activeTurnRecordCount,
+      digest: preflight.movementDigest
+    }
+  }));
+};
+
+const runMutator = async (preflight: Preflight, pass: string): Promise<void> => {
+  const lockClient = await dbPool.connect();
+  let completed = 0;
+  try {
+    await lockClient.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [LOCK_KEY]);
+    for (const employeeId of preflight.candidateEmployeeIds) {
+      await recalculateNominaPeriodo(
+        CONTROLLED_RECALC_SCOPE.periodoId,
+        {
+          force: true,
+          nomina_empleado_id: employeeId,
+          controlledScope: {
+            empresaId: CONTROLLED_RECALC_SCOPE.empresaId,
+            contratoId: CONTROLLED_RECALC_SCOPE.contratoId,
+            candidateEmployeeIds: preflight.candidateEmployeeIds,
+            preserveOperationalSources: true,
+            suppressExternalSync: true
+          }
+        },
+        '0',
+        undefined,
+        { user_agent: `nomina-controlado:${pass}` }
+      );
+      completed += 1;
+    }
+    const after = await readPreflight();
+    if (after.movementCount !== preflight.movementCount || after.movementDigest !== preflight.movementDigest) {
+      throw new Error('La protección de movimientos/turnos detectó una divergencia.');
+    }
+    console.log(JSON.stringify({ mode: 'Mutator', pass, completed, status: 'SUCCESS', idempotence: pass === 'second' }));
+  } catch (error) {
+    console.error(JSON.stringify({ mode: 'Mutator', pass, completed, status: 'FAILED', error: error instanceof Error ? error.message : String(error) }));
+    throw error;
+  } finally {
+    await lockClient.query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [LOCK_KEY]).catch(() => undefined);
+    lockClient.release();
+  }
+};
+
+const args = process.argv.slice(2);
+const mode = args.find((arg) => arg.startsWith('--mode='))?.split('=')[1] ?? 'preflight';
+const pass = args.includes('--second-pass') ? 'second' : 'first';
+const confirmation = args.find((arg) => arg.startsWith('--confirmation='))?.slice('--confirmation='.length) ?? '';
+
+const main = async (): Promise<void> => {
+  if (env.NODE_ENV !== 'production') throw new Error('El runner controlado requiere NODE_ENV=production.');
+  if (mode !== 'preflight' && mode !== 'mutate') throw new Error('Modo inválido.');
+  const health = await readHealth();
+  const preflight = await readPreflight();
+  if (mode === 'preflight') {
+    printPreflight(health, preflight);
+    return;
+  }
+  assertExactConfirmation(preflight.candidateEmployeeIds.length, confirmation);
+  await runMutator(preflight, pass);
+};
+
+main()
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
+  })
+  .finally(() => dbPool.end().catch(() => undefined));
