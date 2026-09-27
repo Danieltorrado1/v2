@@ -316,15 +316,70 @@ const pass = args.includes('--second-pass') ? 'second' : 'first';
 const confirmation = args.find((arg) => arg.startsWith('--confirmation='))?.slice('--confirmation='.length) ?? '';
 const actorUserIdRaw = args.find((arg) => arg.startsWith('--actor-user-id='))?.slice('--actor-user-id='.length) ?? '';
 const actorUserId = Number(actorUserIdRaw);
+const previewIdsRaw = args.find((arg) => arg.startsWith('--preview-ids='))?.slice('--preview-ids='.length) ?? '';
+
+const canonicalize = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value as Record<string, unknown>).sort().map((key) => `${JSON.stringify(key)}:${canonicalize((value as Record<string, unknown>)[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+};
+
+const parsePreviewIds = (preflight: Preflight): string[] => {
+  const ids = previewIdsRaw.split(',').map((value) => value.trim()).filter(Boolean);
+  if (ids.length === 0 || ids.some((id) => !/^\d+$/.test(id))) throw new Error('PreviewIds debe contener IDs técnicos enteros separados por comas.');
+  if (new Set(ids).size !== ids.length) throw new Error('PreviewIds contiene duplicados.');
+  const candidateSet = new Set(preflight.candidateEmployeeIds);
+  if (ids.some((id) => !candidateSet.has(id))) throw new Error('PreviewIds contiene empleados fuera del conjunto candidato validado.');
+  return ids;
+};
+
+const runPreview = async (preflight: Preflight, actorUserId: number, ids: string[]): Promise<void> => {
+  const results = [];
+  for (const employeeId of ids) {
+    const result = await recalculateNominaPeriodo(
+      CONTROLLED_RECALC_SCOPE.periodoId,
+      {
+        force: true,
+        nomina_empleado_id: employeeId,
+        previewOnly: true,
+        controlledScope: {
+          empresaId: CONTROLLED_RECALC_SCOPE.empresaId,
+          contratoId: CONTROLLED_RECALC_SCOPE.contratoId,
+          candidateEmployeeIds: preflight.candidateEmployeeIds,
+          preserveOperationalSources: true,
+          suppressExternalSync: true
+        }
+      },
+      String(actorUserId),
+      undefined,
+      { user_agent: 'nomina-controlado:preview' }
+    );
+    const preview = result.preview?.[0];
+    if (!preview) throw new Error(`El preview no produjo resultado para empleado técnico ${employeeId}.`);
+    const { detalle_calculo: detalleCalculo, ...economicPreview } = preview;
+    results.push({
+      ...economicPreview,
+      detalle_calculo_digest: createHash('sha256').update(canonicalize(detalleCalculo)).digest('hex')
+    });
+  }
+  console.log(JSON.stringify({ mode: 'PreviewOnly', actor_user_id: actorUserId, ids, results, status: 'SUCCESS' }));
+};
 
 const main = async (): Promise<void> => {
   if (env.NODE_ENV !== 'production') throw new Error('El runner controlado requiere NODE_ENV=production.');
   if (!Number.isInteger(actorUserId) || actorUserId <= 0) throw new Error('El runner requiere --actor-user-id entero positivo.');
-  if (mode !== 'preflight' && mode !== 'mutate') throw new Error('Modo inválido.');
+  if (mode !== 'preflight' && mode !== 'preview' && mode !== 'mutate') throw new Error('Modo inválido.');
   const health = await readHealth();
   const preflight = await readPreflight(actorUserId);
   if (mode === 'preflight') {
     printPreflight(health, preflight);
+    return;
+  }
+  if (mode === 'preview') {
+    const ids = parsePreviewIds(preflight);
+    await runPreview(preflight, actorUserId, ids);
     return;
   }
   assertExactConfirmation(preflight.candidateEmployeeIds.length, confirmation);

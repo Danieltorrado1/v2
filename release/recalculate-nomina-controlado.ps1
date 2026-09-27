@@ -1,10 +1,12 @@
 [CmdletBinding()]
 param(
   [switch]$PreflightOnly,
+  [switch]$PreviewOnly,
   [switch]$Mutate,
   [switch]$SecondPass,
   [string]$Confirmation,
   [int]$ActorUserId = 0,
+  [string]$PreviewIds = '',
   [string]$ManifestPath = 'C:\Users\CORE ULTRA\Documents\EmpiriaBackups\nomina-periodo3-pre-recalculo-20260927T011019Z\20260927T011019Z-manifest.json'
 )
 
@@ -12,10 +14,11 @@ $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $PSCommandPath
 $repoRoot = Split-Path -Parent $scriptRoot
 
-if (-not $PreflightOnly -and -not $Mutate) { $PreflightOnly = $true }
-if ($PreflightOnly -and $Mutate) { throw 'Use -PreflightOnly o -Mutate, no ambos.' }
+if (-not $PreflightOnly -and -not $PreviewOnly -and -not $Mutate) { $PreflightOnly = $true }
+if ((@($PreflightOnly, $PreviewOnly, $Mutate) | Where-Object { $_ }).Count -gt 1) { throw 'Use un solo modo: -PreflightOnly, -PreviewOnly o -Mutate.' }
 if ($SecondPass -and -not $Mutate) { throw '-SecondPass sólo puede usarse con -Mutate.' }
 if ($Mutate -and [string]::IsNullOrWhiteSpace($Confirmation)) { throw 'El modo mutador requiere -Confirmation.' }
+if ($PreviewOnly -and [string]::IsNullOrWhiteSpace($PreviewIds)) { throw 'El modo preview requiere -PreviewIds.' }
 if ($ActorUserId -le 0) { throw 'El runner requiere -ActorUserId entero positivo.' }
 
 . (Join-Path $scriptRoot 'psql-connection.ps1')
@@ -63,10 +66,11 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "pg_restore --list falló: $($file.table)." }
   }
 
-  $mode = if ($Mutate) { 'mutate' } else { 'preflight' }
+  $mode = if ($Mutate) { 'mutate' } elseif ($PreviewOnly) { 'preview' } else { 'preflight' }
   $arguments = @((Join-Path $repoRoot 'src/scripts/recalculate-nomina-controlado.ts'), "--mode=$mode")
   if ($SecondPass) { $arguments += '--second-pass' }
   if ($Mutate) { $arguments += "--confirmation=$Confirmation" }
+  if ($PreviewOnly) { $arguments += "--preview-ids=$PreviewIds" }
   $arguments += "--actor-user-id=$ActorUserId"
   $tsx = Join-Path $repoRoot 'node_modules\.bin\tsx.cmd'
   if (-not (Test-Path -LiteralPath $tsx -PathType Leaf)) { throw 'No se encontró el ejecutor local TypeScript.' }

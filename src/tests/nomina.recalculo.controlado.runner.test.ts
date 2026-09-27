@@ -11,9 +11,14 @@ const releaseRunner = readFileSync(join(process.cwd(), 'release/recalculate-nomi
 
 test('controlled recalc skips operational snapshot repair and external account sync', () => {
   assert.match(service, /if \(!options\?\.controlledScope\?\.preserveOperationalSources\)/);
-  assert.match(service, /if \(!options\?\.nomina_empleado_id && !options\?\.controlledScope\?\.suppressExternalSync\)/);
+  assert.match(service, /if \(!options\?\.previewOnly && !options\?\.nomina_empleado_id && !options\?\.controlledScope\?\.suppressExternalSync\)/);
   assert.match(runner, /preserveOperationalSources: true/);
   assert.match(runner, /suppressExternalSync: true/);
+  assert.match(service, /previewOnly \? 'BEGIN READ ONLY' : 'BEGIN'/);
+  assert.match(service, /if \(options\?\.previewOnly\) previewResults\.push/);
+  assert.match(service, /if \(!options\?\.previewOnly\)/);
+  assert.match(runner, /mode === 'preview'/);
+  assert.match(runner, /preview-ids/);
 });
 
 test('controlled runner is scoped, protected and sanitizes its output', () => {
@@ -27,7 +32,7 @@ test('controlled runner is scoped, protected and sanitizes its output', () => {
 });
 
 test('default release mode is preflight and mutation requires exact confirmation', () => {
-  assert.match(releaseRunner, /if \(-not \$PreflightOnly -and -not \$Mutate\) \{ \$PreflightOnly = \$true \}/);
+  assert.match(releaseRunner, /if \(-not \$PreflightOnly -and -not \$PreviewOnly -and -not \$Mutate\) \{ \$PreflightOnly = \$true \}/);
   assert.match(releaseRunner, /if \(\$Mutate -and \[string\]::IsNullOrWhiteSpace\(\$Confirmation\)\)/);
   assert.match(runner, /assertExactConfirmation\(preflight\.candidateEmployeeIds\.length, confirmation\)/);
   assert.match(runner, /status: 'FAILED'/);
@@ -38,5 +43,5 @@ test('default release mode is preflight and mutation requires exact confirmation
   assert.match(runner, /usuario_roles/);
   assert.match(auditService, /strict: true/);
   assert.match(auditHelper, /if \(input\.strict\) throw error/);
-  assert.match(service, /SET LOCAL app\.current_user_id/);
+  assert.match(service, /set_config\('app\.current_user_id'/);
 });

@@ -1288,6 +1288,22 @@ export interface NominaRecalculateResult {
   empleados_procesados: number;
   omitidas_activas?: number;
   omitidas_fuera_periodo?: number;
+  preview?: NominaPreviewResult[];
+}
+
+export interface NominaPreviewResult {
+  empleado_id: string;
+  dias_pagados: number;
+  horas_trabajadas: number;
+  devengado_basico: number;
+  devengado_transporte: number;
+  devengado_otros: number;
+  salud: number;
+  pension: number;
+  total_adiciones: number;
+  total_deducciones: number;
+  neto_pagar: number;
+  detalle_calculo: Record<string, unknown>;
 }
 
 export interface NominaRecalculateOptions {
@@ -1300,6 +1316,7 @@ export interface NominaRecalculateOptions {
   };
   force?: boolean;
   nomina_empleado_id?: string;
+  previewOnly?: true;
 }
 
 export interface NominaExportResult {
@@ -6784,8 +6801,8 @@ export const recalculateNominaPeriodo = async (
   const client = await dbPool.connect();
 
   try {
-    await client.query('BEGIN');
-    await client.query("SET LOCAL app.current_user_id = $1", [String(actorUserId)]);
+    await client.query(options?.previewOnly ? 'BEGIN READ ONLY' : 'BEGIN');
+    await client.query("SELECT set_config('app.current_user_id', $1, true)", [String(actorUserId)]);
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
     await assertNominaPeriodoCoberturaScope(periodoId, tenant, client);
     const recalculateMode = assertPeriodoAllowsRecalculate(
@@ -6814,6 +6831,10 @@ export const recalculateNominaPeriodo = async (
     const empleadosResult = {
       rows: await loadNominaEmpleadoRowsForPeriodo(periodoId, { nomina_empleado_id: options?.nomina_empleado_id }, tenant, client)
     };
+    if (options?.previewOnly && !options.controlledScope) {
+      throw new AppError('Preview requiere alcance controlado', 400, 'NOMINA_PREVIEW_SCOPE_REQUIRED');
+    }
+    const previewResults: NominaPreviewResult[] = [];
 
     const novedadesResult = await client.query<NominaNovedadRealRow>(
       `
@@ -7758,7 +7779,22 @@ export const recalculateNominaPeriodo = async (
           pension_aplicada_final: pensionTotal
         };
 
-        await nominaCalculoRepository.persistResult({
+        const previewResult: NominaPreviewResult = {
+          empleado_id: empleadoRow.id,
+          dias_pagados: coberturaResult.dias_salario,
+          horas_trabajadas: horasTrabajadasBase,
+          devengado_basico: coberturaResult.salario_ordinario,
+          devengado_transporte: coberturaResult.transporte_ordinario,
+          devengado_otros: devengadoOtros,
+          salud: saludTotal,
+          pension: pensionTotal,
+          total_adiciones: coberturaResult.total_devengado,
+          total_deducciones: totalDeduccionesFinal,
+          neto_pagar: netoFinal,
+          detalle_calculo: detalleCalculoCobertura
+        };
+        if (options?.previewOnly) previewResults.push(previewResult);
+        else await nominaCalculoRepository.persistResult({
           empleadoId: empleadoRow.id,
           diasPagados: coberturaResult.dias_salario,
           horasTrabajadas: horasTrabajadasBase,
@@ -7886,7 +7922,22 @@ export const recalculateNominaPeriodo = async (
         }
       };
 
-      await nominaCalculoRepository.persistResult({
+      const previewResult: NominaPreviewResult = {
+        empleado_id: empleadoRow.id,
+        dias_pagados: diasPagadosBase,
+        horas_trabajadas: horasTrabajadasBase,
+        devengado_basico: devengadoBasico,
+        devengado_transporte: devengadoTransporte,
+        devengado_otros: devengadoOtros,
+        salud,
+        pension,
+        total_adiciones: totalAdiciones,
+        total_deducciones: totalDeducciones,
+        neto_pagar: netoPagar,
+        detalle_calculo: detalleCalculo
+      };
+      if (options?.previewOnly) previewResults.push(previewResult);
+      else await nominaCalculoRepository.persistResult({
         empleadoId: empleadoRow.id,
         diasPagados: diasPagadosBase,
         horasTrabajadas: horasTrabajadasBase,
@@ -7902,7 +7953,7 @@ export const recalculateNominaPeriodo = async (
       }, client);
     }
 
-    if (!options?.nomina_empleado_id && !options?.controlledScope?.suppressExternalSync) {
+    if (!options?.previewOnly && !options?.nomina_empleado_id && !options?.controlledScope?.suppressExternalSync) {
       await syncCoberturaCuentasCobroExternasPeriodo(
         Number(periodoId), actorUserId, tenant, auditMeta, client
       );
@@ -7919,16 +7970,16 @@ export const recalculateNominaPeriodo = async (
       turnos_sin_snapshot: turnosSinSnapshot
     };
 
-    await recordNominaAudit(
-      client,
-      periodoId,
-      actorUserId,
-      recalculateMode.forced ? 'NOMINA_RECALCULATE_FORCE' : 'NOMINA_RECALCULATE_WITH_ASISTENCIA',
-      {
-        after: recalculationPayload
-      },
-      auditMeta
-    );
+    if (!options?.previewOnly) {
+      await recordNominaAudit(
+        client,
+        periodoId,
+        actorUserId,
+        recalculateMode.forced ? 'NOMINA_RECALCULATE_FORCE' : 'NOMINA_RECALCULATE_WITH_ASISTENCIA',
+        { after: recalculationPayload },
+        auditMeta
+      );
+    }
 
     const updatedPeriodo = mapRealPeriodo(await loadRealPeriodoOrThrow(periodoId, tenant, client));
 
@@ -7937,7 +7988,8 @@ export const recalculateNominaPeriodo = async (
     return {
       periodo: updatedPeriodo,
       empleados_procesados: empleadosResult.rows.length,
-      liquidaciones_generadas: 0
+      liquidaciones_generadas: 0,
+      preview: options?.previewOnly ? previewResults : undefined
     };
   } catch (error) {
     await client.query('ROLLBACK');
