@@ -1,5 +1,6 @@
 import { dbPool } from '../config/db.js';
 import { env } from '../config/env.js';
+import { createHash } from 'node:crypto';
 import { recalculateNominaPeriodo } from '../modules/nomina/nomina.service.js';
 import {
   assertControlledPreflight,
@@ -32,6 +33,9 @@ type Preflight = ControlledPreflight & {
   serverVersion: string;
   periodStates: Record<string, string>;
   activeNoveltyCount: number;
+  activeNoveltyRows: number;
+  activeNoveltyDays: number;
+  excludedEmployees: number;
   employeesMaterialized: number;
   movementCount: number;
   activeMovementCount: number;
@@ -40,6 +44,8 @@ type Preflight = ControlledPreflight & {
   period5Employees: number;
   period5ActiveNovelties: number;
   movementDigest: string;
+  candidateDigest: string;
+  noveltyDigest: string;
 };
 
 const queryReadOnly = async <T>(fn: (client: import('pg').PoolClient) => Promise<T>): Promise<T> => {
@@ -100,16 +106,28 @@ const readPreflight = async (): Promise<Preflight> => queryReadOnly(async (clien
       ORDER BY 1`, [3, 24, 15]
   )).rows.map((row) => row.id);
 
-  const counts = (await client.query<{ empleados: number; novedades: number }>(
-    `SELECT COUNT(DISTINCT ne.id)::int AS empleados,
-            COUNT(n.id) FILTER (WHERE COALESCE(n.activo,TRUE))::int AS novedades
-       FROM nomina_empleados ne
-       LEFT JOIN nomina_novedades n ON n.nomina_empleado_id=ne.id AND n.periodo_id=ne.periodo_id
-      WHERE ne.periodo_id=$1::bigint`, [3]
+  const counts = (await client.query<{ empleados: number; novedades: number; dias: number }>(
+    `WITH scoped_employees AS (
+       SELECT DISTINCT ne.id
+         FROM nomina_empleados ne
+         JOIN vinculaciones v ON v.id=ne.vinculacion_id
+         JOIN contratos c ON c.id=v.contrato_id
+        WHERE ne.periodo_id=$1::bigint AND c.id=$2::bigint AND c.empresa_id=$3::bigint
+     ), active_novelties AS (
+       SELECT DISTINCT n.id, n.fecha_inicio::date, n.fecha_fin::date, np.fecha_inicio::date AS periodo_inicio, np.fecha_fin::date AS periodo_fin
+         FROM nomina_novedades n
+         JOIN scoped_employees se ON se.id=n.nomina_empleado_id
+         JOIN nomina_periodos np ON np.id=$1::bigint
+        WHERE n.periodo_id=$1::bigint AND COALESCE(n.activo,TRUE)
+     )
+     SELECT (SELECT COUNT(*)::int FROM scoped_employees) AS empleados,
+            (SELECT COUNT(*)::int FROM active_novelties) AS novedades,
+            COALESCE((SELECT SUM(GREATEST(0, LEAST(COALESCE(fecha_fin,fecha_inicio),periodo_fin)
+              - GREATEST(fecha_inicio,periodo_inicio) + 1))::int FROM active_novelties),0)::int AS dias`, [3, 24, 15]
   )).rows[0];
   const period5 = (await client.query<{ empleados: number; novedades: number }>(
     `SELECT COUNT(DISTINCT ne.id)::int AS empleados,
-            COUNT(nn.id) FILTER (WHERE COALESCE(nn.activo,TRUE))::int AS novedades
+            COUNT(DISTINCT nn.id) FILTER (WHERE COALESCE(nn.activo,TRUE))::int AS novedades
        FROM nomina_periodos np
        LEFT JOIN nomina_empleados ne ON ne.periodo_id=np.id
        LEFT JOIN nomina_novedades nn ON nn.nomina_empleado_id=ne.id AND nn.periodo_id=np.id
@@ -129,9 +147,9 @@ const readPreflight = async (): Promise<Preflight> => queryReadOnly(async (clien
   )).rows[0] ?? { liquidations: 0, payslips: 0, adjustments: 0 };
   const movement = (await client.query<{ count: number; active_count: number; active_turn_count: number; turn_record_count: number; digest: string }>(
     `SELECT COUNT(*)::int AS count,
-            COUNT(*) FILTER (WHERE COALESCE(m.activo,TRUE) AND EXISTS (SELECT 1 FROM nomina_empleados e WHERE e.id=m.nomina_empleado_id AND e.periodo_id=3))::int AS active_count,
-            COUNT(*) FILTER (WHERE COALESCE(m.activo,TRUE) AND m.tipo_movimiento IN ('TURNO_INTERNO','TURNO_EXTERNO') AND EXISTS (SELECT 1 FROM nomina_empleados e WHERE e.id=m.nomina_empleado_id AND e.periodo_id=3))::int AS active_turn_count,
-            (SELECT COUNT(*)::int FROM nomina_novedad_turnos nnt JOIN nomina_empleados e ON e.id=nnt.nomina_empleado_id AND e.periodo_id=3 WHERE nnt.periodo_id=3 AND COALESCE(nnt.activo,TRUE)) AS turn_record_count,
+            COUNT(*) FILTER (WHERE COALESCE(m.activo,TRUE))::int AS active_count,
+            COUNT(*) FILTER (WHERE COALESCE(m.activo,TRUE) AND m.tipo_movimiento IN ('TURNO_INTERNO','TURNO_EXTERNO'))::int AS active_turn_count,
+            (SELECT COUNT(*)::int FROM nomina_novedad_turnos nnt WHERE nnt.periodo_id=3 AND COALESCE(nnt.activo,TRUE)) AS turn_record_count,
             md5(COALESCE(string_agg(to_jsonb(m)::text, '|' ORDER BY m.id), '')) AS digest
        FROM nomina_movimientos m WHERE m.periodo_id=$1::bigint`, [3]
   )).rows[0] ?? { count: 0, active_count: 0, active_turn_count: 0, turn_record_count: 0, digest: '' };
@@ -148,7 +166,10 @@ const readPreflight = async (): Promise<Preflight> => queryReadOnly(async (clien
     protectedManualAdjustments: Number(protectedRows.adjustments ?? 0),
     waitingLocks: Number(waitingLocks),
     period5Employees: Number(period5.empleados ?? 0),
-    period5ActiveNovelties: Number(period5.novedades ?? 0)
+    period5ActiveNovelties: Number(period5.novedades ?? 0),
+    excludedEmployees: Number(counts?.empleados ?? 0) - candidates.length,
+    activeNoveltyRows: Number(counts?.novedades ?? 0),
+    activeNoveltyDays: Number(counts?.dias ?? 0)
   };
   assertControlledPreflight(scope);
   if (periodRows.some((row) => (row.id === '4' || row.id === '6') && row.estado !== 'ANULADO')) {
@@ -159,11 +180,23 @@ const readPreflight = async (): Promise<Preflight> => queryReadOnly(async (clien
     serverVersion: version,
     periodStates: Object.fromEntries(periodRows.map((row) => [row.id, row.estado])),
     activeNoveltyCount: Number(counts?.novedades ?? 0),
+    activeNoveltyRows: Number(counts?.novedades ?? 0),
+    activeNoveltyDays: Number(counts?.dias ?? 0),
+    excludedEmployees: Number(counts?.empleados ?? 0) - candidates.length,
     employeesMaterialized: Number(counts?.empleados ?? 0),
     movementCount: Number(movement.count ?? 0),
     activeMovementCount: Number(movement.active_count ?? 0),
     activeTurnRecordCount: Number(movement.turn_record_count ?? movement.active_turn_count ?? 0),
-    movementDigest: movement.digest
+    movementDigest: movement.digest,
+    candidateDigest: createHash('sha256').update(candidates.join('|')).digest('hex'),
+    noveltyDigest: (await client.query<{ digest: string }>(
+      `SELECT md5(COALESCE(string_agg(n.id::text,'|' ORDER BY n.id),'')) AS digest
+         FROM nomina_novedades n
+         JOIN nomina_empleados ne ON ne.id=n.nomina_empleado_id AND ne.periodo_id=n.periodo_id
+         JOIN vinculaciones v ON v.id=ne.vinculacion_id
+         JOIN contratos c ON c.id=v.contrato_id
+        WHERE n.periodo_id=$1::bigint AND COALESCE(n.activo,TRUE) AND c.id=$2::bigint AND c.empresa_id=$3::bigint`, [3,24,15]
+    )).rows[0]?.digest ?? ''
   };
 });
 
@@ -183,8 +216,9 @@ const printPreflight = (health: HealthResponse, preflight: Preflight): void => {
     scope: { empresa: 15, contrato: 24, periodo: 3, estado: preflight.periodoEstado },
     period_states: preflight.periodStates,
     empleados_materializados: preflight.employeesMaterialized,
-    excluidos_sin_novedad: preflight.employeesMaterialized - preflight.candidateEmployeeIds.length,
-    novedades_activas: preflight.activeNoveltyCount,
+    excluidos_sin_novedad: preflight.excludedEmployees,
+    filas_novedades_activas: preflight.activeNoveltyRows,
+    dias_novedades_activas: preflight.activeNoveltyDays,
     candidatos: preflight.candidateEmployeeIds.length,
     protected: {
       liquidaciones: preflight.protectedLiquidations,
@@ -197,6 +231,11 @@ const printPreflight = (health: HealthResponse, preflight: Preflight): void => {
       intact_baseline: preflight.period5Employees === 788 && preflight.period5ActiveNovelties === 1
     },
     waiting_locks: preflight.waitingLocks,
+    digests: {
+      candidatos: preflight.candidateDigest,
+      novedades_activas: preflight.noveltyDigest,
+      movimientos: preflight.movementDigest
+    },
     movimientos_snapshot: {
       total: preflight.movementCount,
       activos: preflight.activeMovementCount,
@@ -215,6 +254,11 @@ const runMutator = async (preflight: Preflight, pass: string): Promise<void> => 
     if (
       lockedPreflight.candidateEmployeeIds.length !== preflight.candidateEmployeeIds.length ||
       lockedPreflight.candidateEmployeeIds.some((id, index) => id !== preflight.candidateEmployeeIds[index]) ||
+      lockedPreflight.candidateDigest !== preflight.candidateDigest ||
+      lockedPreflight.noveltyDigest !== preflight.noveltyDigest ||
+      lockedPreflight.excludedEmployees !== preflight.excludedEmployees ||
+      lockedPreflight.activeNoveltyRows !== preflight.activeNoveltyRows ||
+      lockedPreflight.activeNoveltyDays !== preflight.activeNoveltyDays ||
       lockedPreflight.movementDigest !== preflight.movementDigest
     ) {
       throw new Error('El preflight cambió mientras se adquiría el advisory lock.');

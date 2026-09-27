@@ -12,6 +12,9 @@ export type ControlledPreflight = {
   periodoEstado: string;
   employeesMaterialized: number;
   candidateEmployeeIds: readonly string[];
+  excludedEmployees: number;
+  activeNoveltyRows: number;
+  activeNoveltyDays: number;
   protectedLiquidations: number;
   protectedPayslips: number;
   protectedManualAdjustments: number;
@@ -21,6 +24,13 @@ export type ControlledPreflight = {
 };
 
 export const isPostgres17 = (version: string): boolean => /^17(?:\.|$)/.test(version.trim());
+
+export const calculateExcludedEmployees = (employeesMaterialized: number, candidateEmployees: number): number => {
+  if (!Number.isInteger(employeesMaterialized) || !Number.isInteger(candidateEmployees)) throw new Error('La población de nómina debe usar conteos enteros.');
+  const excluded = employeesMaterialized - candidateEmployees;
+  if (excluded < 0) throw new Error('Los candidatos no pueden exceder la población materializada.');
+  return excluded;
+};
 
 export const expectedConfirmation = (candidateCount: number): string =>
   `RECALCULO CONTROLADO EMPRESA 15 CONTRATO 24 PERIODO 3 CANDIDATOS ${candidateCount} PROJECT ${CONTROLLED_RECALC_PROJECT_REF} AUTORIZO ESCRITURA`;
@@ -43,7 +53,8 @@ export const assertControlledPreflight = (input: ControlledPreflight): void => {
   if (input.period5Employees !== 788 || input.period5ActiveNovelties !== 1) {
     throw new Error('El periodo 5 no coincide con el baseline protegido.');
   }
-  if (input.employeesMaterialized - input.candidateEmployeeIds.length !== 622) {
+  const calculatedExcluded = calculateExcludedEmployees(input.employeesMaterialized, input.candidateEmployeeIds.length);
+  if (input.excludedEmployees !== calculatedExcluded) {
     throw new Error('La exclusión esperada de empleados sin novedades cambió.');
   }
   if (new Set(input.candidateEmployeeIds).size !== input.candidateEmployeeIds.length) {
