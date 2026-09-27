@@ -86,6 +86,7 @@ export interface RegisterAuditEventInput {
   empresa_id?: string | number | null;
   ip_address?: string | null;
   modulo: string;
+  strict?: boolean;
   user_agent?: string | null;
   usuario_id?: string | number | null;
 }
@@ -341,6 +342,7 @@ export const registerAuditEvent = async (input: RegisterAuditEventInput): Promis
         error,
         modulo: input.modulo
       });
+      if (input.strict) throw error;
     }
 
     return;
@@ -366,6 +368,7 @@ export const registerAuditEvent = async (input: RegisterAuditEventInput): Promis
       error,
       modulo: input.modulo
     });
+    if (input.strict) throw error;
   } finally {
     client.release();
   }

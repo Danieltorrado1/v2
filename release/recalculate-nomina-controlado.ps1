@@ -4,6 +4,7 @@ param(
   [switch]$Mutate,
   [switch]$SecondPass,
   [string]$Confirmation,
+  [int]$ActorUserId = 0,
   [string]$ManifestPath = 'C:\Users\CORE ULTRA\Documents\EmpiriaBackups\nomina-periodo3-pre-recalculo-20260927T011019Z\20260927T011019Z-manifest.json'
 )
 
@@ -15,6 +16,7 @@ if (-not $PreflightOnly -and -not $Mutate) { $PreflightOnly = $true }
 if ($PreflightOnly -and $Mutate) { throw 'Use -PreflightOnly o -Mutate, no ambos.' }
 if ($SecondPass -and -not $Mutate) { throw '-SecondPass sólo puede usarse con -Mutate.' }
 if ($Mutate -and [string]::IsNullOrWhiteSpace($Confirmation)) { throw 'El modo mutador requiere -Confirmation.' }
+if ($ActorUserId -le 0) { throw 'El runner requiere -ActorUserId entero positivo.' }
 
 . (Join-Path $scriptRoot 'psql-connection.ps1')
 
@@ -65,6 +67,7 @@ try {
   $arguments = @((Join-Path $repoRoot 'src/scripts/recalculate-nomina-controlado.ts'), "--mode=$mode")
   if ($SecondPass) { $arguments += '--second-pass' }
   if ($Mutate) { $arguments += "--confirmation=$Confirmation" }
+  $arguments += "--actor-user-id=$ActorUserId"
   $tsx = Join-Path $repoRoot 'node_modules\.bin\tsx.cmd'
   if (-not (Test-Path -LiteralPath $tsx -PathType Leaf)) { throw 'No se encontró el ejecutor local TypeScript.' }
   & $tsx @arguments

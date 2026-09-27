@@ -46,6 +46,7 @@ type Preflight = ControlledPreflight & {
   movementDigest: string;
   candidateDigest: string;
   noveltyDigest: string;
+  actorUserId: number;
 };
 
 const queryReadOnly = async <T>(fn: (client: import('pg').PoolClient) => Promise<T>): Promise<T> => {
@@ -82,7 +83,18 @@ const readHealth = async (): Promise<HealthResponse> => {
   return body;
 };
 
-const readPreflight = async (): Promise<Preflight> => queryReadOnly(async (client) => {
+const readPreflight = async (actorUserId: number): Promise<Preflight> => queryReadOnly(async (client) => {
+  if (!Number.isInteger(actorUserId) || actorUserId <= 0) throw new Error('ActorUserId entero positivo obligatorio.');
+  const actor = (await client.query<{ activo: boolean; is_admin: boolean; company_access: number; contract_access: number }>(
+    `SELECT u.activo,
+            EXISTS (SELECT 1 FROM usuario_roles ur JOIN roles r ON r.id=ur.rol_id WHERE ur.usuario_id=u.id AND COALESCE(ur.activo,TRUE) AND COALESCE(r.activo,TRUE) AND r.nombre_rol IN ('ADMINISTRADOR','ADMIN')) AS is_admin,
+            (SELECT COUNT(*)::int FROM usuario_empresas ue WHERE ue.usuario_id=u.id AND ue.empresa_id=$2::bigint AND COALESCE(ue.activo,TRUE)) AS company_access,
+            (SELECT COUNT(*)::int FROM usuario_contratos uc WHERE uc.usuario_id=u.id AND uc.contrato_id=$3::bigint AND COALESCE(uc.activo,TRUE)) AS contract_access
+       FROM usuarios u WHERE u.id=$1::bigint`, [actorUserId, 15, 24]
+  )).rows[0];
+  if (!actor || !actor.activo || !actor.is_admin || actor.company_access < 1 || actor.contract_access < 1) {
+    throw new Error('ActorUserId no existe, no está activo, no es administrador o no tiene alcance autorizado.');
+  }
   const version = (await client.query<{ server_version: string }>(
     "SELECT current_setting('server_version') AS server_version"
   )).rows[0]?.server_version ?? '';
@@ -196,7 +208,8 @@ const readPreflight = async (): Promise<Preflight> => queryReadOnly(async (clien
          JOIN vinculaciones v ON v.id=ne.vinculacion_id
          JOIN contratos c ON c.id=v.contrato_id
         WHERE n.periodo_id=$1::bigint AND COALESCE(n.activo,TRUE) AND c.id=$2::bigint AND c.empresa_id=$3::bigint`, [3,24,15]
-    )).rows[0]?.digest ?? ''
+    )).rows[0]?.digest ?? '',
+    actorUserId
   };
 });
 
@@ -245,12 +258,12 @@ const printPreflight = (health: HealthResponse, preflight: Preflight): void => {
   }));
 };
 
-const runMutator = async (preflight: Preflight, pass: string): Promise<void> => {
+const runMutator = async (preflight: Preflight, pass: string, actorUserId: number): Promise<void> => {
   const lockClient = await dbPool.connect();
   let completed = 0;
   try {
     await lockClient.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [LOCK_KEY]);
-    const lockedPreflight = await readPreflight();
+    const lockedPreflight = await readPreflight(actorUserId);
     if (
       lockedPreflight.candidateEmployeeIds.length !== preflight.candidateEmployeeIds.length ||
       lockedPreflight.candidateEmployeeIds.some((id, index) => id !== preflight.candidateEmployeeIds[index]) ||
@@ -277,13 +290,13 @@ const runMutator = async (preflight: Preflight, pass: string): Promise<void> => 
             suppressExternalSync: true
           }
         },
-        '0',
+        String(actorUserId),
         undefined,
         { user_agent: `nomina-controlado:${pass}` }
       );
       completed += 1;
     }
-    const after = await readPreflight();
+    const after = await readPreflight(actorUserId);
     if (after.movementCount !== lockedPreflight.movementCount || after.movementDigest !== lockedPreflight.movementDigest) {
       throw new Error('La protección de movimientos/turnos detectó una divergencia.');
     }
@@ -301,18 +314,21 @@ const args = process.argv.slice(2);
 const mode = args.find((arg) => arg.startsWith('--mode='))?.split('=')[1] ?? 'preflight';
 const pass = args.includes('--second-pass') ? 'second' : 'first';
 const confirmation = args.find((arg) => arg.startsWith('--confirmation='))?.slice('--confirmation='.length) ?? '';
+const actorUserIdRaw = args.find((arg) => arg.startsWith('--actor-user-id='))?.slice('--actor-user-id='.length) ?? '';
+const actorUserId = Number(actorUserIdRaw);
 
 const main = async (): Promise<void> => {
   if (env.NODE_ENV !== 'production') throw new Error('El runner controlado requiere NODE_ENV=production.');
+  if (!Number.isInteger(actorUserId) || actorUserId <= 0) throw new Error('El runner requiere --actor-user-id entero positivo.');
   if (mode !== 'preflight' && mode !== 'mutate') throw new Error('Modo inválido.');
   const health = await readHealth();
-  const preflight = await readPreflight();
+  const preflight = await readPreflight(actorUserId);
   if (mode === 'preflight') {
     printPreflight(health, preflight);
     return;
   }
   assertExactConfirmation(preflight.candidateEmployeeIds.length, confirmation);
-  await runMutator(preflight, pass);
+  await runMutator(preflight, pass, actorUserId);
 };
 
 main()

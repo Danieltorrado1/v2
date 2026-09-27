@@ -21,5 +21,6 @@ export const recordNominaAudit = async (
     after: payload?.after ?? payload ?? null,
     ip: auditMeta?.ip ?? null,
     user_agent: auditMeta?.user_agent ?? null
+    ,strict: true
   });
 };

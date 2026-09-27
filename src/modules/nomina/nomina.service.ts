@@ -6785,6 +6785,7 @@ export const recalculateNominaPeriodo = async (
 
   try {
     await client.query('BEGIN');
+    await client.query("SET LOCAL app.current_user_id = $1", [String(actorUserId)]);
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
     await assertNominaPeriodoCoberturaScope(periodoId, tenant, client);
     const recalculateMode = assertPeriodoAllowsRecalculate(

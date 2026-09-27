@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 const service = readFileSync(join(process.cwd(), 'src/modules/nomina/nomina.service.ts'), 'utf8');
+const auditService = readFileSync(join(process.cwd(), 'src/modules/nomina/application/nomina-audit.service.ts'), 'utf8');
+const auditHelper = readFileSync(join(process.cwd(), 'src/modules/auditoria/auditoria.helper.ts'), 'utf8');
 const runner = readFileSync(join(process.cwd(), 'src/scripts/recalculate-nomina-controlado.ts'), 'utf8');
 const releaseRunner = readFileSync(join(process.cwd(), 'release/recalculate-nomina-controlado.ps1'), 'utf8');
 
@@ -30,4 +32,11 @@ test('default release mode is preflight and mutation requires exact confirmation
   assert.match(runner, /assertExactConfirmation\(preflight\.candidateEmployeeIds\.length, confirmation\)/);
   assert.match(runner, /status: 'FAILED'/);
   assert.match(runner, /completed/);
+  assert.match(releaseRunner, /ActorUserId/);
+  assert.match(releaseRunner, /ActorUserId -le 0/);
+  assert.match(runner, /actor-user-id/);
+  assert.match(runner, /usuario_roles/);
+  assert.match(auditService, /strict: true/);
+  assert.match(auditHelper, /if \(input\.strict\) throw error/);
+  assert.match(service, /SET LOCAL app\.current_user_id/);
 });

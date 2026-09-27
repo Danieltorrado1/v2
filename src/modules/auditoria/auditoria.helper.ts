@@ -19,6 +19,7 @@ export interface RegisterAuditEntryInput extends AuditRequestMeta {
   empresa_id?: string | number | null;
   registro_id: string;
   tabla: string;
+  strict?: boolean;
   usuario_id?: string | null;
 }
 
@@ -298,6 +299,7 @@ export const registerAuditEntry = async (
       modulo: deriveModuleFromTable(input.tabla),
       user_agent: input.user_agent ?? null,
       usuario_id: input.usuario_id ?? null
+      ,strict: input.strict
     });
   } catch (error) {
     console.error('Failed to register centralized audit event', {
@@ -306,6 +308,7 @@ export const registerAuditEntry = async (
       registro_id: input.registro_id,
       tabla: input.tabla
     });
+    if (input.strict) throw error;
   }
 
   if (input.client) {
@@ -329,6 +332,7 @@ export const registerAuditEntry = async (
         registro_id: input.registro_id,
         tabla: input.tabla
       });
+      if (input.strict) throw error;
     }
 
     return;
