@@ -10,10 +10,14 @@ export type ControlledPreflight = {
   contratoId: string;
   periodoId: string;
   periodoEstado: string;
+  employeesMaterialized: number;
   candidateEmployeeIds: readonly string[];
   protectedLiquidations: number;
   protectedPayslips: number;
   protectedManualAdjustments: number;
+  waitingLocks: number;
+  period5Employees: number;
+  period5ActiveNovelties: number;
 };
 
 export const isPostgres17 = (version: string): boolean => /^17(?:\.|$)/.test(version.trim());
@@ -35,6 +39,13 @@ export const assertControlledPreflight = (input: ControlledPreflight): void => {
   if (input.protectedLiquidations || input.protectedPayslips || input.protectedManualAdjustments) {
     throw new Error('Existen liquidaciones, desprendibles o ajustes manuales protegidos.');
   }
+  if (input.waitingLocks !== 0) throw new Error('Existen locks esperando.');
+  if (input.period5Employees !== 788 || input.period5ActiveNovelties !== 1) {
+    throw new Error('El periodo 5 no coincide con el baseline protegido.');
+  }
+  if (input.employeesMaterialized - input.candidateEmployeeIds.length !== 622) {
+    throw new Error('La exclusión esperada de empleados sin novedades cambió.');
+  }
   if (new Set(input.candidateEmployeeIds).size !== input.candidateEmployeeIds.length) {
     throw new Error('El conjunto de candidatos contiene duplicados.');
   }
@@ -45,4 +56,3 @@ export const assertExactConfirmation = (candidateCount: number, confirmation: st
     throw new Error('La confirmación exacta no coincide con el preflight inmediato.');
   }
 };
-

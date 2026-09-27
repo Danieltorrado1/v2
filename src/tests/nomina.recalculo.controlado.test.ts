@@ -13,10 +13,14 @@ const valid = {
   contratoId: '24',
   periodoId: '3',
   periodoEstado: 'ABIERTO',
+  employeesMaterialized: 624,
   candidateEmployeeIds: ['101', '102'],
   protectedLiquidations: 0,
   protectedPayslips: 0,
-  protectedManualAdjustments: 0
+  protectedManualAdjustments: 0,
+  waitingLocks: 0,
+  period5Employees: 788,
+  period5ActiveNovelties: 1
 } as const;
 
 test('accepts PostgreSQL 17.x and rejects PostgreSQL 16', () => {
@@ -41,4 +45,3 @@ test('confirmation is dynamic and rejects stale or incorrect candidate counts', 
   assert.throws(() => assertExactConfirmation(174, confirmation));
   assert.throws(() => assertExactConfirmation(173, confirmation.replace('PROJECT', 'WRONG')));
 });
-

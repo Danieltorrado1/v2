@@ -36,6 +36,9 @@ type Preflight = ControlledPreflight & {
   movementCount: number;
   activeMovementCount: number;
   activeTurnRecordCount: number;
+  waitingLocks: number;
+  period5Employees: number;
+  period5ActiveNovelties: number;
   movementDigest: string;
 };
 
@@ -104,6 +107,20 @@ const readPreflight = async (): Promise<Preflight> => queryReadOnly(async (clien
        LEFT JOIN nomina_novedades n ON n.nomina_empleado_id=ne.id AND n.periodo_id=ne.periodo_id
       WHERE ne.periodo_id=$1::bigint`, [3]
   )).rows[0];
+  const period5 = (await client.query<{ empleados: number; novedades: number }>(
+    `SELECT COUNT(DISTINCT ne.id)::int AS empleados,
+            COUNT(nn.id) FILTER (WHERE COALESCE(nn.activo,TRUE))::int AS novedades
+       FROM nomina_periodos np
+       LEFT JOIN nomina_empleados ne ON ne.periodo_id=np.id
+       LEFT JOIN nomina_novedades nn ON nn.nomina_empleado_id=ne.id AND nn.periodo_id=np.id
+      WHERE np.id=5 GROUP BY np.estado`,
+  )).rows[0] ?? { empleados: 0, novedades: 0 };
+  const waitingLocks = (await client.query<{ total: number }>(
+    `SELECT COUNT(*)::int AS total
+       FROM pg_stat_activity a
+       JOIN pg_locks l ON l.pid=a.pid AND NOT l.granted
+      WHERE a.datname=current_database()`,
+  )).rows[0]?.total ?? 0;
   const protectedRows = (await client.query<{ liquidations: number; payslips: number; adjustments: number }>(
     `SELECT
        (SELECT COUNT(*)::int FROM nomina_liquidaciones l JOIN nomina_empleados e ON e.vinculacion_id=l.vinculacion_id AND e.periodo_id=3 WHERE l.periodo_id=3 AND COALESCE(l.activo,TRUE) AND l.estado IN ('FINALIZADA','LIQUIDADA','PAGADA','CERRADA')) AS liquidations,
@@ -124,10 +141,14 @@ const readPreflight = async (): Promise<Preflight> => queryReadOnly(async (clien
     contratoId: period3.contrato_id,
     periodoId: period3.id,
     periodoEstado: period3.estado,
+    employeesMaterialized: Number(counts?.empleados ?? 0),
     candidateEmployeeIds: candidates,
     protectedLiquidations: Number(protectedRows.liquidations ?? 0),
     protectedPayslips: Number(protectedRows.payslips ?? 0),
-    protectedManualAdjustments: Number(protectedRows.adjustments ?? 0)
+    protectedManualAdjustments: Number(protectedRows.adjustments ?? 0),
+    waitingLocks: Number(waitingLocks),
+    period5Employees: Number(period5.empleados ?? 0),
+    period5ActiveNovelties: Number(period5.novedades ?? 0)
   };
   assertControlledPreflight(scope);
   if (periodRows.some((row) => (row.id === '4' || row.id === '6') && row.estado !== 'ANULADO')) {
@@ -162,6 +183,7 @@ const printPreflight = (health: HealthResponse, preflight: Preflight): void => {
     scope: { empresa: 15, contrato: 24, periodo: 3, estado: preflight.periodoEstado },
     period_states: preflight.periodStates,
     empleados_materializados: preflight.employeesMaterialized,
+    excluidos_sin_novedad: preflight.employeesMaterialized - preflight.candidateEmployeeIds.length,
     novedades_activas: preflight.activeNoveltyCount,
     candidatos: preflight.candidateEmployeeIds.length,
     protected: {
@@ -169,6 +191,12 @@ const printPreflight = (health: HealthResponse, preflight: Preflight): void => {
       desprendibles: preflight.protectedPayslips,
       ajustes_manuales: preflight.protectedManualAdjustments
     },
+    period5: {
+      employees: preflight.period5Employees,
+      active_novelties: preflight.period5ActiveNovelties,
+      intact_baseline: preflight.period5Employees === 788 && preflight.period5ActiveNovelties === 1
+    },
+    waiting_locks: preflight.waitingLocks,
     movimientos_snapshot: {
       total: preflight.movementCount,
       activos: preflight.activeMovementCount,
@@ -183,7 +211,15 @@ const runMutator = async (preflight: Preflight, pass: string): Promise<void> => 
   let completed = 0;
   try {
     await lockClient.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [LOCK_KEY]);
-    for (const employeeId of preflight.candidateEmployeeIds) {
+    const lockedPreflight = await readPreflight();
+    if (
+      lockedPreflight.candidateEmployeeIds.length !== preflight.candidateEmployeeIds.length ||
+      lockedPreflight.candidateEmployeeIds.some((id, index) => id !== preflight.candidateEmployeeIds[index]) ||
+      lockedPreflight.movementDigest !== preflight.movementDigest
+    ) {
+      throw new Error('El preflight cambió mientras se adquiría el advisory lock.');
+    }
+    for (const employeeId of lockedPreflight.candidateEmployeeIds) {
       await recalculateNominaPeriodo(
         CONTROLLED_RECALC_SCOPE.periodoId,
         {
@@ -192,7 +228,7 @@ const runMutator = async (preflight: Preflight, pass: string): Promise<void> => 
           controlledScope: {
             empresaId: CONTROLLED_RECALC_SCOPE.empresaId,
             contratoId: CONTROLLED_RECALC_SCOPE.contratoId,
-            candidateEmployeeIds: preflight.candidateEmployeeIds,
+            candidateEmployeeIds: lockedPreflight.candidateEmployeeIds,
             preserveOperationalSources: true,
             suppressExternalSync: true
           }
@@ -204,7 +240,7 @@ const runMutator = async (preflight: Preflight, pass: string): Promise<void> => 
       completed += 1;
     }
     const after = await readPreflight();
-    if (after.movementCount !== preflight.movementCount || after.movementDigest !== preflight.movementDigest) {
+    if (after.movementCount !== lockedPreflight.movementCount || after.movementDigest !== lockedPreflight.movementDigest) {
       throw new Error('La protección de movimientos/turnos detectó una divergencia.');
     }
     console.log(JSON.stringify({ mode: 'Mutator', pass, completed, status: 'SUCCESS', idempotence: pass === 'second' }));

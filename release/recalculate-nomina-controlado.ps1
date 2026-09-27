@@ -48,9 +48,18 @@ try {
   $env:PGCONNECT_TIMEOUT = '15'
 
   $psql17 = 'C:\Program Files\PostgreSQL\17\bin\psql.exe'
+  $pgRestore17 = 'C:\Program Files\PostgreSQL\17\bin\pg_restore.exe'
   if (-not (Test-Path -LiteralPath $psql17 -PathType Leaf)) { throw 'No se encontró psql de PostgreSQL 17.x.' }
+  if (-not (Test-Path -LiteralPath $pgRestore17 -PathType Leaf)) { throw 'No se encontró pg_restore de PostgreSQL 17.x.' }
   $version = (& $psql17 --version 2>$null | Out-String).Trim()
   if ($version -notmatch 'PostgreSQL\)\s+17\.') { throw 'El cliente psql no es PostgreSQL 17.x.' }
+  foreach ($file in $manifest.files) {
+    if (-not (Test-Path -LiteralPath $file.restore_list -PathType Leaf) -or $file.restore_list_exit_code -ne 0) {
+      throw "La lista pg_restore no es válida: $($file.table)."
+    }
+    & $pgRestore17 --list $file.file *> $null
+    if ($LASTEXITCODE -ne 0) { throw "pg_restore --list falló: $($file.table)." }
+  }
 
   $mode = if ($Mutate) { 'mutate' } else { 'preflight' }
   $arguments = @((Join-Path $repoRoot 'src/scripts/recalculate-nomina-controlado.ts'), "--mode=$mode")
