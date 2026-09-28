@@ -150,7 +150,7 @@ import { nominaCalculoRepository } from './infrastructure/repositories/nomina-ca
 import { nominaLiquidacionRepository } from './infrastructure/repositories/nomina-liquidacion.repository';
 import { nominaDocumentoRepository } from './infrastructure/repositories/nomina-documento.repository';
 import { nominaPoblacionService } from './application/nomina-poblacion.service';
-import { recordNominaAudit } from './application/nomina-audit.service';
+import { recordNominaAudit, recordNominaAuditStrict } from './application/nomina-audit.service';
 import { buildImportCandidateReviewSet } from './application/nomina-population-review';
 import { assertNominaTenantContractAccess, loadNominaPeriodoOrThrow } from './application/nomina-periodo-context';
 import { mapNominaPeriodo, type NominaPeriodo } from './domain/nomina-periodo.mapper';
@@ -6766,15 +6766,23 @@ export const importNominaEmpleados = async (
 
 export const recalculateNominaPeriodo = async (
   periodoId: string,
-  options: { force?: boolean; nomina_empleado_id?: string } | undefined,
+  options: {
+    force?: boolean;
+    nomina_empleado_id?: string;
+    executor?: PoolClient;
+    controlledRunId?: string;
+    controlledAuditBefore?: Record<string, unknown>;
+    controlledEmpresaId?: string;
+  } | undefined,
   actorUserId: string,
   tenant?: TenantAccessContext,
   auditMeta?: AuditRequestMeta
 ): Promise<NominaRecalculateResult> => {
-  const client = await dbPool.connect();
+  const ownsClient = !options?.executor;
+  const client = options?.executor ?? await dbPool.connect();
 
   try {
-    await client.query('BEGIN');
+    if (ownsClient) await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
     await assertNominaPeriodoCoberturaScope(periodoId, tenant, client);
     const recalculateMode = assertPeriodoAllowsRecalculate(
@@ -7919,20 +7927,33 @@ export const recalculateNominaPeriodo = async (
       turnos_sin_snapshot: turnosSinSnapshot
     };
 
-    await recordNominaAudit(
-      client,
-      periodoId,
-      actorUserId,
-      recalculateMode.forced ? 'NOMINA_RECALCULATE_FORCE' : 'NOMINA_RECALCULATE_WITH_ASISTENCIA',
-      {
-        after: recalculationPayload
-      },
-      auditMeta
-    );
+    if (options?.controlledRunId && options.nomina_empleado_id && options.controlledAuditBefore) {
+      const afterResult = await nominaCalculoRepository.getCurrentResult(options.nomina_empleado_id, client);
+      if (!afterResult) throw new AppError('Controlled recalculation did not persist an employee result', 409, 'CONTROLLED_RESULT_MISSING');
+      await recordNominaAuditStrict(client, {
+        actorUserId,
+        empresaId: options.controlledEmpresaId ?? '',
+        contratoId: String(periodo.contrato_id),
+        periodoId,
+        empleadoId: options.nomina_empleado_id,
+        runId: options.controlledRunId,
+        before: options.controlledAuditBefore,
+        after: { ...afterResult, run_id: options.controlledRunId }
+      });
+    } else {
+      await recordNominaAudit(
+        client,
+        periodoId,
+        actorUserId,
+        recalculateMode.forced ? 'NOMINA_RECALCULATE_FORCE' : 'NOMINA_RECALCULATE_WITH_ASISTENCIA',
+        { after: recalculationPayload },
+        auditMeta
+      );
+    }
 
     const updatedPeriodo = mapRealPeriodo(await loadRealPeriodoOrThrow(periodoId, tenant, client));
 
-    await client.query('COMMIT');
+    if (ownsClient) await client.query('COMMIT');
 
     return {
       periodo: updatedPeriodo,
@@ -7940,10 +7961,10 @@ export const recalculateNominaPeriodo = async (
       liquidaciones_generadas: 0
     };
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (ownsClient) await client.query('ROLLBACK');
     throw error;
   } finally {
-    client.release();
+    if (ownsClient) client.release();
   }
 };
 
