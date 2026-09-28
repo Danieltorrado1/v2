@@ -35,3 +35,8 @@ test('ausencia de asistencia no descuenta salario y los turnos internos no se om
   assert.match(service, /NOMINA_TURNO_INTERNO_VALOR_FALTANTE/);
   assert.match(service, /tipo_turno = 'INTERNO'/);
 });
+
+test('la elegibilidad salarial usa vigencia contractual antes que snapshot de pago', () => {
+  assert.match(service, /toDateString\(empleadoRow\.fecha_inicio_vinculacion\)[\s\S]*toDateString\(empleadoRow\.fecha_inicio_pago\)/);
+  assert.match(service, /toDateString\(empleadoRow\.fecha_fin_vinculacion\)[\s\S]*toDateString\(empleadoRow\.fecha_fin_pago\)/);
+});

@@ -7270,9 +7270,17 @@ export const recalculateNominaPeriodo = async (
         (empleadoRow.metodo_liquidacion ?? '').trim().toUpperCase() === 'ASISTENCIA' &&
         !!asistenciaEmpleado &&
         asistenciaEmpleado.total_asistencia_activa > 0;
+      // Salary eligibility follows the contractual linkage, not a stale or
+      // operationally materialized payment snapshot. The latter may be
+      // useful as an audit field, but cannot erase valid attendance and
+      // contractual coverage at the beginning of the period.
       const employmentRange: NominaEmploymentDateRange = {
-        start: toDateString(empleadoRow.fecha_inicio_pago) ?? periodoRange.start,
-        end: toDateString(empleadoRow.fecha_fin_pago) ?? periodoRange.end
+        start: toDateString(empleadoRow.fecha_inicio_vinculacion) ??
+          toDateString(empleadoRow.fecha_inicio_pago) ??
+          periodoRange.start,
+        end: toDateString(empleadoRow.fecha_fin_vinculacion) ??
+          toDateString(empleadoRow.fecha_fin_pago) ??
+          periodoRange.end
       };
       // Payroll uses the contractual 30-day base, while a partial linkage can
       // contribute fewer liquidable days within that base.
