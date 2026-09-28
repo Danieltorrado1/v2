@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { NominaDayEffectSummary } from '../modules/nomina/nomina.effects';
+import { assertNominaEconomicCategoryReady } from '../modules/nomina/nomina.calculator';
 import {
   calculateCoberturaPayroll,
   countCommercialInclusiveDays,
@@ -289,6 +290,14 @@ test('two internal additions are summed exactly once and do not change IBC deduc
   assert.equal(result.pension_ordinaria, 41700);
   assert.equal(result.total_deducciones, 83400);
   assert.equal(result.neto_nomina, 1622564);
+});
+
+test('missing economic category fails explicitly once operational activity exists', () => {
+  assert.throws(
+    () => assertNominaEconomicCategoryReady({ nominaEmpleadoId: 'sanitized-84', categoryAvailable: false, hasOperationalActivity: true }),
+    (error: unknown) => (error as { code?: string }).code === 'NOMINA_CATEGORIA_SALARIAL_REQUERIDA'
+  );
+  assert.doesNotThrow(() => assertNominaEconomicCategoryReady({ nominaEmpleadoId: 'sanitized-84', categoryAvailable: false, hasOperationalActivity: false }));
 });
 
 test('authorized discount reduces total deductions only', () => {

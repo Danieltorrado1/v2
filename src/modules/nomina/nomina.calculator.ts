@@ -106,6 +106,21 @@ export const calculateNominaPaidDays = (input: {
   };
 };
 
+export const assertNominaEconomicCategoryReady = (input: {
+  nominaEmpleadoId: string;
+  categoryAvailable: boolean;
+  hasOperationalActivity: boolean;
+}): void => {
+  if (!input.categoryAvailable && input.hasOperationalActivity) {
+    throw new AppError(
+      'No es posible calcular nómina con actividad operativa y categoría salarial faltante',
+      409,
+      'NOMINA_CATEGORIA_SALARIAL_REQUERIDA',
+      { nomina_empleado_id: input.nominaEmpleadoId }
+    );
+  }
+};
+
 export const calculateNovedadOverlapDays = (
   periodo: DateRange,
   novedadStart?: string | null,

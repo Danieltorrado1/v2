@@ -21,6 +21,7 @@ import {
   compareDateStrings,
   inclusiveDaysBetween,
   calculateNominaPaidDays,
+  assertNominaEconomicCategoryReady,
   maxDateString,
   minDateString
 } from './nomina.calculator';
@@ -7299,6 +7300,17 @@ export const recalculateNominaPeriodo = async (
           : toNumberValue(empleadoRow.horas_trabajadas);
       const novedadesEmpleado = novedadesByEmpleado.get(empleadoRow.id) ?? [];
       const movimientosEmpleado = movimientosByEmpleado.get(empleadoRow.id);
+      const turnosInternosEmpleado = turnosInternosCoberturaByEmpleado.get(empleadoRow.id) ?? [];
+      assertNominaEconomicCategoryReady({
+        nominaEmpleadoId: empleadoRow.id,
+        categoryAvailable: Boolean(categoriaEmpleado),
+        hasOperationalActivity: Boolean(
+          (asistenciaEmpleado?.total_asistencia_activa ?? 0) > 0 ||
+          novedadesEmpleado.length > 0 ||
+          movimientosEmpleado ||
+          turnosInternosEmpleado.length > 0
+        )
+      });
       const totalMovimientosDevengados = toNumberValue(movimientosEmpleado?.movimientos_devengados);
       const totalMovimientosDeducciones = toNumberValue(movimientosEmpleado?.movimientos_deducciones);
       const totalMovimientosSsDevengados = toNumberValue(movimientosEmpleado?.movimientos_ss_devengados);
