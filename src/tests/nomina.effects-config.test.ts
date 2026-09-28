@@ -74,3 +74,27 @@ test('DCO conserva neutralidad económica en la matriz de efectos', () => {
   assert.equal(matrix.efecto_recargos, 'SIN_EFECTO');
   assert.equal(matrix.efecto_liquidacion, 'SIN_EFECTO');
 });
+
+test('DNC normaliza siempre salario y recargos sin efecto, y transporte por día', () => {
+  const matrix = buildNominaEffectMatrixFromConfig({
+    bloquea_otras_novedades: false,
+    codigo_operativo: 'DNC',
+    afecta_salario: true,
+    afecta_transporte: false,
+    efecto_auxilio_transporte: 'SIN_EFECTO',
+    efecto_cobertura_config: null,
+    efecto_liquidacion: null,
+    efecto_operativo: null,
+    efecto_recargos_detallado: 'EXCLUIR_DIA',
+    efecto_salario: 'DESCUENTA_PROPORCIONAL',
+    grupo_exclusividad: null,
+    modelo_registro: null,
+    nombre: 'Dia no clase',
+    observacion_plantilla: null,
+    proyecta_periodos: false,
+  });
+
+  assert.equal(matrix.efecto_salario, 'SIN_EFECTO');
+  assert.equal(matrix.efecto_transporte, 'DESCUENTA_DIA');
+  assert.equal(matrix.efecto_recargos, 'SIN_EFECTO');
+});

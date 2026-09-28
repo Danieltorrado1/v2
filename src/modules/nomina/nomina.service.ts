@@ -20,6 +20,8 @@ import { createDocumentSignedUrlForBucket } from '../documentos/documentos.stora
 import {
   compareDateStrings,
   inclusiveDaysBetween,
+  calculateNominaPaidDays,
+  assertNominaEconomicCategoryReady,
   maxDateString,
   minDateString
 } from './nomina.calculator';
@@ -7269,9 +7271,17 @@ export const recalculateNominaPeriodo = async (
         (empleadoRow.metodo_liquidacion ?? '').trim().toUpperCase() === 'ASISTENCIA' &&
         !!asistenciaEmpleado &&
         asistenciaEmpleado.total_asistencia_activa > 0;
+      // Salary eligibility follows the contractual linkage, not a stale or
+      // operationally materialized payment snapshot. The latter may be
+      // useful as an audit field, but cannot erase valid attendance and
+      // contractual coverage at the beginning of the period.
       const employmentRange: NominaEmploymentDateRange = {
-        start: toDateString(empleadoRow.fecha_inicio_pago) ?? periodoRange.start,
-        end: toDateString(empleadoRow.fecha_fin_pago) ?? periodoRange.end
+        start: toDateString(empleadoRow.fecha_inicio_vinculacion) ??
+          toDateString(empleadoRow.fecha_inicio_pago) ??
+          periodoRange.start,
+        end: toDateString(empleadoRow.fecha_fin_vinculacion) ??
+          toDateString(empleadoRow.fecha_fin_pago) ??
+          periodoRange.end
       };
       // Payroll uses the contractual 30-day base, while a partial linkage can
       // contribute fewer liquidable days within that base.
@@ -7281,16 +7291,26 @@ export const recalculateNominaPeriodo = async (
       );
       // La asistencia aplica solo para empleados con metodo_liquidacion ASISTENCIA.
       // Categoria salarial, salario fijo y OPS no dependen de asistencia diaria.
-      const diasPagadosBase =
-        usaAsistencia && asistenciaEmpleado
-          ? Math.min(diasVigenciaNomina, asistenciaEmpleado.dias_pagados_base)
-          : diasVigenciaNomina;
+      // Missing attendance marks are not salary absences. Salary days are
+      // limited only by labour validity and explicit salary-discount effects.
+      const diasPagadosBase = diasVigenciaNomina;
       const horasTrabajadasBase =
         usaAsistencia && asistenciaEmpleado
           ? toNumberValue(asistenciaEmpleado.horas_trabajadas_base)
           : toNumberValue(empleadoRow.horas_trabajadas);
       const novedadesEmpleado = novedadesByEmpleado.get(empleadoRow.id) ?? [];
       const movimientosEmpleado = movimientosByEmpleado.get(empleadoRow.id);
+      const turnosInternosEmpleado = turnosInternosCoberturaByEmpleado.get(empleadoRow.id) ?? [];
+      assertNominaEconomicCategoryReady({
+        nominaEmpleadoId: empleadoRow.id,
+        categoryAvailable: Boolean(categoriaEmpleado),
+        hasOperationalActivity: Boolean(
+          (asistenciaEmpleado?.total_asistencia_activa ?? 0) > 0 ||
+          novedadesEmpleado.length > 0 ||
+          movimientosEmpleado ||
+          turnosInternosEmpleado.length > 0
+        )
+      });
       const totalMovimientosDevengados = toNumberValue(movimientosEmpleado?.movimientos_devengados);
       const totalMovimientosDeducciones = toNumberValue(movimientosEmpleado?.movimientos_deducciones);
       const totalMovimientosSsDevengados = toNumberValue(movimientosEmpleado?.movimientos_ss_devengados);
@@ -7547,8 +7567,14 @@ export const recalculateNominaPeriodo = async (
             );
             if (!hasSnapshot) {
               turnosSinSnapshot.push({ turno_id: turnoRow.id, nomina_empleado_id: empleadoRow.id });
+              throw new AppError(
+                'Active internal turn has no monetary movement snapshot',
+                409,
+                'NOMINA_TURNO_INTERNO_VALOR_FALTANTE',
+                { nomina_empleado_id: empleadoRow.id, turno_id: turnoRow.id }
+              );
             }
-            return hasSnapshot;
+            return true;
           })
           .map((turnoRow) => {
           const turnoContexto = toRecord(turnoRow.contexto_operativo);
@@ -7750,9 +7776,15 @@ export const recalculateNominaPeriodo = async (
         diasDescuentoOtrosRecargos = effectResolution.dias_recargo_excluido;
       }
 
-      const diasPagadosSalario = Math.max(0, diasPagadosBase - diasDescuentoSalario);
-      const diasPagadosTransporte = Math.max(0, diasPagadosBase - diasDescuentoTransporte);
-      const diasPagadosOtrosRecargos = Math.max(0, diasPagadosBase - diasDescuentoOtrosRecargos);
+      const paidDays = calculateNominaPaidDays({
+        eligibleDays: diasPagadosBase,
+        salaryDiscountDays: diasDescuentoSalario,
+        transportDiscountDays: diasDescuentoTransporte,
+        surchargeDiscountDays: diasDescuentoOtrosRecargos
+      });
+      const diasPagadosSalario = paidDays.salaryPaidDays;
+      const diasPagadosTransporte = paidDays.transportPaidDays;
+      const diasPagadosOtrosRecargos = paidDays.surchargePaidDays;
       const devengadoBasico = Number(((salarioBase / 30) * diasPagadosSalario).toFixed(2));
       const devengadoTransporte = Number(((auxilioTransporte / 30) * diasPagadosTransporte).toFixed(2));
       const otrosDevengosProrrateado = Number(((otrosDevengos / 30) * diasPagadosOtrosRecargos).toFixed(2));

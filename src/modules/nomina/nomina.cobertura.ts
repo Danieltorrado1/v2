@@ -323,11 +323,10 @@ const calculateAdicionInterna = (
     ? 0
     : floorNominaValue((normalizeAmount(adicion.categoria.auxilio_transporte) / COBERTURA_DIAS_BASE_NOMINA) * diasTurno);
   const devengadoTurno = valorTurno !== null ? valorTurno : salarioTurno + recargoTurno + transporteTurno;
-  const baseSeguridadSocialTurno = adicion.afecta_seguridad_social === false ? 0 : salarioTurno;
-  const saludTurno = roundUpToHundreds(baseSeguridadSocialTurno * porcentajeSalud);
-  const pensionTurno = adicion.aporta_pension
-    ? roundUpToHundreds(baseSeguridadSocialTurno * porcentajePension)
-    : 0;
+  // Internal additional turns are outside IBC and never increase health or
+  // pension. Keep the fields explicit for audit/detail consumers.
+  const saludTurno = 0;
+  const pensionTurno = 0;
 
   return {
     ...adicion,

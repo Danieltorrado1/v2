@@ -46,14 +46,20 @@ test('NOMINA-4B.11 conserva el contrato de reemplazo y el cálculo interno sin p
         auxilio_transporte: 0,
       },
       aporta_pension: false,
+      valor_aplicado: 4000,
     }],
   });
 
   const addition = result.adiciones_internas[0];
   assert.ok(addition);
-  assert.equal(addition.salario_turno, 100000);
-  assert.equal(addition.recargo_turno, 3333);
-  assert.equal(addition.salud_turno, 4000);
+  assert.equal(addition.salario_turno, 4000);
+  assert.equal(addition.recargo_turno, 0);
+  assert.equal(addition.salud_turno, 0);
   assert.equal(addition.pension_turno, 0);
-  assert.equal(addition.neto_turno, 99333);
+  assert.equal(addition.devengado_turno, 4000);
+  assert.equal(addition.neto_turno, 4000);
+  assert.equal(result.total_devengado, 107333);
+  assert.equal(result.salud_ordinaria, 4000);
+  assert.equal(result.pension_ordinaria, 0);
+  assert.equal(result.neto_nomina, result.total_devengado - result.total_deducciones);
 });
