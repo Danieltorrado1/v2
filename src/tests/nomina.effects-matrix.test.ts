@@ -10,6 +10,7 @@ import {
   resolveNominaEfectosPorDia,
   type NominaNovedadEffectMatrix
 } from '../modules/nomina/nomina.effects';
+import { calculateNominaPaidDays } from '../modules/nomina/nomina.calculator';
 
 const agosto = { start: '2026-08-01', end: '2026-08-31' } as const;
 
@@ -147,11 +148,25 @@ test('DNC por tres dias descuenta transporte, pero no recargos', () => {
   assert.equal(result.dias_recargo_excluido, 0);
 });
 
-test('DNC por cuatro dias descuenta transporte y recargos por los cuatro dias', () => {
+test('DNC por dos dias conserva 30 dias de salario y descuenta 2 de transporte', () => {
+  const result = resolveSingle(MATRICES.DNC, '2026-08-12', '2026-08-13');
+  assert.equal(result.dias_salario_descuento, 0);
+  assert.equal(result.dias_transporte_descuento, 2);
+  assert.equal(result.dias_recargo_excluido, 0);
+});
+
+test('DNC por cuatro dias descuenta solo transporte y conserva salario/recargos', () => {
   const result = resolveSingle(MATRICES.DNC, '2026-08-12', '2026-08-15');
   assert.equal(result.dias_salario_descuento, 0);
   assert.equal(result.dias_transporte_descuento, 4);
-  assert.equal(result.dias_recargo_excluido, 4);
+  assert.equal(result.dias_recargo_excluido, 0);
+});
+
+test('DNC por mas de cuatro dias nunca activa recargos', () => {
+  const result = resolveSingle(MATRICES.DNC, '2026-08-01', '2026-08-10');
+  assert.equal(result.dias_salario_descuento, 0);
+  assert.equal(result.dias_transporte_descuento, 10);
+  assert.equal(result.dias_recargo_excluido, 0);
 });
 
 test('PR1 solo descuenta transporte', () => {
@@ -247,6 +262,38 @@ test('resolver dos veces el mismo evento economico produce el mismo resultado', 
   const first = resolveSingle(MATRICES.PR1, '2026-08-21', '2026-08-24');
   const second = resolveSingle(MATRICES.PR1, '2026-08-21', '2026-08-24');
   assert.deepEqual(second, first);
+});
+
+test('DNC superpuesta deduplica el dia para transporte y nunca salario', () => {
+  const result = resolveNominaEfectosPorDia({
+    periodo: agosto,
+    employment: baseEmployment,
+    events: [
+      { origen: 'PERIODO', fuente_id: 'DNC-A', fecha_inicio: '2026-08-12', fecha_fin: '2026-08-13', dias: null, matrix: MATRICES.DNC },
+      { origen: 'PERIODO', fuente_id: 'PERIODO:DNC-A', fecha_inicio: '2026-08-13', fecha_fin: '2026-08-13', dias: null, matrix: MATRICES.DNC }
+    ]
+  });
+
+test('paid days use commercial eligibility and explicit discounts only', () => {
+  assert.deepEqual(calculateNominaPaidDays({ eligibleDays: 30 }), {
+    salaryPaidDays: 30,
+    transportPaidDays: 30,
+    surchargePaidDays: 30
+  });
+  assert.deepEqual(calculateNominaPaidDays({ eligibleDays: 30, salaryDiscountDays: 2, transportDiscountDays: 2 }), {
+    salaryPaidDays: 28,
+    transportPaidDays: 28,
+    surchargePaidDays: 30
+  });
+  assert.deepEqual(calculateNominaPaidDays({ eligibleDays: 17, salaryDiscountDays: 99, transportDiscountDays: -2 }), {
+    salaryPaidDays: 0,
+    transportPaidDays: 17,
+    surchargePaidDays: 17
+  });
+});
+  assert.equal(result.dias_salario_descuento, 0);
+  assert.equal(result.dias_transporte_descuento, 2);
+  assert.equal(result.dias_recargo_excluido, 0);
 });
 
 test('licencia cruzando meses se proyecta por interseccion', () => {

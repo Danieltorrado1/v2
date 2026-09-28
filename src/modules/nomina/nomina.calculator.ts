@@ -86,6 +86,41 @@ export const calculateDaysLiquidados = (
   return inclusiveDaysBetween(effectiveStart, effectiveEnd);
 };
 
+export const calculateNominaPaidDays = (input: {
+  eligibleDays: number;
+  salaryDiscountDays?: number;
+  transportDiscountDays?: number;
+  surchargeDiscountDays?: number;
+}): {
+  salaryPaidDays: number;
+  transportPaidDays: number;
+  surchargePaidDays: number;
+} => {
+  const eligibleDays = Math.max(0, Math.floor(input.eligibleDays));
+  const clamp = (discount: number | undefined): number =>
+    Math.max(0, Math.min(eligibleDays, eligibleDays - Math.max(0, Math.floor(discount ?? 0))));
+  return {
+    salaryPaidDays: clamp(input.salaryDiscountDays),
+    transportPaidDays: clamp(input.transportDiscountDays),
+    surchargePaidDays: clamp(input.surchargeDiscountDays)
+  };
+};
+
+export const assertNominaEconomicCategoryReady = (input: {
+  nominaEmpleadoId: string;
+  categoryAvailable: boolean;
+  hasOperationalActivity: boolean;
+}): void => {
+  if (!input.categoryAvailable && input.hasOperationalActivity) {
+    throw new AppError(
+      'No es posible calcular nómina con actividad operativa y categoría salarial faltante',
+      409,
+      'NOMINA_CATEGORIA_SALARIAL_REQUERIDA',
+      { nomina_empleado_id: input.nominaEmpleadoId }
+    );
+  }
+};
+
 export const calculateNovedadOverlapDays = (
   periodo: DateRange,
   novedadStart?: string | null,

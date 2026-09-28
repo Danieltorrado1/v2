@@ -1,0 +1,68 @@
+{
+  "schema_version": "nomina-turn-association-conflict-1.0",
+  "generated_at_utc": "2026-09-28T12:30:10.726Z",
+  "engine_commit": "e32a6925345057a8963597ea1bee985b98d7cf27",
+  "empresa": "15",
+  "contrato": "24",
+  "periodo": "3",
+  "turn_id": "154",
+  "novelty_id": "480",
+  "movement_id": "144",
+  "movement_employee_id": "1537",
+  "novelty_employee_id": "1214",
+  "coverage_source": "PERSONAL_VINCULADO",
+  "amount": 58363,
+  "approval": {
+    "movement_state": "APROBADO",
+    "approved_by_technical_id": "9",
+    "approved_at": "2026-09-24T20:33:43.61088Z"
+  },
+  "owner_evidence": {
+    "movement_vinculation_id": "1557",
+    "turn_context_replacement_employee_id": "1537",
+    "turn_context_covered_employee_id": "1214"
+  },
+  "action_required": "resolver asociación manualmente antes de cualquier corrección",
+  "automatic_correction": false,
+  "impact_total_236": [
+    {
+      "id": "1214",
+      "difference": {
+        "dias_salario": 5,
+        "dias_transporte": 5,
+        "dias_recargo": 5,
+        "salario": 291817,
+        "transporte": 41516,
+        "recargos": 12223,
+        "otros_devengos": 0,
+        "turnos_internos": 0,
+        "adiciones": 345556,
+        "salud": 11700,
+        "pension": 11700,
+        "otras_deducciones": 0,
+        "deducciones": 23400,
+        "neto": 322156
+      }
+    },
+    {
+      "id": "1537",
+      "difference": {
+        "dias_salario": 0,
+        "dias_transporte": 0,
+        "dias_recargo": 0,
+        "salario": 0,
+        "transporte": 0,
+        "recargos": 0,
+        "otros_devengos": 0,
+        "turnos_internos": 58363,
+        "adiciones": 58363,
+        "salud": 0,
+        "pension": 0,
+        "otras_deducciones": 0,
+        "deducciones": 0,
+        "neto": 58363
+      }
+    }
+  ],
+  "writes_productive": 0
+}

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { NominaDayEffectSummary } from '../modules/nomina/nomina.effects';
+import { assertNominaEconomicCategoryReady } from '../modules/nomina/nomina.calculator';
 import {
   calculateCoberturaPayroll,
   countCommercialInclusiveDays,
@@ -159,16 +160,16 @@ test('PNR, FNJ and S discount salary, recargo and transport but keep ss days', (
   }
 });
 
-test('DNC keeps salary and discounts recargo and transport', () => {
+test('DNC keeps salary and recargo while discounting transport', () => {
   const result = calculateCoberturaPayroll({
     empleo: { fecha_inicio: '2026-08-01', fecha_fin: '2026-08-03' },
     tramos: singleTramo(caa1, '2026-08-01', '2026-08-03'),
-    dias_efectos: baseEffects([{ fecha: '2026-08-02', codigos: ['DNC'], recargo_excluido: true, transporte_descuento: true }]),
+    dias_efectos: baseEffects([{ fecha: '2026-08-02', codigos: ['DNC'], transporte_descuento: true }]),
     aporta_pension: true,
   });
 
   assert.equal(result.dias_salario, 3);
-  assert.equal(result.dias_recargo, 2);
+  assert.equal(result.dias_recargo, 3);
   assert.equal(result.dias_transporte, 2);
 });
 
@@ -227,7 +228,7 @@ test('novelty before and after category change uses the correct tramo category',
   assert.deepEqual(result.auditoria.tramos[1]?.codigos_novedad, ['PNR']);
 });
 
-test('internal addition uses covered category and subtracts health and pension', () => {
+test('internal addition uses covered category once and stays outside IBC', () => {
   const result = calculateCoberturaPayroll({
     empleo: { fecha_inicio: '2026-08-01', fecha_fin: '2026-08-31' },
     tramos: singleTramo(ri, '2026-08-01', '2026-08-31'),
@@ -246,12 +247,12 @@ test('internal addition uses covered category and subtracts health and pension',
   assert.equal(result.adiciones_internas[0]?.salario_turno, 175090);
   assert.equal(result.adiciones_internas[0]?.recargo_turno, 7333);
   assert.equal(result.adiciones_internas[0]?.transporte_turno, 24909);
-  assert.equal(result.adiciones_internas[0]?.salud_turno, 7100);
-  assert.equal(result.adiciones_internas[0]?.pension_turno, 7100);
-  assert.equal(result.adiciones_internas[0]?.neto_turno, 193132);
+  assert.equal(result.adiciones_internas[0]?.salud_turno, 0);
+  assert.equal(result.adiciones_internas[0]?.pension_turno, 0);
+  assert.equal(result.adiciones_internas[0]?.neto_turno, 207332);
 });
 
-test('internal addition without pension only subtracts health', () => {
+test('internal addition without pension remains outside IBC and deductions', () => {
   const result = calculateCoberturaPayroll({
     empleo: { fecha_inicio: '2026-08-01', fecha_fin: '2026-08-31' },
     tramos: singleTramo(ri, '2026-08-01', '2026-08-31'),
@@ -266,9 +267,37 @@ test('internal addition without pension only subtracts health', () => {
     }],
   });
 
-  assert.equal(result.adiciones_internas[0]?.salud_turno, 7100);
+  assert.equal(result.adiciones_internas[0]?.salud_turno, 0);
   assert.equal(result.adiciones_internas[0]?.pension_turno, 0);
-  assert.equal(result.adiciones_internas[0]?.neto_turno, 200232);
+  assert.equal(result.adiciones_internas[0]?.neto_turno, 207332);
+});
+
+test('two internal additions are summed exactly once and do not change IBC deductions', () => {
+  const result = calculateCoberturaPayroll({
+    empleo: { fecha_inicio: '2026-08-01', fecha_fin: '2026-08-31' },
+    tramos: singleTramo(ri, '2026-08-01', '2026-08-31'),
+    dias_efectos: [],
+    aporta_pension: true,
+    adiciones_internas: [
+      { id: 'AD-1', fecha_inicio: '2026-08-15', fecha_fin: '2026-08-17', categoria: caa1, aporta_pension: true },
+      { id: 'AD-2', fecha_inicio: '2026-08-18', fecha_fin: '2026-08-20', categoria: caa1, aporta_pension: true }
+    ]
+  });
+
+  assert.equal(result.adiciones_internas.length, 2);
+  assert.equal(result.total_devengado, 1705964);
+  assert.equal(result.salud_ordinaria, 41700);
+  assert.equal(result.pension_ordinaria, 41700);
+  assert.equal(result.total_deducciones, 83400);
+  assert.equal(result.neto_nomina, 1622564);
+});
+
+test('missing economic category fails explicitly once operational activity exists', () => {
+  assert.throws(
+    () => assertNominaEconomicCategoryReady({ nominaEmpleadoId: 'sanitized-84', categoryAvailable: false, hasOperationalActivity: true }),
+    (error: unknown) => (error as { code?: string }).code === 'NOMINA_CATEGORIA_SALARIAL_REQUERIDA'
+  );
+  assert.doesNotThrow(() => assertNominaEconomicCategoryReady({ nominaEmpleadoId: 'sanitized-84', categoryAvailable: false, hasOperationalActivity: false }));
 });
 
 test('authorized discount reduces total deductions only', () => {
