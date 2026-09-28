@@ -20,6 +20,7 @@ import { createDocumentSignedUrlForBucket } from '../documentos/documentos.stora
 import {
   compareDateStrings,
   inclusiveDaysBetween,
+  calculateNominaPaidDays,
   maxDateString,
   minDateString
 } from './nomina.calculator';
@@ -7281,10 +7282,9 @@ export const recalculateNominaPeriodo = async (
       );
       // La asistencia aplica solo para empleados con metodo_liquidacion ASISTENCIA.
       // Categoria salarial, salario fijo y OPS no dependen de asistencia diaria.
-      const diasPagadosBase =
-        usaAsistencia && asistenciaEmpleado
-          ? Math.min(diasVigenciaNomina, asistenciaEmpleado.dias_pagados_base)
-          : diasVigenciaNomina;
+      // Missing attendance marks are not salary absences. Salary days are
+      // limited only by labour validity and explicit salary-discount effects.
+      const diasPagadosBase = diasVigenciaNomina;
       const horasTrabajadasBase =
         usaAsistencia && asistenciaEmpleado
           ? toNumberValue(asistenciaEmpleado.horas_trabajadas_base)
@@ -7547,8 +7547,14 @@ export const recalculateNominaPeriodo = async (
             );
             if (!hasSnapshot) {
               turnosSinSnapshot.push({ turno_id: turnoRow.id, nomina_empleado_id: empleadoRow.id });
+              throw new AppError(
+                'Active internal turn has no monetary movement snapshot',
+                409,
+                'NOMINA_TURNO_INTERNO_VALOR_FALTANTE',
+                { nomina_empleado_id: empleadoRow.id, turno_id: turnoRow.id }
+              );
             }
-            return hasSnapshot;
+            return true;
           })
           .map((turnoRow) => {
           const turnoContexto = toRecord(turnoRow.contexto_operativo);
@@ -7750,9 +7756,15 @@ export const recalculateNominaPeriodo = async (
         diasDescuentoOtrosRecargos = effectResolution.dias_recargo_excluido;
       }
 
-      const diasPagadosSalario = Math.max(0, diasPagadosBase - diasDescuentoSalario);
-      const diasPagadosTransporte = Math.max(0, diasPagadosBase - diasDescuentoTransporte);
-      const diasPagadosOtrosRecargos = Math.max(0, diasPagadosBase - diasDescuentoOtrosRecargos);
+      const paidDays = calculateNominaPaidDays({
+        eligibleDays: diasPagadosBase,
+        salaryDiscountDays: diasDescuentoSalario,
+        transportDiscountDays: diasDescuentoTransporte,
+        surchargeDiscountDays: diasDescuentoOtrosRecargos
+      });
+      const diasPagadosSalario = paidDays.salaryPaidDays;
+      const diasPagadosTransporte = paidDays.transportPaidDays;
+      const diasPagadosOtrosRecargos = paidDays.surchargePaidDays;
       const devengadoBasico = Number(((salarioBase / 30) * diasPagadosSalario).toFixed(2));
       const devengadoTransporte = Number(((auxilioTransporte / 30) * diasPagadosTransporte).toFixed(2));
       const otrosDevengosProrrateado = Number(((otrosDevengos / 30) * diasPagadosOtrosRecargos).toFixed(2));

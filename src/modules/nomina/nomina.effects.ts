@@ -258,7 +258,9 @@ export const resolveNominaEffectEventImpact = (input: {
   const diasEvento = inclusiveDaysBetween(fechaInicio, fechaFin);
   const diasPeriodo = projectedRange?.dias ?? 0;
   const esDnc = input.event.matrix.codigo_operativo === 'DNC';
-  const aplicaReglaRecargoMayorTresDias = esDnc ? diasPeriodo > 3 : diasEvento > 3;
+  // DNC is an explicit transport-only exception. Its duration must never
+  // activate the generic >3-day surcharge rule.
+  const aplicaReglaRecargoMayorTresDias = !esDnc && diasEvento > 3;
   // DNC has a specific threshold: its configured EXCLUIR_DIA flag must not
   // discount recargos for one to three affected days.
   const recargoExcluidoPorConfiguracion =
@@ -382,7 +384,7 @@ const toNominaGrupoExclusividad = (
 export const buildNominaEffectMatrixFromConfig = (
   row: NominaEffectMatrixConfigInput
 ): NominaNovedadEffectMatrix => {
-  return {
+  const matrix: NominaNovedadEffectMatrix = {
     codigo_operativo: row.codigo_operativo,
     nombre: row.nombre,
     efecto_salario:
@@ -403,6 +405,19 @@ export const buildNominaEffectMatrixFromConfig = (
     grupo_exclusividad: toNominaGrupoExclusividad(row.grupo_exclusividad),
     observacion_plantilla: row.observacion_plantilla
   };
+
+  // Functional rule: DNC never reduces salary or surcharges, regardless of
+  // stale catalog flags or a range longer than three days.
+  if (row.codigo_operativo === 'DNC') {
+    return {
+      ...matrix,
+      efecto_salario: 'SIN_EFECTO',
+      efecto_transporte: 'DESCUENTA_DIA',
+      efecto_recargos: 'SIN_EFECTO'
+    };
+  }
+
+  return matrix;
 };
 
 export const generateNominaNovedadObservation = (input: {

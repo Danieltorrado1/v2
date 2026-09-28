@@ -28,3 +28,10 @@ test('crear novedad dentro de novedad-con-turno delega el recálculo al dueño d
     /if \(!ownsClient\)[\s\S]*?await recalculateNominaPeriodo/
   );
 });
+
+test('ausencia de asistencia no descuenta salario y los turnos internos no se omiten silenciosamente', () => {
+  assert.match(service, /const diasPagadosBase = diasVigenciaNomina/);
+  assert.match(service, /const horasTrabajadasBase =/);
+  assert.match(service, /NOMINA_TURNO_INTERNO_VALOR_FALTANTE/);
+  assert.match(service, /tipo_turno = 'INTERNO'/);
+});
