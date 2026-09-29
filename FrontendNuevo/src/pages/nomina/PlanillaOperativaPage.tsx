@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Clock3, Plus, RefreshCw, Search, Settings, X } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
+import { canAccessNominaConfiguration } from "../../architecture/moduleAccess";
 import { onPersonalInvalidation } from "../../events/personalInvalidation";
 import { useCompanyContext } from "../../context/CompanyContext";
 import {
@@ -1864,6 +1865,7 @@ export default function PlanillaOperativaPage() {
           </select>
         </label>
         <span className={`nomina-period-status ${period?.estado === "ABIERTO" ? "open" : "locked"}`}>{period?.estado ?? "CARGANDO"}</span>
+        {canAccessNominaConfiguration(user) ? <button type="button" className="op-config-action" onClick={() => navigate("/configuracion/nomina/asignaciones")} title="Categorías salariales y parámetros económicos"><Settings size={15} /> Configuración</button> : null}
       </>
     )}>
       <section className="op-sheet-page">
@@ -1883,7 +1885,6 @@ export default function PlanillaOperativaPage() {
         {pendingAttendanceChanges.size && attendanceSaveState !== "error" ? <button type="button" onClick={() => void attendanceFlushRef.current()} disabled={attendanceSaveState === "saving"}>Guardar cambios</button> : null}
         {employees.length > 0 && period?.estado === "ABIERTO" && user?.permissions.includes("nomina.empleados.import") ?
           <button type="button" className="op-sync-action" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={15} />{isSyncingPersonal ? "Sincronizando..." : "SINCRONIZAR AHORA"}</button> : null}
-        {user?.permissions.includes("nomina.periodos.update") ? <button type="button" className="op-config-action" onClick={() => navigate("/configuracion/nomina/asignaciones")} title="Abrir configuración de nómina"><Settings size={15} /> Configuración</button> : null}
       </section>
 
       {attendanceAlertVisible && attendanceSaveState === "error" ? <div className="planilla-queue-alert" role="alert">
