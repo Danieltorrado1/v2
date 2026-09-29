@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyAttendanceAcks, attendanceDiagnosticCsv, buildAttendanceDiagnostic, classifyAttendanceFailure, migrateAttendanceQueue, queueStatusLabel } from "./attendanceQueue";
+import { applyAttendanceAcks, attendanceDiagnosticCsv, buildAttendanceDiagnostic, classifyAttendanceFailure, classifyAttendanceItem, migrateAttendanceQueue, queueStatusLabel } from "./attendanceQueue";
 
 const context = { empresaId: "15", contratoId: "24", periodoId: "3" };
 
@@ -10,8 +10,8 @@ test("migra cola antigua y conserva el contexto actual", () => {
     { vinculacion_id: "11", fecha: "2026-09-01", presente: false, context: { empresaId: "15", periodoId: "4" } },
     { vinculacion_id: "bad", fecha: "2026-09-01", presente: true },
   ], context, () => "key-1");
-  assert.equal(result.recovered, 1);
-  assert.equal(result.discarded, 2);
+  assert.equal(result.recovered, 2);
+  assert.equal(result.discarded, 1);
   assert.equal(result.items[0]?.state, "PENDIENTE_LOCAL");
   assert.equal(result.items[0]?.idempotency_key, "key-1");
 });
@@ -26,9 +26,14 @@ test("clasifica errores de permisos/conflicto como acción requerida", () => {
 
 test("no muestra Guardado mientras haya cambios sin ACK", () => {
   const items = migrateAttendanceQueue([{ vinculacion_id: "10", fecha: "2026-09-01", presente: true }], context, () => "key").items;
-  assert.equal(queueStatusLabel(items), "Cambios pendientes");
-  assert.equal(queueStatusLabel(items.map((item) => ({ ...item, state: "ENVIANDO" as const }))), "Guardando…");
-  assert.equal(queueStatusLabel(items.map((item) => ({ ...item, state: "CONFIRMADO_SERVIDOR" as const }))), "Guardado");
+  assert.equal(queueStatusLabel(items), "1 cambio pendiente");
+  assert.equal(queueStatusLabel(items.map((item) => ({ ...item, state: "ENVIANDO" as const }))), "Guardando...");
+  assert.equal(queueStatusLabel(items.map((item) => ({ ...item, state: "CONFIRMADO_SERVIDOR" as const }))), "Cambios guardados");
+});
+
+test("conserva y bloquea operaciones de otro contexto", () => {
+  const item = migrateAttendanceQueue([{ vinculacion_id: "10", fecha: "2026-09-01", presente: true, context: { empresaId: "99", contratoId: "24", periodoId: "3" } }], context, () => "key").items[0]!;
+  assert.equal(classifyAttendanceItem(item, context), "CONTEXTO_DIFERENTE");
 });
 
 test("el ACK por operación no limpia otra pendiente y el diagnóstico no contiene identidad", () => {

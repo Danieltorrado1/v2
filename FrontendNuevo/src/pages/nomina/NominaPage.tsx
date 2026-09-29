@@ -642,13 +642,24 @@ function getEmployeeConceptDays(empleado: NominaEmpleadoApi, concept: "salario" 
   };
 }
 
+function getInternalTurnsTotal(empleado: NominaEmpleadoApi) {
+  const detail = empleado.detalle_calculo as { adiciones_internas?: Array<Record<string, unknown>> } | null | undefined;
+  return (detail?.adiciones_internas ?? []).reduce((sum, turn) => sum + Number(turn.devengado_turno ?? turn.valor_aplicado ?? 0), 0);
+}
+
+function getOtherPayments(empleado: NominaEmpleadoApi) {
+  const components = empleado.detalle_calculo?.componentes;
+  if (!components || typeof components !== "object") return 0;
+  return Number((components as Record<string, unknown>).otros_devengos_reales ?? 0);
+}
+
 function getEmployeeRecargo(empleado: NominaEmpleadoApi) {
   const componentes = empleado.detalle_calculo?.componentes;
   if (componentes && typeof componentes === "object") {
     const recargo = (componentes as Record<string, unknown>).recargos_ordinarios;
     if (typeof recargo === "number" && Number.isFinite(recargo)) return recargo;
   }
-  return empleado.devengado_otros;
+  return 0;
 }
 
 function getEmployeeDocumentSummary(empleado: NominaEmpleadoApi) {
@@ -2887,7 +2898,7 @@ export default function NominaPage({ embeddedPeriodId, detailEmployeeId, onPopul
                                         </header>
                                         <div className="payroll-person-groups">
                                           <section className="nomina-employee-detail-days"><h4>Dias pagados</h4><dl><div><dt>Salario</dt><dd>{salarioDias.paid}/{salarioDias.base}</dd></div><div><dt>Transporte</dt><dd>{transporteDias.paid}/{transporteDias.base}</dd></div><div><dt>Recargo</dt><dd>{recargoDias.paid}/{recargoDias.base}</dd></div></dl></section>
-                                          <section className="nomina-employee-detail-earnings"><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Recargos</dt><dd>{formatCOP(getEmployeeRecargo(empleado))}</dd></div><div><dt>Otros pagos</dt><dd>{formatCOP(empleado.detalle_calculo?.componentes && typeof empleado.detalle_calculo.componentes === "object" ? Number((empleado.detalle_calculo.componentes as Record<string, unknown>).otros_devengos_reales ?? 0) : 0)}</dd></div></dl></section><InternalTurnsDetail empleado={empleado} />
+                                          <section className="nomina-employee-detail-earnings"><h4>Devengados</h4><dl><div><dt>Salario</dt><dd>{formatCOP(empleado.devengado_basico)}</dd></div><div><dt>Transporte</dt><dd>{formatCOP(empleado.devengado_transporte)}</dd></div><div><dt>Recargos</dt><dd>{formatCOP(getEmployeeRecargo(empleado))}</dd></div><div title="Los turnos internos están incluidos en el total devengado y no forman parte del IBC de salud y pensión."><dt>Turnos internos</dt><dd>{formatCOP(getInternalTurnsTotal(empleado))}</dd></div><div><dt>Otros pagos</dt><dd>{formatCOP(getOtherPayments(empleado))}</dd></div><div><dt>Total devengado</dt><dd>{formatCOP(empleado.total_adiciones)}</dd></div></dl><p className="nomina-earnings-note">Los turnos internos están incluidos en el total devengado y no forman parte del IBC de salud y pensión.</p></section><InternalTurnsDetail empleado={empleado} />
                                           {(() => {
                                             const draft = getManualFinalDraft(empleado);
                                             const existing = finalAdjustmentsByEmployee.get(empleado.id);

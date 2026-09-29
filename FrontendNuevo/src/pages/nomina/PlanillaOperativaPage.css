@@ -1425,3 +1425,15 @@
 .planilla-facet-menu button.is-selected {
   background: color-mix(in srgb, var(--accent, #00c4d4) 12%, transparent);
 }
+
+.planilla-queue-alert { align-items: center; background: #fff4f2; border: 1px solid #f1aaa0; border-radius: 10px; color: #7e241b; display: flex; gap: 12px; margin: 8px 0; padding: 10px 12px; }
+.planilla-queue-alert button, .planilla-queue-drawer button { border: 1px solid var(--border-color, #d0d7e2); border-radius: 7px; background: var(--surface, #fff); padding: 6px 10px; }
+.planilla-queue-alert button:first-of-type, .planilla-queue-drawer footer button:first-child { background: var(--accent, #00c4d4); border-color: var(--accent, #00c4d4); color: #06343a; font-weight: 700; }
+.planilla-queue-drawer-backdrop { background: rgb(9 18 32 / 38%); inset: 0; position: fixed; z-index: 200; }
+.planilla-queue-drawer { background: var(--surface, #fff); box-shadow: -10px 0 28px rgb(10 22 40 / 18%); display: flex; flex-direction: column; height: 100%; max-width: 460px; padding: 20px; position: absolute; right: 0; width: min(92vw, 460px); }
+.planilla-queue-drawer header, .planilla-queue-drawer footer { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
+.planilla-queue-drawer header p { color: #667085; margin: 4px 0 0; }
+.planilla-queue-drawer ul { display: grid; gap: 10px; list-style: none; margin: 20px 0; overflow: auto; padding: 0; }
+.planilla-queue-drawer li { border: 1px solid var(--border-color, #d0d7e2); border-radius: 9px; display: grid; gap: 5px; padding: 11px; }
+.planilla-queue-drawer li span { color: #667085; font-size: 12px; }
+.planilla-queue-drawer footer { justify-content: flex-start; margin-top: auto; }
