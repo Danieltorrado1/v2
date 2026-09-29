@@ -952,6 +952,25 @@
   color: var(--color-danger);
 }
 
+.op-config-action {
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--border-color, #dbe1ea);
+  border-radius: 9px;
+  color: var(--text-secondary, #475467);
+  display: inline-flex;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 11px;
+  white-space: nowrap;
+}
+
+.op-config-action:hover {
+  background: var(--bg-secondary, #f8fafc);
+  border-color: var(--color-primary, #2563eb);
+  color: var(--color-primary, #2563eb);
+}
+
 .op-period-meta {
   margin-top: -4px;
   padding: 0 2px;
