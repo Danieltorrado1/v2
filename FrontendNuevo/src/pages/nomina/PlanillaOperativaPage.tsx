@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { AlertTriangle, Check, Clock3, Plus, RefreshCw, Search, X } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { AlertTriangle, Check, Clock3, Plus, RefreshCw, Search, Settings, X } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
 import { onPersonalInvalidation } from "../../events/personalInvalidation";
@@ -47,7 +47,7 @@ import type {
 import type { NominaAsistenciaBulkChange } from "../../services/nominaApi";
 import { isNominaPeriodSelectorDisabled, pickDefaultNominaPeriod } from "./nominaPeriods";
 import { addDaysToDateOnly } from "./dateOnly";
-import { attendanceDiagnosticCsv, buildAttendanceDiagnostic, classifyAttendanceFailure, migrateAttendanceQueue, type AttendanceSyncState } from "./attendanceQueue";
+import { attendanceDiagnosticCsv, buildAttendanceDiagnostic, classifyAttendanceFailure, migrateAttendanceQueue, queueStatusLabel, type AttendanceSyncState } from "./attendanceQueue";
 import { getColombianCalendarDay } from "./colombiaHolidays";
 import NominaModuleShell from "./NominaModuleShell";
 import CambioOperativoFields from './CambioOperativoFields';
@@ -544,6 +544,7 @@ async function loadAttendance(periodId: string) {
 }
 
 export default function PlanillaOperativaPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { empresaId } = useCompanyContext();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -565,7 +566,8 @@ export default function PlanillaOperativaPage() {
   const [attendanceSaveState, setAttendanceSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastAttendanceAck, setLastAttendanceAck] = useState<string | null>(null);
   const [attendanceSyncStates, setAttendanceSyncStates] = useState<Map<string, AttendanceSyncState>>(new Map());
-  const attendanceFlushTimerRef = useRef<number | null>(null);
+  const [attendanceDetailsOpen, setAttendanceDetailsOpen] = useState(false);
+  const [attendanceAlertVisible, setAttendanceAlertVisible] = useState(false);
   const attendanceFlushRef = useRef<() => Promise<void>>(async () => undefined);
   const [attendanceFailures, setAttendanceFailures] = useState<Map<string, string>>(new Map());
   const [reviews, setReviews] = useState<RevisionOperativaApi[]>([]);
@@ -689,28 +691,17 @@ export default function PlanillaOperativaPage() {
     const values = Array.from(pendingAttendanceChanges.values());
     if (values.length) window.sessionStorage.setItem(storageKey, JSON.stringify(values));
     else window.sessionStorage.removeItem(storageKey);
-    if (!values.length || attendanceSaveState === "saving") return;
-    if (attendanceFlushTimerRef.current !== null) window.clearTimeout(attendanceFlushTimerRef.current);
-    attendanceFlushTimerRef.current = window.setTimeout(() => { void attendanceFlushRef.current(); }, 600);
-    return () => { if (attendanceFlushTimerRef.current !== null) window.clearTimeout(attendanceFlushTimerRef.current); };
-  }, [empresaId, periodId, pendingAttendanceChanges, pendingAttendanceHydratedKey, attendanceSaveState]);
-
-  useEffect(() => () => { void attendanceFlushRef.current(); }, [periodId]);
+  }, [empresaId, periodId, pendingAttendanceChanges, pendingAttendanceHydratedKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const flushWhenLeaving = () => { void attendanceFlushRef.current(); };
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
       if (!pendingAttendanceChangesRef.current.size) return;
       event.preventDefault();
       event.returnValue = "";
     };
-    document.addEventListener("visibilitychange", flushWhenLeaving);
-    window.addEventListener("pagehide", flushWhenLeaving);
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => {
-      document.removeEventListener("visibilitychange", flushWhenLeaving);
-      window.removeEventListener("pagehide", flushWhenLeaving);
       window.removeEventListener("beforeunload", warnBeforeUnload);
     };
   }, []);
@@ -1354,7 +1345,10 @@ export default function PlanillaOperativaPage() {
   };
 
   const flushAttendance = async () => {
-    const changes = Array.from(pendingAttendanceChangesRef.current.values());
+    const changes = Array.from(pendingAttendanceChangesRef.current.values()).filter((item) => {
+      const state = attendanceSyncStates.get(`${item.vinculacion_id}|${item.fecha}`);
+      return state !== "ERROR_REQUIERE_USUARIO";
+    });
     if (!periodId || !changes.length || attendanceSaveState === "saving") return;
     setAttendanceSaveState("saving");
     setAttendanceSyncStates((current) => new Map(changes.reduce((map, item) => map.set(`${item.vinculacion_id}|${item.fecha}`, "ENVIANDO"), new Map(current))));
@@ -1381,7 +1375,10 @@ export default function PlanillaOperativaPage() {
       if (pendingAttendanceChangesRef.current.size < changes.length) setLastAttendanceAck(new Date().toISOString());
       const remaining = pendingAttendanceChangesRef.current.size;
       setAttendanceSaveState(remaining ? "error" : "saved");
-      if (remaining) setError("Algunos cambios no fueron confirmados. Revisa y reintenta.");
+      if (remaining) {
+        setAttendanceAlertVisible(true);
+        setError("Algunos cambios no fueron confirmados. Revisa y reintenta.");
+      }
     } catch (value) {
       setAttendanceSaveState("error");
       const status = value instanceof ApiClientError ? value.status : null;
@@ -1392,6 +1389,7 @@ export default function PlanillaOperativaPage() {
         return next;
       });
       setError(formatPlanillaErrorMessage(value, "Error al guardar asistencia. Los cambios siguen pendientes."));
+      setAttendanceAlertVisible(true);
     }
   };
   attendanceFlushRef.current = flushAttendance;
@@ -1880,17 +1878,27 @@ export default function PlanillaOperativaPage() {
         </span>
         <span>{summary.pending} pendientes</span>
         <span>{summary.needsReview} requieren revision</span>
-        <span role="status" aria-live="polite">
-          {pendingAttendanceChanges.size ? `${pendingAttendanceChanges.size} cambios pendientes · ${attendanceSaveState === "saving" ? "guardando" : attendanceSaveState === "error" ? "error" : "pendiente"}` : attendanceSaveState === "saved" ? "Asistencia guardada por el servidor" : "Sin cambios de asistencia pendientes"}
-        </span>
-        {attendanceSaveState === "error" ? <button type="button" onClick={() => void attendanceFlushRef.current()}>REINTENTAR</button> : null}
-        {pendingAttendanceChanges.size ? <>
-          <button type="button" onClick={() => exportAttendanceDiagnostic("json")}>Exportar diagnóstico JSON</button>
-          <button type="button" onClick={() => exportAttendanceDiagnostic("csv")}>Exportar diagnóstico CSV</button>
-        </> : null}
+        {pendingAttendanceChanges.size ? <span role="status" aria-live="polite">{queueStatusLabel(Array.from(pendingAttendanceChanges.values()).map((item) => ({ ...item, idempotency_key: item.idempotency_key ?? `${item.vinculacion_id}:${item.fecha}`, context: { empresaId: String(empresaId ?? "global"), contratoId: null, periodoId: String(periodId) }, state: attendanceSyncStates.get(`${item.vinculacion_id}|${item.fecha}`) ?? "PENDIENTE_LOCAL", error: null, updated_at: new Date().toISOString() })))}</span> : attendanceSaveState === "saved" ? <span role="status" aria-live="polite">Cambios guardados</span> : null}
+        {pendingAttendanceChanges.size ? <button type="button" onClick={() => setAttendanceDetailsOpen(true)}>Ver detalles</button> : null}
+        {pendingAttendanceChanges.size && attendanceSaveState !== "error" ? <button type="button" onClick={() => void attendanceFlushRef.current()} disabled={attendanceSaveState === "saving"}>Guardar cambios</button> : null}
         {employees.length > 0 && period?.estado === "ABIERTO" && user?.permissions.includes("nomina.empleados.import") ?
           <button type="button" className="op-sync-action" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={15} />{isSyncingPersonal ? "Sincronizando..." : "SINCRONIZAR AHORA"}</button> : null}
+        {user?.permissions.includes("nomina.periodos.update") ? <button type="button" className="op-config-action" onClick={() => navigate("/configuracion/nomina/asignaciones")} title="Abrir configuración de nómina"><Settings size={15} /> Configuración</button> : null}
       </section>
+
+      {attendanceAlertVisible && attendanceSaveState === "error" ? <div className="planilla-queue-alert" role="alert">
+        <strong>{queueStatusLabel(Array.from(pendingAttendanceChanges.values()).map((item) => ({ ...item, idempotency_key: item.idempotency_key ?? `${item.vinculacion_id}:${item.fecha}`, state: attendanceSyncStates.get(`${item.vinculacion_id}|${item.fecha}`) ?? "ERROR_REINTENTABLE", context: { empresaId: String(empresaId ?? "global"), contratoId: null, periodoId: String(periodId) }, error: null, updated_at: new Date().toISOString() })))}</strong>
+        <button type="button" onClick={() => void attendanceFlushRef.current()}>Reintentar</button>
+        <button type="button" aria-label="Cerrar aviso" onClick={() => setAttendanceAlertVisible(false)}>Cerrar</button>
+      </div> : null}
+
+      {attendanceDetailsOpen ? <div className="planilla-queue-drawer-backdrop" role="presentation" onClick={() => setAttendanceDetailsOpen(false)}>
+        <aside className="planilla-queue-drawer" role="dialog" aria-modal="true" aria-labelledby="planilla-queue-title" onClick={(event) => event.stopPropagation()}>
+          <header><div><h2 id="planilla-queue-title">Cambios pendientes</h2><p>Estado sanitizado de la cola de asistencia.</p></div><button type="button" onClick={() => setAttendanceDetailsOpen(false)}>Cerrar</button></header>
+          <ul>{Array.from(pendingAttendanceChanges.values()).map((item) => { const state = attendanceSyncStates.get(`${item.vinculacion_id}|${item.fecha}`) ?? "PENDIENTE_LOCAL"; return <li key={`${item.vinculacion_id}|${item.fecha}`}><strong>{state === "ERROR_REQUIERE_USUARIO" ? "Requiere revisión" : state === "ERROR_REINTENTABLE" ? "Reintento disponible" : state === "ENVIANDO" ? "Guardando..." : "Pendiente"}</strong><span>Fecha: {item.fecha} · Intento manual disponible según el contexto</span><span>Operación sanitizada: {item.idempotency_key ?? "sin clave"}</span></li>; })}</ul>
+          <footer><button type="button" onClick={() => void attendanceFlushRef.current()} disabled={attendanceSaveState === "saving"}>Reintentar seguro</button><button type="button" onClick={() => exportAttendanceDiagnostic("json")}>Exportar JSON</button><button type="button" onClick={() => exportAttendanceDiagnostic("csv")}>Exportar CSV</button></footer>
+        </aside>
+      </div> : null}
 
       <section className="op-toolbar" aria-label="Filtros de planilla" ref={facetToolbarRef}>
         <label className="op-search">

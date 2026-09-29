@@ -22,6 +22,13 @@ export type AttendanceQueueItem = {
   updated_at: string;
 };
 
+export type AttendanceQueueDisposition =
+  | "APLICADA_SIN_ACK"
+  | "NO_APLICADA_REINTENTABLE"
+  | "CONTEXTO_DIFERENTE"
+  | "PERIODO_NO_EDITABLE"
+  | "OPERACION_INVALIDA";
+
 export function classifyAttendanceFailure(status: number | null): AttendanceSyncState {
   return status === 401 || status === 403 || status === 409
     ? "ERROR_REQUIERE_USUARIO"
@@ -48,12 +55,17 @@ export function migrateAttendanceQueue(
     const candidateContext = candidate.context && typeof candidate.context === "object"
       ? candidate.context as Record<string, unknown>
       : null;
+    const itemContext: AttendanceQueueContext = {
+      empresaId: String(candidateContext?.empresaId ?? context.empresaId),
+      contratoId: candidateContext?.contratoId == null ? null : String(candidateContext.contratoId),
+      periodoId: String(candidateContext?.periodoId ?? context.periodoId),
+    };
     const sameContext = !candidateContext || (
       String(candidateContext.empresaId ?? context.empresaId) === context.empresaId &&
       String(candidateContext.contratoId ?? context.contratoId ?? "") === String(context.contratoId ?? "") &&
       String(candidateContext.periodoId ?? context.periodoId) === context.periodoId
     );
-    if (!sameContext) { discarded += 1; continue; }
+    const state: AttendanceSyncState = sameContext ? "PENDIENTE_LOCAL" : "ERROR_REQUIERE_USUARIO";
     items.push({
       vinculacion_id: vinculacionId,
       fecha,
@@ -61,9 +73,9 @@ export function migrateAttendanceQueue(
       idempotency_key: typeof candidate.idempotency_key === "string" && candidate.idempotency_key.trim()
         ? candidate.idempotency_key
         : newKey(),
-      context,
-      state: "PENDIENTE_LOCAL",
-      error: null,
+      context: itemContext,
+      state,
+      error: sameContext ? null : "La operación pertenece a otro contexto de empresa, contrato o período.",
       updated_at: new Date().toISOString(),
     });
   }
@@ -73,10 +85,19 @@ export function migrateAttendanceQueue(
 
 export function queueStatusLabel(items: AttendanceQueueItem[]): string {
   const pending = items.filter((item) => item.state !== "CONFIRMADO_SERVIDOR").length;
-  if (!pending) return "Guardado";
+  if (!pending) return "Cambios guardados";
+  if (items.some((item) => item.state === "ENVIANDO")) return "Guardando...";
+  if (items.some((item) => item.state.startsWith("ERROR_"))) return `${pending} cambio${pending === 1 ? "" : "s"} requiere${pending === 1 ? "" : "n"} atención`;
   if (items.some((item) => item.state === "ENVIANDO")) return "Guardando…";
   if (items.some((item) => item.state.startsWith("ERROR_"))) return "Error de sincronización";
-  return "Cambios pendientes";
+  return `${pending} cambio${pending === 1 ? "" : "s"} pendiente${pending === 1 ? "" : "s"}`;
+}
+
+export function classifyAttendanceItem(item: AttendanceQueueItem, current: AttendanceQueueContext): AttendanceQueueDisposition {
+  if (item.context.empresaId !== current.empresaId || item.context.contratoId !== current.contratoId || item.context.periodoId !== current.periodoId) return "CONTEXTO_DIFERENTE";
+  if (item.state === "CONFIRMADO_SERVIDOR") return "APLICADA_SIN_ACK";
+  if (item.state === "ERROR_REQUIERE_USUARIO") return "OPERACION_INVALIDA";
+  return "NO_APLICADA_REINTENTABLE";
 }
 
 export function applyAttendanceAcks(items: AttendanceQueueItem[], acknowledgedKeys: Iterable<string>): AttendanceQueueItem[] {
