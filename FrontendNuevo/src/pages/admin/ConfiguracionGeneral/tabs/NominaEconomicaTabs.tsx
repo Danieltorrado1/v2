@@ -10,11 +10,12 @@ import { ApiClientError, apiClient } from '../../../../services/apiClient';
 
 import { getNominaPeriodos } from '../../../../services/nominaApi';
 import { getContractPersonalFilterOptions } from '../../../../services/vinculacionesApi';
+import { canManageNominaConfiguration, canReadNominaConfiguration } from '../../../../architecture/nominaConfigurationAccess';
 
 import type { NominaPeriodoApi } from '../../../../types/nomina.types';
 import type { ContractPersonalFilterOptions } from '../../../../types/vinculaciones.types';
 
-import { formatDate, hasAnyPermission, mapKnownError, toNullableText } from './adminTabUtils';
+import { formatDate, mapKnownError, toNullableText } from './adminTabUtils';
 
 
 
@@ -555,11 +556,10 @@ export function PayrollParametersTab() {
 
   const { empresaActual } = useCompanyContext();
 
-  const permissions = user?.permissions ?? [];
 
-  const canRead = hasAnyPermission(permissions, ['nomina.economico.read']);
+  const canRead = canReadNominaConfiguration(user);
 
-  const canManage = hasAnyPermission(permissions, ['nomina.parametros.manage']);
+  const canManage = canManageNominaConfiguration(user, 'nomina.parametros.manage');
 
 
 
@@ -1010,9 +1010,8 @@ export function PayrollParametersTab() {
 export function TurnShiftRatesTab() {
   const { user } = useAuth();
   const { empresaActual } = useCompanyContext();
-  const permissions = user?.permissions ?? [];
-  const canRead = hasAnyPermission(permissions, ['nomina.economico.read']);
-  const canManage = hasAnyPermission(permissions, ['nomina.parametros.manage']);
+  const canRead = canReadNominaConfiguration(user);
+  const canManage = canManageNominaConfiguration(user, 'nomina.parametros.manage');
 
   const [rows, setRows] = useState<TurnShiftRate[]>([]);
   const [contracts, setContracts] = useState<ContractOption[]>([]);
@@ -1471,9 +1470,8 @@ export function TurnShiftRatesTab() {
 export function SalaryCategoriesTab() {
   const { user } = useAuth();
   const { empresaActual } = useCompanyContext();
-  const permissions = user?.permissions ?? [];
-  const canRead = hasAnyPermission(permissions, ['nomina.economico.read']);
-  const canManage = hasAnyPermission(permissions, ['nomina.categorias.manage']);
+  const canRead = canReadNominaConfiguration(user);
+  const canManage = canManageNominaConfiguration(user, 'nomina.categorias.manage');
 
   const [rows, setRows] = useState<Category[]>([]);
   const [contracts, setContracts] = useState<ContractOption[]>([]);
@@ -2120,9 +2118,9 @@ export function SalaryCategoriesTab() {
       <div className="adm-card">
         <div className="nomina-section-head">
           <div>
-            <h3>Asignación operativa de categorías</h3>
+            <h3>Asignaciones laborales</h3>
             <p>
-              Sigue el flujo: periodo, categoría destino, filtros combinados, preview vigente,
+              Busca una persona, revisa su categoría salarial vigente y asigna una nueva vigencia sin alterar periodos anteriores.
               selección puntual y confirmación auditada antes de recalcular nómina.
             </p>
           </div>

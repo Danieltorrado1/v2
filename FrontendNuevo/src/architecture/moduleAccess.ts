@@ -5,7 +5,7 @@ import { getEffectiveConfig } from '../services/moduleVisibilityStore';
 
 export type AccessUser = { roles: string[]; permissions: string[] };
 export const isGlobalAdministrator = (user: AccessUser | null | undefined) => (user as (AccessUser & { isGlobalAdmin?: boolean }) | null | undefined)?.isGlobalAdmin === true;
-export { canAccessNominaConfiguration } from './nominaConfigurationAccess';
+export { canAccessNominaConfiguration, canManageNominaConfiguration, canReadNominaConfiguration } from './nominaConfigurationAccess';
 export function hasPermission(user: AccessUser | null | undefined, required: string[]) {
   return !!user && (!required.length || required.some(code => code.endsWith('.*')
     ? user.permissions.some(permission => permission.startsWith(code.slice(0, -1)))
@@ -35,8 +35,11 @@ export function featureEnabled(item: ModuleEntry, flags: Record<string, boolean>
 export function canAccessEntry(item: ModuleEntry, user: AccessUser | null | undefined, flags: Record<string, boolean>, parent?: ModuleEntry): boolean {
   if (item.scope === 'GLOBAL') return isGlobalAdministrator(user);
   if (item.code === 'PERSONAL_NOMINA' && !visiblePayrollLinks(user).length) return false;
+  const economicConfigurationAccess = item.code === 'CONFIG_EMPRESA_NOMINA'
+    ? Boolean(user?.roles.includes('ADMINISTRADOR') || (user?.roles.includes('TALENTO_HUMANO') && hasPermission(user, ['nomina.economico.read'])))
+    : hasPermission(user, item.permission);
   return (!item.globalOnly || isGlobalAdministrator(user)) && featureEnabled(item, flags, parent)
-    && (!parent || featureEnabled(parent, flags)) && hasPermission(user, item.permission)
+    && (!parent || featureEnabled(parent, flags)) && economicConfigurationAccess
     && (!item.allowedRoles || item.allowedRoles.some((role) => user?.roles.includes(role)));
 }
 
