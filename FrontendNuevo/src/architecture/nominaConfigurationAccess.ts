@@ -13,9 +13,13 @@ export function canManageNominaConfiguration(user: NominaConfigurationUser | nul
   return Boolean(user?.roles.includes('ADMINISTRADOR') || user?.permissions.includes(permission));
 }
 
-export function canAccessNominaConfiguration(user: NominaConfigurationUser | null | undefined): boolean {
+export function canAccessNominaConfiguration(
+  user: NominaConfigurationUser | null | undefined,
+  nominaEnabled = true,
+): boolean {
   return Boolean(
-    user
+    nominaEnabled
+      && user
       && (
         user.roles.includes('ADMINISTRADOR')
         || (
