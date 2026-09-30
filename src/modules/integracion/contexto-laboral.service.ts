@@ -202,3 +202,72 @@ export const resolveContextoLaboral = async (
 export const resolveContextoLaboralForClient = (input: ContextoLaboralInput, tenant: TenantAccessContext | undefined, client: PoolClient) => resolveContextoLaboral(input, tenant, client);
 
 export const resolveContextoLaboralReadOnly = (input: ContextoLaboralInput, tenant?: TenantAccessContext) => resolveContextoLaboral(input, tenant, dbPool);
+
+export interface OperationalContextAtDate {
+  id: number;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  municipio_id: number | null;
+  institucion_id: number | null;
+  sede_id: number | null;
+  modalidad_id: number | null;
+  municipio: string | null;
+  institucion: string | null;
+  sede: string | null;
+  modalidad: string | null;
+  origen: 'cobertura_asignaciones';
+}
+
+export interface OperationalContextTimeline {
+  tramos: OperationalContextAtDate[];
+  huecos: Array<{ fecha_inicio: string; fecha_fin: string }>;
+}
+
+const canonicalOperationalQuery = async (input: { empresaId: number; contratoId: number; vinculacionId: number; fechaInicio: string; fechaFin: string }, executor: Executor): Promise<OperationalContextAtDate[]> => {
+  const result = await executor.query<OperationalContextAtDate>(`
+    SELECT ca.id::int, GREATEST(ca.fecha_inicio, $4::date)::text fecha_inicio,
+      LEAST(COALESCE(ca.fecha_fin, $5::date), $5::date)::text fecha_fin,
+      ca.municipio_id::int, ff.institucion_id::int, ff.sede_id::int, ff.modalidad_id::int,
+      COALESCE(ff.municipio_texto, mu.nombre_municipio) municipio,
+      COALESCE(ff.institucion_final, ca.institucion) institucion,
+      COALESCE(ff.sede_final, ca.sede) sede,
+      COALESCE(ff.modalidad_final, ca.modalidad) modalidad,
+      'cobertura_asignaciones'::text origen
+    FROM cobertura_asignaciones ca
+    JOIN contratos c ON c.id = ca.contrato_id AND c.empresa_id = $1::bigint
+    LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+    LEFT JOIN municipios mu ON mu.id = ca.municipio_id
+    WHERE ca.contrato_id = $2::bigint AND ca.vinculacion_id = $3::bigint
+      AND COALESCE(ca.activo, TRUE)
+      AND ca.fecha_inicio <= $5::date
+      AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $4::date)
+    ORDER BY ca.fecha_inicio, ca.id`, [input.empresaId, input.contratoId, input.vinculacionId, input.fechaInicio, input.fechaFin]);
+  return result.rows.map((row) => ({ ...row, fecha_inicio: String(row.fecha_inicio).slice(0, 10), fecha_fin: row.fecha_fin ? String(row.fecha_fin).slice(0, 10) : input.fechaFin }));
+};
+
+export const resolveOperationalContextAtDate = async (input: { empresaId: number; contratoId: number; vinculacionId: number; fecha: string }, executor: Executor = dbPool): Promise<OperationalContextAtDate | null> => {
+  const date = dateOnly(input.fecha);
+  const rows = await canonicalOperationalQuery({ ...input, fechaInicio: date, fechaFin: date }, executor);
+  const matches = rows.filter((row) => row.fecha_inicio <= date && (row.fecha_fin === null || row.fecha_fin >= date));
+  if (matches.length > 1) throw new AppError('Solapamiento de vigencias operativas', 409, 'ASIGNACION_OPERATIVA_SOLAPADA');
+  return matches[0] ?? null;
+};
+
+export const resolveOperationalContextTimeline = async (input: { empresaId: number; contratoId: number; vinculacionId: number; fechaInicio: string; fechaFin: string }, executor: Executor = dbPool): Promise<OperationalContextTimeline> => {
+  const inicio = dateOnly(input.fechaInicio); const fin = dateOnly(input.fechaFin);
+  if (inicio > fin) throw new AppError('Rango operativo inválido', 400, 'ASIGNACION_OPERATIVA_RANGO_INVALIDO');
+  const rows = await canonicalOperationalQuery({ ...input, fechaInicio: inicio, fechaFin: fin }, executor);
+  const tramos: OperationalContextAtDate[] = [];
+  const huecos: Array<{ fecha_inicio: string; fecha_fin: string }> = [];
+  let cursor = inicio;
+  for (const row of rows) {
+    if (row.fecha_inicio > cursor) huecos.push({ fecha_inicio: cursor, fecha_fin: previousDateOnly(row.fecha_inicio) });
+    if (tramos.length && row.fecha_inicio <= (tramos[tramos.length - 1]!.fecha_fin ?? fin)) throw new AppError('Solapamiento de vigencias operativas', 409, 'ASIGNACION_OPERATIVA_SOLAPADA');
+    tramos.push(row); cursor = nextDateOnly(row.fecha_fin ?? fin);
+  }
+  if (cursor <= fin) huecos.push({ fecha_inicio: cursor, fecha_fin: fin });
+  return { tramos, huecos };
+};
+
+const previousDateOnly = (value: string): string => { const date = new Date(`${value}T00:00:00Z`); date.setUTCDate(date.getUTCDate() - 1); return date.toISOString().slice(0, 10); };
+const nextDateOnly = (value: string): string => { const date = new Date(`${value}T00:00:00Z`); date.setUTCDate(date.getUTCDate() + 1); return date.toISOString().slice(0, 10); };

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiClient } from '../../services/apiClient';
 import type { ApiResponse } from '../../types/api.types';
-import { contextoDestino, opcionesContexto, type CambioTipo, type ContextoCambio, type OpcionCambio } from './cambioOperativo.domain';
+import { buildCambioPreview, contextoDestino, opcionesContexto, proposeCategoryForChange, type CambioTipo, type CategoryOption, type ContextoCambio, type OpcionCambio } from './cambioOperativo.domain';
 import type { PlanillaCambio } from './planillaOperativa.domain';
 
 type Props = {
@@ -17,6 +17,8 @@ export default function CambioOperativoFields(props: Props) {
   const [motivo, setMotivo] = useState(props.existing?.motivo ?? '');
   const [options, setOptions] = useState<OpcionCambio[]>([]);
   const [base, setBase] = useState<ContextoCambio | null>(null);
+  const [categoryState, setCategoryState] = useState<{ id: string | null; ambiguous: boolean }>({ id: null, ambiguous: false });
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [institucion, setInstitucion] = useState('');
   const [sede, setSede] = useState('');
   const [modalidad, setModalidad] = useState('');
@@ -35,7 +37,11 @@ export default function CambioOperativoFields(props: Props) {
       if (!active) return;
       const previous = props.existing?.contexto_anterior ?? current.data.contexto;
       const selected = props.existing?.contexto_nuevo ?? previous;
+      const contexto = current.data.contexto as ContextoCambio & { categoria_salarial?: { id?: string | null } | null; ambiguedades?: string[] };
       setOptions(catalog.data); setBase(previous);
+      const empresaId = (contexto as Record<string, unknown>).empresa_id;
+      if (empresaId) void apiClient.get<ApiResponse<CategoryOption[]>>(`/company-settings/${empresaId}/salary-categories`).then((response) => active && setCategories(response.data)).catch(() => active && setCategories([]));
+      setCategoryState({ id: contexto.categoria_salarial?.id ?? null, ambiguous: contexto.ambiguedades?.includes('CATEGORIA_SALARIAL') ?? false });
       setInstitucion(String(selected.institucion_id ?? ''));
       setSede(String(selected.sede_id ?? ''));
       setModalidad(String(selected.modalidad_id ?? ''));
@@ -45,6 +51,10 @@ export default function CambioOperativoFields(props: Props) {
   }, [props.vinculacionId, props.periodoId, props.existing, fecha, attempt]);
   const catalogs = opcionesContexto(options, institucion, sede);
   const target = options.find(row => row.institucion_id === institucion && row.sede_id === sede && row.modalidad_id === modalidad);
+  const targetContext = base && target ? contextoDestino(base, target) : null;
+  const targetCategoryId = base && target && String(base.modalidad_id ?? '') === String(target.modalidad_id ?? '') ? categoryState.id : null;
+  const categoryProposal = target && base ? proposeCategoryForChange(categories, (base as Record<string, unknown>).contrato_id as string | number | undefined, target.modalidad, fecha) : { estado: 'REQUIERE_REVISION_SALARIAL' as const, categoriaId: null };
+  const preview = base && target && targetContext ? buildCambioPreview(base, targetContext, fecha, categoryState.ambiguous || categoryProposal.estado === 'REQUIERE_REVISION_SALARIAL', categoryProposal.categoriaId ?? targetCategoryId) : null;
   const save = async () => {
     if (busy.current || loading || !base || !target || !props.canSave || motivo.trim().length < 3) return;
     busy.current = true; setSaving(true); props.onSavingChange?.(true); setError('');
@@ -73,6 +83,7 @@ export default function CambioOperativoFields(props: Props) {
       <label className="op-form-field">Observación / motivo<textarea value={motivo} onChange={e => setMotivo(e.target.value)} /></label>
     </fieldset>
     {!loading && !options.length && !error && <p>No hay combinaciones operativas disponibles para este contrato.</p>}
+    {preview && <section aria-label="Vista previa de vigencia"><strong>Vista previa</strong><p>{preview.modalidadAnterior} hasta el día anterior; {preview.modalidadNueva} desde {preview.fechaEfectiva}.</p><p role={preview.categoriaEstado === 'REQUIERE_REVISION_SALARIAL' ? 'alert' : undefined}>{preview.categoriaEstado === 'REQUIERE_REVISION_SALARIAL' ? 'REQUIERE_REVISION_SALARIAL: verifique la categoría salarial para la nueva modalidad.' : 'Categoría salarial vigente detectada; validar antes de autorizar.'}</p></section>}
     {!props.canSave && <p>No tienes permiso para guardar este cambio operativo.</p>}
     <div className="op-modal-actions"><button type="button" disabled={saving} onClick={props.onCancel}>Cancelar</button><button type="button" disabled={loading || saving || !base || !target || !fecha || motivo.trim().length < 3 || !props.canSave} onClick={() => void save()}>{saving ? 'Guardando…' : 'Guardar novedad'}</button></div>
   </>;

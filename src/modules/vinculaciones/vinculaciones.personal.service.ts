@@ -9,6 +9,7 @@ import { AppError } from '../../utils/AppError';
 import { registerAuditEntry } from '../auditoria/auditoria.helper';
 import { publicarEventoOutbox } from '../integracion/integracion.service';
 import { persistCanonicalAssignmentVersion } from '../cobertura/cobertura-asignacion.service';
+import { nominaPoblacionRepository } from '../nomina/infrastructure/repositories/nomina-poblacion.repository';
 import { buildContextualVinculacionChecklist } from '../documentos/documentos.checklist.service';
 import {
   buildLicitacionQuotaDelta,
@@ -645,6 +646,10 @@ export const replaceAsignacionOperativaPersonal = async (
     const canonicalId = await persistCanonicalAssignmentVersion(client, { contratoId: vinculacion.contrato_id, vinculacionId, fechaDesde, contexto: { cobertura_asignacion_id: current.rows[0]?.id ?? null, municipio_id: f.municipio_id, institucion_id: f.institucion_id, institucion: f.institucion_final, sede_id: f.sede_id, sede: f.sede_final, modalidad_id: f.modalidad_id, modalidad: f.modalidad_final }, actor: String(actorUserId), motivo: input.observacion ?? input.motivo });
     const inserted=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE id=$1::bigint`,[canonicalId]);
     if (!inserted.rows[0]) throw new AppError('No fue posible crear la version canonica de la asignacion',500,'ASIGNACION_OPERATIVA_VERSION_FAILED');
+    const openPeriods = await client.query<{ id: string }>(`SELECT id::text FROM nomina_periodos WHERE contrato_id=$1::bigint AND estado='ABIERTO' AND fecha_fin >= $2::date`, [vinculacion.contrato_id, fechaDesde]);
+    for (const period of openPeriods.rows) await nominaPoblacionRepository.repairOperationalSnapshots({ periodoId: period.id, actorUserId: String(actorUserId), vinculacionId: String(vinculacionId) }, client);
+    const liquidationTable = await client.query<{ exists: boolean }>(`SELECT to_regclass('public.nomina_liquidaciones') IS NOT NULL AS exists`);
+    if (liquidationTable.rows[0]?.exists) await client.query(`UPDATE nomina_liquidaciones l SET requiere_recalculo=TRUE, estado=CASE WHEN l.estado='GENERADA' THEN 'PENDIENTE' ELSE l.estado END FROM nomina_periodos p WHERE p.id=l.periodo_id AND p.contrato_id=$1::bigint AND p.estado='ABIERTO' AND p.fecha_fin >= $2::date AND l.vinculacion_id=$3::bigint`, [vinculacion.contrato_id, fechaDesde, vinculacionId]);
     if (String(current.rows[0]?.municipio_id ?? '') !== String(f.municipio_id ?? '')) {
       await client.query(
         `UPDATE gestor_personal_asignaciones gpa

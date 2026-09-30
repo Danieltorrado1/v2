@@ -9,6 +9,30 @@ export type ContextoCambio = Record<string, unknown> & {
 };
 export type OpcionCambio = ContextoCambio & { id: string };
 
+export interface CambioPreview {
+  modalidadAnterior: string;
+  modalidadNueva: string;
+  fechaEfectiva: string;
+  categoriaEstado: 'VALIDAR' | 'REQUIERE_REVISION_SALARIAL';
+}
+
+export interface CategoryOption { id: string; contrato_id?: string | number; modalidad?: string | null; vigente_desde?: string | null; vigente_hasta?: string | null; activo?: boolean; }
+
+export function proposeCategoryForChange(categories: CategoryOption[], contratoId: string | number | null | undefined, modalidad: string | null | undefined, fecha: string) {
+  const normalized = String(modalidad ?? '').trim().toLocaleLowerCase();
+  const candidates = categories.filter((category) => String(category.contrato_id ?? '') === String(contratoId ?? '') && String(category.modalidad ?? '').trim().toLocaleLowerCase() === normalized && category.activo !== false && (!category.vigente_desde || category.vigente_desde <= fecha) && (!category.vigente_hasta || category.vigente_hasta >= fecha));
+  return candidates.length === 1 ? { estado: 'PROPUESTA' as const, categoriaId: candidates[0]!.id } : { estado: 'REQUIERE_REVISION_SALARIAL' as const, categoriaId: null };
+}
+
+export function buildCambioPreview(anterior: ContextoCambio, nuevo: ContextoCambio, fechaEfectiva: string, categoryAmbiguous: boolean, categoryId: string | null | undefined): CambioPreview {
+  return {
+    modalidadAnterior: String(anterior.modalidad ?? anterior.modalidad_id ?? 'Sin modalidad'),
+    modalidadNueva: String(nuevo.modalidad ?? nuevo.modalidad_id ?? 'Sin modalidad'),
+    fechaEfectiva,
+    categoriaEstado: categoryAmbiguous || !categoryId ? 'REQUIERE_REVISION_SALARIAL' : 'VALIDAR',
+  };
+}
+
 // The catalog IDs are installation-specific; use the existing type's name/code.
 export function tipoCambioOperativo(type: Pick<NominaTipoNovedad, 'nombre' | 'codigo_operativo'> | null): CambioTipo | null {
   const name = (type?.codigo_operativo || type?.nombre || '').trim().toUpperCase().replaceAll(' ', '_');

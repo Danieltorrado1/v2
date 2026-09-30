@@ -37,3 +37,15 @@ test('categoría ambigua queda bloqueada para revisión', () => {
   assert.equal(result.estado, 'REQUIERE_REVISION_SALARIAL');
   assert.deepEqual(result.candidatos, [10, 11]);
 });
+
+test('vigencia futura, retroactiva y límites no generan solapamientos', () => {
+  const programada = [
+    { modalidad: 'RI', fecha_inicio: '2026-09-01', fecha_fin: '2026-09-30' },
+    { modalidad: 'CAA', fecha_inicio: '2026-10-01', fecha_fin: null }
+  ];
+  assert.equal(resolveModalidadVigente(programada, '2026-09-30')?.modalidad, 'RI');
+  assert.equal(resolveModalidadVigente(programada, '2026-10-01')?.modalidad, 'CAA');
+  const tramos = buildModalidadTramos(programada, '2026-09-01', '2026-10-31');
+  assert.deepEqual(tramos.map((item) => [item.fecha_inicio, item.fecha_fin]), [['2026-09-01', '2026-09-30'], ['2026-10-01', '2026-10-31']]);
+  assert.equal(tramos[0]!.fecha_fin < tramos[1]!.fecha_inicio, true);
+});

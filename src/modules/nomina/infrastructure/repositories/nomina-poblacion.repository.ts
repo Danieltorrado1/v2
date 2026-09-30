@@ -105,11 +105,14 @@ export class NominaPoblacionRepository {
                   )
                 )
               ORDER BY
-                CASE WHEN ca1.fecha_inicio <= np.fecha_fin
+                CASE WHEN ca1.fecha_inicio <= np.fecha_inicio
                   AND (ca1.fecha_fin IS NULL OR ca1.fecha_fin >= np.fecha_inicio)
                   THEN 0 ELSE 1 END,
-                ca1.fecha_inicio DESC,
-                ca1.id DESC
+                CASE WHEN ca1.fecha_inicio <= np.fecha_inicio
+                  AND (ca1.fecha_fin IS NULL OR ca1.fecha_fin >= np.fecha_inicio)
+                  THEN ca1.fecha_inicio END DESC,
+                ca1.fecha_inicio ASC,
+                ca1.id ASC
               LIMIT 1
             ) ca ON TRUE
             LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
@@ -123,7 +126,7 @@ export class NominaPoblacionRepository {
               periodo_id, nomina_empleado_id, vinculacion_id, contexto, fuente, created_by
             )
             SELECT $1::bigint, nomina_empleado_id, vinculacion_id, contexto,
-              'SINCRONIZACION_PERSONAL', $2::bigint
+              'CANONICA_COBERTURA_ASIGNACIONES', $2::bigint
             FROM source_context
             ON CONFLICT (periodo_id, nomina_empleado_id) DO UPDATE
               SET vinculacion_id = EXCLUDED.vinculacion_id,
@@ -231,9 +234,11 @@ export class NominaPoblacionRepository {
       FROM nomina_empleados ne JOIN nomina_periodos np ON np.id = ne.periodo_id
       WHERE ne.id = ANY($1::bigint[])), assignments AS (
       SELECT es.*, ca.focalizacion_final_id, ff.municipio_id, ff.institucion_id, ff.sede_id, m.codigo_base,
-        ROW_NUMBER() OVER (PARTITION BY es.nomina_empleado_id ORDER BY CASE WHEN ca.fecha_inicio <= es.periodo_fin
+        ROW_NUMBER() OVER (PARTITION BY es.nomina_empleado_id ORDER BY CASE WHEN ca.fecha_inicio <= es.periodo_inicio
           AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= es.periodo_inicio) THEN 0 ELSE 1 END,
-          ca.fecha_inicio DESC, ca.id DESC) AS assignment_rank
+          CASE WHEN ca.fecha_inicio <= es.periodo_inicio
+            AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= es.periodo_inicio) THEN ca.fecha_inicio END DESC,
+          ca.fecha_inicio ASC, ca.id ASC) AS assignment_rank
       FROM employee_scope es JOIN vinculaciones v ON v.id = es.vinculacion_id
         LEFT JOIN cobertura_asignaciones ca ON ca.vinculacion_id = v.id AND COALESCE(ca.activo, TRUE) = TRUE
         LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id LEFT JOIN modalidades m ON m.id = ff.modalidad_id),

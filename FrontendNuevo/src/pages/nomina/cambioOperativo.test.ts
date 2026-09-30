@@ -33,6 +33,15 @@ test('TH y administrador editan pensión con permisos de movimientos sin edició
   assert.equal(domain.canSavePension(['nomina.movimientos.update'],['TALENTO_HUMANO']),false);
 });
 
+test('preview usa la fecha efectiva y advierte categoria ambigua o ausente', () => {
+  const preview = domain.buildCambioPreview({ modalidad: 'RI' }, { modalidad: 'CAA' }, '2026-09-15', true, null);
+  assert.deepEqual(preview, { modalidadAnterior: 'RI', modalidadNueva: 'CAA', fechaEfectiva: '2026-09-15', categoriaEstado: 'REQUIERE_REVISION_SALARIAL' });
+});
+test('propuesta salarial filtra contrato, modalidad y vigencia', () => {
+  assert.deepEqual(domain.proposeCategoryForChange([{ id: '7', contrato_id: '24', modalidad: 'CAA', vigente_desde: '2026-09-15' }], '24', 'CAA', '2026-09-15'), { estado: 'PROPUESTA', categoriaId: '7' });
+  assert.equal(domain.proposeCategoryForChange([{ id: '7', contrato_id: '24', modalidad: 'CAA' }, { id: '8', contrato_id: '24', modalidad: 'CAA' }], '24', 'CAA', '2026-09-15').estado, 'REQUIERE_REVISION_SALARIAL');
+});
+
 function harness(api: any) {
   const slots: any[] = []; let cursor=0; let effects: (()=>void)[]=[]; let tree: any;
   const hooks = {
