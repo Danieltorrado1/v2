@@ -1,0 +1,12 @@
+{
+  "empresa_id": 15,
+  "contrato_id": 24,
+  "summary": { "instituciones": 111, "sedes": 605, "combinaciones": 687, "cupos": 80355 },
+  "page": 1,
+  "page_size": 50,
+  "items": [
+    { "id": "sanitized-1", "cupos": { "primaria": 120, "secundaria": 80, "total": 200 } },
+    { "id": "sanitized-2", "cupos": { "primaria": 0, "secundaria": null, "total": 0 } },
+    { "id": "sanitized-3", "cupos": null }
+  ]
+}
