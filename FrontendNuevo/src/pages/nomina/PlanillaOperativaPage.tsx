@@ -19,6 +19,7 @@ import {
   createNominaNovedadConTurno,
   closeNominaEmpleadoOperativo,
   deactivateNominaNovedad,
+  getNominaAsistenciaBulkAck,
   getAllNominaMovimientosOperativos,
   getAllNominaNovedades,
   getNominaNovedadTurnosOperativos,
@@ -563,6 +564,7 @@ export default function PlanillaOperativaPage() {
   const [pendingAttendance, setPendingAttendance] = useState<Set<string>>(new Set());
   const [pendingAttendanceChanges, setPendingAttendanceChanges] = useState<Map<string, NominaAsistenciaBulkChange>>(new Map());
   const pendingAttendanceChangesRef = useRef<Map<string, NominaAsistenciaBulkChange>>(new Map());
+  const pendingAttendanceRef = pendingAttendanceChangesRef;
   const [pendingAttendanceHydratedKey, setPendingAttendanceHydratedKey] = useState("");
   const [attendanceSaveState, setAttendanceSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [lastAttendanceAck, setLastAttendanceAck] = useState<string | null>(null);
@@ -570,6 +572,7 @@ export default function PlanillaOperativaPage() {
   const [attendanceDetailsOpen, setAttendanceDetailsOpen] = useState(false);
   const [attendanceAlertVisible, setAttendanceAlertVisible] = useState(false);
   const attendanceFlushRef = useRef<() => Promise<void>>(async () => undefined);
+  const attendanceFlushInFlightRef = useRef(false);
   const [attendanceFailures, setAttendanceFailures] = useState<Map<string, string>>(new Map());
   const [reviews, setReviews] = useState<RevisionOperativaApi[]>([]);
   const [types, setTypes] = useState<NominaTipoNovedad[]>([]);
@@ -1346,17 +1349,58 @@ export default function PlanillaOperativaPage() {
   };
 
   const flushAttendance = async () => {
-    const changes = Array.from(pendingAttendanceChangesRef.current.values()).filter((item) => {
+    if (attendanceFlushInFlightRef.current) return;
+    let changes = Array.from(pendingAttendanceChangesRef.current.values()).filter((item) => {
       const state = attendanceSyncStates.get(`${item.vinculacion_id}|${item.fecha}`);
       return state !== "ERROR_REQUIERE_USUARIO";
     });
     if (!periodId || !changes.length || attendanceSaveState === "saving") return;
+    attendanceFlushInFlightRef.current = true;
     setAttendanceSaveState("saving");
+    if (!period || period.estado !== "ABIERTO" || String(period.contrato?.empresa_id ?? "") !== String(empresaId ?? "") || !period.contrato_id) {
+      setAttendanceSyncStates((states) => new Map(changes.reduce((map, item) => map.set(`${item.vinculacion_id}|${item.fecha}`, "ERROR_REQUIERE_USUARIO"), new Map(states))));
+      setAttendanceSaveState("error");
+      setAttendanceAlertVisible(true);
+      setError("El período no está disponible para envío. La cola queda conservada para revisión.");
+      attendanceFlushInFlightRef.current = false;
+      return;
+    }
+    const verificationKeys = changes
+      .filter((item) => attendanceSyncStates.get(`${item.vinculacion_id}|${item.fecha}`) === "PENDING_VERIFICATION")
+      .map((item) => item.idempotency_key)
+      .filter((key): key is string => Boolean(key));
+    if (verificationKeys.length) {
+      try {
+        const ack = await getNominaAsistenciaBulkAck(periodId, verificationKeys);
+        const acknowledged = new Set(ack.acknowledged_keys ?? []);
+        if (acknowledged.size) {
+          const next = new Map(pendingAttendanceChangesRef.current);
+          for (const item of changes) if (item.idempotency_key && acknowledged.has(item.idempotency_key)) next.delete(`${item.vinculacion_id}|${item.fecha}`);
+          pendingAttendanceChangesRef.current = next;
+          setPendingAttendanceChanges(next);
+          setPendingAttendance(new Set(next.keys()));
+          setAttendanceSyncStates((states) => {
+            const nextStates = new Map(states);
+            for (const item of changes) if (item.idempotency_key && acknowledged.has(item.idempotency_key)) nextStates.set(`${item.vinculacion_id}|${item.fecha}`, "CONFIRMADO_SERVIDOR");
+            return nextStates;
+          });
+          changes = changes.filter((item) => !item.idempotency_key || !acknowledged.has(item.idempotency_key));
+        }
+      } catch {
+        setAttendanceSaveState("error");
+        setAttendanceAlertVisible(true);
+        setError("No fue posible verificar el ACK de la operación. Requiere revisión manual.");
+        setAttendanceSyncStates((states) => new Map(changes.reduce((map, item) => map.set(`${item.vinculacion_id}|${item.fecha}`, "ERROR_REQUIERE_USUARIO"), new Map(states))));
+        attendanceFlushInFlightRef.current = false;
+        return;
+      }
+    }
+    if (!changes.length) { setAttendanceSaveState("saved"); attendanceFlushInFlightRef.current = false; return; }
     setAttendanceSyncStates((current) => new Map(changes.reduce((map, item) => map.set(`${item.vinculacion_id}|${item.fecha}`, "ENVIANDO"), new Map(current))));
     try {
       for (let offset = 0; offset < changes.length; offset += ATTENDANCE_SAVE_BATCH_SIZE) {
         const batch = changes.slice(offset, offset + ATTENDANCE_SAVE_BATCH_SIZE);
-        const response = await markNominaAsistenciaBulk(periodId, batch);
+        const response = await markNominaAsistenciaBulk(periodId, batch, 25_000);
         const confirmed = new Set((response.confirmados ?? []).map((item) => `${item.vinculacion_id}|${item.fecha}`));
         const rejected = new Map<string, AttendanceSyncState>((response.rechazados ?? []).map((item) => [`${item.vinculacion_id}|${item.fecha}`, item.estado as AttendanceSyncState]));
         const next = new Map(pendingAttendanceChangesRef.current);
@@ -1381,9 +1425,22 @@ export default function PlanillaOperativaPage() {
         setError("Algunos cambios no fueron confirmados. Revisa y reintenta.");
       }
     } catch (value) {
-      setAttendanceSaveState("error");
       const status = value instanceof ApiClientError ? value.status : null;
-      const failureState = classifyAttendanceFailure(status);
+      const requestTimedOut = status === 408 || status === 0;
+      if (status === 408 || status === 0) {
+        try {
+          const ack = await getNominaAsistenciaBulkAck(periodId, changes.map((item) => item.idempotency_key).filter((key): key is string => Boolean(key)));
+          const acknowledged = new Set(ack.acknowledged_keys ?? []);
+          const next = new Map(pendingAttendanceChangesRef.current);
+          for (const item of changes) if (item.idempotency_key && acknowledged.has(item.idempotency_key)) next.delete(`${item.vinculacion_id}|${item.fecha}`);
+          pendingAttendanceChangesRef.current = next;
+          setPendingAttendanceChanges(next);
+          setPendingAttendance(new Set(next.keys()));
+          if (acknowledged.size && !next.size) { setAttendanceSaveState("saved"); return; }
+        } catch { /* estado indeterminado: conservar la cola sin reenviar */ }
+      }
+      setAttendanceSaveState("error");
+      const failureState = requestTimedOut ? "PENDING_VERIFICATION" : classifyAttendanceFailure(status);
       setAttendanceSyncStates((states) => {
         const next = new Map(states);
         for (const item of changes) next.set(`${item.vinculacion_id}|${item.fecha}`, failureState);
@@ -1391,6 +1448,9 @@ export default function PlanillaOperativaPage() {
       });
       setError(formatPlanillaErrorMessage(value, "Error al guardar asistencia. Los cambios siguen pendientes."));
       setAttendanceAlertVisible(true);
+    } finally {
+      attendanceFlushInFlightRef.current = false;
+      setAttendanceSaveState((state) => state === "saving" ? "error" : state);
     }
   };
   attendanceFlushRef.current = flushAttendance;
@@ -1427,7 +1487,7 @@ export default function PlanillaOperativaPage() {
     }
 
     const key = `${employee.vinculacion_id}|${date}`;
-    if (pendingAttendanceChangesRef.current.has(key)) {
+    if (pendingAttendanceRef.current.has(key)) {
       return;
     }
 
@@ -1552,7 +1612,7 @@ export default function PlanillaOperativaPage() {
       !hasAttendance &&
       !hasAdditionalTurns &&
       !isOutsideEmployment(employee, date) &&
-      !pendingAttendanceChangesRef.current.has(key)
+      !pendingAttendanceRef.current.has(key)
     ) {
       void toggleAttendance(employee, date);
     }
@@ -1882,7 +1942,7 @@ export default function PlanillaOperativaPage() {
         <span>{summary.needsReview} requieren revision</span>
         {pendingAttendanceChanges.size ? <span role="status" aria-live="polite">{queueStatusLabel(Array.from(pendingAttendanceChanges.values()).map((item) => ({ ...item, idempotency_key: item.idempotency_key ?? `${item.vinculacion_id}:${item.fecha}`, context: { empresaId: String(empresaId ?? "global"), contratoId: null, periodoId: String(periodId) }, state: attendanceSyncStates.get(`${item.vinculacion_id}|${item.fecha}`) ?? "PENDIENTE_LOCAL", error: null, updated_at: new Date().toISOString() })))}</span> : attendanceSaveState === "saved" ? <span role="status" aria-live="polite">Cambios guardados</span> : null}
         {pendingAttendanceChanges.size ? <button type="button" onClick={() => setAttendanceDetailsOpen(true)}>Ver detalles</button> : null}
-        {pendingAttendanceChanges.size && attendanceSaveState !== "error" ? <button type="button" onClick={() => void attendanceFlushRef.current()} disabled={attendanceSaveState === "saving"}>Guardar cambios</button> : null}
+        {pendingAttendanceChanges.size ? <button type="button" onClick={() => void attendanceFlushRef.current()} disabled={attendanceSaveState === "saving"}>{attendanceSaveState === "error" ? "Reintentar envío" : `Enviar ${pendingAttendanceChanges.size} cambios`}</button> : null}
         {employees.length > 0 && period?.estado === "ABIERTO" && user?.permissions.includes("nomina.empleados.import") ?
           <button type="button" className="op-sync-action" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={15} />{isSyncingPersonal ? "Sincronizando..." : "SINCRONIZAR AHORA"}</button> : null}
       </section>
