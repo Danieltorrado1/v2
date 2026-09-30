@@ -10502,6 +10502,8 @@ export const markNominaAsistenciaBulk = async (
       tabla: 'nomina_asistencia_diaria',
       registro_id: `${periodoId}:BULK:${Date.now()}`,
       descripcion: 'Actualizacion de asistencia por lote desde planilla',
+      empresa_id: periodo.contrato_empresa_id,
+      contrato_id: periodo.contrato_id,
       after: {
         periodo_id: periodoId,
         cambios: confirmados,
@@ -10531,6 +10533,30 @@ export const markNominaAsistenciaBulk = async (
   } catch (error) { await client.query('ROLLBACK'); throw error; }
   finally { client.release(); }
 };
+/** Read-only reconciliation for a request whose HTTP result was lost. */
+export const getNominaAsistenciaBulkAck = async (
+  periodoId: string,
+  keys: string[],
+  tenant?: TenantAccessContext,
+) => {
+  const periodo = await loadRealPeriodoOrThrow(periodoId, tenant);
+  const safeKeys = Array.from(new Set(keys.filter((key) => /^[A-Za-z0-9:_-]{1,180}$/.test(key)))).slice(0, 100);
+  if (!safeKeys.length) return { acknowledged_keys: [] };
+  const result = await dbPool.query<{ idempotency_key: string }>(
+    `
+      SELECT DISTINCT keys.key AS idempotency_key
+      FROM auditoria_eventos ae
+      CROSS JOIN LATERAL jsonb_array_elements_text(COALESCE(ae.datos_nuevos -> 'idempotency_keys', '[]'::jsonb)) AS keys(key)
+      WHERE ae.accion = 'NOMINA_ASISTENCIA_BULK_UPDATE'
+        AND ae.datos_nuevos ->> 'periodo_id' = $1
+        AND keys.key = ANY($2::text[])
+        AND (ae.empresa_id = $3::bigint OR ae.contrato_id = $4::bigint)
+    `,
+    [String(periodoId), safeKeys, periodo.contrato_empresa_id ?? null, periodo.contrato_id],
+  );
+  return { acknowledged_keys: result.rows.map((row) => row.idempotency_key) };
+};
+
 export const createNominaNovedadConTurno = async (
   input: CreateNominaNovedadConTurnoInput,
   actorUserId: string,
