@@ -548,7 +548,7 @@ async function loadAttendance(periodId: string) {
 export default function PlanillaOperativaPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { empresaId } = useCompanyContext();
+  const { empresaId, capabilities } = useCompanyContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const previousFilterScopeRef = useRef("");
   const skipFilterWriteRef = useRef(false);
@@ -1925,7 +1925,7 @@ export default function PlanillaOperativaPage() {
           </select>
         </label>
         <span className={`nomina-period-status ${period?.estado === "ABIERTO" ? "open" : "locked"}`}>{period?.estado ?? "CARGANDO"}</span>
-        {canAccessNominaConfiguration(user) ? <button type="button" className="op-config-action" onClick={() => navigate("/configuracion/nomina/asignaciones")} title="Categorías salariales y parámetros económicos"><Settings size={15} /> Configuración</button> : null}
+        {canAccessNominaConfiguration(user, capabilities?.modulos.NOMINA === true) ? <button type="button" className="op-config-action" onClick={() => navigate("/configuracion/nomina/asignaciones")} title="Categorías salariales y parámetros económicos"><Settings size={15} /> Configuración</button> : null}
       </>
     )}>
       <section className="op-sheet-page">
