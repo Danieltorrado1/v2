@@ -50,7 +50,7 @@ interface ContextRow extends QueryResultRow {
   modalidad_id: string | null; modalidad_nombre: string | null;
   asignacion_laboral: Record<string, unknown> | null;
   gestor_usuario_id: string | null; gestor_nombre: string | null; gestor_origen: string | null;
-  assignment_candidates: string; pension_candidates: string; labor_candidates: string; gestor_candidates: string;
+  assignment_candidates: string; category_candidates: string; pension_candidates: string; labor_candidates: string; gestor_candidates: string;
 }
 
 const dateOnly = (value: string): string => {
@@ -83,8 +83,10 @@ export const resolveContextoLaboral = async (
     SELECT v.persona_id::text, v.id::text vinculacion_id, c.empresa_id::text, c.id::text contrato_id,
       v.estado_vinculacion, v.fecha_inicio::text fecha_ingreso, v.fecha_fin::text fecha_retiro, v.cotiza_pension,
       v.contrato_cargo_id::text cargo_id, cc.nombre_cargo cargo_nombre,
-      cat.id::text categoria_id, cat.codigo_categoria categoria_codigo, cat.nombre_categoria categoria_nombre,
-      cat.salario_base::text categoria_salario_base,
+      CASE WHEN COALESCE(cat.category_candidates, 0) = 1 THEN cat.id::text END categoria_id,
+      CASE WHEN COALESCE(cat.category_candidates, 0) = 1 THEN cat.codigo_categoria END categoria_codigo,
+      CASE WHEN COALESCE(cat.category_candidates, 0) = 1 THEN cat.nombre_categoria END categoria_nombre,
+      CASE WHEN COALESCE(cat.category_candidates, 0) = 1 THEN cat.salario_base::text END categoria_salario_base,
       pen.id::text pension_id, (LOWER(BTRIM(pen.tipo_condicion)) = 'aporta_pension') pension_aporta,
       pen.tipo_condicion pension_tipo, pen.valor::text pension_valor,
       CASE WHEN ca.id IS NULL THEN NULL ELSE jsonb_build_object(
@@ -107,20 +109,13 @@ export const resolveContextoLaboral = async (
       ) END asignacion_laboral,
       gestor.usuario_id::text gestor_usuario_id, gestor.nombre_completo gestor_nombre, gestor.origen gestor_origen,
       COALESCE(ca.assignment_candidates, 0)::text assignment_candidates,
+      COALESCE(cat.category_candidates, 0)::text category_candidates,
       COALESCE(pen.pension_candidates, 0)::text pension_candidates,
       COALESCE(pal.labor_candidates, 0)::text labor_candidates,
       COALESCE(gestor.gestor_candidates, 0)::text gestor_candidates
     FROM vinculaciones v
     JOIN contratos c ON c.id = v.contrato_id
     LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
-    LEFT JOIN LATERAL (
-      SELECT ncs.*, COUNT(*) OVER () candidate_count
-      FROM nomina_categorias_salariales ncs
-      WHERE ncs.contrato_id = v.contrato_id AND COALESCE(ncs.activo, TRUE)
-        AND (ncs.vigente_desde IS NULL OR ncs.vigente_desde <= $3::date)
-        AND (ncs.vigente_hasta IS NULL OR ncs.vigente_hasta >= $3::date)
-      ORDER BY ncs.vigente_desde DESC NULLS LAST, ncs.id DESC LIMIT 1
-    ) cat ON TRUE
     LEFT JOIN LATERAL (
       SELECT vce.*, COUNT(*) OVER () pension_candidates
       FROM vinculacion_condiciones_economicas vce
@@ -140,6 +135,15 @@ export const resolveContextoLaboral = async (
     ) ca ON TRUE
     LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
     LEFT JOIN municipios mu ON mu.id = ca.municipio_id
+    LEFT JOIN LATERAL (
+      SELECT ncs.*, COUNT(*) OVER () category_candidates
+      FROM nomina_categorias_salariales ncs
+      WHERE ncs.contrato_id = v.contrato_id AND COALESCE(ncs.activo, TRUE)
+        AND LOWER(BTRIM(ncs.modalidad)) = LOWER(BTRIM(COALESCE(ff.modalidad_final, ca.modalidad)))
+        AND (ncs.vigente_desde IS NULL OR ncs.vigente_desde <= $3::date)
+        AND (ncs.vigente_hasta IS NULL OR ncs.vigente_hasta >= $3::date)
+      ORDER BY ncs.vigente_desde DESC NULLS LAST, ncs.id DESC LIMIT 1
+    ) cat ON TRUE
     LEFT JOIN LATERAL (
       SELECT pal0.*, cul0.nombre_ubicacion, COUNT(*) OVER () labor_candidates
       FROM personal_asignaciones_laborales pal0
@@ -174,6 +178,7 @@ export const resolveContextoLaboral = async (
   if (!row) throw new AppError('Contexto laboral no encontrado', 404, 'INTEGRACION_CONTEXTO_NOT_FOUND');
   const ambiguities = [
     Number(row.assignment_candidates) > 1 ? 'ASIGNACION_OPERATIVA' : null,
+    Number(row.category_candidates) > 1 ? 'CATEGORIA_SALARIAL' : null,
     Number(row.pension_candidates) > 1 ? 'CONDICION_PENSION' : null,
     Number(row.labor_candidates) > 1 ? 'ASIGNACION_LABORAL' : null,
     Number(row.gestor_candidates) > 1 ? 'GESTOR' : null
@@ -197,3 +202,72 @@ export const resolveContextoLaboral = async (
 export const resolveContextoLaboralForClient = (input: ContextoLaboralInput, tenant: TenantAccessContext | undefined, client: PoolClient) => resolveContextoLaboral(input, tenant, client);
 
 export const resolveContextoLaboralReadOnly = (input: ContextoLaboralInput, tenant?: TenantAccessContext) => resolveContextoLaboral(input, tenant, dbPool);
+
+export interface OperationalContextAtDate {
+  id: number;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  municipio_id: number | null;
+  institucion_id: number | null;
+  sede_id: number | null;
+  modalidad_id: number | null;
+  municipio: string | null;
+  institucion: string | null;
+  sede: string | null;
+  modalidad: string | null;
+  origen: 'cobertura_asignaciones';
+}
+
+export interface OperationalContextTimeline {
+  tramos: OperationalContextAtDate[];
+  huecos: Array<{ fecha_inicio: string; fecha_fin: string }>;
+}
+
+const canonicalOperationalQuery = async (input: { empresaId: number; contratoId: number; vinculacionId: number; fechaInicio: string; fechaFin: string }, executor: Executor): Promise<OperationalContextAtDate[]> => {
+  const result = await executor.query<OperationalContextAtDate>(`
+    SELECT ca.id::int, GREATEST(ca.fecha_inicio, $4::date)::text fecha_inicio,
+      LEAST(COALESCE(ca.fecha_fin, $5::date), $5::date)::text fecha_fin,
+      ca.municipio_id::int, ff.institucion_id::int, ff.sede_id::int, ff.modalidad_id::int,
+      COALESCE(ff.municipio_texto, mu.nombre_municipio) municipio,
+      COALESCE(ff.institucion_final, ca.institucion) institucion,
+      COALESCE(ff.sede_final, ca.sede) sede,
+      COALESCE(ff.modalidad_final, ca.modalidad) modalidad,
+      'cobertura_asignaciones'::text origen
+    FROM cobertura_asignaciones ca
+    JOIN contratos c ON c.id = ca.contrato_id AND c.empresa_id = $1::bigint
+    LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+    LEFT JOIN municipios mu ON mu.id = ca.municipio_id
+    WHERE ca.contrato_id = $2::bigint AND ca.vinculacion_id = $3::bigint
+      AND COALESCE(ca.activo, TRUE)
+      AND ca.fecha_inicio <= $5::date
+      AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $4::date)
+    ORDER BY ca.fecha_inicio, ca.id`, [input.empresaId, input.contratoId, input.vinculacionId, input.fechaInicio, input.fechaFin]);
+  return result.rows.map((row) => ({ ...row, fecha_inicio: String(row.fecha_inicio).slice(0, 10), fecha_fin: row.fecha_fin ? String(row.fecha_fin).slice(0, 10) : input.fechaFin }));
+};
+
+export const resolveOperationalContextAtDate = async (input: { empresaId: number; contratoId: number; vinculacionId: number; fecha: string }, executor: Executor = dbPool): Promise<OperationalContextAtDate | null> => {
+  const date = dateOnly(input.fecha);
+  const rows = await canonicalOperationalQuery({ ...input, fechaInicio: date, fechaFin: date }, executor);
+  const matches = rows.filter((row) => row.fecha_inicio <= date && (row.fecha_fin === null || row.fecha_fin >= date));
+  if (matches.length > 1) throw new AppError('Solapamiento de vigencias operativas', 409, 'ASIGNACION_OPERATIVA_SOLAPADA');
+  return matches[0] ?? null;
+};
+
+export const resolveOperationalContextTimeline = async (input: { empresaId: number; contratoId: number; vinculacionId: number; fechaInicio: string; fechaFin: string }, executor: Executor = dbPool): Promise<OperationalContextTimeline> => {
+  const inicio = dateOnly(input.fechaInicio); const fin = dateOnly(input.fechaFin);
+  if (inicio > fin) throw new AppError('Rango operativo inválido', 400, 'ASIGNACION_OPERATIVA_RANGO_INVALIDO');
+  const rows = await canonicalOperationalQuery({ ...input, fechaInicio: inicio, fechaFin: fin }, executor);
+  const tramos: OperationalContextAtDate[] = [];
+  const huecos: Array<{ fecha_inicio: string; fecha_fin: string }> = [];
+  let cursor = inicio;
+  for (const row of rows) {
+    if (row.fecha_inicio > cursor) huecos.push({ fecha_inicio: cursor, fecha_fin: previousDateOnly(row.fecha_inicio) });
+    if (tramos.length && row.fecha_inicio <= (tramos[tramos.length - 1]!.fecha_fin ?? fin)) throw new AppError('Solapamiento de vigencias operativas', 409, 'ASIGNACION_OPERATIVA_SOLAPADA');
+    tramos.push(row); cursor = nextDateOnly(row.fecha_fin ?? fin);
+  }
+  if (cursor <= fin) huecos.push({ fecha_inicio: cursor, fecha_fin: fin });
+  return { tramos, huecos };
+};
+
+const previousDateOnly = (value: string): string => { const date = new Date(`${value}T00:00:00Z`); date.setUTCDate(date.getUTCDate() - 1); return date.toISOString().slice(0, 10); };
+const nextDateOnly = (value: string): string => { const date = new Date(`${value}T00:00:00Z`); date.setUTCDate(date.getUTCDate() + 1); return date.toISOString().slice(0, 10); };

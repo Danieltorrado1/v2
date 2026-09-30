@@ -87,6 +87,7 @@ const runChange = async (outboxEnabled: boolean) => {
     '../auditoria/auditoria.helper': { registerAuditEntry: async () => undefined },
     '../integracion/integracion.service': { publicarEventoOutbox: async () => { if (outboxEnabled) published.push('ASIGNACION_OPERATIVA_CAMBIADA'); return outboxEnabled ? '1' : 'OUTBOX_DISABLED'; } },
     '../cobertura/cobertura-asignacion.service': { persistCanonicalAssignmentVersion: (...args: unknown[]) => canonical.persistCanonicalAssignmentVersion(...args) },
+    '../nomina/infrastructure/repositories/nomina-poblacion.repository': { nominaPoblacionRepository: { repairOperationalSnapshots: async () => [] } },
     '../documentos/documentos.checklist.service': {},
     './vinculaciones.personal.domain': {},
     './vinculaciones.personal.schemas': {}
@@ -132,6 +133,7 @@ test('corrección inmediata actualiza la asignación seleccionada sin duplicarla
     '../auditoria/auditoria.helper': { registerAuditEntry: async () => undefined },
     '../integracion/integracion.service': { publicarEventoOutbox: async () => 'OUTBOX_DISABLED' },
     '../cobertura/cobertura-asignacion.service': { persistCanonicalAssignmentVersion: (...args: unknown[]) => canonical.persistCanonicalAssignmentVersion(...args) },
+    '../nomina/infrastructure/repositories/nomina-poblacion.repository': { nominaPoblacionRepository: { repairOperationalSnapshots: async () => [] } },
     '../documentos/documentos.checklist.service': {},
     './vinculaciones.personal.domain': {},
     './vinculaciones.personal.schemas': {}

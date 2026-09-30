@@ -21,7 +21,7 @@ test('Planilla Operativa prioriza el snapshot de contexto por periodo', () => {
 
 test('la sincronizacion rehidrata contexto solo cuando no existe cobertura intersectante', () => {
   assert.match(serviceSource, /NOT EXISTS \([\s\S]*FROM cobertura_asignaciones ca_period/);
-  assert.match(serviceSource, /REHIDRATACION|SINCRONIZACION_PERSONAL/);
+  assert.match(serviceSource, /REHIDRATACION|SINCRONIZACION_PERSONAL|CANONICA_COBERTURA_ASIGNACIONES/);
   assert.match(serviceSource, /ON CONFLICT \(periodo_id, nomina_empleado_id\) DO UPDATE/);
   assert.match(serviceSource, /contexto IS DISTINCT FROM EXCLUDED\.contexto/);
 });
