@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Clock3, Plus, RefreshCw, Search, Settings, X } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
-import { canAccessNominaConfiguration } from "../../architecture/moduleAccess";
+import { canAccessNominaConfiguration, isModuleEnabled } from "../../architecture/moduleAccess";
 import { onPersonalInvalidation } from "../../events/personalInvalidation";
 import { useCompanyContext } from "../../context/CompanyContext";
 import {
@@ -1925,7 +1925,7 @@ export default function PlanillaOperativaPage() {
           </select>
         </label>
         <span className={`nomina-period-status ${period?.estado === "ABIERTO" ? "open" : "locked"}`}>{period?.estado ?? "CARGANDO"}</span>
-        {canAccessNominaConfiguration(user, capabilities?.modulos.NOMINA === true) ? <button type="button" className="op-config-action" onClick={() => navigate("/configuracion/nomina/asignaciones")} title="Categorías salariales y parámetros económicos"><Settings size={15} /> Configuración</button> : null}
+        {canAccessNominaConfiguration(user, isModuleEnabled(capabilities, 'NOMINA')) ? <button type="button" className="op-config-action" onClick={() => navigate("/configuracion/nomina/asignaciones")} title="Categorías salariales y parámetros económicos"><Settings size={15} /> Configuración</button> : null}
       </>
     )}>
       <section className="op-sheet-page">

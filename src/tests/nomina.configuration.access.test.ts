@@ -13,7 +13,7 @@ test('the planilla action, catalog route, and backend capabilities share the sam
   assert.match(catalog, /permission: \['nomina\.economico\.read'\]/);
   assert.match(catalog, /allowedRoles: \['ADMINISTRADOR', 'TALENTO_HUMANO'\]/);
   assert.match(access, /item\.allowedRoles/);
-  assert.match(planilla, /canAccessNominaConfiguration\(user,\s*capabilities\?\.modulos\.NOMINA === true\)/);
+  assert.match(planilla, /canAccessNominaConfiguration\(user,\s*isModuleEnabled\(capabilities, 'NOMINA'\)\)/);
   assert.doesNotMatch(planilla, /user\?\.permissions\.includes\("nomina\.periodos\.update"\).*op-config-action/);
   assert.match(routes, /\/procesos\/areas', requirePermissions\('nomina\.read'\)/);
   assert.match(routes, /\/procesos\/usuarios-asignables', requirePermissions\('nomina\.periodos\.update'\)/);

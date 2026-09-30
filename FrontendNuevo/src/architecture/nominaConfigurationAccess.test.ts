@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { canAccessNominaConfiguration, canManageNominaConfiguration, canReadNominaConfiguration } from './nominaConfigurationAccess';
-import { canAccessEntry, resolveCatalogLocation, visibleTenantModules } from './moduleAccess';
+import { canAccessEntry, catalogModuleEnabled, isModuleEnabled, normalizeModuleFlags, resolveCatalogLocation, visibleTenantModules } from './moduleAccess';
 import { tenantModules } from './moduleCatalog';
 
 const user = (roles: string[], permissions: string[]) => ({ roles, permissions });
@@ -26,7 +26,7 @@ test('ADMINISTRADOR hereda la habilitación del módulo NOMINA, sin módulo econ
   const admin = user(['ADMINISTRADOR'], []);
   const flags = { NOMINA: true, CONFIG_EMPRESA_NOMINA: false };
   assert.equal(canAccessEntry(payrollConfigurationEntry, admin, flags, configurationModule), true);
-  assert.ok(visibleTenantModules(admin, { empresa: { id: 15 }, modulos: flags } as never, 15)
+  assert.ok(visibleTenantModules(admin, { empresa: { id: 15 }, modulos: flags, modulos_habilitados: ['NOMINA'] } as never, 15)
     .some((module) => module.children.some((entry) => entry.code === 'CONFIG_EMPRESA_NOMINA')));
 });
 
@@ -56,4 +56,28 @@ test('la navegación directa resuelve el catálogo económico y la hidratación 
   assert.match(auth, /getAuthToken\(\)/);
   assert.match(auth, /getAuthUser\(\)/);
   assert.match(access, /canAccessEntry\(current\.entry/);
+});
+
+test('reproduce el payload productivo sanitizado de empresa 15 y hereda el módulo Nómina canónico', () => {
+  const admin = user(['ADMINISTRADOR'], ['nomina.read']);
+  const capabilities = {
+    empresa: { id: 15, nombre: 'Empresa 15' },
+    organizacion: { id: 1, nombre: 'Organización sanitizada' },
+    legacy: false,
+    suscripcion: { id: 7, estado: 'ACTIVA', fecha_inicio: '2026-01-01', fecha_fin: null, plan: { id: 3, codigo: 'OPERATIVO', nombre: 'Operativo' } },
+    modulos: { DASHBOARD: true, PERSONAL: true, CONFIGURACION_EMPRESA: false },
+    modulos_habilitados: ['DASHBOARD', 'PERSONAL', 'NOMINA'],
+    modulos_deshabilitados: [],
+    modulos_plan: ['DASHBOARD', 'PERSONAL', 'NOMINA'],
+    overrides: [],
+  } as const;
+  const location = resolveCatalogLocation('/configuracion/nomina/asignaciones');
+  const nomina = tenantModules.find((module) => module.code === 'NOMINA')!;
+
+  assert.equal(isModuleEnabled(capabilities, 'NOMINA'), true);
+  assert.equal(isModuleEnabled(capabilities, 'CONFIG_EMPRESA_NOMINA'), false);
+  assert.equal(catalogModuleEnabled('CONFIGURACION_EMPRESA', capabilities.modulos), false);
+  assert.equal(canAccessEntry(location!.entry, admin, capabilities.modulos, configurationModule), false, 'regresión del guard anterior');
+  assert.equal(canAccessEntry(location!.entry, admin, normalizeModuleFlags(capabilities), configurationModule), true);
+  assert.ok(visibleTenantModules(admin, capabilities, 15).some((module) => module.code === nomina.code));
 });

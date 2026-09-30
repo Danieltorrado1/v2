@@ -6,6 +6,7 @@ import type { Organizacion, TenantContextEmpresa } from "../types/configuracion.
 import { useAuth } from "./AuthContext";
 import { pickAuthorizedCompanyId } from "./companyScope";
 import { saasApi, type EmpresaCapabilities } from "../services/saasApi";
+import { isModuleEnabled } from '../architecture/moduleAccess';
 
 type CompanyContextValue = {
   empresasDisponibles: TenantContextEmpresa[];
@@ -185,7 +186,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     },
     capabilities,
     capabilitiesLoading,
-    hasModule: (code: string) => capabilities?.modulos[code] === true,
+    hasModule: (code: string) => isModuleEnabled(capabilities, code),
     retryBootstrap: () => {
       if (retryTimer.current !== null) return;
       const delay = Math.max(0, retryAfterUntil - Date.now());
