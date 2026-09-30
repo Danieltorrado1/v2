@@ -58,3 +58,19 @@ test("errores de red y respuesta parcial conservan la cola hasta cada ACK", () =
   assert.equal(applyAttendanceAcks(items, ["a"]).length, 1);
   assert.equal(applyAttendanceAcks(items, []).length, 2);
 });
+
+test("una operación ENVIANDO heredada exige verificación y no se reanuda sola", () => {
+  const result = migrateAttendanceQueue([
+    { vinculacion_id: "10", fecha: "2026-09-01", presente: true, idempotency_key: "sending", state: "ENVIANDO" },
+  ], context, () => "unused");
+  assert.equal(result.items[0]?.state, "PENDING_VERIFICATION");
+  assert.match(queueStatusLabel(result.items), /requieren/);
+});
+
+test("una operación de otro periodo queda bloqueada para revisión", () => {
+  const item = migrateAttendanceQueue([
+    { vinculacion_id: "10", fecha: "2026-09-01", presente: true, context: { empresaId: "15", contratoId: "24", periodoId: "99" } },
+  ], context, () => "unused").items[0]!;
+  assert.equal(item.state, "ERROR_REQUIERE_USUARIO");
+  assert.equal(classifyAttendanceItem(item, context), "CONTEXTO_DIFERENTE");
+});

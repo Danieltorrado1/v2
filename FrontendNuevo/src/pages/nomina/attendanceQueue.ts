@@ -1,6 +1,7 @@
 export type AttendanceSyncState =
   | "PENDIENTE_LOCAL"
   | "ENVIANDO"
+  | "PENDING_VERIFICATION"
   | "CONFIRMADO_SERVIDOR"
   | "ERROR_REINTENTABLE"
   | "ERROR_REQUIERE_USUARIO";
@@ -65,7 +66,12 @@ export function migrateAttendanceQueue(
       String(candidateContext.contratoId ?? context.contratoId ?? "") === String(context.contratoId ?? "") &&
       String(candidateContext.periodoId ?? context.periodoId) === context.periodoId
     );
-    const state: AttendanceSyncState = sameContext ? "PENDIENTE_LOCAL" : "ERROR_REQUIERE_USUARIO";
+    const persistedState = candidate.state === "ENVIANDO" ? "PENDING_VERIFICATION" : candidate.state;
+    const state: AttendanceSyncState = !sameContext
+      ? "ERROR_REQUIERE_USUARIO"
+      : persistedState === "ERROR_REQUIERE_USUARIO" || persistedState === "ERROR_REINTENTABLE" || persistedState === "PENDING_VERIFICATION"
+        ? persistedState
+        : "PENDIENTE_LOCAL";
     items.push({
       vinculacion_id: vinculacionId,
       fecha,
@@ -87,6 +93,7 @@ export function queueStatusLabel(items: AttendanceQueueItem[]): string {
   const pending = items.filter((item) => item.state !== "CONFIRMADO_SERVIDOR").length;
   if (!pending) return "Cambios guardados";
   if (items.some((item) => item.state === "ENVIANDO")) return "Guardando...";
+  if (items.some((item) => item.state === "PENDING_VERIFICATION")) return `${pending} cambios requieren atenciÃ³n`;
   if (items.some((item) => item.state.startsWith("ERROR_"))) return `${pending} cambio${pending === 1 ? "" : "s"} requiere${pending === 1 ? "" : "n"} atención`;
   if (items.some((item) => item.state === "ENVIANDO")) return "Guardando…";
   if (items.some((item) => item.state.startsWith("ERROR_"))) return "Error de sincronización";

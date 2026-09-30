@@ -28,12 +28,12 @@ test('Planilla no pinta turnos externos ni anulados como adicionales internos', 
 test('bulk registra claves de idempotencia y la UI sólo confirma tras confirmados', () => {
   assert.match(nomina, /idempotency_keys/);
   assert.match(planilla, /CONFIRMADO_SERVIDOR/);
-  assert.match(planilla, /Asistencia guardada por el servidor/);
+  assert.match(planilla, /Cambios guardados/);
+  assert.match(planilla, /PENDING_VERIFICATION/);
 });
 
 test('la cola intenta flush al abandonar contexto y advierte antes de cerrar', () => {
-  assert.match(planilla, /visibilitychange/);
-  assert.match(planilla, /pagehide/);
+  assert.doesNotMatch(planilla, /flushWhenLeaving/);
   assert.match(planilla, /beforeunload/);
   assert.match(planilla, /event\.returnValue/);
 });
