@@ -30,6 +30,9 @@ test('bulk registra claves de idempotencia y la UI sólo confirma tras confirmad
   assert.match(planilla, /CONFIRMADO_SERVIDOR/);
   assert.match(planilla, /Cambios guardados/);
   assert.match(planilla, /PENDING_VERIFICATION/);
+  assert.match(planilla, /attendanceFlushInFlightRef\.current/);
+  assert.match(planilla, /period\.estado !== "ABIERTO"/);
+  assert.match(planilla, /Reintentar envío/);
 });
 
 test('la cola intenta flush al abandonar contexto y advierte antes de cerrar', () => {

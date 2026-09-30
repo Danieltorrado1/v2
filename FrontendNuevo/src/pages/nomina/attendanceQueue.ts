@@ -93,7 +93,7 @@ export function queueStatusLabel(items: AttendanceQueueItem[]): string {
   const pending = items.filter((item) => item.state !== "CONFIRMADO_SERVIDOR").length;
   if (!pending) return "Cambios guardados";
   if (items.some((item) => item.state === "ENVIANDO")) return "Guardando...";
-  if (items.some((item) => item.state === "PENDING_VERIFICATION")) return `${pending} cambios requieren atenciÃ³n`;
+  if (items.some((item) => item.state === "PENDING_VERIFICATION")) return `${pending} cambios requieren atencion`;
   if (items.some((item) => item.state.startsWith("ERROR_"))) return `${pending} cambio${pending === 1 ? "" : "s"} requiere${pending === 1 ? "" : "n"} atención`;
   if (items.some((item) => item.state === "ENVIANDO")) return "Guardando…";
   if (items.some((item) => item.state.startsWith("ERROR_"))) return "Error de sincronización";

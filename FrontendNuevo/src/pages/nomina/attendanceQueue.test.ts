@@ -74,3 +74,28 @@ test("una operación de otro periodo queda bloqueada para revisión", () => {
   assert.equal(item.state, "ERROR_REQUIERE_USUARIO");
   assert.equal(classifyAttendanceItem(item, context), "CONTEXTO_DIFERENTE");
 });
+
+test("diagnóstico real de 119 pendientes ofrece envío manual y nunca sincronización falsa", () => {
+  const dates = Array.from({ length: 25 }, (_, index) => `2026-09-${String(index + 1).padStart(2, "0")}`);
+  const entries = Array.from({ length: 119 }, (_, index) => ({
+    vinculacion_id: String(100 + (index % 6)),
+    fecha: dates[index % dates.length]!,
+    presente: index % 2 === 0,
+    idempotency_key: `real-${index + 1}`,
+    state: "PENDIENTE_LOCAL",
+  }));
+  const items = migrateAttendanceQueue(entries, context, () => "unused").items;
+  assert.equal(items.length, 119);
+  assert.equal(queueStatusLabel(items), "119 cambios pendientes");
+  assert.doesNotMatch(queueStatusLabel(items), /Sincronizando/);
+});
+
+test("ACK parcial, timeout sin ACK y ACK completo conservan la semántica por operación", () => {
+  const items = migrateAttendanceQueue([
+    { vinculacion_id: "10", fecha: "2026-09-01", presente: true, idempotency_key: "a" },
+    { vinculacion_id: "11", fecha: "2026-09-01", presente: true, idempotency_key: "b" },
+  ], context, () => "unused").items;
+  assert.equal(applyAttendanceAcks(items, ["a"]).length, 1);
+  assert.equal(applyAttendanceAcks(items.map((item) => ({ ...item, state: "PENDING_VERIFICATION" as const })), []).length, 2);
+  assert.equal(applyAttendanceAcks(items, ["a", "b"]).length, 0);
+});
