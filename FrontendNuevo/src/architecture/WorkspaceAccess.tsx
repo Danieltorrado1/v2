@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCompanyContext } from '../context/CompanyContext';
-import { canAccessEntry, isGlobalAdministrator, resolveCatalogLocation } from './moduleAccess';
+import { canAccessEntry, isGlobalAdministrator, normalizeModuleFlags, resolveCatalogLocation } from './moduleAccess';
 
 export function WorkspaceAccess({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -18,7 +18,7 @@ export function WorkspaceAccess({ children }: { children: ReactNode }) {
   if (isLoading || capabilitiesLoading) return <section className="workspace-empty">Cargando acceso de empresa…</section>;
   if (!empresaId) return <section className="workspace-empty">Selecciona una empresa autorizada para continuar.</section>;
   if (!capabilities || Number(capabilities.empresa.id) !== empresaId) return <section className="workspace-empty">Cargando módulos de la empresa…</section>;
-  return canAccessEntry(current.entry, user, capabilities.modulos, current.entry === current.module ? undefined : current.module)
+  return canAccessEntry(current.entry, user, normalizeModuleFlags(capabilities), current.entry === current.module ? undefined : current.module)
     ? children : <AccessDenied />;
 }
 
