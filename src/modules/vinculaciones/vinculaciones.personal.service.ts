@@ -630,7 +630,6 @@ export const replaceAsignacionOperativaPersonal = async (
       }
     }
     const current=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND (($3::bigint IS NOT NULL AND id=$3::bigint) OR ($3::bigint IS NULL AND fecha_inicio<= $2::date AND (fecha_fin IS NULL OR fecha_fin>= $2::date))) ORDER BY fecha_inicio DESC,id DESC LIMIT 1 FOR UPDATE`,[vinculacionId,fechaDesde,input.asignacion_id ?? null]);
-    const next=await client.query<{ fecha_inicio: string }>(`SELECT fecha_inicio::text FROM cobertura_asignaciones WHERE vinculacion_id=$1::bigint AND fecha_inicio>$2::date ORDER BY fecha_inicio ASC,id ASC LIMIT 1`,[vinculacionId,fechaDesde]);
     const f=target.rows[0];
     if (input.tipo_cambio === 'CORRECCION_DIGITACION' && !current.rows[0]) {
       throw new AppError('La asignación histórica seleccionada no existe para esta vinculación',404,'ASIGNACION_OPERATIVA_NOT_FOUND');
@@ -643,10 +642,9 @@ export const replaceAsignacionOperativaPersonal = async (
       await client.query('COMMIT'); return corrected.rows[0];
     }
     if(String(current.rows[0]?.focalizacion_final_id)===String(focalizacionFinalId)){await client.query('COMMIT');return current.rows[0];}
-    if(current.rows[0])await client.query(`UPDATE cobertura_asignaciones SET activo=FALSE,fecha_fin=GREATEST(fecha_inicio,$2::date-1),observacion=CONCAT_WS(' · ',observacion,'Corregida desde Personal') WHERE id=$1::bigint`,[current.rows[0].id,fechaDesde]);
-    const nextFechaFin = next.rows[0]?.fecha_inicio ? new Date(`${next.rows[0].fecha_inicio}T00:00:00Z`) : null;
-    if (nextFechaFin) nextFechaFin.setUTCDate(nextFechaFin.getUTCDate() - 1);
-    const inserted=await client.query<any>(`INSERT INTO cobertura_asignaciones(contrato_id,municipio_id,focalizacion_final_id,vinculacion_id,institucion,sede,consecutivo_sede,modalidad,categoria_cobertura,tipo_asignacion,porcentaje_cobertura,fecha_inicio,fecha_fin,observacion,activo) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,'PRINCIPAL'),COALESCE($11::numeric,1::numeric),$12::date,$13::date,$14,TRUE) RETURNING *`,[vinculacion.contrato_id,f.municipio_id,focalizacionFinalId,vinculacionId,f.institucion_final,f.sede_final,f.consecutivo_final,f.modalidad_final,f.categoria_cobertura,current.rows[0]?.tipo_asignacion,current.rows[0]?.porcentaje_cobertura,fechaDesde,nextFechaFin?.toISOString().slice(0,10) ?? null,input.observacion ?? 'Correccion operativa desde Personal']);
+    const canonicalId = await persistCanonicalAssignmentVersion(client, { contratoId: vinculacion.contrato_id, vinculacionId, fechaDesde, contexto: { cobertura_asignacion_id: current.rows[0]?.id ?? null, municipio_id: f.municipio_id, institucion_id: f.institucion_id, institucion: f.institucion_final, sede_id: f.sede_id, sede: f.sede_final, modalidad_id: f.modalidad_id, modalidad: f.modalidad_final }, actor: String(actorUserId), motivo: input.observacion ?? input.motivo });
+    const inserted=await client.query<any>(`SELECT * FROM cobertura_asignaciones WHERE id=$1::bigint`,[canonicalId]);
+    if (!inserted.rows[0]) throw new AppError('No fue posible crear la version canonica de la asignacion',500,'ASIGNACION_OPERATIVA_VERSION_FAILED');
     if (String(current.rows[0]?.municipio_id ?? '') !== String(f.municipio_id ?? '')) {
       await client.query(
         `UPDATE gestor_personal_asignaciones gpa
