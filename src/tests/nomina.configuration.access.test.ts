@@ -18,3 +18,11 @@ test('the planilla action, catalog route, and backend capabilities share the sam
   assert.match(routes, /\/procesos\/areas', requirePermissions\('nomina\.read'\)/);
   assert.match(routes, /\/procesos\/usuarios-asignables', requirePermissions\('nomina\.periodos\.update'\)/);
 });
+
+test('ADMINISTRADOR conserva acceso económico aunque el permiso no esté materializado', () => {
+  const middleware = readFileSync(join(process.cwd(), 'src/middlewares/roleMiddleware.ts'), 'utf8');
+  assert.match(middleware, /ADMINISTRADOR/);
+  assert.match(middleware, /nomina\.economico\.read/);
+  assert.match(middleware, /nomina\.parametros\.manage/);
+  assert.match(middleware, /nomina\.categorias\.manage/);
+});

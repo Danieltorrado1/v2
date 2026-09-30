@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { apiClient } from '../../../../services/apiClient';
 import { configuracionApi } from '../../../../services/configuracionApi';
+import { useAuth } from '../../../../context/AuthContext';
 import { useCompanyContext } from '../../../../context/CompanyContext';
 import type { Contrato } from '../../../../types/configuracion.types';
 import {
@@ -126,10 +127,16 @@ const slug = (value: string) =>
     .replace(/[^A-Z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
 
-export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?: NominaConfigTab } = {}) {
+export function NominaProcesosTab({ initialTab = 'categorias' }: { initialTab?: NominaConfigTab } = {}) {
+  const { user } = useAuth();
   const { empresaActual } = useCompanyContext();
+  const hasOperationalAssignmentAccess = Boolean(
+    user?.permissions.includes('nomina.read') && user?.permissions.includes('nomina.periodos.update'),
+  );
 
-  const [tab, setTab] = useState<NominaConfigTab>(initialTab);
+  const [tab, setTab] = useState<NominaConfigTab>(
+    hasOperationalAssignmentAccess || initialTab !== 'asignaciones' ? initialTab : 'categorias',
+  );
 
   const [users, setUsers] = useState<AssignableUser[]>([]);
   const [contracts, setContracts] = useState<Contrato[]>([]);
@@ -175,6 +182,15 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
 
   const reload = useCallback(async () => {
     if (!empresaActual) {
+      return;
+    }
+
+    if (!hasOperationalAssignmentAccess) {
+      setUsers([]);
+      setResponsibilities({});
+      setContracts([]);
+      setAreas([]);
+      setUsersLoading(false);
       return;
     }
 
@@ -290,7 +306,7 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
     } finally {
       setUsersLoading(false);
     }
-  }, [empresaActual, selectedContractId]);
+  }, [empresaActual, hasOperationalAssignmentAccess, selectedContractId]);
 
   useEffect(() => {
     void reload();
@@ -589,8 +605,9 @@ export function NominaProcesosTab({ initialTab = 'asignaciones' }: { initialTab?
           <button
             className={tab === 'asignaciones' ? 'active' : ''}
             onClick={() => setTab('asignaciones')}
+            disabled={!hasOperationalAssignmentAccess}
           >
-            ASIGNACIONES DE NÓMINA
+            ASIGNACIONES OPERATIVAS
           </button>
 
           <button

@@ -64,7 +64,15 @@ export const requirePermissions =
       return;
     }
 
-    const hasAllPermissions = requiredPermissions.every((permission) =>
+    const adminEconomicConfigurationPermissions = new Set([
+      'nomina.economico.read',
+      'nomina.parametros.manage',
+      'nomina.categorias.manage'
+    ]);
+    const isAdministratorEconomicConfigurationRequest = req.user.roles.includes('ADMINISTRADOR')
+      && requiredPermissions.length > 0
+      && requiredPermissions.every((permission) => adminEconomicConfigurationPermissions.has(permission));
+    const hasAllPermissions = isAdministratorEconomicConfigurationRequest || requiredPermissions.every((permission) =>
       req.user?.permissions.includes(permission)
     );
 
