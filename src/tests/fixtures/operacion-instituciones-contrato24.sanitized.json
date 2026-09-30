@@ -1,0 +1,11 @@
+{
+  "empresa_id": 15,
+  "contrato_id": 24,
+  "rows": [
+    { "institucion_id": 101, "sede_id": 1001, "modalidad_id": 1, "vigente_desde": "2026-01-01", "vigente_hasta": "2026-06-30", "asignacion": "HISTORICA" },
+    { "institucion_id": 101, "sede_id": 1001, "modalidad_id": 2, "vigente_desde": "2026-07-01", "vigente_hasta": null, "asignacion": "ACTUAL" },
+    { "institucion_id": 102, "sede_id": 1002, "modalidad_id": 3, "vigente_desde": "2026-12-01", "vigente_hasta": null, "asignacion": "FUTURA" },
+    { "institucion_id": 103, "sede_id": 1003, "modalidad_id": null, "vigente_desde": "2026-01-01", "vigente_hasta": null, "asignacion": "INCOMPLETA_CATEGORIA_AMBIGUA" },
+    { "institucion_id": 104, "sede_id": 1004, "modalidad_id": null, "vigente_desde": "2026-01-01", "vigente_hasta": null, "asignacion": null }
+  ]
+}
