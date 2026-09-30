@@ -30,6 +30,11 @@ test('ADMINISTRADOR puede consultar DTO operativo y economico', () => {
   assert.equal(checkPermission(user, ECONOMIC), undefined);
 });
 
+test('ADMINISTRADOR conserva la configuración económica sin permiso materializado', () => {
+  const user = { roles: ['ADMINISTRADOR'], permissions: [] };
+  assert.equal(checkPermission(user, ECONOMIC), undefined);
+});
+
 test('GESTOR conserva lectura operativa y no obtiene lectura economica', () => {
   const user = { roles: ['GESTOR'], permissions: [OPERATIVE] };
   assert.equal(checkPermission(user, OPERATIVE), undefined);
