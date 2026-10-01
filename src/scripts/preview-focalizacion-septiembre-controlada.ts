@@ -2,7 +2,7 @@ import { readFileSync,writeFileSync } from 'node:fs';
 import { parse } from 'dotenv';
 import { Client } from 'pg';
 import { execFileSync } from 'node:child_process';
-import { canonicalHash,approvedOperationalRows,APPROVED_EXCLUSIONS,resolveApprovedMunicipality,assertCertifiedCounts,FUTURE_REQUIRED_GATES } from '../modules/cobertura/septiembre-controlled-preview';
+import { canonicalHash,approvedOperationalRows,APPROVED_EXCLUSIONS,resolveApprovedMunicipality,assertCertifiedCounts,FUTURE_REQUIRED_GATES,municipalityTextMatches,MANUAL_SYNC_CONFIRMATION,REVOKED_PREVIEW_DIGEST,assertCertifiedSnapshot } from '../modules/cobertura/septiembre-controlled-preview';
 import { APPROVED_SHA256,SCOPE,inspectWorkbook,readOnlyTransaction,compare,hash,metrics,assertScope,existingDisposition,type TechnicalRow } from '../modules/cobertura/septiembre-controlled-preview';
 import { normalizeFocalizacionText as norm,calculateCoverageFromRule } from '../modules/cobertura/cobertura.focalizacion.domain';
 import { loadCoverageRuleForContext } from '../modules/cobertura/cobertura.rules.service';
@@ -16,10 +16,13 @@ async function main(){
  const baseline=JSON.parse(readFileSync('reports/septiembre-controlled-preview.json','utf8'));
  const operational=approvedOperationalRows(input);
  const toolingCommit=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
- const response=await fetch('https://api.empiriasuite.com/api/health');
+ const toolingSourceHashes=Object.fromEntries(['src/modules/cobertura/septiembre-controlled-preview.ts','src/scripts/preview-focalizacion-septiembre-controlada.ts'].map(file=>[file,canonicalHash(readFileSync(file,'utf8').replace(/\r\n/g,'\n'))]));
+ if(options['--sync-manual-evidence']&&options['--sync-manual-evidence']!=='false')throw Error('SYNC_CONFIRMATION_CONTRADICTED');
+ const response=await fetch('https://api.empiriasuite.com/api/health',{signal:AbortSignal.timeout(30000)});
  const publicHealth=await response.json() as any;
  const h=publicHealth.data,o=h?.integracion_outbox;
  if(response.status!==200||publicHealth.success!==true||h?.status!=='ok'||h?.database?.status!=='ok'||[o?.configured,o?.enabled,o?.started,o?.running,o?.recalc?.requested,o?.recalc?.active].some(v=>v!==false))throw Error('PUBLIC_HEALTH_OR_FLAGS_FAILED');
+ if(o?.sync?.enabled===true||o?.sync_enabled===true)throw Error('SYNC_CHANGED');
  const credentials=parse(readFileSync(options['--credentials-env']));
  if(!credentials.DATABASE_URL)throw Error('DATABASE_CREDENTIAL_REQUIRED');
  const client=new Client({connectionString:credentials.DATABASE_URL,ssl:{rejectUnauthorized:false},connectionTimeoutMillis:15000,options:'-c default_transaction_read_only=on'});
@@ -40,18 +43,20 @@ async function main(){
   const disposition=existingDisposition(existing);
   if(disposition!=='NEW')reasons.push(disposition==='MATCH_REQUIRES_POSTFLIGHT'?'ALREADY_IMPORTED_NOOP_VERIFY_POSTFLIGHT':'SEPTEMBER_EXISTS_CONFLICT');
   const municipios=(await client.query('SELECT m.id::text,m.codigo_dane,m.nombre_municipio,d.nombre_departamento FROM municipios m JOIN departamentos d ON d.id=m.departamento_id')).rows;
-  const institutions=(await client.query('SELECT id::text,municipio_id::text,codigo_dane,nombre_institucion FROM instituciones WHERE contrato_id=24 AND COALESCE(activo,TRUE)')).rows;
+  const institutions=(await client.query('SELECT id::text,contrato_id::text,municipio_id::text,codigo_dane,nombre_institucion FROM instituciones WHERE contrato_id=24 AND COALESCE(activo,TRUE)')).rows;
   const sites=(await client.query('SELECT s.id::text,s.institucion_id::text,s.municipio_id::text,s.codigo_dane,s.consecutivo_sede,s.nombre_sede FROM sedes s JOIN instituciones i ON i.id=s.institucion_id WHERE i.contrato_id=24 AND COALESCE(s.activo,TRUE)')).rows;
   const modes=(await client.query('SELECT id::text,codigo_original,nombre_modalidad FROM modalidades WHERE COALESCE(activo,TRUE)')).rows;
   const aliases=(await client.query('SELECT modalidad_id::text,alias FROM modalidad_aliases WHERE COALESCE(activo,TRUE)')).rows;
   const august=(await client.query('SELECT municipio_id::text,institucion_id::text,sede_id::text,modalidad_id::text,techo_primaria,techo_secundaria,techo_total,focalizacion_primaria,focalizacion_secundaria,focalizacion_total,cobertura_requerida,vigente_desde::text,vigente_hasta::text FROM focalizacion_vigencias WHERE contrato_id=24 AND carga_id=4 ORDER BY id')).rows;
   if(hash(august)!==baseline.august_digest)throw Error('AUGUST_BASELINE_CHANGED');
+  const final=(await client.query('SELECT id::text,carga_id::text,institucion_id::text,sede_id::text,municipio_id::text FROM focalizacion_final WHERE contrato_id=24 AND institucion_id IN (97,98) ORDER BY id')).rows;
+  const scopedMunicipalities=(await client.query('SELECT DISTINCT m.id::text,m.nombre_municipio FROM municipios m WHERE m.id IN (SELECT municipio_id FROM instituciones WHERE contrato_id=24 UNION SELECT s.municipio_id FROM sedes s JOIN instituciones i ON i.id=s.institucion_id WHERE i.contrato_id=24) ORDER BY m.id::text')).rows;
   const proposed:TechnicalRow[]=operational.map(r=>{
    const errors=[...r.issues];
-   const matching=sites.filter(s=>norm(s.nombre_sede)===norm(String(r.sede??''))&&institutions.some(i=>i.id===s.institucion_id&&norm(i.nombre_institucion)===norm(String(r.institucion??''))&&municipios.some(m=>m.id===i.municipio_id&&norm(m.nombre_municipio)===norm(String(r.municipio??'')))));
+   const matching=sites.filter(s=>norm(s.nombre_sede)===norm(String(r.sede??''))&&institutions.some(i=>i.id===s.institucion_id&&norm(i.nombre_institucion)===norm(String(r.institucion??''))&&municipios.some(m=>m.id===i.municipio_id&&municipalityTextMatches(r,m))));
    const site=matching.length===1?matching[0]:null;
    const institution=site?institutions.find(i=>i.id===site.institucion_id):null;
-   const municipality=resolveApprovedMunicipality(r,institution,site,municipios,august);
+   const municipality=resolveApprovedMunicipality(r,institution,site,municipios,august,Number(contract.empresa_id),Number(contract.id),{scopedMunicipalities,final});
    const exact=modes.filter(m=>[m.codigo_original,m.nombre_modalidad].some(v=>norm(v)===norm(String(r.modalidad??''))));
    const alias=aliases.filter(a=>norm(a.alias)===norm(String(r.modalidad??'')));
    const mode=exact.length===1?exact[0]:alias.length===1?modes.find(m=>m.id===alias[0].modalidad_id):null;
@@ -112,20 +117,22 @@ async function main(){
     source_sha256:input.sha256,scope:SCOPE,approved_exclusions:APPROVED_EXCLUSIONS,counts,coverage:{agosto:oldRequired,septiembre:newRequired,difference:newRequired===null?null:newRequired-oldRequired},
     blocking:[(error as Error).message,...new Set(reasons)],unresolved_rows:candidates.filter(r=>r.reasons.length).map(r=>({fila:r.fila,reasons:r.reasons,previous_ids:baseline.rows.find((p:TechnicalRow)=>p.fila===r.fila)})),
     combinations:stable,delta,uncertified_candidate_digest:canonicalHash({scope:SCOPE,source:input.sha256,rows:stable}),
-    preflight:{transaction_read_only:'on',postgresql_version:serverVersion,september_absent:existing.length===0,august_vigencias:august.length,august_digest_unchanged:true,locks_waiting:locksWaiting,payroll_unchanged:true,annulled_periods_unchanged:true,sync_manual_confirmed:options['--sync-manual-evidence']==='false'},public_health:{http:response.status,database:h.database.status,outbox:o.enabled,worker_started:o.started,worker_running:o.running,recalc_requested:o.recalc.requested,recalc_active:o.recalc.active},
+    preflight:{transaction_read_only:'on',postgresql_version:serverVersion,september_absent:existing.length===0,august_vigencias:august.length,august_digest_unchanged:true,locks_waiting:locksWaiting,payroll_unchanged:true,annulled_periods_unchanged:true,sync_manual_confirmed:true,sync_confirmation:MANUAL_SYNC_CONFIRMATION},public_health:{http:response.status,database:h.database.status,outbox:o.enabled,worker_started:o.started,worker_running:o.running,recalc_requested:o.recalc.requested,recalc_active:o.recalc.active},
     mutation_implemented:false,future_required_gates:FUTURE_REQUIRED_GATES};
    writeFileSync(options['--output']!,JSON.stringify(diagnostic,null,2));
    console.error(JSON.stringify({status:diagnostic.status,counts,coverage:diagnostic.coverage,unresolved_rows:diagnostic.unresolved_rows,preflight:diagnostic.preflight}));
    throw error;
   }
-  if(options['--sync-manual-evidence']!=='false')reasons.push('CURRENT_MANUAL_SYNC_CONFIRMATION_REQUIRED');
   if(reasons.length)throw Error('PREVIEW_FINAL_STOPPED:'+reasons.join(','));
   const tables=(await client.query(`SELECT conrelid::regclass::text tabla,confrelid::regclass::text referencia FROM pg_constraint WHERE contype='f' AND (conrelid::regclass::text ILIKE '%focalizacion%' OR confrelid::regclass::text ILIKE '%focalizacion%') ORDER BY 1,2`)).rows;
-  return {schema_version:'focalizacion.septiembre.certified.v1',timestamp_utc:new Date().toISOString(),tooling_commit:toolingCommit,mode:'PreviewOnly',writes:0,status:'FOCALIZACION_SEPTIEMBRE_CERTIFICADA_REQUIERE_BACKUP_PRODUCTIVO',scope:SCOPE,
-    preflight:{transaction_read_only:'on',postgresql_version:serverVersion,september_absent:existing.length===0,august_vigencias:august.length,august_digest_unchanged:true,locks_waiting:locksWaiting,payroll_unchanged:true,annulled_periods_unchanged:true,sync_manual_confirmed:options['--sync-manual-evidence']==='false'},
+  return {certified:true,schema_version:'focalizacion.septiembre.certified.v1',timestamp_utc:new Date().toISOString(),tooling_commit:toolingCommit,tooling_source_hashes:toolingSourceHashes,mode:'PreviewOnly',writes:0,status:'FOCALIZACION_SEPTIEMBRE_CERTIFICADA_REQUIERE_BACKUP_PRODUCTIVO',scope:SCOPE,
+    revoked_digests:[REVOKED_PREVIEW_DIGEST],
+    preflight:{transaction_read_only:'on',postgresql_version:serverVersion,september_absent:existing.length===0,august_vigencias:august.length,august_digest_unchanged:true,locks_waiting:locksWaiting,payroll_unchanged:true,annulled_periods_unchanged:true,sync_manual_confirmed:true,sync_confirmation:MANUAL_SYNC_CONFIRMATION},
     approved_resolutions:stable.filter(r=>r.fila>=491&&r.fila<=499||r.fila>=514&&r.fila<=529).map(r=>({fila:r.fila,municipio_id:'734',municipio_excel:'PUERTO RICO',departamento:'META',institucion_id:r.institucion_id,sede_id:r.sede_id,evidence:'EXACT_SOURCE_TEXT_TENANT_CATALOG_AUGUST_4',approved_by_user:true})),
+    approved_cubarral_resolutions:stable.filter(r=>r.fila>=559&&r.fila<=562).map(r=>({fila:r.fila,municipio_fuente_normalizado:'CUBARRAL',municipio_id:'861',municipio_catalogo:'SAN LUIS DE CUBARRAL',institucion_id:r.institucion_id,sede_id:r.sede_id,approved_by_user:true,
+     evidence:{institution_site_names_match:true,contract_catalog_matches:true,august:august.filter(a=>a.sede_id===r.sede_id&&a.institucion_id===r.institucion_id).map(a=>({institucion_id:a.institucion_id,sede_id:a.sede_id,modalidad_id:a.modalidad_id,municipio_id:a.municipio_id})),focalizacion_final:final.filter(f=>f.sede_id===r.sede_id&&f.institucion_id===r.institucion_id),scoped_municipality_candidates:scopedMunicipalities.filter(m=>['CUBARRAL','SAN LUIS DE CUBARRAL'].includes(norm(m.nombre_municipio)))}})),
     approved_exclusions:APPROVED_EXCLUSIONS.map(e=>({...e,approved_by_user:true})),
-    certified_counts:{valid_combinations:688,duplicates:0,unresolved_identities:0,blocked_rows:0,non_operational_exclusions:5,...counts,estimated_positions:newRequired,provisional_difference:newRequired!-oldRequired},
+    certified_counts:{operative_candidates:candidates.length,valid_combinations:candidates.filter(r=>!r.reasons.length).length,duplicates:keys.length-unique.size,unresolved_identities:candidates.filter(r=>!r.municipio_id||!r.institucion_id||!r.sede_id||!r.modalidad_id).length,blocked_rows:candidates.filter(r=>r.reasons.length).length,non_operational_exclusions:input.rows.length-operational.length,...counts,estimated_positions:newRequired,provisional_difference:newRequired!-oldRequired},
     public_health:{http:response.status,status:h.status,database:h.database.status,outbox:o.enabled,worker_started:o.started,worker_running:o.running,recalc_requested:o.recalc.requested,recalc_active:o.recalc.active,sync:false,sync_evidence:'MANUAL_RENDER_CONFIRMATION',timestamp:h.timestamp},
     source:{approved_by_user:true,sha256:input.sha256,size_bytes:input.size_bytes,sheet_count:input.sheets.length,sheets:input.sheets.map((name,index)=>({technical_id:'sheet_'+(index+1),name_sha256:hash(name),selected:name===input.selected_sheet})),selected_sheet:input.selected_sheet,headers:input.headers,group_headers:input.group_headers,physical_rows:input.physical_rows_after_header,blank_rows:input.blank_rows,nonblank_rows:input.rows.length,data_rows:candidates.length,missing_explicit_fields:input.missing_optional_columns},
     combinations:unique.size,delta,rows:stable,auxiliary_rows:auxiliary,blocking:[...new Set(reasons)],actor_validated:actorValidated,
@@ -138,8 +145,9 @@ async function main(){
     mutation_implemented:false,future_required_gates:FUTURE_REQUIRED_GATES,backup_required:'FULL_POSTGRESQL_17',foreign_key_dependencies:tables};
  });
  if(inspectWorkbook(readFileSync(options['--file'])).sha256!==APPROVED_SHA256)throw Error('SOURCE_CHANGED_DURING_PREVIEW');
+ assertCertifiedSnapshot(report,report.final_set_digest);
  writeFileSync(options['--output'],JSON.stringify(report,null,2));
- console.log(JSON.stringify({...report,rows:undefined,delta:report.delta.counts,coverage:{...report.coverage,by_combination:undefined},payroll_readonly:undefined},null,2));
+ console.log(JSON.stringify({status:report.status,certified:report.certified,writes:report.writes,tooling_commit:report.tooling_commit,source_sha256:report.source.sha256,counts:report.certified_counts,final_set_digest:report.final_set_digest,revoked_digests:report.revoked_digests,preflight:report.preflight,public_health:report.public_health,mutation_implemented:report.mutation_implemented},null,2));
  }finally{await client.end();}
 }
 void main().catch(e=>{console.error({code:'PREVIEW_FAILED',message:e.message});process.exitCode=1;});
