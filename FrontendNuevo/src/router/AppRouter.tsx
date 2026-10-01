@@ -60,7 +60,9 @@ export default function AppRouter() {
             <Route path="admin-global/planes" element={<section className="workspace-page"><PlanesModulosTab initialCompanyId={null} catalogOnly /></section>} />
             <Route path="admin-global/modulos" element={<ModuleCatalogPage />} />
             <Route path="admin-global/configuracion" element={<ProductConfigurationPage />} />
-            {tenantEntries.filter(entry => !entry.children.length && entry.code !== 'NOMINA').map(entry => <Route key={entry.code} path={entry.route.slice(1)} element={<WorkspacePage entry={entry} />} />)}
+            {/* Institutions has a dedicated route below. A catalog route with the
+                same path would win the tie and mount the legacy workspace view. */}
+            {tenantEntries.filter(entry => !entry.children.length && entry.code !== 'NOMINA' && entry.code !== 'OPERACION_INSTITUCIONES').map(entry => <Route key={entry.code} path={entry.route.slice(1)} element={<WorkspacePage entry={entry} />} />)}
             <Route path="configuracion/nomina" element={<Navigate to="/configuracion/nomina/asignaciones" replace />} />
             <Route path="operacion" element={<TenantHome moduleCode="OPERACION" />} />
             <Route path="logistica" element={<TenantHome moduleCode="LOGISTICA" />} />
