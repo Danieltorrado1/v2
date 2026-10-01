@@ -4,6 +4,22 @@ import { normalizeFocalizacionText as norm } from './cobertura.focalizacion.doma
 
 export const SCOPE = Object.freeze({ empresa_id:15, contrato_id:24, mes:'2026-09', desde:'2026-09-01', hasta:'2026-09-30', carga_agosto:4 });
 export const APPROVED_SHA256 = '745e04bbf1cc51ed194e5514704c3441b2b9088e34fe513f2e8f2ecf9db566a3';
+export const REVOKED_PREVIEW_DIGEST = '95b49e8dd511b81e5e8664f7cc1c9c3893be7061b87a6ffa63fc8b26507a745b';
+export const MANUAL_SYNC_CONFIRMATION = Object.freeze({value:false,evidence:'USER_RECONFIRMED_RENDER_SYNC_FALSE',valid_until_evidence_of_change:true});
+export const CUBARRAL_IDENTITIES:Readonly<Record<number,{institucion_id:string;sede_id:string}>>=Object.freeze({
+ 559:{institucion_id:'97',sede_id:'482'},560:{institucion_id:'97',sede_id:'482'},
+ 561:{institucion_id:'97',sede_id:'483'},562:{institucion_id:'98',sede_id:'484'}
+});
+export function approvedCubarralIdentity(source:Record<string,unknown>){
+ if(norm(String(source.municipio??''))!=='CUBARRAL')return null;
+ const identity=CUBARRAL_IDENTITIES[Number(source.fila)];
+ if(!identity)throw Error('CUBARRAL_ROW_NOT_APPROVED:'+source.fila);
+ return identity;
+}
+export function municipalityTextMatches(source:Record<string,unknown>,municipality:any){
+ const identity=approvedCubarralIdentity(source);
+ return identity?municipality.id==='861'&&norm(municipality.nombre_municipio)==='SAN LUIS DE CUBARRAL':norm(municipality.nombre_municipio)===norm(String(source.municipio??''));
+}
 export const metrics = ['techo_primaria','techo_secundaria','techo_total','focalizacion_primaria','focalizacion_secundaria','focalizacion_total'] as const;
 export type TechnicalRow = { fila:number; municipio_id:string|null; institucion_id:string|null; sede_id:string|null; modalidad_id:string|null; reasons:string[]; [key:string]:unknown };
 export const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -24,8 +40,16 @@ export function approvedOperationalRows(input:ReturnType<typeof inspectWorkbook>
  }
  return input.rows.filter(r=>!APPROVED_EXCLUSIONS.some(e=>e.fila===r.fila));
 }
-export function resolveApprovedMunicipality(source:Record<string,unknown>,institution:any,site:any,municipalities:any[],august:any[],empresa=15,contrato=24){
+export function resolveApprovedMunicipality(source:Record<string,unknown>,institution:any,site:any,municipalities:any[],august:any[],empresa=15,contrato=24,cubarralEvidence?:{scopedMunicipalities:any[];final:any[]}){
  assertScope(empresa,contrato);
+ const cubarral=approvedCubarralIdentity(source);
+ if(cubarral){
+  const m=municipalities.find(m=>m.id==='861'&&norm(m.nombre_municipio)==='SAN LUIS DE CUBARRAL');
+  const candidates=cubarralEvidence?.scopedMunicipalities.filter(m=>['CUBARRAL','SAN LUIS DE CUBARRAL'].includes(norm(m.nombre_municipio)))??[];
+  const historyMatches=(rows:any[])=>rows.some(a=>a.sede_id===cubarral.sede_id&&a.institucion_id===cubarral.institucion_id&&a.municipio_id==='861');
+  if(!m||institution?.id!==cubarral.institucion_id||institution.contrato_id!=='24'||site?.id!==cubarral.sede_id||site.institucion_id!==institution.id||institution.municipio_id!=='861'||site.municipio_id!=='861'||norm(institution.nombre_institucion)!==norm(String(source.institucion??''))||norm(site.nombre_sede)!==norm(String(source.sede??''))||!historyMatches(august)||!historyMatches(cubarralEvidence?.final??[])||candidates.length!==1||candidates[0].id!=='861')throw Error('CUBARRAL_APPROVED_EVIDENCE_CHANGED:'+source.fila);
+  return m;
+ }
  const approved=Number(source.fila)>=491&&Number(source.fila)<=499||Number(source.fila)>=514&&Number(source.fila)<=529;
  if(approved){
   const id=Number(source.fila)<=499?'83':'86';
@@ -47,6 +71,12 @@ export const FUTURE_REQUIRED_GATES=Object.freeze(['exact_file_sha','exact_snapsh
 export function assertFutureEvidence(proofs:Record<string,boolean>){
  for(const gate of FUTURE_REQUIRED_GATES)if(proofs[gate]!==true)throw Error('FUTURE_GATE_REQUIRED:'+gate);
  throw Error('MUTATION_NOT_IMPLEMENTED');
+}
+export function assertCertifiedSnapshot(snapshot:any,expectedDigest:string){
+ if(expectedDigest===REVOKED_PREVIEW_DIGEST||snapshot?.final_set_digest===REVOKED_PREVIEW_DIGEST)throw Error('REVOKED_PREVIEW_DIGEST');
+ assertScope(Number(snapshot?.scope?.empresa_id),Number(snapshot?.scope?.contrato_id));
+ if(snapshot.certified!==true||snapshot.schema_version!=='focalizacion.septiembre.certified.v1'||snapshot.source?.sha256!==APPROVED_SHA256||snapshot.scope.desde!==SCOPE.desde||snapshot.scope.hasta!==SCOPE.hasta||snapshot.scope.mes!==SCOPE.mes||snapshot.scope.carga_agosto!==SCOPE.carga_agosto||snapshot.writes!==0||snapshot.final_set_digest!==expectedDigest||canonicalHash({scope:snapshot.scope,source:snapshot.source.sha256,rows:snapshot.rows})!==expectedDigest)throw Error('CERTIFIED_SNAPSHOT_REQUIRED');
+ assertCertifiedCounts(snapshot.delta.counts,snapshot.rows,snapshot.coverage.septiembre,snapshot.coverage.difference);
 }
 export function assertScope(empresa:number,contrato:number){
  if(empresa!==SCOPE.empresa_id||contrato!==SCOPE.contrato_id)throw Error('TENANT_SCOPE_FORBIDDEN');
