@@ -7,6 +7,47 @@ export const APPROVED_SHA256 = '745e04bbf1cc51ed194e5514704c3441b2b9088e34fe513f
 export const metrics = ['techo_primaria','techo_secundaria','techo_total','focalizacion_primaria','focalizacion_secundaria','focalizacion_total'] as const;
 export type TechnicalRow = { fila:number; municipio_id:string|null; institucion_id:string|null; sede_id:string|null; modalidad_id:string|null; reasons:string[]; [key:string]:unknown };
 export const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+/** Stable object keys; array order remains part of the certified contract. */
+export function canonicalHash(value:unknown):string {
+ const canonical=(v:any):any=>Array.isArray(v)?v.map(canonical):v!==null&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
+ return hash(canonical(value));
+}
+export const APPROVED_EXCLUSIONS = Object.freeze([
+ {fila:691,motivo:'TOTAL_DEPARTAMENTAL'}, {fila:692,motivo:'RESIDUO_FORMULA'},
+ {fila:693,motivo:'FORMULA_REF'}, {fila:697,motivo:'LEYENDA'}, {fila:699,motivo:'SEPARADOR'}
+]);
+export function approvedOperationalRows(input:ReturnType<typeof inspectWorkbook>){
+ if(input.sha256!==APPROVED_SHA256)throw Error('APPROVED_FILE_HASH_MISMATCH');
+ for(const e of APPROVED_EXCLUSIONS){
+  const r=input.rows.find(r=>r.fila===e.fila);
+  if(!r||!r.issues.includes('IDENTIDAD_INCOMPLETA'))throw Error('EXCLUSION_EVIDENCE_CHANGED:'+e.fila);
+ }
+ return input.rows.filter(r=>!APPROVED_EXCLUSIONS.some(e=>e.fila===r.fila));
+}
+export function resolveApprovedMunicipality(source:Record<string,unknown>,institution:any,site:any,municipalities:any[],august:any[],empresa=15,contrato=24){
+ assertScope(empresa,contrato);
+ const approved=Number(source.fila)>=491&&Number(source.fila)<=499||Number(source.fila)>=514&&Number(source.fila)<=529;
+ if(approved){
+  const id=Number(source.fila)<=499?'83':'86';
+  const text=id==='83'?'CE LA SABANA':'INSTITUCION EDUCATIVA LA PRIMAVERA';
+  const m=municipalities.find(m=>m.id==='734'&&m.nombre_municipio==='PUERTO RICO'&&m.nombre_departamento==='META');
+  if(source.municipio!=='PUERTO RICO'||source.institucion!==text||!m||institution?.id!==id||institution.municipio_id!=='734'||site?.institucion_id!==id||site.municipio_id!=='734'||!august.some(a=>a.sede_id===site.id&&a.institucion_id===id&&a.municipio_id==='734'))throw Error('APPROVED_RESOLUTION_EVIDENCE_CHANGED:'+source.fila);
+  return m;
+ }
+ const m=municipalities.find(m=>m.id===institution?.municipio_id&&m.id===site?.municipio_id&&norm(m.nombre_municipio)===norm(String(source.municipio??'')));
+ return m??null;
+}
+export const EXPECTED_COUNTS=Object.freeze({agosto:687,septiembre:688,altas:25,bajas:24,modalidades:24,cupos:393,matriculados:367,cambios_metricas:398,instituciones_afectadas:108,sedes_afectadas:358});
+export function assertCertifiedCounts(counts:Record<string,number>,rows:TechnicalRow[],coverage:number|null,difference:number|null){
+ for(const [k,v]of Object.entries(EXPECTED_COUNTS))if(counts[k]!==v)throw Error('CERTIFIED_COUNT_MISMATCH:'+k+':'+counts[k]+'!='+v);
+ if(rows.length!==688||new Set(rows.map(r=>r.sede_id+'|'+r.modalidad_id)).size!==688||rows.some(r=>r.reasons.length||!r.municipio_id||!r.institucion_id||!r.sede_id||!r.modalidad_id)||coverage!==695||difference!==33)throw Error('CERTIFIED_FINAL_SET_MISMATCH');
+}
+/** Preparation contract only. Even complete evidence cannot enable mutation. */
+export const FUTURE_REQUIRED_GATES=Object.freeze(['exact_file_sha','exact_snapshot_digest','tenant_15_contract_24','exact_dates','active_actor_tenant_rbac','postgresql_17','verified_full_backup_restoration','advisory_lock','flags_off_worker_stopped','september_absent','august_4_digest_intact','single_transaction','total_rollback','idempotency','strict_audit','postflight','second_execution_no_duplicates','no_catalog_creation','no_personal_planilla_nomina_propagation','no_economic_recalculation']);
+export function assertFutureEvidence(proofs:Record<string,boolean>){
+ for(const gate of FUTURE_REQUIRED_GATES)if(proofs[gate]!==true)throw Error('FUTURE_GATE_REQUIRED:'+gate);
+ throw Error('MUTATION_NOT_IMPLEMENTED');
+}
 export function assertScope(empresa:number,contrato:number){
  if(empresa!==SCOPE.empresa_id||contrato!==SCOPE.contrato_id)throw Error('TENANT_SCOPE_FORBIDDEN');
 }
