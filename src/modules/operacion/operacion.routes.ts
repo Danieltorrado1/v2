@@ -19,7 +19,7 @@ import {
   updateSedeHandler,
   validateImportHandler,
 } from './operacion.controller';
-import { getInstitucionesHandler, updateInstitucionFocalizacionHandler } from './operacion.instituciones.controller';
+import { getInstitucionesHandler, resolveInstitucionesNominaPeriodoHandler, updateInstitucionFocalizacionHandler } from './operacion.instituciones.controller';
 
 const router = Router();
 
@@ -46,6 +46,7 @@ const read = requireAnyPermissions(
  * filtros + búsqueda + paginación + sede/modalidad/cupos.
  */
 router.get('/instituciones', read, getInstitucionesHandler);
+router.get('/instituciones/nomina-periodo', requireAnyPermissions('nomina.movimientos.create','nomina.movimientos.update'), resolveInstitucionesNominaPeriodoHandler);
 
 router.patch(
   '/instituciones/focalizaciones/:id',

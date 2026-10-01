@@ -9,6 +9,7 @@ type Props = {
   tipo: CambioTipo; canSave: boolean; existing?: PlanillaCambio | null;
   onSaved: (change: PlanillaCambio) => void; onCancel: () => void;
   onSavingChange?: (saving: boolean) => void;
+  onFechaChange?: (fecha: string) => void;
 };
 
 /** Fields inside the existing Planilla novelty modal; persists through the existing change endpoint. */
@@ -73,7 +74,7 @@ export default function CambioOperativoFields(props: Props) {
   };
   return <>
     <p>El contexto anterior se conserva hasta el día anterior a la fecha efectiva.</p>
-    <label className="op-form-field">Fecha efectiva<input type="date" value={fecha} disabled={saving} onChange={e => setFecha(e.target.value)} /></label>
+    <label className="op-form-field">Fecha efectiva<input type="date" value={fecha} disabled={saving} onChange={e => { if (props.onFechaChange) props.onFechaChange(e.target.value); else setFecha(e.target.value); }} /></label>
     {loading ? <p role="status">Cargando instituciones, sedes y modalidades…</p> : null}
     {error && <p role="alert">{error} <button type="button" disabled={saving} onClick={() => setAttempt(n => n + 1)}>Recargar contexto</button></p>}
     <fieldset disabled={loading || saving || !props.canSave}>
