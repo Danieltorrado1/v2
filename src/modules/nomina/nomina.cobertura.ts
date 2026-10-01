@@ -1,5 +1,6 @@
 import { AppError } from '../../utils/AppError';
 import type { NominaDayEffectSummary } from './nomina.effects';
+import { countNominaMonthSalaryDays, inclusiveDaysBetween, type calculateNominaMonthBase } from './nomina.calculator';
 
 export const COBERTURA_DIAS_BASE_NOMINA = 30;
 export const COBERTURA_PORCENTAJE_SALUD = 0.04;
@@ -40,6 +41,7 @@ export interface CoberturaAdicionInternaInput {
 }
 
 export interface CoberturaCalculationInput {
+  mes_liquidado_base?: ReturnType<typeof calculateNominaMonthBase>;
   adiciones_internas?: CoberturaAdicionInternaInput[];
   aporta_pension: boolean;
   descuentos_autorizados?: number;
@@ -259,10 +261,11 @@ const assertCoverageTramos = (tramos: CoberturaTramoInput[]): void => {
 
 const calculateTramo = (
   tramo: CoberturaTramoInput,
-  effectsByDate: Map<string, NominaDayEffectSummary>
+  effectsByDate: Map<string, NominaDayEffectSummary>,
+  baseDays?: number
 ): CoberturaTramoCalculado => {
   const dates = listDateStringsBetween(tramo.fecha_inicio, tramo.fecha_fin);
-  const diasVinculacion = countCommercialInclusiveDays(tramo.fecha_inicio, tramo.fecha_fin);
+  const diasVinculacion = baseDays ?? countCommercialInclusiveDays(tramo.fecha_inicio, tramo.fecha_fin);
   const diasSalarioDescuento = countDiscountDays(dates, effectsByDate, 'salario_descuento');
   const diasRecargoDescuento = countDiscountDays(dates, effectsByDate, 'recargo_excluido');
   const diasTransporteDescuento = countDiscountDays(dates, effectsByDate, 'transporte_descuento');
@@ -354,7 +357,23 @@ export const calculateCoberturaPayroll = (
   assertCoverageTramos(input.tramos);
 
   const effectsByDate = buildEffectsByDate(input.dias_efectos);
-  const tramos = input.tramos.map((tramo) => calculateTramo(tramo, effectsByDate));
+  // Keep operative dates for novelty effects. Only salary eligibility changes.
+  let allocatedDays = 0;
+  const tramos = input.tramos.map((tramo, index) => {
+    const base = input.mes_liquidado_base;
+    let baseDays: number | undefined;
+    if (base) {
+      const start = index === 0 ? base.start : (tramo.fecha_inicio > base.start ? tramo.fecha_inicio : base.start);
+      const end = index === input.tramos.length - 1 ? base.end : (tramo.fecha_fin < base.end ? tramo.fecha_fin : base.end);
+      baseDays = base.partial
+        ? countNominaMonthSalaryDays(start, end)
+        : countCommercialInclusiveDays(tramo.fecha_inicio, tramo.fecha_fin);
+      baseDays = Math.min(baseDays, Math.max(0, base.days - allocatedDays));
+      if (index === input.tramos.length - 1) baseDays = Math.max(0, base.days - allocatedDays);
+      allocatedDays += baseDays;
+    }
+    return calculateTramo(tramo, effectsByDate, baseDays);
+  });
   const diasVinculacion = tramos.reduce((accumulator, tramo) => accumulator + tramo.dias_vinculacion, 0);
   const diasSalario = tramos.reduce((accumulator, tramo) => accumulator + tramo.dias_salario, 0);
   const diasRecargo = tramos.reduce((accumulator, tramo) => accumulator + tramo.dias_recargo, 0);

@@ -69,6 +69,45 @@ export const inclusiveDaysBetween = (start: string, end: string): number => {
   return Math.floor((endDate.getTime() - startDate.getTime()) / millisecondsPerDay) + 1;
 };
 
+/** Inclusive salary days within one settled month. Days 30 and 31 share salary day 30.
+ * Real dates are retained; an employment starting on the 31st earns one day.
+ * Short months retain the existing calendar convention for partial employment.
+ */
+export const countNominaMonthSalaryDays = (start: string, end: string): number => {
+  if (start > end) return 0;
+  const salaryDay = (value: string): number => Math.min(30, toDate(value).getUTCDate());
+  return salaryDay(end) - salaryDay(start) + 1;
+};
+
+/** Salary eligibility belongs to the settled calendar month, never the operational cut. */
+export const calculateNominaMonthBase = (
+  year: number,
+  month: number,
+  employmentStart?: string | null,
+  employmentEnd?: string | null
+): DateRange & { days: number; partial: boolean } => {
+  if (!Number.isInteger(year) || year < 100 || year > 9999 ||
+      !Number.isInteger(month) || month < 1 || month > 12) {
+    throw new AppError('Invalid settled payroll month', 400, 'NOMINA_MES_INVALIDO');
+  }
+  const monthStart = new Date(Date.UTC(year, month - 1, 1)).toISOString().slice(0, 10);
+  const monthEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+  for (const value of [employmentStart, employmentEnd]) {
+    if (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+        toDate(value).toISOString().slice(0, 10) !== value)) {
+      throw new AppError('Invalid employment date', 400, 'INVALID_DATE', { value });
+    }
+  }
+  const start = employmentStart ? maxDateString(monthStart, employmentStart) : monthStart;
+  const end = employmentEnd ? minDateString(monthEnd, employmentEnd) : monthEnd;
+  const partial = Boolean(
+    (employmentStart && employmentStart >= monthStart && employmentStart <= monthEnd) ||
+    (employmentEnd && employmentEnd >= monthStart && employmentEnd <= monthEnd)
+  );
+  const days = start > end ? 0 : partial ? countNominaMonthSalaryDays(start, end) : 30;
+  return { start, end, days, partial };
+};
+
 export const calculateDaysLiquidados = (
   periodo: DateRange,
   fechaInicioVinculacion: string,

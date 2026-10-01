@@ -21,6 +21,7 @@ import { createDocumentSignedUrlForBucket } from '../documentos/documentos.stora
 import {
   compareDateStrings,
   inclusiveDaysBetween,
+  calculateNominaMonthBase,
   calculateNominaPaidDays,
   assertNominaEconomicCategoryReady,
   maxDateString,
@@ -6808,6 +6809,10 @@ export const recalculateNominaPeriodo = async (
       end: toDateString(periodo.fecha_fin) ?? ''
     };
 
+    // Period rows have no year/month columns: the closing date identifies the
+    // settled month. The 26-25 range remains exclusive to operational effects.
+    const settledMonth = new Date(`${periodoRange.end}T00:00:00.000Z`);
+
     const tiposNovedadCatalog = await loadNominaTiposNovedadCatalog(client);
     const tiposNovedadById = new Map(
       tiposNovedadCatalog.map((item) => [item.id, item] as const)
@@ -7285,12 +7290,13 @@ export const recalculateNominaPeriodo = async (
           toDateString(empleadoRow.fecha_fin_pago) ??
           periodoRange.end
       };
-      // Payroll uses the contractual 30-day base, while a partial linkage can
-      // contribute fewer liquidable days within that base.
-      const diasVigenciaNomina = Math.min(
-        COBERTURA_DIAS_BASE_NOMINA,
-        Math.max(0, inclusiveDaysBetween(employmentRange.start, employmentRange.end))
+      const mesLiquidadoBase = calculateNominaMonthBase(
+        settledMonth.getUTCFullYear(),
+        settledMonth.getUTCMonth() + 1,
+        toDateString(empleadoRow.fecha_inicio_vinculacion),
+        toDateString(empleadoRow.fecha_fin_vinculacion)
       );
+      const diasVigenciaNomina = mesLiquidadoBase.days;
       // La asistencia aplica solo para empleados con metodo_liquidacion ASISTENCIA.
       // Categoria salarial, salario fijo y OPS no dependen de asistencia diaria.
       // Missing attendance marks are not salary absences. Salary days are
@@ -7651,11 +7657,16 @@ export const recalculateNominaPeriodo = async (
           };
           });
         const coberturaResult = calculateCoberturaPayroll({
+          mes_liquidado_base: mesLiquidadoBase,
           empleo: {
             fecha_inicio: employmentRange.start,
             fecha_fin: employmentRange.end
           },
-          tramos: tramosCobertura,
+          tramos: tramosCobertura.length > 0 ? tramosCobertura : [{
+            fecha_inicio: mesLiquidadoBase.days > 0 ? mesLiquidadoBase.start : periodoRange.start,
+            fecha_fin: mesLiquidadoBase.days > 0 ? mesLiquidadoBase.end : periodoRange.end,
+            categoria: buildCategoriaSnapshot(empleadoRow.categoria_id, empleadoRow)
+          }],
           dias_efectos: effectResolution.days,
           aporta_pension:
             empleadoRow.vinculacion_cotiza_pension &&
