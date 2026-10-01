@@ -1,0 +1,110 @@
+Command (cwd: isolated hotfix worktree; synthetic .env.selector-test):
+$env:ENV_FILE='<worktree>\.env.selector-test'; npx tsx --test src/tests/operacion.focalizacion-selector.test.ts src/tests/operacion.instituciones.canonica.test.ts src/tests/cobertura.focalizacion.domain.test.ts src/tests/cobertura.focalizacion.service.test.ts src/tests/cobertura.focalizacion.xlsx.test.ts src/tests/cobertura.focalizacion.municipio-resolution.test.ts src/tests/operacion.simat.domain.test.ts src/tests/modalidad-vigencia.e2e.test.ts src/tests/integracion.periodos-semantica.test.ts src/tests/nomina.periodos.test.ts src/tests/nomina.periodos.automatico.test.ts src/tests/nomina.periodos-poblacion.rules.test.ts src/tests/nomina.periodo.repository.test.ts src/tests/nomina.periodo.mapper.test.ts FrontendNuevo/src/pages/operacion/focalizacionSelector.test.ts FrontendNuevo/src/pages/operacion/institucionesPresentation.test.ts
+Exit code: 1
+
+✔ 687 filas de agosto se deduplican por ID canónico, no etiqueta (1.023ms)
+✔ agosto y septiembre únicos, recientes primero y en español (0.115ms)
+✔ mismo nombre/ID externo no cruza empresas o contratos (0.0767ms)
+✔ versiones canónicas distintas no se colapsan por nombre y se distinguen visualmente (0.0825ms)
+✔ opciones inactivas o fallidas no son seleccionables ni alteradas (0.0964ms)
+✔ normaliza cupos reales y evita object object, NaN y pérdida de cero (9.8125ms)
+✔ la acción depende de permisos efectivos y bloquea GESTOR (0.1279ms)
+✔ dominio reconoce vigencia efectiva con patron dia a dia mes anio (0.663ms)
+✔ dominio separa duplicado exacto y duplicado conflictivo dentro del archivo (0.1377ms)
+✔ dominio aplica factor_previo para CAARES y detecta fuera de rango (0.1071ms)
+✔ dominio resuelve RI mayor a 800 sin fracciones (0.1211ms)
+✔ dominio clasifica aumento, disminucion, sin cambio y nueva combinacion (0.086ms)
+✔ prioriza el municipio explicito del XLSX antes del codigo embebido en el consecutivo (0.5132ms)
+✔ conserva el consecutivo embebido como fallback cuando no resuelve ni por nombre ni por codigo explicito (0.1877ms)
+✔ servicio de focalizacion guarda archivo original y usa sha256 para idempotencia (0.5345ms)
+✔ servicio de focalizacion versiona sobre focalizacion_vigencias y sincroniza focalizacion_final (0.1355ms)
+✔ rutas de cobertura exponen plantilla, upload, reproceso y ajuste manual solo administrativo (0.0825ms)
+✔ servicio de focalizacion permite reproceso sin recargar XLSX y alerta archivo posterior a manual (0.0804ms)
+✔ consumidores de cobertura ya no recalculan reglas contractuales hardcodeadas (0.092ms)
+✔ parser productivo reconoce el XLSX oficial completo y su vigencia (43.2079ms)
+✔ Nómina usa exactamente el periodo de origen validado (0.9206ms)
+✔ Personal bloquea periodización duplicada o solapada (0.1576ms)
+✔ La resolución por Personal no acepta una empresa ajena (0.0839ms)
+✔ fuente canónica resuelve modalidad actual e historial sin sobrescribir RI (0.7869ms)
+✔ cambio RI a CAA a mitad del período produce dos tramos y una persona (0.6633ms)
+✔ categoría inequívoca se propone con fecha efectiva y no se asigna por defecto (0.1509ms)
+✔ categoría ambigua queda bloqueada para revisión (0.0774ms)
+✔ vigencia futura, retroactiva y límites no generan solapamientos (0.1121ms)
+✖ mapNominaPeriodo conserva campos, fechas, nulls y contrato (2.3837ms)
+✔ repositorio V1 de periodos conserva filtros, orden y paginacion del servicio (1015.7804ms)
+✔ repositorio de periodos recibe el cliente transaccional para el lock advisory (0.488ms)
+✔ createNominaPeriodo reutiliza el periodo exacto existente para evitar duplicados logicos (0.7035ms)
+✔ importNominaEmpleados usa interseccion por fechas y no depende de estado ACTIVA como filtro absoluto (0.1654ms)
+✔ importNominaEmpleados omite vinculaciones ambiguas marcadas en revision (0.0927ms)
+✔ importNominaEmpleados resuelve metodo_liquidacion al catalogo valido y no copia metodo_pago crudo (0.2221ms)
+✔ el aseguramiento mensual calcula el corte 26-25 y conserva ABIERTO (0.7475ms)
+✔ un periodo anterior abierto no bloquea ni se actualiza al asegurar el nuevo mes (0.1447ms)
+✔ la creación automática y manual comparten bloqueo transaccional de identidad (0.1739ms)
+✔ listar periodos activa el aseguramiento existente sin tocar nómina económica (0.1279ms)
+✔ periodos mensuales usan 26 del mes anterior a 25 del mes de cierre (1.8458ms)
+✔ las fechas 25 y 26 caen en periodos de cierre distintos (0.2039ms)
+✔ selector y ensure excluyen residuales y reutilizan identidad activa (0.5941ms)
+▶ selector y listado reales: deduplicación, URL heredada, aislamiento y Nómina sólo por fecha
+  ✔ agosto con varias sedes es una opción canónica y conserva todas las filas (25.7456ms)
+  ✔ legacy periodo_id=168 normaliza a carga4; jamás consulta Nómina (15.9253ms)
+  ✔ Nómina conserva su validación, sin reinterpretar IDs desconocidos (0.9436ms)
+  ✔ resolver por fecha rechaza empresa explícita que no corresponde al contrato (0.5549ms)
+  ✔ agosto/septiembre únicos, español, recientes primero y carga9 por defecto (13.7899ms)
+  ✔ mismo nombre no mezcla contratos/empresas ni IDs externos (3.6353ms)
+  ✔ filtro carga4 muestra agosto entero; all conserva histórico y paginación (25.2422ms)
+  ✔ fecha efectiva resuelve payroll3, no carga4/9 ni vigencia168 (3.0779ms)
+  ✔ ANULADO/CERRADO inmutables; ambigüedad abierta no elige casualmente (2.928ms)
+  ✔ default usa vigencia actual o última válida, no un mes futuro (0.1795ms)
+✔ selector y listado reales: deduplicación, URL heredada, aislamiento y Nómina sólo por fecha (1172.3328ms)
+✔ contrato 24 usa el tenant de empresa 15 y no duplica el fixture sanitizado (0.4856ms)
+✔ vigencias históricas, futuras y filas incompletas son datos de lectura, no errores del listado (0.1297ms)
+✔ la consulta conserva paginación y no contiene escritura (0.1237ms)
+✔ SIMAT exige y conserva todos los encabezados fuente (10.0319ms)
+✔ deduplicación prioriza PER_ID y luego documento, nunca nombre (0.1616ms)
+ℹ tests 58
+ℹ suites 0
+ℹ pass 57
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1705.3434
+
+✖ failing tests:
+
+test at src\tests\nomina.periodo.mapper.test.ts:2:970
+✖ mapNominaPeriodo conserva campos, fechas, nulls y contrato (2.3837ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  ... Skipped lines
+  
+    {
+      activo: true,
+  +   anulado_at: null,
+  +   anulado_por: undefined,
+      contrato: {
+        empresa_id: '4',
+        entidad_contratante: 'Entidad',
+        fecha_finalizacion: null,
+        fecha_inicio: '2026-01-01',
+  ...
+      id: '8',
+  +   motivo_anulacion: undefined,
+      nombre_periodo: 'AGOSTO',
+  +   periodo_canonico_id: undefined,
+      requiere_asistencia: true,
+      tipo_periodo: 'MENSUAL'
+    }
+  
+      at TestContext.<anonymous> (<worktree>\src\tests\nomina.periodo.mapper.test.ts:16:10)
+      at Test.runInAsyncScope (node:async_hooks:228:14)
+      at Test.run (node:internal/test_runner/test:1118:25)
+      at Test.start (node:internal/test_runner/test:1015:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { id: '8', contrato_id: '3', nombre_periodo: 'AGOSTO', tipo_periodo: 'MENSUAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-08-31', requiere_asistencia: true, estado: 'ABIERTO', activo: true, created_at: '2026-07-31T10:20:30.000Z', anulado_at: null, anulado_por: undefined, motivo_anulacion: undefined, periodo_canonico_id: undefined, contrato: { id: '3', empresa_id: '4', numero_contrato: 'C-3', entidad_contratante: 'Entidad', fecha_inicio: '2026-01-01', fecha_finalizacion: null } },
+    expected: { id: '8', contrato_id: '3', nombre_periodo: 'AGOSTO', tipo_periodo: 'MENSUAL', fecha_inicio: '2026-08-01', fecha_fin: '2026-08-31', requiere_asistencia: true, estado: 'ABIERTO', activo: true, created_at: '2026-07-31T10:20:30.000Z', contrato: { id: '3', empresa_id: '4', numero_contrato: 'C-3', entidad_contratante: 'Entidad', fecha_inicio: '2026-01-01', fecha_finalizacion: null } },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
