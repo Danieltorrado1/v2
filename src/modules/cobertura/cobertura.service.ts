@@ -404,7 +404,7 @@ const buildBaseWhereClause = (
   filters: CoberturaResumenQuery,
   tenant?: TenantAccessContext
 ): { params: unknown[]; whereSql: string } => {
-  const conditions: string[] = ['COALESCE(ff.activo, TRUE) = TRUE'];
+  const conditions: string[] = [filters.fecha ? 'historical.id IS NOT NULL' : 'COALESCE(ff.activo, TRUE) = TRUE'];
   const params: unknown[] = [];
 
   if (filters.contrato_id) {
@@ -447,6 +447,18 @@ const getCoberturaBaseRows = async (
   const { params, whereSql } = buildBaseWhereClause(filters, tenant);
   const fechaConsulta = resolveCoberturaFechaConsulta(filters.fecha ?? null);
   const datePlaceholder = `$${params.length + 1}`;
+  // An explicit date reads the monthly history, including combinations retired
+  // from the current projection. Omitted date preserves the current-view API.
+  const historicalJoin = filters.fecha ? `LEFT JOIN LATERAL (
+    SELECT fv.*, fp.institucion_original, fp.sede_original, fp.modalidad_original, fp.consecutivo_original
+    FROM focalizacion_vigencias fv
+    LEFT JOIN focalizacion_preliminar fp ON fp.id=fv.preliminar_id AND fp.carga_id=fv.carga_id
+    WHERE fv.contrato_id=ff.contrato_id AND fv.institucion_id=ff.institucion_id
+      AND fv.sede_id=ff.sede_id AND fv.modalidad_id=ff.modalidad_id AND fv.activo=TRUE
+      AND fv.vigente_desde<=${datePlaceholder}::date
+      AND (fv.vigente_hasta IS NULL OR fv.vigente_hasta>=${datePlaceholder}::date)
+    ORDER BY fv.vigente_desde DESC,fv.id DESC LIMIT 1
+  ) historical ON TRUE` : '';
 
   const result = await dbQuery<CoberturaBaseRow>(
     `
@@ -470,30 +482,31 @@ const getCoberturaBaseRows = async (
         ff.municipio_id::text AS municipio_id,
         ff.municipio_texto,
         ff.institucion_id::text AS institucion_id,
-        COALESCE(ff.institucion_final, i.nombre_institucion) AS institucion,
+        ${filters.fecha ? 'COALESCE(historical.institucion_original,ff.institucion_final,i.nombre_institucion)' : 'COALESCE(ff.institucion_final, i.nombre_institucion)'} AS institucion,
         ff.sede_id::text AS sede_id,
-        ff.sede_final AS sede,
-        ff.consecutivo_final AS consecutivo_sede,
-        ff.modalidad_final AS modalidad_original,
+        ${filters.fecha ? 'COALESCE(historical.sede_original,ff.sede_final)' : 'ff.sede_final'} AS sede,
+        ${filters.fecha ? 'COALESCE(historical.consecutivo_original,ff.consecutivo_final)' : 'ff.consecutivo_final'} AS consecutivo_sede,
+        ${filters.fecha ? 'COALESCE(historical.modalidad_original,ff.modalidad_final)' : 'ff.modalidad_final'} AS modalidad_original,
         ff.modalidad_id::text AS modalidad_id,
         m.codigo_base AS modalidad_base_db,
-        ff.cupos_aprobados,
+        ${filters.fecha ? 'historical.focalizacion_total AS cupos_aprobados' : 'ff.cupos_aprobados'},
         ff.categoria_cobertura,
         ff.clave_sede_modalidad,
-        ff.cobertura_requerida AS cobertura_requerida_db,
-        ff.cobertura_estado AS cobertura_estado_db,
+        ${filters.fecha ? 'historical.cobertura_requerida' : 'ff.cobertura_requerida'} AS cobertura_requerida_db,
+        ${filters.fecha ? 'historical.cobertura_estado' : 'ff.cobertura_estado'} AS cobertura_estado_db,
         COALESCE(asignadas.asignados_db, 0)::numeric AS asignados_db,
-        ff.activo
+        ${filters.fecha ? 'historical.activo' : 'ff.activo'} AS activo
       FROM focalizacion_final ff
       INNER JOIN contratos c ON c.id = ff.contrato_id
       LEFT JOIN instituciones i ON i.id = ff.institucion_id
       LEFT JOIN modalidades m ON m.id = ff.modalidad_id AND COALESCE(m.activo, TRUE) = TRUE
       LEFT JOIN asignadas ON asignadas.focalizacion_final_id = ff.id::text
+      ${historicalJoin}
       ${whereSql}
       ORDER BY
         COALESCE(ff.municipio_texto, '') ASC,
-        COALESCE(ff.institucion_final, i.nombre_institucion) ASC,
-        COALESCE(ff.sede_final, '') ASC,
+        ${filters.fecha ? "COALESCE(historical.institucion_original,ff.institucion_final,i.nombre_institucion)" : "COALESCE(ff.institucion_final, i.nombre_institucion)"} ASC,
+        ${filters.fecha ? "COALESCE(historical.sede_original,ff.sede_final,'')" : "COALESCE(ff.sede_final, '')"} ASC,
         ff.id ASC
     `,
     [...params, fechaConsulta]

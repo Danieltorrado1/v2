@@ -43,6 +43,8 @@ test('selector y listado reales: deduplicación, URL heredada, aislamiento y Nó
       INSERT INTO focalizacion_vigencias SELECT g,24,4,g,1,g,1,1,'2026-08-01','2026-08-31',true,'OK',120,80,200,120,80,200 FROM generate_series(168,169) g;
       CREATE TABLE focalizacion_final(id bigint,contrato_id bigint,carga_id bigint,preliminar_id bigint,institucion_id bigint,sede_id bigint,modalidad_id bigint,municipio_id bigint,activo boolean,cupos_aprobados int,institucion_final text,sede_final text,modalidad_final text,municipio_texto text);
       INSERT INTO focalizacion_final SELECT id,24,4,id,1,sede_id,1,1,true,200,'Institución fixture','Sede fixture','RI','Municipio fixture' FROM focalizacion_vigencias;
+      CREATE TABLE focalizacion_preliminar(id bigint,carga_id bigint,contrato_id bigint,institucion_original text,sede_original text,modalidad_original text);
+      INSERT INTO focalizacion_preliminar SELECT id,4,24,'Institución histórica','Sede histórica','RI' FROM focalizacion_vigencias;
       CREATE TABLE municipios(id bigint,nombre_municipio text);
       CREATE TABLE instituciones(id bigint,nombre_institucion text);
       CREATE TABLE sedes(id bigint,nombre_sede text,zona_sede text);
@@ -117,6 +119,13 @@ test('selector y listado reales: deduplicación, URL heredada, aislamiento y Nó
       const options=[{id:'9',fecha_inicio:'2026-09-01',fecha_fin:'2026-09-30'},{id:'4',fecha_inicio:'2026-08-01',fecha_fin:'2026-08-31'}];
       assert.equal(selector.defaultFocalizacion(options,'2026-08-15')?.id,'4');
       assert.equal(selector.defaultFocalizacion(options,'2026-09-30')?.id,'9');
+    });
+    await t.test('la proyección actual no cambia nombres ni actividad histórica, ni multiplica vigencias', async () => {
+      await db.exec("UPDATE focalizacion_final SET institucion_final='Nombre actual',activo=false WHERE carga_id=4; INSERT INTO focalizacion_final SELECT 999,contrato_id,9,999,institucion_id,sede_id,modalidad_id,municipio_id,true,900,'Proyección actual duplicada','Actual','CAA','Municipio' FROM focalizacion_final WHERE id=168");
+      const august=await service.listInstituciones({...query,focalizacion_id:4},tenant);
+      assert.equal(august.total,2);
+      assert.ok(august.items.every((r:any)=>r.institucion==='Institución histórica'&&r.activo===true));
+      assert.ok(august.items.every((r:any)=>r.matriculados.total===200));
     });
   } finally { await db.close(); }
 });

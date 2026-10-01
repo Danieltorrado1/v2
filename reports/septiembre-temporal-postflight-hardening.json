@@ -1,0 +1,38 @@
+{
+  "local_only": true,
+  "corruption_cases": [
+    {
+      "table": "focalizacion_preliminar",
+      "nullable_link_corruption_rejected": true
+    },
+    {
+      "table": "focalizacion_final",
+      "nullable_link_corruption_rejected": true
+    }
+  ],
+  "legacy_sync": {
+    "stable_id": true,
+    "stable_key": true,
+    "duplicates": 0,
+    "optional_site_mode_link_supported": true
+  },
+  "all_tables_and_sequences_identical": true,
+  "second_after_hardening": {
+    "status": "ALREADY_APPLIED",
+    "writes": 0,
+    "load_id": "8",
+    "run_id": "bf0cde03-ebde-4304-b868-0edfd7a54575",
+    "postflight": {
+      "digest": "bfb2204f4a89b9fad18045a1a14ec128cbfe322a9bfc04a287c545f0e7b4f38e",
+      "rows": 688,
+      "preliminares": 688,
+      "active_projection": 688,
+      "monthly_projection": 688,
+      "loads": 1,
+      "overlaps": 0,
+      "duplicates": 0,
+      "excluded_rows_inserted": 0,
+      "positions": 695
+    }
+  }
+}

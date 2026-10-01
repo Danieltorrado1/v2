@@ -1,0 +1,11 @@
+const fs=require('fs'),{Client}=require('pg'),{spawn}=require('child_process'),crypto=require('crypto');
+const backup='C:/Users/CORE ULTRA/Documents/EmpiriaBackups/focalizacion-septiembre-pre-import-retry-20261001T125631Z';
+async function main(){if(crypto.createHash('sha256').update(fs.readFileSync(backup+'/full.dump')).digest('hex')!=='2e2f0608f609e2e3123e6bfdf56067bae08f11719cc3939ca73d0cdc387f0bc1')throw Error('BACKUP_CHANGED');
+ const database=process.argv.includes('--baseline-readonly')?'septiembre_temporal_baseline':'septiembre_temporal_rollback';
+ const c=new Client({host:'127.0.0.1',port:55440,user:'local_verifier',database:'postgres'});await c.connect();
+ const instance=(await c.query("SELECT host(inet_server_addr()) host,inet_server_port() port,current_setting('server_version') version")).rows[0];if(instance.host!=='127.0.0.1'||instance.port!==55440||instance.version!=='17.11')throw Error('LOCAL_ONLY');
+ if((await c.query('SELECT datname FROM pg_database WHERE datname=$1',[database])).rows.length)throw Error('CLEAN_RESTORE_ALREADY_EXISTS');
+ await c.query('CREATE DATABASE '+database);await c.end();
+ const env=Object.fromEntries(Object.entries(process.env).filter(([k])=>!/^PG|DATABASE_URL|SUPABASE|JWT_|INTEGRACION_/.test(k)));
+ await new Promise((resolve,reject)=>{const out=fs.openSync('tmp/'+database+'-restore.log','wx');const p=spawn('C:/Program Files/PostgreSQL/17/bin/pg_restore.exe',['--host=127.0.0.1','--port=55440','--username=local_verifier','--dbname='+database,'--no-password','--no-owner','--no-privileges','--exit-on-error','--single-transaction','--use-list='+backup+'/local-restore-use-list.txt',backup+'/full.dump'],{env,windowsHide:true,stdio:['ignore',out,out]});p.on('error',reject);p.on('close',code=>{fs.closeSync(out);code===0?resolve():reject(Error('RESTORE_EXIT_'+code));});});console.log('CLEAN_LOCAL_RESTORE_OK');
+}main().catch(e=>{console.error(e.message);process.exitCode=1});

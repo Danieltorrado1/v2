@@ -1452,9 +1452,14 @@ const syncFocalizacionFinal = async (
   }
 
   const existing = await client.query<QueryResultRow>(
-    `SELECT id::text AS id FROM focalizacion_final WHERE contrato_id = $1::bigint AND sede_modalidad_id = $2::bigint LIMIT 1`,
-    [contratoId, sedeModalidadId],
+    `SELECT id::text AS id, clave_sede_modalidad FROM focalizacion_final
+     WHERE contrato_id = $1::bigint AND sede_id = $2::bigint AND modalidad_id = $3::bigint`,
+    [contratoId, sedeId, modalidadId],
   );
+
+  if (existing.rows.length > 1) {
+    throw new AppError('Ambiguous current focalizacion projection', 409, 'AMBIGUOUS_FOCALIZACION_PROJECTION');
+  }
 
   if (existing.rows[0]?.id) {
     await client.query(
@@ -1508,7 +1513,7 @@ const syncFocalizacionFinal = async (
         latest.modalidad_id,
         sedeModalidadId,
         latest.categoria_cobertura,
-        `${sedeModalidadId}|${latest.modalidad_original}`,
+        existing.rows[0].clave_sede_modalidad ?? `${sedeModalidadId}|${latest.modalidad_original}`,
         latest.cobertura_requerida ?? null,
         latest.cobertura_estado,
         latest.vigente_desde,
