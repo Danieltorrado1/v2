@@ -1456,3 +1456,14 @@
 .planilla-queue-drawer li { border: 1px solid var(--border-color, #d0d7e2); border-radius: 9px; display: grid; gap: 5px; padding: 11px; }
 .planilla-queue-drawer li span { color: #667085; font-size: 12px; }
 .planilla-queue-drawer footer { justify-content: flex-start; margin-top: auto; }
+
+.op-cell .op-internal-turn-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-primary);
+  white-space: nowrap;
+}

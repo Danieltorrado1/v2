@@ -9,6 +9,7 @@ import {
   createNominaMovimientoSchema,
   createNominaNovedadSchema,
   createNominaNovedadConTurnoSchema,
+  nominaTurnContextQuerySchema,
   createNominaPeriodoSchema,
   exportNominaPeriodoQuerySchema,
   exportNominaTurnosQuerySchema,
@@ -45,6 +46,7 @@ import {
   createNominaMovimiento,
   createNominaNovedad,
   createNominaNovedadConTurno,
+  getNominaTurnContextOptions,
   getNominaAsistenciaBulkAck,
   createNominaPeriodo,
   deactivateNominaAsistencia,
@@ -668,6 +670,12 @@ export const createNominaNovedadConTurnoHandler = asyncHandler(async (req: Reque
   const input = createNominaNovedadConTurnoSchema.parse(req.body);
   const result = await createNominaNovedadConTurno(input, getActorUserId(req), req.tenant, getAuditRequestMeta(req));
   return successResponse(res, { statusCode: 201, message: 'Payroll novelty and turn captured successfully', data: result });
+});
+
+export const getNominaTurnContextOptionsHandler = asyncHandler(async (req: Request, res: Response) => {
+  const query = nominaTurnContextQuerySchema.parse(req.query);
+  const data = await getNominaTurnContextOptions(query.periodo_id, query.nomina_empleado_id, query.fecha, query.fecha_fin ?? query.fecha, req.tenant);
+  return successResponse(res, { data, message: 'Available turn contexts' });
 });
 
 export const updateNominaNovedadHandler = asyncHandler(async (req: Request, res: Response) => {

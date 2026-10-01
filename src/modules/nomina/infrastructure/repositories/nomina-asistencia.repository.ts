@@ -71,7 +71,7 @@ const attendanceSelect = `
     nad.id::text AS id,
     nad.periodo_id::text AS periodo_id,
     nad.vinculacion_id::text AS vinculacion_id,
-    nad.fecha,
+    nad.fecha::text AS fecha,
     nad.hora_ingreso::text AS hora_ingreso,
     nad.hora_salida::text AS hora_salida,
     nad.horas_trabajadas,
@@ -138,7 +138,7 @@ export class NominaAsistenciaRepository {
   ): Promise<ListNominaAsistenciaRepositoryResult> {
     const queryExecutor = getExecutor(executor);
     const params: unknown[] = [input.periodoId];
-    const conditions = ['nad.periodo_id = $1::bigint'];
+    const conditions = ['nad.periodo_id = $1::bigint', 'nad.fecha BETWEEN np.fecha_inicio AND np.fecha_fin'];
     appendNominaCoberturaScope(conditions, params, input.tenant);
     appendTenantScope(conditions, params, input.tenant);
 

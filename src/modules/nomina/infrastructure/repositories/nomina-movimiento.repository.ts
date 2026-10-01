@@ -21,6 +21,7 @@ export interface ListNominaMovimientoRepositoryInput {
   familiaMovimiento?: string | null;
   limit: number;
   nominaEmpleadoId?: string | null;
+  projectInternalEmployees?: boolean;
   page: number;
   periodoId?: string | null;
   tenant?: TenantAccessContext;
@@ -80,7 +81,7 @@ const movementSelect = `
     nm.periodo_id::text AS periodo_id,
     nm.nomina_empleado_id::text AS nomina_empleado_id,
     nm.vinculacion_id::text AS vinculacion_id,
-    nm.fecha,
+    nm.fecha::text AS fecha,
     nm.tipo_movimiento,
     nm.familia_movimiento,
     nm.estado,
@@ -170,8 +171,22 @@ const buildWhere = (input: ListNominaMovimientoRepositoryInput) => {
   const params: unknown[] = [];
   appendTenantScope(conditions, params, input.tenant);
   appendNominaCoberturaScope(conditions, params, input.tenant);
-  if (input.periodoId) { params.push(input.periodoId); conditions.push(`nm.periodo_id = $${params.length}::bigint`); }
-  if (input.nominaEmpleadoId) { params.push(input.nominaEmpleadoId); conditions.push(`nm.nomina_empleado_id = $${params.length}::bigint`); }
+  if (input.periodoId) {
+    params.push(input.periodoId);
+    conditions.push(`nm.periodo_id = $${params.length}::bigint`);
+    conditions.push('(nm.fecha IS NULL OR nm.fecha BETWEEN np.fecha_inicio AND np.fecha_fin)');
+  }
+  if (input.nominaEmpleadoId) {
+    params.push(input.nominaEmpleadoId);
+    const employeeParam = `$${params.length}::bigint`;
+    conditions.push(input.projectInternalEmployees && input.periodoId ? `(
+      (nm.tipo_movimiento = 'TURNO_INTERNO' AND EXISTS (
+        SELECT 1 FROM nomina_empleados selected_employee
+        WHERE selected_employee.id = ${employeeParam} AND selected_employee.periodo_id = np.id
+          AND selected_employee.vinculacion_id = nm.vinculacion_id
+      )) OR (nm.tipo_movimiento <> 'TURNO_INTERNO' AND nm.nomina_empleado_id = ${employeeParam})
+    )` : `nm.nomina_empleado_id = ${employeeParam}`);
+  }
   if (input.vinculacionId) { params.push(input.vinculacionId); conditions.push(`nm.vinculacion_id = $${params.length}::bigint`); }
   if (input.tipoMovimiento) { params.push(input.tipoMovimiento); conditions.push(`nm.tipo_movimiento = $${params.length}`); }
   if (input.estado) { params.push(input.estado); conditions.push(`nm.estado = $${params.length}`); }

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
+import { selectTurnContext, type TurnContextOption } from '../modules/nomina/nomina.turn-context';
+import { buildTurnosConsolidado } from '../modules/nomina/nomina.exporter';
 
 import {
   NominaMovimientoRepository,
@@ -27,6 +29,8 @@ const schema = `
   );
   INSERT INTO contratos VALUES (24, 15), (25, 16);
   INSERT INTO nomina_periodos VALUES (2, 24, 'ABIERTO', 'AGOSTO 2026'), (3, 25, 'ABIERTO', 'AGOSTO 2026');
+  ALTER TABLE nomina_periodos ADD COLUMN fecha_inicio date DEFAULT '2026-08-01';
+  ALTER TABLE nomina_periodos ADD COLUMN fecha_fin date DEFAULT '2026-08-31';
   INSERT INTO vinculaciones VALUES (101, 1, 15, 24), (201, 2, 16, 25);
   INSERT INTO personas VALUES (1, '100', 'ANA', NULL, 'ZETA', NULL), (2, '200', 'BEA', NULL, 'ALFA', NULL);
   INSERT INTO nomina_movimientos (id, periodo_id, nomina_empleado_id, vinculacion_id, fecha, tipo_movimiento, familia_movimiento, estado, descripcion, cantidad, valor_unitario, valor_total, activo)
@@ -48,6 +52,68 @@ const tenantEmpresa15 = {
 
 const dateOnly = (value: Date | string | null | undefined) =>
   value instanceof Date ? value.toISOString().slice(0, 10) : String(value).slice(0, 10);
+
+test('turno persiste modalidad seleccionada y exporta su snapshot tras cambiar la asignacion habitual', async () => {
+  const db=new PGlite();
+  const repository=new NominaMovimientoRepository();
+  const executor=makeExecutor(db);
+  try {
+    await db.exec(schema);
+    await db.exec('ALTER TABLE vinculaciones ADD COLUMN modalidad_id bigint DEFAULT 1');
+    const options=[{institucion_id:'1',modalidad_id:'1',modalidad:'CAA',sede_id:'1'}, {institucion_id:'1',modalidad_id:'2',modalidad:'CAARES',sede_id:'2'}] as TurnContextOption[];
+    for (const modalidadId of ['1','2']) {
+      const selected=selectTurnContext(options,{institucion_id:'1',sede_id:modalidadId,modalidad_id:modalidadId});
+      const id=await repository.create(input({institucion_id:selected.institucion_id,sede_id:selected.sede_id,modalidad_id:selected.modalidad_id,contexto_modalidad:selected.modalidad}),executor);
+      await db.exec('UPDATE vinculaciones SET modalidad_id=3 WHERE id=101');
+      const stored=await repository.getById(id,undefined,executor);
+      assert.equal(stored?.modalidad_id,modalidadId);
+      assert.equal(stored?.institucion_id,'1');
+      assert.equal(stored?.sede_id,modalidadId);
+      assert.equal(stored?.contexto_modalidad,selected.modalidad);
+      const exported=buildTurnosConsolidado([{documento_reemplazante:'100',nombre_reemplazante:'ANA',tipo_reemplazante:'INTERNO',modalidad:stored?.contexto_modalidad,cantidad:1,valor_total:100}]);
+      assert.equal(exported.rows[0]?.[selected.modalidad],1);
+    }
+    const historical=await repository.create(input({modalidad_id:null,contexto_modalidad:null}),executor);
+    const stored=await repository.getById(historical,undefined,executor);
+    assert.equal(stored?.modalidad_id,null);
+    const exported=buildTurnosConsolidado([{documento_reemplazante:'100',nombre_reemplazante:'ANA',tipo_reemplazante:'INTERNO',modalidad:stored?.contexto_modalidad,cantidad:1,valor_total:100}]);
+    assert.ok(exported.headers.includes('SIN MODALIDAD'));
+  } finally { await db.close(); }
+});
+
+test('filtro operativo por empleado destino conserva el turno histórico sin cambiar la lectura económica', async () => {
+  const db=new PGlite();
+  try {
+    await db.exec(schema);
+    await db.exec(`CREATE TABLE nomina_empleados(id bigint,periodo_id bigint,vinculacion_id bigint);
+      INSERT INTO nomina_empleados VALUES (10,1,101),(11,2,101),(20,3,201)`);
+    const repository=new NominaMovimientoRepository();
+    const executor=makeExecutor(db);
+    const filter={periodoId:'2',nominaEmpleadoId:'11',page:1,limit:10,tenant:tenantEmpresa15};
+    assert.equal((await repository.list(filter,executor)).total,0);
+    const operational=await repository.list({...filter,projectInternalEmployees:true},executor);
+    assert.equal(operational.total,1);
+    assert.equal(operational.rows[0]?.id,'1');
+    assert.equal(operational.rows[0]?.nomina_empleado_id,'10');
+    assert.equal((await repository.list({...filter,nominaEmpleadoId:'20',projectInternalEmployees:true},executor)).total,0);
+  } finally {await db.close();}
+});
+
+test('turnos del 28/08 se consultan por rango 26–25, sin incluir 26/09', async () => {
+  const db=new PGlite();
+  const repository=new NominaMovimientoRepository();
+  const executor=makeExecutor(db);
+  try {
+    await db.exec(schema);
+    await db.exec("UPDATE nomina_periodos SET fecha_inicio='2026-08-26',fecha_fin='2026-09-25' WHERE id=2");
+    await repository.create(input({fecha:'2026-08-28'}),executor);
+    await repository.create(input({fecha:'2026-09-26'}),executor);
+    const result=await repository.list({periodoId:'2',page:1,limit:100},executor);
+    const dates=result.rows.map(row=>row.fecha);
+    assert.ok(dates.includes('2026-08-28'));
+    assert.equal(dates.includes('2026-09-26'),false);
+  } finally { await db.close(); }
+});
 
 const input = (overrides: Record<string, unknown> = {}) => ({
   activo: true, afecta_seguridad_social: true, alertas_validacion: '[]', aprobado_at: null,

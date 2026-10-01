@@ -2,6 +2,7 @@ import PDFDocument from 'pdfkit';
 import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
+import { projectInternalTurnEmployees } from './nomina.turn-projection';
 import { getSupabaseAdminClient } from '../../config/supabaseAdmin';
 import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { AppError } from '../../utils/AppError';
@@ -91,6 +92,8 @@ import {
 import { syncCoberturaCuentasCobroExternasPeriodo } from './cobertura.externos.service';
 import { assertNovedadRequiredDocuments } from './cobertura.novedad-documentos';
 import { getNominaPeriodRange } from './nomina-periodos';
+import { listTurnContextOptions, selectTurnContext } from './nomina.turn-context';
+import { getEffectivePayrollMunicipalityIds } from './nomina.procesos';
 import {
   resolverTramosOperativos,
   type CambioOperativoDerivable,
@@ -3707,8 +3710,8 @@ const loadNominaNovedadesCanonicasForPeriodo = async (
         nnc.tipo_novedad_id::text AS tipo_novedad_id,
         nnc.tipo_novedad_codigo_operativo AS tipo_novedad_codigo_snapshot,
         nnc.documento_persona_id::text AS documento_persona_id,
-        nnc.fecha_inicio,
-        nnc.fecha_fin,
+        nnc.fecha_inicio::text AS fecha_inicio,
+        nnc.fecha_fin::text AS fecha_fin,
         nnc.observacion,
         nnc.origen,
         COALESCE(nnc.activo, TRUE) AS activo,
@@ -3817,6 +3820,7 @@ const loadNominaMovimientoContextFromCobertura = async (
 
 const resolveNominaMovimientoContext = async (
   input: {
+    inferReplacement?: boolean;
     contexto_institucion?: string | null;
     contexto_modalidad?: string | null;
     contexto_municipio?: string | null;
@@ -3830,7 +3834,7 @@ const resolveNominaMovimientoContext = async (
   },
   client: PoolClient
 ): Promise<NominaMovimientoContextRow> => {
-  const replacementContext = input.vinculacion_reemplazada_id
+  const replacementContext = input.inferReplacement !== false && input.vinculacion_reemplazada_id && !input.modalidad_id && !input.contexto_modalidad
     ? await loadNominaMovimientoContextFromCobertura(
         input.vinculacion_reemplazada_id,
         input.fecha,
@@ -4144,6 +4148,7 @@ const resolveNominaTurnMovementSnapshot = async (
   const contexto = await resolveNominaMovimientoContext(
     {
       ...input.contexto,
+      inferReplacement: false,
       fecha: input.fecha,
       vinculacion_reemplazada_id: input.vinculacion_reemplazada_id ?? null
     },
@@ -4965,15 +4970,17 @@ const loadNominaEmpleadoRowsForPeriodo = async (
   return result.rows;
 };
 
-const buildProjectedNominaNovedadFromCanonica = (input: {
+export const buildProjectedNominaNovedadFromCanonica = (input: {
   canonical: NominaNovedadCanonicaRow;
   empleado: NominaEmpleadoRealRow;
   periodo: NominaPeriodoDateRange;
   tipo: NominaTipoNovedadRow;
 }): NominaNovedad | null => {
   const employment: NominaEmploymentDateRange = {
-    start: toDateString(input.empleado.fecha_inicio_pago) ?? input.periodo.start,
-    end: toDateString(input.empleado.fecha_fin_pago) ?? input.periodo.end
+    // Display physical events against employment validity, not an economic
+    // payment window which can start at the nominal calendar month.
+    start: toDateString(input.empleado.fecha_inicio_vinculacion) ?? input.periodo.start,
+    end: toDateString(input.empleado.fecha_fin_vinculacion) ?? input.periodo.end
   };
   const canonicalStart = toDateString(input.canonical.fecha_inicio) ?? '';
   const canonicalEnd = toDateString(input.canonical.fecha_fin) ?? '';
@@ -5249,7 +5256,7 @@ const lockNominaNovedadMutation = async (
   await client.query('SELECT pg_advisory_xact_lock($1::bigint)', [vinculacionId]);
 };
 
-const ensureNoBlockingCanonicalOverlap = async (
+export const ensureNoBlockingCanonicalOverlap = async (
   client: PoolClient,
   input: {
     excludeCanonicalId?: string | null;
@@ -6787,15 +6794,14 @@ export const recalculateNominaPeriodo = async (
       rows: await loadNominaEmpleadoRowsForPeriodo(periodoId, { nomina_empleado_id: options?.nomina_empleado_id }, tenant, client)
     };
 
-    const novedadesResult = await client.query<NominaNovedadRealRow>(
-      `
-        ${getNominaNovedadesRealSelect()}
-        WHERE nn.periodo_id = $1::bigint
-          AND COALESCE(nn.activo, TRUE) = TRUE
-        ORDER BY nn.id ASC
-      `,
-      [periodoId]
-    );
+    const novedadesResult = { rows: await nominaNovedadRepository.list({
+      periodoId, operationalRange: true, activo: true, tenant,
+    }, client) as NominaNovedadRealRow[] };
+    const employeeIdByLink = new Map(empleadosResult.rows.map(row => [row.vinculacion_id, row.id]));
+    for (const novelty of novedadesResult.rows) {
+      const targetEmployeeId = employeeIdByLink.get(novelty.vinculacion_id);
+      if (targetEmployeeId) novelty.nomina_empleado_id = targetEmployeeId;
+    }
 
     const periodoRange: NominaPeriodoDateRange = {
       start: toDateString(periodo.fecha_inicio) ?? '',
@@ -6841,12 +6847,8 @@ export const recalculateNominaPeriodo = async (
       [periodoId]
     );
 
-    await repairMissingNominaTurnMovementSnapshots(
-      periodoId,
-      actorUserId,
-      client,
-      options?.nomina_empleado_id ? [options.nomina_empleado_id] : undefined,
-    );
+    // Historical turn snapshots are immutable during payroll recalculation.
+    // Missing modality/value remains an explicit incident for review.
 
     const movimientosResult = await client.query<{
       movimientos_devengados: number | string | null;
@@ -7506,11 +7508,13 @@ export const recalculateNominaPeriodo = async (
         const esAdicion = toBooleanValue(novedad.tipo_novedad_es_adicion);
         const esDeduccion = toBooleanValue(novedad.tipo_novedad_es_deduccion);
 
-        if (esAdicion && valorManual > 0) {
+        // A dated absence projects across periods; a manual monetary amount
+        // stays attached to its source period and must not be paid twice.
+        if (esAdicion && valorManual > 0 && novedad.periodo_id === periodoId) {
           adicionesNovedad += valorManual;
         }
 
-        if (esDeduccion && valorManual > 0) {
+        if (esDeduccion && valorManual > 0 && novedad.periodo_id === periodoId) {
           deduccionesNovedadManual += valorManual;
         }
       }
@@ -8228,7 +8232,8 @@ export const deactivateNominaAsistencia = async (
 
 export const getNominaMovimientos = async (
   query: ListNominaMovimientosQuery,
-  tenant?: TenantAccessContext
+  tenant?: TenantAccessContext,
+  projectInternalEmployees = false
 ): Promise<PaginatedResponse<NominaMovimiento>> => {
   const result = await nominaMovimientoRepository.list({
     activo: query.activo,
@@ -8236,6 +8241,7 @@ export const getNominaMovimientos = async (
     familiaMovimiento: query.familia_movimiento,
     limit: query.limit,
     nominaEmpleadoId: query.nomina_empleado_id,
+    projectInternalEmployees,
     page: query.page,
     periodoId: query.periodo_id,
     tenant,
@@ -8315,7 +8321,7 @@ export const exportNominaTurnos = async (
     'MUNICIPIO': item.contexto_operativo?.municipio ?? '',
     'INSTITUCIÓN': item.contexto_operativo?.institucion ?? '',
     'SEDE': item.contexto_operativo?.sede ?? '',
-    'MODALIDAD': item.contexto_operativo?.modalidad ?? '',
+    'MODALIDAD': item.contexto_operativo?.modalidad ?? 'SIN MODALIDAD',
     'CÉDULA REEMPLAZADO': movementPeople(item).replaced.document,
     'NOMBRE REEMPLAZADO': movementPeople(item).replaced.name,
     'CÉDULA REEMPLAZANTE': movementPeople(item).performer.document,
@@ -8363,16 +8369,41 @@ export const getNominaMovimientosOperativos = async (
   query: ListNominaMovimientosQuery,
   tenant?: TenantAccessContext
 ): Promise<PaginatedResponse<Record<string, unknown>>> => {
-  const result = await getNominaMovimientos(query, tenant);
+  const result = await getNominaMovimientos(query, tenant, true);
+  const projected = await projectInternalTurnEmployees(result.items.map(item => ({ ...item })), query.periodo_id, dbPool);
   return {
     ...result,
-    items: result.items.map(({ valor_aplicado: _valorAplicado, valor_calculado: _valorCalculado,
+    items: projected.map(({ valor_aplicado: _valorAplicado, valor_calculado: _valorCalculado,
       valor_total: _valorTotal, valor_unitario: _valorUnitario,
       es_devengado: _esDevengado, es_deduccion: _esDeduccion,
       afecta_seguridad_social: _AfectaSeguridadSocial,
       motivo_ajuste_valor: _motivoAjusteValor, ...operational }) => operational)
   };
 };
+
+export const getNominaTurnContextOptions = async (
+  periodoId: string, empleadoId: string, fecha: string, fechaFin: string,
+  tenant?: TenantAccessContext, client?: PoolClient,
+) => {
+  const runner = client ?? dbPool;
+  const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
+  const empleado = await loadNominaEmpleadoByIdOrThrow(empleadoId, tenant, client);
+  if (empleado.periodo_id !== periodoId) throw new AppError('Trabajador fuera del periodo', 409, 'NOMINA_MOVIMIENTO_INVALID_PERIODO');
+  const start = toDateString(periodo.fecha_inicio) ?? '';
+  const end = toDateString(periodo.fecha_fin) ?? '';
+  if (fecha < start || fechaFin > end || fechaFin < fecha) throw new AppError('Fecha fuera del periodo', 400, 'NOMINA_TURNO_FECHA_FUERA_PERIODO');
+  const options = await listTurnContextOptions(runner, periodo.contrato_id, fecha, fechaFin);
+  if (!tenant || tenant.isGlobalAdmin) return options;
+  if (!tenant.userId) return [];
+  const municipios = await getEffectivePayrollMunicipalityIds(tenant.userId, periodo.contrato_empresa_id ?? '', periodo.contrato_id);
+  return options.filter(option => municipios.includes(Number(option.municipio_id)));
+};
+
+const resolveSelectedTurnContext = async (
+  periodoId: string, empleadoId: string, fecha: string, fechaFin: string,
+  input: { modalidad_id?: unknown; sede_id?: unknown; institucion_id?: unknown; municipio_id?: unknown },
+  tenant: TenantAccessContext | undefined, client: PoolClient,
+) => selectTurnContext(await getNominaTurnContextOptions(periodoId, empleadoId, fecha, fechaFin, tenant, client), input);
 
 export const listNominaNovedadTurnosOperativos = async (
   query: ListNominaMovimientosQuery & { tipo_turno?: 'INTERNO' | 'EXTERNO' },
@@ -8387,10 +8418,17 @@ export const listNominaNovedadTurnosOperativos = async (
   if (query.periodo_id) {
     params.push(query.periodo_id);
     conditions.push(`nnt.periodo_id = $${params.length}::bigint`);
+    conditions.push('COALESCE(nn.fecha_inicio, nn.fecha_fin, np.fecha_inicio) <= np.fecha_fin AND COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin) >= np.fecha_inicio');
   }
   if (query.nomina_empleado_id) {
     params.push(query.nomina_empleado_id);
-    conditions.push(`nnt.nomina_empleado_id = $${params.length}::bigint`);
+    conditions.push(`(
+      (nnt.tipo_turno = 'INTERNO' AND EXISTS (
+        SELECT 1 FROM nomina_empleados selected_employee
+        WHERE selected_employee.id = $${params.length}::bigint AND selected_employee.periodo_id = np.id
+          AND selected_employee.vinculacion_id = nnt.vinculacion_id
+      )) OR (nnt.tipo_turno <> 'INTERNO' AND nnt.nomina_empleado_id = $${params.length}::bigint)
+    )`);
   }
   if (query.tipo_turno) {
     params.push(query.tipo_turno);
@@ -8449,10 +8487,10 @@ export const listNominaNovedadTurnosOperativos = async (
         COALESCE(NULLIF(BTRIM(ce.numero_documento), ''), cubre_p.numero_documento) AS trabajador_cubre_documento,
         CONCAT_WS(' ', titular_p.primer_nombre, titular_p.segundo_nombre, titular_p.primer_apellido, titular_p.segundo_apellido) AS trabajador_reemplazado,
         titular_p.numero_documento AS trabajador_reemplazado_documento,
-        COALESCE(nm.contexto_municipio, mu.nombre_municipio) AS municipio,
-        COALESCE(nm.contexto_institucion, ins.nombre_institucion) AS institucion,
-        COALESCE(nm.contexto_sede, s.nombre_sede) AS sede,
-        COALESCE(nm.contexto_modalidad, mo.nombre_modalidad) AS modalidad,
+        COALESCE(nm.contexto_municipio, nnt.contexto_operativo ->> 'municipio', mu.nombre_municipio) AS municipio,
+        COALESCE(nm.contexto_institucion, nnt.contexto_operativo ->> 'institucion', ins.nombre_institucion) AS institucion,
+        COALESCE(nm.contexto_sede, nnt.contexto_operativo ->> 'sede', s.nombre_sede) AS sede,
+        COALESCE(nm.contexto_modalidad, nnt.contexto_operativo ->> 'modalidad', nnt.contexto_operativo ->> 'modalidad_codigo', mo.nombre_modalidad, 'SIN MODALIDAD') AS modalidad,
         COALESCE(nnt.contexto_operativo ->> 'origen_cobertura', 'NOVEDAD') AS origen_cobertura,
         ntn.codigo_operativo AS novedad_tipo_codigo,
         ntn.nombre AS novedad_tipo_nombre,
@@ -8515,19 +8553,10 @@ export const listNominaNovedadTurnosOperativos = async (
       INNER JOIN personas cubre_p ON cubre_p.id = v.persona_id
       LEFT JOIN nomina_movimientos nm ON nm.id = nnt.movimiento_id
       LEFT JOIN cobertura_externos ce ON ce.id = nnt.externo_id
-      LEFT JOIN LATERAL (
-        SELECT ff.municipio_id, ff.institucion_id, ff.sede_id, ff.modalidad_id
-        FROM cobertura_asignaciones ca
-        INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
-        WHERE ca.vinculacion_id = nnt.vinculacion_id AND ca.activo
-          AND ca.fecha_inicio <= COALESCE(nn.fecha_fin, np.fecha_fin)
-          AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= COALESCE(nn.fecha_inicio, np.fecha_inicio))
-        ORDER BY ca.fecha_inicio DESC, ca.id DESC LIMIT 1
-      ) ctx ON TRUE
-      LEFT JOIN municipios mu ON mu.id = ctx.municipio_id
-      LEFT JOIN instituciones ins ON ins.id = COALESCE(nm.institucion_id, ctx.institucion_id)
-      LEFT JOIN sedes s ON s.id = ctx.sede_id
-      LEFT JOIN modalidades mo ON mo.id = COALESCE(nm.modalidad_id, ctx.modalidad_id)
+      LEFT JOIN municipios mu ON mu.id = COALESCE(nm.municipio_id, NULLIF(nnt.contexto_operativo ->> 'municipio_id', '')::bigint)
+      LEFT JOIN instituciones ins ON ins.id = COALESCE(nm.institucion_id, NULLIF(nnt.contexto_operativo ->> 'institucion_id', '')::bigint)
+      LEFT JOIN sedes s ON s.id = COALESCE(nm.sede_id, NULLIF(nnt.contexto_operativo ->> 'sede_id', '')::bigint)
+      LEFT JOIN modalidades mo ON mo.id = COALESCE(nm.modalidad_id, NULLIF(nnt.contexto_operativo ->> 'modalidad_id', '')::bigint)
       ${whereSql}
       ORDER BY COALESCE(nn.fecha_inicio, np.fecha_inicio) DESC, nnt.id DESC
       LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
@@ -8535,7 +8564,7 @@ export const listNominaNovedadTurnosOperativos = async (
     listParams
   );
   return {
-    items: result.rows,
+    items: await projectInternalTurnEmployees(result.rows, query.periodo_id, dbPool),
     pagination: { page, limit, total, total_pages: total === 0 ? 0 : Math.ceil(total / limit) }
   };
 };
@@ -8573,6 +8602,13 @@ export const createNominaMovimiento = async (
       input.familia_movimiento ?? resolveNominaMovimientoFamilia(input.tipo_movimiento);
     const estadoMovimiento = normalizeNominaMovimientoEstado(input.estado);
     const isTurnMovement = isNominaTurnMovementType(input.tipo_movimiento);
+
+    if (isTurnMovement && fechaMovimiento) {
+      const selected = await resolveSelectedTurnContext(input.periodo_id, input.nomina_empleado_id, fechaMovimiento, fechaMovimiento, input, tenant, client);
+      input = { ...input, ...selected, contexto_municipio: selected.municipio,
+        contexto_institucion: selected.institucion, contexto_sede: selected.sede,
+        contexto_modalidad: selected.modalidad };
+    }
 
     if (isTurnMovement && !fechaMovimiento) {
       throw new AppError(
@@ -8645,6 +8681,7 @@ export const createNominaMovimiento = async (
       ? await resolveNominaMovimientoContext(
           {
             fecha: fechaMovimiento,
+            inferReplacement: !isTurnMovement,
             municipio_id: input.municipio_id,
             institucion_id: input.institucion_id,
             sede_id: input.sede_id,
@@ -9157,10 +9194,23 @@ export const updateNominaMovimiento = async (
       }
     }
 
+    if (nextFecha && isNominaTurnMovementType(nextTipoMovimiento) &&
+      [input.modalidad_id, input.sede_id, input.institucion_id, input.municipio_id].some(value => value !== undefined)) {
+      const selected = await resolveSelectedTurnContext(current.periodo_id, current.nomina_empleado_id,
+        nextFecha, nextFecha, {
+          modalidad_id: input.modalidad_id ?? current.modalidad_id,
+          sede_id: input.sede_id ?? current.sede_id,
+          institucion_id: input.institucion_id ?? current.institucion_id,
+          municipio_id: input.municipio_id ?? current.municipio_id,
+        }, tenant, client);
+      input = { ...input, ...selected, contexto_municipio: selected.municipio,
+        contexto_institucion: selected.institucion, contexto_sede: selected.sede, contexto_modalidad: selected.modalidad };
+    }
     const contexto = nextFecha
       ? await resolveNominaMovimientoContext(
           {
             fecha: nextFecha,
+            inferReplacement: !isNominaTurnMovementType(nextTipoMovimiento),
             municipio_id:
               input.municipio_id !== undefined
                 ? input.municipio_id
@@ -9860,6 +9910,7 @@ export const listNominaNovedades = async (
 ): Promise<PaginatedResponse<NominaNovedad>> => {
   const ordinaryRows = (
     await nominaNovedadRepository.list({
+      operationalRange: true,
       activo: query.activo,
       excludeInformative: false,
       nominaEmpleadoId: query.nomina_empleado_id,
@@ -9881,6 +9932,11 @@ export const listNominaNovedades = async (
       end: toDateString(periodo.fecha_fin) ?? ''
     };
     const employeeRows = await loadNominaEmpleadoRowsForPeriodo(query.periodo_id, query, tenant);
+    const operationalEmployeeByLink = new Map(employeeRows.map(row => [row.vinculacion_id, row.id]));
+    for (const ordinary of mergedItems) {
+      const targetEmployeeId = operationalEmployeeByLink.get(ordinary.vinculacion_id);
+      if (targetEmployeeId) ordinary.nomina_empleado_id = targetEmployeeId;
+    }
 
     if (employeeRows.length > 0) {
       const catalog = await loadNominaTiposNovedadCatalog();
@@ -10568,6 +10624,11 @@ export const createNominaNovedadConTurno = async (
   try {
     await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(input.periodo_id, tenant, client);
+    const fechaTurnoSeleccionado = input.fecha_inicio ?? input.fecha_fin;
+    if (!fechaTurnoSeleccionado) throw new AppError('La fecha del turno es obligatoria', 400, 'NOMINA_MOVIMIENTO_FECHA_REQUERIDA');
+    const selectedContext = await resolveSelectedTurnContext(input.periodo_id, input.nomina_empleado_id,
+      fechaTurnoSeleccionado, input.fecha_fin ?? fechaTurnoSeleccionado, turno.contexto_operativo, tenant, client);
+    turno.contexto_operativo = { ...turno.contexto_operativo, ...selectedContext };
     const novedad = await createNominaNovedad(input, actorUserId, tenant, auditMeta, client);
     const titularResult = await client.query<{
       persona_id: string;
@@ -10714,22 +10775,9 @@ export const createNominaNovedadConTurno = async (
     const fechaFinTurno = input.fecha_fin ?? input.fecha_inicio ?? null;
     const diasTurno = fechaTurno && fechaFinTurno ? countInclusiveDays(fechaTurno, fechaFinTurno) : 1;
     if (turno.tipo === 'INTERNO' && fechaTurno) {
-      const duplicateMovement = await client.query<{ id: string }>(
-        `
-          SELECT id::text
-          FROM nomina_movimientos
-          WHERE periodo_id = $1::bigint
-            AND nomina_empleado_id = $2::bigint
-            AND vinculacion_reemplazada_id = $3::bigint
-            AND fecha = $4::date
-            AND tipo_movimiento = $5
-            AND COALESCE(activo, TRUE) = TRUE
-          LIMIT 1
-        `,
-        [input.periodo_id, turnoEmpleadoId, input.vinculacion_id, fechaTurno, 'TURNO_INTERNO']
-      );
-      const existingMovementId = duplicateMovement.rows[0]?.id ?? null;
-      const movementId = existingMovementId ?? await insertNominaTurnMovementSnapshot(
+      // A new turn owns a new snapshot. Another turn on the same date can
+      // belong to a different destination and must never be overwritten.
+      const movementId = await insertNominaTurnMovementSnapshot(
         {
           actorUserId,
           cantidad: diasTurno,
@@ -10748,25 +10796,6 @@ export const createNominaNovedadConTurno = async (
         },
         client
       );
-      if (existingMovementId) {
-        await refreshNominaTurnMovementSnapshot(
-          existingMovementId,
-          {
-            actorUserId,
-            cantidad: diasTurno,
-            contrato_id: periodo.contrato_id,
-            contexto: turnoSnapshotContexto,
-            descripcion: turno.observacion ?? 'Turno interno de cobertura',
-            empresa_id: periodo.contrato_empresa_id,
-            estado: 'APROBADO',
-            fecha: fechaTurno,
-            persona_reemplazada_id: personaReemplazadaId,
-            tipo_movimiento: 'TURNO_INTERNO',
-            vinculacion_reemplazada_id: input.vinculacion_id
-          },
-          client
-        );
-      }
       if (movementId) {
         await client.query(
           `UPDATE nomina_novedad_turnos SET movimiento_id = $2::bigint WHERE id = $1::bigint`,
@@ -10775,25 +10804,12 @@ export const createNominaNovedadConTurno = async (
       }
     }
     if (turno.tipo === 'EXTERNO' && externoId && fechaTurno) {
-      const duplicateExternal = await client.query<{ id: string }>(
-        `
-          SELECT id::text
-          FROM nomina_movimientos
-          WHERE periodo_id = $1::bigint
-            AND externo_id = $2::bigint
-            AND fecha = $3::date
-            AND tipo_movimiento = 'TURNO_EXTERNO'
-            AND COALESCE(activo, TRUE) = TRUE
-          LIMIT 1
-        `,
-        [input.periodo_id, externoId, fechaTurno]
-      );
-      const existingMovementId = duplicateExternal.rows[0]?.id ?? null;
-      const movementId = existingMovementId ?? await insertNominaTurnMovementSnapshot(
+      const movementId = await insertNominaTurnMovementSnapshot(
         {
           actorUserId,
           cantidad: diasTurno,
           contrato_id: periodo.contrato_id,
+          contexto: turnoSnapshotContexto,
           descripcion: turno.observacion ?? 'Turno externo de cobertura',
           empresa_id: periodo.contrato_empresa_id,
           estado: 'PENDIENTE',
@@ -10808,25 +10824,6 @@ export const createNominaNovedadConTurno = async (
         },
         client
       );
-      if (existingMovementId) {
-        await refreshNominaTurnMovementSnapshot(
-          existingMovementId,
-          {
-            actorUserId,
-            cantidad: diasTurno,
-            contrato_id: periodo.contrato_id,
-            descripcion: turno.observacion ?? 'Turno externo de cobertura',
-            empresa_id: periodo.contrato_empresa_id,
-            estado: 'PENDIENTE',
-            externo_id: externoId,
-            fecha: fechaTurno,
-            persona_reemplazada_id: personaReemplazadaId,
-            tipo_movimiento: 'TURNO_EXTERNO',
-            vinculacion_reemplazada_id: input.vinculacion_id
-          },
-          client
-        );
-      }
       if (movementId) {
         await client.query(
           `UPDATE nomina_novedad_turnos SET movimiento_id = $2::bigint WHERE id = $1::bigint`,

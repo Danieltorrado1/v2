@@ -53,6 +53,7 @@ import { attendanceDiagnosticCsv, buildAttendanceDiagnostic, classifyAttendanceF
 import { getColombianCalendarDay } from "./colombiaHolidays";
 import NominaModuleShell from "./NominaModuleShell";
 import CambioOperativoFields from './CambioOperativoFields';
+import TurnContextFields, { type TurnContext } from './TurnContextFields';
 import { tipoCambioOperativo } from './cambioOperativo.domain';
 import {
   buildTramos,
@@ -61,6 +62,7 @@ import {
   isOutsideEmployment,
   mergeAttendance,
   movimientosOnDate,
+  internalTurnIndicator,
   novedadCode,
   novedadesOnDate,
   dedupeNominaNovedades,
@@ -232,7 +234,7 @@ function group<T>(items: T[], key: (item: T) => string) {
 
 function coverageTurnsOnDate(items: NominaNovedadTurnoOperativoApi[], date: string) {
   return items.filter((item) => {
-    if (item.tipo_turno !== "INTERNO" || item.activo === false || item.estado === "ANULADO") return false;
+    if (item.tipo_turno !== "INTERNO" || item.activo === false || ['ANULADO', 'RECHAZADO'].includes(item.estado)) return false;
     const start = item.fecha ?? item.fecha_inicio ?? item.fecha_fin;
     const end = item.fecha_fin ?? item.fecha_inicio ?? item.fecha ?? start;
     return Boolean(start && end && start <= date && end >= date);
@@ -559,6 +561,7 @@ export default function PlanillaOperativaPage() {
   const [novelties, setNovelties] = useState<NominaNovedadApi[]>([]);
   const [movements, setMovements] = useState<NominaMovimientoApi[]>([]);
   const [coverageTurns, setCoverageTurns] = useState<NominaNovedadTurnoOperativoApi[]>([]);
+  const [turnContext, setTurnContext] = useState<TurnContext | null>(null);
   const [changes, setChanges] = useState<PlanillaCambio[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [pendingAttendance, setPendingAttendance] = useState<Set<string>>(new Set());
@@ -1689,16 +1692,16 @@ export default function PlanillaOperativaPage() {
       return;
     }
 
+    if (!editingNovelty && coverageType !== 'SIN_REEMPLAZO' && !turnContext) {
+      setError('Selecciona institución, sede y modalidad del turno.');
+      return;
+    }
+
     noveltySaveInFlightRef.current = true;
     setSaving(true);
     setError("");
 
     try {
-      const tramo =
-        buildTramos(noveltyCell.employee, start, end, changesByLink.get(noveltyCell.employee.vinculacion_id) ?? []).find(
-          (item) => item.inicio <= noveltyCell.date && item.fin >= noveltyCell.date,
-        )?.contexto ?? employeeBaseContext(noveltyCell.employee);
-
       const hasCoverageSelection = coverageType !== "SIN_REEMPLAZO";
       const shouldPersistCoverage = selectedType.afecta_cobertura !== false || hasCoverageSelection;
 
@@ -1763,7 +1766,7 @@ export default function PlanillaOperativaPage() {
                 persona_reemplazada_id:
                   coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.id ?? null : null,
                 contexto_operativo: {
-                  ...tramo,
+                  ...turnContext,
                   cobertura_documento_externo:
                     coverageType === "PERSONA_EXTERNA" ? externalDocument.trim() : null,
                   cobertura_interna_nomina_empleado_id:
@@ -1772,7 +1775,7 @@ export default function PlanillaOperativaPage() {
                     coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.id ?? null : null,
                   cobertura_tipo: coverageType,
                   gestor_nombre: getEmployeeGestorLabel(noveltyCell.employee),
-                  modalidad_codigo: getEmployeeModalidadCode(noveltyCell.employee),
+                  modalidad_codigo: turnContext?.modalidad,
                   persona_cubre_nombre:
                     coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.nombre_completo ?? null : null,
                   persona_externa_nombre: coverageType === "PERSONA_EXTERNA" ? externalName.trim() : null,
@@ -2157,6 +2160,7 @@ export default function PlanillaOperativaPage() {
                       coverageTurnByEmployee.get(employee.id) ?? [],
                       day,
                     );
+                    const turnIndicator = internalTurnIndicator(additionalTurnsOnThisDay, movementsOnThisDay);
                     const key = `${employee.vinculacion_id}|${day}`;
                     const isPresent = present.has(key);
                     const isPendingAttendance = pendingAttendance.has(key);
@@ -2195,13 +2199,13 @@ export default function PlanillaOperativaPage() {
                             {novedadCode(item)}
                           </b>
                         ))}
-                        {additionalTurnsOnThisDay.length > 0 ? <span
+                        {turnIndicator.count > 0 ? <span
                           className="op-internal-turn-indicator"
                           role="img"
                           tabIndex={0}
-                          title={additionalTurnsOnThisDay.length === 1 ? "1 turno adicional interno" : `${additionalTurnsOnThisDay.length} turnos adicionales internos`}
-                          aria-label={additionalTurnsOnThisDay.length === 1 ? "1 turno adicional interno" : `${additionalTurnsOnThisDay.length} turnos adicionales internos`}
-                        ><Clock3 size={12} aria-hidden="true" />+{additionalTurnsOnThisDay.length}T</span> : null}
+                          title={turnIndicator.tooltip}
+                          aria-label={turnIndicator.tooltip}
+                        ><Clock3 size={12} aria-hidden="true" />{turnIndicator.label}</span> : null}
                         {additionalTurnsOnThisDay.length === 0 && movementsOnThisDay.some((item) => item.familia_movimiento === "ADICION_DEVENGO") ? <em>TA</em> : null}
                         {tramo?.cambioId ? <i>C</i> : null}
                       </button>
@@ -2531,6 +2535,10 @@ export default function PlanillaOperativaPage() {
                     ))}
                   </div>
 
+                  {!editingNovelty && coverageType !== 'SIN_REEMPLAZO' ? <TurnContextFields
+                    periodoId={periodId} empleadoId={noveltyCell.employee.id} fecha={rangeStart || noveltyCell.date}
+                    fechaFin={selectedTypeAllowsRange ? rangeEnd || rangeStart || noveltyCell.date : rangeStart || noveltyCell.date}
+                    value={turnContext} onChange={setTurnContext} disabled={saving} /> : null}
                   {coverageType === "PERSONAL_VINCULADO" ? (
                     <div className="op-cover-search">
                       <label>

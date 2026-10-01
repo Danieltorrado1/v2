@@ -12,7 +12,9 @@ const schema = `
     id bigint PRIMARY KEY,
     contrato_id bigint NOT NULL,
     estado text NOT NULL,
-    nombre_periodo text NOT NULL
+    nombre_periodo text NOT NULL,
+    fecha_inicio date DEFAULT '2026-08-01',
+    fecha_fin date DEFAULT '2026-08-31'
   );
   CREATE TABLE vinculaciones (
     id bigint PRIMARY KEY,
@@ -62,6 +64,18 @@ const schema = `
     (3, 4, 201, '2026-10-01', 'PRESENTE', TRUE);
   SELECT setval('nomina_asistencia_diaria_id_seq', 3, true);
 `;
+
+test('asistencia del 28/08 pertenece al rango operativo de septiembre y 26/09 queda fuera', async () => {
+  const db=new PGlite();
+  try {
+    await db.exec(schema);
+    await db.exec(`UPDATE nomina_periodos SET fecha_inicio='2026-08-26',fecha_fin='2026-09-25' WHERE id=2;
+      INSERT INTO nomina_asistencia_diaria(periodo_id,vinculacion_id,fecha,estado_dia,activo)
+      VALUES(2,101,'2026-08-28','PRESENTE',TRUE),(2,101,'2026-09-26','PRESENTE',TRUE);`);
+    const result=await new NominaAsistenciaRepository().listByPeriodo({periodoId:'2',estadoDia:'PRESENTE',page:1,limit:20},makeExecutor(db));
+    assert.deepEqual(result.rows.map(row=>row.fecha),['2026-08-28']);
+  } finally { await db.close(); }
+});
 
 function makeExecutor(db: PGlite): NominaAsistenciaRepositoryExecutor {
   return {

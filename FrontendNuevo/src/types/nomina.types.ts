@@ -534,9 +534,9 @@ export interface PaginatedNominaTurnosApi {
   pagination: NominaPaginationMeta;
 }
 
-export type CreateNominaTurnoPayload = Omit<CreateNominaMovimientoApi, 'tipo_movimiento'>;
+export type CreateNominaTurnoPayload = Omit<CreateNominaMovimientoApi, 'tipo_movimiento'> & { tipo_movimiento?: 'TURNO_INTERNO' | 'TURNO_EXTERNO' };
 
-export type UpdateNominaTurnoPayload = Omit<UpdateNominaMovimientoApi, 'tipo_movimiento'>;
+export type UpdateNominaTurnoPayload = UpdateNominaMovimientoApi;
 
 export interface CreateNominaPeriodoApi {
   nombre_periodo: string;

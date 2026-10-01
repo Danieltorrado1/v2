@@ -87,6 +87,7 @@ import {
   createNominaMovimientoHandler,
   createNominaNovedadHandler,
   createNominaNovedadConTurnoHandler,
+  getNominaTurnContextOptionsHandler,
   createNominaPeriodoHandler,
   deactivateNominaAsistenciaHandler,
   deactivateNominaMovimientoHandler,
@@ -306,6 +307,7 @@ nominaRoutes.get(
 );
 nominaRoutes.get('/movimientos-operativos', requirePermissions('nomina.operativa.read'), getNominaMovimientosOperativosHandler);
 nominaRoutes.get('/novedad-turnos-operativos', requirePermissions('nomina.operativa.read'), getNominaNovedadTurnosOperativosHandler);
+nominaRoutes.get('/turnos/contextos', requireAnyPermissions('nomina.operativa.read', 'nomina.movimientos.read'), getNominaTurnContextOptionsHandler);
 nominaRoutes.get(
   '/movimientos/:id',
   rejectRoles('GESTOR'),

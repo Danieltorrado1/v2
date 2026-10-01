@@ -658,6 +658,13 @@ export const createNominaNovedadConTurnoSchema = createNominaNovedadSchema.exten
   })
 });
 
+export const nominaTurnContextQuerySchema = z.object({
+  periodo_id: identifierSchema,
+  nomina_empleado_id: identifierSchema,
+  fecha: z.iso.date(),
+  fecha_fin: z.iso.date().optional(),
+}).strict();
+
 export const updateNominaNovedadSchema = z.object({
   tipo_novedad_id: identifierSchema.optional(),
   tipo_novedad_codigo: nullableTrimmedStringSchema.optional(),

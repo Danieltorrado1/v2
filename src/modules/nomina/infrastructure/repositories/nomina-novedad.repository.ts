@@ -24,6 +24,9 @@ export interface ListNominaNovedadRepositoryInput {
   excludeInformative?: boolean;
   nominaEmpleadoId?: string | null;
   periodoId?: string | null;
+  // Operational reads include dated records stored in another period that
+  // overlap this period, under the same contract and employee population.
+  operationalRange?: boolean;
   personaId?: string | null;
   revisado?: boolean;
   tenant?: TenantAccessContext;
@@ -86,8 +89,8 @@ const noveltySelect = `
     nn.nomina_empleado_id::text AS nomina_empleado_id,
     nn.vinculacion_id::text AS vinculacion_id,
     nn.tipo_novedad_id::text AS tipo_novedad_id,
-    nn.fecha_inicio,
-    nn.fecha_fin,
+    nn.fecha_inicio::text AS fecha_inicio,
+    nn.fecha_fin::text AS fecha_fin,
     nn.dias,
     nn.horas,
     nn.valor_manual,
@@ -362,8 +365,30 @@ const buildNoveltyWhere = (
   if (excludeInformative) {
     conditions.push("UPPER(COALESCE(ntn.codigo_operativo, '')) NOT IN ('DNC', 'DCO')");
   }
-  if (input.periodoId) { params.push(input.periodoId); conditions.push(`nn.periodo_id = $${params.length}::bigint`); }
-  if (input.nominaEmpleadoId) { params.push(input.nominaEmpleadoId); conditions.push(`nn.nomina_empleado_id = $${params.length}::bigint`); }
+  if (input.periodoId) {
+    params.push(input.periodoId);
+    const periodParam = `$${params.length}::bigint`;
+    conditions.push(input.operationalRange ? `EXISTS (
+      SELECT 1 FROM nomina_periodos target_period
+      JOIN nomina_empleados target_employee ON target_employee.periodo_id = target_period.id
+        AND target_employee.vinculacion_id = nn.vinculacion_id
+      WHERE target_period.id = ${periodParam} AND target_period.contrato_id = np.contrato_id
+        AND (
+          (nn.periodo_id = target_period.id AND nn.fecha_inicio IS NULL AND nn.fecha_fin IS NULL)
+          OR (COALESCE(nn.fecha_inicio, nn.fecha_fin) <= target_period.fecha_fin
+            AND COALESCE(nn.fecha_fin, nn.fecha_inicio) >= target_period.fecha_inicio)
+        )
+    )` : `nn.periodo_id = ${periodParam}`);
+  }
+  if (input.nominaEmpleadoId) {
+    params.push(input.nominaEmpleadoId);
+    conditions.push(input.operationalRange && input.periodoId ? `EXISTS (
+      SELECT 1 FROM nomina_empleados selected_employee
+      WHERE selected_employee.id = $${params.length}::bigint
+        AND selected_employee.periodo_id = $${params.length - 1}::bigint
+        AND selected_employee.vinculacion_id = nn.vinculacion_id
+    )` : `nn.nomina_empleado_id = $${params.length}::bigint`);
+  }
   if (input.vinculacionId) { params.push(input.vinculacionId); conditions.push(`nn.vinculacion_id = $${params.length}::bigint`); }
   if (input.personaId) { params.push(input.personaId); conditions.push(`v.persona_id = $${params.length}::bigint`); }
   if (input.tipoNovedadId) { params.push(input.tipoNovedadId); conditions.push(`nn.tipo_novedad_id = $${params.length}::bigint`); }

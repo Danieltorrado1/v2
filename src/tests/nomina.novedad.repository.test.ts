@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
+import type { PoolClient } from 'pg';
+import { buildProjectedNominaNovedadFromCanonica, ensureNoBlockingCanonicalOverlap } from '../modules/nomina/nomina.service';
+import { AppError } from '../utils/AppError';
 
 import {
   NominaNovedadRepository,
@@ -101,6 +104,60 @@ const tenantEmpresa15 = {
   isGlobalAdmin: false,
   roleNames: ['ADMINISTRADOR']
 };
+
+test('proyección canónica conserva agosto aunque fecha_inicio_pago diga septiembre', () => {
+  const projected=buildProjectedNominaNovedadFromCanonica({
+    canonical:{id:'8',vinculacion_id:'101',tipo_novedad_id:'7',fecha_inicio:'2026-08-26',fecha_fin:'2026-08-31',activo:true,created_at:'2026-08-26T15:00:00Z'},
+    empleado:{id:'30',periodo_id:'3',vinculacion_id:'101',fecha_inicio_vinculacion:'2026-01-01',fecha_fin_vinculacion:null,
+      fecha_inicio_pago:'2026-09-01',fecha_fin_pago:'2026-09-25'},
+    periodo:{start:'2026-08-26',end:'2026-09-25'},
+    tipo:{id:'7',codigo_operativo:'PNR',nombre:'Permiso no remunerado',activo:true},
+  } as Parameters<typeof buildProjectedNominaNovedadFromCanonica>[0]);
+  assert.equal(projected?.fecha_inicio,'2026-08-26');
+  assert.equal(projected?.fecha_fin,'2026-08-31');
+  assert.equal(projected?.dias,6);
+});
+
+test('rango operativo 26/08–25/09 muestra eventos que bloquean aunque tengan otro periodo de origen', async () => {
+  const db = new PGlite();
+  const repository = new NominaNovedadRepository();
+  const executor = makeExecutor(db);
+  try {
+    await db.exec(schema);
+    await db.exec(`CREATE TABLE nomina_novedades_canonicas (
+      id bigint, vinculacion_id bigint, tipo_novedad_id bigint,
+      tipo_novedad_codigo_operativo text, fecha_inicio date, fecha_fin date, activo boolean
+    )`);
+    await db.exec(`
+      INSERT INTO nomina_periodos VALUES (30,24,'2026-08-26','2026-09-25');
+      INSERT INTO nomina_empleados VALUES (30,30,101);
+      UPDATE vinculaciones SET fecha_fin=NULL WHERE id=101;
+      INSERT INTO nomina_novedades
+        (periodo_id,nomina_empleado_id,vinculacion_id,tipo_novedad_id,fecha_inicio,fecha_fin,activo)
+      VALUES (2,10,101,7,'2026-08-26','2026-08-26',TRUE),
+        (2,10,101,7,'2026-08-31','2026-08-31',TRUE),
+        (30,30,101,7,'2026-09-01','2026-09-01',TRUE),
+        (30,30,101,7,'2026-09-25','2026-09-25',TRUE),
+        (30,30,101,7,'2026-09-26','2026-09-26',TRUE),
+        (30,30,101,7,'2026-08-28','2026-08-28',FALSE);
+    `);
+    const rows = await repository.list({ periodoId:'30', operationalRange:true, activo:true, tenant:tenantEmpresa15 }, executor);
+    const dates = rows.map(row => String(row.fecha_inicio).slice(0,10)).sort();
+    assert.deepEqual(dates, ['2026-08-26','2026-08-31','2026-09-01','2026-09-25']);
+    assert.equal(rows.filter(row => row.periodo_id==='2').length,2);
+    assert.equal((await repository.list({ periodoId:'30', nominaEmpleadoId:'30', operationalRange:true, activo:true, tenant:tenantEmpresa15 }, executor)).length,4);
+    assert.equal((await repository.list({ periodoId:'30', operationalRange:true, tenant:{...tenantEmpresa15,empresaIds:[16]} }, executor)).length,0);
+    assert.equal((await repository.list({ periodoId:'30', operationalRange:true, activo:false, tenant:tenantEmpresa15 }, executor)).length,1);
+    const conflictInput={vinculacion_id:'101',fecha_inicio:'2026-08-26',fecha_fin:'2026-08-26',
+      tipo_novedad:{id:'7',nombre:'PNR',codigo_operativo:'PNR',bloquea_otras_novedades:true,
+        es_permiso:true,es_incapacidad:false,es_suspension:false,grupo_exclusividad:'AUSENCIA'}};
+    await assert.rejects(ensureNoBlockingCanonicalOverlap(executor as PoolClient,conflictInput),
+      error => error instanceof AppError && error.statusCode===409 && error.code==='NOMINA_NOVEDAD_FECHA_OCUPADA');
+    await db.exec("UPDATE nomina_novedades SET activo=FALSE WHERE fecha_inicio=DATE '2026-08-26'");
+    await ensureNoBlockingCanonicalOverlap(executor as PoolClient,conflictInput);
+    assert.equal((await repository.list({periodoId:'30',operationalRange:true,activo:true,tenant:tenantEmpresa15},executor)).length,3);
+  } finally { await db.close(); }
+});
 
 test('NominaNovedadRepository conserva lecturas, rango, orden, tenant y periodo', async () => {
   const db = new PGlite();

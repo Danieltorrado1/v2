@@ -14,6 +14,15 @@ import { calculateNominaPaidDays } from '../modules/nomina/nomina.calculator';
 
 const agosto = { start: '2026-08-01', end: '2026-08-31' } as const;
 
+test('liquidación de septiembre aplica novedades de agosto y recorta 26/09', () => {
+  const periodo={start:'2026-08-26',end:'2026-09-25'};
+  const effects=resolveNominaEfectosPorDia({periodo,employment:{start:'2026-01-01',end:'2026-12-31'},
+    events:[{origen:'PERIODO',fuente_id:'PNR-AGOSTO',fecha_inicio:'2026-08-26',fecha_fin:'2026-08-31',dias:null,matrix:MATRICES.PNR},
+      {origen:'PERIODO',fuente_id:'PNR-SEPTIEMBRE',fecha_inicio:'2026-09-25',fecha_fin:'2026-09-26',dias:null,matrix:MATRICES.PNR}]});
+  assert.equal(effects.dias_salario_descuento,7);
+  assert.equal(effects.dias_transporte_descuento,7);
+});
+
 const baseEmployment = {
   start: '2026-08-01',
   end: '2026-08-31'

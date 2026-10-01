@@ -136,6 +136,25 @@ export const novedadesOnDate = (items: NominaNovedadApi[], date: string) => {
 export const movimientosOnDate = (items: NominaMovimientoApi[], date: string) =>
   items.filter((item) => item.activo && item.fecha === date);
 
+export function internalTurnIndicator(
+  turns: Array<{ id: string; movimiento_id?: string | null; modalidad?: string | null }>,
+  movements: NominaMovimientoApi[],
+) {
+  const linkedIds = new Set(turns.map(turn => turn.movimiento_id).filter(Boolean));
+  const modalities = [
+    ...turns.map(turn => turn.modalidad?.trim() || 'SIN MODALIDAD'),
+    ...movements.filter(movement => movement.activo && movement.tipo_movimiento === 'TURNO_INTERNO' &&
+      !['RECHAZADO', 'ANULADO'].includes(movement.estado) && !linkedIds.has(movement.id))
+      .map(movement => movement.contexto_operativo?.modalidad?.trim() || 'SIN MODALIDAD'),
+  ];
+  return {
+    count: modalities.length,
+    label: modalities.length > 1 ? `T+${modalities.length}` : 'T+',
+    tooltip: modalities.length === 1 ? `Turno interno adicional · ${modalities[0]}` :
+      `Turno interno adicional · ${modalities.length} turnos: ${modalities.join(', ')}`,
+  };
+}
+
 export const novedadCode = (item: NominaNovedadApi) =>
   item.tipo_novedad.codigo_operativo ?? item.tipo_novedad.nombre ?? "NOV";
 

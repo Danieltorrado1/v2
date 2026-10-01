@@ -52,6 +52,7 @@ import { NOMINA_TURNO_MOVIMIENTO_TIPO } from "../../types/nomina.types";
 import { formatDateOnly, todayDateOnly } from "./dateOnly";
 import { pickDefaultNominaPeriod } from "./nominaPeriods";
 import NominaModuleShell from "./NominaModuleShell";
+import TurnContextFields, { type TurnContext } from './TurnContextFields';
 import type {
   NominaMovimientoTipo,
   CreateNominaTurnoPayload,
@@ -518,6 +519,8 @@ export default function TurnosPage() {
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [exportMenuPosition, setExportMenuPosition] = useState({ top: 0, left: 0 });
   const [form, setForm] = useState<TurnoFormState>(emptyForm());
+  const [turnContext, setTurnContext] = useState<TurnContext | null>(null);
+  const [turnKind, setTurnKind] = useState<'TURNO_INTERNO' | 'TURNO_EXTERNO'>('TURNO_INTERNO');
   const [externalSummaryState, setExternalSummaryState] = useState<ExternalSummaryState>({
     ...EMPTY_ASYNC_STATE,
   });
@@ -1331,6 +1334,8 @@ export default function TurnosPage() {
       return "Selecciona un colaborador del periodo.";
     }
 
+    if (editorMode === "create" && !turnContext) return 'Selecciona institución, sede y modalidad del turno.';
+
     if (form.fecha.trim() === "") {
       return "La fecha es obligatoria.";
     }
@@ -1432,6 +1437,11 @@ export default function TurnosPage() {
 
       if (editorMode === "create") {
         const payload: CreateNominaTurnoPayload = {
+          tipo_movimiento: turnKind,
+          municipio_id: turnContext?.municipio_id,
+          institucion_id: turnContext?.institucion_id,
+          sede_id: turnContext?.sede_id,
+          modalidad_id: turnContext?.modalidad_id,
           periodo_id: selectedPeriodId,
           nomina_empleado_id: selectedEmployee.id,
           vinculacion_id: selectedEmployee.vinculacion_id,
@@ -1458,6 +1468,7 @@ export default function TurnosPage() {
         });
       } else if (editorMode === "edit" && editingMovementId) {
         const payload: UpdateNominaTurnoPayload = {
+          tipo_movimiento: editingMovement?.tipo_movimiento,
           fecha: form.fecha,
           descripcion: form.descripcion.trim() || null,
           cantidad: parseOptionalNumber(form.cantidad),
@@ -2040,7 +2051,6 @@ export default function TurnosPage() {
               <strong>
                 {selectedTurnRelation?.modalidad ??
                   selectedMovement.contexto_operativo?.modalidad ??
-                  selectedMovementEmployee?.categoria_salarial?.modalidad ??
                   "No disponible"}
               </strong>
             </div>
@@ -2375,6 +2385,13 @@ export default function TurnosPage() {
             </label>
           </div>
 
+          {editorMode === 'create' ? <>
+            <label className="np-form-field">Tipo de turno<select value={turnKind} disabled={isSubmitting} onChange={event => setTurnKind(event.target.value as typeof turnKind)}>
+              <option value="TURNO_INTERNO">Turno interno adicional</option><option value="TURNO_EXTERNO">Turno externo</option>
+            </select></label>
+            <TurnContextFields periodoId={selectedPeriodId ?? ''} empleadoId={form.nomina_empleado_id} fecha={form.fecha}
+              value={turnContext} onChange={setTurnContext} disabled={isSubmitting} />
+          </> : null}
           {selectedFormEmployee ? (
             <div className="np-inline-state neutral">
               Contexto del colaborador: cargo {selectedFormEmployee.cargo?.nombre_cargo ?? "No disponible"},

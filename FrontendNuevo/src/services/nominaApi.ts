@@ -963,7 +963,7 @@ export async function createNominaTurno(
 ): Promise<NominaTurno> {
   return mapNominaTurno(await createNominaMovimiento({
     ...input,
-    tipo_movimiento: NOMINA_TURNO_MOVIMIENTO_TIPO,
+    tipo_movimiento: input.tipo_movimiento ?? NOMINA_TURNO_MOVIMIENTO_TIPO,
   }));
 }
 
@@ -1017,7 +1017,6 @@ export async function updateNominaTurno(
 ): Promise<NominaTurno> {
   return mapNominaTurno(await updateNominaMovimiento(id, {
     ...input,
-    tipo_movimiento: NOMINA_TURNO_MOVIMIENTO_TIPO,
   }));
 }
 
