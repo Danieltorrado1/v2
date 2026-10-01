@@ -25,7 +25,7 @@ test('vigencias históricas, futuras y filas incompletas son datos de lectura, n
   assert.ok(fixture.rows.some((row) => row.asignacion === 'FUTURA'));
   assert.ok(fixture.rows.some((row) => row.asignacion === 'INCOMPLETA_CATEGORIA_AMBIGUA'));
   assert.ok(fixture.rows.some((row) => row.modalidad_id === null));
-  assert.match(source, /COALESCE\(ff\.modalidad_final,mo\.nombre_modalidad\)/);
+  assert.match(source, /COALESCE\(fp\.modalidad_original,ff\.modalidad_final,mo\.nombre_modalidad\)/);
   assert.match(source, /FOCALIZACION_OPTIONS_SQL, \[contratoId\]/);
   assert.match(source, /fv\.carga_id=\$\$\{periodP\}::bigint/);
   assert.match(source, /\$\{source\} \$\{where\} AND gestor\.id IS NOT NULL/);

@@ -38,7 +38,7 @@ test('resumen de cobertura filtra asignaciones y vinculaciones por fecha de cons
   assert.match(serviceSource, /ca\.fecha_inicio <= \$\{datePlaceholder\}::date/);
   assert.match(serviceSource, /\(ca\.fecha_fin IS NULL OR ca\.fecha_fin >= \$\{datePlaceholder\}::date\)/);
   assert.match(serviceSource, /v\.fecha_inicio <= \$\{datePlaceholder\}::date/);
-  assert.match(serviceSource, /\(v\.fecha_fin IS NULL OR v\.fecha_fin >= \$\{datePlaceholder\}::date\)/);
+  assert.match(serviceSource, /\(\$\{effectiveRetirementSql\('v'\)\} IS NULL OR \$\{effectiveRetirementSql\('v'\)\} >= \$\{datePlaceholder\}::date\)/);
   assert.match(serviceSource, /fecha_consulta/);
   assert.match(schemaSource, /fecha:\s*nullableDateSchema\.optional\(\)/);
 });

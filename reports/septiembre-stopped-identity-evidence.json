@@ -1,0 +1,62 @@
+{
+  "schema_version": "focalizacion.septiembre.stopped-identity-evidence.v1",
+  "timestamp_utc": "2026-10-01T11:01:55.489Z",
+  "mode": "PreviewOnly",
+  "transaction_read_only": "on",
+  "writes": 0,
+  "source_sha256": "745e04bbf1cc51ed194e5514704c3441b2b9088e34fe513f2e8f2ecf9db566a3",
+  "evidence": [
+    {
+      "fila": 559,
+      "municipio_excel": "CUBARRAL",
+      "municipio_catalogo": "SAN LUIS DE CUBARRAL",
+      "municipio_id": "861",
+      "institucion_id": "97",
+      "sede_id": "482",
+      "institution_name_matches": true,
+      "site_name_matches": true,
+      "municipality_name_matches": false,
+      "correction_applied": false,
+      "requires_explicit_mapping": true
+    },
+    {
+      "fila": 560,
+      "municipio_excel": "CUBARRAL",
+      "municipio_catalogo": "SAN LUIS DE CUBARRAL",
+      "municipio_id": "861",
+      "institucion_id": "97",
+      "sede_id": "482",
+      "institution_name_matches": true,
+      "site_name_matches": true,
+      "municipality_name_matches": false,
+      "correction_applied": false,
+      "requires_explicit_mapping": true
+    },
+    {
+      "fila": 561,
+      "municipio_excel": "CUBARRAL",
+      "municipio_catalogo": "SAN LUIS DE CUBARRAL",
+      "municipio_id": "861",
+      "institucion_id": "97",
+      "sede_id": "483",
+      "institution_name_matches": true,
+      "site_name_matches": true,
+      "municipality_name_matches": false,
+      "correction_applied": false,
+      "requires_explicit_mapping": true
+    },
+    {
+      "fila": 562,
+      "municipio_excel": "CUBARRAL",
+      "municipio_catalogo": "SAN LUIS DE CUBARRAL",
+      "municipio_id": "861",
+      "institucion_id": "98",
+      "sede_id": "484",
+      "institution_name_matches": true,
+      "site_name_matches": true,
+      "municipality_name_matches": false,
+      "correction_applied": false,
+      "requires_explicit_mapping": true
+    }
+  ]
+}
