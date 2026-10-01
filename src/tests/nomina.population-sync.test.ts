@@ -126,6 +126,47 @@ test('sincronizaci?n real sobre PostgreSQL aislado, sin conexiones externas', as
       const updates = statements.filter(sql => /UPDATE nomina_empleados/i.test(sql));
       assert.ok(updates.every(sql => !/SET\s+(salario|neto|salud|pension|devengado)/i.test(sql)));
     });
+    await t.test('corte 26-25 importa ingresos hasta fin de septiembre sin crear asistencia', async () => {
+      await db.exec(`UPDATE nomina_periodos SET fecha_inicio='2026-08-26', fecha_fin='2026-09-25' WHERE id=9;
+        INSERT INTO vinculaciones(id,persona_id,fecha_inicio,fecha_fin) VALUES
+          (800,800,'2026-09-25',NULL),(801,801,'2026-09-26',NULL),
+          (802,802,'2026-09-27',NULL),(803,803,'2026-09-30',NULL),
+          (804,804,'2026-10-01',NULL),(805,805,'2026-08-01','2026-08-31');`);
+      const attendance = (await db.query('SELECT * FROM nomina_asistencia_diaria')).rows;
+      assert.equal((await sync()).imported, 4);
+      const rows = (await db.query(`SELECT vinculacion_id::int AS id, fecha_inicio_pago::text AS start,
+        fecha_fin_pago::text AS end, dias_pagados::int AS days FROM nomina_empleados
+        WHERE periodo_id=9 AND vinculacion_id BETWEEN 800 AND 805 ORDER BY vinculacion_id`)).rows;
+      assert.deepEqual(rows, [
+        {id:800,start:'2026-09-25',end:'2026-09-30',days:6},
+        {id:801,start:'2026-09-26',end:'2026-09-30',days:5},
+        {id:802,start:'2026-09-27',end:'2026-09-30',days:4},
+        {id:803,start:'2026-09-30',end:'2026-09-30',days:1}
+      ]);
+      assert.equal((await sync()).excluded, 0);
+      assert.equal((await sync()).imported, 0);
+      assert.deepEqual((await db.query('SELECT * FROM nomina_asistencia_diaria')).rows, attendance);
+    });
+    await t.test('sincronizacion selectiva incluye ingreso posterior al corte y normaliza retiro 31', async () => {
+      const { NominaPoblacionService } = await import('../modules/nomina/application/nomina-poblacion.service.js');
+      const service = new NominaPoblacionService();
+      await db.exec(`INSERT INTO vinculaciones(id,persona_id,fecha_inicio) VALUES
+        (810,810,'2026-09-28'),(811,811,'2026-10-31'),(812,812,'2026-10-01');
+        INSERT INTO nomina_periodos VALUES (10,1,'OCTUBRE','2026-09-26','2026-10-25','MENSUAL',true,'ABIERTO',true,now());`);
+      for (const [id, period, date, days] of [
+        ['810','9','2026-09-28',3],['811','10','2026-10-31',1],['812','10','2026-10-01',30]
+      ] as const) {
+        assert.equal((await service.syncSelective({periodoId:period,vinculacionId:id,
+          effectiveDate:date,eventType:'VINCULACION_CREADA'})).status,'APLICADO');
+        assert.equal((await db.query<{days:number}>(`SELECT dias_pagados::int AS days
+          FROM nomina_empleados WHERE periodo_id=$1 AND vinculacion_id=$2`,[period,id])).rows[0]?.days,days);
+      }
+      await service.syncSelective({periodoId:'10',vinculacionId:'812',effectiveDate:'2026-10-31',
+        retirementDate:'2026-10-31',eventType:'VINCULACION_RETIRADA'});
+      assert.equal((await db.query<{days:number}>(`SELECT dias_pagados::int AS days
+        FROM nomina_empleados WHERE periodo_id=10 AND vinculacion_id=812`)).rows[0]?.days,30);
+      assert.equal((await db.query(`SELECT * FROM nomina_asistencia_diaria WHERE vinculacion_id BETWEEN 810 AND 812`)).rows.length,0);
+    });
   } finally {
     mock.restoreAll();
     await db.close();

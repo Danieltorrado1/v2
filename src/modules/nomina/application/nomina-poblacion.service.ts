@@ -7,7 +7,7 @@ import { nominaPoblacionRepository } from '../infrastructure/repositories/nomina
 import { recordNominaAudit } from './nomina-audit.service';
 import { buildImportCandidateReviewSet } from './nomina-population-review';
 import { POPULATION_EXCLUSION, resolveNominaMetodoLiquidacion } from '../nomina.population';
-import { inclusiveDaysBetween, maxDateString, minDateString } from '../nomina.calculator';
+import { calculateNominaMonthBase, maxDateString, minDateString } from '../nomina.calculator';
 
 interface ImportCandidateRow {
   cargo_id: string | null; categoria_auxilio_transporte: number | string | null; categoria_id: string | null;
@@ -33,6 +33,11 @@ export interface NominaPoblacionLegacyTestDependencies<TResult> {
 export type SelectiveNominaSyncStatus = 'APLICADO' | 'SIN_CAMBIOS' | 'BLOQUEADO_CIERRE';
 const dateString=(value:Date|string|null|undefined):string|null=>value==null?null:value instanceof Date?value.toISOString().slice(0,10):String(value);
 const numberValue=(value:string|number|null|undefined):number=>{if(value==null)return 0;const parsed=typeof value==='number'?value:Number(value);if(!Number.isFinite(parsed))throw new AppError('Invalid numeric value returned by database',500,'INVALID_NUMERIC_VALUE');return parsed;};
+// The closing date identifies the settled month; period dates remain the operational cut.
+const settledMonthBase = (closingDate: string, start?: string | null, end?: string | null) => {
+ const closing = new Date(`${closingDate}T00:00:00.000Z`);
+ return calculateNominaMonthBase(closing.getUTCFullYear(), closing.getUTCMonth()+1, start, end);
+};
 
 export class NominaPoblacionService<TPeriodo=unknown>{
  public async sync(input:{periodoId:string;actorUserId:string;tenant?:TenantAccessContext;auditMeta?:AuditRequestMeta;personaId?:string;vinculacionId?:string;dependencies:NominaPoblacionDependencies<TPeriodo>}):Promise<NominaPopulationSyncResult<TPeriodo>>;
@@ -71,12 +76,14 @@ export class NominaPoblacionService<TPeriodo=unknown>{
    } else {
     const vinc=await client.query<{fecha_inicio:string;fecha_fin:string|null;metodo_pago:string|null}>(`SELECT fecha_inicio::text,fecha_fin::text,metodo_pago FROM vinculaciones WHERE id=$1::bigint FOR SHARE`,[input.vinculacionId]);
     const row=vinc.rows[0]; if(!row) throw new AppError('Vinculacion no encontrada',404,'VINCULACION_NOT_FOUND');
-    const start=maxDateString(row.fecha_inicio,period.fecha_inicio); const end=minDateString(row.fecha_fin ?? period.fecha_fin,period.fecha_fin);
+    const monthBase=settledMonthBase(period.fecha_fin,row.fecha_inicio,row.fecha_fin);
+    const start=monthBase.start; const end=monthBase.end;
     if(start<=end){
      if(!before){
-      const inserted=await nominaPoblacionRepository.insert({periodoId:input.periodoId,vinculacionId:input.vinculacionId,metodoLiquidacion:resolveNominaMetodoLiquidacion({metodo_pago:row.metodo_pago}),categoriaSalarialId:null,salarioBase:0,auxilioTransporte:0,fechaInicioPago:start,fechaFinPago:end,diasPeriodo:inclusiveDaysBetween(period.fecha_inicio,period.fecha_fin),diasPagados:inclusiveDaysBetween(start,end),estado:'PENDIENTE'},client); after={id:inserted,vinculacion_id:input.vinculacionId,periodo_id:input.periodoId,fecha_inicio_pago:start,fecha_fin_pago:end}; changed=true;
+      const inserted=await nominaPoblacionRepository.insert({periodoId:input.periodoId,vinculacionId:input.vinculacionId,metodoLiquidacion:resolveNominaMetodoLiquidacion({metodo_pago:row.metodo_pago}),categoriaSalarialId:null,salarioBase:0,auxilioTransporte:0,fechaInicioPago:start,fechaFinPago:end,diasPeriodo:30,diasPagados:monthBase.days,estado:'PENDIENTE'},client); after={id:inserted,vinculacion_id:input.vinculacionId,periodo_id:input.periodoId,fecha_inicio_pago:start,fecha_fin_pago:end}; changed=true;
      } else if(input.eventType==='VINCULACION_RETIRADA') {
-      const limit=input.retirementDate ?? input.effectiveDate; const updated=await client.query<Record<string,unknown>>(`UPDATE nomina_empleados SET fecha_fin_pago=LEAST(COALESCE(fecha_fin_pago,$3::date),$3::date), dias_pagados=GREATEST(0,($3::date-fecha_inicio_pago+1)), activo=TRUE, estado='PENDIENTE', revisado=FALSE WHERE id=$1::bigint AND periodo_id=$2::bigint RETURNING *`,[before.id,input.periodoId,limit]); after=updated.rows[0] ?? before; changed=(updated.rowCount ?? 0)>0;
+      const retirementBase=settledMonthBase(period.fecha_fin,row.fecha_inicio,input.retirementDate ?? input.effectiveDate);
+      const updated=await client.query<Record<string,unknown>>(`UPDATE nomina_empleados SET fecha_inicio_pago=$3::date, fecha_fin_pago=$4::date, dias_pagados=$5, activo=TRUE, estado='PENDIENTE', revisado=FALSE WHERE id=$1::bigint AND periodo_id=$2::bigint RETURNING *`,[before.id,input.periodoId,retirementBase.start,retirementBase.end,retirementBase.days]); after=updated.rows[0] ?? before; changed=(updated.rowCount ?? 0)>0;
     } else { const updated=await client.query<Record<string,unknown>>(`UPDATE nomina_empleados SET fecha_inicio_pago=GREATEST(fecha_inicio_pago,$3::date), fecha_fin_pago=LEAST(COALESCE(fecha_fin_pago,$4::date),$4::date), activo=TRUE, estado='PENDIENTE', revisado=FALSE WHERE id=$1::bigint AND periodo_id=$2::bigint RETURNING *`,[before.id,input.periodoId,start,end]); after=updated.rows[0] ?? before; changed=(updated.rowCount ?? 0)>0; }
     }
    }
@@ -92,10 +99,12 @@ export class NominaPoblacionService<TPeriodo=unknown>{
 
     dependencies.assertOpen(periodo.estado);
 
+    const monthBase = settledMonthBase(dateString(periodo.fecha_fin) ?? '');
+
     const candidates = await nominaPoblacionRepository.listImportCandidates({
       contratoId: periodo.contrato_id,
-      fechaInicio: dateString(periodo.fecha_inicio) ?? '',
-      fechaFin: dateString(periodo.fecha_fin) ?? '',
+      fechaInicio: monthBase.start,
+      fechaFin: monthBase.end,
       personaId,
       vinculacionId
     }, client) as ImportCandidateRow[];
@@ -103,8 +112,8 @@ export class NominaPoblacionService<TPeriodo=unknown>{
     // Logical exclusion only: all related rows and all economic columns remain intact.
     const excludedRows = await nominaPoblacionRepository.excludeOutOfScope({
       periodoId,
-      fechaInicio: dateString(periodo.fecha_inicio) ?? '',
-      fechaFin: dateString(periodo.fecha_fin) ?? '',
+      fechaInicio: monthBase.start,
+      fechaFin: monthBase.end,
       contratoId: periodo.contrato_id,
       exclusionReason: POPULATION_EXCLUSION,
       personaId,
@@ -130,9 +139,9 @@ export class NominaPoblacionService<TPeriodo=unknown>{
     const recalculableImportedEmployeeIds: string[] = [];
     let skippedDuplicates = 0;
     let skippedRequiresReview = 0;
-    const periodoFechaInicio = dateString(periodo.fecha_inicio) ?? '';
-    const periodoFechaFin = dateString(periodo.fecha_fin) ?? '';
-    const diasPeriodo = inclusiveDaysBetween(periodoFechaInicio, periodoFechaFin);
+    const periodoFechaInicio = monthBase.start;
+    const periodoFechaFin = monthBase.end;
+    const diasPeriodo = 30;
     const reviewVinculacionIds = buildImportCandidateReviewSet(
       candidates,
       periodoFechaInicio,
@@ -175,7 +184,8 @@ export class NominaPoblacionService<TPeriodo=unknown>{
         continue;
       }
 
-      const diasPagados = inclusiveDaysBetween(fechaInicioPago, fechaFinPago);
+      const diasPagados = settledMonthBase(periodoFechaFin,
+        dateString(candidate.fecha_inicio), dateString(candidate.fecha_fin)).days;
       const salarioBase = numberValue(candidate.categoria_salario_base);
       const auxilioTransporte = numberValue(candidate.categoria_auxilio_transporte);
 
