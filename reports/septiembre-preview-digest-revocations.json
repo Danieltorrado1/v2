@@ -1,0 +1,17 @@
+{
+  "schema_version": "focalizacion.septiembre.digest-revocations.v1",
+  "timestamp_utc": "2026-10-01T11:35:37.113Z",
+  "scope": {
+    "empresa_id": 15,
+    "contrato_id": 24,
+    "mes": "2026-09",
+    "desde": "2026-09-01",
+    "hasta": "2026-09-30",
+    "carga_agosto": 4
+  },
+  "revoked_digest": "95b49e8dd511b81e5e8664f7cc1c9c3893be7061b87a6ffa63fc8b26507a745b",
+  "replacement_certified_digest": "bfb2204f4a89b9fad18045a1a14ec128cbfe322a9bfc04a287c545f0e7b4f38e",
+  "certified_snapshot": "reports/septiembre-certified-snapshot.json",
+  "reason": "HUMAN_APPROVED_SCOPED_CUBARRAL_RESOLUTION",
+  "writes": 0
+}
