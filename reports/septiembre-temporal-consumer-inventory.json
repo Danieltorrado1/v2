@@ -1,0 +1,1167 @@
+{
+  "timestamp_utc": "2026-10-01T15:38:23.787Z",
+  "scope": "repository readers/writers and local restored schema; no production connection",
+  "files": [
+    {
+      "file": "src/modules/alertas/alertas.generator.ts",
+      "sha256": "e48dded6cb5db0e10cb8d60b453bbfd42ec7feab493a3e813de8432049998d7a",
+      "reference_lines": [
+        348,
+        352,
+        356,
+        357
+      ],
+      "domain": "alertas"
+    },
+    {
+      "file": "src/modules/alertas/alertas.visibility.ts",
+      "sha256": "4081db12af6d95b06581b9b1c0f2c40ccab469f3e06c473ae9eb36e37c538c03",
+      "reference_lines": [
+        162,
+        261
+      ],
+      "domain": "alertas"
+    },
+    {
+      "file": "src/modules/cobertura/cobertura-asignacion.service.ts",
+      "sha256": "407635086d443491bf97e37facceb7f84623dca96e99805ed19ff560edeca796",
+      "reference_lines": [
+        24,
+        30,
+        33
+      ],
+      "domain": "cobertura"
+    },
+    {
+      "file": "src/modules/cobertura/cobertura.dashboard.ts",
+      "sha256": "917518fcfc059859437b7636edb3b0ec27e89e478ec475efdfeb1956cae62d26",
+      "reference_lines": [
+        30,
+        40
+      ],
+      "domain": "cobertura"
+    },
+    {
+      "file": "src/modules/cobertura/cobertura.focalizacion.service.ts",
+      "sha256": "bf2de64e327c0a5f9b0168f95ceab97948ef5b5955b69ca92bacb4263972de38",
+      "reference_lines": [
+        310,
+        1042,
+        1105,
+        1158,
+        1202,
+        1223,
+        1228,
+        1236,
+        1322,
+        1435,
+        1455,
+        1467,
+        1530,
+        1620,
+        1654,
+        1825,
+        1928,
+        2031,
+        2100,
+        2129,
+        2152,
+        2263,
+        2333,
+        2361,
+        2509,
+        2569,
+        2620,
+        2691,
+        2763,
+        2939
+      ],
+      "domain": "cobertura"
+    },
+    {
+      "file": "src/modules/cobertura/cobertura.focalizacion.smoke-purge.ts",
+      "sha256": "298fb7bf0466f3b60ac4c54b6573741cbc286a093ecd064e45911f7c6b0e3941",
+      "reference_lines": [
+        312,
+        416,
+        440,
+        465,
+        479,
+        482,
+        500,
+        502,
+        505,
+        521,
+        531,
+        536,
+        547,
+        550,
+        552,
+        560,
+        578,
+        581,
+        599,
+        600,
+        601,
+        602,
+        603,
+        611,
+        621,
+        629,
+        638,
+        645,
+        648,
+        651,
+        655,
+        701,
+        704,
+        730,
+        739,
+        762,
+        766,
+        770,
+        862
+      ],
+      "domain": "cobertura"
+    },
+    {
+      "file": "src/modules/cobertura/cobertura.maestros.repair-plan-v2.ts",
+      "sha256": "233b332e2cb55ca115ad583cd1c1b205bed34a2024eb41e0090cc7b8fd242e79",
+      "reference_lines": [
+        4,
+        418,
+        430,
+        518
+      ],
+      "domain": "cobertura"
+    },
+    {
+      "file": "src/modules/cobertura/cobertura.schemas.ts",
+      "sha256": "7f39876954ec8ae7d8bf373fae2977118c3c09bb4f330fb4a9def07dd1d7e626",
+      "reference_lines": [
+        87,
+        110
+      ],
+      "domain": "cobertura"
+    },
+    {
+      "file": "src/modules/cobertura/cobertura.service.ts",
+      "sha256": "b90d43b104945253a32052dacdc964a397296a1f7a621efe80026751d4b33d42",
+      "reference_lines": [
+        40,
+        59,
+        93,
+        128,
+        155,
+        180,
+        330,
+        331,
+        363,
+        454,
+        455,
+        467,
+        476,
+        479,
+        499,
+        503,
+        586,
+        666,
+        670,
+        673,
+        693,
+        697,
+        718,
+        735,
+        786,
+        797,
+        832,
+        840,
+        849,
+        880,
+        900,
+        966,
+        983,
+        1068,
+        1125
+      ],
+      "domain": "cobertura"
+    },
+    {
+      "file": "src/modules/cobertura/cobertura.validator.ts",
+      "sha256": "f9daf6fde011255c648c025b05eb390adefe6cbe0a6ec4a318a40f0297590fe5",
+      "reference_lines": [
+        131,
+        226,
+        249
+      ],
+      "domain": "cobertura"
+    },
+    {
+      "file": "src/modules/cobertura/septiembre-monthly-publisher.ts",
+      "sha256": "a23ca0b4b6f641facd5b447ffb49d5770eae0393cdae7fc3e6e7fe4b9279567e",
+      "reference_lines": [
+        11,
+        29,
+        47,
+        50,
+        52,
+        54,
+        71,
+        76,
+        78,
+        83,
+        103,
+        111,
+        112,
+        113,
+        118,
+        119,
+        120,
+        125,
+        126,
+        134,
+        136,
+        137
+      ],
+      "domain": "cobertura"
+    },
+    {
+      "file": "src/modules/dashboard/dashboard.service.ts",
+      "sha256": "a1084147807cccff4757eff1834ee158812f2ab8fcd412a7e81d6b8024c84456",
+      "reference_lines": [
+        859,
+        864
+      ],
+      "domain": "dashboard"
+    },
+    {
+      "file": "src/modules/empresa-configuracion/empresa-configuracion.service.ts",
+      "sha256": "597dab497a0981a70380356c97281df01510efa7c288af47715370278d14f5e4",
+      "reference_lines": [
+        712,
+        1336,
+        1354,
+        1990,
+        2008
+      ],
+      "domain": "empresa-configuracion"
+    },
+    {
+      "file": "src/modules/importaciones/personalMeta26DryRun.helpers.ts",
+      "sha256": "b9e758bfb21f05a9e128669bf749ca4d4356f6c28f3fc7d9df82813cab4beaeb",
+      "reference_lines": [
+        13,
+        132,
+        761,
+        833,
+        870,
+        883,
+        916,
+        929,
+        962,
+        975,
+        1037,
+        1050,
+        1081,
+        1094,
+        1099
+      ],
+      "domain": "importaciones"
+    },
+    {
+      "file": "src/modules/importaciones/personalMeta26DryRun.ts",
+      "sha256": "047cbdb12bb5d311794ddda75e9f55caa91ea116c7bf227ab8bda221d97572e5",
+      "reference_lines": [
+        139,
+        329,
+        1100,
+        1113,
+        1402,
+        1424,
+        1433,
+        1441,
+        1454,
+        1466,
+        1473,
+        1479,
+        1487,
+        1780
+      ],
+      "domain": "importaciones"
+    },
+    {
+      "file": "src/modules/integracion/contexto-laboral.service.ts",
+      "sha256": "8965fc1780262b868fbce309a3941704154010c81af0e2e05d4c55be4365bee8",
+      "reference_lines": [
+        93,
+        131,
+        136,
+        194,
+        195,
+        196,
+        238
+      ],
+      "domain": "integracion"
+    },
+    {
+      "file": "src/modules/logistica/logistica.service.ts",
+      "sha256": "35a57f19baa9facda4056962acc84ad759ae270ae91ca28c1ff991afb6fb4098",
+      "reference_lines": [
+        25
+      ],
+      "domain": "logistica"
+    },
+    {
+      "file": "src/modules/nomina/cambios-operativos.service.ts",
+      "sha256": "832559668842330cee894011b46ac52e48345c13d996fea603e953e1dbf01a73",
+      "reference_lines": [
+        22,
+        53,
+        127,
+        128,
+        150,
+        161,
+        209
+      ],
+      "domain": "nomina"
+    },
+    {
+      "file": "src/modules/nomina/infrastructure/repositories/nomina-novedad.repository.ts",
+      "sha256": "3f7772511a331fa46c12a2eb9fb6c0075873a2c09f99f2b6df9e01c9789edb70",
+      "reference_lines": [
+        250,
+        273
+      ],
+      "domain": "nomina"
+    },
+    {
+      "file": "src/modules/nomina/infrastructure/repositories/nomina-poblacion.repository.ts",
+      "sha256": "4208095e41ec53d8622719e7ced1388a38894ad425a2bcbbd06d3033ea98d5ff",
+      "reference_lines": [
+        118,
+        236,
+        244,
+        248
+      ],
+      "domain": "nomina"
+    },
+    {
+      "file": "src/modules/nomina/nomina.procesos.ts",
+      "sha256": "7c8b913a6fa2ce60c79b7c05d5d03cf1ea719f6c68b4a5df247008ae5c853743",
+      "reference_lines": [
+        88,
+        223,
+        224,
+        259,
+        260
+      ],
+      "domain": "nomina"
+    },
+    {
+      "file": "src/modules/nomina/nomina.service.ts",
+      "sha256": "702127b8ad62b4a46c86ff41a263299390b7dbd7ef208150aa19d33896101fde",
+      "reference_lines": [
+        2040,
+        2047,
+        2068,
+        2091,
+        2107,
+        2143,
+        2144,
+        3800,
+        5479,
+        5488,
+        8521
+      ],
+      "domain": "nomina"
+    },
+    {
+      "file": "src/modules/operacion/focalizacion-selector.ts",
+      "sha256": "61593251df76ddef6fd27f79605da3734a4cb0503218e92963d53814d6c1153d",
+      "reference_lines": [
+        6,
+        7
+      ],
+      "domain": "operacion"
+    },
+    {
+      "file": "src/modules/operacion/operacion.instituciones.controller.ts",
+      "sha256": "2321c71a1ad04874649d18c1477a93637bf4e1c76f01c225d2af50464b653294",
+      "reference_lines": [
+        9
+      ],
+      "domain": "operacion"
+    },
+    {
+      "file": "src/modules/operacion/operacion.instituciones.service.ts",
+      "sha256": "54ad95baf637585c60f82ecebe6d11a9bdf344e08a61973c2652671a307dc914",
+      "reference_lines": [
+        14,
+        55,
+        58,
+        72,
+        74,
+        81,
+        82,
+        94,
+        97
+      ],
+      "domain": "operacion"
+    },
+    {
+      "file": "src/modules/operacion/operacion.service.ts",
+      "sha256": "e8da6cdffa454343fe91b6b5d907abc28c946792b9516577007b76d0c0d13931",
+      "reference_lines": [
+        50,
+        69
+      ],
+      "domain": "operacion"
+    },
+    {
+      "file": "src/modules/personas/personas.master.service.ts",
+      "sha256": "8aedd1519e7a37d3d60b725db3df4c4a0ab4c414d5b1ac7b44ae4e5cf0b8dcd8",
+      "reference_lines": [
+        982,
+        997,
+        1012,
+        1027,
+        1146
+      ],
+      "domain": "personas"
+    },
+    {
+      "file": "src/modules/users/municipal-scope.service.ts",
+      "sha256": "a4a7684769b07eb33b5ac7841cb5399b0cca774187d394d6505e6d091157e45b",
+      "reference_lines": [
+        19,
+        45,
+        151
+      ],
+      "domain": "users"
+    },
+    {
+      "file": "src/modules/users/users.service.ts",
+      "sha256": "c9adf8eb47de37a74bfc06f859ec47df2b8a3932845467b893c22e7d308b09cd",
+      "reference_lines": [
+        606
+      ],
+      "domain": "users"
+    },
+    {
+      "file": "src/modules/vinculaciones/vinculaciones.personal.controller.ts",
+      "sha256": "ee53df8ba982159dc33a3452f3b1c385a3a3370dcd0304cb8d75af828c890c1b",
+      "reference_lines": [
+        68
+      ],
+      "domain": "vinculaciones"
+    },
+    {
+      "file": "src/modules/vinculaciones/vinculaciones.personal.schemas.ts",
+      "sha256": "a57c4ee24681143f09361cf57c6213c9b4571073a0b21fa0d22f4f1e76adfbe0",
+      "reference_lines": [
+        60
+      ],
+      "domain": "vinculaciones"
+    },
+    {
+      "file": "src/modules/vinculaciones/vinculaciones.personal.service.ts",
+      "sha256": "ad267a4a2d34825238b85408c701a2b86a1a3a37f21227994f8f8ac7e9074dc4",
+      "reference_lines": [
+        45,
+        115,
+        273,
+        522,
+        565,
+        581,
+        645,
+        799,
+        811
+      ],
+      "domain": "vinculaciones"
+    },
+    {
+      "file": "src/modules/vinculaciones/vinculaciones.schemas.ts",
+      "sha256": "6ab99299781bd6b01978d4dfc70028e78a179c44285aebd08e5ec40dce4e9ced",
+      "reference_lines": [
+        251
+      ],
+      "domain": "vinculaciones"
+    },
+    {
+      "file": "src/modules/vinculaciones/vinculaciones.service.ts",
+      "sha256": "bd020884753a58b52f78d9c1c3901cc46afb1e356a3807ceca2a8798a7e91f81",
+      "reference_lines": [
+        460,
+        1074,
+        1578,
+        1583,
+        1588,
+        1593,
+        1598,
+        1744,
+        1785,
+        1793,
+        2070,
+        2071,
+        2335,
+        2444,
+        2452,
+        2465,
+        2515,
+        2521,
+        3555,
+        3562,
+        3565,
+        3567,
+        3575
+      ],
+      "domain": "vinculaciones"
+    },
+    {
+      "file": "src/scripts/apply-sst-phase-3.ts",
+      "sha256": "b713bce5b2838def6f52c25420a3e6b01a2da011c23876631dc14bd9945d9fe8",
+      "reference_lines": [
+        152,
+        153,
+        300,
+        301,
+        1488,
+        1489
+      ],
+      "domain": "apply-sst-phase-3.ts"
+    },
+    {
+      "file": "src/scripts/audit-gestor-four-bugs.ts",
+      "sha256": "6cac29f71e7c4f3dfc9066b07c13442f7b2c4ed65597d3ea6a2c985e2926051b",
+      "reference_lines": [
+        38,
+        51,
+        56,
+        63,
+        78,
+        99
+      ],
+      "domain": "audit-gestor-four-bugs.ts"
+    },
+    {
+      "file": "src/scripts/audit-instituciones-focalizacion-readonly.ts",
+      "sha256": "bc1e73de010a2f32f424b357627c72cc4caa21efd66829bca1f4c9c2bbd139bc",
+      "reference_lines": [
+        15,
+        16,
+        17,
+        19,
+        21,
+        22,
+        23,
+        27,
+        36
+      ],
+      "domain": "audit-instituciones-focalizacion-readonly.ts"
+    },
+    {
+      "file": "src/scripts/audit-septiembre-forense.ts",
+      "sha256": "2cd678411474607b11f6bf548ae4db501762b20a96edc18ab8a25877fcb9c0c5",
+      "reference_lines": [
+        29,
+        31,
+        32
+      ],
+      "domain": "audit-septiembre-forense.ts"
+    },
+    {
+      "file": "src/scripts/audit-territorial-contract-24.ts",
+      "sha256": "7ab50e88204a536571f7c33bcee78bf6aff920feb03e4d9c6347c45eaee18e85",
+      "reference_lines": [
+        83,
+        84,
+        88,
+        97,
+        105,
+        116,
+        122,
+        132,
+        139
+      ],
+      "domain": "audit-territorial-contract-24.ts"
+    },
+    {
+      "file": "src/scripts/bootstrap-focalizacion-dry-run.ts",
+      "sha256": "46a747809aa2bd76d211f55f9c25b506e0d8a8101d420fcf6ca216df03afb648",
+      "reference_lines": [
+        75,
+        76,
+        77
+      ],
+      "domain": "bootstrap-focalizacion-dry-run.ts"
+    },
+    {
+      "file": "src/scripts/certify-septiembre-mutator-local.ts",
+      "sha256": "e78421c78c322aca38db676728bb30c3f4b930547d70099888db580345750d6f",
+      "reference_lines": [
+        55,
+        57,
+        64,
+        67,
+        73,
+        77,
+        78,
+        79,
+        107,
+        108,
+        125,
+        129
+      ],
+      "domain": "certify-septiembre-mutator-local.ts"
+    },
+    {
+      "file": "src/scripts/cobertura-maestros-audit-7-3.ts",
+      "sha256": "bade92af2a8caf5268a3584d62fa53dc49ba7efbfa37b23c688979aad2a38d82",
+      "reference_lines": [
+        192,
+        274,
+        275,
+        276,
+        277,
+        469,
+        507,
+        553,
+        558,
+        636
+      ],
+      "domain": "cobertura-maestros-audit-7-3.ts"
+    },
+    {
+      "file": "src/scripts/cobertura-maestros-repair-7-4.ts",
+      "sha256": "bd391cfb6c6526f0bc183b490835b27b6bd392bde4cc3a87d913cd1f4fd744e2",
+      "reference_lines": [
+        218,
+        388,
+        389,
+        390,
+        391,
+        608,
+        643,
+        689,
+        694,
+        715,
+        716,
+        717,
+        718,
+        722,
+        723,
+        724,
+        989,
+        997,
+        1000,
+        1030,
+        1039,
+        1068
+      ],
+      "domain": "cobertura-maestros-repair-7-4.ts"
+    },
+    {
+      "file": "src/scripts/cobertura-maestros-repair-7-4b.ts",
+      "sha256": "8a25ef602396e7f00b95f80a8e52705fb5a9e91e6ea607a6acf82174282c56a4",
+      "reference_lines": [
+        151,
+        159,
+        171,
+        185,
+        186,
+        187,
+        211,
+        231,
+        305,
+        306,
+        310,
+        311,
+        547,
+        548
+      ],
+      "domain": "cobertura-maestros-repair-7-4b.ts"
+    },
+    {
+      "file": "src/scripts/cobertura-maestros-repair-7-4c.ts",
+      "sha256": "7b243aae2b2eb519f8e677d56602355374756047c232f36a79acadbcaaad97ef",
+      "reference_lines": [
+        199,
+        207,
+        219,
+        233,
+        234,
+        235,
+        274,
+        281,
+        295,
+        296,
+        370,
+        371,
+        375,
+        376,
+        549,
+        552,
+        553,
+        560,
+        561,
+        596,
+        607
+      ],
+      "domain": "cobertura-maestros-repair-7-4c.ts"
+    },
+    {
+      "file": "src/scripts/migrate-sst-phase-2-2.ts",
+      "sha256": "240796a3184b58a5d84941272cd7db3730e69b2bccd0a9a4505ced5b07ee0f3e",
+      "reference_lines": [
+        15,
+        16
+      ],
+      "domain": "migrate-sst-phase-2-2.ts"
+    },
+    {
+      "file": "src/scripts/migrate-sst-phase-3-restringidos.ts",
+      "sha256": "66185f0da5aea4b485f8e91c5b66ae46f2212e790398912023755d7152b82d7b",
+      "reference_lines": [
+        15,
+        16
+      ],
+      "domain": "migrate-sst-phase-3-restringidos.ts"
+    },
+    {
+      "file": "src/scripts/migrate-territorial-contract-24.ts",
+      "sha256": "2645b75ffdaf6c53a0c5d39faf316bcb5ac9d4b99740f21c15a275737214fb97",
+      "reference_lines": [
+        70,
+        81,
+        83,
+        95,
+        96,
+        97,
+        99
+      ],
+      "domain": "migrate-territorial-contract-24.ts"
+    },
+    {
+      "file": "src/scripts/personal-meta26-apply.ts",
+      "sha256": "70f222fa859842b8ae8c57a1a6eadb03027c3abc9fba1b090a91a7c81dc038f6",
+      "reference_lines": [
+        80,
+        82,
+        83,
+        84,
+        85,
+        143,
+        160,
+        171,
+        193,
+        194
+      ],
+      "domain": "personal-meta26-apply.ts"
+    },
+    {
+      "file": "src/scripts/personal-meta26-diagnostico-7-2.ts",
+      "sha256": "21ac5312e05baf208287f417242fba31dcd413004608e03b9beac5033d5a8923",
+      "reference_lines": [
+        527,
+        537,
+        547,
+        557,
+        683
+      ],
+      "domain": "personal-meta26-diagnostico-7-2.ts"
+    },
+    {
+      "file": "src/scripts/personal-meta26-dry-run-v4.ts",
+      "sha256": "820b350fec1cca8f4c9ac2864a204f84f0c2c672a4d7696a283e3607b3b83a2b",
+      "reference_lines": [
+        267,
+        474
+      ],
+      "domain": "personal-meta26-dry-run-v4.ts"
+    },
+    {
+      "file": "src/scripts/personal-meta26-generate-canonical-plan.ts",
+      "sha256": "5a2d961675a676e5de3dfae1cb381416b5f5858fe5ab48e0536a217a41e5cf32",
+      "reference_lines": [
+        61,
+        154,
+        157,
+        205,
+        223
+      ],
+      "domain": "personal-meta26-generate-canonical-plan.ts"
+    },
+    {
+      "file": "src/scripts/personal-meta26-smoke-v2-apply.ts",
+      "sha256": "8b6500e36f43ea687db1cf9d7eafb0c642cc9b466e465b30e9cb0cd7c62507c5",
+      "reference_lines": [
+        82,
+        84,
+        85,
+        86,
+        87,
+        145,
+        156,
+        157,
+        158
+      ],
+      "domain": "personal-meta26-smoke-v2-apply.ts"
+    },
+    {
+      "file": "src/scripts/postcheck-focalizacion-smoke.ts",
+      "sha256": "0514d05e310dfe32e25e1828562b445457877632eb2127bf75a9a2604a5a7dd4",
+      "reference_lines": [
+        20,
+        21,
+        22,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43
+      ],
+      "domain": "postcheck-focalizacion-smoke.ts"
+    },
+    {
+      "file": "src/scripts/preflight-territorial-contract-24.ts",
+      "sha256": "0d7ddbee7c6cc666bec1e572082877a09b8c9943a64f7acc366cbed323b9f673",
+      "reference_lines": [
+        18,
+        20,
+        28,
+        32,
+        40
+      ],
+      "domain": "preflight-territorial-contract-24.ts"
+    },
+    {
+      "file": "src/scripts/preview-focalizacion-septiembre-controlada.ts",
+      "sha256": "7f353ace96ee437c1381b6d8be0d51743e86abf061855934e820ea1c45eccc6e",
+      "reference_lines": [
+        40,
+        50,
+        52,
+        133,
+        142
+      ],
+      "domain": "preview-focalizacion-septiembre-controlada.ts"
+    },
+    {
+      "file": "src/scripts/qa-admin-2a-final.ts",
+      "sha256": "9567a5ca1cb0682dbec6bdc40e77eb8e60bec6ea289ef4ec0f13a70c61d0d02c",
+      "reference_lines": [
+        122
+      ],
+      "domain": "qa-admin-2a-final.ts"
+    },
+    {
+      "file": "src/scripts/rollback-territorial-contract-24.ts",
+      "sha256": "9f677b4f7ff203c2cd2e2293e0ddfc92802f2cd1946f9fdd4f65114d73ba02be",
+      "reference_lines": [
+        17,
+        18,
+        36,
+        48,
+        53,
+        56,
+        57,
+        59
+      ],
+      "domain": "rollback-territorial-contract-24.ts"
+    },
+    {
+      "file": "src/scripts/run-focalizacion-smoke.ts",
+      "sha256": "61a44b4909a84fc5234c3741280e6de5ebafcd8ab1c840d354f92d0f742c5cae",
+      "reference_lines": [
+        16
+      ],
+      "domain": "run-focalizacion-smoke.ts"
+    },
+    {
+      "file": "src/scripts/seed-qa-contract-24-territorial.ts",
+      "sha256": "c704fa06e362d099db25f1d318e91c6de0965568baeb3266295877c22983304f",
+      "reference_lines": [
+        73,
+        80,
+        85,
+        94,
+        95,
+        96,
+        103,
+        110,
+        111,
+        133,
+        134,
+        135,
+        136,
+        137,
+        152,
+        154
+      ],
+      "domain": "seed-qa-contract-24-territorial.ts"
+    },
+    {
+      "file": "src/scripts/snapshot-territorial-contract-24.ts",
+      "sha256": "70804d31d7b30c003e03a3477e674225f83b94db919775d499fd08bec5dc6561",
+      "reference_lines": [
+        30,
+        38,
+        39,
+        41,
+        45
+      ],
+      "domain": "snapshot-territorial-contract-24.ts"
+    },
+    {
+      "file": "src/scripts/sst-caracterizacion-audit.ts",
+      "sha256": "42a9704853b1a76bb76f0520e066d7c09dd0f0cec55309e248629008aa713cdd",
+      "reference_lines": [
+        2078,
+        2079,
+        2467,
+        2468,
+        2562,
+        2563
+      ],
+      "domain": "sst-caracterizacion-audit.ts"
+    },
+    {
+      "file": "src/scripts/sst-caracterizacion-normalize-sst-2-1.ts",
+      "sha256": "86b2e226bccfaff90004ff3fe1c3069d2d2cabad8820784a7897b77f809dd509",
+      "reference_lines": [
+        608,
+        609,
+        1147,
+        1148
+      ],
+      "domain": "sst-caracterizacion-normalize-sst-2-1.ts"
+    },
+    {
+      "file": "src/scripts/sst-caracterizacion-prepare-sst-2-2.ts",
+      "sha256": "957aaf3709574b3efe71961762c6a282e6bc8e504f8711504cc5d02459b9c0f3",
+      "reference_lines": [
+        837,
+        838,
+        880,
+        881
+      ],
+      "domain": "sst-caracterizacion-prepare-sst-2-2.ts"
+    },
+    {
+      "file": "src/scripts/validate-territorial-contract-24.ts",
+      "sha256": "0d9c9a43ffd9542f36dbaeacc21d8138d39dbe8c494559aedf1631afe6350274",
+      "reference_lines": [
+        17,
+        22,
+        27,
+        30,
+        32,
+        33,
+        38,
+        42,
+        45,
+        46,
+        47,
+        49
+      ],
+      "domain": "validate-territorial-contract-24.ts"
+    },
+    {
+      "file": "src/scripts/verify-focalizacion-smoke-idempotency.ts",
+      "sha256": "ad6ead602380f164a3f6cc3346f19c473e4acfc5e7051617c083fd5441b3adae",
+      "reference_lines": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "domain": "verify-focalizacion-smoke-idempotency.ts"
+    },
+    {
+      "file": "src/scripts/verify-sst-phase-2-2.ts",
+      "sha256": "524d3209260c4040b5f9281fa2bd2f28cb2f98837c74804523457c77de832172",
+      "reference_lines": [
+        86,
+        87,
+        259,
+        260
+      ],
+      "domain": "verify-sst-phase-2-2.ts"
+    },
+    {
+      "file": "FrontendNuevo/src/pages/herramientas/CoberturaDashboardPage.tsx",
+      "sha256": "f852d0faf0e7c81f0bbf175740c3366ca381dcbc892286c5f393f0758e7cee66",
+      "reference_lines": [
+        124
+      ],
+      "domain": "pages"
+    },
+    {
+      "file": "FrontendNuevo/src/pages/operacion/focalizacionSelector.ts",
+      "sha256": "bd519683972daea1859042d291994f5c12102642ab2a2c6cb6d49f9efffde678",
+      "reference_lines": [
+        5
+      ],
+      "domain": "pages"
+    },
+    {
+      "file": "FrontendNuevo/src/pages/operacion/OperacionInstitucionesFinalPage.tsx",
+      "sha256": "14d527c6f3e95883d9818edc149317b7eeca8fed47e703feda64b85802462e23",
+      "reference_lines": [
+        55,
+        58,
+        59,
+        62
+      ],
+      "domain": "pages"
+    },
+    {
+      "file": "FrontendNuevo/src/pages/personal/ContractPersonalPage.tsx",
+      "sha256": "66edf53924e3de5d9a788370cbbd0278af442e5b0c3cffa9cc27c24233932d25",
+      "reference_lines": [
+        258,
+        733
+      ],
+      "domain": "pages"
+    },
+    {
+      "file": "FrontendNuevo/src/pages/personal/PersonalMasterDrawer.tsx",
+      "sha256": "34d7082d6c1554f98781474ff06801e051245132ebdd1e5553a74254e772f2f2",
+      "reference_lines": [
+        499,
+        501,
+        506,
+        522,
+        771,
+        778
+      ],
+      "domain": "pages"
+    },
+    {
+      "file": "FrontendNuevo/src/pages/personal/PersonalPage.tsx",
+      "sha256": "b06dab214a834e6d6480838c170a330cdf27960c2ca9382e266b61994e5affa3",
+      "reference_lines": [
+        1840
+      ],
+      "domain": "pages"
+    },
+    {
+      "file": "FrontendNuevo/src/services/operacionApi.ts",
+      "sha256": "0f290098492e8b432af48bd265c30eba50329731a67bf0c22864fdb8aa2b2346",
+      "reference_lines": [
+        5,
+        8
+      ],
+      "domain": "services"
+    },
+    {
+      "file": "FrontendNuevo/src/services/vinculacionesApi.ts",
+      "sha256": "302df5041778167af1236a56582084097a7a1abf7bcf2ab0b3ffdac42b0673d5",
+      "reference_lines": [
+        234
+      ],
+      "domain": "services"
+    },
+    {
+      "file": "FrontendNuevo/src/types/cobertura.types.ts",
+      "sha256": "bcca8af7eccebaf559c54b0b5a6a46aa19bd6e65fbb739c44be20d9d86ad25d2",
+      "reference_lines": [
+        77
+      ],
+      "domain": "types"
+    },
+    {
+      "file": "FrontendNuevo/src/types/personas.types.ts",
+      "sha256": "1286aa76e74f660fb127751a02b05234065aaf9299598ae1837eb49a31cf3ee6",
+      "reference_lines": [
+        346
+      ],
+      "domain": "types"
+    },
+    {
+      "file": "FrontendNuevo/src/types/vinculaciones.types.ts",
+      "sha256": "5f8f1565197255744239ceacefb8da157f426b91bde89fade1fb359547013427",
+      "reference_lines": [
+        114
+      ],
+      "domain": "types"
+    },
+    {
+      "file": "sql/phase-22-1-focalizacion-historica-importacion-postcheck.sql",
+      "sha256": "b895a3d62124e30d6724fb553e8358e0a1e302c0440d1eb069e8970bdfa36310",
+      "reference_lines": [
+        18,
+        29,
+        38,
+        67
+      ],
+      "domain": null
+    },
+    {
+      "file": "sql/phase-22-1-focalizacion-historica-importacion-preflight.sql",
+      "sha256": "e14adbfcb050d1ce05954f6b1f7206f15df98c8e6c66e285293994fa193d41be",
+      "reference_lines": [
+        30,
+        31,
+        32,
+        45,
+        46,
+        47,
+        48,
+        63,
+        65,
+        67,
+        69,
+        95,
+        97,
+        103,
+        105,
+        111,
+        114,
+        115,
+        123,
+        127,
+        139,
+        140,
+        141
+      ],
+      "domain": null
+    },
+    {
+      "file": "sql/phase-22-1-focalizacion-historica-importacion.sql",
+      "sha256": "19420ee7e19ca4ab5ae7a3d0d5747cd5b1e1e40954bca184cfd1833b6c9087a4",
+      "reference_lines": [
+        6,
+        23,
+        24,
+        26,
+        41,
+        42,
+        70,
+        89,
+        104,
+        113,
+        120,
+        121,
+        140,
+        146,
+        147,
+        149,
+        150,
+        158,
+        162,
+        163,
+        165,
+        248,
+        249,
+        259
+      ],
+      "domain": null
+    }
+  ]
+}

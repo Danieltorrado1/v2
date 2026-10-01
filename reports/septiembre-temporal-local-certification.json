@@ -1,0 +1,1076 @@
+{
+  "schema_version": "focalizacion.septiembre.temporal-local.v1",
+  "started_utc": "2026-10-01T15:21:05.818Z",
+  "production_connections": 0,
+  "production_writes": 0,
+  "migration": null,
+  "certified_digest": "bfb2204f4a89b9fad18045a1a14ec128cbfe322a9bfc04a287c545f0e7b4f38e",
+  "clean_rollback": {
+    "database": "septiembre_temporal_rollback",
+    "baseline_tables": 224,
+    "cases": [
+      {
+        "fault": {
+          "failAfter": 344
+        },
+        "code": "INDUCED_FAILURE_AT_344",
+        "all_public_tables_identical": true,
+        "sequence_changes": [
+          "focalizacion_cargas_id_seq",
+          "focalizacion_final_id_seq",
+          "focalizacion_preliminar_id_seq",
+          "focalizacion_vigencias_id_seq",
+          "historial_cambios_id_seq"
+        ],
+        "sequence_policy": "FORWARD_ONLY_GAPS_ACCEPTED_NO_RESET_OR_REUSE"
+      },
+      {
+        "fault": {
+          "fault": "audit"
+        },
+        "code": "INDUCED_AUDIT_FAILURE",
+        "all_public_tables_identical": true,
+        "sequence_changes": [
+          "auditoria_id_seq",
+          "focalizacion_cargas_id_seq",
+          "focalizacion_final_id_seq",
+          "focalizacion_preliminar_id_seq",
+          "focalizacion_vigencias_id_seq",
+          "historial_cambios_id_seq"
+        ],
+        "sequence_policy": "FORWARD_ONLY_GAPS_ACCEPTED_NO_RESET_OR_REUSE"
+      },
+      {
+        "fault": {
+          "fault": "postflight"
+        },
+        "code": "INDUCED_POSTFLIGHT_FAILURE",
+        "all_public_tables_identical": true,
+        "sequence_changes": [
+          "auditoria_id_seq",
+          "focalizacion_cargas_id_seq",
+          "focalizacion_final_id_seq",
+          "focalizacion_preliminar_id_seq",
+          "focalizacion_vigencias_id_seq",
+          "historial_cambios_id_seq"
+        ],
+        "sequence_policy": "FORWARD_ONLY_GAPS_ACCEPTED_NO_RESET_OR_REUSE"
+      }
+    ],
+    "followup_application": {
+      "status": "APPLIED_LOCAL",
+      "load_id": "11",
+      "run_id": "e40a9dd4-01c8-4b98-b46b-bad4e2f4b7af",
+      "certified_digest": "bfb2204f4a89b9fad18045a1a14ec128cbfe322a9bfc04a287c545f0e7b4f38e",
+      "rows": 688,
+      "updated": 663,
+      "inserted": 25,
+      "removed": 24,
+      "protected_tables_verified": 217,
+      "august_history_intact": true,
+      "postflight": {
+        "digest": "bfb2204f4a89b9fad18045a1a14ec128cbfe322a9bfc04a287c545f0e7b4f38e",
+        "rows": 688,
+        "preliminares": 688,
+        "active_projection": 688,
+        "monthly_projection": 688,
+        "loads": 1,
+        "overlaps": 0,
+        "duplicates": 0,
+        "excluded_rows_inserted": 0,
+        "positions": 695
+      },
+      "load_id_exceeds_abandoned_ids": true
+    }
+  },
+  "preview": {
+    "status": "PREVIEW_ONLY",
+    "writes": 0,
+    "rows": 688,
+    "updates": 663,
+    "additions": 25,
+    "removals": 24,
+    "digest": "bfb2204f4a89b9fad18045a1a14ec128cbfe322a9bfc04a287c545f0e7b4f38e"
+  },
+  "mutate": {
+    "status": "APPLIED_LOCAL",
+    "load_id": "8",
+    "run_id": "bf0cde03-ebde-4304-b868-0edfd7a54575",
+    "certified_digest": "bfb2204f4a89b9fad18045a1a14ec128cbfe322a9bfc04a287c545f0e7b4f38e",
+    "rows": 688,
+    "updated": 663,
+    "inserted": 25,
+    "removed": 24,
+    "protected_tables_verified": 217,
+    "august_history_intact": true,
+    "postflight": {
+      "digest": "bfb2204f4a89b9fad18045a1a14ec128cbfe322a9bfc04a287c545f0e7b4f38e",
+      "rows": 688,
+      "preliminares": 688,
+      "active_projection": 688,
+      "monthly_projection": 688,
+      "loads": 1,
+      "overlaps": 0,
+      "duplicates": 0,
+      "excluded_rows_inserted": 0,
+      "positions": 695
+    }
+  },
+  "baseline": {
+    "agenda_cierre_tareas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "agenda_cierres_diarios": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "agenda_tarea_asignaciones": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "agenda_tarea_participantes": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "agenda_tarea_seguimientos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "agenda_tareas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "agenda_top_tareas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "alertas_documentales": {
+      "count": 23,
+      "digest": "35c1d98214720c5b48b5077256ef34e0bfee08b1351af32a86097505e1981ac6"
+    },
+    "alertas_sistema": {
+      "count": 1,
+      "digest": "63932d0f251f2672a91637378731057fe385832bc1c270104ae92c971e0195ce"
+    },
+    "arl": {
+      "count": 1,
+      "digest": "a5c36358e1b5b59e50562c322ea65d0e551f8c486d6b03aaebb1d68f825a0061"
+    },
+    "asignaciones_operativas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "auditoria": {
+      "count": 13752,
+      "digest": "1b725caf74b855ed9da8163d27c036f75ad354a6565e9cb1cc2f7f52f8ec4ad5"
+    },
+    "auditoria_eventos": {
+      "count": 58088,
+      "digest": "6ca4a6a31e636a8b0d9a9176c50d5464350a6c3477e85f649e859e64377500e6"
+    },
+    "cajas_compensacion": {
+      "count": 1,
+      "digest": "703e452f811d5050a99e03179d06b8fa9143c53e75fed2813ed217303830b4a7"
+    },
+    "calculadora_personal_config": {
+      "count": 30,
+      "digest": "a87fea5b9c7d2e404193304c97abebc115149e161f75f9951409cd1eb17007d7"
+    },
+    "calculadora_personal_rangos": {
+      "count": 210,
+      "digest": "aa5fd6294a8f03b8f29a2f87e7fecbbc039b9b04557999cc1245a10929319efb"
+    },
+    "cargos_operativos": {
+      "count": 1,
+      "digest": "81cbf672644f75f0df55b49f3a6382ea627fcda41ef373b351e2d386bf843180"
+    },
+    "cobertura_asignaciones": {
+      "count": 727,
+      "digest": "0e518506b286f35064e22b2abc4e6aa2779ef9c227b56393ae0a230fab35f3fa"
+    },
+    "cobertura_cuenta_cobro_externa_detalle": {
+      "count": 170,
+      "digest": "c088ca9693bb9aa294efc9f92c9b64a41a3c25a59fc9db0cc448ced7844cb5e7"
+    },
+    "cobertura_cuentas_cobro_externas": {
+      "count": 89,
+      "digest": "e0c5b17806a07ca89d72579fe0a9c679f686ecfc85f164866e519c98e5afae94"
+    },
+    "cobertura_externo_documentos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "cobertura_externos": {
+      "count": 68,
+      "digest": "63745f057da025d84d732099da20cfb2d7b670d77c9eb80629222535ee42bed1"
+    },
+    "contrato_cargo_requisitos": {
+      "count": 24,
+      "digest": "434a4b06cf47f8cd7f9decfa0a43aeef0bfa7b180ae574659050b4f849bb97fb"
+    },
+    "contrato_cargos": {
+      "count": 40,
+      "digest": "fafc0c05a2de8aec8c2875a7a742ae5f305aa0971163dfff86d6ce0ab8ed2d1c"
+    },
+    "contrato_documento_requisitos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "contrato_eventos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "contrato_excepciones_documentales": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "contrato_perfiles_licitacion": {
+      "count": 6,
+      "digest": "8b0ee5e18041cd8869a1f16732c47659ea0b36427bb792fd6dbfa5ac5f9d90de"
+    },
+    "contrato_plantillas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "contrato_requisitos_generales": {
+      "count": 212,
+      "digest": "a1fd773473f60919cff3b8c014b4e3b0ff3af220ce09a0eaf467778f95add864"
+    },
+    "contrato_ubicaciones_laborales": {
+      "count": 13,
+      "digest": "5da6af0980ed1729774cd8abf1ff4669d397ba6b7f72977bc6485c13263b89c7"
+    },
+    "contratos": {
+      "count": 26,
+      "digest": "8753624153175b99e5f61ce5c0f06421fabec01838920c17efb4da0102310e15"
+    },
+    "departamentos": {
+      "count": 33,
+      "digest": "072963d10bf1e37ad55d66b4cefeec7a2c1067fca7bdbda2a1ee3159c6cb863a"
+    },
+    "documentos_contrato": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "documentos_generados": {
+      "count": 3,
+      "digest": "0645fcf4cbd6d372e2d59366ecd72fa42cadcca6e5fd8cd7cb6bd29c162bda9c"
+    },
+    "documentos_persona": {
+      "count": 1852,
+      "digest": "99cdef7e7908bd3a75cec57ecc14fd7655d40ddbc22ff2d2b36d5c6a32e35e2a"
+    },
+    "documentos_requisitos_aliases": {
+      "count": 50,
+      "digest": "967e26034601c93064eb9eab105883424cdf05584f5d17f569a77ef6761c593d"
+    },
+    "documentos_requisitos_canonicos": {
+      "count": 29,
+      "digest": "59a0ed7ed04b290d5cbd01f1d1c9af038abff301c7005dddd0a8961d9af68c61"
+    },
+    "documentos_requisitos_componentes": {
+      "count": 2,
+      "digest": "8d93e2be31fa4d6a030270cd978c8b6021c3171e47d75bb96439818bd0ac46de"
+    },
+    "documentos_requisitos_reglas": {
+      "count": 274,
+      "digest": "494ef7280105d44142854c856415e0b1cf1c5e2ae39c4181a5d6628738c9fa5d"
+    },
+    "documentos_vinculacion": {
+      "count": 8,
+      "digest": "b6ce1fad1f7897cc1cf1cba595601be03edc0971a0a21365a5b2ef9f6b16898a"
+    },
+    "empresa_configuracion_general": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "empresa_modulo_configuracion": {
+      "count": 1,
+      "digest": "3da77c7a5ea0f516c1930c9aa6c9655f5aa0372cce9af5dfab63b165c80f3b78"
+    },
+    "empresa_modulo_overrides": {
+      "count": 2,
+      "digest": "c0d4be29fde609b86f80fc849be6b8522279dc138b31dd411cceb4e618eef55f"
+    },
+    "empresa_suscripciones": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "empresas": {
+      "count": 21,
+      "digest": "3c2b19a0f03c483be96105c97b27a1703be302c3d6004aa60cd86c82b170adc5"
+    },
+    "eps": {
+      "count": 13,
+      "digest": "2fb4f9d1f2fa31890d9742d5147d0aafab87478c6c06dbf5e7ec6997aa902f7b"
+    },
+    "estados_civiles": {
+      "count": 6,
+      "digest": "76dde2b758d5c47a21181462f4d9f70720cda0cbadb21e2d34d194e8dfe4b3cb"
+    },
+    "evaluaciones_competencias": {
+      "count": 2,
+      "digest": "f25a9b545781e5de3ce8fe876e33926c9107731c529168c4601a02296bb48367"
+    },
+    "evaluaciones_desempeno": {
+      "count": 1,
+      "digest": "0123198f22c5f9e4cc03a51ccb6aa906c9487b843f36e015a200995cc889e819"
+    },
+    "evaluaciones_persona": {
+      "count": 1,
+      "digest": "783b14c9ca6037b6fa5226fb43ddc85c793b11d6dc9084a61e417d44521fbb47"
+    },
+    "evaluaciones_planes_mejora": {
+      "count": 1,
+      "digest": "e83d40ce4ffe8a616b8d90bcabb70f98da48adc926d85990b81cb8927e53dc50"
+    },
+    "evaluaciones_planes_mejora_seguimientos": {
+      "count": 1,
+      "digest": "46e3d3373599a89256e91862d0a60e07bb8d5373d3711e3ba8dadd774822a529"
+    },
+    "evaluaciones_respuestas": {
+      "count": 2,
+      "digest": "3e920a03189278bca8178dd4cb60a7764d24b23f3af181020ad04e82396fb0fd"
+    },
+    "focalizacion_cargas": {
+      "count": 1,
+      "digest": "2e320ee12410ee62ee53ac84cab66c52ff79dbd52e293b2dfcdd12ffe1ab7959"
+    },
+    "focalizacion_detallado": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "focalizacion_final": {
+      "count": 687,
+      "digest": "3a26c14ea455e64b1ca593119daa14d94bd4535afeb433af63598a9ca3b385b0"
+    },
+    "focalizacion_historial_cambios": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "focalizacion_novedades": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "focalizacion_preliminar": {
+      "count": 687,
+      "digest": "46a980355bbf7b56a4aedc3b818b1b84e62f49af7b14ae9434cbbda78b6fefe1"
+    },
+    "focalizacion_validacion_cupos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "focalizacion_vigencias": {
+      "count": 687,
+      "digest": "324e6d6df6e8762878ee001fdfc01d36b1b13e37cdde9e61eb4aa8d2b0b04627"
+    },
+    "fondos_pension": {
+      "count": 6,
+      "digest": "3c780aed0b82edd6a36dbf10d0cceb848b630f2490abca8c6057e588fc644915"
+    },
+    "gestor_institucion_asignaciones": {
+      "count": 17,
+      "digest": "d11b1a0c0387dfee7b9577c456a81b1f8af3a15e067d165a42f4d98544f6db46"
+    },
+    "gestor_municipio_asignaciones": {
+      "count": 156,
+      "digest": "8adbd1a65b26355d0ed40c622b9fe8dc79a0db17fd218ba37890ce3f562815ad"
+    },
+    "gestor_personal_asignaciones": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "historial_cambios": {
+      "count": 176763,
+      "digest": "9585b0c55a8419e4d7fc97057f0fcce251ff3427ccba3b08c6aecdd029cf60c5"
+    },
+    "importacion_errores": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "importacion_lotes": {
+      "count": 15,
+      "digest": "dea8f9ad4a8452dc240790eb8e3a025ef38aa035191fc93d0b600f3b30566730"
+    },
+    "importacion_staging_maestro": {
+      "count": 28,
+      "digest": "56356ead188c51afa2fcf57bdf779605a7ed82f56585e3aaeca55d38c1d92d24"
+    },
+    "importacion_staging_personas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "importacion_staging_vinculaciones": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "instituciones": {
+      "count": 111,
+      "digest": "367d47ca39c45020f428f007f7220b64654706491a441fe11a41a88f98d4d49c"
+    },
+    "instituciones_identidad_historial": {
+      "count": 111,
+      "digest": "18a55d66cc9c3c7a0e6ccc51c9a0a3de0ae23493eafb9291cbe28e9bec772da5"
+    },
+    "integracion_evento_impactos": {
+      "count": 15,
+      "digest": "c92dc5eb0b6a49c23c59100d9ef7aa2cf6c18bced9dba3c709a4caca67b2aafe"
+    },
+    "integracion_eventos": {
+      "count": 5,
+      "digest": "1001247c7b4757957ec08e1957c06f63bc32d81ea295e6c4488737553d84f0ec"
+    },
+    "logistica_bodegas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "logistica_conductores": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "logistica_inventario": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "logistica_items": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "logistica_movimientos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "logistica_novedades": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "logistica_recepciones": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "logistica_remision_items": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "logistica_remisiones": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "logistica_rutas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "logistica_vehiculos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "modalidad_aliases": {
+      "count": 3,
+      "digest": "a0e2d89b1ce47146bcf6f584eb51d9d26af114572aebf091cf6c4e67ef8ebd98"
+    },
+    "modalidades": {
+      "count": 5,
+      "digest": "19a90c222ef407bd5d6b03f825f110339e755a106c51e1ba8dc57661e8c20119"
+    },
+    "modulos": {
+      "count": 15,
+      "digest": "e489ec7d8b4f23996506c79a6aa3775c4bad260622386317ac3aef430e33186a"
+    },
+    "municipios": {
+      "count": 1122,
+      "digest": "d19bea23093438d6ab51ebfd0fdf29a312f9584741cc6446c38e0f649ddbf11f"
+    },
+    "niveles_estudio": {
+      "count": 7,
+      "digest": "987e804881fb06ed11cd69576cb47b63ccb670618d99ded030451f39f30e7ba4"
+    },
+    "nomina_ajustes_manuales": {
+      "count": 198,
+      "digest": "2899ea0fc6cb67b1f039b6581df2e201d3f7cac80bb7a3784a4db38c3625f5f0"
+    },
+    "nomina_areas": {
+      "count": 1,
+      "digest": "47f2bc849f2d63a05ec1abb725e013d7ad3b61a34006dbac80ce2fdb0fd1681b"
+    },
+    "nomina_asistencia_diaria": {
+      "count": 23513,
+      "digest": "48bf80963789d8282e3e2bdbfca812f979b8ae723beac2abc8096a1fc30313e3"
+    },
+    "nomina_calendarios_contractuales": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_categorias_salariales": {
+      "count": 12,
+      "digest": "b005620d75d0a4a98b346a27d9c63ae140d59b1c7506bb9426dc9ab831c7d083"
+    },
+    "nomina_cesantias": {
+      "count": 1,
+      "digest": "6c6baeda09856579f7dd380f61317d78c780d6de5368b594a3140dd6d1f50b72"
+    },
+    "nomina_coberturas_novedad": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_contextos_operativos_base": {
+      "count": 2089,
+      "digest": "d0254f944a5223eee48ac2087fb7d04dbbdd500eb048cc0aef1ff5297281ddef"
+    },
+    "nomina_correcciones": {
+      "count": 13,
+      "digest": "f77b0acbd903b7cab795018c543f2c78d8a060c8798ca98d1230a6543fddf70f"
+    },
+    "nomina_cuenta_cobro_ops_detalle": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_cuentas_cobro_ops": {
+      "count": 3,
+      "digest": "990d4cd274cfdce4675a14d7cc72d29461c8f81169d3dabe6aecd2b2408776f5"
+    },
+    "nomina_cuentas_cobro_turnos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_desprendibles": {
+      "count": 773,
+      "digest": "bfe618361a9f23250c8f07f97780a4120825b638a9d4a1a78d5f88a8f2da3f1f"
+    },
+    "nomina_empleado_detalle": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_empleados": {
+      "count": 2359,
+      "digest": "806f744095dbd3cb8a8cd58ee8fcac7c934a43ecc2a0b2a1b4e5fc6b3e1ea16f"
+    },
+    "nomina_exportes": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_intereses_cesantias": {
+      "count": 1,
+      "digest": "2f3b80a384c3f80289c138bc372deb8e437b12304dc64cd8e85fc4bc41bc1290"
+    },
+    "nomina_liquidacion_detalle": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_liquidaciones": {
+      "count": 1,
+      "digest": "8b638342d2869a7d1238b3a5ac53fd66f17d442062b6b162f097230b9070160b"
+    },
+    "nomina_liquidaciones_finales": {
+      "count": 1,
+      "digest": "1a7b54f028d3087f9b6608031ef25f69daae8d1c6191b4d13030c8ab6da32062"
+    },
+    "nomina_movimiento_tarifas": {
+      "count": 10,
+      "digest": "81cec25602cd1854789a00147793e4625727a11639faec348b74d7779e0811fa"
+    },
+    "nomina_movimientos": {
+      "count": 224,
+      "digest": "924e60c03f6d1f1014814867f1cb1c5feacda0ddf8a9d3c1246244620b87447c"
+    },
+    "nomina_novedad_coberturas": {
+      "count": 308,
+      "digest": "69a32d8277c595df5037a49bf66290f1c37623cffdbeced10106742a8207f7f0"
+    },
+    "nomina_novedad_documentos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_novedad_turnos": {
+      "count": 224,
+      "digest": "9ccfb6c1796675b5cd9f0f0f1ab5100f9fae11ce9b09ce1ef6e58574cd9dbf93"
+    },
+    "nomina_novedades": {
+      "count": 1139,
+      "digest": "fec1261217cd18d4ac1c19c83ca0844f404634c18a1602e8a754064ab4b46ea8"
+    },
+    "nomina_novedades_canonicas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_pagos_pendientes": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_parametros_economicos": {
+      "count": 2,
+      "digest": "673537acc911fde835056f636f98e837ce7bb8f567fc3d1c5e420f708837f7e6"
+    },
+    "nomina_periodo_26_25_auditoria": {
+      "count": 7620,
+      "digest": "0c9bb54cf2d43e04b67f50c252bb91db5599c65578340d2e459b801ba6080a2e"
+    },
+    "nomina_periodos": {
+      "count": 8,
+      "digest": "974e5d9b3c3d3da403aa079e0c718bf3b3e5c0986206b4b1fddd01450697bc51"
+    },
+    "nomina_prima": {
+      "count": 1,
+      "digest": "dec64bd1fe56c3073f0dffc08810dd45c0545d9ceeb18469960b8bd1ee8c0c98"
+    },
+    "nomina_recargos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_responsabilidad_areas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "nomina_responsabilidad_municipios": {
+      "count": 28,
+      "digest": "418cf25715fe623a1d0ff1be6b00cbd801b7da67fa4dfefe219b72402b67e1de"
+    },
+    "nomina_responsabilidades_usuario": {
+      "count": 9,
+      "digest": "a84f13de3f8f76145faf6927c69080ba47c3eaa9bef57bc1ced61134e23a41ed"
+    },
+    "nomina_revision_operativa": {
+      "count": 1586,
+      "digest": "87927f2e63f6cb6eaa0ac998d3f7f94d906f13acd4f035f4ce2c58e3a9642430"
+    },
+    "nomina_tipos_novedad": {
+      "count": 19,
+      "digest": "06451cfa60f4fcc885726f044e226a49e30eab8f2badd1b69f384bec4d38e79f"
+    },
+    "nomina_vacaciones": {
+      "count": 1,
+      "digest": "34cd0540f579a6ae637e4ba77cc030d2360fc6d53b424c0b2c986317a0754e2a"
+    },
+    "nomina_vacaciones_solicitudes": {
+      "count": 1,
+      "digest": "6eaecb64b2e1293b7090f58c61b9154658e839644882d239252d443e34dd4d28"
+    },
+    "nomina_vinculacion_areas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "notificacion_destinatarios": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "notificacion_reglas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "notificaciones": {
+      "count": 1,
+      "digest": "3239507cbe475158987f09108229dabb61b15bb8e9f082fb4923eb750cd46bfd"
+    },
+    "novedades_operativas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "operacion_simat_importaciones": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "operacion_simat_registros": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "ops_cuentas_cobro": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "ops_soportes_cuenta": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "organizaciones": {
+      "count": 21,
+      "digest": "af04aec1bc21d6a63ee1faf68557efba99f4bcd30041c9dcb4f2f3043d5556be"
+    },
+    "permisos": {
+      "count": 238,
+      "digest": "c55cdfb2a86e4f64b56546c4b45aa0ea108e15fce363b74a482af692c7cf8877"
+    },
+    "persona_contactos_emergencia": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "persona_cuentas_bancarias": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "persona_estudios": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "persona_experiencia": {
+      "count": 1,
+      "digest": "40e453b3d8043f0f2df715c69fa2f43e4e8f7cf48f798e685524690a9bcf32a3"
+    },
+    "persona_formacion_academica": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "persona_identificaciones": {
+      "count": 846,
+      "digest": "7376285040f230cb7c9bd9d6558976619ddfe263dc743ec181199fce17197a42"
+    },
+    "personal_asignaciones_laborales": {
+      "count": 84,
+      "digest": "10a3caf1fbaba9a6bf5b7c873345943093476d00b603c13ab4f35ff4d198bbe9"
+    },
+    "personal_bank_export_profiles": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "personal_export_templates": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "personal_presentaciones_licitacion": {
+      "count": 151,
+      "digest": "15e6094994f11349ee9e7dfa98573459562003f0e32c012a088e4faf7e41408f"
+    },
+    "personas": {
+      "count": 846,
+      "digest": "fe1e94ea597fbc3ca340d2d1f5ab83f12756ce59b29a8bf5fa9ad43e9ff704fb"
+    },
+    "plan_modulos": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "planes": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "plantilla_cargo_requisitos": {
+      "count": 37,
+      "digest": "70c113c85d51f96ddfd2157176d1dd6b046d34165f5d5ba3576c59c7709c6682"
+    },
+    "plantilla_cargos": {
+      "count": 18,
+      "digest": "09934af654e4840d4f10afd44923613e8294a4d6abe9d2a8c3c3e9454a6665f1"
+    },
+    "plantilla_variables": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "plantillas": {
+      "count": 1,
+      "digest": "5fdd4348ea4f6b57e3e87ce4e8ea953acd6c88f7d5f910d7e3da427ff8e56f0c"
+    },
+    "plantillas_contrato": {
+      "count": 5,
+      "digest": "2bab3ae6d63aa2ae5071e7cd05a17707aaaaa47c2b442ee11790e72037e8c180"
+    },
+    "rol_permisos": {
+      "count": 324,
+      "digest": "b0147a80559d83c068ea062a410848bd3e1af95631ba8ebfcbc55fe0e81a72d7"
+    },
+    "roles": {
+      "count": 10,
+      "digest": "74b040c7fecce11c9022598934998e101042a36171ff27b662c764e2d5ea3592"
+    },
+    "sede_institucion_historial": {
+      "count": 605,
+      "digest": "18f660cb51cfcfd35bc006add0775b8ad4042ba5163c0b56bcfa1a2fb39631f2"
+    },
+    "sede_modalidades": {
+      "count": 687,
+      "digest": "83e107e67e26cf31a14ea7074f6459f6169ef63a865afbd4778388e2afb1e74a"
+    },
+    "sedes": {
+      "count": 605,
+      "digest": "2df439948deb5661622f2d2cdb90467d4deb1f728c8e02cbd71bda0114dcc5e1"
+    },
+    "sedes_identidad_historial": {
+      "count": 1210,
+      "digest": "d49b4d0bda00baff2a13463f93872f855cedb58451f168e79c07d5cec74c8e72"
+    },
+    "sexo": {
+      "count": 2,
+      "digest": "2d00baa644b10e165b29e3e131773bfd7e8d378e42b91fb6e36817d3a2e94027"
+    },
+    "sincronizaciones_operativas": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "sst_accidentes_acciones": {
+      "count": 5,
+      "digest": "ff92a51f7a51c8b257698b70a3f3b48b140fa0fe9d7405597a4c5924a1ee00b4"
+    },
+    "sst_accidentes_incidentes": {
+      "count": 26,
+      "digest": "a8b0561ff14377fb801ffefd1f68f9b322bb25a21e4098147ca075aee11708c0"
+    },
+    "sst_capacitaciones": {
+      "count": 1,
+      "digest": "377f04f1e6e415e2349c206bcdb3d6faf9a4d4af1eff14f78889a9a10f17d2b5"
+    },
+    "sst_capacitaciones_persona": {
+      "count": 1,
+      "digest": "74e26ecf691628886e42f72b2e3a7b042c0f1ec980b94bba8f5369ba1aa49dce"
+    },
+    "sst_comite_miembros": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "sst_comite_reuniones": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "sst_comites": {
+      "count": 2,
+      "digest": "87395d657f2370a435febcfb3dc2a6c0844a4a7dfd21034ae7d20e0122467add"
+    },
+    "sst_dotacion_epp": {
+      "count": 1,
+      "digest": "f9c5a00bf71269b3dcd07572e1ad605ccc119d94b7b2c71b71859f03ac1abe35"
+    },
+    "sst_dotacion_epp_entregas": {
+      "count": 1,
+      "digest": "62bb853ddf7ec8bd421a10da6b647dac48df30c94c712f6b5654348f661272ea"
+    },
+    "sst_eventos": {
+      "count": 13,
+      "digest": "b12fdfd4fb19ed6aa9d97cf8829b75a30c71352d7ebc9c9100295135bda8dfa8"
+    },
+    "sst_examenes_ocupacionales": {
+      "count": 1,
+      "digest": "00a48b6ff75040e6d201c9c0e061951460602f5a988ba06e9fb6f40a12a8c262"
+    },
+    "sst_examenes_persona": {
+      "count": 2,
+      "digest": "9b92c8da5cc64225674f1d435dd1ffd2971d6ab06691b721bab4cfe2efe30f49"
+    },
+    "sst_indicador_mediciones": {
+      "count": 1,
+      "digest": "19d02a4a63be1ec3de93640e7b432b5b471358aedb745f922da73c749be280e8"
+    },
+    "sst_indicadores": {
+      "count": 7,
+      "digest": "03eb172e4944561a6a0310ca1b89b7e41d3260851b204a80a23c2b1442f0a2d8"
+    },
+    "sst_indicadores_periodos": {
+      "count": 1,
+      "digest": "8093f45e0f7e6021becb7a54cbc2bc4e7dc6eafd2391e3eb255fa434e776cfb9"
+    },
+    "sst_inspecciones": {
+      "count": 22,
+      "digest": "4676c53a6eb552fc50a6ce3d8776de17903e18e81000be2de5edd6d37fcdb80e"
+    },
+    "sst_inspecciones_acciones": {
+      "count": 7,
+      "digest": "78d40050af6d08ff5faa61da8fb05ab13f7c8dc73a24f6287b7698a152234b3e"
+    },
+    "sst_inspecciones_hallazgos": {
+      "count": 12,
+      "digest": "645010f939824beff4406e7c3c42874bcb5b5a463eb40a461ad1c9cd2ff162c8"
+    },
+    "sst_investigaciones_accidente": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "sst_matriz_riesgos": {
+      "count": 1,
+      "digest": "6bce0d5b2557242d3875785a6d77a0c479aeada124a08a7bf2c75a555d3cc521"
+    },
+    "sst_perfil_demografico": {
+      "count": 640,
+      "digest": "56c09555280dc82bda8c9f92de1b1ced8a1129411b70fc27388aa37c54efe1cf"
+    },
+    "sst_perfil_demografico_versiones": {
+      "count": 640,
+      "digest": "20c3f8ecf9df6d9cbe081051852b8e6fdda37b9b205a109323d03bde0242e874"
+    },
+    "sst_perfil_restringido": {
+      "count": 640,
+      "digest": "949e197b45179229832ccfd95dbc9d51ec8d50f3a72addb4502c4facf6ac1d6c"
+    },
+    "sst_plan_anual": {
+      "count": 1,
+      "digest": "7ead365cc7d1f18330d73e2710c4194f78757b1ac55642f51825d59b5da0412a"
+    },
+    "sst_plan_anual_actividades": {
+      "count": 1,
+      "digest": "b65a75875b9dc6e2eaed1ad8582939f6bc8f5dca556f889af4afbbe1411205c5"
+    },
+    "sst_planes_accion": {
+      "count": 19,
+      "digest": "5a6e85bd93819f9478b42a4895e5b35afda486440736bb3232e507022281a78e"
+    },
+    "sst_planes_emergencia": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "sst_preparacion_personas": {
+      "count": 772,
+      "digest": "24365c69b7aeef54ece81220208b80423e91fc7a3d0978cb9521314a04b32caf"
+    },
+    "sst_revision_casos": {
+      "count": 46,
+      "digest": "537748c4f28d9509ada293519c6f8fb32fcdac9fd3adae13e93d5523adaeb9ba"
+    },
+    "sst_riesgos_cargo": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "sst_simulacros": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "staging_afiliaciones_import": {
+      "count": 223,
+      "digest": "720932589bcc27bb8a27e61cee2f3ddab64947aa2e68111660e84daa514b3fb8"
+    },
+    "staging_cargo_operativo_import": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "staging_cargos_personal_import": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "staging_direcciones_import": {
+      "count": 223,
+      "digest": "68f1134482785deace881dc2efefa32990b496285362a716805fa250ddd85b4f"
+    },
+    "staging_jornada_import": {
+      "count": 223,
+      "digest": "d848787c6e09480fc6cfd7a4ca80d4ab20ddc4ac1c846173ced0dd9672509786"
+    },
+    "staging_personas_import": {
+      "count": 223,
+      "digest": "ded7cca872eb533cf98035f221084e33a174b73a9ba550b145b200ebe3d91e07"
+    },
+    "staging_sede_modalidades_import": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "staging_sincronizacion_operativa": {
+      "count": 0,
+      "digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "tipos_documentos": {
+      "count": 54,
+      "digest": "7caf6e8ec11b61d107a14d615755cd23e4fc44ac322752c58e35a450d1179c24"
+    },
+    "tipos_identificacion": {
+      "count": 8,
+      "digest": "f5c4a3f0623d7a5819c4c22f4d12ac16ed85bd7e4104385c94a303bc2f33f3ec"
+    },
+    "tipos_jornada": {
+      "count": 4,
+      "digest": "dc20f3bbbd4f18716c8ee0034dfa377622220b100f3218039479e8c1c88a94e3"
+    },
+    "tipos_novedad_operativa": {
+      "count": 11,
+      "digest": "45fe46fd4e1edb2a4ab9bbbdc0bfb9c152180290ddb69cbfc4b2a15af6025554"
+    },
+    "tipos_sangre": {
+      "count": 8,
+      "digest": "5d87bccc712605d50dfe961d8b1223dbb03b99bb7db639ba410a83b75f5c94fc"
+    },
+    "tipos_vinculacion": {
+      "count": 6,
+      "digest": "83e57c628c17d13aa5909ea8e3b26454890f388a9730c4dfaca9d4044d8b9fec"
+    },
+    "usuario_contratos": {
+      "count": 31,
+      "digest": "6ee76855d42e983d28455ec7f18fd2e581d6b672d7d837d75d6c9a5630aff27e"
+    },
+    "usuario_empresas": {
+      "count": 31,
+      "digest": "84178b86a0960f52557e965395f1caa52b54a2e202d0e2911402a937d3dd9cd9"
+    },
+    "usuario_municipio_visibilidad": {
+      "count": 28,
+      "digest": "0e29885f02cf5db9d040b3ebadd70f7a323d55f059ed2c03c55da6043947f427"
+    },
+    "usuario_roles": {
+      "count": 33,
+      "digest": "e0a6da385646c6a188c5c8e5fcffabd8e03ce68565a78f0c06903fb6212f4032"
+    },
+    "usuarios": {
+      "count": 32,
+      "digest": "bc5b9c4ad374c129322845ee236f01e2e8535e4c6f10470c4342b25f7d3ea4a5"
+    },
+    "vinculacion_afiliaciones": {
+      "count": 223,
+      "digest": "0ed1252cd6158d196c86ef5b3f4088d68fa1177022e0509631643b1d72761879"
+    },
+    "vinculacion_condiciones_economicas": {
+      "count": 4,
+      "digest": "3fbef4ed554ceb33b7d0bdb13c2c7a6741c4a564affa1c5ee09b0ce7045cc728"
+    },
+    "vinculacion_historial_cambios": {
+      "count": 1,
+      "digest": "4ade26700554f60ef13bd5d4e34aca1def25a4f68ab80396846993abaaacfda1"
+    },
+    "vinculaciones": {
+      "count": 1054,
+      "digest": "678928b7c091e33f7f804b2cd66a3a2f00b4c98ceda00091ab0d4b000a150fb9"
+    },
+    "zonas": {
+      "count": 2,
+      "digest": "308b128fdfcbb2243df2cd7b05078129ec72e3680c3b56b646d256b976391d79"
+    }
+  },
+  "protected": {
+    "verified_tables": 217,
+    "changed_tables": [
+      "auditoria",
+      "auditoria_eventos",
+      "focalizacion_cargas",
+      "focalizacion_final",
+      "focalizacion_preliminar",
+      "focalizacion_vigencias",
+      "historial_cambios"
+    ],
+    "all_others_identical": true
+  },
+  "schema_unchanged": true,
+  "application_reads": {
+    "august_institutions": 687,
+    "august_dto_identical": true,
+    "september_institutions": 688,
+    "all_months": 1375,
+    "selector_options": [
+      {
+        "id": "8",
+        "nombre": "Septiembre 2026"
+      },
+      {
+        "id": "4",
+        "nombre": "Agosto 2026"
+      }
+    ],
+    "august_coverage": 687,
+    "august_coverage_identical": true,
+    "september_coverage": 688,
+    "current_coverage": 688,
+    "nomina_periodo_id": "3",
+    "altas": 25,
+    "bajas": 24,
+    "cambios_modalidad": 24
+  },
+  "second": {
+    "status": "ALREADY_APPLIED",
+    "writes": 0,
+    "load_id": "8",
+    "run_id": "bf0cde03-ebde-4304-b868-0edfd7a54575",
+    "postflight": {
+      "digest": "bfb2204f4a89b9fad18045a1a14ec128cbfe322a9bfc04a287c545f0e7b4f38e",
+      "rows": 688,
+      "preliminares": 688,
+      "active_projection": 688,
+      "monthly_projection": 688,
+      "loads": 1,
+      "overlaps": 0,
+      "duplicates": 0,
+      "excluded_rows_inserted": 0,
+      "positions": 695
+    },
+    "data_and_sequences_identical": true
+  },
+  "status": "MODELO TEMPORAL CORREGIDO Y MUTADOR LOCAL CERTIFICADO — REQUIERE INTEGRACIÓN",
+  "finished_utc": "2026-10-01T15:21:21.313Z"
+}
