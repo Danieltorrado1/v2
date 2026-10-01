@@ -6855,6 +6855,9 @@ export const recalculateNominaPeriodo = async (
     // Historical turn snapshots are immutable during payroll recalculation.
     // Missing modality/value remains an explicit incident for review.
 
+    // Internal turns can retain a historical employee ID. Resolve the current
+    // employee by stable linkage, just as the expediente projection does.
+    // Filter operational dates independently of the settled salary month.
     const movimientosResult = await client.query<{
       movimientos_devengados: number | string | null;
       movimientos_deducciones: number | string | null;
@@ -6865,7 +6868,8 @@ export const recalculateNominaPeriodo = async (
     }>(
       `
         SELECT
-          nomina_empleado_id::text AS nomina_empleado_id,
+          CASE WHEN tipo_movimiento = 'TURNO_INTERNO' THEN destino.id
+            ELSE nm.nomina_empleado_id END::text AS nomina_empleado_id,
           COALESCE(SUM(valor_total) FILTER (
             WHERE COALESCE(activo, TRUE) = TRUE
               AND COALESCE(estado, 'APROBADO') = 'APROBADO'
@@ -6897,11 +6901,18 @@ export const recalculateNominaPeriodo = async (
               AND COALESCE(afecta_seguridad_social, TRUE) = TRUE
               AND tipo_movimiento = 'TURNO_INTERNO'
           ), 0) AS movimientos_turnos_internos_ss_devengados
-        FROM nomina_movimientos
-        WHERE periodo_id = $1::bigint
-        GROUP BY nomina_empleado_id
+        FROM nomina_movimientos nm
+        LEFT JOIN (
+          SELECT vinculacion_id, MIN(id) AS id
+          FROM nomina_empleados WHERE periodo_id = $1::bigint
+          GROUP BY vinculacion_id HAVING COUNT(*) = 1
+        ) destino ON destino.vinculacion_id = nm.vinculacion_id
+        WHERE nm.periodo_id = $1::bigint
+          AND (nm.fecha IS NULL OR nm.fecha BETWEEN $2::date AND $3::date)
+        GROUP BY CASE WHEN tipo_movimiento = 'TURNO_INTERNO' THEN destino.id
+          ELSE nm.nomina_empleado_id END
       `,
-      [periodoId]
+      [periodoId, periodoRange.start, periodoRange.end]
     );
 
     const ajustesManualesResult = await client.query<{
@@ -7003,7 +7014,7 @@ export const recalculateNominaPeriodo = async (
           nm.valor_total AS movimiento_valor_aplicado,
           nm.valor_unitario AS movimiento_valor_unitario,
           nm.afecta_seguridad_social AS movimiento_afecta_seguridad_social,
-          nnt.nomina_empleado_id::text AS nomina_empleado_id,
+          destino.id::text AS nomina_empleado_id,
           nnt.nomina_novedad_id::text AS nomina_novedad_id,
           CONCAT_WS(' ', titular_p.primer_nombre, titular_p.segundo_nombre, titular_p.primer_apellido, titular_p.segundo_apellido) AS titular_nombre,
           titular_p.numero_documento AS titular_documento,
@@ -7017,13 +7028,18 @@ export const recalculateNominaPeriodo = async (
           ncs.vigente_hasta::text AS titular_categoria_vigente_hasta,
           COALESCE(nt.codigo_operativo, nt.nombre, nt.descripcion_operativa) AS novedad_tipo,
           CASE WHEN nn.activo THEN 'ACTIVA' ELSE 'ANULADA' END AS novedad_estado,
-          COALESCE(nn.fecha_inicio, np.fecha_inicio)::text AS fecha_inicio,
-          COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin)::text AS fecha_fin,
+          GREATEST(COALESCE(nn.fecha_inicio, np.fecha_inicio), $2::date)::text AS fecha_inicio,
+          LEAST(COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin), $3::date)::text AS fecha_fin,
           nnt.contexto_operativo,
           nnt.observacion
         FROM nomina_novedad_turnos nnt
         INNER JOIN nomina_novedades nn ON nn.id = nnt.nomina_novedad_id
         INNER JOIN nomina_periodos np ON np.id = nnt.periodo_id
+        INNER JOIN (
+          SELECT vinculacion_id, MIN(id) AS id
+          FROM nomina_empleados WHERE periodo_id = $1::bigint
+          GROUP BY vinculacion_id HAVING COUNT(*) = 1
+        ) destino ON destino.vinculacion_id = nnt.vinculacion_id
         LEFT JOIN nomina_empleados titular_ne ON titular_ne.id = nn.nomina_empleado_id
         LEFT JOIN vinculaciones titular_v ON titular_v.id = titular_ne.vinculacion_id
         LEFT JOIN personas titular_p ON titular_p.id = titular_v.persona_id
@@ -7031,12 +7047,15 @@ export const recalculateNominaPeriodo = async (
         LEFT JOIN nomina_categorias_salariales ncs ON ncs.id = titular_ne.categoria_salarial_id
         LEFT JOIN nomina_movimientos nm ON nm.id = nnt.movimiento_id
         WHERE nnt.periodo_id = $1::bigint
+          AND COALESCE(nn.fecha_inicio, np.fecha_inicio) <= $3::date
+          AND COALESCE(nn.fecha_fin, nn.fecha_inicio, np.fecha_fin) >= $2::date
           AND nnt.tipo_turno = 'INTERNO'
           AND COALESCE(nnt.activo, TRUE) = TRUE
           AND COALESCE(nn.activo, TRUE) = TRUE
           AND (nnt.movimiento_id IS NULL OR COALESCE(nm.activo, TRUE) = TRUE)
+          AND (nnt.movimiento_id IS NULL OR COALESCE(nm.estado, 'APROBADO') = 'APROBADO')
       `,
-      [periodoId]
+      [periodoId, periodoRange.start, periodoRange.end]
     );
     const categoriasCoberturaResult = await client.query<{
       auxilio_transporte: number | string | null;
@@ -7278,16 +7297,12 @@ export const recalculateNominaPeriodo = async (
         (empleadoRow.metodo_liquidacion ?? '').trim().toUpperCase() === 'ASISTENCIA' &&
         !!asistenciaEmpleado &&
         asistenciaEmpleado.total_asistencia_activa > 0;
-      // Salary eligibility follows the contractual linkage, not a stale or
-      // operationally materialized payment snapshot. The latter may be
-      // useful as an audit field, but cannot erase valid attendance and
-      // contractual coverage at the beginning of the period.
+      // Operational effects follow the cut and contractual validity. Payment
+      // snapshots can start at the calendar month and must not clip the cut.
       const employmentRange: NominaEmploymentDateRange = {
         start: toDateString(empleadoRow.fecha_inicio_vinculacion) ??
-          toDateString(empleadoRow.fecha_inicio_pago) ??
           periodoRange.start,
         end: toDateString(empleadoRow.fecha_fin_vinculacion) ??
-          toDateString(empleadoRow.fecha_fin_pago) ??
           periodoRange.end
       };
       const mesLiquidadoBase = calculateNominaMonthBase(
@@ -7663,8 +7678,8 @@ export const recalculateNominaPeriodo = async (
             fecha_fin: employmentRange.end
           },
           tramos: tramosCobertura.length > 0 ? tramosCobertura : [{
-            fecha_inicio: mesLiquidadoBase.days > 0 ? mesLiquidadoBase.start : periodoRange.start,
-            fecha_fin: mesLiquidadoBase.days > 0 ? mesLiquidadoBase.end : periodoRange.end,
+            fecha_inicio: periodoRange.start,
+            fecha_fin: periodoRange.end,
             categoria: buildCategoriaSnapshot(empleadoRow.categoria_id, empleadoRow)
           }],
           dias_efectos: effectResolution.days,
