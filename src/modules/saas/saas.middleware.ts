@@ -623,7 +623,9 @@ export async function resolveEmpresaId(req: Request): Promise<number> {
     { label: 'body.empresa_id', value: normalizeNumericIdentifier((req.body as Record<string, unknown> | undefined)?.empresa_id) }
   ]);
   const contrato = getNumericIdentifier(req, hints, 'contrato_id', ['contratoId', 'contrato_id']);
-  const periodo = getNumericIdentifier(req, hints, 'periodo_id', ['periodoId', 'periodo_id']);
+  // The legacy Instituciones periodo_id is a focalizacion_vigencia, not payroll.
+  const institutions = req.method === 'GET' && /\/operacion\/instituciones\/?$/.test(req.originalUrl?.split('?')[0] ?? `${req.baseUrl}${req.path}`);
+  const periodo = institutions ? null : getNumericIdentifier(req, hints, 'periodo_id', ['periodoId', 'periodo_id']);
   const nominaEmpleado = getNumericIdentifier(req, hints, 'nomina_empleado_id', ['nominaEmpleadoId', 'nomina_empleado_id']);
   const vinculacion = getNumericIdentifier(req, hints, 'vinculacion_id', ['vinculacionId', 'vinculacion_id']);
   const liquidacion = getNumericIdentifier(req, hints, 'liquidacion_id', ['liquidacionId', 'liquidacion_id']);
