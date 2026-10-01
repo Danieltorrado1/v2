@@ -77,7 +77,7 @@ test at src\tests\nomina.periodo.mapper.test.ts:2:970
   AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
   + actual - expected
   ... Skipped lines
-  
+
     {
       activo: true,
   +   anulado_at: null,
@@ -95,7 +95,7 @@ test at src\tests\nomina.periodo.mapper.test.ts:2:970
       requiere_asistencia: true,
       tipo_periodo: 'MENSUAL'
     }
-  
+
       at TestContext.<anonymous> (<worktree>\src\tests\nomina.periodo.mapper.test.ts:16:10)
       at Test.runInAsyncScope (node:async_hooks:228:14)
       at Test.run (node:internal/test_runner/test:1118:25)
