@@ -53,3 +53,7 @@ data/focalizacion-septiembre-2026.xlsx
 # Auditorías territoriales locales
 reports/territorial-contract-24-audit.json
 reports/territorial-contract-24-pre-migration.json
+
+# Isolated modality release certification (restored data and comparison checkout)
+/tmp/modalidad-release-cert/
+/tmp/release-origin-main-baseline/

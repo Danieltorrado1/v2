@@ -1,0 +1,14 @@
+﻿{
+    "captured_utc":  "2026-10-05T23:42:56.0108390Z",
+    "url":  "https://api.empiriasuite.com/api/health",
+    "http_status":  200,
+    "database_status":  "ok",
+    "outbox_enabled":  false,
+    "recalc_requested":  false,
+    "recalc_active":  false,
+    "worker_started":  false,
+    "worker_running":  false,
+    "sync":  "NO_DETERMINABLE: not exposed by health",
+    "production_sql_connections":  0,
+    "production_writes":  0
+}

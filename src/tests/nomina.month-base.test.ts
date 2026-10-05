@@ -162,7 +162,10 @@ test('la base no depende de asistencias ni crea escrituras para el 26-30', () =>
   const body = source.slice(start, source.indexOf('\nexport const ', start + 1));
   assert.match(body, /settledMonth = new Date\(`\$\{periodoRange\.end\}T00:00:00\.000Z`\)/);
   assert.match(body, /calculateNominaMonthBase\([\s\S]*?settledMonth\.getUTCFullYear\(\),[\s\S]*?settledMonth\.getUTCMonth\(\) \+ 1/);
-  const baseCall = body.slice(body.indexOf('const mesLiquidadoBase ='), body.indexOf('const diasVigenciaNomina ='));
+  // Bound this assertion to the month-base call; the following independent
+  // modality resolver correctly clips its operational timeline to employment.
+  const baseCall = body.match(/const mesLiquidadoBase = calculateNominaMonthBase\([\s\S]*?\);/)?.[0];
+  assert.ok(baseCall, 'month-base calculation must remain present');
   assert.doesNotMatch(baseCall, /fecha_inicio_pago|fecha_fin_pago|employmentRange/);
   assert.match(baseCall, /fecha_inicio_vinculacion/);
   assert.match(baseCall, /fecha_fin_vinculacion/);

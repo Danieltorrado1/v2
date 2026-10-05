@@ -14,10 +14,10 @@ test('gestorResult usa solo parametros PostgreSQL tipados y no envia el municipi
   assert.match(gestorResult, /\$1::bigint/);
   assert.match(gestorResult, /\$2::bigint/);
   assert.match(gestorResult, /\$3::bigint/);
-  assert.doesNotMatch(gestorResult, /\$4/);
+  assert.match(gestorResult, /\$4::date/);
   assert.match(
     gestorResult,
-    /\[vinculacionId, vinculacion\.contrato_id, vinculacion\.contrato_cargo_id\]/
+    /\[vinculacionId, vinculacion\.contrato_id, vinculacion\.contrato_cargo_id,\s*fechaConsulta\]/
   );
   assert.doesNotMatch(
     gestorResult,

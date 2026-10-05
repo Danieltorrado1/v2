@@ -1,0 +1,51 @@
+﻿  backup/main-integration-planilla-single-785        e185e74 fix(focalizacion): preserve monthly history when publishing current projection
+  backup/nomina-figma-final                          1a2e384 fix: corregir filtros persistidos de planilla operativa
+  feature/agenda-operativa                           0aea8eb [origin/feature/agenda-operativa: behind 2] test: cubrir transiciones de agenda
++ feature/integracion-personal-nomina                885d2d9 (C:/Users/CORE ULTRA/Desktop/V2-expediente-42p18) [origin/feature/integracion-personal-nomina] fix(ui): preservar contraste del logo en modo oscuro
+  feature/liquidaciones-figma                        cc08aac fix(navigation): corregir acceso y orden de nomina
+  feature/liquidaciones-figma-v2                     e69f8cf [origin/feature/liquidaciones-figma-v2: ahead 1] fix(access): mostrar nomina a talento humano
+  feature/nomina-figma                               d1ff883 [origin/feature/nomina-figma: ahead 7] merge: integrar rediseño funcional de nómina
+  feature/operacion                                  c5a790e [origin/feature/operacion] wip(operacion): guardar avance de cobertura y focalizaciones
++ fix/asignaciones-salariales-acceso                 849159a (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/asignaciones-salariales) [origin/fix/asignaciones-salariales-acceso] fix: restore salary assignment configuration access
++ fix/asignaciones-salariales-module-guard           8a2a511 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/asignaciones-module-guard) [origin/fix/asignaciones-salariales-module-guard] fix: heredar acceso de configuracion desde nomina
++ fix/asignaciones-salariales-runtime-access         613a07e (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/asignaciones-runtime-access) [origin/fix/asignaciones-salariales-runtime-access] fix: heredar configuracion economica del modulo nomina
++ fix/focalizacion-septiembre-importacion-controlada 785be45 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/septiembre-importacion-controlada) [origin/fix/focalizacion-septiembre-importacion-controlada] fix(focalizacion): preserve monthly history when publishing current projection
+  fix/instituciones-cambio-modalidad-vigente         4098358 [origin/main: ahead 1] fix(instituciones): versionar modalidad por fecha con preview y catalogo contractual
++ fix/instituciones-focalizacion-selector            1819b4e (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/instituciones-focalizacion) [origin/fix/instituciones-focalizacion-selector] docs(operacion): normalize captured test report whitespace
++ fix/instituciones-runtime-cupos-acciones           7a5a9bd (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/instituciones-runtime) [origin/fix/instituciones-runtime-cupos-acciones] fix: route institutions to canonical runtime page
+  fix/integracion-periodos-semantica                 76e2fea [origin/fix/integracion-periodos-semantica] fix(nomina): hacer periodizacion compatible durante migracion
+  fix/integracion-worker-independiente               4bc0e72 [origin/fix/integracion-worker-independiente] fix(integracion): desacoplar worker del scheduler global
+  fix/modalidad-vigencia-canonica                    6b8f2ad [origin/main: behind 29] fix: propagate canonical modality timeline
++ fix/nomina-bugs                                    f53154e (C:/Users/CORE ULTRA/Desktop/V2-nomina-bugs) [origin/fix/nomina-bugs] fix(nomina): project historical turns and period-range novelties
++ fix/nomina-mutador-controlado-234                  0984122 (C:/Users/CORE ULTRA/Desktop/V2) [origin/fix/nomina-mutador-controlado-234: ahead 1] fix(nomina): separar cobertura de novedad y turno adicional
+  fix/nomina-recalculo-controlado-periodo3           e2ffad0 [origin/fix/nomina-recalculo-controlado-periodo3] fix: certify strict resume snapshot dry run
+  fix/nomina-recalculo-novedades                     d5bd6c3 [origin/fix/nomina-recalculo-novedades] fix(nomina): recalcular al registrar novedades
+  fix/nomina-reglas-dnc-turnos-dias                  93e6da6 [origin/main: behind 51] fix nomina economic preview and safe correction set
++ fix/operacion-instituciones-500-canonica           1cf0774 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/operacion-instituciones-500) [origin/main: behind 25] fix: align institution period query parameters
++ fix/operacion-instituciones-cupos-acciones         192756d (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/operacion-instituciones-cupos-acciones) [origin/fix/operacion-instituciones-cupos-acciones] fix: restore institution cupos and modality action
+  fix/personal-asignacion-operativa-500              9c1b236 [origin/fix/personal-asignacion-operativa-500] fix(personal): corregir guardado de asignacion operativa
+  fix/personal-expediente-42p18-gestor               4b67e59 [origin/fix/personal-expediente-42p18-gestor] fix(personal): corregir consulta de gestor del expediente
+  fix/personal-expediente-y-persistencia-asignacion  8b13393 [origin/fix/personal-expediente-y-persistencia-asignacion] fix(personal): corregir expediente y persistencia de cambios operativos
+  fix/planilla-consistencia-novedades-turnos         6bd29c8 [origin/fix/planilla-consistencia-novedades-turnos] fix(nomina): remove redundant novelty filter callback
++ fix/planilla-guardado-bloqueado                    d3f752c (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/planilla-guardado-bloqueado) [origin/fix/planilla-guardado-bloqueado] fix(planilla): dispatch pending attendance manually
+  fix/planilla-ux-cola-turnos-recargos               74d7c55 [origin/main: behind 48] fix: improve planilla queue and payroll presentation
+  fix/runner-psql-connection                         e2fca07 [origin/main: behind 77] fix(release): set actor in psql session
++ hotfix/expediente-500                              1d1e037 (C:/Users/CORE ULTRA/Desktop/V2-hotfix-expediente) [origin/main: behind 111] Merge branch 'fix/nomina-planilla-duplicados-manipuladoras' into integrate/main-hotfix
+  integrate/expediente-42p18-prod                    ec919ef [origin/main: behind 107] Merge remote-tracking branch 'origin/fix/personal-expediente-42p18-gestor' into integrate/expediente-42p18-prod
++ integrate/personal-expediente-prod                 ffa8eb2 (C:/Users/CORE ULTRA/Desktop/V2-personal-hotfix) [origin/main: behind 109] Merge remote-tracking branch 'origin/fix/personal-expediente-y-persistencia-asignacion' into integrate/personal-expediente-prod
++ main                                               09a71dd (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/main-asignaciones) [origin/main] fix(nomina): separar novedades normales de turnos economicos
++ main-integration-planilla                          150e7d5 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/main-integration-planilla) [origin/main-integration-planilla] fix(focalizacion): preserve monthly history when publishing current projection
+  planilla-filtros-hotfix                            1c30b63 fix(nomina): corregir filtros de planilla operativa
+  planilla-final-hotfix                              1fd6a56 fix(nomina): corregir filtrado y popovers de planilla
++ release/asignaciones-salariales-acceso             bc4f506 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-asignaciones-salariales) [origin/release/asignaciones-salariales-acceso] Merge branch 'fix/asignaciones-salariales-acceso' into release/asignaciones-salariales-acceso
++ release/asignaciones-salariales-module-guard       d8ec979 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-asignaciones-salariales-module-guard) [origin/release/asignaciones-salariales-module-guard] Merge branch 'fix/asignaciones-salariales-module-guard' into release/asignaciones-salariales-module-guard
++ release/asignaciones-salariales-runtime-access     a3ef7bb (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-asignaciones-salariales-runtime-access) [origin/release/asignaciones-salariales-runtime-access] Merge branch 'fix/asignaciones-salariales-runtime-access' into release/asignaciones-salariales-runtime-access
+* release/instituciones-cambio-modalidad-vigente     7a302e3 [origin/main: ahead 2] merge: preparar release de modalidad por vigencia sin deploy
++ release/instituciones-focalizacion-selector        07b2b83 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-instituciones-focalizacion) [origin/main: behind 14] merge: certify instituciones focalizacion selector release
++ release/instituciones-runtime-cupos-acciones       c42efc7 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-instituciones-runtime) [origin/main: behind 18] Merge runtime institutions hotfix into release
++ release/modalidad-vigencia-canonica                55bd436 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/modalidad-vigencia-canonica) test: accept canonical modality snapshot source
+  release/nomina-reglas-dnc-turnos-dias              34e8ee5 [origin/main: behind 50] merge payroll rules hotfix into release
++ release/operacion-instituciones-500                b938666 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-operacion-instituciones-500) [origin/main: behind 24] Merge hotfix operacion instituciones 500
++ release/operacion-instituciones-cupos-acciones     ae17353 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-operacion-instituciones-cupos-acciones) [origin/main: behind 21] Merge hotfix: operación instituciones cupos y acciones
+  release/planilla-consistencia                      8fb549c [origin/release/planilla-consistencia] merge: integrate validated Planilla hotfix updates
++ release/planilla-guardado-bloqueado                a504054 (C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-planilla-guardado-bloqueado) [origin/release/planilla-guardado-bloqueado] merge: integrate controlled planilla save hotfix

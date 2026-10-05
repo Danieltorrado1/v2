@@ -1,0 +1,115 @@
+worktree C:/Users/CORE ULTRA/Desktop/V2
+HEAD 0984122694651a836902638c61463a71d43e1a59
+branch refs/heads/fix/nomina-mutador-controlado-234
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/asignaciones-module-guard
+HEAD 8a2a511b2d77ee2c8bafda4ffd5ccbd4350acfde
+branch refs/heads/fix/asignaciones-salariales-module-guard
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/asignaciones-runtime-access
+HEAD 613a07e71bf92cb2d596dc377812531e43eea1a5
+branch refs/heads/fix/asignaciones-salariales-runtime-access
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/asignaciones-salariales
+HEAD 849159a96f432eaded7788c8528834e6b077105c
+branch refs/heads/fix/asignaciones-salariales-acceso
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/compare-main-9b132196
+HEAD 9b132196ec0c8b3905fd98e9e9e056027edf971b
+detached
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/compare-release-ae173533
+HEAD ae1735337f4a7e53c74a9468e3b62a61321848af
+detached
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/instituciones-focalizacion
+HEAD 1819b4e0d601b67d25c890284e16589f9d56835b
+branch refs/heads/fix/instituciones-focalizacion-selector
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/instituciones-runtime
+HEAD 7a5a9bd3953f4d097555dff1828338654706f3af
+branch refs/heads/fix/instituciones-runtime-cupos-acciones
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/main-asignaciones
+HEAD 09a71ddc2d2a769f6a7eacb9dc969cff339586f5
+branch refs/heads/main
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/main-integration-planilla
+HEAD 150e7d5345cb0d375aca2623cbd13c02f093eade
+branch refs/heads/main-integration-planilla
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/modalidad-vigencia-canonica
+HEAD 55bd4361eaf1c6ca464a2eebce63e8960a265bcc
+branch refs/heads/release/modalidad-vigencia-canonica
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/operacion-instituciones-500
+HEAD 1cf07744eb67530896cb41b8178c3b15295463ac
+branch refs/heads/fix/operacion-instituciones-500-canonica
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/operacion-instituciones-cupos-acciones
+HEAD 192756dbbe3bc105c8a98e98db428abbc54107b2
+branch refs/heads/fix/operacion-instituciones-cupos-acciones
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/planilla-guardado-bloqueado
+HEAD d3f752c02d16a08eab51f65fa54a581e3ad12351
+branch refs/heads/fix/planilla-guardado-bloqueado
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-asignaciones-salariales
+HEAD bc4f506c7f8093819626930298bccf7178c5591c
+branch refs/heads/release/asignaciones-salariales-acceso
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-asignaciones-salariales-module-guard
+HEAD d8ec9793b5b67e372a0368ee22489302ee42245f
+branch refs/heads/release/asignaciones-salariales-module-guard
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-asignaciones-salariales-runtime-access
+HEAD a3ef7bb28c92a7dd613d9b730ef063959b383b9d
+branch refs/heads/release/asignaciones-salariales-runtime-access
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-instituciones-focalizacion
+HEAD 07b2b830b5d0ab2a445c3d056acf277c283440ad
+branch refs/heads/release/instituciones-focalizacion-selector
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-instituciones-runtime
+HEAD c42efc7897351d9d308853dc11d8ac3394d1036d
+branch refs/heads/release/instituciones-runtime-cupos-acciones
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-operacion-instituciones-500
+HEAD b938666d6ee0032c395b0062066d7835aa0e5600
+branch refs/heads/release/operacion-instituciones-500
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-operacion-instituciones-cupos-acciones
+HEAD ae1735337f4a7e53c74a9468e3b62a61321848af
+branch refs/heads/release/operacion-instituciones-cupos-acciones
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/release-planilla-guardado-bloqueado
+HEAD a50405478093b10eea2ed389f2ca7cde9d0a0cdb
+branch refs/heads/release/planilla-guardado-bloqueado
+
+worktree C:/Users/CORE ULTRA/Desktop/V2/.worktrees/septiembre-importacion-controlada
+HEAD 785be45fd0d3433be36f57df06b488cca9315028
+branch refs/heads/fix/focalizacion-septiembre-importacion-controlada
+
+worktree C:/Users/CORE ULTRA/Desktop/V2-expediente-42p18
+HEAD 885d2d9a9b14e11b80bd6e06ebcd85f1c9a06a84
+branch refs/heads/feature/integracion-personal-nomina
+
+worktree C:/Users/CORE ULTRA/Desktop/V2-hotfix-expediente
+HEAD 1d1e0372722a8f99f902b132a9e2d6f403543261
+branch refs/heads/hotfix/expediente-500
+
+worktree C:/Users/CORE ULTRA/Desktop/V2-instituciones-modalidad
+HEAD 7a302e3d4272cecfdefc3bfd22c4e9135f026509
+branch refs/heads/release/instituciones-cambio-modalidad-vigente
+
+worktree C:/Users/CORE ULTRA/Desktop/V2-instituciones-modalidad/tmp/release-origin-main-baseline
+HEAD 09a71ddc2d2a769f6a7eacb9dc969cff339586f5
+detached
+
+worktree C:/Users/CORE ULTRA/Desktop/V2-nomina-bugs
+HEAD f53154e1cb6dd3f4c7d9b8438def4ff1dbe9e490
+branch refs/heads/fix/nomina-bugs
+
+worktree C:/Users/CORE ULTRA/Desktop/V2-personal-hotfix
+HEAD ffa8eb20c5808fafaec02f81c1d5263cdf4f46b4
+branch refs/heads/integrate/personal-expediente-prod

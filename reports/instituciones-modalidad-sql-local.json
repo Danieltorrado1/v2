@@ -1,0 +1,85 @@
+{
+  "started_utc": "2026-10-05T23:30:32.246Z",
+  "production_connections": 0,
+  "production_writes": 0,
+  "backup_sha256": "2e2f0608f609e2e3123e6bfdf56067bae08f11719cc3939ca73d0cdc387f0bc1",
+  "sql_sha256": "646e74d7b9e7c94515049b1787ceaa98a90165258eb13c88dfca3bad4b34a996",
+  "backup_manifest_timestamp": "2026-10-01T12:56:31.982Z",
+  "rollback": "NO_DOWN_AVAILABLE",
+  "local_toc_sha256": "877bcb1b5a09afdf95beb4f4d285e8c23abf65a39ebf72a14f05c7ebaaf1c632",
+  "instance": {
+    "host": "127.0.0.1",
+    "port": 55463,
+    "version": "17.11",
+    "directory": "C:/Users/CORE ULTRA/Desktop/V2-instituciones-modalidad/tmp/modalidad-release-cert/cluster",
+    "listen": "127.0.0.1",
+    "workers": "0",
+    "preload": ""
+  },
+  "restore_exit": 0,
+  "backup_schema_classification": "REQUERIDO",
+  "production_schema_classification": "NO_DETERMINABLE",
+  "first_exit": 0,
+  "second_exit": 0,
+  "baseline": {
+    "tables": 224,
+    "coverage": {
+      "count": 727,
+      "active": 718
+    },
+    "periods": [
+      {
+        "estado": "ABIERTO",
+        "count": 5
+      },
+      {
+        "estado": "ANULADO",
+        "count": 2
+      },
+      {
+        "estado": "CERRADO",
+        "count": 1
+      }
+    ]
+  },
+  "backfill": {
+    "filled": 727,
+    "mismatched": 0
+  },
+  "protected_tables_identical": 224,
+  "new_foreign_keys": [
+    {
+      "conname": "cobertura_asignaciones_institucion_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (institucion_id) REFERENCES instituciones(id)"
+    },
+    {
+      "conname": "cobertura_asignaciones_modalidad_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (modalidad_id) REFERENCES modalidades(id)"
+    },
+    {
+      "conname": "cobertura_asignaciones_sede_id_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (sede_id) REFERENCES sedes(id)"
+    }
+  ],
+  "idempotent": true,
+  "functions_unchanged": true,
+  "triggers_unchanged": true,
+  "local_certification": "PASS",
+  "readonly_postflight": {
+    "transaction_read_only": "on",
+    "waiting_locks": 0,
+    "overlap_count": 0,
+    "internal_gaps": 0,
+    "invalid_intervals": 0,
+    "orphan_contexts": 0,
+    "duplicated_operations": 0,
+    "operations_without_matching_assignment": 0,
+    "actor_12_active_in_backup": true,
+    "exit": 0
+  },
+  "new_task_cluster_stopped": true,
+  "finished_utc": "2026-10-05T23:30:44.872Z"
+}
