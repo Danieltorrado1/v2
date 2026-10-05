@@ -10657,6 +10657,19 @@ export const createNominaNovedadConTurno = async (
       () => resolveSelectedTurnContext(input.periodo_id, input.nomina_empleado_id,
         fechaTurnoSeleccionado, input.fecha_fin ?? fechaTurnoSeleccionado, turno.contexto_operativo, tenant, client));
     const novedad = await createNominaNovedad(input, actorUserId, tenant, auditMeta, client);
+    // Coverage records who replaces the employee; only an explicit additional
+    // turn creates a tariff snapshot and an economic movement. Use the resolved
+    // catalog code so requests made by type ID follow the same rule.
+    if (novedad.tipo_novedad.codigo_operativo !== 'TURNO_ADICIONAL') {
+      await client.query('COMMIT');
+      let recalculateWarning: string | null = null;
+      try {
+        await recalculateNominaPeriodo(input.periodo_id, { force: true, nomina_empleado_id: input.nomina_empleado_id }, actorUserId, tenant, auditMeta);
+      } catch (error) {
+        recalculateWarning = error instanceof Error ? error.message : 'No se pudo actualizar el cálculo afectado';
+      }
+      return { novedad, turno_id: null, turno: null, recalculate_warning: recalculateWarning };
+    }
     const titularResult = await client.query<{
       persona_id: string;
       vinculacion_id: string;
