@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
+    "test:instituciones-modalidad": "node src/scripts/test-instituciones-modalidad.cjs",
     "db:test": "node --experimental-strip-types src/scripts/test-db-connection.ts",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "seed:plantillas-permisos": "node --experimental-strip-types src/scripts/seed-plantillas-permisos.ts",

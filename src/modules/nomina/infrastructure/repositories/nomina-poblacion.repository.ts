@@ -73,12 +73,12 @@ export class NominaPoblacionRepository {
               jsonb_strip_nulls(jsonb_build_object(
                 'municipio_id', COALESCE(ff.municipio_id, ca.municipio_id)::text,
                 'municipio', COALESCE(ff.municipio_texto, mu.nombre_municipio),
-                'institucion_id', ff.institucion_id::text,
-                'institucion', COALESCE(ff.institucion_final, ca.institucion),
-                'sede_id', ff.sede_id::text,
-                'sede', COALESCE(ff.sede_final, ca.sede),
-                'modalidad_id', ff.modalidad_id::text,
-                'modalidad', ff.modalidad_final,
+                'institucion_id', COALESCE((to_jsonb(ca)->>'institucion_id')::bigint,ff.institucion_id)::text,
+                'institucion', COALESCE(ca.institucion, ff.institucion_final),
+                'sede_id', COALESCE((to_jsonb(ca)->>'sede_id')::bigint,ff.sede_id)::text,
+                'sede', COALESCE(ca.sede, ff.sede_final),
+                'modalidad_id', COALESCE((to_jsonb(ca)->>'modalidad_id')::bigint,ff.modalidad_id)::text,
+                'modalidad', COALESCE(ca.modalidad,ff.modalidad_final),
                 'cargo_operativo_id', v.cargo_operativo_id::text,
                 'cobertura_asignacion_id', ca.id::text
               )) AS contexto
@@ -118,6 +118,7 @@ export class NominaPoblacionRepository {
             LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
             LEFT JOIN municipios mu ON mu.id = COALESCE(ff.municipio_id, ca.municipio_id)
             WHERE ne.periodo_id = $1::bigint
+              AND np.estado='ABIERTO'
               AND v.contrato_id = np.contrato_id
               AND COALESCE(ne.activo, TRUE)
               ${snapshotScopeCondition}

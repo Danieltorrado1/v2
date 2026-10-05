@@ -13,7 +13,9 @@ test('normaliza cupos reales y evita object object, NaN y pérdida de cero', () 
 
 test('la acción depende de permisos efectivos y bloquea GESTOR', () => {
   assert.equal(canManageOperationalChange({ roles: ['ADMINISTRADOR'], permissions: ['nomina.movimientos.create'] }), true);
-  assert.equal(canManageOperationalChange({ roles: ['TALENTO_HUMANO'], permissions: ['nomina.movimientos.update'] }), true);
+  assert.equal(canManageOperationalChange({ roles: ['TALENTO_HUMANO'], permissions: ['nomina.movimientos.create'] }), true);
+  assert.equal(canManageOperationalChange({ roles: ['TALENTO_HUMANO'], permissions: ['nomina.movimientos.update'] }), false);
+  assert.equal(canManageOperationalChange({ roles: ['ADMINISTRADOR'], permissions: [] }), true);
   assert.equal(canManageOperationalChange({ roles: ['LECTURA'], permissions: ['nomina.read'] }), false);
   assert.equal(canManageOperationalChange({ roles: ['GESTOR'], permissions: ['nomina.movimientos.create'] }), false);
 });

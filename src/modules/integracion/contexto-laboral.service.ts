@@ -92,16 +92,16 @@ export const resolveContextoLaboral = async (
       CASE WHEN ca.id IS NULL THEN NULL ELSE jsonb_build_object(
         'id', ca.id::text, 'focalizacion_final_id', ca.focalizacion_final_id::text,
         'fecha_inicio', ca.fecha_inicio::text, 'fecha_fin', ca.fecha_fin::text,
-        'municipio_id', ca.municipio_id::text, 'institucion_id', ff.institucion_id::text,
-        'sede_id', ff.sede_id::text, 'modalidad_id', ff.modalidad_id::text,
-        'institucion', COALESCE(ff.institucion_final, ca.institucion),
-        'sede', COALESCE(ff.sede_final, ca.sede), 'modalidad', COALESCE(ff.modalidad_final, ca.modalidad),
+        'municipio_id', ca.municipio_id::text, 'institucion_id', COALESCE((to_jsonb(ca)->>'institucion_id')::bigint,ff.institucion_id)::text,
+        'sede_id', COALESCE((to_jsonb(ca)->>'sede_id')::bigint,ff.sede_id)::text, 'modalidad_id', COALESCE((to_jsonb(ca)->>'modalidad_id')::bigint,ff.modalidad_id)::text,
+        'institucion', COALESCE(ca.institucion, ff.institucion_final),
+        'sede', COALESCE(ca.sede, ff.sede_final), 'modalidad', COALESCE(ca.modalidad, ff.modalidad_final),
         'observacion', ca.observacion
       ) END asignacion_operativa,
       ca.municipio_id::text municipio_id, COALESCE(mu.nombre_municipio, ff.municipio_texto) municipio_nombre,
-      ff.institucion_id::text institucion_id, COALESCE(ff.institucion_final, ca.institucion) institucion_nombre,
-      ff.sede_id::text sede_id, COALESCE(ff.sede_final, ca.sede) sede_nombre,
-      ff.modalidad_id::text modalidad_id, COALESCE(ff.modalidad_final, ca.modalidad) modalidad_nombre,
+      COALESCE((to_jsonb(ca)->>'institucion_id')::bigint,ff.institucion_id)::text institucion_id, COALESCE(ca.institucion, ff.institucion_final) institucion_nombre,
+      COALESCE((to_jsonb(ca)->>'sede_id')::bigint,ff.sede_id)::text sede_id, COALESCE(ca.sede, ff.sede_final) sede_nombre,
+      COALESCE((to_jsonb(ca)->>'modalidad_id')::bigint,ff.modalidad_id)::text modalidad_id, COALESCE(ca.modalidad, ff.modalidad_final) modalidad_nombre,
       CASE WHEN pal.id IS NULL THEN NULL ELSE jsonb_build_object(
         'id', pal.id::text, 'ubicacion_laboral_id', pal.ubicacion_laboral_id::text,
         'nombre', cul.nombre_ubicacion, 'vigencia_desde', pal.vigencia_desde::text,
@@ -125,8 +125,7 @@ export const resolveContextoLaboral = async (
       ORDER BY vce.vigencia_desde DESC, vce.id DESC LIMIT 1
     ) pen ON TRUE
     LEFT JOIN LATERAL (
-      SELECT ca0.*, ff0.institucion_id, ff0.sede_id, ff0.modalidad_id, ff0.institucion_final,
-        ff0.sede_final, ff0.modalidad_final, ff0.municipio_texto, COUNT(*) OVER () assignment_candidates
+      SELECT ca0.*, COUNT(*) OVER () assignment_candidates
       FROM cobertura_asignaciones ca0
       LEFT JOIN focalizacion_final ff0 ON ff0.id = ca0.focalizacion_final_id
       WHERE ca0.vinculacion_id = v.id AND COALESCE(ca0.activo, TRUE)
@@ -139,7 +138,7 @@ export const resolveContextoLaboral = async (
       SELECT ncs.*, COUNT(*) OVER () category_candidates
       FROM nomina_categorias_salariales ncs
       WHERE ncs.contrato_id = v.contrato_id AND COALESCE(ncs.activo, TRUE)
-        AND LOWER(BTRIM(ncs.modalidad)) = LOWER(BTRIM(COALESCE(ff.modalidad_final, ca.modalidad)))
+        AND LOWER(BTRIM(ncs.modalidad)) = LOWER(BTRIM(COALESCE(ca.modalidad, ff.modalidad_final)))
         AND (ncs.vigente_desde IS NULL OR ncs.vigente_desde <= $3::date)
         AND (ncs.vigente_hasta IS NULL OR ncs.vigente_hasta >= $3::date)
       ORDER BY ncs.vigente_desde DESC NULLS LAST, ncs.id DESC LIMIT 1
@@ -227,11 +226,11 @@ const canonicalOperationalQuery = async (input: { empresaId: number; contratoId:
   const result = await executor.query<OperationalContextAtDate>(`
     SELECT ca.id::int, GREATEST(ca.fecha_inicio, $4::date)::text fecha_inicio,
       LEAST(COALESCE(ca.fecha_fin, $5::date), $5::date)::text fecha_fin,
-      ca.municipio_id::int, ff.institucion_id::int, ff.sede_id::int, ff.modalidad_id::int,
+      ca.municipio_id::int, COALESCE((to_jsonb(ca)->>'institucion_id')::bigint,ff.institucion_id)::int, COALESCE((to_jsonb(ca)->>'sede_id')::bigint,ff.sede_id)::int, COALESCE((to_jsonb(ca)->>'modalidad_id')::bigint,ff.modalidad_id)::int,
       COALESCE(ff.municipio_texto, mu.nombre_municipio) municipio,
-      COALESCE(ff.institucion_final, ca.institucion) institucion,
-      COALESCE(ff.sede_final, ca.sede) sede,
-      COALESCE(ff.modalidad_final, ca.modalidad) modalidad,
+      COALESCE(ca.institucion, ff.institucion_final) institucion,
+      COALESCE(ca.sede, ff.sede_final) sede,
+      COALESCE(ca.modalidad, ff.modalidad_final) modalidad,
       'cobertura_asignaciones'::text origen
     FROM cobertura_asignaciones ca
     JOIN contratos c ON c.id = ca.contrato_id AND c.empresa_id = $1::bigint

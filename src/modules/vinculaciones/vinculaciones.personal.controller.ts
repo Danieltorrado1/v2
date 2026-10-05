@@ -46,7 +46,7 @@ const getActorUserId = (req: Request): number => {
 
 export const getVinculacionPersonalContextHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = vinculacionPersonalIdParamSchema.parse(req.params);
-  const data = await getVinculacionPersonalContext(id, req.tenant);
+  const data = await getVinculacionPersonalContext(id, req.tenant,typeof req.query.fecha==='string'?req.query.fecha:undefined);
 
   return successResponse(res, {
     message: 'Vinculacion personal context retrieved successfully',

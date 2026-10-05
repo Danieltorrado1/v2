@@ -1,3 +1,4 @@
+import { canonicalSalaryTimeline } from './canonical-salary-timeline';
 import PDFDocument from 'pdfkit';
 import { PoolClient, QueryResultRow } from 'pg';
 
@@ -1997,7 +1998,7 @@ const getNominaEmpleadosRealSelect = (): string => {
       COALESCE(contexto_base.contexto ->> 'municipio', contexto_operativo.municipio_operativo_nombre, mu_op.nombre_municipio, mu.nombre_municipio) AS municipio_nombre,
       COALESCE(contexto_base.contexto ->> 'municipio', contexto_operativo.municipio_operativo_nombre, mu_op.nombre_municipio) AS contexto_municipio_nombre,
       COALESCE(contexto_base.contexto ->> 'institucion', contexto_operativo.institucion_nombre, ins_op.nombre_institucion) AS contexto_institucion_nombre,
-      se_op.id::text AS contexto_sede_id,
+      COALESCE(contexto_base.contexto->>'sede_id',se_op.id::text) AS contexto_sede_id,
       COALESCE(contexto_base.contexto ->> 'sede', contexto_operativo.sede_nombre, se_op.nombre_sede) AS contexto_sede_nombre,
       COALESCE(contexto_base.contexto ->> 'modalidad', contexto_operativo.modalidad_nombre, mo_op.nombre_modalidad) AS contexto_modalidad_nombre,
       COALESCE(contexto_base.contexto ->> 'municipio', contexto_operativo.municipio_operativo_nombre) AS municipio_operativo_nombre,
@@ -2041,7 +2042,7 @@ const getNominaEmpleadosRealSelect = (): string => {
      AND contexto_base.nomina_empleado_id = ne.id
     LEFT JOIN municipios mu ON mu.id = p.municipio_residencia_id
     LEFT JOIN LATERAL (
-      SELECT ca1.focalizacion_final_id
+      SELECT ca1.*
       FROM cobertura_asignaciones ca1
       WHERE ca1.vinculacion_id = v.id
         AND ca1.fecha_inicio <= np_context.fecha_fin
@@ -2049,10 +2050,10 @@ const getNominaEmpleadosRealSelect = (): string => {
       ORDER BY ca1.fecha_inicio DESC, ca1.id DESC LIMIT 1
     ) ca_op ON TRUE
     LEFT JOIN focalizacion_final ff_op ON ff_op.id = ca_op.focalizacion_final_id
-    LEFT JOIN municipios mu_op ON mu_op.id = ff_op.municipio_id
-    LEFT JOIN instituciones ins_op ON ins_op.id = ff_op.institucion_id
-    LEFT JOIN sedes se_op ON se_op.id = ff_op.sede_id
-    LEFT JOIN modalidades mo_op ON mo_op.id = ff_op.modalidad_id
+    LEFT JOIN municipios mu_op ON mu_op.id = COALESCE(ca_op.municipio_id,ff_op.municipio_id)
+    LEFT JOIN instituciones ins_op ON ins_op.id = COALESCE((to_jsonb(ca_op)->>'institucion_id')::bigint,ff_op.institucion_id)
+    LEFT JOIN sedes se_op ON se_op.id = COALESCE((to_jsonb(ca_op)->>'sede_id')::bigint,ff_op.sede_id)
+    LEFT JOIN modalidades mo_op ON mo_op.id = COALESCE((to_jsonb(ca_op)->>'modalidad_id')::bigint,ff_op.modalidad_id)
     LEFT JOIN contratos c ON c.id = v.contrato_id
     LEFT JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
     LEFT JOIN cargos_operativos co ON co.id = v.cargo_operativo_id
@@ -2065,13 +2066,13 @@ const getNominaEmpleadosRealSelect = (): string => {
         COALESCE(ff.municipio_texto, muo.nombre_municipio) AS municipio_operativo_nombre,
         ca.institucion AS institucion_nombre,
         ca.sede AS sede_nombre,
-        ff.modalidad_id::text AS modalidad_id,
+        COALESCE((to_jsonb(ca)->>'modalidad_id')::bigint,ff.modalidad_id)::text AS modalidad_id,
         COALESCE(mo.codigo_base, mo.codigo_original) AS modalidad_codigo,
         mo.nombre_modalidad AS modalidad_nombre
       FROM cobertura_asignaciones ca
-      INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
-      LEFT JOIN municipios muo ON muo.id = ff.municipio_id
-      LEFT JOIN modalidades mo ON mo.id = ff.modalidad_id
+      LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+      LEFT JOIN municipios muo ON muo.id = COALESCE(ca.municipio_id,ff.municipio_id)
+      LEFT JOIN modalidades mo ON mo.id = COALESCE((to_jsonb(ca)->>'modalidad_id')::bigint,ff.modalidad_id)
       WHERE ca.vinculacion_id = v.id
         AND ca.fecha_inicio <= np.fecha_fin
         AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= np.fecha_inicio)
@@ -2092,9 +2093,9 @@ const getNominaEmpleadosRealSelect = (): string => {
           AND COALESCE(cas_scope.activo, TRUE) = TRUE
           AND cas_scope.fecha_inicio <= np.fecha_fin
           AND (cas_scope.fecha_fin IS NULL OR cas_scope.fecha_fin >= np.fecha_inicio)
-        INNER JOIN focalizacion_final cff_scope ON cff_scope.id = cas_scope.focalizacion_final_id
-          AND cff_scope.municipio_id = gma.municipio_id
+        LEFT JOIN focalizacion_final cff_scope ON cff_scope.id = cas_scope.focalizacion_final_id
         WHERE ${gestorApplicableCargoSql('cc')}
+          AND COALESCE(cas_scope.municipio_id,cff_scope.municipio_id)=gma.municipio_id
           AND gma.contrato_id = v.contrato_id AND COALESCE(gma.activo, TRUE) = TRUE
           AND gma.vigencia_desde <= np.fecha_fin AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= np.fecha_inicio)
           AND EXISTS (SELECT 1 FROM usuario_roles ur_gestor JOIN roles r_gestor ON r_gestor.id = ur_gestor.rol_id
@@ -3792,20 +3793,20 @@ const loadNominaMovimientoContextFromCobertura = async (
   const result = await client.query<NominaMovimientoContextRow>(
     `
       SELECT
-        ff.municipio_id::text AS municipio_id,
-        ff.institucion_id::text AS institucion_id,
-        ff.sede_id::text AS sede_id,
-        ff.modalidad_id::text AS modalidad_id,
+        COALESCE(ca.municipio_id,ff.municipio_id)::text AS municipio_id,
+        COALESCE((to_jsonb(ca)->>'institucion_id')::bigint,ff.institucion_id)::text AS institucion_id,
+        COALESCE((to_jsonb(ca)->>'sede_id')::bigint,ff.sede_id)::text AS sede_id,
+        COALESCE((to_jsonb(ca)->>'modalidad_id')::bigint,ff.modalidad_id)::text AS modalidad_id,
         mu.nombre_municipio AS contexto_municipio,
         i.nombre_institucion AS contexto_institucion,
         s.nombre_sede AS contexto_sede,
         m.nombre_modalidad AS contexto_modalidad
       FROM cobertura_asignaciones ca
-      INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
-      LEFT JOIN municipios mu ON mu.id = ff.municipio_id
-      LEFT JOIN instituciones i ON i.id = ff.institucion_id
-      LEFT JOIN sedes s ON s.id = ff.sede_id
-      LEFT JOIN modalidades m ON m.id = ff.modalidad_id
+      LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+      LEFT JOIN municipios mu ON mu.id = COALESCE(ca.municipio_id,ff.municipio_id)
+      LEFT JOIN instituciones i ON i.id = COALESCE((to_jsonb(ca)->>'institucion_id')::bigint,ff.institucion_id)
+      LEFT JOIN sedes s ON s.id = COALESCE((to_jsonb(ca)->>'sede_id')::bigint,ff.sede_id)
+      LEFT JOIN modalidades m ON m.id = COALESCE((to_jsonb(ca)->>'modalidad_id')::bigint,ff.modalidad_id)
       WHERE ca.vinculacion_id = $1::bigint
         AND COALESCE(ca.activo, TRUE) = TRUE
         AND ca.fecha_inicio <= $2::date
@@ -7311,6 +7312,12 @@ export const recalculateNominaPeriodo = async (
         toDateString(empleadoRow.fecha_inicio_vinculacion),
         toDateString(empleadoRow.fecha_fin_vinculacion)
       );
+      const canonicalTramos = await canonicalSalaryTimeline(client, {
+          empresaId: Number(periodo.contrato_empresa_id), contratoId: Number(periodo.contrato_id),
+          vinculacionId: Number(empleadoRow.vinculacion_id),
+          fechaInicio: employmentRange.start>periodoRange.start?employmentRange.start:periodoRange.start,
+          fechaFin: employmentRange.end<periodoRange.end?employmentRange.end:periodoRange.end
+        });
       const diasVigenciaNomina = mesLiquidadoBase.days;
       // La asistencia aplica solo para empleados con metodo_liquidacion ASISTENCIA.
       // Categoria salarial, salario fijo y OPS no dependen de asistencia diaria.
@@ -7550,7 +7557,7 @@ export const recalculateNominaPeriodo = async (
             categoria: empleadoRow.categoria_codigo ?? empleadoRow.categoria_nombre
           }
         );
-        const tramosCobertura = resolverTramosOperativos({
+        const legacyTramos = canonicalTramos ? [] : resolverTramosOperativos({
           periodo_inicio: periodoRange.start,
           periodo_fin: periodoRange.end,
           vinculacion_inicio: employmentRange.start,
@@ -7582,6 +7589,10 @@ export const recalculateNominaPeriodo = async (
             )
           };
         });
+        const tramosCobertura = canonicalTramos?.map(tramo=>({
+          fecha_inicio:tramo.fecha_inicio,fecha_fin:tramo.fecha_fin,movimiento_origen_id:String(tramo.contexto.id),
+          contexto:toRecord(tramo.contexto),categoria:buildCategoriaSnapshot(tramo.contexto.categoria_id,empleadoRow,null,true)
+        })) ?? legacyTramos;
         const adicionesInternasCobertura = (turnosInternosCoberturaByEmpleado.get(empleadoRow.id) ?? [])
           .filter((turnoRow) => {
             const hasSnapshot = Boolean(
@@ -7815,9 +7826,16 @@ export const recalculateNominaPeriodo = async (
       const diasPagadosSalario = paidDays.salaryPaidDays;
       const diasPagadosTransporte = paidDays.transportPaidDays;
       const diasPagadosOtrosRecargos = paidDays.surchargePaidDays;
-      const devengadoBasico = Number(((salarioBase / 30) * diasPagadosSalario).toFixed(2));
-      const devengadoTransporte = Number(((auxilioTransporte / 30) * diasPagadosTransporte).toFixed(2));
-      const otrosDevengosProrrateado = Number(((otrosDevengos / 30) * diasPagadosOtrosRecargos).toFixed(2));
+      const canonicalAmounts = canonicalTramos ? calculateCoberturaPayroll({
+        mes_liquidado_base:mesLiquidadoBase,
+        empleo:{fecha_inicio:employmentRange.start,fecha_fin:employmentRange.end},
+        tramos:canonicalTramos.map(tramo=>({fecha_inicio:tramo.fecha_inicio,fecha_fin:tramo.fecha_fin,
+          contexto:toRecord(tramo.contexto),categoria:buildCategoriaSnapshot(tramo.contexto.categoria_id,empleadoRow,null,true)})),
+        dias_efectos:usaAsistencia?[]:effectResolution.days,aporta_pension:false
+      }) : null;
+      const devengadoBasico = canonicalAmounts?.salario_ordinario ?? Number(((salarioBase / 30) * diasPagadosSalario).toFixed(2));
+      const devengadoTransporte = canonicalAmounts?.transporte_ordinario ?? Number(((auxilioTransporte / 30) * diasPagadosTransporte).toFixed(2));
+      const otrosDevengosProrrateado = canonicalAmounts?.recargos_ordinarios ?? Number(((otrosDevengos / 30) * diasPagadosOtrosRecargos).toFixed(2));
       const devengadoOtros = Number(
         (
           otrosDevengosProrrateado +
@@ -7845,6 +7863,7 @@ export const recalculateNominaPeriodo = async (
       const netoPagar = Number((totalAdiciones - totalDeducciones).toFixed(2));
       const detalleCalculo = {
         motor: 'NOMINA_V1_0',
+        tramos_modalidad:canonicalAmounts?.auditoria.tramos??null,
         periodo: periodoRange,
         dias: {
           base: COBERTURA_DIAS_BASE_NOMINA,

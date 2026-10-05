@@ -220,14 +220,14 @@ const buildNominaCoberturaScopeSql = (
         ON nrm.responsabilidad_id = nru.id
       JOIN cobertura_asignaciones cas
         ON cas.vinculacion_id = ${vinculacionSql}
-      JOIN focalizacion_final cff
+      LEFT JOIN focalizacion_final cff
         ON cff.id = cas.focalizacion_final_id
       WHERE nru.usuario_id = ${userParamSql}::bigint
         AND nru.empresa_id = ${empresaSql}
         AND nru.proceso = 'COBERTURA'
         AND nru.contrato_id = ${contratoSql}
         AND nru.activo = TRUE
-        AND cff.municipio_id = nrm.municipio_id
+        AND COALESCE(cas.municipio_id,cff.municipio_id) = nrm.municipio_id
         AND cas.fecha_inicio <= ${periodoFinSql}
         AND (
           cas.fecha_fin IS NULL
@@ -256,7 +256,7 @@ const buildNominaCoberturaScopeSql = (
           FROM gestor_municipio_asignaciones gma_scope
           JOIN cobertura_asignaciones cas_scope
             ON cas_scope.vinculacion_id = ${vinculacionSql}
-          JOIN focalizacion_final cff_scope
+          LEFT JOIN focalizacion_final cff_scope
             ON cff_scope.id = cas_scope.focalizacion_final_id
           WHERE gma_scope.usuario_id = ${userParamSql}::bigint
             AND gma_scope.contrato_id = ${contratoSql}
@@ -271,7 +271,7 @@ const buildNominaCoberturaScopeSql = (
               cas_scope.fecha_fin IS NULL
               OR cas_scope.fecha_fin >= ${periodoInicioSql}
             )
-            AND cff_scope.municipio_id = gma_scope.municipio_id
+            AND COALESCE(cas_scope.municipio_id,cff_scope.municipio_id) = gma_scope.municipio_id
         )
       `;
     }

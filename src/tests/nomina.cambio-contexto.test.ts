@@ -54,6 +54,7 @@ test('catálogo y persistencia SQL del servicio existente de cambios', async t =
     './nomina.operativa': { assertNominaEmpleadoEditable: ({ estado }: any) => { if (estado === 'CERRADO') throw new AppError('Cerrado', 409); }, invalidateNominaEmpleadoRevisionState: async () => undefined },
     './nomina.procesos': { assertNominaEmpleadoCoberturaScope: async (id: string) => { assert.equal(id, '20'); } },
     './nomina.tramos': tramos,
+    '../cobertura/modalidad-contract-catalog': {}, './modalidad-change-preview': {},
   };
   const service = load('src/modules/nomina/cambios-operativos.service.ts', deps);
   const catalog = load('src/modules/vinculaciones/vinculaciones.personal.service.ts', { ...deps,
@@ -91,11 +92,11 @@ test('catálogo y persistencia SQL del servicio existente de cambios', async t =
     });
     const base = (await service.resolverContextoFecha('1', '10', '2026-09-09', th)).contexto;
     const input = (option: any, date = '2026-09-10', previous = base) => createCambioOperativoSchema.parse({
-      periodo_id: '1', nomina_empleado_id: '20', vinculacion_id: '10', tipo: 'CAMBIO_DE_MODALIDAD',
+      periodo_id: '1', nomina_empleado_id: '20', vinculacion_id: '10', tipo: 'CAMBIO_COMBINADO',
       fecha_inicio_efectiva: date, contexto_anterior: previous, contexto_nuevo: { ...previous, ...option }, motivo: 'Cambio solicitado',
     });
     let saved: any;
-    await t.test('backend acepta cambio de modalidad y persiste IDs y fecha efectiva', async () => {
+    await t.test('backend conserva cambio combinado heredado, IDs y fecha efectiva', async () => {
       const { id: _id, ...option } = options[1];
       saved = await service.crearCambioOperativo(input(option), '7', th);
       assert.equal(saved.contexto_nuevo.modalidad_id, '2'); assert.equal(saved.fecha_inicio_efectiva, '2026-09-10');

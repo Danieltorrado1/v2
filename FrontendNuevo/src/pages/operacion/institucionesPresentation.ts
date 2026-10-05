@@ -32,7 +32,6 @@ export function formatInstitutionNumber(value: unknown): string {
 export function canManageOperationalChange(user: { roles?: string[]; permissions?: string[] } | null | undefined): boolean {
   const roles = (user?.roles ?? []).map((role) => role.toUpperCase());
   const permissions = user?.permissions ?? [];
-  return !roles.includes('GESTOR') && permissions.some((permission) =>
-    ['nomina.movimientos.create', 'nomina.movimientos.update'].includes(permission),
-  );
+  return !roles.includes('GESTOR') && (roles.includes('ADMINISTRADOR') ||
+    (roles.includes('TALENTO_HUMANO') && permissions.includes('nomina.movimientos.create')));
 }

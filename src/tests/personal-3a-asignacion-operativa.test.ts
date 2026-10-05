@@ -27,8 +27,10 @@ test('PERSONAL-3A valida contexto real de contrato y fecha', () => {
 });
 
 test('PERSONAL-3A versiona asignaciones y conserva gestor por municipio', () => {
-  assert.match(service, /UPDATE cobertura_asignaciones/);
-  assert.match(service, /INSERT INTO cobertura_asignaciones/);
+  assert.match(service, /persistCanonicalAssignmentVersion/);
+  const canonical=readFileSync('src/modules/cobertura/cobertura-asignacion.service.ts','utf8');
+  assert.match(canonical,/UPDATE cobertura_asignaciones/);
+  assert.match(canonical,/INSERT INTO cobertura_asignaciones/);
   assert.match(service, /gestor_personal_asignaciones/);
   assert.match(service, /gestor_municipio_asignaciones/);
   assert.match(service, /PERSONAL_ASIGNACION_OPERATIVA_UPDATE/);
@@ -59,7 +61,8 @@ test('PERSONAL-3A tiene permiso granular para Administrador y Talento Humano', (
 });
 
 test('PERSONAL-3A no cambia snapshots de nomina cerrados desde Personal', () => {
-  assert.doesNotMatch(service, /UPDATE nomina_/);
-  assert.match(service, /Correccion operativa desde Personal/);
+  assert.match(service,/UPDATE nomina_liquidaciones[\s\S]*p.estado='ABIERTO'/);
+  assert.doesNotMatch(service,/UPDATE nomina_(asistencia|novedades|novedad_turnos)/);
+  assert.match(service, /Correccion versionada de municipio, institucion y sede desde Personal/);
   assert.match(ui, /Cambio Operativo/);
 });

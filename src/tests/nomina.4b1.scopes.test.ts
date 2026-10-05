@@ -18,7 +18,11 @@ test('novedades respetan scope', () => assert.match(service, /listNominaNovedade
 test('movimientos siguen resolviendo empleado protegido', () => assert.match(service, /createNominaMovimiento/));
 test('cambios operativos se mantienen en servicio existente', () => assert.match(service, /cambio_operativo|cambios_operativos/i));
 test('adiciones validan empleado', () => assert.match(service, /adicion/i));
-test('liquidaciones filtran scope', () => assert.match(service, /listNominaLiquidaciones[\s\S]*appendNominaCoberturaScope/));
+test('liquidaciones filtran scope', () => {
+  assert.match(service,/listNominaLiquidaciones[\s\S]*nominaLiquidacionRepository.list/);
+  const repository=readFileSync(join(root,'src/modules/nomina/infrastructure/repositories/nomina-liquidacion.repository.ts'),'utf8');
+  assert.match(repository,/appendNominaCoberturaScope/);
+});
 test('exportación no usa bypass frontend', () => assert.match(service, /exportNominaPeriodo/));
 test('ASISTENCIA consulta por área y fecha', () => assert.match(procesos, /listNominaAsistenciaPersonal/));
 test('ASISTENCIA bloquea área no autorizada', () => assert.match(procesos, /NOMINA_AREA_FORBIDDEN/));

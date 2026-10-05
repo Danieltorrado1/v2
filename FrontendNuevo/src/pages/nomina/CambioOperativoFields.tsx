@@ -3,6 +3,7 @@ import { apiClient } from '../../services/apiClient';
 import type { ApiResponse } from '../../types/api.types';
 import { buildCambioPreview, contextoDestino, opcionesContexto, proposeCategoryForChange, type CambioTipo, type CategoryOption, type ContextoCambio, type OpcionCambio } from './cambioOperativo.domain';
 import type { PlanillaCambio } from './planillaOperativa.domain';
+import CambioModalidadFields from './CambioModalidadFields';
 
 type Props = {
   periodoId: string; empleadoId: string; vinculacionId: string; fecha: string;
@@ -10,10 +11,17 @@ type Props = {
   onSaved: (change: PlanillaCambio) => void; onCancel: () => void;
   onSavingChange?: (saving: boolean) => void;
   onFechaChange?: (fecha: string) => void;
+  sourceInstitutionId?: string; sourceSedeId?: string;
 };
 
 /** Fields inside the existing Planilla novelty modal; persists through the existing change endpoint. */
 export default function CambioOperativoFields(props: Props) {
+  if(props.tipo==='CAMBIO_DE_MODALIDAD' && props.existing) return <><p>El historial de modalidad es inmutable. Registra un nuevo cambio por fecha efectiva.</p><button type="button" onClick={props.onCancel}>Cerrar</button></>;
+  if(props.tipo==='CAMBIO_DE_MODALIDAD' && !props.existing) return <CambioModalidadFields {...props}/>;
+  return <LegacyCambioOperativoFields {...props}/>;
+}
+
+function LegacyCambioOperativoFields(props: Props) {
   const [fecha, setFecha] = useState(props.existing?.fecha_inicio_efectiva ?? props.fecha);
   const [motivo, setMotivo] = useState(props.existing?.motivo ?? '');
   const [options, setOptions] = useState<OpcionCambio[]>([]);

@@ -66,11 +66,20 @@ try {
         data = date === '2027-01-01' ? null : { nomina_periodo_id: date === '2026-09-15' ? '3' : '5', estado: 'ABIERTO', nombre_periodo: 'Período fixture', fecha_inicio: date === '2026-09-15' ? '2026-08-26' : '2026-09-26', fecha_fin: date === '2026-09-15' ? '2026-09-25' : '2026-10-25' };
       }
       else if (path === '/nomina/periodos') data = [{ id: '1', estado: 'ABIERTO', nombre_periodo: 'Septiembre', fecha_inicio: '2026-09-01', fecha_fin: '2026-09-30' }];
-      else if (['/nomina/periodos/3/empleados','/nomina/periodos/5/empleados'].includes(path)) data = { items: [{ id: '1', vinculacion_id: '1', persona: { nombre_completo: 'Trabajador fixture' }, contexto_operativo: context }], pagination };
-      else if (path.endsWith('/asignacion-operativa/opciones')) data = [{ id: '1', ...context }, { id: '2', ...context, modalidad_id: '4', modalidad: 'CAA' }];
-      else if (path.includes('/contexto-operativo/')) {
+      else if (['/nomina/periodos/3/modalidad-trabajadores','/nomina/periodos/5/modalidad-trabajadores'].includes(path)) data = { items: [{ id: '1', vinculacion_id: '1', persona: { nombre_completo: 'Trabajador fixture' }, contexto_operativo: context }], pagination };
+      else if (path.endsWith('/asignacion-operativa/opciones') || path.endsWith('/modalidad-opciones')) data = [{ id: '1', ...context }, { id: '2', ...context, modalidad_id: '4', modalidad: 'CAA' }];
+      else if (path.includes('/contexto-operativo/') || path.includes('/modalidad-contexto/')) {
         assert.ok(path.startsWith('/nomina/periodos/3/') && path.endsWith('/2026-09-15') || path.startsWith('/nomina/periodos/5/') && path.endsWith('/2026-09-26'), 'context uses payroll resolved for the current date');
         data = { contexto: context };
+      }
+      else if(path==='/nomina/cambios-operativos/preview-modalidad') {
+        const target=url.searchParams.get('modalidad_id');const date=url.searchParams.get('fecha_inicio_efectiva');
+        data={revision:'a'.repeat(64),anterior:{id:'1',modalidad:'RI',desde:'2026-08-01',hasta:null},
+          nuevo:{...context,modalidad_id:target,modalidad:target==='4'?'CAA':'RI'},fecha_efectiva:date,
+          cierre_anterior:'2026-09-14',nueva_vigencia:{desde:date,hasta:null},categoria_actual_id:'1',
+          categoria_propuesta:null,estado_salarial:'REQUIERE_REVISION_SALARIAL',
+          periodos_abiertos:[{id:'3'}],requiere_recalculo:target==='4',sin_cambio:target==='3',
+          historial:[{id:'1',modalidad:'RI',desde:'2026-08-01',hasta:null}]};
       }
       else { unexpected.push(path); return route.fulfill({ status: 404, body: '{}' }); }
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data }) });
@@ -110,7 +119,7 @@ try {
         await dialog.waitFor();
         assert.match(await dialog.innerText(), /Institución fixture/);
         assert.match(await dialog.innerText(), /Sede fixture/);
-        assert.match(await dialog.innerText(), /Modalidad actual: RI/);
+        assert.match(await dialog.innerText(), /Modalidad en focalización: RI/);
         assert.equal(requests.slice(scenarioStart).some(path => path.includes('/nomina/') || path.includes('/nomina-periodo')), false, 'opening without date never resolves payroll');
         await dialog.getByLabel('Fecha efectiva', { exact: true }).first().fill('2026-09-15');
         await dialog.getByRole('button', { name: 'Cancelar', exact: true }).waitFor();
@@ -119,7 +128,13 @@ try {
         assert.equal(await modality.inputValue(), '3');
         await modality.selectOption('4');
         assert.equal(await modality.inputValue(), '4');
-        assert.match(await dialog.innerText(), /REQUIERE_REVISION_SALARIAL/);
+        await dialog.getByText('REQUIERE_REVISION_SALARIAL: el cálculo económico queda bloqueado hasta resolver una categoría válida.', {exact:true}).waitFor();
+        await dialog.getByLabel('Motivo', {exact:true}).fill('Cambio solicitado');
+        const save=dialog.getByRole('button',{name:'Guardar cambio confirmado',exact:true});
+        assert.equal(await save.isEnabled(),false,'preview without confirmation cannot write');
+        await dialog.getByRole('checkbox',{name:'Confirmo la nueva vigencia y sus impactos'}).check();
+        assert.equal(await save.isEnabled(),true,'explicit confirmation enables save');
+        assert.deepEqual(mutations,[],'even confirmed preview makes no POST until save is pressed');
         await dialog.getByLabel('Fecha efectiva', { exact: true }).first().fill('2026-09-26');
         await dialog.getByRole('button', { name: 'Cancelar', exact: true }).waitFor();
         await dialog.getByLabel('Período abierto', { exact: true }).locator('option[value="5"]').waitFor({ state: 'attached', timeout: 5000 }).catch(async error => { console.log(JSON.stringify({ dialog: await dialog.innerText(), requests, errors, unexpected })); throw error; });
@@ -139,7 +154,7 @@ try {
   assert.deepEqual(mutations, []);
   assert.deepEqual(errors, []);
   assert.deepEqual(unexpected, []);
-  assert.ok(requests.length < 90, 'bounded requests, no loop');
+  assert.ok(requests.length < 140, 'bounded requests, no loop');
   console.log('No mutations, rendering errors, unexpected API requests or request loops');
 } finally {
   await browser.close();

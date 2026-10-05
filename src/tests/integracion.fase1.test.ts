@@ -6,6 +6,15 @@ import { aggregateEventOrderKey, classifyIntegracionImpact } from '../modules/in
 
 const read = (file: string) => readFileSync(file, 'utf8');
 
+test('cambio temporal de Instituciones conserva trazabilidad y exige recálculo manual incluso con worker activo',()=>{
+  const service=read('src/modules/integracion/integracion.service.ts');
+  const changes=read('src/modules/nomina/cambios-operativos.service.ts');
+  assert.match(changes,/origen:'INSTITUCIONES_MODALIDAD_VIGENCIA'/);
+  assert.match(service,/if \(event.payload_after\?\.origen==='INSTITUCIONES_MODALIDAD_VIGENCIA'\) return;/);
+  assert.match(service,/reverseTraceabilityEvent = [^;]*INSTITUCIONES_MODALIDAD_VIGENCIA/);
+  assert.match(service,/if\(reverseTraceabilityEvent\)[\s\S]*else if\(open/);
+});
+
 test('contexto laboral y outbox exigen fecha efectiva y granularidad por vinculación', () => {
   const context = read('src/modules/integracion/contexto-laboral.service.ts');
   const migration = read('sql/phase-52-integracion-outbox.sql');

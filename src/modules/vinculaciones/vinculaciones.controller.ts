@@ -319,7 +319,7 @@ export const getVinculacion = asyncHandler(async (req: Request, res: Response) =
 
 export const getVinculacionExpedienteHandler = asyncHandler(async (req: Request, res: Response) => {
   const { id } = vinculacionIdParamSchema.parse(req.params) as { id: number };
-  const expediente = await getVinculacionExpediente(id, req.tenant);
+  const expediente = await getVinculacionExpediente(id, req.tenant,typeof req.query.fecha==='string'?req.query.fecha:undefined);
 
   return successResponse(res, {
     message: 'Vinculacion expediente retrieved successfully',

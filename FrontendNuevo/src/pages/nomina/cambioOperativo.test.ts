@@ -53,10 +53,17 @@ function harness(api: any) {
   const dependencies:any={react:hooks,'react/jsx-runtime':frontend('react/jsx-runtime'),'../../services/apiClient':{apiClient:api},'./cambioOperativo.domain':domain};
   const source=readFileSync(resolve('FrontendNuevo/src/pages/nomina/CambioOperativoFields.tsx'),'utf8');
   const code=ts.transpileModule(source,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+  const loadComponent=(filename:string)=>{
+    const result:any={};
+    const code=ts.transpileModule(readFileSync(resolve(filename),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+    runInNewContext(code,{exports:result,require:(name:string)=>{assert.ok(name in dependencies,name);return dependencies[name];}});
+    return result;
+  };
+  dependencies['./CambioModalidadFields']=loadComponent('FrontendNuevo/src/pages/nomina/CambioModalidadFields.tsx');
   runInNewContext(code,{exports,require:(name:string)=>{assert.ok(name in dependencies,name);return dependencies[name];}});
   const nodes=(node:any):any[]=>Array.isArray(node)?node.flatMap(nodes):node&&typeof node==='object'?[node,...nodes(node.props?.children)]:[];
   return {
-    render(props:any) { cursor=0;effects=[];tree=exports.default(props);effects.forEach(fn=>fn()); },
+    render(props:any) { cursor=0;effects=[];tree=exports.default(props);while(typeof tree?.type==='function')tree=tree.type(tree.props);effects.forEach(fn=>fn()); },
     async settle(props:any) { for(let i=0;i<4;i++){this.render(props);for(let j=0;j<10;j++)await Promise.resolve();} },
     all() { return nodes(tree); },
     select(index:number,value:string) { const select=nodes(tree).filter(n=>n.type==='select')[index]; select.props.onChange({target:{value}}); },
@@ -94,12 +101,20 @@ test('formulario real de TH carga catálogo, limpia sede, envía IDs y guarda po
 
 test('formulario de cambio de modalidad mantiene institución/sede y conserva borrador ante 403/429', async () => {
   for(const status of [403,429]) {
-    const h=harness({get:async(path:string)=>({data:path.includes('/opciones')?options:{contexto:base}}),post:async()=>{throw new Error(`HTTP ${status}`);}});
+    const h=harness({get:async(path:string,config:any)=>({data:path.includes('modalidad-opciones')?options:path.includes('preview-modalidad')?{
+      revision:'a'.repeat(64),anterior:{id:'1',modalidad:'RI',desde:'2026-09-01',hasta:null},nuevo:options[1],
+      fecha_efectiva:'2026-09-10',cierre_anterior:'2026-09-09',nueva_vigencia:{desde:'2026-09-10',hasta:null},
+      categoria_actual_id:'1',categoria_propuesta:null,estado_salarial:'REQUIERE_REVISION_SALARIAL',
+      periodos_abiertos:[{id:'1'}],requiere_recalculo:true,sin_cambio:config?.params?.modalidad_id==='1',historial:[]
+    }:{contexto:base}}),post:async()=>{throw new Error(`HTTP ${status}`);}});
     const props={periodoId:'1',empleadoId:'20',vinculacionId:'10',fecha:'2026-09-10',tipo:'CAMBIO_DE_MODALIDAD',canSave:true,onSaved(){assert.fail('No debe guardar');},onCancel(){}};
     await h.settle(props);
-    assert.ok(h.all().filter(n=>n.type==='select').slice(0,2).every(n=>n.props.disabled));
-    h.select(2,'2');h.render(props);h.all().find(n=>n.type==='textarea').props.onChange({target:{value:'Motivo conservado'}});h.render(props);
-    h.all().find(n=>n.type==='button'&&n.props.children==='Guardar novedad').props.onClick();await h.settle(props);
+    assert.equal(h.all().filter(n=>n.type==='select').length,1,'institution and site are read-only context');
+    h.select(0,'2');await h.settle(props);h.all().find(n=>n.type==='textarea').props.onChange({target:{value:'Motivo conservado'}});h.render(props);
+    const save=h.all().find(n=>n.type==='button'&&n.props.children==='Guardar cambio confirmado');
+    assert.equal(save.props.disabled,true,'confirmation is required');
+    h.all().find(n=>n.type==='input'&&n.props.type==='checkbox').props.onChange({target:{checked:true}});h.render(props);
+    h.all().find(n=>n.type==='button'&&n.props.children==='Guardar cambio confirmado').props.onClick();await h.settle(props);
     assert.equal(h.all().find(n=>n.type==='textarea').props.value,'Motivo conservado');
     assert.ok(h.all().some(n=>n.props?.role==='alert'));
   }
