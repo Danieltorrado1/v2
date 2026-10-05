@@ -93,7 +93,7 @@ import {
 import { syncCoberturaCuentasCobroExternasPeriodo } from './cobertura.externos.service';
 import { assertNovedadRequiredDocuments } from './cobertura.novedad-documentos';
 import { getNominaPeriodRange } from './nomina-periodos';
-import { listTurnContextOptions, selectTurnContext } from './nomina.turn-context';
+import { listTurnContextOptions, selectTurnContext, resolveNovedadTurnContext } from './nomina.turn-context';
 import { getEffectivePayrollMunicipalityIds } from './nomina.procesos';
 import {
   resolverTramosOperativos,
@@ -10652,9 +10652,10 @@ export const createNominaNovedadConTurno = async (
     const periodo = await loadRealPeriodoOrThrow(input.periodo_id, tenant, client);
     const fechaTurnoSeleccionado = input.fecha_inicio ?? input.fecha_fin;
     if (!fechaTurnoSeleccionado) throw new AppError('La fecha del turno es obligatoria', 400, 'NOMINA_MOVIMIENTO_FECHA_REQUERIDA');
-    const selectedContext = await resolveSelectedTurnContext(input.periodo_id, input.nomina_empleado_id,
-      fechaTurnoSeleccionado, input.fecha_fin ?? fechaTurnoSeleccionado, turno.contexto_operativo, tenant, client);
-    turno.contexto_operativo = { ...turno.contexto_operativo, ...selectedContext };
+    const tipoNovedad = await resolveNominaTipoNovedadOrThrow(input, client);
+    turno.contexto_operativo = await resolveNovedadTurnContext(tipoNovedad.codigo_operativo, turno.contexto_operativo,
+      () => resolveSelectedTurnContext(input.periodo_id, input.nomina_empleado_id,
+        fechaTurnoSeleccionado, input.fecha_fin ?? fechaTurnoSeleccionado, turno.contexto_operativo, tenant, client));
     const novedad = await createNominaNovedad(input, actorUserId, tenant, auditMeta, client);
     const titularResult = await client.query<{
       persona_id: string;

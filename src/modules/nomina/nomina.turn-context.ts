@@ -12,6 +12,18 @@ export interface TurnContextOption extends QueryResultRow {
   modalidad: string;
 }
 
+export async function resolveNovedadTurnContext(
+  codigo: string | null,
+  context: Record<string, unknown>,
+  resolve: () => Promise<TurnContextOption>,
+): Promise<Record<string, unknown>> {
+  if (codigo === 'TURNO_ADICIONAL') return { ...context, ...await resolve() };
+  const cleaned = { ...context };
+  for (const key of ['municipio_id', 'municipio', 'institucion_id', 'institucion',
+    'sede_id', 'sede', 'modalidad_id', 'modalidad', 'modalidad_codigo']) delete cleaned[key];
+  return cleaned;
+}
+
 // Reuse the operational catalogue and its effective dates. No assignment of
 // the performer or replaced employee determines the destination of a turn.
 export async function listTurnContextOptions(

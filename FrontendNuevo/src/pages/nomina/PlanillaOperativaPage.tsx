@@ -54,6 +54,7 @@ import { getColombianCalendarDay } from "./colombiaHolidays";
 import NominaModuleShell from "./NominaModuleShell";
 import CambioOperativoFields from './CambioOperativoFields';
 import TurnContextFields, { type TurnContext } from './TurnContextFields';
+import { requiresNovedadTurnContext, novedadTurnContext, isNovedadTurnContextMissing } from './novedadTurnContext';
 import { tipoCambioOperativo } from './cambioOperativo.domain';
 import {
   buildTramos,
@@ -607,6 +608,10 @@ export default function PlanillaOperativaPage() {
   const [noveltyCell, setNoveltyCell] = useState<SelectedCell | null>(null);
   const [editingNovelty, setEditingNovelty] = useState<NominaNovedadApi | null>(null);
   const [selectedType, setSelectedType] = useState<NominaTipoNovedad | null>(null);
+  const requiresTurnContext = requiresNovedadTurnContext(selectedType?.codigo_operativo);
+  useEffect(() => {
+    setTurnContext(current => novedadTurnContext(selectedType?.codigo_operativo, current));
+  }, [selectedType?.codigo_operativo]);
   const [editingChange, setEditingChange] = useState<PlanillaCambio | null>(null);
   const changeSavingRef = useRef(false);
   const [coverageType, setCoverageType] = useState<CoverageType>("SIN_REEMPLAZO");
@@ -1692,7 +1697,7 @@ export default function PlanillaOperativaPage() {
       return;
     }
 
-    if (!editingNovelty && coverageType !== 'SIN_REEMPLAZO' && !turnContext) {
+    if (isNovedadTurnContextMissing(selectedType.codigo_operativo, turnContext)) {
       setError('Selecciona institución, sede y modalidad del turno.');
       return;
     }
@@ -1766,7 +1771,7 @@ export default function PlanillaOperativaPage() {
                 persona_reemplazada_id:
                   coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.id ?? null : null,
                 contexto_operativo: {
-                  ...turnContext,
+                  ...novedadTurnContext(selectedType.codigo_operativo, turnContext),
                   cobertura_documento_externo:
                     coverageType === "PERSONA_EXTERNA" ? externalDocument.trim() : null,
                   cobertura_interna_nomina_empleado_id:
@@ -1775,7 +1780,7 @@ export default function PlanillaOperativaPage() {
                     coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.id ?? null : null,
                   cobertura_tipo: coverageType,
                   gestor_nombre: getEmployeeGestorLabel(noveltyCell.employee),
-                  modalidad_codigo: turnContext?.modalidad,
+                  modalidad_codigo: novedadTurnContext(selectedType.codigo_operativo, turnContext)?.modalidad,
                   persona_cubre_nombre:
                     coverageType === "PERSONAL_VINCULADO" ? coverEmployee?.persona.nombre_completo ?? null : null,
                   persona_externa_nombre: coverageType === "PERSONA_EXTERNA" ? externalName.trim() : null,
@@ -2535,7 +2540,7 @@ export default function PlanillaOperativaPage() {
                     ))}
                   </div>
 
-                  {!editingNovelty && coverageType !== 'SIN_REEMPLAZO' ? <TurnContextFields
+                  {requiresTurnContext ? <TurnContextFields
                     periodoId={periodId} empleadoId={noveltyCell.employee.id} fecha={rangeStart || noveltyCell.date}
                     fechaFin={selectedTypeAllowsRange ? rangeEnd || rangeStart || noveltyCell.date : rangeStart || noveltyCell.date}
                     value={turnContext} onChange={setTurnContext} disabled={saving} /> : null}
