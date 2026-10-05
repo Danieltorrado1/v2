@@ -10575,6 +10575,19 @@ export const createNominaNovedadConTurno = async (
     await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(input.periodo_id, tenant, client);
     const novedad = await createNominaNovedad(input, actorUserId, tenant, auditMeta, client);
+    // Coverage records who replaces the employee; only an explicit additional
+    // turn creates a tariff snapshot and an economic movement. Use the resolved
+    // catalog code so requests made by type ID follow the same rule.
+    if (novedad.tipo_novedad.codigo_operativo !== 'TURNO_ADICIONAL') {
+      await client.query('COMMIT');
+      let recalculateWarning: string | null = null;
+      try {
+        await recalculateNominaPeriodo(input.periodo_id, { force: true, nomina_empleado_id: input.nomina_empleado_id }, actorUserId, tenant, auditMeta);
+      } catch (error) {
+        recalculateWarning = error instanceof Error ? error.message : 'No se pudo actualizar el cálculo afectado';
+      }
+      return { novedad, turno_id: null, turno: null, recalculate_warning: recalculateWarning };
+    }
     const titularResult = await client.query<{
       persona_id: string;
       vinculacion_id: string;
@@ -10606,6 +10619,15 @@ export const createNominaNovedadConTurno = async (
       turno.contexto_operativo && typeof turno.contexto_operativo === 'object'
         ? (turno.contexto_operativo as Record<string, unknown>)
         : {};
+    if (typeof turnoContextoRaw.modalidad_id !== 'string' || !turnoContextoRaw.modalidad_id.trim()) {
+      throw new AppError('No fue posible resolver la modalidad del turno para calcular su tarifa', 409, 'TURNO_MODALIDAD_NO_RESUELTA');
+    }
+    if (
+      typeof turnoContextoRaw.institucion_id !== 'string' || !turnoContextoRaw.institucion_id.trim() ||
+      typeof turnoContextoRaw.sede_id !== 'string' || !turnoContextoRaw.sede_id.trim()
+    ) {
+      throw new AppError('El turno adicional requiere institución, sede y modalidad', 400, 'NOMINA_TURNO_CONTEXTO_INCOMPLETO');
+    }
     const {
       categoria_id: _categoriaId,
       categoria: _categoria,
@@ -10801,6 +10823,7 @@ export const createNominaNovedadConTurno = async (
           cantidad: diasTurno,
           contrato_id: periodo.contrato_id,
           descripcion: turno.observacion ?? 'Turno externo de cobertura',
+          contexto: turnoSnapshotContexto,
           empresa_id: periodo.contrato_empresa_id,
           estado: 'PENDIENTE',
           externo_id: externoId,
@@ -10822,6 +10845,7 @@ export const createNominaNovedadConTurno = async (
             cantidad: diasTurno,
             contrato_id: periodo.contrato_id,
             descripcion: turno.observacion ?? 'Turno externo de cobertura',
+            contexto: turnoSnapshotContexto,
             empresa_id: periodo.contrato_empresa_id,
             estado: 'PENDIENTE',
             externo_id: externoId,
