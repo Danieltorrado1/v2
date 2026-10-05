@@ -5,6 +5,8 @@ import { authMiddleware } from '../../middlewares/authMiddleware';
 import { rejectRoles, requireAnyPermissions, requirePermissions, requireRoles } from '../../middlewares/roleMiddleware';
 import { tenantMiddleware } from '../../middlewares/tenantMiddleware';
 import { requireModule } from '../saas/saas.middleware';
+import { requireOperationalChange } from '../../middlewares/operationalChangePermission';
+import { previewCambioModalidadHandler,opcionesCambioModalidadHandler } from './cambios-operativos.controller';
 import {
   aprobarVacacionesSolicitudHandler,
   createVacacionesSolicitudHandler,
@@ -360,8 +362,12 @@ nominaRoutes.post('/periodos/:periodo_id/cierre-operativo/:nomina_empleado_id', 
 nominaRoutes.post('/periodos/:periodo_id/reapertura-operativa/:nomina_empleado_id', requireRoles('TALENTO_HUMANO', 'ADMINISTRADOR'), requirePermissions('nomina.periodos.reopen'), reopenNominaEmpleadoOperativoHandler);
 
 nominaRoutes.get('/cambios-operativos', requireAnyPermissions('nomina.operativa.read', 'nomina.movimientos.read'), listCambiosOperativosHandler);
+nominaRoutes.get('/cambios-operativos/preview-modalidad', requireOperationalChange(), previewCambioModalidadHandler);
 nominaRoutes.get('/cambios-operativos/:id', requireAnyPermissions('nomina.operativa.read', 'nomina.movimientos.read'), getCambioOperativoHandler);
-nominaRoutes.post('/cambios-operativos', requirePermissions('nomina.movimientos.create'), createCambioOperativoHandler);
+nominaRoutes.get('/periodos/:periodo_id/vinculaciones/:vinculacion_id/modalidad-opciones', requireOperationalChange(), opcionesCambioModalidadHandler);
+nominaRoutes.get('/periodos/:id/modalidad-trabajadores', requireOperationalChange(), getNominaPeriodoEmpleadosOperativosHandler);
+nominaRoutes.get('/periodos/:periodo_id/vinculaciones/:vinculacion_id/modalidad-contexto/:fecha', requireOperationalChange(), resolverContextoFechaHandler);
+nominaRoutes.post('/cambios-operativos', requireOperationalChange(), createCambioOperativoHandler);
 nominaRoutes.patch('/cambios-operativos/:id', requirePermissions('nomina.movimientos.update'), updateCambioOperativoHandler);
 nominaRoutes.patch('/cambios-operativos/:id/deactivate', requirePermissions('nomina.movimientos.deactivate'), deactivateCambioOperativoHandler);
 nominaRoutes.get('/periodos/:periodo_id/vinculaciones/:vinculacion_id/tramos-operativos', requireAnyPermissions('nomina.operativa.read', 'nomina.movimientos.read'), resolverTramosHandler);

@@ -1,3 +1,4 @@
+import { requireOperationalChange } from '../../middlewares/operationalChangePermission';
 import multer from 'multer';
 import { Router } from 'express';
 import { authMiddleware } from '../../middlewares/authMiddleware';
@@ -46,7 +47,7 @@ const read = requireAnyPermissions(
  * filtros + búsqueda + paginación + sede/modalidad/cupos.
  */
 router.get('/instituciones', read, getInstitucionesHandler);
-router.get('/instituciones/nomina-periodo', requireAnyPermissions('nomina.movimientos.create','nomina.movimientos.update'), resolveInstitucionesNominaPeriodoHandler);
+router.get('/instituciones/nomina-periodo', requireOperationalChange(), resolveInstitucionesNominaPeriodoHandler);
 
 router.patch(
   '/instituciones/focalizaciones/:id',

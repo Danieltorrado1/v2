@@ -11,7 +11,8 @@ const dateOnly = (value: unknown): string => {
 
 export interface CanonicalAssignmentContext { municipio_id?: number | string | null; institucion_id?: number | string | null; institucion?: string | null; sede_id?: number | string | null; sede?: string | null; modalidad_id?: number | string | null; modalidad?: string | null; cobertura_asignacion_id?: number | string | null; }
 
-export const persistCanonicalAssignmentVersion = async (client: PoolClient, input: { contratoId: string | number; vinculacionId: string | number; fechaDesde: string; contexto: CanonicalAssignmentContext; actor: string; motivo: string; replaceExisting?: boolean }): Promise<string | undefined> => {
+export const persistCanonicalAssignmentVersion = async (client: PoolClient, input: { contratoId: string | number; vinculacionId: string | number; fechaDesde: string; fechaHasta?:string|null; contexto: CanonicalAssignmentContext; actor: string; motivo: string; replaceExisting?: boolean; strictTemporal?: boolean }): Promise<string | undefined> => {
+  if (input.strictTemporal) return persistTemporalVersion(client, input);
   const columns = await client.query<{ column_name: string }>(`SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='cobertura_asignaciones'`);
   const available = new Set(columns.rows.map((row) => row.column_name));
   if (!['contrato_id','institucion','sede','modalidad','categoria_cobertura','tipo_asignacion','porcentaje_cobertura','observacion'].every((column) => available.has(column))) return undefined;
@@ -35,3 +36,41 @@ export const persistCanonicalAssignmentVersion = async (client: PoolClient, inpu
   await registerAuditEntry({ accion: 'VERSION_ASSIGNMENT', tabla: 'cobertura_asignaciones', registro_id: inserted.rows[0].id, descripcion: input.motivo, usuario_id: input.actor, before: existing ?? null, after: { vinculacion_id: input.vinculacionId, fecha_inicio: input.fechaDesde, contexto: input.contexto }, client });
   return inserted.rows[0].id;
 };
+
+// The caller holds the linking row lock and has validated contract catalog,
+// employee, periods and preview. Keeping old versions active makes date-based
+// readers see their inclusive interval; inactive denotes annulment, not history.
+async function persistTemporalVersion(client: PoolClient, input: {
+  contratoId: string | number; vinculacionId: string | number; fechaDesde: string;
+  fechaHasta?:string|null; contexto: CanonicalAssignmentContext; actor: string; motivo: string;
+}) {
+  const rows = (await client.query<any>(`SELECT * FROM cobertura_asignaciones
+    WHERE contrato_id=$1::bigint AND vinculacion_id=$2::bigint AND COALESCE(activo,TRUE)
+    ORDER BY fecha_inicio,id FOR UPDATE`, [input.contratoId,input.vinculacionId])).rows;
+  const current = rows.filter(row => dateOnly(row.fecha_inicio)<=input.fechaDesde
+    && (!row.fecha_fin || dateOnly(row.fecha_fin)>=input.fechaDesde));
+  if (current.length!==1) throw new AppError('Asignación con hueco o solapamiento',409,'ASIGNACION_OPERATIVA_INVALIDA');
+  const previous = current[0]!;
+  if (String(previous.modalidad_id)===String(input.contexto.modalidad_id)) return String(previous.id);
+  // A first-day change has no preceding days, but the superseded row is retained.
+  if (dateOnly(previous.fecha_inicio)===input.fechaDesde) {
+    await client.query('UPDATE cobertura_asignaciones SET activo=FALSE WHERE id=$1', [previous.id]);
+  } else {
+    await client.query('UPDATE cobertura_asignaciones SET fecha_fin=$2::date-1 WHERE id=$1', [previous.id,input.fechaDesde]);
+  }
+  const inserted = await client.query<{id:string}>(`INSERT INTO cobertura_asignaciones
+    (contrato_id,vinculacion_id,municipio_id,institucion_id,sede_id,modalidad_id,
+     focalizacion_final_id,institucion,sede,modalidad,consecutivo_sede,categoria_cobertura,
+     tipo_asignacion,porcentaje_cobertura,fecha_inicio,fecha_fin,observacion,activo)
+    VALUES($1,$2,$3,$4,$5,$6,NULL,$7,$8,$9,$10,$11,$12,$13,$14::date,$15::date,$16,TRUE)
+    RETURNING id::text`, [input.contratoId,input.vinculacionId,input.contexto.municipio_id,
+    input.contexto.institucion_id,input.contexto.sede_id,input.contexto.modalidad_id,
+    input.contexto.institucion,input.contexto.sede,input.contexto.modalidad,
+    previous.consecutivo_sede,previous.categoria_cobertura,previous.tipo_asignacion,
+    previous.porcentaje_cobertura,input.fechaDesde,input.fechaHasta??(previous.fecha_fin ? dateOnly(previous.fecha_fin) : null),input.motivo]);
+  const id=inserted.rows[0]!.id;
+  await registerAuditEntry({accion:'VERSION_ASSIGNMENT',tabla:'cobertura_asignaciones',registro_id:id,
+    descripcion:input.motivo,usuario_id:input.actor,before:previous,
+    after:{...input.contexto,fecha_inicio:input.fechaDesde,fecha_fin:input.fechaHasta??previous.fecha_fin},client});
+  return id;
+}

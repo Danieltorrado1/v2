@@ -402,6 +402,14 @@ export async function getAllNominaPeriodoEmpleadosOperativos(
   return { items, pagination: { ...firstPage.pagination, page: 1, limit: items.length, total_pages: 1 } };
 }
 
+export async function getAllNominaPeriodoEmpleadosParaModalidad(id:string,filters:Omit<NominaPeriodoEmpleadosQuery,'page'|'limit'>={}) {
+  const readPage=async(page:number)=>(await apiClient.get<ApiResponse<PaginatedNominaEmpleadosApi>>(
+    `/nomina/periodos/${id}/modalidad-trabajadores`,{params:toParams({...filters,page,limit:MAX_BATCH_LIMIT})})).data;
+  const first=await readPage(1);
+  const remaining=await Promise.all(Array.from({length:Math.max(0,first.pagination.total_pages-1)},(_,index)=>readPage(index+2)));
+  return {...first,items:[first,...remaining].flatMap(page=>page.items)};
+}
+
 export async function listarCorreccionesNomina(
   filters: NominaCorreccionFilters = {},
 ): Promise<NominaCorreccionesResponse> {

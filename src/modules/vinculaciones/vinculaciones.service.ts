@@ -1575,27 +1575,27 @@ export const listContractPersonal = async (
 
     if (filters.municipio_id !== undefined && filters.municipio_id !== null) {
       params.push(filters.municipio_id);
-      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND ff_f.municipio_id = $${paramIndex}::bigint)`);
+      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f LEFT JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND COALESCE(ca_f.municipio_id,ff_f.municipio_id) = $${paramIndex}::bigint)`);
       paramIndex += 1;
     }
     if (filters.institucion_id !== undefined && filters.institucion_id !== null) {
       params.push(filters.institucion_id);
-      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND ff_f.institucion_id = $${paramIndex}::bigint)`);
+      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f LEFT JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND COALESCE((to_jsonb(ca_f)->>'institucion_id')::bigint,ff_f.institucion_id) = $${paramIndex}::bigint)`);
       paramIndex += 1;
     }
     if (filters.sede_id !== undefined && filters.sede_id !== null) {
       params.push(filters.sede_id);
-      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND ff_f.sede_id = $${paramIndex}::bigint)`);
+      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f LEFT JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND COALESCE((to_jsonb(ca_f)->>'sede_id')::bigint,ff_f.sede_id) = $${paramIndex}::bigint)`);
       paramIndex += 1;
     }
     if (filters.modalidad_id !== undefined && filters.modalidad_id !== null) {
       params.push(filters.modalidad_id);
-      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND ff_f.modalidad_id = $${paramIndex}::bigint)`);
+      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f LEFT JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND COALESCE((to_jsonb(ca_f)->>'modalidad_id')::bigint,ff_f.modalidad_id) = $${paramIndex}::bigint)`);
       paramIndex += 1;
     }
     if (filters.modalidad_codigo) {
       params.push(filters.modalidad_codigo);
-      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f INNER JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id INNER JOIN modalidades m_f ON m_f.id = ff_f.modalidad_id WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND (m_f.codigo_base = $${paramIndex} OR m_f.codigo_original = $${paramIndex} OR m_f.nombre_modalidad = $${paramIndex}))`);
+      conditions.push(`EXISTS (SELECT 1 FROM cobertura_asignaciones ca_f LEFT JOIN focalizacion_final ff_f ON ff_f.id = ca_f.focalizacion_final_id INNER JOIN modalidades m_f ON m_f.id = COALESCE((to_jsonb(ca_f)->>'modalidad_id')::bigint,ff_f.modalidad_id) WHERE ca_f.vinculacion_id = v.id AND ca_f.activo = TRUE AND ca_f.fecha_inicio <= $2::date AND (ca_f.fecha_fin IS NULL OR ca_f.fecha_fin >= $2::date) AND (m_f.codigo_base = $${paramIndex} OR m_f.codigo_original = $${paramIndex} OR m_f.nombre_modalidad = $${paramIndex}))`);
       paramIndex += 1;
     }
     if (filters.ubicacion_laboral_id !== undefined && filters.ubicacion_laboral_id !== null) {
@@ -1738,11 +1738,11 @@ export const listContractPersonal = async (
             ca.institucion,
             ca.sede,
             ca.modalidad,
-            ff.municipio_id AS municipio_actual_id,
+            COALESCE(ca.municipio_id,ff.municipio_id) AS municipio_actual_id,
             COALESCE(mu.nombre_municipio, NULLIF(ff.municipio_texto, '')) AS municipio_actual
           FROM cobertura_asignaciones ca
-          INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
-          LEFT JOIN municipios mu ON mu.id = ff.municipio_id
+          LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+          LEFT JOIN municipios mu ON mu.id = COALESCE(ca.municipio_id,ff.municipio_id)
           WHERE ca.activo = TRUE
             AND ca.fecha_inicio <= DATE '${consultaFecha}'
             AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= DATE '${consultaFecha}')
@@ -2457,12 +2457,12 @@ export const getGestorWizardData = async (
       client.query<{ id: number; nombre: string; documento: string | null; municipio_id: number; institucion_id: number | null }>(`
         SELECT DISTINCT v.id::int AS id,
           CONCAT_WS(' ', p.primer_nombre, p.segundo_nombre, p.primer_apellido, p.segundo_apellido) AS nombre,
-          p.numero_documento AS documento, ff.municipio_id::int AS municipio_id, ff.institucion_id::int AS institucion_id
+          p.numero_documento AS documento, COALESCE(ca.municipio_id,ff.municipio_id)::int AS municipio_id, COALESCE((to_jsonb(ca)->>'institucion_id')::bigint,ff.institucion_id)::int AS institucion_id
         FROM vinculaciones v
         INNER JOIN personas p ON p.id = v.persona_id
         INNER JOIN contrato_cargos cc ON cc.id = v.contrato_cargo_id
         INNER JOIN cobertura_asignaciones ca ON ca.vinculacion_id = v.id
-        INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
+        LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
         WHERE v.contrato_id = $1::bigint
           AND COALESCE(v.estado_vinculacion, 'ACTIVA') IN ('ACTIVA', 'ACTIVO')
           AND COALESCE(ca.activo, TRUE) = TRUE
@@ -3160,7 +3160,8 @@ export const getVinculacionById = async (
 
 export const getVinculacionExpediente = async (
   vinculacionId: number,
-  tenant?: TenantAccessContext
+  tenant?: TenantAccessContext,
+  fechaConsulta?: string
 ): Promise<VinculacionExpediente> => {
   const vinculacion = await getVinculacionById(vinculacionId, tenant);
 
@@ -3352,7 +3353,7 @@ export const getVinculacionExpediente = async (
       `,
       [vinculacion.id]
     ),
-    getVinculacionPersonalContext(vinculacion.id, tenant)
+    getVinculacionPersonalContext(vinculacion.id, tenant,fechaConsulta)
   ]);
 
   const personaRow = personaResult.rows[0];

@@ -21,7 +21,7 @@ test('documentos se comparan con la misma normalización en búsqueda y vinculac
 
 test('Planilla no pinta turnos externos ni anulados como adicionales internos', () => {
   assert.match(planilla, /item\.tipo_turno !== "INTERNO"/);
-  assert.match(planilla, /item\.estado === "ANULADO"/);
+  assert.match(planilla, /\['ANULADO', 'RECHAZADO'\]\.includes\(item.estado\)/);
   assert.match(nomina, /nnt\.movimiento_id IS NULL OR COALESCE\(nm\.activo, TRUE\) = TRUE/);
 });
 
@@ -43,8 +43,8 @@ test('la cola intenta flush al abandonar contexto y advierte antes de cerrar', (
 
 test('el indicador de turno interno es accesible y coexiste con asistencia y novedad', () => {
   assert.match(planilla, /className="op-internal-turn-indicator"/);
-  assert.match(planilla, /aria-label=\{additionalTurnsOnThisDay.length === 1/);
-  assert.match(planilla, /title=\{additionalTurnsOnThisDay.length === 1/);
+  assert.match(planilla, /aria-label=\{turnIndicator.tooltip\}/);
+  assert.match(planilla, /title=\{turnIndicator.tooltip\}/);
   assert.match(planilla, /Clock3/);
   assert.match(planilla, /op-attendance-mark/);
   assert.match(planilla, /op-novelty-mark/);

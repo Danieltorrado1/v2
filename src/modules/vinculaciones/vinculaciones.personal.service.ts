@@ -42,7 +42,7 @@ interface AsignacionOperativaRow extends QueryResultRow {
   created_at: Date;
   fecha_fin: Date | string | null;
   fecha_inicio: Date | string;
-  focalizacion_final_id: string;
+  focalizacion_final_id: string | null;
   id: string;
   vinculacion_id: string;
   institucion: string;
@@ -112,7 +112,7 @@ export interface AsignacionOperativaItem {
   created_at: string;
   fecha_fin: string | null;
   fecha_inicio: string;
-  focalizacion_final_id: number;
+  focalizacion_final_id: number | null;
   id: number;
   vinculacion_id: number;
   institucion: string;
@@ -270,7 +270,7 @@ const getVinculacionContextRow = async (
 const mapAsignacionOperativa = (row: AsignacionOperativaRow): AsignacionOperativaItem => ({
   id: toNumber(row.id),
   vinculacion_id: toNumber(row.vinculacion_id),
-  focalizacion_final_id: toNumber(row.focalizacion_final_id),
+  focalizacion_final_id: row.focalizacion_final_id===null?null:toNumber(row.focalizacion_final_id),
   institucion: row.institucion,
   sede: row.sede,
   modalidad: row.modalidad,
@@ -752,8 +752,10 @@ export const listPresentacionesLicitacionByVinculacion = async (
 
 export const getVinculacionPersonalContext = async (
   vinculacionId: number,
-  tenant?: TenantAccessContext
+  tenant?: TenantAccessContext,
+  fechaConsulta=TODAY_ISO
 ): Promise<VinculacionPersonalContext> => {
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fechaConsulta) || !Number.isFinite(Date.parse(fechaConsulta)) || new Date(fechaConsulta).toISOString().slice(0,10)!==fechaConsulta) throw new AppError('Fecha consultada inválida',400,'PERSONAL_FECHA_INVALIDA');
   await assertTenantAccessForVinculacionId(tenant, vinculacionId);
   const client = await dbPool.connect();
 
@@ -776,7 +778,7 @@ export const getVinculacionPersonalContext = async (
         const activeOk = keys.active ? Boolean(item[keys.active]) : true;
         const stateValue = keys.state ? (item[keys.state] as string | undefined) : undefined;
         const stateOk = stateValue ? !['ANULADA', 'RETIRADA', 'FINALIZADA'].includes(stateValue) : true;
-        return Boolean(from) && activeOk && stateOk && from! <= TODAY_ISO && (!to || to >= TODAY_ISO);
+        return Boolean(from) && activeOk && stateOk && from! <= fechaConsulta && (!to || to >= fechaConsulta);
       }) ?? null;
 
     const asignacionActual = pickCurrent(historialOperativo, { from: 'fecha_inicio', to: 'fecha_fin', active: 'activo' });
@@ -788,35 +790,35 @@ export const getVinculacionPersonalContext = async (
          INNER JOIN usuarios u ON u.id = gpa.usuario_id
          INNER JOIN contrato_cargos cc ON cc.id = $3::bigint
          WHERE ${gestorApplicableCargoSql('cc')} AND gpa.vinculacion_id = $1::bigint AND gpa.contrato_id = $2::bigint
-           AND COALESCE(gpa.activo, TRUE) = TRUE AND gpa.vigencia_desde <= CURRENT_DATE
-           AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= CURRENT_DATE)
+           AND COALESCE(gpa.activo, TRUE) = TRUE AND gpa.vigencia_desde <= $4::date
+           AND (gpa.vigencia_hasta IS NULL OR gpa.vigencia_hasta >= $4::date)
          UNION ALL
          SELECT gia.usuario_id, u.nombre_completo, 2, gia.vigencia_desde, gia.id
          FROM gestor_institucion_asignaciones gia
          INNER JOIN usuarios u ON u.id = gia.usuario_id
          INNER JOIN cobertura_asignaciones ca ON ca.vinculacion_id = $1::bigint AND COALESCE(ca.activo, TRUE) = TRUE
-           AND ca.fecha_inicio <= CURRENT_DATE AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= CURRENT_DATE)
-         INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
-           AND ff.municipio_id = gia.municipio_id AND ff.institucion_id = gia.institucion_id
+           AND ca.fecha_inicio <= $4::date AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $4::date)
+         LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
          INNER JOIN contrato_cargos cc ON cc.id = $3::bigint
-         WHERE ${gestorApplicableCargoSql('cc')} AND gia.contrato_id = $2::bigint
-           AND COALESCE(gia.activo, TRUE) = TRUE AND gia.vigencia_desde <= CURRENT_DATE
-           AND (gia.vigencia_hasta IS NULL OR gia.vigencia_hasta >= CURRENT_DATE)
+         WHERE COALESCE(ca.municipio_id,ff.municipio_id)=gia.municipio_id AND COALESCE((to_jsonb(ca)->>'institucion_id')::bigint,ff.institucion_id)=gia.institucion_id
+           AND ${gestorApplicableCargoSql('cc')} AND gia.contrato_id = $2::bigint
+           AND COALESCE(gia.activo, TRUE) = TRUE AND gia.vigencia_desde <= $4::date
+           AND (gia.vigencia_hasta IS NULL OR gia.vigencia_hasta >= $4::date)
          UNION ALL
          SELECT gma.usuario_id, u.nombre_completo, 1, gma.vigencia_desde, gma.id
          FROM gestor_municipio_asignaciones gma
          INNER JOIN usuarios u ON u.id = gma.usuario_id
          INNER JOIN cobertura_asignaciones ca ON ca.vinculacion_id = $1::bigint AND COALESCE(ca.activo, TRUE) = TRUE
-           AND ca.fecha_inicio <= CURRENT_DATE AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= CURRENT_DATE)
-         INNER JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id AND ff.municipio_id = gma.municipio_id
+           AND ca.fecha_inicio <= $4::date AND (ca.fecha_fin IS NULL OR ca.fecha_fin >= $4::date)
+         LEFT JOIN focalizacion_final ff ON ff.id = ca.focalizacion_final_id
          INNER JOIN contrato_cargos cc ON cc.id = $3::bigint
-         WHERE ${gestorApplicableCargoSql('cc')} AND gma.contrato_id = $2::bigint
+         WHERE COALESCE(ca.municipio_id,ff.municipio_id)=gma.municipio_id AND ${gestorApplicableCargoSql('cc')} AND gma.contrato_id = $2::bigint
            AND COALESCE(gma.alcance_personal, 'PERSONAL_SELECCIONADO') = 'TODO_MUNICIPIO'
-           AND COALESCE(gma.activo, TRUE) = TRUE AND gma.vigencia_desde <= CURRENT_DATE
-           AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= CURRENT_DATE)
+           AND COALESCE(gma.activo, TRUE) = TRUE AND gma.vigencia_desde <= $4::date
+           AND (gma.vigencia_hasta IS NULL OR gma.vigencia_hasta >= $4::date)
        ) effective
        ORDER BY prioridad, vigencia_desde DESC, id DESC LIMIT 1`,
-      [vinculacionId, vinculacion.contrato_id, vinculacion.contrato_cargo_id]
+      [vinculacionId, vinculacion.contrato_id, vinculacion.contrato_cargo_id,fechaConsulta]
     );
 
     return {

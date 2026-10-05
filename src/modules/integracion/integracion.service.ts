@@ -202,6 +202,7 @@ const financialSnapshot = async (periodoId: string, vinculacionId: string): Prom
 
 const recalcSelectiveImpact = async (event: IntegracionEventRow, period: PeriodRow, impactId: string, tenant?: TenantAccessContext): Promise<void> => {
   const state = integracionRecalcState();
+  if (event.payload_after?.origen==='INSTITUCIONES_MODALIDAD_VIGENCIA') return;
   if (!state.active || !recalcEventTypes.has(event.event_type)) return;
   if (!event.vinculacion_id || !event.contrato_id) throw new AppError('Recálculo sin vinculación o contrato', 422, 'INTEGRACION_RECALC_CONTEXT_INVALID');
   await assertTenantAccessForVinculacionId(tenant, Number(event.vinculacion_id));
@@ -354,7 +355,7 @@ const processNextIntegracionEventSelective = async (workerId: string, tenant?: T
         const inserted=await client.query<{id:string;estado:string}>(`INSERT INTO integracion_evento_impactos(evento_id,periodo_id,vinculacion_id,fecha_desde,fecha_hasta,periodo_estado,accion_requerida,requiere_recalculo,bloqueado_por_cierre,contexto_antes,contexto_despues,estado,version_esperada) VALUES($1,$2,$3,$4::date,$4::date,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11,$1) ON CONFLICT(evento_id,vinculacion_id,COALESCE(periodo_id,0)) DO UPDATE SET updated_at=NOW() RETURNING id::text,estado`,[event.id,period.id,event.vinculacion_id,effectiveDate,period.estado,open?'REQUIERE_SINCRONIZACION':'REQUIERE_AJUSTE_AUTORIZADO',integracionRecalcState().active && recalcEventTypes.has(event.event_type),!open,contextBefore?JSON.stringify(contextBefore):null,JSON.stringify(context),open?'PENDIENTE':'BLOQUEADO_CIERRE']);
         const impact=inserted.rows[0];
         await client.query('COMMIT');
-        const reverseTraceabilityEvent = traceabilityEventTypeSet.has(event.event_type);
+        const reverseTraceabilityEvent = traceabilityEventTypeSet.has(event.event_type) || event.payload_after?.origen==='INSTITUCIONES_MODALIDAD_VIGENCIA';
         let syncApplied = false;
         if(reverseTraceabilityEvent){
           await client.query('BEGIN');

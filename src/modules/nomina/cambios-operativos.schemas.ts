@@ -28,7 +28,8 @@ export const createCambioOperativoSchema = z.object({
   regla_fecha_efectiva: z.enum(['MISMO_DIA', 'DIA_SIGUIENTE']).default('MISMO_DIA'),
   tipo: z.enum(['CAMBIO_DE_MODALIDAD', 'CAMBIO_DE_SEDE', 'CAMBIO_COMBINADO']),
   contexto_anterior: contexto, contexto_nuevo: contexto,
-  motivo: z.string().trim().min(3).max(1000)
+  motivo: z.string().trim().min(3).max(1000),
+  preview_revision: z.string().regex(/^[a-f0-9]{64}$/).optional()
 });
 export const updateCambioOperativoSchema = createCambioOperativoSchema.omit({ periodo_id: true, nomina_empleado_id: true, vinculacion_id: true }).partial().refine((v) => Object.keys(v).length > 0);
 export type CreateCambioOperativoInput = z.infer<typeof createCambioOperativoSchema>;
