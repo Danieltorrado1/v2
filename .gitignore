@@ -57,3 +57,4 @@ reports/territorial-contract-24-pre-migration.json
 # Isolated modality release certification (restored data and comparison checkout)
 /tmp/modalidad-release-cert/
 /tmp/release-origin-main-baseline/
+/tmp/phase48-historical-cert/

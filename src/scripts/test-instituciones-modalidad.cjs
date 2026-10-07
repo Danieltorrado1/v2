@@ -25,7 +25,8 @@ const env = { ...process.env, ENV_FILE: resolve(root, 'nonexistent-isolated-test
   DATABASE_URL: 'postgresql://isolated:isolated@127.0.0.1:1/isolated',
   JWT_SECRET: 'isolated-test-only', JWT_EXPIRES_IN: '1h', CORS_ORIGIN: 'http://localhost',
   TRUST_PROXY: 'false', RATE_LIMIT_WINDOW_MINUTES: '1', RATE_LIMIT_MAX_REQUESTS: '100',
-  LOG_LEVEL: 'error', ENABLE_JOBS: 'false', SUPABASE_URL: 'http://127.0.0.1:1',
+  LOG_LEVEL: 'error', ENABLE_JOBS: 'false', INTEGRACION_OUTBOX_ENABLED:'false',
+  INTEGRACION_SYNC_ENABLED:'false', INTEGRACION_RECALC_ENABLED:'false', SUPABASE_URL: 'http://127.0.0.1:1',
   SUPABASE_SERVICE_ROLE_KEY: 'isolated-test-only', SUPABASE_STORAGE_BUCKET: 'test'
 };
 const selected = process.argv.slice(2);

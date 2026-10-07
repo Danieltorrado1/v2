@@ -5,11 +5,12 @@ import {resolveOperationalContextTimeline} from '../integracion/contexto-laboral
 export async function canonicalSalaryTimeline(client:Pick<PoolClient,'query'>,input:{
   empresaId:number;contratoId:number;vinculacionId:number;fechaInicio:string;fechaFin:string;
 }) {
-  // Activate only for identities with the new independently versioned modality,
-  // preserving existing payroll category rules for unrelated assignments.
+  // Independent versions and explicitly corrected history require canonical
+  // salary compatibility. Never reuse a snapshot's category by similarity.
   const versioned=await client.query(`SELECT 1 FROM cobertura_asignaciones ca
     WHERE ca.contrato_id=$1::bigint AND ca.vinculacion_id=$2::bigint AND COALESCE(ca.activo,TRUE)
-    AND ca.focalizacion_final_id IS NULL AND to_jsonb(ca)->>'modalidad_id' IS NOT NULL
+    AND (ca.focalizacion_final_id IS NULL OR ca.observacion LIKE 'PHASE48_HISTORICAL_15_24_V1:%')
+    AND to_jsonb(ca)->>'modalidad_id' IS NOT NULL
     AND ca.fecha_inicio<=$4::date AND (ca.fecha_fin IS NULL OR ca.fecha_fin>=$3::date)`,
     [input.contratoId,input.vinculacionId,input.fechaInicio,input.fechaFin]);
   if(!versioned.rows.length)return null;

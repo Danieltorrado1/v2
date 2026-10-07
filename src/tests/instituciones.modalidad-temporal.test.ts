@@ -4,7 +4,7 @@ import {runInNewContext} from 'node:vm';
 import {createHash} from 'node:crypto';
 import ts from 'typescript';
 import {test} from 'node:test';
-import {PGlite} from '@electric-sql/pglite';
+import {createModalityTestDb} from './helpers/modality-postgres-local';
 import {AppError} from '../utils/AppError';
 import * as catalog from '../modules/cobertura/modalidad-contract-catalog';
 import * as tramos from '../modules/nomina/nomina.tramos';
@@ -19,7 +19,7 @@ function load(file:string,dependencies:Record<string,unknown>) {
 }
 
 test('Instituciones: cambio temporal transaccional con PostgreSQL aislado',async t=>{
-  const db=new PGlite();
+  const db=await createModalityTestDb();
   const query=async(sql:string,values?:any[])=>{const result=await db.query(sql,values);return {...result,rowCount:result.rows.length||result.affectedRows||0};};
   const pool={query,connect:async()=>({query,release(){}})};
   const context=load('src/modules/integracion/contexto-laboral.service.ts',{'../../config/db':{dbPool:pool,dbQuery:query},'../../utils/AppError':{AppError}});
@@ -113,6 +113,18 @@ test('Instituciones: cambio temporal transaccional con PostgreSQL aislado',async
       assert.equal((await previewFor(input())).categoria_propuesta.id,'2');
     });
     let first:any;
+    let annulledBefore:string;
+    await t.test('periodos ANULADOS 4 y 6 intersectan la verdad canónica y quedan intactos',async()=>{
+      await query("INSERT INTO nomina_periodos VALUES(4,1,'2026-09-01','2026-09-30','ANULADO'),(6,1,'2026-09-01','2026-09-30','ANULADO')");
+      await query("INSERT INTO nomina_liquidaciones VALUES(4,4,10,FALSE,400),(6,6,10,FALSE,600)");
+      await query(`INSERT INTO nomina_contextos_operativos_base VALUES(4,40,10,'{"modalidad":"RI","certificado":"anulado4"}','ANULADO',7),(6,60,10,'{"modalidad":"RI","certificado":"anulado6"}','ANULADO',7)`);
+      annulledBefore=JSON.stringify((await query(`SELECT (SELECT jsonb_agg(t ORDER BY id) FROM nomina_periodos t WHERE id IN(4,6)) periods,
+        (SELECT jsonb_agg(t ORDER BY periodo_id) FROM nomina_contextos_operativos_base t WHERE periodo_id IN(4,6)) snapshots,
+        (SELECT jsonb_agg(t ORDER BY id) FROM nomina_liquidaciones t WHERE periodo_id IN(4,6)) amounts`)).rows);
+      const result=await previewFor(input());
+      assert.deepEqual(Array.from(result.periodos_protegidos,(r:any)=>r.id),['4','6']);
+      assert.deepEqual(Array.from(result.periodos_abiertos,(r:any)=>r.id),['1','2']);
+    });
     await t.test('RI hasta el 6 y CAA desde el 7: historial, dos tramos, sin duplicar identidad ni días',async()=>{
       first=await save(input());
       const ranges=await service.resolverTramos('1','10');
@@ -121,13 +133,18 @@ test('Instituciones: cambio temporal transaccional con PostgreSQL aislado',async
       assert.equal(ranges.reduce((sum:number,row:any)=>sum+row.dias,0),30);
       assert.equal((await query('SELECT * FROM cobertura_asignaciones WHERE activo')).rows.length,2);
       assert.equal(await snapshot(),protectedBefore);
-      assert.deepEqual((await query('SELECT requiere_recalculo,valor::int FROM nomina_liquidaciones ORDER BY id')).rows,[{requiere_recalculo:true,valor:100},{requiere_recalculo:true,valor:200},{requiere_recalculo:false,valor:300}]);
+      assert.equal(JSON.stringify((await query(`SELECT (SELECT jsonb_agg(t ORDER BY id) FROM nomina_periodos t WHERE id IN(4,6)) periods,
+        (SELECT jsonb_agg(t ORDER BY periodo_id) FROM nomina_contextos_operativos_base t WHERE periodo_id IN(4,6)) snapshots,
+        (SELECT jsonb_agg(t ORDER BY id) FROM nomina_liquidaciones t WHERE periodo_id IN(4,6)) amounts`)).rows),annulledBefore);
+      assert.deepEqual((await query('SELECT requiere_recalculo,valor::int FROM nomina_liquidaciones ORDER BY id')).rows,[{requiere_recalculo:true,valor:100},{requiere_recalculo:true,valor:200},{requiere_recalculo:false,valor:400},{requiere_recalculo:false,valor:600},{requiere_recalculo:false,valor:300}]);
     });
     await t.test('Planilla resuelve cada fecha y Personal mantiene la fuente vigente',async()=>{
       for(let day=1;day<=30;day++) {
         const fecha=`2026-09-${String(day).padStart(2,'0')}`;
         assert.equal((await service.resolverContextoFecha('1','10',fecha)).contexto.modalidad,day<7?'RI':'CAA');
-        assert.equal((await context.resolveOperationalContextAtDate({empresaId:1,contratoId:1,vinculacionId:10,fecha},pool)).modalidad,day<7?'RI':'CAA');
+        const at=await context.resolveOperationalContextAtDate({empresaId:1,contratoId:1,vinculacionId:10,fecha},pool);
+        assert.equal(at.modalidad,day<7?'RI':'CAA');
+        assert.equal(at.modalidad_id,day<7?1:2);assert.equal(at.institucion_id,1);assert.equal(at.sede_id,1);
       }
     });
     await t.test('expediente Personal consulta la vigencia histórica conservando la asignación laboral',async()=>{
@@ -211,6 +228,17 @@ test('Instituciones: cambio temporal transaccional con PostgreSQL aislado',async
       await query("UPDATE nomina_categorias_salariales SET nombre_categoria='Cambio de regla' WHERE id=1");
       await assert.rejects(()=>service.crearCambioOperativo({...payload,preview_revision:before.revision},'7'),{code:'ASIGNACION_PREVIEW_DESACTUALIZADO'});
       assert.equal(JSON.stringify((await query('SELECT * FROM nomina_movimientos ORDER BY id')).rows),counts);
+    });
+    await t.test('ingreso y retiro parcial: límites inclusivos sin días fuera de vinculación',async()=>{
+      await query("UPDATE vinculaciones SET fecha_inicio='2026-09-10',fecha_fin='2026-09-20' WHERE id=10");
+      try {
+        const ranges=await service.resolverTramos('1','10');
+        assert.equal(ranges[0].fecha_inicio,'2026-09-10');assert.equal(ranges.at(-1).fecha_fin,'2026-09-20');
+        assert.equal(ranges.reduce((sum:number,r:any)=>sum+r.dias,0),11);
+        await assert.rejects(()=>service.resolverContextoFecha('1','10','2026-09-09'),{code:'NOMINA_CONTEXTO_FECHA_FUERA_RANGO'});
+        await assert.rejects(()=>service.resolverContextoFecha('1','10','2026-09-21'),{code:'NOMINA_CONTEXTO_FECHA_FUERA_RANGO'});
+        await assert.rejects(()=>previewFor(input('2026-09-07')),{code:'ASIGNACION_FECHA_FUERA_RANGO'});
+      } finally {await query("UPDATE vinculaciones SET fecha_inicio='2026-01-01',fecha_fin=NULL WHERE id=10");}
     });
     for(const [label,fecha,periodo,empleado] of [['primer día','2026-09-01','1','20'],['último día','2026-09-30','1','20'],['futuro','2026-10-07','2','21']] as const) {
       await t.test(`cambio ${label} no duplica días ni sobrescribe historia`,async()=>{

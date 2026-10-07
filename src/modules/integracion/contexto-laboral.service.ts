@@ -226,7 +226,10 @@ const canonicalOperationalQuery = async (input: { empresaId: number; contratoId:
   const result = await executor.query<OperationalContextAtDate>(`
     SELECT ca.id::int, GREATEST(ca.fecha_inicio, $4::date)::text fecha_inicio,
       LEAST(COALESCE(ca.fecha_fin, $5::date), $5::date)::text fecha_fin,
-      ca.municipio_id::int, COALESCE((to_jsonb(ca)->>'institucion_id')::bigint,ff.institucion_id)::int, COALESCE((to_jsonb(ca)->>'sede_id')::bigint,ff.sede_id)::int, COALESCE((to_jsonb(ca)->>'modalidad_id')::bigint,ff.modalidad_id)::int,
+      ca.municipio_id::int,
+      COALESCE((to_jsonb(ca)->>'institucion_id')::bigint,ff.institucion_id)::int AS institucion_id,
+      COALESCE((to_jsonb(ca)->>'sede_id')::bigint,ff.sede_id)::int AS sede_id,
+      COALESCE((to_jsonb(ca)->>'modalidad_id')::bigint,ff.modalidad_id)::int AS modalidad_id,
       COALESCE(ff.municipio_texto, mu.nombre_municipio) municipio,
       COALESCE(ca.institucion, ff.institucion_final) institucion,
       COALESCE(ca.sede, ff.sede_final) sede,

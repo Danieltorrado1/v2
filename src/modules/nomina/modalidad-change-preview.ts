@@ -60,8 +60,10 @@ export async function previewModalityChange(client: Pick<PoolClient,'query'>, in
     FROM nomina_periodos np WHERE np.contrato_id=$1::bigint
     AND np.fecha_fin>=$2::date AND ($3::date IS NULL OR np.fecha_inicio<=$3::date)
     ORDER BY np.id`,[base.contrato_id,effective,newEnd])).rows;
-  if (periods.some(row=>['CERRADO','ANULADO'].includes(row.estado)))
-    throw new AppError('La nueva vigencia afecta un período cerrado o anulado',409,'NOMINA_CAMBIO_PERIODO_CERRADO');
+  // An annulled projection cannot veto canonical history. It remains immutable:
+  // only the open subset is passed to snapshot repair / recalculation markers.
+  if (periods.some(row=>row.estado==='CERRADO'))
+    throw new AppError('La nueva vigencia afecta un período cerrado',409,'NOMINA_CAMBIO_PERIODO_CERRADO');
   const candidates=(await client.query<any>(`SELECT ncs.id::text,ncs.codigo_categoria,ncs.nombre_categoria,
     ncs.vigente_desde::text,ncs.vigente_hasta::text FROM nomina_categorias_salariales ncs
     JOIN contratos c ON c.id=ncs.contrato_id AND c.empresa_id=$1::bigint
@@ -83,7 +85,8 @@ export async function previewModalityChange(client: Pick<PoolClient,'query'>, in
     categoria_actual_id:base.categoria_actual_id,
     categoria_propuesta:candidates.length===1?candidates[0]:null,
     estado_salarial:candidates.length===1?'PROPUESTA':'REQUIERE_REVISION_SALARIAL',
-    periodos_abiertos:periods.filter(row=>row.estado==='ABIERTO'),requiere_recalculo:!same,
+    periodos_abiertos:periods.filter(row=>row.estado==='ABIERTO'),
+    periodos_protegidos:periods.filter(row=>row.estado!=='ABIERTO'),requiere_recalculo:!same,
     sin_cambio:same,historial:history};
   // The revision binds the confirmation to assignments, periods and salary rules.
   return {...preview,revision:createHash('sha256').update(JSON.stringify(preview)).digest('hex')};
