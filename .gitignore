@@ -58,3 +58,5 @@ reports/territorial-contract-24-pre-migration.json
 /tmp/modalidad-release-cert/
 /tmp/release-origin-main-baseline/
 /tmp/phase48-historical-cert/
+tmp/phase48-production-cert/
+tmp/phase48-production-receipts/
