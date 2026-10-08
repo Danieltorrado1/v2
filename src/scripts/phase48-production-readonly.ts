@@ -3,7 +3,7 @@ import {Pool} from 'pg';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {productionReadOnlyPreflight,validateReadOptions,READ_BACKUP_SHA,READ_PROJECT_REF,type ReadFlags} from '../modules/cobertura/phase48-readonly-preflight';
+import {runReadOnlyLifecycle,validateReadOptions,READ_BACKUP_SHA,READ_PROJECT_REF,type ReadFlags} from '../modules/cobertura/phase48-readonly-preflight';
 import {saveReadReceipt} from '../modules/cobertura/phase48-readonly-receipts';
 async function main(){
  const args=process.argv.slice(2),known=['--mode','--target','--backup','--credential-file','--receipt-directory','--sync-manually-confirmed-off','--local-observation-file'];
@@ -16,7 +16,12 @@ async function main(){
   const file=value('--local-observation-file');if(!file)throw Error('LOCAL_OBSERVATION_REQUIRED');return JSON.parse(readFileSync(file,'utf8'));
  }};
  validateReadOptions(options); // Unknown modes fail before files, health or transport.
- if(execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim()!=='fix/phase48-production-runner-readonly'||execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim())throw Error('CLEAN_READ_BRANCH_REQUIRED');
+ const branch=execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim();
+ const dirty=execFileSync('git',['status','--porcelain','--untracked-files=all'],{encoding:'utf8'}).trim().split(/\r?\n/).filter(s=>s&&s!=='?? reports/phase48-production-preflight-current.json');
+ if(branch!=='fix/phase48-readonly-preflight-contract'||dirty.length)throw Error('CLEAN_READ_BRANCH_REQUIRED');
+ execFileSync('git',['merge-base','--is-ancestor','b3b61f6',commit],{stdio:'ignore'});
+ execFileSync('git',['diff','--exit-code','dcbd37a',commit,'--','src/modules/cobertura/phase48-production-executor.ts','src/modules/cobertura/phase48-historical-controlled.ts','src/modules/cobertura/phase48-historical-domain.ts','src/scripts/phase48-historical-production.ts','sql/phase-48-operational-assignment-identities.sql'],{stdio:'ignore'});
+ if(target==='Production'&&value('--receipt-directory'))throw Error('PRODUCTION_RECEIPT_PATH_FIXED');
  const backup=value('--backup');if(!backup||createHash('sha256').update(readFileSync(backup)).digest('hex')!==READ_BACKUP_SHA)throw Error('BACKUP_SHA_INVALID');
  // This entry never loads dotenv automatically. A future read-only invocation
  // may explicitly provide an authorized credential file, read only in memory.
@@ -30,11 +35,11 @@ async function main(){
   config={host:u.hostname,port:Number(u.port),user:decodeURIComponent(u.username),password:decodeURIComponent(u.password),database:'postgres',ssl:{rejectUnauthorized:true},options:'-c default_transaction_read_only=on -c timezone=UTC'};
  }else if(value('--credential-file'))throw Error('LOCAL_CREDENTIAL_FILE_FORBIDDEN');
  const pool=new Pool({...config,max:1,connectionTimeoutMillis:10000,idleTimeoutMillis:1000});pool.on('error',()=>{});
- let client;try{
-  client=await pool.connect();const receipt=await productionReadOnlyPreflight(client,options);
-  const path=saveReadReceipt(value('--receipt-directory')??'tmp/phase48-production-receipts',receipt);
-  console.log(JSON.stringify({status:receipt.status,run_id:receipt.run_id,receipt:path,reason:receipt.reason}));if(receipt.status==='STOPPED')process.exitCode=1;
- }finally{client?.release(true);await pool.end();delete process.env.PGPASSWORD;delete process.env.PRODUCTION_MIGRATION_DATABASE_URL;}
+ try{
+  const receipt=await runReadOnlyLifecycle(async()=>{const client=await pool.connect();return {client,close:async()=>{client.release(true);}};},options);
+  const path=saveReadReceipt(target==='Production'?'reports':value('--receipt-directory')??'tmp/phase48-production-receipts',receipt);
+  console.log(JSON.stringify({status:receipt.status,run_id:receipt.run_id,receipt:path,reason:receipt.reason,writes:0}));if(receipt.status!=='PENDIENTE_DE_AUTORIZACION')process.exitCode=1;
+ }finally{await pool.end();delete process.env.PGPASSWORD;delete process.env.PRODUCTION_MIGRATION_DATABASE_URL;}
 }
 async function health(syncOff:boolean):Promise<ReadFlags>{
  const response=await fetch('https://api.empiriasuite.com/api/health',{signal:AbortSignal.timeout(15000)}),body=await response.json(),data=body.data,outbox=data?.integracion_outbox;

@@ -2,6 +2,7 @@
 // The original local runner and LOCAL_RESTORATION_REQUIRED guard remain unchanged.
 import type {PoolClient} from 'pg';
 import {createHash} from 'node:crypto';
+import {contractDigest} from './phase48-readonly-contract';
 
 type Db = Pick<PoolClient,'query'>;
 type Row = Record<string,any>;
@@ -132,6 +133,35 @@ export function createReadOnlyRepository(client:Db){
   affected:async()=> (await db.query(`SELECT pg_catalog.to_jsonb(v) row FROM vinculaciones v WHERE id IN(249,1555) ORDER BY id`)).rows,
   coverage:async()=> (await db.query(`SELECT pg_catalog.to_jsonb(ca) row FROM cobertura_asignaciones ca WHERE contrato_id=24 AND vinculacion_id IN(249,1555) ORDER BY id`)).rows,
   periods:async()=> (await db.query(`SELECT pg_catalog.to_jsonb(p) row FROM nomina_periodos p WHERE contrato_id=24 ORDER BY id`)).rows,
+  writeSet:async(snapshot:Awaited<ReturnType<typeof historicalSnapshot>>,candidates:Row[],coverage:Row[],affected:Row[])=>{
+   const rows=(await db.query(`SELECT ca.id::text technical_id,pg_catalog.to_jsonb(ca) row FROM cobertura_asignaciones ca JOIN contratos c ON c.id=ca.contrato_id WHERE c.id=24 AND c.empresa_id=15 ORDER BY ca.id`)).rows;
+   assert(rows.length===730,'PHASE48_POPULATION_CHANGED');
+   return contractDigest({format:'PHASE48_WRITE_SET_V1_UTC_MICROSECONDS',
+    schema:snapshot.schema.filter(r=>r.table_name==='cobertura_asignaciones'),
+    constraints:snapshot.constraints.filter(r=>r.relname==='cobertura_asignaciones'),
+    indexes:snapshot.indexes.filter(r=>r.tablename==='cobertura_asignaciones'),
+    triggers:snapshot.triggers.filter(r=>r.relname==='cobertura_asignaciones'),
+    candidates,candidate_rows:rows,affected_coverage:coverage,affected_vinculaciones:affected,
+    specific_coverage:coverage.filter(r=>[1224,11].includes(r.row.id)),
+    // Existing related rows are represented by count/hash only, never PII output.
+    related_tables:snapshot.data.filter(r=>['cobertura_asignaciones','vinculaciones','focalizacion_final','contratos','instituciones','sedes','modalidades','sede_modalidades','calculadora_personal_config','nomina_categorias_salariales','nomina_asistencia_diaria','nomina_periodos'].includes(r.table)),
+    sequences:snapshot.sequences.filter(r=>/^(cobertura_asignaciones|auditoria|auditoria_eventos)_/.test(r.sequence)),
+    initial_audits:snapshot.data.filter(r=>['auditoria','auditoria_eventos'].includes(r.table))});
+  },
+  minimalState:async()=>{
+   const columns=(await db.query(`SELECT column_name,is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='cobertura_asignaciones' AND column_name IN('institucion_id','sede_id','modalidad_id','focalizacion_final_id') ORDER BY column_name`)).rows;
+   const applied=(await db.query(`SELECT (SELECT pg_catalog.count(*)::int FROM pg_indexes WHERE schemaname='public' AND indexname='idx_cobertura_asignaciones_timeline') indexes,(SELECT pg_catalog.count(*)::int FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='cobertura_asignaciones' AND pg_catalog.pg_get_constraintdef(k.oid) ~ 'FOREIGN KEY \\((institucion_id|sede_id|modalidad_id)\\)') foreign_keys,(SELECT pg_catalog.count(*)::int FROM auditoria WHERE descripcion IN('PHASE48_ATOMIC_15_24_V1','PHASE48_IDENTITIES_15_24_V1','PHASE48_HISTORICAL_15_24_V1')) legacy_audits,(SELECT pg_catalog.count(*)::int FROM auditoria_eventos WHERE descripcion IN('PHASE48_ATOMIC_15_24_V1','PHASE48_IDENTITIES_15_24_V1','PHASE48_HISTORICAL_15_24_V1')) event_audits`)).rows[0];
+   const count=(await db.query('SELECT pg_catalog.count(*)::int n FROM cobertura_asignaciones')).rows[0].n;
+   const candidateCount=(await db.query(`SELECT pg_catalog.count(*)::int n FROM cobertura_asignaciones ca JOIN focalizacion_final ff ON ff.id=ca.focalizacion_final_id AND ff.contrato_id=ca.contrato_id JOIN contratos c ON c.id=ca.contrato_id WHERE c.id=24 AND c.empresa_id=15`)).rows[0].n;
+   const coverage=(await db.query(`SELECT pg_catalog.to_jsonb(ca) row FROM cobertura_asignaciones ca WHERE contrato_id=24 AND vinculacion_id IN(249,1555) ORDER BY id`)).rows;
+   const affected=(await db.query(`SELECT pg_catalog.to_jsonb(v) row FROM vinculaciones v WHERE id IN(249,1555) ORDER BY id`)).rows;
+   const periods=(await db.query(`SELECT pg_catalog.to_jsonb(p) row FROM nomina_periodos p WHERE contrato_id=24 AND id IN(4,6) ORDER BY id`)).rows;
+   const attendance=(await db.query(`SELECT pg_catalog.to_jsonb(a) row FROM nomina_asistencia_diaria a WHERE vinculacion_id=1555 AND fecha BETWEEN '2026-08-18'::date AND '2026-09-08'::date OR vinculacion_id=249 AND fecha BETWEEN '2026-07-01'::date AND '2026-07-31'::date ORDER BY id`)).rows;
+   return {phase48_state:columns.length===1&&columns[0]?.column_name==='focalizacion_final_id'&&columns[0]?.is_nullable==='NO'&&Object.values(applied).every(v=>v===0)?'NO_APLICADA':'APLICADA_O_PARCIAL',count,candidate_count:candidateCount,
+    albeny_before_digest:contractDigest({coverage:coverage.filter(r=>r.row.vinculacion_id===1555),vinculacion:affected.filter(r=>r.row.id===1555),attendance:attendance.filter(r=>r.row.vinculacion_id===1555)}),
+    dary_before_digest:contractDigest({coverage:coverage.filter(r=>r.row.vinculacion_id===249),vinculacion:affected.filter(r=>r.row.id===249),attendance:attendance.filter(r=>r.row.vinculacion_id===249)}),
+    periods_4_6_digest:contractDigest(periods)};
+  },
   verify:async(snapshot:Awaited<ReturnType<typeof historicalSnapshot>>)=>{
    const columns=snapshot.schema.filter(r=>r.table_name==='cobertura_asignaciones');
    assert(columns.filter(r=>['institucion_id','sede_id','modalidad_id'].includes(r.column_name)).length===0&&columns.find(r=>r.column_name==='focalizacion_final_id')?.is_nullable==='NO'&&!snapshot.indexes.some(r=>r.indexname==='idx_cobertura_asignaciones_timeline')&&!snapshot.constraints.some(r=>r.relname==='cobertura_asignaciones'&&/FOREIGN KEY \((institucion_id|sede_id|modalidad_id)\)/.test(r.definition)),'PARTIAL_OR_APPLIED_STATE');
