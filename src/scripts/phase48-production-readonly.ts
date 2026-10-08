@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {runReadOnlyLifecycle,validateReadOptions,READ_BACKUP_SHA,READ_PROJECT_REF,type ReadFlags} from '../modules/cobertura/phase48-readonly-preflight';
 import {saveReadReceipt} from '../modules/cobertura/phase48-readonly-receipts';
+import {readDatabaseUrl,validateReadTarget} from '../modules/cobertura/phase48-readonly-target';
 async function main(){
  const args=process.argv.slice(2),known=['--mode','--target','--backup','--credential-file','--receipt-directory','--sync-manually-confirmed-off','--local-observation-file'];
  if(args.some(a=>!known.some(k=>a.startsWith(k+'=')))||new Set(args.map(a=>a.split('=')[0])).size!==args.length)throw Error('READ_ARGUMENT_NOT_ALLOWED');
@@ -18,8 +19,8 @@ async function main(){
  validateReadOptions(options); // Unknown modes fail before files, health or transport.
  const branch=execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim();
  const dirty=execFileSync('git',['status','--porcelain','--untracked-files=all'],{encoding:'utf8'}).trim().split(/\r?\n/).filter(s=>s&&s!=='?? reports/phase48-production-preflight-current.json');
- if(branch!=='fix/phase48-readonly-preflight-contract'||dirty.length)throw Error('CLEAN_READ_BRANCH_REQUIRED');
- execFileSync('git',['merge-base','--is-ancestor','b3b61f6',commit],{stdio:'ignore'});
+ if(branch!=='fix/phase48-read-target-validation'||dirty.length)throw Error('CLEAN_READ_BRANCH_REQUIRED');
+ execFileSync('git',['merge-base','--is-ancestor','b653184',commit],{stdio:'ignore'});
  execFileSync('git',['diff','--exit-code','dcbd37a',commit,'--','src/modules/cobertura/phase48-production-executor.ts','src/modules/cobertura/phase48-historical-controlled.ts','src/modules/cobertura/phase48-historical-domain.ts','src/scripts/phase48-historical-production.ts','sql/phase-48-operational-assignment-identities.sql'],{stdio:'ignore'});
  if(target==='Production'&&value('--receipt-directory'))throw Error('PRODUCTION_RECEIPT_PATH_FIXED');
  const backup=value('--backup');if(!backup||createHash('sha256').update(readFileSync(backup)).digest('hex')!==READ_BACKUP_SHA)throw Error('BACKUP_SHA_INVALID');
@@ -29,10 +30,7 @@ async function main(){
  if(target==='Production'){
   if(value('--sync-manually-confirmed-off')!=='true')throw Error('CURRENT_MANUAL_SYNC_CONFIRMATION_REQUIRED');
   const file=value('--credential-file');if(!file)throw Error('READ_CREDENTIAL_REQUIRED');
-  const match=readFileSync(file,'utf8').match(/^\s*DATABASE_URL\s*=\s*(.*?)\s*$/m);if(!match)throw Error('READ_CREDENTIAL_REQUIRED');
-  const u=new URL(match[1]!.replace(/^(['"])(.*)\1$/,'$2'));
-  if(!['postgres:','postgresql:'].includes(u.protocol)||u.port!=='5432'||decodeURIComponent(u.pathname)!=='/postgres'||!(u.hostname===`db.${READ_PROJECT_REF}.supabase.co`||u.hostname.endsWith('.pooler.supabase.com')&&decodeURIComponent(u.username)===`postgres.${READ_PROJECT_REF}`))throw Error('READ_PROJECT_TARGET_INVALID');
-  config={host:u.hostname,port:Number(u.port),user:decodeURIComponent(u.username),password:decodeURIComponent(u.password),database:'postgres',ssl:{rejectUnauthorized:true},options:'-c default_transaction_read_only=on -c timezone=UTC'};
+  config=validateReadTarget(readDatabaseUrl(readFileSync(file,'utf8')),READ_PROJECT_REF).config;
  }else if(value('--credential-file'))throw Error('LOCAL_CREDENTIAL_FILE_FORBIDDEN');
  const pool=new Pool({...config,max:1,connectionTimeoutMillis:10000,idleTimeoutMillis:1000});pool.on('error',()=>{});
  try{

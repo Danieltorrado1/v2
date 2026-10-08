@@ -3,6 +3,7 @@
 import type {PoolClient} from 'pg';
 import {createHash} from 'node:crypto';
 import {contractDigest} from './phase48-readonly-contract';
+import {verifyReadServerIdentity,READ_IDENTITY_TABLES} from './phase48-readonly-target';
 
 type Db = Pick<PoolClient,'query'>;
 type Row = Record<string,any>;
@@ -14,6 +15,14 @@ function assert(ok:unknown,message:string):asserts ok {if(!ok)throw Error(messag
 const quote = (name:string) => '"'+name.replaceAll('"','""')+'"';
 const digestSql = (expression:string) => `pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(COALESCE(pg_catalog.string_agg(${expression},E'\\n' ORDER BY ${expression}),''),'UTF8')),'hex')`;
 
+async function schemaDefinition(db:Db) {
+ const schema=(await db.query(`SELECT table_name,column_name,data_type,is_nullable,column_default FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name,ordinal_position`)).rows;
+ const constraints=(await db.query(`SELECT n.nspname,c.relname,k.conname,pg_catalog.pg_get_constraintdef(k.oid) definition FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' ORDER BY c.relname,k.conname`)).rows;
+ const indexes=(await db.query(`SELECT tablename,indexname,indexdef FROM pg_indexes WHERE schemaname='public' ORDER BY tablename,indexname`)).rows;
+ const routines=(await db.query(`SELECT p.oid::regprocedure::text identity,pg_catalog.md5(pg_catalog.pg_get_functiondef(p.oid)) digest FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind='f' ORDER BY 1`)).rows;
+ const triggers=(await db.query(`SELECT c.relname,t.tgname,pg_catalog.pg_get_triggerdef(t.oid) definition FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal ORDER BY c.relname,t.tgname`)).rows;
+ return {schema,constraints,indexes,routines,triggers};
+}
 async function historicalSnapshot(db:Db) {
  const tables=(await db.query(`SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename`)).rows;
  const data:Row[]=[];
@@ -21,16 +30,12 @@ async function historicalSnapshot(db:Db) {
   const row=(await db.query(`SELECT pg_catalog.count(*)::text count,${digestSql('pg_catalog.to_jsonb(t)::text')} digest FROM public.${quote(tablename)} t`)).rows[0];
   data.push({table:tablename,...row});
  }
- const schema=(await db.query(`SELECT table_name,column_name,data_type,is_nullable,column_default FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name,ordinal_position`)).rows;
- const constraints=(await db.query(`SELECT n.nspname,c.relname,k.conname,pg_catalog.pg_get_constraintdef(k.oid) definition FROM pg_constraint k JOIN pg_class c ON c.oid=k.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' ORDER BY c.relname,k.conname`)).rows;
- const indexes=(await db.query(`SELECT tablename,indexname,indexdef FROM pg_indexes WHERE schemaname='public' ORDER BY tablename,indexname`)).rows;
- const routines=(await db.query(`SELECT p.oid::regprocedure::text identity,pg_catalog.md5(pg_catalog.pg_get_functiondef(p.oid)) digest FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.prokind='f' ORDER BY 1`)).rows;
- const triggers=(await db.query(`SELECT c.relname,t.tgname,pg_catalog.pg_get_triggerdef(t.oid) definition FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND NOT t.tgisinternal ORDER BY c.relname,t.tgname`)).rows;
+ const metadata=await schemaDefinition(db);
  const sequences:Row[]=[];
  for(const {sequencename} of (await db.query(`SELECT sequencename FROM pg_sequences WHERE schemaname='public' ORDER BY sequencename`)).rows){
   sequences.push({sequence:sequencename,...(await db.query(`SELECT last_value::text,is_called FROM public.${quote(sequencename)}`)).rows[0]});
  }
- const snapshot={data,schema,constraints,indexes,routines,triggers,sequences};
+ const snapshot={data,...metadata,sequences};
  return {...snapshot,digest:sha(snapshot)};
 }
 
@@ -112,7 +117,7 @@ async function plannedId(db:Db,table:string){
 
 // SQL is private to this repository; callers cannot submit SQL or function names.
 // This second barrier examines executable tokens, not words inside literals.
-const permittedCalls=new Set('select and or not count encode sha256 convert_to coalesce string_agg to_jsonb md5 pg_get_functiondef pg_get_constraintdef pg_get_triggerdef pg_get_serial_sequence greatest max lower btrim exists in current_setting pg_backend_pid pg_current_snapshot host inet_server_addr inet_server_port'.split(' '));
+const permittedCalls=new Set('select and or not count encode sha256 convert_to coalesce string_agg to_jsonb md5 pg_get_functiondef pg_get_constraintdef pg_get_triggerdef pg_get_serial_sequence greatest max lower btrim exists in current_database current_setting pg_backend_pid pg_current_snapshot host inet_server_addr inet_server_port'.split(' '));
 export function assertReadQuery(sql:string){
  const tokens=sql.replace(/'(?:''|[^'])*'/g,"''").replace(/"((?:""|[^"])*)"/g,(_,s:string)=>s.replaceAll('""','"'));
  assert(/^\s*SELECT\b/i.test(tokens)&&!/[;]|--|\/\*/.test(tokens)&&! /\b(INSERT|UPDATE|DELETE|MERGE|ALTER|CREATE|DROP|TRUNCATE|WITH|INTO|FOR|CALL|DO|COPY|GRANT|REVOKE|LOCK)\b/i.test(tokens),'READ_QUERY_REQUIRED');
@@ -123,6 +128,12 @@ export function createReadOnlyRepository(client:Db){
  const db:Db={query:((sql:any,values?:any)=>{assert(typeof sql==='string','READ_QUERY_REQUIRED');assertReadQuery(sql);return client.query(sql,values);}) as Db['query']};
  return Object.freeze({
   safePolicies:async()=>assert((await db.query(`SELECT r.rolsuper OR r.rolbypassrls OR NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relrowsecurity) safe FROM pg_roles r WHERE r.rolname=current_user`)).rows[0]?.safe===true,'RLS_EXECUTION_NOT_SAFE'),
+  targetIdentity:async(expectedDatabase:string)=>{
+   const metadata=await schemaDefinition(db),tables=[...new Set(metadata.schema.map(r=>r.table_name as string))];
+   assert(READ_IDENTITY_TABLES.every(t=>tables.includes(t)),'READ_SERVER_TABLES_INVALID');
+   const identity=(await db.query(`SELECT pg_catalog.current_database() database,pg_catalog.current_setting('server_version') version,EXISTS(SELECT 1 FROM empresas WHERE id=15) empresa_exists,EXISTS(SELECT 1 FROM contratos WHERE id=24 AND empresa_id=15) contrato_exists`)).rows[0];
+   return verifyReadServerIdentity({...identity,tables,schema_digest:contractDigest(metadata)} as Parameters<typeof verifyReadServerIdentity>[0],expectedDatabase);
+  },
   snapshot:()=>historicalSnapshot(db),
   actor:()=>actorGate(db,'12'),
   plan:()=>historicalPlan(db),

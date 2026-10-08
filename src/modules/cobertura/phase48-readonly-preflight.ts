@@ -31,7 +31,9 @@ export async function productionReadOnlyPreflight(client:Pick<PoolClient,'query'
   if(o.target==='Local')need(session.host==='127.0.0.1'&&session.port===55466&&session.version==='17.11','LOCAL_READ_TARGET_REQUIRED');
   else need(session.version==='17.6'&&await repo.ssl(),'PRODUCTION_TLS_OR_VERSION_INVALID');
   result.postgresql={server_version:session.version,ssl:o.target==='Production'};
-  await repo.safePolicies();await repo.actor();const locks=await repo.activity();result.locks=locks;need(locks.waiting===0&&locks.ddl===0,'LOCK_OR_DDL_DETECTED');
+  await repo.safePolicies();const locks=await repo.activity();result.locks=locks;need(locks.waiting===0&&locks.ddl===0,'LOCK_OR_DDL_DETECTED');
+  result.target_identity=await repo.targetIdentity(o.target==='Production'?'postgres':'phase48_production');
+  await repo.actor();
   const initial=await repo.snapshot();result.counts=initial.data;need(initial.data.length===224,'PUBLIC_TABLE_POPULATION_CHANGED');await repo.verify(initial);
   const candidates=await repo.candidates();need(candidates.length===730&&initial.data.find(r=>r.table==='cobertura_asignaciones')?.count==='730','PHASE48_POPULATION_CHANGED');
   const plan=await repo.plan();need(plan.every(p=>!p.applied)&&plan[0]?.category_id==='34'&&plan[1]?.category_id===null&&plan[1]?.estado_salarial==='REQUIERE_REVISION_SALARIAL','HISTORICAL_STATE_CHANGED');
