@@ -3,12 +3,11 @@
 import {Client} from 'pg';
 import {verifiedProductionConfig,clearReadTlsEnvironment} from '../modules/cobertura/phase48-readonly-tls';
 import {parseProductionGrant} from '../modules/cobertura/phase48-production-authorization';
-import {consumeCurrentNonce,validateCurrentNonce} from '../modules/cobertura/phase48-readonly-receipts';
+import {consumeCurrentNonce,validateCurrentNonce,publishAtomicReceipt} from '../modules/cobertura/phase48-readonly-receipts';
 import {MUTATOR_COMMIT,assertCertifiedContract} from '../modules/cobertura/phase48-readonly-contract';
 import {randomUUID,createHash} from 'node:crypto';
-import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
-import {resolve} from 'node:path';
 import {BACKUP_SHA,PROJECT_REF,PRODUCTION_AUTHORIZATION,executeAtomic,validateOptions,validatePreconnectionOptions,assertProductionUrl,type Options,type Flags} from '../modules/cobertura/phase48-production-executor';
 
 async function main(){
@@ -31,15 +30,21 @@ async function main(){
  }
  // Reject productive authorization BEFORE reading any credentials or connecting.
  validatePreconnectionOptions(opts);
- if(execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim()!=='fix/phase48-postrollback-eight-digests'||execFileSync('git',['status','--porcelain','--untracked-files=all'],{encoding:'utf8'}).trim().split(/\r?\n/).filter(line=>line&&line!=='?? reports/phase48-production-preflight-current.json').length)throw Error('CERTIFIED_CLEAN_BRANCH_REQUIRED');
+ if(execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim()!=='fix/phase48-atomic-receipt'||execFileSync('git',['status','--porcelain','--untracked-files=all'],{encoding:'utf8'}).trim().split(/\r?\n/).filter(line=>line&&line!=='?? reports/phase48-production-preflight-current.json'&&!/^\?\? reports\/phase48-consumed-[a-f0-9]{64}\.json$/.test(line)).length)throw Error('CERTIFIED_CLEAN_BRANCH_REQUIRED');
  assertCertifiedContract(commit);
  execFileSync('git',['diff','--exit-code',MUTATOR_COMMIT,commit,'--','src/modules/cobertura/phase48-production-executor.ts','src/scripts/phase48-historical-production.ts','src/modules/cobertura/phase48-readonly-tls.ts','src/modules/cobertura/phase48-readonly-target.ts','src/modules/cobertura/phase48-readonly-repository.ts','src/modules/cobertura/phase48-production-authorization.ts','src/modules/cobertura/phase48-readonly-receipts.ts','src/modules/cobertura/phase48-historical-domain.ts','src/modules/cobertura/phase48-historical-controlled.ts','sql/phase-48-operational-assignment-identities.sql'],{stdio:'ignore'});
  const backup=value('--backup');if(!backup||createHash('sha256').update(readFileSync(backup)).digest('hex')!==BACKUP_SHA)throw Error('BACKUP_SHA_INVALID');
- const dir=resolve(value('--receipt-directory')??'tmp/phase48-production-receipts');mkdirSync(dir,{recursive:true});
+ const dir=value('--receipt-directory')??'tmp/phase48-production-receipts';
  const config=opts.mode==='MutateProduction'||opts.target==='Production'?productionConfig():{host:'127.0.0.1',port:55466,user:'modalidad_verifier',database:'phase48_production',password:'',connectionTimeoutMillis:5000,options:'-c timezone=UTC'};
  if(opts.mode==='MutateProduction'){consumeCurrentNonce('reports',opts.authorizationPhrase!);opts.nonceConsumed=true;validateOptions(opts);}
  const db=new Client(config),observer=new Client(config);
- try{await db.connect();await observer.connect();opts.saveBaseline=async r=>{writeFileSync(resolve(dir,opts.runId+'.baseline.json'),JSON.stringify(r,null,2)+'\n',{flag:'wx'});};const result=await executeAtomic(db,observer,opts);writeFileSync(resolve(dir,opts.runId+'.receipt.json'),JSON.stringify(result,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify({run_id:opts.runId,status:result.status,reason:'reason' in result?result.reason:undefined}));if(!['READY','SUCCESS','ALREADY_APPLIED'].includes(result.status))process.exitCode=1;}
+ try{
+  let result;
+  try{await db.connect();await observer.connect();opts.saveBaseline=async r=>{publishAtomicReceipt(dir,opts.runId+'.baseline.json',r);};result=await executeAtomic(db,observer,opts);}
+  catch(e){const error=e as Error & {code?:string};result={status:'STOPPED',reason:/^[A-Z0-9_]+$/.test(error.message)?error.message:'CONNECTION_OR_CONFIGURATION_ERROR',sqlstate:error.code};}
+  publishAtomicReceipt(dir,opts.runId+'.receipt.json',{...result,run_id:opts.runId});
+  console.log(JSON.stringify({run_id:opts.runId,status:result.status,reason:'reason' in result?result.reason:undefined}));if(!['READY','SUCCESS','ALREADY_APPLIED'].includes(result.status))process.exitCode=1;
+ }
  finally{await db.end().catch(()=>{});await observer.end().catch(()=>{});clearReadTlsEnvironment();}
 }
 function productionConfig(){

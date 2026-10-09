@@ -20,8 +20,8 @@ async function main(){
  }};
  validateReadOptions(options); // Unknown modes fail before files, health or transport.
  const branch=execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim();
- const dirty=execFileSync('git',['status','--porcelain','--untracked-files=all'],{encoding:'utf8'}).trim().split(/\r?\n/).filter(s=>s&&s!=='?? reports/phase48-production-preflight-current.json');
- if(branch!=='fix/phase48-postrollback-eight-digests'||dirty.length)throw Error('CLEAN_READ_BRANCH_REQUIRED');
+ const dirty=execFileSync('git',['status','--porcelain','--untracked-files=all'],{encoding:'utf8'}).trim().split(/\r?\n/).filter(s=>s&&s!=='?? reports/phase48-production-preflight-current.json'&&!/^\?\? reports\/phase48-consumed-[a-f0-9]{64}\.json$/.test(s));
+ if(branch!=='fix/phase48-atomic-receipt'||dirty.length)throw Error('CLEAN_READ_BRANCH_REQUIRED');
  execFileSync('git',['merge-base','--is-ancestor','b653184',commit],{stdio:'ignore'});
  assertCertifiedContract(commit);
  execFileSync('git',['diff','--exit-code',MUTATOR_COMMIT,commit,'--','src/modules/cobertura/phase48-production-executor.ts','src/modules/cobertura/phase48-historical-controlled.ts','src/modules/cobertura/phase48-historical-domain.ts','src/scripts/phase48-historical-production.ts','sql/phase-48-operational-assignment-identities.sql','src/modules/cobertura/phase48-readonly-tls.ts','src/modules/cobertura/phase48-readonly-target.ts','src/modules/cobertura/phase48-readonly-repository.ts','src/modules/cobertura/phase48-readonly-receipts.ts','src/modules/cobertura/phase48-production-authorization.ts'],{stdio:'ignore'});

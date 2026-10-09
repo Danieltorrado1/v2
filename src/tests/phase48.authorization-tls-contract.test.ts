@@ -34,10 +34,12 @@ test('nonce binds certificate, entire receipt and final postcheck, expires and i
   assert.throws(()=>parseAuthorizationPhrase(phrase.replace(r.expires_at,new Date(Date.now()-1).toISOString())));
   const lock=join(directory,'.'+RECEIPT_FILE+'.tmp');writeFileSync(lock,'OTHER_PROCESS',{flag:'wx'});
   assert.throws(()=>consumeCurrentNonce(directory,phrase),{code:'EEXIST'});assert.equal(readFileSync(lock,'utf8'),'OTHER_PROCESS');unlinkSync(lock);
-  consumeCurrentNonce(directory,phrase);assert.equal(JSON.parse(readFileSync(join(directory,RECEIPT_FILE),'utf8')).status,'CONSUMED');
-  assert.throws(()=>consumeCurrentNonce(directory,phrase),/NONCE_REVOKED_OR_REUSED/);assert.deepEqual(readdirSync(directory),[RECEIPT_FILE]);
-  const next=receipt();next.nonce='c'.repeat(64);next.authorization_phrase=buildAuthorizationPhrase(authorizationFields(next));saveReadReceipt(directory,next);
-  assert.equal(next.previous_authorization.status,'REVOCADA');assert.throws(()=>consumeCurrentNonce(directory,phrase),/NONCE_REVOKED_OR_REUSED/);
+  const before=readFileSync(join(directory,RECEIPT_FILE));
+  consumeCurrentNonce(directory,phrase);assert.deepEqual(readFileSync(join(directory,RECEIPT_FILE)),before);
+  assert.equal(JSON.parse(readFileSync(join(directory,'phase48-consumed-'+r.nonce+'.json'),'utf8')).status,'CONSUMED');
+  assert.throws(()=>consumeCurrentNonce(directory,phrase),/NONCE_REVOKED_OR_REUSED/);assert.equal(readdirSync(directory).length,2);
+  const next=receipt();next.nonce='c'.repeat(64);next.authorization_phrase=buildAuthorizationPhrase(authorizationFields(next));assert.throws(()=>saveReadReceipt(directory,next),/RECEIPT_ALREADY_EXISTS_DIFFERENT/);
+  assert.deepEqual(readFileSync(join(directory,RECEIPT_FILE)),before);assert.throws(()=>consumeCurrentNonce(directory,phrase),/NONCE_REVOKED_OR_REUSED/);
  }finally{for(const file of readdirSync(directory))unlinkSync(join(directory,file));rmdirSync(directory);}
 });
 test('bad certificate stops both read lifecycle and TLS config before connection or credential callback',async()=>{
