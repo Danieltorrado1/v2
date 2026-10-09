@@ -4,7 +4,7 @@
   "branch": "fix/phase48-tls13-runtime-validation",
   "platform": "win32",
   "node": "v24.14.1",
-  "started_utc": "2026-10-09T21:36:26.031Z",
+  "started_utc": "2026-10-09T21:37:45.414Z",
   "production_connections": 0,
   "production_writes": 0,
   "productive_env_read": false,
@@ -575,8 +575,8 @@
   "observer": {
     "platform": "win32",
     "node": "v24.14.1",
-    "observer_absences": 61,
-    "complete_reads": 20,
+    "observer_absences": 65,
+    "complete_reads": 16,
     "partial_json_observations": 0
   },
   "guard_evidence": [
@@ -660,14 +660,14 @@
     "src/modules/cobertura/phase48-production-authorization.ts",
     "sql/phase-48-operational-assignment-identities.sql"
   ],
-  "mutator_commit": "bdebcb2b0fcd1ab63f50c0177c6c403a7b36c7e7",
+  "mutator_commit": "a1e709ca89c37ed31e9ec27b4dff2e4c17c295ce",
   "code_sha256": {
     "src/modules/cobertura/phase48-production-executor.ts": "35f8babbcf33a554b6d2b5488b401efc04dc8b767fbcac4203b678b2ae9736ee",
     "src/modules/cobertura/phase48-readonly-repository.ts": "de9da79a0ceab35f64b2d6a97762eddbf89e754c7f18ce1f9d1170c62f0caa03",
     "src/modules/cobertura/phase48-readonly-tls.ts": "d453ee88c732a5596d921a043947526c0ada91a2e9052d9f33d6c1544f0ce8a4",
     "src/scripts/phase48-readonly-tls-probe.ts": "caa23a9fa5760cc22cadee82ba2341bd2a87b8eabff3b8881d4e3b4da1dce40d",
     "src/modules/cobertura/phase48-readonly-receipts.ts": "b390afc5a57a45b1cf25806f5fb17577337a947a7908046a554d6387e682d42b",
-    "src/modules/cobertura/phase48-readonly-contract.ts": "a9603061914034f9a1429599282faef014c3dab720d2ac03f7781092ae7f0a9c",
+    "src/modules/cobertura/phase48-readonly-contract.ts": "af11c40f9e9aca588289707dc875ea0bdc50a89c83adc854491f4a96737d24dd",
     "src/scripts/phase48-historical-production.ts": "eacc028b4723ff1f70becb876ba1cf54aa96b059345810230d777ed6ad28c5b8",
     "src/scripts/phase48-production-readonly.ts": "e070500a62fb37b9c0c994e9544cd2c2631a390391009d66609f3b6b3787ad9a",
     "src/scripts/certify-phase48-readonly-contract-local.cjs": "8b96d43238c0fc9c0d2f46e4c283a55a671ae9a752d2f75fdcdb786841c8169a",
@@ -681,12 +681,12 @@
     "src/tests/phase48.readonly-target.test.ts": "5c78045eb74a87e369e118de94c018ac1aeeb95f2790dcdfffba7f12fbdbf45a",
     "src/tests/phase48.readonly-tls.test.ts": "65c7785b5b8a363acc66d29e1948fe2c35b4dde3b58fbda8805ab505de0fb1ae",
     "src/tests/phase48.production-runner.test.ts": "b26359b279cf643ca5b8b5ed62abc1250ec782d8f85bbee1fda22684bfb11a76",
-    "src/tests/phase48.tls13-runtime.test.ts": "722a6295c8e577d6ac89054bb54bb2d2eee40cfead664d92b184197ab2819c6b"
+    "src/tests/phase48.tls13-runtime.test.ts": "04332e1cf9c817059ef868122d840d5a5e68b38e30a39bebc59faadcb1a24816"
   },
   "hash_format": "UTF-8 source with CRLF normalized to LF",
   "revoked_mutator_commit": "bdebcb2b0fcd1ab63f50c0177c6c403a7b36c7e7",
   "revoked_readonly_runner_through": "9428f22644e895592e940193579d03202b9df1ec",
   "success": true,
   "decision": "TLS 1.3 RUNTIME CERTIFICADO — LISTO PARA NUEVO PREFLIGHT READ ONLY",
-  "completed_utc": "2026-10-09T21:36:48.634Z"
+  "completed_utc": "2026-10-09T21:38:07.649Z"
 }

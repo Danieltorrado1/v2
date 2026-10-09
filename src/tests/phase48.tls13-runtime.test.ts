@@ -75,7 +75,7 @@ test('TLS rejection before SQL publishes a complete immutable STOPPED receipt at
 test('base runner and old mutator phrases revoked',()=>{
  const r={commit:'f'.repeat(40),backup_sha:BACKUP_SHA256,certificate_sha256:CERTIFICATE_SHA256,project_ref:PROJECT_REF,scope:{empresa:15,contrato:24,actor:12},phase48_rows:730,digests:Object.fromEntries(DIGEST_FIELDS.map(k=>[k,'a'.repeat(64)])),nonce:'b'.repeat(64),issued_at:new Date(Date.now()-1000).toISOString(),expires_at:new Date(Date.now()+60000).toISOString()};
  const fields=authorizationFields(r);assert.throws(()=>buildAuthorizationPhrase({...fields,readonly_runner_commit:'9428f22644e895592e940193579d03202b9df1ec'}),/REVOKED/);
- if(MUTATOR_COMMIT!=='bdebcb2b0fcd1ab63f50c0177c6c403a7b36c7e7')assert.throws(()=>buildAuthorizationPhrase({...fields,mutator_commit:'bdebcb2b0fcd1ab63f50c0177c6c403a7b36c7e7'}),/INVALID/);
+ if(String(MUTATOR_COMMIT)!=='bdebcb2b0fcd1ab63f50c0177c6c403a7b36c7e7')assert.throws(()=>buildAuthorizationPhrase({...fields,mutator_commit:'bdebcb2b0fcd1ab63f50c0177c6c403a7b36c7e7'}),/INVALID/);
 });
 test('real pg SSLRequest wrapper resolves TLSv1.3 only after secureConnect, without SQL',async()=>{
  const context=createSecureContext({key:readFileSync(fixture+'/server-test-only.key'),cert:readFileSync(fixture+'/server.crt'),minVersion:'TLSv1.3'});
