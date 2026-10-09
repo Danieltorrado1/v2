@@ -38,6 +38,8 @@ test('TLS certification: external paths, CA constraints, strict trust, hostname 
   rejects({...env(),PHASE48_SSL_ROOT_CERT_PATH:join(fixture,'ca.crt')},/READ_CA_REPOSITORY_FORBIDDEN/);
   rejects({...env(),PHASE48_SSL_ROOT_CERT_ALLOWLIST:JSON.stringify([fixture])},/READ_CA_OUTSIDE_ALLOWLIST/);
   rejects(env('expired'),/READ_CA_NOT_CURRENT/);rejects(env('non-ca'),/READ_CA_NOT_CA/);rejects(env('malformed'),/READ_CA_FORMAT_INVALID/);
+  const originalCa=readFileSync(join(dir,'ca.crt')),alteredCa=Buffer.from(originalCa);alteredCa[100]=alteredCa[100]===65?66:65;
+  try{writeFileSync(join(dir,'ca.crt'),alteredCa);rejects(env(),/READ_CA_SHA_MISMATCH/);writeFileSync(join(dir,'ca.crt'),readFileSync(join(fixture,'wrong-ca.crt')));rejects(env(),/READ_CA_SHA_MISMATCH/);}finally{writeFileSync(join(dir,'ca.crt'),originalCa);}
   rejects({...env(),NODE_TLS_REJECT_UNAUTHORIZED:'0'},/READ_TLS_ENV_CONFLICT/);
   rejects({...env(),PGSSLMODE:'disable'},/READ_TLS_ENV_CONFLICT/);
   rejects({...env(),PGSSLROOTCERT:'anything'},/READ_TLS_ENV_CONFLICT/);

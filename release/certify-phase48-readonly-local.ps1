@@ -4,7 +4,7 @@ $task=Join-Path $root 'tmp\phase48-production-cert'
 $cluster=[IO.Path]::GetFullPath((Join-Path $task 'cluster'))
 $bin='C:\Program Files\PostgreSQL\17\bin'
 if($root -ne 'C:\Users\CORE ULTRA\Desktop\V2-instituciones-modalidad'){throw 'WORKSPACE_MISMATCH'}
-if((git -C $root branch --show-current).Trim() -ne 'fix/phase48-read-tls-ca'){throw 'BRANCH_MISMATCH'}
+if((git -C $root branch --show-current).Trim() -ne 'fix/phase48-authorization-tls-contract'){throw 'BRANCH_MISMATCH'}
 if(Test-Path -LiteralPath $cluster){throw 'PREEXISTING_CLUSTER_REFUSED'}
 if((& (Join-Path $bin 'postgres.exe') --version) -notmatch '17\.11'){throw 'POSTGRES_17_11_REQUIRED'}
 $probe=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,55466)

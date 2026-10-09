@@ -4,8 +4,8 @@ import {readFileSync} from 'node:fs';
 import ts from 'typescript';
 import {assertReadQuery} from '../modules/cobertura/phase48-readonly-repository';
 import {validateReadOptions,READ_BACKUP_SHA,productionReadOnlyPreflight} from '../modules/cobertura/phase48-readonly-preflight';
-import {contractDigest,buildAuthorizationPhrase,authorizationFields,DIGEST_FIELDS} from '../modules/cobertura/phase48-readonly-contract';
-const options={target:'Local' as const,commit:'f'.repeat(40),backupSha:READ_BACKUP_SHA,observeFlags:async()=>({health200:true,databaseOk:true,outbox:false,sync:false,recalc:false,worker:false})};
+import {contractDigest,buildAuthorizationPhrase,authorizationFields,DIGEST_FIELDS,CERTIFICATE_SHA256} from '../modules/cobertura/phase48-readonly-contract';
+const options={target:'Local' as const,commit:'f'.repeat(40),backupSha:READ_BACKUP_SHA,certificateSha:CERTIFICATE_SHA256,observeFlags:async()=>({health200:true,databaseOk:true,outbox:false,sync:false,recalc:false,worker:false})};
 test('read modes never accept mutation, resume or enabling options',()=>{
  for(const mode of ['PreflightOnly','PreviewOnly','PreflightAndPreview'])validateReadOptions({...options,mode});
  for(const mode of ['MutateProduction','Mutate','Apply','Resume','UNKNOWN'])assert.throws(()=>validateReadOptions({...options,mode}),/UNKNOWN_READ_MODE/);
@@ -49,7 +49,7 @@ test('canonical digests preserve NULL and microseconds while normalizing timesta
  assert.equal(contractDigest({b:2,a:null}),contractDigest({a:null,b:2}));
 });
 test('authorization rejects each missing field, invalid digest, unsafe flag and expiry',()=>{
- const now=Date.now(),receipt={commit:'f'.repeat(40),backup_sha:READ_BACKUP_SHA,project_ref:'scuvsocqibbubqnesvuf',scope:{empresa:15,contrato:24,actor:12},phase48_rows:730,digests:Object.fromEntries(DIGEST_FIELDS.map(k=>[k,'a'.repeat(64)])),nonce:'b'.repeat(64),issued_at:new Date(now).toISOString(),expires_at:new Date(now+600000).toISOString()};
+ const now=Date.now(),receipt={certificate_sha256:CERTIFICATE_SHA256,commit:'f'.repeat(40),backup_sha:READ_BACKUP_SHA,project_ref:'scuvsocqibbubqnesvuf',scope:{empresa:15,contrato:24,actor:12},phase48_rows:730,digests:Object.fromEntries(DIGEST_FIELDS.map(k=>[k,'a'.repeat(64)])),nonce:'b'.repeat(64),issued_at:new Date(now).toISOString(),expires_at:new Date(now+600000).toISOString()};
  const fields=authorizationFields(receipt);
  for(const k of Object.keys(fields)){const missing={...fields};delete missing[k];assert.throws(()=>buildAuthorizationPhrase(missing),/AUTHORIZATION_FIELD_REQUIRED/);}
  for(const k of DIGEST_FIELDS)assert.throws(()=>buildAuthorizationPhrase({...fields,[k]:'invalid'}),/AUTHORIZATION_FIELD_INVALID/);

@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {BACKUP_SHA,PROJECT_REF,confirmation,executeAtomic,validateOptions,assertProductionUrl,type Options} from '../modules/cobertura/phase48-production-executor';
+import {authorizationFields,buildAuthorizationPhrase,DIGEST_FIELDS,CERTIFICATE_SHA256} from '../modules/cobertura/phase48-readonly-contract';
 import {assertHistoricalLocalIdentity} from '../modules/cobertura/phase48-historical-controlled';
 const options=(extra:Partial<Options>={}):Options=>({actor:'12',empresa:15,contrato:24,expectedRows:730,backupSha:BACKUP_SHA,commit:'f'.repeat(40),actualCommit:'f'.repeat(40),projectRef:PROJECT_REF,runId:'phase48-'+randomUUID(),flags:{health200:true,databaseOk:true,outbox:false,sync:false,recalc:false,worker:false},...extra});
 test('default preflight accepts exact scope; unknown modes and every unsafe scope are rejected',()=>{
@@ -15,10 +16,12 @@ test('full confirmation binds run, commit, backup and immediate baseline but rem
  for(const confirmation of ['',o.confirmation+' ',o.confirmation.replace('rows=730','rows=729')])assert.throws(()=>validateOptions({...o,confirmation}),/AUTHORIZATION_REVOKED/);
 });
 test('new external approval requires exact phrase, fresh expiry, enabled process and observers',()=>{
- const flags=options().flags;const o=options({mode:'MutateProduction',enabled:true,authorization:'ACTIVE',baseline:'b'.repeat(64),authorizationIssuedAt:new Date(Date.now()-1000).toISOString(),authorizationExpiresAt:new Date(Date.now()+60_000).toISOString(),observeFlags:async()=>flags,saveBaseline:async()=>{}});
+ const now=Date.now(),issued=new Date(now-1000).toISOString(),expires=new Date(now+60_000).toISOString();
+ const phrase=buildAuthorizationPhrase(authorizationFields({commit:'f'.repeat(40),backup_sha:BACKUP_SHA,certificate_sha256:CERTIFICATE_SHA256,project_ref:PROJECT_REF,scope:{empresa:15,contrato:24,actor:12},phase48_rows:730,digests:Object.fromEntries(DIGEST_FIELDS.map(k=>[k,'a'.repeat(64)])),nonce:'b'.repeat(64),issued_at:issued,expires_at:expires}));
+ const flags=options().flags;const o=options({certificateSha:CERTIFICATE_SHA256,authorizationPhrase:phrase,nonceConsumed:true,mode:'MutateProduction',enabled:true,authorization:'ACTIVE',baseline:'b'.repeat(64),authorizationIssuedAt:issued,authorizationExpiresAt:expires,observeFlags:async()=>flags,saveBaseline:async()=>{}});
  o.confirmation=confirmation(o,o.baseline!);validateOptions(o);
  for(const confirmation of ['',o.confirmation+' ',o.confirmation.replace('rows=730','rows=729')])assert.throws(()=>validateOptions({...o,confirmation}),/EXACT_CONFIRMATION_REQUIRED/);
- assert.throws(()=>validateOptions({...o,enabled:false}),/PRODUCTION_GATES_REQUIRED/);assert.throws(()=>validateOptions({...o,authorizationIssuedAt:'2000-01-01T00:00:00Z'}),/AUTHORIZATION_EXPIRED_OR_INVALID/);
+ assert.throws(()=>validateOptions({...o,enabled:false}),/PRODUCTION_GATES_REQUIRED/);assert.throws(()=>validateOptions({...o,authorizationIssuedAt:'2000-01-01T00:00:00Z'}),/AUTHORIZATION_GRANT_MISMATCH|AUTHORIZATION_EXPIRED_OR_INVALID/);
 });
 test('revoked mutation returns STOPPED before even querying a supplied client',async()=>{
  const noQueries={query:async()=>{throw Error('MUST_NOT_CONNECT');}} as any;
@@ -33,7 +36,7 @@ test('remote preflight also requires a new authorization; simulation cannot targ
  const preflight=await executeAtomic(noQueries,noQueries,options({mode:'PreflightOnly',target:'Production'}));assert.equal(preflight.status,'STOPPED');assert.equal('reason' in preflight&&preflight.reason,'AUTHORIZATION_REVOKED');
  assert.throws(()=>validateOptions(options({mode:'SimulateLocal',target:'Production'})),/SIMULATION_LOOPBACK_REQUIRED/);
 });
-test('production transport binds project and session port; unrelated hosts and transaction pools are rejected',()=>{
- assertProductionUrl(`postgresql://postgres:unused@db.${PROJECT_REF}.supabase.co:5432/postgres`);
- for(const url of ['postgresql://postgres:unused@127.0.0.1:5432/postgres','postgresql://postgres:unused@unrelated.example:5432/postgres',`postgresql://postgres:unused@db.${PROJECT_REF}.supabase.co:6543/postgres`,`postgresql://postgres:unused@db.${PROJECT_REF}.supabase.co:5432/other`])assert.throws(()=>assertProductionUrl(url));
+test('production transport shares exact target validation with READ ONLY',()=>{
+ assertProductionUrl(`postgresql://postgres:unused@db.${PROJECT_REF}.supabase.co:5432/postgres`);assertProductionUrl(`postgresql://postgres:unused@db.${PROJECT_REF}.supabase.co:6543/postgres`);
+ for(const url of ['postgresql://postgres:unused@127.0.0.1:5432/postgres','postgresql://postgres:unused@unrelated.example:5432/postgres',`postgresql://postgres:unused@db.${PROJECT_REF}.supabase.co:5432/other`])assert.throws(()=>assertProductionUrl(url));
 });

@@ -3,6 +3,8 @@ import {openSync, closeSync, readFileSync, fstatSync, lstatSync, realpathSync} f
 import {isAbsolute, resolve, relative, dirname, sep} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {checkServerIdentity, type ConnectionOptions} from 'node:tls';
+import {CERTIFICATE_SHA256,validateCertificateHash,exactEqual} from './phase48-readonly-contract';
+import {validateReadTarget} from './phase48-readonly-target';
 
 const sha=(bytes:Buffer|string)=>createHash('sha256').update(bytes).digest('hex');
 function need(ok:unknown,code:string):asserts ok {if(!ok)throw Error(code);}
@@ -53,7 +55,24 @@ export function loadReadTls(hostname:string,env:NodeJS.ProcessEnv=process.env,re
   need(bytes.length===1367,'READ_CA_SIZE_INVALID');need(sha(bytes)===expected.toLowerCase(),'READ_CA_SHA_MISMATCH');
   const receipt=inspectReadCa(bytes);
   need(/^[a-zA-Z0-9.-]+$/.test(hostname),'READ_TLS_HOSTNAME_INVALID');
-  return {ssl:{ca:bytes,rejectUnauthorized:true,servername:hostname,checkServerIdentity},receipt};
+  return {ssl:{ca:bytes,minVersion:'TLSv1.3',rejectUnauthorized:true,servername:hostname,checkServerIdentity},receipt};
  }catch(e){if(e instanceof Error&&/^READ_[A-Z_]+$/.test(e.message))throw e;throw Error('READ_CA_PATH_OR_CONFIGURATION_INVALID');}
 }
 export function clearReadTlsEnvironment(){for(const key of ['DATABASE_URL','PGPASSWORD','PRODUCTION_MIGRATION_DATABASE_URL','PHASE48_SSL_ROOT_CERT_PATH','PHASE48_SSL_ROOT_CERT_SHA256','PHASE48_SSL_ROOT_CERT_ALLOWLIST'])delete process.env[key];}
+
+// The credential callback cannot run until the real external CA has passed all
+// file, ACL, validity and pinned SHA checks. Both production entries use this.
+export function verifiedProductionConfig(readCredential:()=>string,env:NodeJS.ProcessEnv=process.env){
+ validateCertificateHash(env.PHASE48_SSL_ROOT_CERT_SHA256);
+ const verified=loadReadTls('certificate-validation.invalid',env);
+ if(!exactEqual(verified.receipt.sha256.toUpperCase(),CERTIFICATE_SHA256))throw Error('CERTIFICATE_SHA256_INVALID');
+ const target=validateReadTarget(readCredential());
+ const ssl={...verified.ssl,servername:target.config.host};
+ assertVerifiedTls(ssl,target.config.host);
+ const {options,...config}=target.config;
+ return {config:{...config,ssl,connectionTimeoutMillis:10000},certificate_sha256:CERTIFICATE_SHA256,tls:{certificate_sha256:CERTIFICATE_SHA256,rejectUnauthorized:true,hostname_verified:true,external_ca_verified:true}};
+}
+export function assertVerifiedTls(ssl:ConnectionOptions,hostname:string){
+ if(ssl.rejectUnauthorized!==true||ssl.minVersion!=='TLSv1.3'||ssl.servername!==hostname||ssl.checkServerIdentity!==checkServerIdentity||!Buffer.isBuffer(ssl.ca))throw Error('READ_TLS_CONFIGURATION_INVALID');
+ validateCertificateHash(sha(ssl.ca as Buffer).toUpperCase());
+}

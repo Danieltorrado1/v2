@@ -1,7 +1,25 @@
-import {createHash} from 'node:crypto';
+import {createHash,timingSafeEqual} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
 
 export const DIGEST_FIELDS = ['schema_digest','source_digest','phase48_candidate_digest','albeny_before_digest','dary_before_digest','protected_tables_digest','periods_4_6_digest','write_set_before_digest'] as const;
-export const MUTATOR_COMMIT = 'dcbd37a';
+// Pinned to the replacement mutator commit after local certification.
+export const MUTATOR_COMMIT = 'ffffffffffffffffffffffffffffffffffffffff';
+export const CERTIFICATE_SHA256 = '700723581420DD1AC98FD7E9AC529F0EF210EADCAF87FC868A3AD7D114C2F3B7';
+export function exactEqual(a:unknown,b:unknown):boolean {
+ if(typeof a!=='string'||typeof b!=='string')return false;
+ const left=Buffer.from(a),right=Buffer.from(b);
+ return left.length===right.length&&timingSafeEqual(left,right);
+}
+export function validateCertificateHash(hash:unknown){if(!exactEqual(hash,CERTIFICATE_SHA256))throw Error('CERTIFICATE_SHA256_INVALID');}
+// Publishing the certified commit pin is the only permitted contract change
+// after the mutator code commit; any other contract drift blocks connection.
+export function assertCertifiedContract(currentCommit:string){
+ const file='src/modules/cobertura/phase48-readonly-contract.ts';
+ const normalize=(source:string)=>source.replace(/\r\n/g,'\n').replace(/^export const MUTATOR_COMMIT = '[a-f0-9]{40}';$/m,'export const MUTATOR_COMMIT = <CERTIFIED_PIN>;');
+ const source=(commit:string)=>execFileSync('git',['show',commit+':'+file],{encoding:'utf8',stdio:['ignore','pipe','ignore']});
+ if(!exactEqual(normalize(source(MUTATOR_COMMIT)),normalize(source(currentCommit))))throw Error('CERTIFIED_CONTRACT_CHANGED');
+ execFileSync('git',['merge-base','--is-ancestor',MUTATOR_COMMIT,currentCommit],{stdio:'ignore'});
+}
 export const BACKUP_SHA256 = '4271775ee853bf03b9f70402f7ecfd7becbe048269e3b10c76f027f981303e26';
 export const PROJECT_REF = 'scuvsocqibbubqnesvuf';
 // Object keys are sorted; array order is supplied by ORDER BY in the repository.
@@ -30,22 +48,39 @@ export function canonical(value:unknown):unknown {
 }
 export const contractDigest=(value:unknown)=>createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 export function authorizationFields(receipt:any):Record<string,string|number|boolean> {
- const fields:Record<string,string|number|boolean>={readonly_runner_commit:receipt.commit,mutator_commit:MUTATOR_COMMIT,backup_sha256:receipt.backup_sha,project_ref:receipt.project_ref,empresa:receipt.scope?.empresa,contrato:receipt.scope?.contrato,actor:receipt.scope?.actor,expected_rows:receipt.phase48_rows};
+ const fields:Record<string,string|number|boolean>={readonly_runner_commit:receipt.commit,mutator_commit:MUTATOR_COMMIT,backup_sha256:receipt.backup_sha,certificate_sha256:receipt.certificate_sha256,project_ref:receipt.project_ref,empresa:receipt.scope?.empresa,contrato:receipt.scope?.contrato,actor:receipt.scope?.actor,expected_rows:receipt.phase48_rows};
  for(const key of DIGEST_FIELDS)fields[key]=receipt.digests?.[key];
  Object.assign(fields,{nonce:receipt.nonce,issued_at:receipt.issued_at,expires_at:receipt.expires_at,OUTBOX:false,SYNC:false,RECALC:false,suppressExternalSync:true,preserveOperationalSources:true,noPayrollRecalculation:true,atomicPhase48AndCorrections:true,status:'PENDIENTE_DE_AUTORIZACION'});
  validateAuthorizationFields(fields);return fields;
 }
 export function validateAuthorizationFields(fields:Record<string,unknown>) {
- const required=['readonly_runner_commit','mutator_commit','backup_sha256','project_ref','empresa','contrato','actor','expected_rows',...DIGEST_FIELDS,'nonce','issued_at','expires_at','OUTBOX','SYNC','RECALC','suppressExternalSync','preserveOperationalSources','noPayrollRecalculation','atomicPhase48AndCorrections','status'];
+ const required=AUTHORIZATION_ORDER;
  if(Object.keys(fields).length!==required.length||required.some(k=>fields[k]===undefined||fields[k]===null))throw Error('AUTHORIZATION_FIELD_REQUIRED');
+ validateCertificateHash(fields.certificate_sha256);
  if(!/^[a-f0-9]{40}$/.test(String(fields.readonly_runner_commit))||fields.mutator_commit!==MUTATOR_COMMIT||fields.backup_sha256!==BACKUP_SHA256||fields.project_ref!==PROJECT_REF||fields.empresa!==15||fields.contrato!==24||fields.actor!==12||fields.expected_rows!==730||DIGEST_FIELDS.some(k=>!/^[a-f0-9]{64}$/.test(String(fields[k])))||!/^[a-f0-9]{64}$/.test(String(fields.nonce)))throw Error('AUTHORIZATION_FIELD_INVALID');
  if(['OUTBOX','SYNC','RECALC'].some(k=>fields[k]!==false)||['suppressExternalSync','preserveOperationalSources','noPayrollRecalculation','atomicPhase48AndCorrections'].some(k=>fields[k]!==true)||fields.status!=='PENDIENTE_DE_AUTORIZACION')throw Error('AUTHORIZATION_FLAGS_INVALID');
  const issued=Date.parse(String(fields.issued_at)),expires=Date.parse(String(fields.expires_at));
- if(!Number.isFinite(issued)||!Number.isFinite(expires)||expires<=issued||expires-issued>600_000||new Date(issued).toISOString()!==fields.issued_at||new Date(expires).toISOString()!==fields.expires_at||expires<=Date.now())throw Error('AUTHORIZATION_EXPIRATION_INVALID');
+ if(!Number.isFinite(issued)||!Number.isFinite(expires)||issued>Date.now()||expires<=issued||expires-issued>600_000||new Date(issued).toISOString()!==fields.issued_at||new Date(expires).toISOString()!==fields.expires_at||expires<=Date.now())throw Error('AUTHORIZATION_EXPIRATION_INVALID');
 }
+export const AUTHORIZATION_ORDER=['readonly_runner_commit','mutator_commit','backup_sha256','certificate_sha256','project_ref','empresa','contrato','actor','expected_rows',...DIGEST_FIELDS,'nonce','issued_at','expires_at','OUTBOX','SYNC','RECALC','suppressExternalSync','preserveOperationalSources','noPayrollRecalculation','atomicPhase48AndCorrections','status'] as const;
 export function buildAuthorizationPhrase(fields:Record<string,unknown>) {
  validateAuthorizationFields(fields);
  // Explicit insertion order is fixed by authorizationFields; callers cannot reorder.
- const order=['readonly_runner_commit','mutator_commit','backup_sha256','project_ref','empresa','contrato','actor','expected_rows',...DIGEST_FIELDS,'nonce','issued_at','expires_at','OUTBOX','SYNC','RECALC','suppressExternalSync','preserveOperationalSources','noPayrollRecalculation','atomicPhase48AndCorrections','status'];
+ const order=AUTHORIZATION_ORDER;
  return 'AUTHORIZE_PHASE48_HISTORICAL|'+order.map(k=>k+'='+fields[k]).join('|');
+}
+export function parseAuthorizationPhrase(phrase:unknown):Record<string,string|number|boolean> {
+ if(typeof phrase!=='string'||/\s/.test(phrase))throw Error('AUTHORIZATION_PHRASE_INVALID');
+ const parts=phrase.split('|');
+ if(parts.shift()!=='AUTHORIZE_PHASE48_HISTORICAL'||parts.length!==AUTHORIZATION_ORDER.length)throw Error('AUTHORIZATION_PHRASE_INVALID');
+ const fields:Record<string,string|number|boolean>={};
+ for(let i=0;i<parts.length;i++){
+  const part=parts[i]!,key=AUTHORIZATION_ORDER[i]!;
+  if(!part.startsWith(key+'=')||part.slice(key.length+1).includes('='))throw Error('AUTHORIZATION_PHRASE_INVALID');
+  const raw=part.slice(key.length+1);
+  fields[key]=['empresa','contrato','actor','expected_rows'].includes(key)?Number(raw):['OUTBOX','SYNC','RECALC','suppressExternalSync','preserveOperationalSources','noPayrollRecalculation','atomicPhase48AndCorrections'].includes(key)?raw==='true'?true:raw==='false'?false:raw:raw;
+ }
+ validateAuthorizationFields(fields);
+ if(!exactEqual(buildAuthorizationPhrase(fields),phrase))throw Error('AUTHORIZATION_PHRASE_INVALID');
+ return fields;
 }

@@ -1,22 +1,23 @@
 import type {PoolClient} from 'pg';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {createReadOnlyRepository} from './phase48-readonly-repository';
-import {contractDigest,authorizationFields,buildAuthorizationPhrase,MUTATOR_COMMIT} from './phase48-readonly-contract';
+import {contractDigest,authorizationFields,buildAuthorizationPhrase,MUTATOR_COMMIT,validateCertificateHash} from './phase48-readonly-contract';
 
 export const READ_MODES=['PreflightOnly','PreviewOnly','PreflightAndPreview'] as const;
 export const READ_BACKUP_SHA='4271775ee853bf03b9f70402f7ecfd7becbe048269e3b10c76f027f981303e26';
 export const READ_PROJECT_REF='scuvsocqibbubqnesvuf';
 export const digest=contractDigest;
 export interface ReadFlags {health200:boolean;databaseOk:boolean;outbox:boolean;sync:boolean;recalc:boolean;worker:boolean;}
-export interface ReadOptions {mode?:string;target:'Local'|'Production';commit:string;backupSha:string;observeFlags:()=>Promise<ReadFlags>;}
+export interface ReadOptions {mode?:string;target:'Local'|'Production';commit:string;backupSha:string;certificateSha:string;observeFlags:()=>Promise<ReadFlags>;}
 function need(value:unknown,code:string):asserts value {if(!value)throw Error(code);}
 export function validateReadOptions(o:ReadOptions){
  need(READ_MODES.includes((o.mode??'PreflightAndPreview') as typeof READ_MODES[number]),'UNKNOWN_READ_MODE');
  need(['Local','Production'].includes(o.target)&&/^[a-f0-9]{40}$/.test(o.commit)&&o.backupSha===READ_BACKUP_SHA&&typeof o.observeFlags==='function','READ_CONFIGURATION_INVALID');
- need(Object.keys(o).every(k=>['mode','target','commit','backupSha','observeFlags'].includes(k)),'READ_OPTION_NOT_ALLOWED');
+ validateCertificateHash(o.certificateSha);
+ need(Object.keys(o).every(k=>['mode','target','commit','backupSha','certificateSha','observeFlags'].includes(k)),'READ_OPTION_NOT_ALLOWED');
 }
 function flagsGate(f:ReadFlags){need(f&&Object.values(f).length===6&&Object.values(f).every(v=>typeof v==='boolean')&&f.health200===true&&f.databaseOk===true&&f.outbox===false&&f.sync===false&&f.recalc===false&&f.worker===false,'FLAGS_UNAVAILABLE_OR_UNSAFE');}
-function emptyReceipt(o:ReadOptions){return {schema_version:2,status:'STOPPED',run_id:'phase48-preflight-'+randomUUID(),issued_at:new Date().toISOString(),expires_at:null,commit:o.commit,commits:{readonly_runner_commit:o.commit,mutator_commit:MUTATOR_COMMIT},backup_sha:READ_BACKUP_SHA,project_ref:READ_PROJECT_REF,scope:{actor:12,empresa:15,contrato:24},mode:o.mode??'PreflightAndPreview',postgresql:null,session:null,health:{initial:null,final:null},flags:null,locks:null,counts:null,digests:null,preview:null,phase48_state:'NOT_OBSERVED',post_rollback_verification:{status:'NOT_EXECUTED'},authorization_status:'NOT_ISSUED',authorization_phrase:null,nonce:null,writes:0,new_audits:0};}
+function emptyReceipt(o:ReadOptions){return {schema_version:2,status:'STOPPED',run_id:'phase48-preflight-'+randomUUID(),issued_at:new Date().toISOString(),expires_at:null,commit:o.commit,commits:{readonly_runner_commit:o.commit,mutator_commit:MUTATOR_COMMIT},backup_sha:READ_BACKUP_SHA,certificate_sha256:o.certificateSha,project_ref:READ_PROJECT_REF,scope:{actor:12,empresa:15,contrato:24},mode:o.mode??'PreflightAndPreview',postgresql:null,session:null,health:{initial:null,final:null},flags:null,locks:null,counts:null,digests:null,preview:null,phase48_state:'NOT_OBSERVED',post_rollback_verification:{status:'NOT_EXECUTED'},authorization_status:'NOT_ISSUED',authorization_phrase:null,nonce:null,writes:0,new_audits:0};}
 export async function productionReadOnlyPreflight(client:Pick<PoolClient,'query'>,o:ReadOptions){
  let begun=false,result:any=emptyReceipt(o);
  try{

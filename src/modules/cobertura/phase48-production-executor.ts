@@ -1,4 +1,7 @@
 import type {PoolClient} from 'pg';
+import {validateReadTarget} from './phase48-readonly-target';
+import {validateCertificateHash,parseAuthorizationPhrase,exactEqual,contractDigest,DIGEST_FIELDS} from './phase48-readonly-contract';
+import {createReadOnlyRepository} from './phase48-readonly-repository';
 import {createHash} from 'node:crypto';
 import {actorGate,historicalPlan,historicalSnapshot,nextId,restartSequence,phaseSql} from './phase48-historical-domain';
 
@@ -17,6 +20,7 @@ export interface Options {
  mode?:string;target?:'Local'|'Production';actor:string;empresa:number;contrato:number;expectedRows:number;backupSha:string;
  commit:string;actualCommit:string;projectRef:string;runId:string;flags:Flags;
  enabled?:boolean;authorization?:'REVOKED'|'ACTIVE';confirmation?:string;baseline?:string;
+ certificateSha?:string;authorizationPhrase?:string;nonceConsumed?:boolean;
  authorizationIssuedAt?:string;authorizationExpiresAt?:string;
  // Fault/concurrency hooks are accepted exclusively AFTER loopback identity checks.
  simulation?:{failAt?:'during-phase48'|'after-phase48'|'between-corrections'|'audit-events'|'audit';
@@ -24,13 +28,15 @@ export interface Options {
  observeFlags?:()=>Promise<Flags>;
  saveBaseline?:(receipt:unknown)=>Promise<void>;
 }
-export function confirmation(o:Options,baseline:string){return `MUTATE_PHASE48_HISTORICAL|project=${PROJECT_REF}|actor=12|empresa=15|contrato=24|rows=730|backup=${BACKUP_SHA}|commit=${o.commit}|run_id=${o.runId}|baseline=${baseline}`;}
+export function confirmation(o:Options,baseline:string){return `MUTATE_PHASE48_HISTORICAL|project=${PROJECT_REF}|actor=12|empresa=15|contrato=24|rows=730|backup=${BACKUP_SHA}|commit=${o.commit}|run_id=${o.runId}|baseline=${baseline}|certificate_sha256=${o.certificateSha}|authorization_digest=${sha(o.authorizationPhrase??null)}`;}
 export function assertProductionUrl(url:string){
- const u=new URL(url);need(['postgres:','postgresql:'].includes(u.protocol)&&u.port==='5432'&&decodeURIComponent(u.pathname)==='/postgres','PRODUCTION_TARGET_INVALID');
- need(u.hostname===`db.${PROJECT_REF}.supabase.co`||u.hostname.endsWith('.pooler.supabase.com')&&decodeURIComponent(u.username)===`postgres.${PROJECT_REF}`,'PROJECT_REF_INVALID');
- need(!['127.0.0.1','localhost'].includes(u.hostname),'PRODUCTION_TARGET_INVALID');
+ validateReadTarget(url);
 }
 export function validateOptions(o:Options){
+ validatePreconnectionOptions(o);
+ if(o.mode==='MutateProduction')need(o.nonceConsumed===true,'NONCE_NOT_CONSUMED');
+}
+export function validatePreconnectionOptions(o:Options){
  need(MODES.includes((o.mode??'PreflightOnly') as typeof MODES[number]),'UNKNOWN_MODE');
  need(o.target===undefined||['Local','Production'].includes(o.target),'UNKNOWN_TARGET');
  need(o.mode!=='SimulateLocal'||o.target!=='Production','SIMULATION_LOOPBACK_REQUIRED');
@@ -44,6 +50,10 @@ export function validateOptions(o:Options){
   // certification never creates one or enables this process automatically.
   need((o.authorization??PRODUCTION_AUTHORIZATION)==='ACTIVE','AUTHORIZATION_REVOKED');
   need(o.enabled===true&&o.authorization==='ACTIVE'&&!o.simulation&&o.observeFlags&&o.saveBaseline,'PRODUCTION_GATES_REQUIRED');
+  validateCertificateHash(o.certificateSha);
+  const fields=parseAuthorizationPhrase(o.authorizationPhrase);
+  need(exactEqual(fields.readonly_runner_commit,o.actualCommit),'RUNNER_COMMIT_INVALID');
+  need(fields.issued_at===o.authorizationIssuedAt&&fields.expires_at===o.authorizationExpiresAt,'AUTHORIZATION_GRANT_MISMATCH');
   const issued=Date.parse(o.authorizationIssuedAt??''),expires=Date.parse(o.authorizationExpiresAt??'');
   need(Number.isFinite(issued)&&Number.isFinite(expires)&&issued<=Date.now()&&Date.now()-issued<=30*60_000&&expires>Date.now()&&expires-issued<=30*60_000,'AUTHORIZATION_EXPIRED_OR_INVALID');
   if(o.mode==='MutateProduction')need(/^[a-f0-9]{64}$/.test(o.baseline??'')&&o.confirmation===confirmation(o,o.baseline!),'EXACT_CONFIRMATION_REQUIRED');
@@ -61,6 +71,13 @@ async function capture(db:Db){
  const snapshot=await historicalSnapshot(db);
  const coverage=(await db.query('SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca ORDER BY id')).rows.map(r=>r.row);
  return {snapshot,coverage};
+}
+async function authorizationBaseline(db:Db,o:Options,s:Snapshot){
+ const fields=parseAuthorizationPhrase(o.authorizationPhrase),repo=createReadOnlyRepository(db);
+ await repo.safePolicies();
+ const candidates=await repo.candidates(),coverage=await repo.coverage(),affected=await repo.affected(),minimal=await repo.minimalState();
+ const actual={schema_digest:contractDigest({schema:s.schema,constraints:s.constraints,indexes:s.indexes,routines:s.routines,triggers:s.triggers}),source_digest:s.digest,phase48_candidate_digest:contractDigest(candidates),albeny_before_digest:minimal.albeny_before_digest,dary_before_digest:minimal.dary_before_digest,protected_tables_digest:contractDigest(s.data.filter(r=>!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(r.table))),periods_4_6_digest:minimal.periods_4_6_digest,write_set_before_digest:await repo.writeSet(s,candidates,coverage,affected)};
+ for(const key of DIGEST_FIELDS)need(exactEqual(actual[key],fields[key]),'AUTHORIZATION_BASELINE_CHANGED:'+key);
 }
 async function state(db:Db,s:Snapshot){
  await actorGate(db,'12');await activity(db);
@@ -115,7 +132,7 @@ export async function executeAtomic(db:Db,observer:Db,o:Options){
  try{
   validateOptions(o);const mode=o.mode??'PreflightOnly';
   if(mode!=='MutateProduction'&&o.target!=='Production')await localIdentity(db);
-  else need((await db.query('SHOW server_version')).rows[0].server_version==='17.6','PRODUCTION_VERSION_INVALID');
+  else {need((await db.query('SHOW server_version')).rows[0].server_version==='17.6','PRODUCTION_VERSION_INVALID');const tls=(await db.query('SELECT ssl,version FROM pg_stat_ssl WHERE pid=pg_backend_pid()')).rows[0];need(tls?.ssl===true&&tls.version==='TLSv1.3','PRODUCTION_TLS_INVALID');}
   if(mode!=='SimulateLocal')need(!o.simulation,'SIMULATION_HOOKS_FORBIDDEN');
   const sql=phaseSql();need(!/\b(?:BEGIN|COMMIT|ROLLBACK)\s*;/i.test(sql),'INNER_TRANSACTION_BOUNDARY');
   await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE READ ONLY');transaction=true;
@@ -128,8 +145,9 @@ export async function executeAtomic(db:Db,observer:Db,o:Options){
    auditFirst[table]=String((max>last?max:last)+1n);
   }
   if(!initialState.applied)need(!(await db.query(`SELECT 1 FROM auditoria WHERE datos_nuevos->>'run_id'=$1 UNION ALL SELECT 1 FROM auditoria_eventos WHERE datos_nuevos->>'run_id'=$1 LIMIT 1`,[o.runId])).rowCount,'RUN_ID_ALREADY_USED');
+  if(mode==='MutateProduction'&&!initialState.applied){need(o.baseline===initial.snapshot.digest,'IMMEDIATE_BASELINE_CHANGED');await authorizationBaseline(db,o,initial.snapshot);}
   await db.query('ROLLBACK');transaction=false;
-  const receipt={run_id:o.runId,commit:o.commit,backup_sha:BACKUP_SHA,sql_sha256:createHash('sha256').update(sql).digest('hex'),baseline:initial.snapshot.digest,tables:initial.snapshot.data,sequences:initial.snapshot.sequences,schema_digest:sha({schema:initial.snapshot.schema,constraints:initial.snapshot.constraints,indexes:initial.snapshot.indexes,routines:initial.snapshot.routines,triggers:initial.snapshot.triggers}),affected_rows_digest:sha(initial.coverage),authorization:o.authorization??PRODUCTION_AUTHORIZATION,plan:initialState.plan.map(({target,...p})=>p)};
+  const receipt={run_id:o.runId,commit:o.commit,backup_sha:BACKUP_SHA,certificate_sha256:o.certificateSha??null,sql_sha256:createHash('sha256').update(sql).digest('hex'),baseline:initial.snapshot.digest,tables:initial.snapshot.data,sequences:initial.snapshot.sequences,schema_digest:sha({schema:initial.snapshot.schema,constraints:initial.snapshot.constraints,indexes:initial.snapshot.indexes,routines:initial.snapshot.routines,triggers:initial.snapshot.triggers}),affected_rows_digest:sha(initial.coverage),authorization:o.authorization??PRODUCTION_AUTHORIZATION,plan:initialState.plan.map(({target,...p})=>p)};
   if(initialState.applied)return {status:'ALREADY_APPLIED',writes:0,newAudits:0,receipt};
   if(mode==='PreflightOnly'||mode==='PreviewOnly')return {status:'READY',writes:0,newAudits:0,receipt,phase48Rows:730};
   if(mode==='MutateProduction')need(o.baseline===initial.snapshot.digest,'IMMEDIATE_BASELINE_CHANGED');
