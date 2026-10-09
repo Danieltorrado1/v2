@@ -1,36 +1,40 @@
-// Fixed minimal probe. No table access, health call, preflight or mutation import.
-import {Pool, type PoolClient} from 'pg';
-import {readFileSync} from 'node:fs';
+// One connection, TLS metadata and two scalar expressions. Never a preflight.
+import {Pool,Client,type PoolClient} from 'pg';
+import {readFileSync,writeFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
-import {checkServerIdentity, type TLSSocket} from 'node:tls';
-import {readDatabaseUrl,validateReadTarget} from '../modules/cobertura/phase48-readonly-target';
-import {loadReadTls,clearReadTlsEnvironment} from '../modules/cobertura/phase48-readonly-tls';
-
+import {verifiedProductionConfig,inspectProductionTls,clearReadTlsEnvironment} from '../modules/cobertura/phase48-readonly-tls';
+import {readDatabaseUrl} from '../modules/cobertura/phase48-readonly-target';
 async function main(){
- let pool:Pool|undefined,client:PoolClient|undefined,begun=false,rollback=false;
+ let pool:Pool|undefined,client:PoolClient|undefined,begun=false;
+ const evidence:any={scope:'MINIMAL_TLS_TRANSPORT_AND_READONLY_SCALARS',status:'STOPPED',connection_attempts:0,table_queries:0,catalog_queries:0,productive_data_writes:0,ddl:0,dml:0,health_requests:0};
  try{
   const args=process.argv.slice(2);if(args.length!==2||args[0]!=='--verify-tls-only'||!args[1]?.startsWith('--credential-file='))throw Error('READ_TLS_PROBE_ARGUMENT_INVALID');
-  const git=(...args:string[])=>execFileSync('git',args,{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
-  if(git('branch','--show-current')!=='fix/phase48-read-tls-ca'||git('status','--porcelain','--untracked-files=all'))throw Error('CLEAN_READ_BRANCH_REQUIRED');
-  const commit=git('rev-parse','HEAD');if(git('rev-parse','@{upstream}')!==commit)throw Error('READ_TLS_PUSH_REQUIRED');
-  const target=validateReadTarget(readDatabaseUrl(readFileSync(args[1].slice('--credential-file='.length),'utf8')));
-  if(target.config.port!==6543)throw Error('READ_TRANSACTION_POOLER_REQUIRED');
-  const tls=loadReadTls(target.config.host);let hostnameVerified=false;
-  tls.ssl.checkServerIdentity=(host,cert)=>{const error=checkServerIdentity(host,cert);hostnameVerified=host===target.config.host&&!error;return error;};
-  const {options:unused,...config}=target.config;
-  pool=new Pool({...config,ssl:tls.ssl,max:1,connectionTimeoutMillis:10000,idleTimeoutMillis:1000});pool.on('error',()=>{});
-  client=await pool.connect();
-  const socket=(client as unknown as {connection:{stream:TLSSocket}}).connection.stream;
-  const peer=socket.getPeerCertificate(true);
-  if(!socket.encrypted||!socket.authorized||!hostnameVerified||!peer.raw||checkServerIdentity(target.config.host,peer))throw Error('READ_TLS_VERIFICATION_FAILED');
-  await client.query('BEGIN TRANSACTION READ ONLY');begun=true;
-  const result=await client.query({text:"SELECT current_setting('transaction_read_only'), current_setting('server_version'), pg_backend_pid()",rowMode:'array'});
-  await client.query('ROLLBACK');begun=false;rollback=true;
-  const row=result.rows[0];if(row?.[0]!=='on'||!/^17\./.test(row?.[1])||!Number.isInteger(row?.[2]))throw Error('READ_TLS_PROBE_RESULT_INVALID');
-  console.log(JSON.stringify({status:'TLS_VERIFIED',commit,certificate:tls.receipt,tls_active:true,rejectUnauthorized:true,hostname_verified:hostnameVerified,chain_verified:true,peer_certificate_present:true,peer_fingerprint:peer.fingerprint256,tls_version:socket.getProtocol(),transaction_read_only:row[0],postgresql:row[1],backend_pid:row[2],rollback,writes:0,ddl:0,dml:0,audit_writes:0,sequence_operations:0,decision:'TLS PRODUCTIVO VERIFICADO — LISTO PARA PREFLIGHT READ ONLY'}));
- }finally{
-  if(client){if(begun)await client.query('ROLLBACK').catch(()=>{});client.release(true);}
-  if(pool)await pool.end();clearReadTlsEnvironment();
+  const git=(...a:string[])=>execFileSync('git',a,{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();
+  if(git('branch','--show-current')!=='fix/phase48-tls13-runtime-validation')throw Error('READ_TLS_PROBE_BRANCH_INVALID');
+  evidence.code_commit=git('rev-parse','HEAD');
+  const credentialFile=args[1]!.slice('--credential-file='.length);
+  const verified=verifiedProductionConfig(()=>readDatabaseUrl(readFileSync(credentialFile,'utf8')));
+  if(verified.config.port!==6543)throw Error('READ_TRANSACTION_POOLER_REQUIRED');
+  let secureConnectObserved=false;
+  class ProbeClient extends Client {
+   constructor(config:any){super(config);const connection=(this as any).connection;connection.once('sslconnect',()=>connection.stream.once('secureConnect',()=>{secureConnectObserved=true;}));}
+  }
+  pool=new Pool({...verified.config,Client:ProbeClient,max:1,connectionTimeoutMillis:10000,idleTimeoutMillis:1000} as any);pool.on('error',()=>{});
+  evidence.connection_attempts=1;client=await pool.connect();
+  if(!secureConnectObserved)throw Error('READ_TLS_HANDSHAKE_INCOMPLETE');
+  evidence.tls=inspectProductionTls(client);evidence.secureConnect_observed=true;
+  await client.query('BEGIN READ ONLY');begun=true;
+  const result=await client.query("SELECT version(), current_setting('transaction_read_only') AS transaction_read_only");
+  const row=result.rows[0],version=String(row?.version??'').match(/^PostgreSQL (\d+\.\d+(?:\.\d+)?)(?:\s|$)/)?.[1];
+  if(!version||row?.transaction_read_only!=='on')throw Error('READ_TLS_PROBE_RESULT_INVALID');
+  evidence.postgresql_version=version;evidence.transaction_read_only='on';
+  await client.query('ROLLBACK');begun=false;evidence.rollback='CONFIRMED';evidence.status='TLS_VERIFIED';
+ }catch(error){const e=error as Error;evidence.reason=/^READ_[A-Z0-9_]+$/.test(e.message)?e.message:'READ_TLS_PROBE_FAILED';process.exitCode=1;}
+ finally{
+  if(client){if(begun){try{await client.query('ROLLBACK');evidence.rollback='CONFIRMED';}catch{evidence.rollback='UNCONFIRMED';evidence.status='STOPPED';process.exitCode=1;}}client.release(true);evidence.client_closed=true;}
+  if(pool){try{await pool.end();evidence.pool_closed=true;}catch{evidence.status='STOPPED';evidence.reason='READ_TLS_POOL_CLOSE_FAILED';process.exitCode=1;}}
+  clearReadTlsEnvironment();evidence.completed_utc=new Date().toISOString();
+  writeFileSync('reports/phase48-tls13-minimal-probe.json',JSON.stringify(evidence,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(evidence));
  }
 }
-main().catch((error:unknown)=>{clearReadTlsEnvironment();const e=error as {message?:string;code?:string};console.error(JSON.stringify({status:'STOPPED',reason:e.message&&/^READ_[A-Z_]+$/.test(e.message)?e.message:'READ_TLS_PROBE_FAILED',code:e.code&&/^[A-Z0-9_]{1,64}$/.test(e.code)?e.code:null,writes:0,decision:'OPERACIÓN DETENIDA — TLS PRODUCTIVO NO VERIFICADO'}));process.exitCode=1;});
+main().catch(()=>{clearReadTlsEnvironment();console.error('READ_TLS_PROBE_EVIDENCE_FAILED');process.exitCode=1;});

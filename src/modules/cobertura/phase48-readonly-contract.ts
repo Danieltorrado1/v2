@@ -6,7 +6,7 @@ export const DIGEST_FIELDS = ['schema_digest','source_digest','phase48_candidate
 export const MUTATOR_COMMIT = 'bdebcb2b0fcd1ab63f50c0177c6c403a7b36c7e7';
 export const CERTIFICATE_SHA256 = '700723581420DD1AC98FD7E9AC529F0EF210EADCAF87FC868A3AD7D114C2F3B7';
 // Every runner at or before the certified base belongs to the revoked contract.
-const revokedRunnerCommits=new Set(execFileSync('git',['rev-list','d25043019fca8c5dd6dc8513f67f083a30de5540'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim().split(/\r?\n/));
+const revokedRunnerCommits=new Set(execFileSync('git',['rev-list','9428f22644e895592e940193579d03202b9df1ec'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim().split(/\r?\n/));
 export function exactEqual(a:unknown,b:unknown):boolean {
  if(typeof a!=='string'||typeof b!=='string')return false;
  const left=Buffer.from(a),right=Buffer.from(b);

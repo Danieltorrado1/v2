@@ -2,7 +2,7 @@ import {createHash, X509Certificate} from 'node:crypto';
 import {openSync, closeSync, readFileSync, fstatSync, lstatSync, realpathSync} from 'node:fs';
 import {isAbsolute, resolve, relative, dirname, sep} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {checkServerIdentity, type ConnectionOptions} from 'node:tls';
+import {checkServerIdentity, TLSSocket, type ConnectionOptions} from 'node:tls';
 import {CERTIFICATE_SHA256,validateCertificateHash,exactEqual} from './phase48-readonly-contract';
 import {validateReadTarget} from './phase48-readonly-target';
 
@@ -75,4 +75,26 @@ export function verifiedProductionConfig(readCredential:()=>string,env:NodeJS.Pr
 export function assertVerifiedTls(ssl:ConnectionOptions,hostname:string){
  if(ssl.rejectUnauthorized!==true||ssl.minVersion!=='TLSv1.3'||ssl.servername!==hostname||ssl.checkServerIdentity!==checkServerIdentity||!Buffer.isBuffer(ssl.ca))throw Error('READ_TLS_CONFIGURATION_INVALID');
  validateCertificateHash(sha(ssl.ca as Buffer).toUpperCase());
+}
+
+// pg replaces connection.stream with tls.connect(options). PoolClient is the
+// acquired Client, not the backend represented by pg_stat_ssl behind a pooler.
+// Resolve only this driver-owned path; never search arbitrary nested sockets.
+export function inspectProductionTls(client:unknown){
+ const pg=client as {connection?:{stream?:unknown;ssl?:ConnectionOptions};connectionParameters?:{host?:string;ssl?:ConnectionOptions}};
+ const hostname=pg?.connectionParameters?.host,ssl=pg?.connection?.ssl;
+ need(typeof hostname==='string'&&ssl&&ssl===pg.connectionParameters?.ssl,'READ_TLS_CLIENT_INVALID');
+ assertVerifiedTls(ssl,hostname);
+ const socket=pg.connection?.stream;
+ need(socket instanceof TLSSocket,'READ_TLS_SOCKET_INVALID');
+ const state=socket as TLSSocket & {_secureEstablished?:boolean;secureConnecting?:boolean};
+ need(state._secureEstablished===true&&state.secureConnecting===false&&!socket.destroyed,'READ_TLS_HANDSHAKE_INCOMPLETE');
+ need(socket.encrypted===true&&socket.authorized===true&&!socket.authorizationError,'READ_TLS_AUTHORIZATION_INVALID');
+ need(socket.servername===hostname,'READ_TLS_SERVERNAME_INVALID');
+ const peer=socket.getPeerCertificate(true);
+ need(peer.raw&&peer.raw.length>0&&!checkServerIdentity(hostname,peer),'READ_TLS_PEER_IDENTITY_INVALID');
+ const protocol=socket.getProtocol(),cipher=socket.getCipher();
+ need(protocol==='TLSv1.3','READ_TLS_PROTOCOL_INVALID');
+ need(cipher&&typeof cipher.standardName==='string'&&cipher.version==='TLSv1.3','READ_TLS_CIPHER_INVALID');
+ return {protocol,stream_constructor:'TLSSocket',stream_type:'node:tls.TLSSocket',socket_path:'client.connection.stream',encrypted:true,authorized:true,authorizationError:null,secure_connect_complete:true,rejectUnauthorized:true,servername_matches:true,checkServerIdentity_active:true,hostname_verified:true,chain_verified:true,external_ca_verified:true,certificate_sha256:CERTIFICATE_SHA256,cipher:{name:cipher.standardName,version:cipher.version},peer_certificate_present:true,peer_certificate_sha256:sha(peer.raw)};
 }

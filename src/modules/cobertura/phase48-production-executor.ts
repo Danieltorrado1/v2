@@ -1,4 +1,5 @@
 import type {PoolClient} from 'pg';
+import {inspectProductionTls} from './phase48-readonly-tls';
 import {validateReadTarget} from './phase48-readonly-target';
 import {validateCertificateHash,parseAuthorizationPhrase,exactEqual,contractDigest,DIGEST_FIELDS} from './phase48-readonly-contract';
 import {createReadOnlyRepository} from './phase48-readonly-repository';
@@ -132,7 +133,7 @@ export async function executeAtomic(db:Db,observer:Db,o:Options){
  try{
   validateOptions(o);const mode=o.mode??'PreflightOnly';
   if(mode!=='MutateProduction'&&o.target!=='Production')await localIdentity(db);
-  else {need((await db.query('SHOW server_version')).rows[0].server_version==='17.6','PRODUCTION_VERSION_INVALID');const tls=(await db.query('SELECT ssl,version FROM pg_stat_ssl WHERE pid=pg_backend_pid()')).rows[0];need(tls?.ssl===true&&tls.version==='TLSv1.3','PRODUCTION_TLS_INVALID');}
+  else {inspectProductionTls(db);inspectProductionTls(observer);need((await db.query('SHOW server_version')).rows[0].server_version==='17.6','PRODUCTION_VERSION_INVALID');}
   if(mode!=='SimulateLocal')need(!o.simulation,'SIMULATION_HOOKS_FORBIDDEN');
   const sql=phaseSql();need(!/\b(?:BEGIN|COMMIT|ROLLBACK)\s*;/i.test(sql),'INNER_TRANSACTION_BOUNDARY');
   await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE READ ONLY');transaction=true;

@@ -1,0 +1,42 @@
+{
+  "scope": "MINIMAL_TLS_TRANSPORT_AND_READONLY_SCALARS",
+  "status": "TLS_VERIFIED",
+  "connection_attempts": 1,
+  "table_queries": 0,
+  "catalog_queries": 0,
+  "productive_data_writes": 0,
+  "ddl": 0,
+  "dml": 0,
+  "health_requests": 0,
+  "code_commit": "9428f22644e895592e940193579d03202b9df1ec",
+  "tls": {
+    "protocol": "TLSv1.3",
+    "stream_constructor": "TLSSocket",
+    "stream_type": "node:tls.TLSSocket",
+    "socket_path": "client.connection.stream",
+    "encrypted": true,
+    "authorized": true,
+    "authorizationError": null,
+    "secure_connect_complete": true,
+    "rejectUnauthorized": true,
+    "servername_matches": true,
+    "checkServerIdentity_active": true,
+    "hostname_verified": true,
+    "chain_verified": true,
+    "external_ca_verified": true,
+    "certificate_sha256": "700723581420DD1AC98FD7E9AC529F0EF210EADCAF87FC868A3AD7D114C2F3B7",
+    "cipher": {
+      "name": "TLS_AES_256_GCM_SHA384",
+      "version": "TLSv1.3"
+    },
+    "peer_certificate_present": true,
+    "peer_certificate_sha256": "03709ca44d1b06e4504da0a83b6ca065761edc704cd5634bcc3894fd5c7b3248"
+  },
+  "secureConnect_observed": true,
+  "postgresql_version": "17.6",
+  "transaction_read_only": "on",
+  "rollback": "CONFIRMED",
+  "client_closed": true,
+  "pool_closed": true,
+  "completed_utc": "2026-10-09T21:15:21.473Z"
+}
