@@ -1,3 +1,5 @@
+> DOCUMENTO HISTÓRICO SUSTITUIDO: no autoriza ejecución. Recibo y post-rollback vigentes: [certificación nueva](phase48-postrollback-eight-digests.md).
+
 # Contrato del preflight READ ONLY
 
 Rama `fix/phase48-readonly-preflight-contract`, creada exactamente desde
@@ -26,7 +28,7 @@ emite estado, run_id, ubicación de recibo, código de motivo y writes=0.
 ## Ocho digests
 
 Todos se calculan dentro del snapshot principal: `schema_digest`,
-`source_digest`, `phase48_candidate_digest`, `albeny_before_digest`,
+`source_digest`, `phase48_candidates_digest`, `albeny_before_digest`,
 `dary_before_digest`, `protected_tables_digest`, `periods_4_6_digest` y
 `write_set_before_digest`.
 

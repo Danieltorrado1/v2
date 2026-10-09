@@ -21,7 +21,7 @@ async function main(){
  validateReadOptions(options); // Unknown modes fail before files, health or transport.
  const branch=execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim();
  const dirty=execFileSync('git',['status','--porcelain','--untracked-files=all'],{encoding:'utf8'}).trim().split(/\r?\n/).filter(s=>s&&s!=='?? reports/phase48-production-preflight-current.json');
- if(branch!=='fix/phase48-authorization-tls-contract'||dirty.length)throw Error('CLEAN_READ_BRANCH_REQUIRED');
+ if(branch!=='fix/phase48-postrollback-eight-digests'||dirty.length)throw Error('CLEAN_READ_BRANCH_REQUIRED');
  execFileSync('git',['merge-base','--is-ancestor','b653184',commit],{stdio:'ignore'});
  assertCertifiedContract(commit);
  execFileSync('git',['diff','--exit-code',MUTATOR_COMMIT,commit,'--','src/modules/cobertura/phase48-production-executor.ts','src/modules/cobertura/phase48-historical-controlled.ts','src/modules/cobertura/phase48-historical-domain.ts','src/scripts/phase48-historical-production.ts','sql/phase-48-operational-assignment-identities.sql','src/modules/cobertura/phase48-readonly-tls.ts','src/modules/cobertura/phase48-readonly-target.ts','src/modules/cobertura/phase48-readonly-repository.ts','src/modules/cobertura/phase48-readonly-receipts.ts','src/modules/cobertura/phase48-production-authorization.ts'],{stdio:'ignore'});
@@ -39,12 +39,14 @@ async function main(){
   delete config.options;
  }else if(value('--credential-file'))throw Error('LOCAL_CREDENTIAL_FILE_FORBIDDEN');
  const pool=new Pool({...config,max:1,connectionTimeoutMillis:10000,idleTimeoutMillis:1000});pool.on('error',()=>{});
+ let poolClosed=false;
  try{
   const receipt=await runReadOnlyLifecycle(async()=>{const client=await pool.connect();return {client,close:async()=>{client.release(true);}};},options);
+  try{await pool.end();poolClosed=true;receipt.pool_closed=true;}catch{Object.assign(receipt,{status:'STOPPED_DRIFT',reason:'POOL_CLOSE_FAILED',stable:false,authorization_status:'REVOCADA',authorization_phrase:null,nonce:null,expires_at:null,pool_closed:false});}
   if(tlsEvidence)receipt.tls={...tlsEvidence,protocol:receipt.postgresql?.ssl?'TLSv1.3':null};
   const path=saveReadReceipt(target==='Production'?'reports':value('--receipt-directory')??'tmp/phase48-production-receipts',receipt);
   console.log(JSON.stringify({status:receipt.status,run_id:receipt.run_id,receipt:path,reason:receipt.reason,writes:0}));if(receipt.status!=='PENDIENTE_DE_AUTORIZACION')process.exitCode=1;
- }finally{await pool.end();clearReadTlsEnvironment();}
+ }finally{if(!poolClosed)await pool.end();clearReadTlsEnvironment();}
 }
 async function health(syncOff:boolean):Promise<ReadFlags>{
  const response=await fetch('https://api.empiriasuite.com/api/health',{signal:AbortSignal.timeout(15000)}),body=await response.json(),data=body.data,outbox=data?.integracion_outbox;

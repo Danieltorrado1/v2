@@ -1,3 +1,5 @@
+> DOCUMENTO HISTÓRICO SUSTITUIDO: todas sus frases quedan REVOCADAS. Véase [contrato vigente](phase48-postrollback-eight-digests.md).
+
 # Certificación del contrato TLS de autorización Phase 48
 
 Rama: `fix/phase48-authorization-tls-contract`.
@@ -27,7 +29,7 @@ Certificado oficial externo, sin modificaciones:
 Esta es una plantilla documental, no una autorización ni un nonce utilizable. `HEAD_READONLY` será el SHA exacto del HEAD de entrega que ejecute un próximo preflight autorizado. Cada digest y el nonce tendrá 64 caracteres hexadecimales; los ocho digests y el nonce usan minúsculas. El hash del certificado exige exactamente las mayúsculas indicadas. El orden y todos los bytes de la frase son obligatorios:
 
 ```text
-AUTHORIZE_PHASE48_HISTORICAL|readonly_runner_commit=<HEAD_READONLY>|mutator_commit=9c344ce12ae196558ca1dab1c8f52a14150cdda7|backup_sha256=4271775ee853bf03b9f70402f7ecfd7becbe048269e3b10c76f027f981303e26|certificate_sha256=700723581420DD1AC98FD7E9AC529F0EF210EADCAF87FC868A3AD7D114C2F3B7|project_ref=scuvsocqibbubqnesvuf|empresa=15|contrato=24|actor=12|expected_rows=730|schema_digest=<64hex>|source_digest=<64hex>|phase48_candidate_digest=<64hex>|albeny_before_digest=<64hex>|dary_before_digest=<64hex>|protected_tables_digest=<64hex>|periods_4_6_digest=<64hex>|write_set_before_digest=<64hex>|nonce=<64hex>|issued_at=<UTC_ISO_MILLISECONDS>|expires_at=<UTC_ISO_MILLISECONDS>|OUTBOX=false|SYNC=false|RECALC=false|suppressExternalSync=true|preserveOperationalSources=true|noPayrollRecalculation=true|atomicPhase48AndCorrections=true|status=PENDIENTE_DE_AUTORIZACION
+Plantilla anterior revocada. Contrato vigente: phase48-postrollback-eight-digests.md
 ```
 
 El parser reconstruye y compara la frase completa en tiempo constante para entradas de igual tamaño. Rechaza campos ausentes, adicionales, duplicados, reordenados, espacios, escapes, números alternativos, certificado incorrecto y frases del mutador sustituido. La emisión no admite fecha futura ni caducidad superior a diez minutos. El recibo, la autorización, su parser y la comprobación/consumo del nonce exigen el mismo `certificate_sha256`.

@@ -76,7 +76,7 @@ async function authorizationBaseline(db:Db,o:Options,s:Snapshot){
  const fields=parseAuthorizationPhrase(o.authorizationPhrase),repo=createReadOnlyRepository(db);
  await repo.safePolicies();
  const candidates=await repo.candidates(),coverage=await repo.coverage(),affected=await repo.affected(),minimal=await repo.minimalState();
- const actual={schema_digest:contractDigest({schema:s.schema,constraints:s.constraints,indexes:s.indexes,routines:s.routines,triggers:s.triggers}),source_digest:s.digest,phase48_candidate_digest:contractDigest(candidates),albeny_before_digest:minimal.albeny_before_digest,dary_before_digest:minimal.dary_before_digest,protected_tables_digest:contractDigest(s.data.filter(r=>!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(r.table))),periods_4_6_digest:minimal.periods_4_6_digest,write_set_before_digest:await repo.writeSet(s,candidates,coverage,affected)};
+ const actual={schema_digest:contractDigest({schema:s.schema,constraints:s.constraints,indexes:s.indexes,routines:s.routines,triggers:s.triggers}),source_digest:s.digest,phase48_candidates_digest:contractDigest(candidates),albeny_before_digest:minimal.albeny_before_digest,dary_before_digest:minimal.dary_before_digest,protected_tables_digest:contractDigest(s.data.filter(r=>!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(r.table))),periods_4_6_digest:minimal.periods_4_6_digest,write_set_before_digest:await repo.writeSet(s,candidates,coverage,affected)};
  for(const key of DIGEST_FIELDS)need(exactEqual(actual[key],fields[key]),'AUTHORIZATION_BASELINE_CHANGED:'+key);
 }
 async function state(db:Db,s:Snapshot){

@@ -25,7 +25,7 @@ test('static dependency barrier: no imports or dispatch to mutation modules',()=
    if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&['require','eval','Function','applyProductionMutation','executeAtomic'].includes(node.expression.text))assert.fail('Forbidden call '+node.expression.text);
    if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==='query'&&node.arguments[0]){
     const arg=node.arguments[0];if(ts.isStringLiteral(arg)||ts.isNoSubstitutionTemplateLiteral(arg)){
-     const sql=arg.text;if(!/^(BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY|BEGIN READ ONLY|ROLLBACK|SET TRANSACTION ISOLATION LEVEL REPEATABLE READ$|SET LOCAL (statement_timeout|lock_timeout|search_path)=)/.test(sql))assertReadQuery(sql);
+     const sql=arg.text;if(!/^(BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY|BEGIN$|ROLLBACK|SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY$|SET LOCAL (statement_timeout|lock_timeout|search_path)=)/.test(sql))assertReadQuery(sql);
     }else if(ts.isTemplateExpression(arg))assert.ok(/^SELECT\b/.test(arg.head.text),'Non-read query template');
     else assert.ok(file.endsWith('repository.ts')&&ts.isIdentifier(arg)&&arg.text==='sql','Opaque SQL outside repository barrier');
    }
@@ -53,7 +53,7 @@ test('authorization rejects each missing field, invalid digest, unsafe flag and 
  const fields=authorizationFields(receipt);
  for(const k of Object.keys(fields)){const missing={...fields};delete missing[k];assert.throws(()=>buildAuthorizationPhrase(missing),/AUTHORIZATION_FIELD_REQUIRED/);}
  for(const k of DIGEST_FIELDS)assert.throws(()=>buildAuthorizationPhrase({...fields,[k]:'invalid'}),/AUTHORIZATION_FIELD_INVALID/);
- assert.throws(()=>buildAuthorizationPhrase({...fields,OUTBOX:true}),/AUTHORIZATION_FLAGS_INVALID/);
+ assert.throws(()=>buildAuthorizationPhrase({...fields,strictAudit:false}),/AUTHORIZATION_FLAGS_INVALID/);
  assert.throws(()=>buildAuthorizationPhrase({...fields,expires_at:new Date(now+600001).toISOString()}),/AUTHORIZATION_EXPIRATION_INVALID/);
  assert.throws(()=>buildAuthorizationPhrase({...fields,expires_at:fields.issued_at}),/AUTHORIZATION_EXPIRATION_INVALID/);
  assert.equal(buildAuthorizationPhrase(fields),buildAuthorizationPhrase(Object.fromEntries(Object.entries(fields).reverse())));
