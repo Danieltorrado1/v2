@@ -17,6 +17,7 @@ test('strict phrase rejects missing/wrong/duplicate/unknown certificate, whitesp
  assert.equal(parseAuthorizationPhrase(phrase).mutator_commit,MUTATOR_COMMIT);
  for(const bad of [phrase.replace('|certificate_sha256='+CERTIFICATE_SHA256,''),phrase.replace(CERTIFICATE_SHA256,'0'.repeat(64)),phrase+'|certificate_sha256='+CERTIFICATE_SHA256,phrase+'|extra=true',phrase+' ',phrase.replace('empresa=15','empresa=015'),phrase.replace('empresa=15','empresa=+15'),phrase.replace(CERTIFICATE_SHA256,CERTIFICATE_SHA256.toLowerCase()),phrase.replace('certificate_sha256=',' certificate_sha256='),phrase.replace('mutator_commit='+MUTATOR_COMMIT,'mutator_commit=dcbd37a'),phrase.replace('mutator_commit='+MUTATOR_COMMIT,'mutator_commit=dcbd37adacc9c6a0a67439eaef92a8b47b8abf67')])assert.throws(()=>parseAuthorizationPhrase(bad));
  assert.ok(!phrase.includes('BEGIN CERTIFICATE'));assert.ok(!phrase.includes('EmpiriaCertificates'));
+ assert.throws(()=>parseAuthorizationPhrase(phrase.replace('mutator_commit='+MUTATOR_COMMIT,'mutator_commit=57063aedca261557256a23eee616dae473b94f54')));
  const fields=authorizationFields(r);assert.throws(()=>buildAuthorizationPhrase({...fields,certificate_sha256:undefined}),/REQUIRED/);
  assert.throws(()=>buildAuthorizationPhrase({...fields,certificate_sha256:'0'.repeat(64)}),/CERTIFICATE_SHA256_INVALID/);
  assert.throws(()=>buildAuthorizationPhrase({...fields,extra:true}),/REQUIRED/);

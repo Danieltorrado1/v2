@@ -1,0 +1,584 @@
+{
+  "schema_version": 1,
+  "base_commit": "d25043019fca8c5dd6dc8513f67f083a30de5540",
+  "branch": "fix/phase48-atomic-receipt",
+  "platform": "win32",
+  "node": "v24.14.1",
+  "started_utc": "2026-10-09T20:20:19.277Z",
+  "production_connections": 0,
+  "production_writes": 0,
+  "productive_env_read": false,
+  "productive_ca_read": false,
+  "productive_health_requests": 0,
+  "database_queries_executed": 0,
+  "merge": false,
+  "deploy": false,
+  "production_phrase_generated": false,
+  "checks": [
+    {
+      "name": "atomic + contract + postrollback 8/8 + TLS + target + runner + mutator + rollback/idempotence",
+      "command": [
+        "C:\\Program Files\\nodejs\\node.exe",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-reporter=tap",
+        "src/tests/phase48.atomic-receipts.test.ts",
+        "src/tests/phase48.atomic-mutator-regression.test.ts",
+        "src/tests/phase48.authorization-tls-contract.test.ts",
+        "src/tests/phase48.postrollback-eight.test.ts",
+        "src/tests/phase48.readonly-runner.test.ts",
+        "src/tests/phase48.readonly-target.test.ts",
+        "src/tests/phase48.readonly-tls.test.ts",
+        "src/tests/phase48.production-runner.test.ts"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "backend typecheck",
+      "command": [
+        "cmd.exe",
+        "/d",
+        "/s",
+        "/c",
+        "npm run typecheck"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "backend build",
+      "command": [
+        "cmd.exe",
+        "/d",
+        "/s",
+        "/c",
+        "npm run build"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "FrontendNuevo build",
+      "command": [
+        "cmd.exe",
+        "/d",
+        "/s",
+        "/c",
+        "npm run build"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "git diff --check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "unchanged economics / SQL / transactions / digests / write-set",
+      "command": [
+        "git",
+        "diff",
+        "--exit-code",
+        "d25043019fca8c5dd6dc8513f67f083a30de5540",
+        "--",
+        "src/modules/cobertura/phase48-production-executor.ts",
+        "src/modules/cobertura/phase48-historical-controlled.ts",
+        "src/modules/cobertura/phase48-historical-domain.ts",
+        "src/modules/cobertura/phase48-readonly-repository.ts",
+        "src/modules/cobertura/phase48-readonly-preflight.ts",
+        "src/modules/cobertura/phase48-readonly-target.ts",
+        "src/modules/cobertura/phase48-readonly-tls.ts",
+        "src/modules/cobertura/phase48-production-authorization.ts",
+        "sql/phase-48-operational-assignment-identities.sql"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "test_totals": {
+    "tests": 92,
+    "pass": 92,
+    "fail": 0,
+    "skipped": 0
+  },
+  "scenarios": [
+    {
+      "name": "unchanged mutator preflight READY and rollback through protocol doubles",
+      "pass": true
+    },
+    {
+      "name": "unchanged mutator already-applied idempotence: zero new writes/audits, explicit rollback",
+      "pass": true
+    },
+    {
+      "name": "unchanged mutator snapshot failure rolls back and returns STOPPED",
+      "pass": true
+    },
+    {
+      "name": "unchanged mutator unconfirmed rollback fails closed with UNKNOWN writes",
+      "pass": true
+    },
+    {
+      "name": "unchanged mutator induced phase48 failure reports ROLLED_BACK, never COMMIT (mock query only)",
+      "pass": true
+    },
+    {
+      "name": "unchanged mutator independent baseline drift stops before mock DDL/DML",
+      "pass": true
+    },
+    {
+      "name": "complete UTF-8 JSON immediately readable; published SHA/size and Unicode/newlines stable",
+      "pass": true
+    },
+    {
+      "name": "controlled failure before-write: no visible partial JSON and no owned temporary remains",
+      "pass": true
+    },
+    {
+      "name": "controlled failure partial-write: no visible partial JSON and no owned temporary remains",
+      "pass": true
+    },
+    {
+      "name": "controlled failure during-write: no visible partial JSON and no owned temporary remains",
+      "pass": true
+    },
+    {
+      "name": "controlled failure fsync: no visible partial JSON and no owned temporary remains",
+      "pass": true
+    },
+    {
+      "name": "controlled failure close: no visible partial JSON and no owned temporary remains",
+      "pass": true
+    },
+    {
+      "name": "controlled failure before-rename: no visible partial JSON and no owned temporary remains",
+      "pass": true
+    },
+    {
+      "name": "controlled failure rename: no visible partial JSON and no owned temporary remains",
+      "pass": true
+    },
+    {
+      "name": "controlled failure verification: no visible partial JSON and no owned temporary remains",
+      "pass": true
+    },
+    {
+      "name": "short writes complete in a loop; final appears only after fsync and close at rename",
+      "pass": true
+    },
+    {
+      "name": "exact preexisting run/hash is idempotent without opening, deleting or renaming a file",
+      "pass": true
+    },
+    {
+      "name": "different bytes or run_id, malformed JSON, directory, hardlink: no replacement/deletion",
+      "pass": true
+    },
+    {
+      "name": "two publishers collide under exclusive lock; loser preserves winner and its temporary",
+      "pass": true
+    },
+    {
+      "name": "exclusive temp open refuses preexisting unique temp without deleting another owner",
+      "pass": true
+    },
+    {
+      "name": "authorized basename/directory; traversal, NTFS streams and non-receipt names rejected before filesystem access",
+      "pass": true
+    },
+    {
+      "name": "Windows junction/reparse directory and symlink final (equivalent injected lstat) rejected; ACL unchanged",
+      "pass": true
+    },
+    {
+      "name": "READ ONLY and mutator SUCCESS/STOPPED/ROLLED_BACK/baseline use identical publisher",
+      "pass": true
+    },
+    {
+      "name": "native Windows/process observer never sees partial final JSON; simultaneous process loses safely",
+      "pass": true
+    },
+    {
+      "name": "process crash before rename leaves only own closed/synced temp and lock; next publisher fails closed",
+      "pass": true
+    },
+    {
+      "name": "native Windows rename refuses a competing final created after the last existence check",
+      "pass": true
+    },
+    {
+      "name": "strict phrase rejects missing/wrong/duplicate/unknown certificate, whitespace and ambiguous values",
+      "pass": true
+    },
+    {
+      "name": "strict ACTIVE grant uses exact keys, canonical bytes, pinned CA and current phrase",
+      "pass": true
+    },
+    {
+      "name": "nonce binds certificate, entire receipt and final postcheck, expires and is consumed once across publishers",
+      "pass": true
+    },
+    {
+      "name": "bad certificate stops both read lifecycle and TLS config before connection or credential callback",
+      "pass": true
+    },
+    {
+      "name": "mutator static approval checks pinned phrase, CA, nonce and exact confirmation before any query",
+      "pass": true
+    },
+    {
+      "name": "eight independent reads match, two explicit rollbacks, no reused repository/results and no extra files",
+      "pass": true
+    },
+    {
+      "name": "individual drift STOPPED_DRIFT: schema_digest",
+      "pass": true
+    },
+    {
+      "name": "individual drift STOPPED_DRIFT: source_digest",
+      "pass": true
+    },
+    {
+      "name": "individual drift STOPPED_DRIFT: phase48_candidates_digest",
+      "pass": true
+    },
+    {
+      "name": "individual drift STOPPED_DRIFT: albeny_before_digest",
+      "pass": true
+    },
+    {
+      "name": "individual drift STOPPED_DRIFT: dary_before_digest",
+      "pass": true
+    },
+    {
+      "name": "individual drift STOPPED_DRIFT: protected_tables_digest",
+      "pass": true
+    },
+    {
+      "name": "individual drift STOPPED_DRIFT: periods_4_6_digest",
+      "pass": true
+    },
+    {
+      "name": "individual drift STOPPED_DRIFT: write_set_before_digest",
+      "pass": true
+    },
+    {
+      "name": "posterior failure revokes authorization: open",
+      "pass": true
+    },
+    {
+      "name": "posterior failure revokes authorization: snapshot",
+      "pass": true
+    },
+    {
+      "name": "posterior failure revokes authorization: candidates",
+      "pass": true
+    },
+    {
+      "name": "posterior failure revokes authorization: coverage",
+      "pass": true
+    },
+    {
+      "name": "posterior failure revokes authorization: affected",
+      "pass": true
+    },
+    {
+      "name": "posterior failure revokes authorization: minimalState",
+      "pass": true
+    },
+    {
+      "name": "posterior failure revokes authorization: writeSet",
+      "pass": true
+    },
+    {
+      "name": "posterior failure revokes authorization: rollback",
+      "pass": true
+    },
+    {
+      "name": "connection/session independence and complete release required: same_client",
+      "pass": true
+    },
+    {
+      "name": "connection/session independence and complete release required: same_pid",
+      "pass": true
+    },
+    {
+      "name": "connection/session independence and complete release required: same_transaction",
+      "pass": true
+    },
+    {
+      "name": "connection/session independence and complete release required: close",
+      "pass": true
+    },
+    {
+      "name": "exact ordered fields reject aliases, duplicates, every missing/extra/altered field and prior contract",
+      "pass": true
+    },
+    {
+      "name": "default preflight accepts exact scope; unknown modes and every unsafe scope are rejected",
+      "pass": true
+    },
+    {
+      "name": "each flag and public health gate fails closed",
+      "pass": true
+    },
+    {
+      "name": "full confirmation binds run, commit, backup and immediate baseline but remains revoked",
+      "pass": true
+    },
+    {
+      "name": "new external approval requires exact phrase, fresh expiry, enabled process and observers",
+      "pass": true
+    },
+    {
+      "name": "revoked mutation returns STOPPED before even querying a supplied client",
+      "pass": true
+    },
+    {
+      "name": "simulation and original local runner reject remote identities without a network connection",
+      "pass": true
+    },
+    {
+      "name": "remote preflight also requires a new authorization; simulation cannot target production",
+      "pass": true
+    },
+    {
+      "name": "production transport shares exact target validation with READ ONLY",
+      "pass": true
+    },
+    {
+      "name": "read modes never accept mutation, resume or enabling options",
+      "pass": true
+    },
+    {
+      "name": "repository blocks writable CTE, statement stacking, row locks and side-effect functions",
+      "pass": true
+    },
+    {
+      "name": "static dependency barrier: no imports or dispatch to mutation modules",
+      "pass": true
+    },
+    {
+      "name": "unavailable flags stop without issuing any query or inventing values",
+      "pass": true
+    },
+    {
+      "name": "canonical digests preserve NULL and microseconds while normalizing timestamp offsets",
+      "pass": true
+    },
+    {
+      "name": "authorization rejects each missing field, invalid digest, unsafe flag and expiry",
+      "pass": true
+    },
+    {
+      "name": "target 01: direct official host",
+      "pass": true
+    },
+    {
+      "name": "target 02: shared transaction pooler uses exact username identity",
+      "pass": true
+    },
+    {
+      "name": "target 03: other official region and legacy regional endpoint",
+      "pass": true
+    },
+    {
+      "name": "target 04: other project is rejected",
+      "pass": true
+    },
+    {
+      "name": "target 05: partial project and suffix are rejected",
+      "pass": true
+    },
+    {
+      "name": "target 06: lookalike and additional domain suffix are rejected",
+      "pass": true
+    },
+    {
+      "name": "target 07: identity embedded in password grants nothing",
+      "pass": true
+    },
+    {
+      "name": "target 08: localhost is rejected",
+      "pass": true
+    },
+    {
+      "name": "target 09: private IPv4 addresses are rejected",
+      "pass": true
+    },
+    {
+      "name": "target 10: local/private IPv6 literals are rejected",
+      "pass": true
+    },
+    {
+      "name": "target 11: malformed URL produces a sanitized error only",
+      "pass": true
+    },
+    {
+      "name": "target 12: encoded at sign is parsed without splitting credentials",
+      "pass": true
+    },
+    {
+      "name": "target 13: encoded reserved characters are preserved safely",
+      "pass": true
+    },
+    {
+      "name": "target 14: pooler username without explicit project is rejected",
+      "pass": true
+    },
+    {
+      "name": "target 15: other project in pooler username is rejected",
+      "pass": true
+    },
+    {
+      "name": "target 16: deceptive query identity and transport overrides are rejected",
+      "pass": true
+    },
+    {
+      "name": "target 17: hostname case normalizes; username case stays exact",
+      "pass": true
+    },
+    {
+      "name": "target 18: env whitespace, quotes and comments are supported",
+      "pass": true
+    },
+    {
+      "name": "target 19: missing credential key fails closed",
+      "pass": true
+    },
+    {
+      "name": "target 20: duplicate conflicting credential keys fail closed",
+      "pass": true
+    },
+    {
+      "name": "target 21: sanitized real format accepted only for exact expected project",
+      "pass": true
+    },
+    {
+      "name": "offline SSL is mandatory in transport and cannot be downgraded",
+      "pass": true
+    },
+    {
+      "name": "official DNS direct format supports IPv6 without accepting literal IP identity",
+      "pass": true
+    },
+    {
+      "name": "future server identity requires PostgreSQL 17, tenant, tables and certified schema",
+      "pass": true
+    },
+    {
+      "name": "TLS certification: external paths, CA constraints, strict trust, hostname and pg SSLRequest",
+      "pass": true
+    }
+  ],
+  "observer": {
+    "platform": "win32",
+    "node": "v24.14.1",
+    "observer_absences": 64,
+    "complete_reads": 12,
+    "partial_json_observations": 0
+  },
+  "guard_evidence": [
+    {
+      "guard": "PHASE48_ATOMIC_LOCAL",
+      "production_connections": 0,
+      "production_writes": 0,
+      "forbidden_attempts": 0,
+      "loopback_connect_calls": 2
+    },
+    {
+      "guard": "PHASE48_ATOMIC_LOCAL",
+      "production_connections": 0,
+      "production_writes": 0,
+      "forbidden_attempts": 0,
+      "loopback_connect_calls": 2
+    },
+    {
+      "guard": "PHASE48_ATOMIC_LOCAL",
+      "production_connections": 0,
+      "production_writes": 0,
+      "forbidden_attempts": 0,
+      "loopback_connect_calls": 2
+    },
+    {
+      "guard": "PHASE48_ATOMIC_LOCAL",
+      "production_connections": 0,
+      "production_writes": 0,
+      "forbidden_attempts": 0,
+      "loopback_connect_calls": 2
+    },
+    {
+      "guard": "PHASE48_ATOMIC_LOCAL",
+      "production_connections": 0,
+      "production_writes": 0,
+      "forbidden_attempts": 0,
+      "loopback_connect_calls": 2
+    },
+    {
+      "guard": "PHASE48_ATOMIC_LOCAL",
+      "production_connections": 0,
+      "production_writes": 0,
+      "forbidden_attempts": 0,
+      "loopback_connect_calls": 2
+    },
+    {
+      "guard": "PHASE48_ATOMIC_LOCAL",
+      "production_connections": 0,
+      "production_writes": 0,
+      "forbidden_attempts": 0,
+      "loopback_connect_calls": 2
+    },
+    {
+      "guard": "PHASE48_ATOMIC_LOCAL",
+      "production_connections": 0,
+      "production_writes": 0,
+      "forbidden_attempts": 0,
+      "loopback_connect_calls": 9
+    },
+    {
+      "guard": "PHASE48_ATOMIC_LOCAL",
+      "production_connections": 0,
+      "production_writes": 0,
+      "forbidden_attempts": 0,
+      "loopback_connect_calls": 0
+    }
+  ],
+  "frontend_large_chunk_warning": true,
+  "protected_files": [
+    "src/modules/cobertura/phase48-production-executor.ts",
+    "src/modules/cobertura/phase48-historical-controlled.ts",
+    "src/modules/cobertura/phase48-historical-domain.ts",
+    "src/modules/cobertura/phase48-readonly-repository.ts",
+    "src/modules/cobertura/phase48-readonly-preflight.ts",
+    "src/modules/cobertura/phase48-readonly-target.ts",
+    "src/modules/cobertura/phase48-readonly-tls.ts",
+    "src/modules/cobertura/phase48-production-authorization.ts",
+    "sql/phase-48-operational-assignment-identities.sql"
+  ],
+  "mutator_commit": "bdebcb2b0fcd1ab63f50c0177c6c403a7b36c7e7",
+  "code_sha256": {
+    "src/modules/cobertura/phase48-readonly-receipts.ts": "b390afc5a57a45b1cf25806f5fb17577337a947a7908046a554d6387e682d42b",
+    "src/modules/cobertura/phase48-readonly-contract.ts": "250db4c5868ed9f0aa903ac44b94af534d2d589361b3c663dba2a2621c00fdb7",
+    "src/scripts/phase48-historical-production.ts": "3a33bd5a61135b885f3099dbd5efabde3ff32e73f3dc7ea05aa742d98890f7ec",
+    "src/scripts/phase48-production-readonly.ts": "4050c3bc10b842bb82de5123d6dd402b0bd4c6f30629e60aae69393f85c2f8b5",
+    "src/scripts/certify-phase48-readonly-contract-local.cjs": "8b96d43238c0fc9c0d2f46e4c283a55a671ae9a752d2f75fdcdb786841c8169a",
+    "src/scripts/certify-phase48-atomic-receipts.cjs": "74cc3d84c6a078e868382d1b82eaa8cccfb84726507d1cc9e5c9641b12f67f69",
+    "src/scripts/phase48-atomic-local-guard.cjs": "2797063955116a105f3d35cecb982c8040a107c91dac520e46d26ad7a147f43b",
+    "src/tests/phase48.atomic-receipts.test.ts": "a9333bdd4402f926bdaccef18f90fc6319588f5dddd3e3d216c02f6a2391c0cd",
+    "src/tests/phase48.atomic-mutator-regression.test.ts": "8d192806807d48f7e23f8ab71cfe37a050e437bc0cc58c543e5de0091a26e444",
+    "src/tests/phase48.authorization-tls-contract.test.ts": "3f0e23f39c05fbb21cd12f9514e1977ff8b31fe74d10af325f4c92f8d7e6fa68",
+    "src/tests/phase48.postrollback-eight.test.ts": "812150bd9d9ae2eb90f4c1d528bf4d5d9697acb02452934f4c46a57b6deb4857",
+    "src/tests/phase48.readonly-runner.test.ts": "9493318cc1783c5c6a82f541b6d11079eb053881490c3d603d9563da3948d16c",
+    "src/tests/phase48.readonly-target.test.ts": "5c78045eb74a87e369e118de94c018ac1aeeb95f2790dcdfffba7f12fbdbf45a",
+    "src/tests/phase48.readonly-tls.test.ts": "65c7785b5b8a363acc66d29e1948fe2c35b4dde3b58fbda8805ab505de0fb1ae",
+    "src/tests/phase48.production-runner.test.ts": "b26359b279cf643ca5b8b5ed62abc1250ec782d8f85bbee1fda22684bfb11a76"
+  },
+  "hash_format": "UTF-8 source with CRLF normalized to LF",
+  "revoked_mutator_commit": "57063aedca261557256a23eee616dae473b94f54",
+  "revoked_readonly_runner_through": "d25043019fca8c5dd6dc8513f67f083a30de5540",
+  "success": true,
+  "decision": "PUBLICACIÓN ATÓMICA CERTIFICADA — LISTO PARA NUEVO PREFLIGHT READ ONLY",
+  "completed_utc": "2026-10-09T20:20:42.084Z"
+}
