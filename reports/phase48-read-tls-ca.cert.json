@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "issued_at": "2026-10-09T00:14:42.655Z",
+  "base_commit": "e0686e36d82020868abb94b89d7a6b7220ff5dc9",
+  "branch": "fix/phase48-read-tls-ca",
+  "certificate": {
+    "sha256": "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7",
+    "format": "X509/PEM",
+    "subject": "C=US\nST=Delware\nL=New Castle\nO=Supabase Inc\nCN=Supabase Root 2021 CA",
+    "issuer": "C=US\nST=Delware\nL=New Castle\nO=Supabase Inc\nCN=Supabase Root 2021 CA",
+    "serial_hash": "fe8b71472729efac74e65671beef49aad40d3470c79769768b790ad2059db770",
+    "notBefore": "2021-04-28T10:56:53.000Z",
+    "notAfter": "2031-04-26T10:56:53.000Z",
+    "fingerprint": "80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA",
+    "self_signed": true,
+    "status": "CURRENT"
+  },
+  "certificate_size_bytes": 1367,
+  "tests": {
+    "tls_assertions": 35,
+    "related_pass": 39,
+    "related_fail": 0,
+    "readonly": 30,
+    "previous_runner": 27,
+    "unchanged_mutator": 22,
+    "local_restoration_required_unchanged": true,
+    "typecheck": true,
+    "backend_build": true,
+    "frontendnuevo_build": true,
+    "legacy_frontend_build": "UNAVAILABLE_VITE_NOT_INSTALLED",
+    "diff_check": true
+  },
+  "git_scan": {
+    "all_objects_and_tracked_files": true,
+    "bytes": 1276040990,
+    "certificate_content_matches": 0
+  },
+  "local_certification_hashes": {
+    "readonly": "2fc737e3dc7198674e8f6e3df699d2ddae465e1f200368629e83125649c71253",
+    "mutator": "dc3bad4459187563f13d76ae71a3e139b425903df496c7e1116c7e90c7299e53"
+  },
+  "code_sha256": {
+    "release/certify-phase48-readonly-local.ps1": "5f412aac138c0d190efc7247cb95335a22a990d87a01221314ae645900b78a3a",
+    "src/modules/cobertura/phase48-readonly-tls.ts": "09733c02675210ace160ec7666e525cc2fb57105393375681a37cee03e01f19d",
+    "src/scripts/certify-phase48-tls-git.cjs": "bf568354fe8a18ee66ad323db498c1d102d5709e67599ba47cfa19e2a616ae17",
+    "src/scripts/phase48-production-readonly.ts": "8837950544a3668c9de9f415a172adc4512cf1bf56f902306c85f190e123d8b5",
+    "src/scripts/phase48-readonly-tls-probe.ts": "aeee82793f46c7664be0f20e40a1b67f6b5548056bf986beae2c6b7c403e89bb",
+    "src/tests/fixtures/phase48-tls/.gitattributes": "b5757b7aec37d65c60586966a82d5c06c833389c085d2f00ceb46cad541741f7",
+    "src/tests/fixtures/phase48-tls/README.md": "43ad0bf40eb50b57c681427977dbb8eab79f0ca7bd3b02423bd1259f6d935f3c",
+    "src/tests/fixtures/phase48-tls/ca.crt": "15e7bc23c58f175dda2b88844fa45c10765f9ac1c74bf2277c0a5915c98ad5bc",
+    "src/tests/fixtures/phase48-tls/expired.crt": "aa1bd2628b9a399754abdcb91642fbd7f2741e3017b8a0a4496551846e0ed64a",
+    "src/tests/fixtures/phase48-tls/malformed.crt": "0ce759fd897eed6101cd774372c21ddf2da8038633d2474479e3b6adff344d53",
+    "src/tests/fixtures/phase48-tls/non-ca.crt": "f6cdd4a1fcc12565cd9ee49b4f06ae718a930c038f7c2eb3d7f434584289dad5",
+    "src/tests/fixtures/phase48-tls/server-test-only.key": "e8a4d2720c0ba37058e5ab27c7ae6acda1d60f5d11a51c805f7fc166647446aa",
+    "src/tests/fixtures/phase48-tls/server.crt": "0fc1f0c2667cce8b9032d81ec8de41deb5181cef088b138541fe6eb4f3973209",
+    "src/tests/fixtures/phase48-tls/wrong-ca.crt": "c2bb192f330cb84df33a3a6b6c399c48f71db61f9445e68f1e0905c00e8186a3",
+    "src/tests/phase48.readonly-runner.test.ts": "ff2a21497d0e56383eab4858864f309f3c4fad5a05e5995a8e1b8a511a36369c",
+    "src/tests/phase48.readonly-tls.test.ts": "6c379a4837a01b12e7ced01693a3babfc20727fee2681521aab18879565863e8"
+  },
+  "production_connections": 0,
+  "production_writes": 0,
+  "production_minimal_probe": "PENDING_COMMIT_AND_PUSH",
+  "full_production_preflight_executed": false
+}

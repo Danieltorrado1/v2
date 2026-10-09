@@ -16,11 +16,11 @@ test('repository blocks writable CTE, statement stacking, row locks and side-eff
  for(const sql of ["WITH x AS (DELETE FROM t RETURNING *) SELECT * FROM x","SELECT nextval('s')","SELECT public.lower('x')","SELECT pg_catalog.set_config('x','y',false)",'SELECT * INTO t FROM a','SELECT 1; DELETE FROM t','SELECT * FROM t FOR SHARE','SELECT custom_function()','INSERT INTO t VALUES(1)'])assert.throws(()=>assertReadQuery(sql));
 });
 test('static dependency barrier: no imports or dispatch to mutation modules',()=>{
- const files=['src/modules/cobertura/phase48-readonly-target.ts','src/modules/cobertura/phase48-readonly-contract.ts','src/modules/cobertura/phase48-readonly-repository.ts','src/modules/cobertura/phase48-readonly-preflight.ts','src/modules/cobertura/phase48-readonly-receipts.ts','src/scripts/phase48-production-readonly.ts'];
+ const files=['src/modules/cobertura/phase48-readonly-tls.ts','src/modules/cobertura/phase48-readonly-target.ts','src/modules/cobertura/phase48-readonly-contract.ts','src/modules/cobertura/phase48-readonly-repository.ts','src/modules/cobertura/phase48-readonly-preflight.ts','src/modules/cobertura/phase48-readonly-receipts.ts','src/scripts/phase48-production-readonly.ts'];
  for(const file of files){
   const source=ts.createSourceFile(file,readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true);
   const visit=(node:ts.Node)=>{
-   if(ts.isImportDeclaration(node)){const name=(node.moduleSpecifier as ts.StringLiteral).text;assert.ok(name==='pg'||name==='typescript'||name.startsWith('node:')||/phase48-readonly-(repository|preflight|receipts|contract|target)$/.test(name),'Forbidden dependency '+name);}
+   if(ts.isImportDeclaration(node)){const name=(node.moduleSpecifier as ts.StringLiteral).text;assert.ok(name==='pg'||name==='typescript'||name.startsWith('node:')||/phase48-readonly-(repository|preflight|receipts|contract|target|tls)$/.test(name),'Forbidden dependency '+name);}
    if(ts.isCallExpression(node)&&node.expression.kind===ts.SyntaxKind.ImportKeyword)assert.fail('Dynamic imports are forbidden');
    if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&['require','eval','Function','applyProductionMutation','executeAtomic'].includes(node.expression.text))assert.fail('Forbidden call '+node.expression.text);
    if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==='query'&&node.arguments[0]){
