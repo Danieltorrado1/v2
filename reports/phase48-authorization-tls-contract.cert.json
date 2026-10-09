@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "status": "CERTIFIED_LOCAL_ONLY",
-  "decision": "CONTRATO TLS COMPLETO ? LISTO PARA NUEVO PREFLIGHT READ ONLY",
+  "decision": "CONTRATO TLS COMPLETO — LISTO PARA NUEVO PREFLIGHT READ ONLY",
   "branch": "fix/phase48-authorization-tls-contract",
   "base_commit": "5eeb4f6f0efd5fbb4044991fa44c0d1f08d4222e",
   "mutator_commit": "9c344ce12ae196558ca1dab1c8f52a14150cdda7",
