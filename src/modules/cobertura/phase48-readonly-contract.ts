@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 
 export const DIGEST_FIELDS = ['schema_digest','source_digest','phase48_candidate_digest','albeny_before_digest','dary_before_digest','protected_tables_digest','periods_4_6_digest','write_set_before_digest'] as const;
 // Pinned to the replacement mutator commit after local certification.
-export const MUTATOR_COMMIT = 'ffffffffffffffffffffffffffffffffffffffff';
+export const MUTATOR_COMMIT = '9c344ce12ae196558ca1dab1c8f52a14150cdda7';
 export const CERTIFICATE_SHA256 = '700723581420DD1AC98FD7E9AC529F0EF210EADCAF87FC868A3AD7D114C2F3B7';
 export function exactEqual(a:unknown,b:unknown):boolean {
  if(typeof a!=='string'||typeof b!=='string')return false;
