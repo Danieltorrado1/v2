@@ -1,0 +1,785 @@
+{
+  "schema_version": 4,
+  "certification": "LOCAL_ONLY",
+  "base_commit": "dba731471164e5ff3c24ec64d868dbabddd327d8",
+  "branch": "fix/phase48-postrollback-eight-digests",
+  "mutator_commit": "57063aedca261557256a23eee616dae473b94f54",
+  "readonly_runner_commit_resolution": "Exact delivered HEAD, checked before connecting",
+  "preserved_receipt": {
+    "path": "C:/Users/CORE ULTRA/Documents/EmpiriaBackups/phase48-modalidad-pre-migracion-20261007T132031Z/stopped-preflights/phase48-preflight-5aef16dc-5729-4a56-b5c2-3213157fc496.stopped.json",
+    "size_bytes": 6025,
+    "sha256": "5846563E3DC293D5D5DC6476566A266DAC90C10AF19F215E51DBEBCFD0C2A817",
+    "manifest": "C:/Users/CORE ULTRA/Documents/EmpiriaBackups/phase48-modalidad-pre-migracion-20261007T132031Z/stopped-preflights/phase48-preflight-5aef16dc-5729-4a56-b5c2-3213157fc496.manifest.json",
+    "secrets": false,
+    "personal_rows": false
+  },
+  "backup_sha256": "4271775ee853bf03b9f70402f7ecfd7becbe048269e3b10c76f027f981303e26",
+  "certificate_sha256": "700723581420DD1AC98FD7E9AC529F0EF210EADCAF87FC868A3AD7D114C2F3B7",
+  "canonical_names": [
+    "readonly_runner_commit",
+    "mutator_commit",
+    "backup_sha256",
+    "certificate_sha256",
+    "schema_digest",
+    "source_digest",
+    "phase48_candidates_digest",
+    "albeny_before_digest",
+    "dary_before_digest",
+    "protected_tables_digest",
+    "periods_4_6_digest",
+    "write_set_before_digest"
+  ],
+  "modified_files": [
+    "release/certify-phase48-readonly-local.ps1",
+    "reports/phase48-authorization-tls-contract.md",
+    "reports/phase48-postrollback-eight-digests.cert.json",
+    "reports/phase48-postrollback-eight-digests.md",
+    "reports/phase48-readonly-preflight-contract.md",
+    "src/modules/cobertura/phase48-production-executor.ts",
+    "src/modules/cobertura/phase48-readonly-contract.ts",
+    "src/modules/cobertura/phase48-readonly-preflight.ts",
+    "src/modules/cobertura/phase48-readonly-receipts.ts",
+    "src/scripts/certify-phase48-production-local.cjs",
+    "src/scripts/certify-phase48-readonly-contract-local.cjs",
+    "src/scripts/phase48-historical-production.ts",
+    "src/scripts/phase48-production-readonly.ts",
+    "src/tests/phase48.authorization-tls-contract.test.ts",
+    "src/tests/phase48.postrollback-eight.test.ts",
+    "src/tests/phase48.readonly-runner.test.ts"
+  ],
+  "source_sha256_lf": {
+    "release/certify-phase48-readonly-local.ps1": "36c372d9371050b2c65a4b41203baadd660400ccb5fec13641ab6787930cc634",
+    "sql/phase-48-operational-assignment-identities.sql": "166b42e5eeddf76d95f80f42ca8b2f626e1624cae082e90447f588b17d0dd2bf",
+    "src/modules/cobertura/phase48-historical-controlled.ts": "30fdedda4c94b369d0fe3a9c978aa0b19209cff47b08d97748901adac3526bdc",
+    "src/modules/cobertura/phase48-historical-domain.ts": "be67949a3efe93cae92680cb2455f82bf8a5ed649a544ee7885eda4461d869eb",
+    "src/modules/cobertura/phase48-production-authorization.ts": "f797cdfea4e3736eed2854802e5dc07b891e5a91e59ade6f43f31cc5d67d4df7",
+    "src/modules/cobertura/phase48-production-executor.ts": "102a945205abfd5398c84822521d5720becd926c52d6f69573e7ff869c037908",
+    "src/modules/cobertura/phase48-readonly-contract.ts": "5adbf4fe0d7627ebe3aaad8f17f0ffc7dec3681d79b293d2b609ed506ddbad7b",
+    "src/modules/cobertura/phase48-readonly-preflight.ts": "357fa8778eea41b488f2eff300342f14a96f0a6b66fd723ab120203bf75b818c",
+    "src/modules/cobertura/phase48-readonly-receipts.ts": "d423e5d205d4f53bc044798bc3e3d22460fc891e32fcfb9ea74da031515fa556",
+    "src/modules/cobertura/phase48-readonly-repository.ts": "bdb67792ee9608c1fd876c0b3cd29c4d256bdae0867069d3bd06045a42dd2ca2",
+    "src/modules/cobertura/phase48-readonly-target.ts": "cd1c4a9b56746c70157385b80049940bf93dd0bf8d0d687b8a49ecd7800ff3b2",
+    "src/modules/cobertura/phase48-readonly-tls.ts": "70007307ca5a01a8132e96aa86e332885af7ba1a5af654e45d4f955739da8bc0",
+    "src/scripts/certify-phase48-production-local.cjs": "f73711e895b82b966ef975d48bb7f965489f524f2e6e79c4afdae7720f48c5b7",
+    "src/scripts/certify-phase48-readonly-contract-local.cjs": "0d508b25a52629987f58c4de21a27bbc419abfe64dc3a76ab9d6b2531596c964",
+    "src/scripts/phase48-historical-production.ts": "657503cc2a9d3475a565f65a280552ae79f8c7d13ccd0168a27ac8b1a5c9c407",
+    "src/scripts/phase48-production-readonly.ts": "5f8a796aaaaaf9f88c277264241ae7f0dbe2e5b3c24ad5ac39935bb533bbe5a9",
+    "src/tests/phase48.authorization-tls-contract.test.ts": "b28ab50e9502ffe1b6a11890e9eed402b9079bca8532027b96c6a950b96174be",
+    "src/tests/phase48.postrollback-eight.test.ts": "d74b9ea322cae267b1fe4f314df3526a014ac401ab9b5f84bada9c103181a357",
+    "src/tests/phase48.readonly-runner.test.ts": "9493318cc1783c5c6a82f541b6d11079eb053881490c3d603d9563da3948d16c"
+  },
+  "independent_recomputation": {
+    "first_snapshot": {
+      "pid": 560,
+      "snapshot": "741:741:",
+      "virtual_transaction": "5/2",
+      "read_only": "on",
+      "isolation": "repeatable read",
+      "server_version": "17.11"
+    },
+    "post_rollback_snapshot": {
+      "pid": 16628,
+      "snapshot": "741:741:",
+      "virtual_transaction": "6/2",
+      "read_only": "on",
+      "isolation": "repeatable read",
+      "server_version": "17.11"
+    },
+    "first_digests": {
+      "schema_digest": "2fbba2269828d8573ed10eb5a6749d89e30d62adc75652ac713f375467df19a9",
+      "source_digest": "b1fc27971d5017faab3e463c1daadd6cfa9717eff25d6d6da344e95b5f796d9d",
+      "phase48_candidates_digest": "33919d739240441a98d42ec47aac8c339a3c296988e081229349b798578d2670",
+      "albeny_before_digest": "0a37cc25504a895d82e4025779f4d3fa26a3aa91211d0d9e8344c1ab024f2a1e",
+      "dary_before_digest": "2858028f172999ad3c68d2c229371a555ae15635c53f3580548a2f8f3a712805",
+      "protected_tables_digest": "98dde468ab303aa4d2fc991155c998a7b27e9661d0b55b2c4d321632aa2201be",
+      "periods_4_6_digest": "e26c863494c9ff5d56e646572e7de25ab20045ae7cf0e1411434bc38f9b83459",
+      "write_set_before_digest": "2470ffe5b346514f680a47d35db8da112448a861a1ef42aa081f88162c823c85"
+    },
+    "post_rollback_digests": {
+      "schema_digest": "2fbba2269828d8573ed10eb5a6749d89e30d62adc75652ac713f375467df19a9",
+      "source_digest": "b1fc27971d5017faab3e463c1daadd6cfa9717eff25d6d6da344e95b5f796d9d",
+      "phase48_candidates_digest": "33919d739240441a98d42ec47aac8c339a3c296988e081229349b798578d2670",
+      "albeny_before_digest": "0a37cc25504a895d82e4025779f4d3fa26a3aa91211d0d9e8344c1ab024f2a1e",
+      "dary_before_digest": "2858028f172999ad3c68d2c229371a555ae15635c53f3580548a2f8f3a712805",
+      "protected_tables_digest": "98dde468ab303aa4d2fc991155c998a7b27e9661d0b55b2c4d321632aa2201be",
+      "periods_4_6_digest": "e26c863494c9ff5d56e646572e7de25ab20045ae7cf0e1411434bc38f9b83459",
+      "write_set_before_digest": "2470ffe5b346514f680a47d35db8da112448a861a1ef42aa081f88162c823c85"
+    },
+    "digest_comparison": {
+      "schema_digest": true,
+      "source_digest": true,
+      "phase48_candidates_digest": true,
+      "albeny_before_digest": true,
+      "dary_before_digest": true,
+      "protected_tables_digest": true,
+      "periods_4_6_digest": true,
+      "write_set_before_digest": true
+    },
+    "stable": true,
+    "digests_compared": 8,
+    "rollback": "CONFIRMED",
+    "principal_connection_closed": true,
+    "post_rollback_verification": {
+      "status": "STABLE",
+      "session": {
+        "pid": 16628,
+        "snapshot": "741:741:",
+        "virtual_transaction": "6/2",
+        "read_only": "on",
+        "isolation": "repeatable read",
+        "server_version": "17.11"
+      },
+      "locks": {
+        "waiting": 0,
+        "ddl": 0
+      },
+      "minimal": {
+        "phase48_state": "NO_APLICADA",
+        "count": 730,
+        "candidate_count": 730,
+        "albeny_before_digest": "0a37cc25504a895d82e4025779f4d3fa26a3aa91211d0d9e8344c1ab024f2a1e",
+        "dary_before_digest": "2858028f172999ad3c68d2c229371a555ae15635c53f3580548a2f8f3a712805",
+        "periods_4_6_digest": "e26c863494c9ff5d56e646572e7de25ab20045ae7cf0e1411434bc38f9b83459"
+      },
+      "digests_compared": 8,
+      "rollback": "CONFIRMED",
+      "connection_closed": true
+    },
+    "post_query_evidence": {
+      "scenario": 15,
+      "pass": true,
+      "evidence": {
+        "separate_post_connection": true,
+        "post_pid": 16628,
+        "full_recomputation_queries": 490
+      }
+    }
+  },
+  "tests": {
+    "isolated": {
+      "pass": 66,
+      "fail": 0
+    },
+    "individual_drift": {
+      "pass": 8,
+      "total": 8,
+      "fields": [
+        "schema_digest",
+        "source_digest",
+        "phase48_candidates_digest",
+        "albeny_before_digest",
+        "dary_before_digest",
+        "protected_tables_digest",
+        "periods_4_6_digest",
+        "write_set_before_digest"
+      ],
+      "status": "STOPPED_DRIFT",
+      "nonce": "REVOCADA",
+      "authorization_phrase": null
+    },
+    "tls_assertions": 37,
+    "readonly_contract": {
+      "pass": 30,
+      "total": 30,
+      "scenarios": [
+        {
+          "scenario": 1,
+          "pass": true,
+          "evidence": "one final receipt; no index, raw, preview or authorization file"
+        },
+        {
+          "scenario": 2,
+          "pass": true,
+          "evidence": "no temporary after success/failure; concurrent publication refused without deleting another owner"
+        },
+        {
+          "scenario": 3,
+          "pass": true,
+          "evidence": "exactly eight mandatory digests"
+        },
+        {
+          "scenario": 4,
+          "pass": true,
+          "evidence": {
+            "write_set_before_digest": "2470ffe5b346514f680a47d35db8da112448a861a1ef42aa081f88162c823c85",
+            "stable_across_runs": true
+          }
+        },
+        {
+          "scenario": 5,
+          "pass": true,
+          "evidence": "one affected coverage row changes write-set digest"
+        },
+        {
+          "scenario": 6,
+          "pass": true,
+          "evidence": "protected table change alters protected digest"
+        },
+        {
+          "scenario": 7,
+          "pass": true,
+          "evidence": "NULL, zero and empty string remain distinct"
+        },
+        {
+          "scenario": 8,
+          "pass": true,
+          "evidence": "equivalent offsets normalize to UTC with microsecond precision"
+        },
+        {
+          "scenario": 9,
+          "pass": true,
+          "evidence": {
+            "mutator_commit": "57063aedca261557256a23eee616dae473b94f54",
+            "certificate_sha256": "700723581420DD1AC98FD7E9AC529F0EF210EADCAF87FC868A3AD7D114C2F3B7"
+          }
+        },
+        {
+          "scenario": 10,
+          "pass": true,
+          "evidence": "atomicPhase48AndCorrections=true"
+        },
+        {
+          "scenario": 11,
+          "pass": true,
+          "evidence": {
+            "required_fields": [
+              "empresa",
+              "contrato",
+              "actor",
+              "expected_rows",
+              "readonly_runner_commit",
+              "mutator_commit",
+              "backup_sha256",
+              "certificate_sha256",
+              "project_ref",
+              "schema_digest",
+              "source_digest",
+              "phase48_candidates_digest",
+              "albeny_before_digest",
+              "dary_before_digest",
+              "protected_tables_digest",
+              "periods_4_6_digest",
+              "write_set_before_digest",
+              "nonce",
+              "issued_at",
+              "expires_at",
+              "atomicPhase48AndCorrections",
+              "suppressExternalSync",
+              "preserveOperationalSources",
+              "strictAudit",
+              "rollbackOnAnyFailure",
+              "preserveCancelledPeriods",
+              "preservedPeriods",
+              "albenyHistoricalCorrectionConfirmed",
+              "albenyCoverage",
+              "albenyExistingCoverage1224Preserved",
+              "albenyAttendancesPreserved",
+              "daryHistoricalCorrectionConfirmed",
+              "daryCoverage11",
+              "daryRequiresSalaryReview",
+              "daryCategory34Forbidden",
+              "daryAttendancesCreated"
+            ],
+            "deterministic_order": true
+          }
+        },
+        {
+          "scenario": 12,
+          "pass": true,
+          "evidence": "every missing field prevents phrase generation"
+        },
+        {
+          "scenario": 13,
+          "pass": true,
+          "evidence": {
+            "one_principal_connection": true,
+            "one_principal_snapshot": true
+          }
+        },
+        {
+          "scenario": 14,
+          "pass": true,
+          "evidence": "principal ROLLBACK and connection close confirmed"
+        },
+        {
+          "scenario": 15,
+          "pass": true,
+          "evidence": {
+            "separate_post_connection": true,
+            "post_pid": 16628,
+            "full_recomputation_queries": 490
+          }
+        },
+        {
+          "scenario": 16,
+          "pass": true,
+          "evidence": "post ROLLBACK and close confirmed"
+        },
+        {
+          "scenario": 17,
+          "pass": true,
+          "evidence": "real committed drift after principal close revokes authorization"
+        },
+        {
+          "scenario": 18,
+          "pass": true,
+          "evidence": "730 stable allows pending authorization"
+        },
+        {
+          "scenario": 19,
+          "pass": true,
+          "evidence": "partial and applied identity schemas blocked"
+        },
+        {
+          "scenario": 20,
+          "pass": true,
+          "evidence": "changed coverage 1224 blocked"
+        },
+        {
+          "scenario": 21,
+          "pass": true,
+          "evidence": "changed coverage 11 blocked"
+        },
+        {
+          "scenario": 22,
+          "pass": true,
+          "evidence": "changed period 4/6 blocked"
+        },
+        {
+          "scenario": 23,
+          "pass": true,
+          "evidence": "real waiting lock and active DDL blocked before source reads"
+        },
+        {
+          "scenario": 24,
+          "pass": true,
+          "evidence": "unsafe/missing initial flags and unsafe final health stop"
+        },
+        {
+          "scenario": 25,
+          "pass": true,
+          "evidence": "strict positive expiry at most ten minutes"
+        },
+        {
+          "scenario": 26,
+          "pass": true,
+          "evidence": "second preflight replaces sole receipt and revokes prior nonce"
+        },
+        {
+          "scenario": 27,
+          "pass": true,
+          "evidence": "MutateProduction rejected before any connection; static AST tests cover imports"
+        },
+        {
+          "scenario": 28,
+          "pass": true,
+          "evidence": "replacement mutator 26/26 on separate disposable local restoration"
+        },
+        {
+          "scenario": 29,
+          "pass": true,
+          "evidence": "LOCAL_RESTORATION_REQUIRED preserved and rejects remote identity"
+        },
+        {
+          "scenario": 30,
+          "pass": true,
+          "evidence": "all 224 tables, sequences and audit digests identical during read lifecycle; all local fixtures restored"
+        }
+      ]
+    },
+    "readonly_runner": {
+      "pass": 27,
+      "total": 27,
+      "scenarios": [
+        {
+          "scenario": 1,
+          "pass": true,
+          "evidence": {
+            "mode": "PreflightOnly",
+            "no_mutator_approval": true
+          }
+        },
+        {
+          "scenario": 2,
+          "pass": true,
+          "evidence": {
+            "mode": "PreviewOnly",
+            "no_mutator_approval": true
+          }
+        },
+        {
+          "scenario": 3,
+          "pass": true,
+          "evidence": "one principal PID/connection"
+        },
+        {
+          "scenario": 4,
+          "pass": true,
+          "evidence": "one BEGIN, snapshot and virtual transaction"
+        },
+        {
+          "scenario": 5,
+          "pass": true,
+          "evidence": "READ ONLY on"
+        },
+        {
+          "scenario": 6,
+          "pass": true,
+          "evidence": "repeatable read"
+        },
+        {
+          "scenario": 7,
+          "pass": true,
+          "evidence": "principal ROLLBACK"
+        },
+        {
+          "scenario": 8,
+          "pass": true,
+          "evidence": "224 tables unchanged"
+        },
+        {
+          "scenario": 9,
+          "pass": true,
+          "evidence": "sequences unchanged"
+        },
+        {
+          "scenario": 10,
+          "pass": true,
+          "evidence": "zero audit changes"
+        },
+        {
+          "scenario": 11,
+          "pass": true,
+          "evidence": "NO_APLICADA"
+        },
+        {
+          "scenario": 12,
+          "pass": true,
+          "evidence": "730 candidates"
+        },
+        {
+          "scenario": 13,
+          "pass": true,
+          "evidence": "history 1555 preview preserved"
+        },
+        {
+          "scenario": 14,
+          "pass": true,
+          "evidence": "history 249 preview preserved"
+        },
+        {
+          "scenario": 15,
+          "pass": true,
+          "evidence": "periods 4/6 preserved"
+        },
+        {
+          "scenario": 16,
+          "pass": true,
+          "evidence": "injected error rolls back"
+        },
+        {
+          "scenario": 17,
+          "pass": true,
+          "evidence": "real statement timeout and ROLLBACK"
+        },
+        {
+          "scenario": 18,
+          "pass": true,
+          "evidence": "only own local backend terminated; transport closed"
+        },
+        {
+          "scenario": 19,
+          "pass": true,
+          "evidence": "MutateProduction rejected before BEGIN"
+        },
+        {
+          "scenario": 20,
+          "pass": true,
+          "evidence": "mutation exports absent; static AST tests verify dependency closure"
+        },
+        {
+          "scenario": 21,
+          "pass": true,
+          "evidence": "principal read requires no mutator approval and issues no premature phrase"
+        },
+        {
+          "scenario": 22,
+          "pass": true,
+          "evidence": "revoked mutator approval does not block reading"
+        },
+        {
+          "scenario": 23,
+          "pass": true,
+          "evidence": "missing flags stop"
+        },
+        {
+          "scenario": 24,
+          "pass": true,
+          "evidence": "principal snapshot stable under real concurrent commit; final lifecycle drift separately enforced"
+        },
+        {
+          "scenario": 25,
+          "pass": true,
+          "evidence": "new nonce and local revocation"
+        },
+        {
+          "scenario": 26,
+          "pass": true,
+          "evidence": "replacement mutator 26/26"
+        },
+        {
+          "scenario": 27,
+          "pass": true,
+          "evidence": "original local guard rejects remote identities"
+        }
+      ]
+    },
+    "mutator": {
+      "pass": 26,
+      "total": 26,
+      "scenarios": [
+        {
+          "scenario": 1,
+          "pass": true,
+          "evidence": "PreflightOnly READY"
+        },
+        {
+          "scenario": 2,
+          "pass": true,
+          "evidence": "PreviewOnly READY, zero writes"
+        },
+        {
+          "scenario": 3,
+          "pass": true,
+          "evidence": "SimulateLocal executes the atomic production domain, loopback identity enforced"
+        },
+        {
+          "scenario": 4,
+          "pass": true,
+          "evidence": "730 identities"
+        },
+        {
+          "scenario": 5,
+          "pass": true,
+          "evidence": "Albeny history, original 1224 preserved"
+        },
+        {
+          "scenario": 6,
+          "pass": true,
+          "evidence": "Dary history, no inferred category"
+        },
+        {
+          "scenario": 7,
+          "pass": true,
+          "evidence": "3 strict legacy + 3 strict event audits, same transaction"
+        },
+        {
+          "scenario": 8,
+          "pass": true,
+          "evidence": "Second execution ALREADY_APPLIED; data/schema/sequences unchanged"
+        },
+        {
+          "scenario": 9,
+          "pass": true,
+          "evidence": {
+            "status": "ROLLED_BACK",
+            "reason": "INDUCED_PHASE48_FAILURE",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 10,
+          "pass": true,
+          "evidence": {
+            "status": "ROLLED_BACK",
+            "reason": "INDUCED_AFTER_PHASE48",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 11,
+          "pass": true,
+          "evidence": {
+            "status": "ROLLED_BACK",
+            "reason": "INDUCED_BETWEEN_CORRECTIONS",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 12,
+          "pass": true,
+          "evidence": {
+            "status": "ROLLED_BACK",
+            "reason": "DATABASE_ERROR",
+            "sqlstate": "23502",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 13,
+          "pass": true,
+          "evidence": {
+            "status": "ROLLED_BACK",
+            "reason": "DATABASE_ERROR",
+            "sqlstate": "23502",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 14,
+          "pass": true,
+          "evidence": {
+            "status": "STOPPED",
+            "reason": "SOURCE_DRIFT_DETECTED",
+            "runner_writes": 0,
+            "only_external_injected_drift": true,
+            "baseline": "b1fc27971d5017faab3e463c1daadd6cfa9717eff25d6d6da344e95b5f796d9d"
+          }
+        },
+        {
+          "scenario": 15,
+          "pass": true,
+          "evidence": {
+            "status": "STOPPED",
+            "reason": "SOURCE_DRIFT_DETECTED",
+            "runner_writes": 0,
+            "only_external_injected_drift": true,
+            "baseline": "b1fc27971d5017faab3e463c1daadd6cfa9717eff25d6d6da344e95b5f796d9d"
+          }
+        },
+        {
+          "scenario": 16,
+          "pass": true,
+          "evidence": {
+            "status": "STOPPED",
+            "reason": "PHASE48_POPULATION_CHANGED",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 17,
+          "pass": true,
+          "evidence": {
+            "status": "STOPPED",
+            "reason": "BACKUP_SHA_INVALID",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 18,
+          "pass": true,
+          "evidence": {
+            "status": "STOPPED",
+            "reason": "SCOPE_OR_ACTOR_INVALID",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 19,
+          "pass": true,
+          "evidence": {
+            "status": "STOPPED",
+            "reason": "HEALTH_OR_FLAGS_UNSAFE",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 20,
+          "pass": true,
+          "evidence": {
+            "status": "STOPPED",
+            "reason": "PARTIAL_STATE_DETECTED",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 21,
+          "pass": true,
+          "evidence": {
+            "status": "STOPPED",
+            "reason": "AUTHORIZATION_REVOKED",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 22,
+          "pass": true,
+          "evidence": "Original local runner rejects remote identity; no remote connection opened"
+        },
+        {
+          "scenario": 23,
+          "pass": true,
+          "evidence": {
+            "status": "STOPPED",
+            "reason": "ADVISORY_LOCK_BUSY",
+            "rollback_digest_equal": true
+          }
+        },
+        {
+          "scenario": 24,
+          "pass": true,
+          "evidence": {
+            "immediate_baseline_rejected": true,
+            "loopback_only": true,
+            "synthetic_version_tls_metadata": true,
+            "zero_writes": true
+          }
+        },
+        {
+          "scenario": 25,
+          "pass": true,
+          "evidence": {
+            "eight_digests_revalidated": true,
+            "every_stale_digest_rejected": true,
+            "loopback_only": true,
+            "zero_writes": true
+          }
+        },
+        {
+          "scenario": 26,
+          "pass": true,
+          "evidence": {
+            "complete_authorization_baseline_accepted": true,
+            "atomic_local_execution": true,
+            "loopback_only": true,
+            "synthetic_version_tls_metadata": true,
+            "production_connections": 0,
+            "production_writes": 0
+          }
+        }
+      ],
+      "reference_commit": "9c344ce12ae196558ca1dab1c8f52a14150cdda7",
+      "atomic_domain_unchanged": true
+    }
+  },
+  "checks": {
+    "typecheck": "PASS",
+    "backend_build": "PASS",
+    "FrontendNuevo_build": "PASS",
+    "FrontendNuevo_warning": "Chunks larger than 500 kB; build succeeds",
+    "legacy_frontend": "NOT_STARTED_VITE_NOT_INSTALLED",
+    "git_diff_check": "PASS",
+    "same_mutator_contract": true,
+    "all_previous_phrases": "REVOCADAS",
+    "offline_external_certificate": "PASS_SYNTHETIC_CREDENTIAL_ZERO_CONNECTIONS",
+    "production_connections": 0,
+    "production_health_requests": 0,
+    "production_writes": 0,
+    "production_ddl": 0,
+    "production_dml": 0,
+    "production_audits": 0,
+    "productive_env_read": false,
+    "merge": false,
+    "deploy": false,
+    "nomina_workspace_modified": false
+  },
+  "cleanup": {
+    "cluster_stopped": true,
+    "cluster_removed": true,
+    "raw_temporaries_removed": true,
+    "production_connections": 0,
+    "production_writes": 0
+  },
+  "completed_utc": "2026-10-09T16:53:48.384Z",
+  "decision": "VERIFICACIÓN POST-ROLLBACK 8/8 CERTIFICADA — LISTO PARA NUEVO PREFLIGHT READ ONLY"
+}

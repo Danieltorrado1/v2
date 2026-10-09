@@ -6,7 +6,9 @@ Este informe certifica exclusivamente código y pruebas locales. No autoriza
 preflight, conexiones, consultas health ni escrituras productivas.
 
 El mutador de referencia es `9c344ce12ae196558ca1dab1c8f52a14150cdda7`.
-El pin final se publica en `MUTATOR_COMMIT` y en el certificado adjunto.
+El mutator_commit final es `57063aedca261557256a23eee616dae473b94f54`.
+El HEAD de entrega añade únicamente el pin y la evidencia final al código
+certificado de ese commit; ambos runners verifican sus fuentes antes de conectar.
 El dominio histórico, SQL atómico y guard local conservan exactamente sus
 fuentes de referencia. Se migra el campo de candidatos en la comprobación
 del mutador para que comparta el contrato canónico del runner READ ONLY.
@@ -51,8 +53,10 @@ periods_4_6_digest
 write_set_before_digest
 ```
 
-La forma singular anterior se conserva únicamente como entrada negativa de
-prueba. No se acepta como alias ni se normaliza. El parser rechaza campos
+En fuentes ejecutables, la forma singular anterior se conserva únicamente como
+entrada negativa de prueba. Los certificados históricos conservan su evidencia
+original de protocolos sustituidos; no son contratos ni autorizaciones vigentes.
+No se acepta la forma singular como alias ni se normaliza. El parser rechaza campos
 ausentes, adicionales, duplicados, reordenados, tipos/hash incorrectos,
 espacios y representaciones numéricas o temporales ambiguas.
 
@@ -167,3 +171,41 @@ transacciones y rollback locales son reales.
 FrontendNuevo compila; informa un aviso de chunks superiores a 500 kB.
 El frontend legado no tiene `Frontend/node_modules/.bin/vite.cmd`; no se
 inició ni se instaló. No se modifica ningún workspace o rama de Nómina.
+
+## Resultados y evidencia
+
+El certificado `phase48-postrollback-eight-digests.cert.json` contiene los
+snapshots observados, ambos juegos de ocho digests, comparaciones individuales,
+conteo de consultas posteriores, escenarios y SHA-256 de fuentes con LF.
+No contiene una frase ni nonce utilizable. Se comprueban las huellas de las
+fuentes al incorporar la evidencia para impedir certificar otra versión.
+
+| Verificación | Resultado |
+|---|---|
+| Pruebas aisladas de contrato, lifecycle, nonce, TLS, destino y mutador | 66/66 |
+| Drift individual de los ocho digests | 8/8, STOPPED_DRIFT y frase revocada |
+| Assertions TLS locales | 37/37 |
+| Contrato READ ONLY con PostgreSQL local | 30/30 |
+| Regresión runner READ ONLY | 27/27 |
+| Mutador, rollback e idempotencia | 26/26 |
+| Typecheck y build backend | PASS |
+| Build FrontendNuevo | PASS, aviso de chunks |
+| git diff --check | PASS |
+| Certificado oficial externo con credencial sintética y cero conexiones | PASS |
+| Backup y recibo preservado, tamaño/hash exactos | PASS |
+
+La batería final usa:
+
+```text
+.\node_modules\.bin\tsx.cmd --test src/tests/phase48.postrollback-eight.test.ts src/tests/phase48.authorization-tls-contract.test.ts src/tests/phase48.readonly-runner.test.ts src/tests/phase48.readonly-tls.test.ts src/tests/phase48.readonly-target.test.ts src/tests/phase48.production-runner.test.ts
+.\release\certify-phase48-readonly-local.ps1
+npm run typecheck
+npm run build
+npm run build (directorio FrontendNuevo)
+git diff --check
+```
+
+El cluster desechable se detiene y elimina; se cierran las conexiones locales
+y se retiran temporales crudos. El certificado registra la limpieza final.
+
+**VERIFICACIÓN POST-ROLLBACK 8/8 CERTIFICADA — LISTO PARA NUEVO PREFLIGHT READ ONLY**
