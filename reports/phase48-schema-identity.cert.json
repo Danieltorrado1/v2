@@ -4,7 +4,7 @@
   "branch": "fix/phase48-schema-identity-forensic",
   "platform": "win32",
   "node": "v24.14.1",
-  "started_utc": "2026-10-10T00:42:25.133Z",
+  "started_utc": "2026-10-10T00:46:01.691Z",
   "production_connections": 0,
   "production_writes": 0,
   "productive_env_read": false,
@@ -708,8 +708,8 @@
   "observer": {
     "platform": "win32",
     "node": "v24.14.1",
-    "observer_absences": 63,
-    "complete_reads": 17,
+    "observer_absences": 59,
+    "complete_reads": 19,
     "partial_json_observations": 0
   },
   "guard_evidence": [
@@ -800,7 +800,7 @@
     "src/modules/cobertura/phase48-production-authorization.ts",
     "sql/phase-48-operational-assignment-identities.sql"
   ],
-  "mutator_commit": "a1e709ca89c37ed31e9ec27b4dff2e4c17c295ce",
+  "mutator_commit": "806f6f058b57b11aeadc478e4f35530b601cc128",
   "code_sha256": {
     "src/modules/cobertura/phase48-readonly-schema-catalog.ts": "3b2f7903a6accb412974df05a3430913a3b2f1b86db16814bcf543e4a4b4b63c",
     "src/modules/cobertura/phase48-readonly-schema-identity.ts": "633b994951b68fae68ea94630348bf4ba12f1ce8b8043333738adc675f67dbdf",
@@ -812,7 +812,7 @@
     "src/modules/cobertura/phase48-readonly-tls.ts": "d453ee88c732a5596d921a043947526c0ada91a2e9052d9f33d6c1544f0ce8a4",
     "src/scripts/phase48-readonly-tls-probe.ts": "caa23a9fa5760cc22cadee82ba2341bd2a87b8eabff3b8881d4e3b4da1dce40d",
     "src/modules/cobertura/phase48-readonly-receipts.ts": "b390afc5a57a45b1cf25806f5fb17577337a947a7908046a554d6387e682d42b",
-    "src/modules/cobertura/phase48-readonly-contract.ts": "a0c674b96ec8d05d1dad7e77dd79b6759afe8375fb7541d0cac9f405b45ed9ab",
+    "src/modules/cobertura/phase48-readonly-contract.ts": "cee784ecf9bdda5257ec1b0bad0ec4fedef11bc65e41213e12a5b7ca2e5e11d5",
     "src/scripts/phase48-historical-production.ts": "8fe41a33265297aa39fe1daf0bd1982713ea699a72360197f6aa35789e52a051",
     "src/scripts/phase48-production-readonly.ts": "96a77fde9d95662e0cc9ad7467a6eabf7cafe8f75e71caa729d1d71709f167f3",
     "src/scripts/certify-phase48-readonly-contract-local.cjs": "8b96d43238c0fc9c0d2f46e4c283a55a671ae9a752d2f75fdcdb786841c8169a",
@@ -834,5 +834,5 @@
   "revoked_readonly_runner_through": "cfe8b63276ef948ce72bc36f535d74509542e447",
   "success": true,
   "decision": "ESQUEMA CRÍTICO RECONCILIADO — LISTO PARA NUEVO PREFLIGHT READ ONLY",
-  "completed_utc": "2026-10-10T00:42:48.028Z"
+  "completed_utc": "2026-10-10T00:46:23.899Z"
 }
