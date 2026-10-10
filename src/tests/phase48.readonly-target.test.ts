@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {readDatabaseUrl,validateReadTarget,classifyReadTarget,verifyReadServerIdentity,READ_SCHEMA_FINGERPRINT,READ_IDENTITY_TABLES} from '../modules/cobertura/phase48-readonly-target';
+import {readDatabaseUrl,validateReadTarget,classifyReadTarget,verifyReadServerIdentity,READ_SCHEMA_FINGERPRINT,READ_IDENTITY_TABLES,READ_SCHEMA_CANONICALIZATION_VERSION} from '../modules/cobertura/phase48-readonly-target';
 import {PROJECT_REF} from '../modules/cobertura/phase48-readonly-contract';
 // Synthetic values only. Assertions never compare/print credential strings.
 const ref='abcdefghijklmnopqrst',other='zyxwvutsrqponmlkjihg';
@@ -35,7 +35,13 @@ test('target 21: sanitized real format accepted only for exact expected project'
 test('offline SSL is mandatory in transport and cannot be downgraded',()=>{assert.equal(valid(direct()).config.ssl.rejectUnauthorized,true);assert.equal(valid(pool()).config.ssl.rejectUnauthorized,true);reject(pool()+'?sslmode=allow');});
 test('official DNS direct format supports IPv6 without accepting literal IP identity',()=>{assert.equal(valid(direct().replace(':5432','')).format,'DIRECT');reject(pool(ref,'[2001:db8::1]'));});
 test('future server identity requires PostgreSQL 17, tenant, tables and certified schema',()=>{
- const identity={database:'postgres',version:'17.6',empresa_exists:true,contrato_exists:true,schema_digest:READ_SCHEMA_FINGERPRINT,tables:[...READ_IDENTITY_TABLES]};
+ const identity={database:'postgres',version:'17.6',empresa_exists:true,contrato_exists:true,schema_digest:READ_SCHEMA_FINGERPRINT,schema_identity_version:READ_SCHEMA_CANONICALIZATION_VERSION,tables:[...READ_IDENTITY_TABLES]};
  assert.equal(verifyReadServerIdentity(identity,'postgres').schema_matches,true);
  for(const patch of [{version:'16.11'},{database:'other'},{empresa_exists:false},{contrato_exists:false},{tables:[]},{schema_digest:'0'.repeat(64)}])assert.throws(()=>verifyReadServerIdentity({...identity,...patch},'postgres'),/^Error: READ_[A-Z_]+$/);
+});
+test('schema mismatch carries sanitized expected and observed digests and canonicalization version',()=>{
+ const observed='0'.repeat(64);
+ assert.throws(()=>verifyReadServerIdentity({database:'postgres',version:'17.6',empresa_exists:true,contrato_exists:true,tables:[...READ_IDENTITY_TABLES],schema_digest:observed,schema_identity_version:READ_SCHEMA_CANONICALIZATION_VERSION},'postgres'),(error:any)=>{
+  assert.equal(error.message,'READ_SCHEMA_IDENTITY_MISMATCH');assert.equal(error.expected_schema_digest,READ_SCHEMA_FINGERPRINT);assert.equal(error.observed_schema_digest,observed);assert.equal(error.canonicalization_version,READ_SCHEMA_CANONICALIZATION_VERSION);assert.equal(error.schema_divergence_phase,'server_identity.critical_schema');assert.ok(!JSON.stringify(error).includes('CREATE'));return true;
+ });
 });

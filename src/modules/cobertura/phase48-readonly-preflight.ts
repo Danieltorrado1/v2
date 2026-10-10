@@ -10,6 +10,11 @@ export const digest=contractDigest;
 export interface ReadFlags {health200:boolean;databaseOk:boolean;outbox:boolean;sync:boolean;recalc:boolean;worker:boolean;}
 export interface ReadOptions {mode?:string;target:'Local'|'Production';commit:string;backupSha:string;certificateSha:string;observeFlags:()=>Promise<ReadFlags>;}
 function need(value:unknown,code:string):asserts value {if(!value)throw Error(code);}
+function retainSchemaStop(result:any,error:unknown,connectionPhase:string){
+ const e=error as Record<string,unknown>;
+ if(e.message!=='READ_SCHEMA_IDENTITY_MISMATCH')return;
+ Object.assign(result,{status:'STOPPED',nonce:null,authorization_phrase:null,expires_at:null,writes_productive:0,expected_schema_digest:e.expected_schema_digest,observed_schema_digest:e.observed_schema_digest,canonicalization_version:e.canonicalization_version,schema_identity_version:e.schema_identity_version??e.canonicalization_version,observed_global_schema_digest:e.observed_global_schema_digest,schema_divergence_phase:e.schema_divergence_phase,schema_divergence_connection:connectionPhase});
+}
 export function validateReadOptions(o:ReadOptions){
  need(READ_MODES.includes((o.mode??'PreflightAndPreview') as typeof READ_MODES[number]),'UNKNOWN_READ_MODE');
  need(['Local','Production'].includes(o.target)&&/^[a-f0-9]{40}$/.test(o.commit)&&o.backupSha===READ_BACKUP_SHA&&typeof o.observeFlags==='function','READ_CONFIGURATION_INVALID');
@@ -36,6 +41,7 @@ export async function productionReadOnlyPreflight(client:Pick<PoolClient,'query'
   result.postgresql={server_version:session.version,ssl:o.target==='Production'};
   await repo.safePolicies();const locks=await repo.activity();result.locks=locks;need(locks.waiting===0&&locks.ddl===0,'LOCK_OR_DDL_DETECTED');
   result.target_identity=await repo.targetIdentity(o.target==='Production'?'postgres':'phase48_production');
+  if(result.target_identity.schema_identity_version)Object.assign(result,{schema_identity_version:result.target_identity.schema_identity_version,expected_schema_digest:result.target_identity.schema_digest,observed_schema_digest:result.target_identity.schema_digest,observed_global_schema_digest:result.target_identity.global_schema_digest});
   await repo.actor();
   const initial=await repo.snapshot();result.counts=initial.data;need(initial.data.length===224,'PUBLIC_TABLE_POPULATION_CHANGED');await repo.verify(initial);
   const candidates=await repo.candidates();need(candidates.length===730&&initial.data.find(r=>r.table==='cobertura_asignaciones')?.count==='730','PHASE48_POPULATION_CHANGED');
@@ -48,7 +54,7 @@ export async function productionReadOnlyPreflight(client:Pick<PoolClient,'query'
   const final=await repo.snapshot(),finalMinimal=await repo.minimalState(),finalWriteSet=await repo.writeSet(final,await repo.candidates(),await repo.coverage(),await repo.affected()),finalSession=await repo.session(),finalLocks=await repo.activity(),finalFlags=await o.observeFlags();flagsGate(finalFlags);
   need(initial.digest===final.digest&&digests.write_set_before_digest===finalWriteSet&&digest(minimal)===digest(finalMinimal)&&digest(session)===digest(finalSession)&&digest(locks)===digest(finalLocks)&&digest(firstFlags)===digest(finalFlags),'READ_SAMPLE_CHANGED');
   Object.assign(result,{status:'READY_POSTCHECK',phase48_state:'NO_APLICADA',phase48_rows:730,counts:initial.data,digests,locks,preview,minimal_baseline:minimal,stability:{same_snapshot:true,same_session:true,snapshot_digest_unchanged:true}});
- }catch(error){const e=error as Error&{code?:string};Object.assign(result,{status:'STOPPED',reason:/^[A-Z0-9_]+$/.test(e.message)?e.message:'READ_PREFLIGHT_FAILED',sqlstate:e.code});}
+ }catch(error){const e=error as Error&{code?:string};Object.assign(result,{status:'STOPPED',reason:/^[A-Z0-9_]+$/.test(e.message)?e.message:'READ_PREFLIGHT_FAILED',sqlstate:e.code});retainSchemaStop(result,error,'principal');}
  finally{if(begun)try{await client.query('ROLLBACK');result.rollback='CONFIRMED';}catch{result={...result,status:'STOPPED',reason:'READ_CONNECTION_LOST_ROLLBACK_UNCONFIRMED',authorization_phrase:null,rollback:'CONNECTION_CLOSED_REQUIRED'};}}
  return result;
 }
@@ -106,6 +112,7 @@ export async function runReadOnlyLifecycle(open:()=>Promise<ReadConnection>,o:Re
   const e=error as Error;
   result??=emptyReceipt(o);
   Object.assign(result,{status:result.status==='READY_POSTCHECK'?'STOPPED_DRIFT':'STOPPED',reason:/^[A-Z0-9_]+$/.test(e.message)?e.message:'READ_TRANSPORT_OR_CONFIGURATION_FAILED',stable:false,authorization_status:'REVOCADA',authorization_phrase:null,nonce:null,expires_at:null});
+  retainSchemaStop(result,error,'post_rollback');
  }finally{
   if(postBegun&&post)try{await post.client.query('ROLLBACK');result.post_rollback_verification.rollback='CONFIRMED';}catch{result.status='STOPPED_DRIFT';result.reason='POST_ROLLBACK_CONNECTION_LOST';result.authorization_status='REVOCADA';result.post_rollback_verification.rollback='UNCONFIRMED_CONNECTION_CLOSED';}
   if(post)try{await post.close();result.post_rollback_verification.connection_closed=true;}catch{result.status='STOPPED_DRIFT';result.reason='POST_ROLLBACK_CLOSE_FAILED';result.authorization_status='REVOCADA';}

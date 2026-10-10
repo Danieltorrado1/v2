@@ -1,0 +1,24 @@
+{
+  "scope": "LOCAL_ONLY",
+  "postgresql": "17.11",
+  "backup_sha256": "4271775ee853bf03b9f70402f7ecfd7becbe048269e3b10c76f027f981303e26",
+  "legacy_pin_reproduced": "2fbba2269828d8573ed10eb5a6749d89e30d62adc75652ac713f375467df19a9",
+  "critical_digest": "b2721653fcb198b17c91d27e454c526fedc99a8e71e9d3e28f4c8e2f8e34d98a",
+  "live_ddl_tests": [
+    {
+      "name": "critical column",
+      "material": true,
+      "detected": true,
+      "rollback": "CONFIRMED"
+    },
+    {
+      "name": "unrelated object",
+      "material": false,
+      "detected": false,
+      "rollback": "CONFIRMED"
+    }
+  ],
+  "production_connections": 0,
+  "production_writes": 0,
+  "cluster_cleanup": "Launcher stops and removes cluster plus all raw temporaries in finally"
+}

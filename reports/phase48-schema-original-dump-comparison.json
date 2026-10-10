@@ -1,0 +1,2287 @@
+{
+  "scope": "SCHEMA_ONLY_DUMP_IN_MEMORY",
+  "differences": [
+    {
+      "kind": "constraints",
+      "object": "calculadora_personal_config.calculadora_personal_config_estado_check",
+      "restored_property": "c208c4aef75c0133938c5d95a65a5b55bb4e7eadbd2167b872ce889e2c2f473a",
+      "productive_property": "3d943090bee0bb3619e5d12e3af3e55acd694d3626f8d9531e1a74cec577a907",
+      "original_dump_property": "3d943090bee0bb3619e5d12e3af3e55acd694d3626f8d9531e1a74cec577a907",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "constraints",
+      "object": "calculadora_personal_config.calculadora_personal_config_metodo_check",
+      "restored_property": "d03a282dd194110477a3523e92bf0277a27703bd769a2ca78ee8b9685c37e6e0",
+      "productive_property": "1aee86c5098553dd084f54c85cbd842fb86e399a083e3a755c14a8320add1a5c",
+      "original_dump_property": "1aee86c5098553dd084f54c85cbd842fb86e399a083e3a755c14a8320add1a5c",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "constraints",
+      "object": "calculadora_personal_config.calculadora_personal_config_regla_redondeo_check",
+      "restored_property": "941c908f467ec3c0febe22d0998dfc8c199f15d05d50afd34f797275e59298e0",
+      "productive_property": "8aca0e29c2e76473405202baa8765bc13db43e313d61438cca323d61f5f1055c",
+      "original_dump_property": "8aca0e29c2e76473405202baa8765bc13db43e313d61438cca323d61f5f1055c",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "constraints",
+      "object": "calculadora_personal_rangos.calculadora_personal_rangos_estado_check",
+      "restored_property": "c208c4aef75c0133938c5d95a65a5b55bb4e7eadbd2167b872ce889e2c2f473a",
+      "productive_property": "3d943090bee0bb3619e5d12e3af3e55acd694d3626f8d9531e1a74cec577a907",
+      "original_dump_property": "3d943090bee0bb3619e5d12e3af3e55acd694d3626f8d9531e1a74cec577a907",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "constraints",
+      "object": "empresa_modulo_configuracion.ck_empresa_modulo_config_estado",
+      "restored_property": "019361a1d907bcfd903346f36e17b6b3573d370e22e4b302c89ad654ddd9c2fe",
+      "productive_property": "b7c9dac865bda45f93cc2aa08647bad82a777c8b4f76a53cbb7f7f95829bf6f3",
+      "original_dump_property": "b7c9dac865bda45f93cc2aa08647bad82a777c8b4f76a53cbb7f7f95829bf6f3",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "constraints",
+      "object": "empresa_suscripciones.chk_empresa_suscripcion_estado",
+      "restored_property": "293a1ae16c9162ce8184fd5a06739a26799e7a7b777f871ddcf2374736ff2bdc",
+      "productive_property": "12e60b4112c0bb6ddfba5cdde59dcad06f27beee929ec09814a5d7d06fc58f67",
+      "original_dump_property": "12e60b4112c0bb6ddfba5cdde59dcad06f27beee929ec09814a5d7d06fc58f67",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "constraints",
+      "object": "nomina_novedad_documentos.nomina_novedad_documentos_estado_revision_check",
+      "restored_property": "fb465487da7a6913a69c56bd17fbe3ebf9e50bf60dddab6c8e88f224c406cc21",
+      "productive_property": "53dcda855b01f22d44c4d8f06606ffa1df572e15fd93050afdf307b5e2655986",
+      "original_dump_property": "53dcda855b01f22d44c4d8f06606ffa1df572e15fd93050afdf307b5e2655986",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "constraints",
+      "object": "nomina_novedad_documentos.nomina_novedad_documentos_tipo_relacion_check",
+      "restored_property": "7114c5f6221705060e238d33194aa3a8b13a0925d0f499896416a4a8a15224be",
+      "productive_property": "88f4a156872c757ab9fb56f88f26648bf08d66e7b05b60d4edab370fcca170c3",
+      "original_dump_property": "88f4a156872c757ab9fb56f88f26648bf08d66e7b05b60d4edab370fcca170c3",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "constraints",
+      "object": "nomina_parametros_economicos.ck_nomina_parametros_redondeo",
+      "restored_property": "04c03ce7e977430ad5f8e7c4b438958ab39c383645528a255241a2625147fc34",
+      "productive_property": "9f8babc89686f9ee47a5a6535adfe74789e0e1c757a86a396aa2c3074fde48f3",
+      "original_dump_property": "9f8babc89686f9ee47a5a6535adfe74789e0e1c757a86a396aa2c3074fde48f3",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "constraints",
+      "object": "planes.chk_planes_periodicidad",
+      "restored_property": "f2802b944e1e1dfcab3909e9e7cab02285c90be0a99ac6c60171e181f57fc9d0",
+      "productive_property": "c04a0b14c12583bdfb506d49f96031ddf9f1e6b64365c54c8f99c1ffc2b88a1e",
+      "original_dump_property": "c04a0b14c12583bdfb506d49f96031ddf9f1e6b64365c54c8f99c1ffc2b88a1e",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "constraints",
+      "object": "sst_matriz_riesgos.chk_sst_matriz_riesgos_clasificacion",
+      "restored_property": "7f24375c5998437bee3068172fac825ab6969d9cd0eadb8ef9930a53cba5baec",
+      "productive_property": "7df9335f4caf1bd447cc9ec5a13eb657cfecef3be69645ce75f10dd219d93504",
+      "original_dump_property": "7df9335f4caf1bd447cc9ec5a13eb657cfecef3be69645ce75f10dd219d93504",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    },
+    {
+      "kind": "indexes",
+      "object": "empresa_suscripciones.uq_empresa_suscripcion_abierta",
+      "restored_property": "54846f51fac61fd46be1b0bbc8c7c0f9aaf6dae67c59eb3e6814699c312702bf",
+      "productive_property": "17adb805c770bce68a6551b91effd7b295a81fc62b95db1edbbcc81bb096ee4e",
+      "original_dump_property": "17adb805c770bce68a6551b91effd7b295a81fc62b95db1edbbcc81bb096ee4e",
+      "productive_matches_original_dump": true,
+      "first_evidence": "certified backup 2026-10-07",
+      "raw_definition_persisted": false
+    }
+  ],
+  "all_productive_differences_match_original_dump": true,
+  "function_dependencies": [
+    {
+      "function_identity": "aplicar_novedad_focalizacion(bigint,text,text,text,text,bigint)",
+      "definition_hash": "b3e5657045d1d494415c22a0fb2bb1584f3fe70c5c02389268c1581c12b34747",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "alertas_sistema",
+        "focalizacion_final",
+        "focalizacion_novedades"
+      ],
+      "functions": [
+        "calcular_categoria_cobertura(text,integer)"
+      ]
+    },
+    {
+      "function_identity": "calcular_categoria_cobertura(text,integer)",
+      "definition_hash": "aaad02e13a5dd9f02762910befb2d997604a78b287ba1d2756f8106be2dae9b8",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": [
+        "normalizar_modalidad(text)"
+      ]
+    },
+    {
+      "function_identity": "cash_dist(money,money)",
+      "definition_hash": "87040621307dee827fc4243027f1a52fc0d6d0ec297925c35cc72de3a3d0be5c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "crear_contrato_desde_plantilla(bigint,bigint,text,text,text,date,date,text,boolean)",
+      "definition_hash": "447ba6a6027799777ee9c6ba1193ebd21af61847c44d9fca322975c7e9e0f28c",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "contrato_cargo_requisitos",
+        "contrato_cargos",
+        "contratos",
+        "plantilla_cargo_requisitos",
+        "plantilla_cargos"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "date_dist(date,date)",
+      "definition_hash": "5e530968332b31191be6c72646da22c423bd2d396f6c028e45bb10ff5edbea2c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "float4_dist(real,real)",
+      "definition_hash": "bc6f1421ba46108116a49ccc9018357013b0f320b7cb49a877318a234e575264",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "float8_dist(double precision,double precision)",
+      "definition_hash": "44ddbddbc0513bb5891b7920c48b51bd4bd5e9e13d8599a4df1c36a557306b32",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "fn_actualizar_periodo_pago_por_ingreso_retiro()",
+      "definition_hash": "611dd4c30d2b63974bd30dfa96a79c438f10f0684bcebd951d07413da2102291",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "nomina_empleados",
+        "nomina_periodos",
+        "nomina_tipos_novedad",
+        "vinculaciones"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "fn_crear_evento_sst_desde_nomina()",
+      "definition_hash": "65dec31a8e4e483c7494e5df4be13f7ed83a084622ca4a83920860ef177d7172",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "nomina_tipos_novedad",
+        "sst_eventos"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bit_compress(internal)",
+      "definition_hash": "3c8c26119ce9dd711fed06cc1faea97793053e47893eda38dc47fd4879ad44da",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bit_consistent(internal,bit,smallint,oid,internal)",
+      "definition_hash": "7e5d0bb53794a739dcdcace15cccd713dbb0d8d0ae4ec8d182e1057b36777d02",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bit_penalty(internal,internal,internal)",
+      "definition_hash": "beaa898c735626b7feeb8af85c1fc00f75ea47e1770cd75df8ab0f07d5dd1b7d",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bit_picksplit(internal,internal)",
+      "definition_hash": "57cf1cfa766ab9026232e762dd91410c6914c5215016e83b73cb325e7ffeeb26",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bit_same(gbtreekey_var,gbtreekey_var,internal)",
+      "definition_hash": "7a2f14a0ace61331448a5b2e49a25932802089ba55e400b815a2f2ea0a50d719",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bit_union(internal,internal)",
+      "definition_hash": "15e4c688b10a4d56865a51ecd500fd6107efcdb2fae727e6a245b3e0b04cbb6b",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bool_compress(internal)",
+      "definition_hash": "984522d83b2594d46b51aea0b6b091dc67f67048c680616c4cdf2c40b2e0f16d",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bool_consistent(internal,boolean,smallint,oid,internal)",
+      "definition_hash": "a0a7112a64b0c979616b816bae6df512c02a027e7f1419382ce125c941839091",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bool_fetch(internal)",
+      "definition_hash": "3bf917c04ff775d39c7e881838d097c644dc378f7d83c3109a90fa211264d65d",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bool_penalty(internal,internal,internal)",
+      "definition_hash": "6fe63707f4b86c60bdc82038a736701399c276f4a9083efa323cc1a524ce6a26",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bool_picksplit(internal,internal)",
+      "definition_hash": "868436046ec38e5e0079dbbc4010963ac5a88eb76a8575a400045f6e6ac2ef1b",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bool_same(gbtreekey2,gbtreekey2,internal)",
+      "definition_hash": "cf90a00f7a0e7ae6f5d1bb1b911e728cc9a6efc7f181b0fdb48d2102d29daca2",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bool_union(internal,internal)",
+      "definition_hash": "b76e7f91bfc8b59182a96c1fc59d810d56518b381adc37b2f0a76eece49ab13e",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bpchar_compress(internal)",
+      "definition_hash": "bd32b8fe1374740bae803c3ae92981936848efa02b4a5777cd791fcf77735a2a",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bpchar_consistent(internal,character,smallint,oid,internal)",
+      "definition_hash": "5becaba3b42860b961a54a359bf19e734e8bea895e1aa4c6c2c15ed4dbc238f6",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bytea_compress(internal)",
+      "definition_hash": "62d0a59d05b5c54f22c4a7430fe8e812ea73d7b478bcd6671e16c59a9c8d19e8",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bytea_consistent(internal,bytea,smallint,oid,internal)",
+      "definition_hash": "755f778d9769bacf67d0ce25a00a33fb786a2e99288cd35f0a333cee4356edfd",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bytea_penalty(internal,internal,internal)",
+      "definition_hash": "616b28ba5cb00c91c9674400e7be99107d010e72c654778451a6f993f91fa1da",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bytea_picksplit(internal,internal)",
+      "definition_hash": "2db7f727e39ea9f3dbe3fe70bfe0051a7d302ab9350fdd5f1e36973ee2b58f62",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bytea_same(gbtreekey_var,gbtreekey_var,internal)",
+      "definition_hash": "8d51b3858bd157b1dec8303e4e625673a35accd24027afbcb2e547f050f04786",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_bytea_union(internal,internal)",
+      "definition_hash": "c4c70fd7668d6f9ceaae34160673ba62b59a591905ee5e62d14fcefde3b81fba",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_cash_compress(internal)",
+      "definition_hash": "877fd868cad01f24f4de8ba4d652bfb707a04e69c72325248d5d0d8fc0fb52bc",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_cash_consistent(internal,money,smallint,oid,internal)",
+      "definition_hash": "1295ae415d83278f080cee780e3f2664f1f562ce6b661ae1f7f126e4064b4856",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_cash_distance(internal,money,smallint,oid,internal)",
+      "definition_hash": "efd9397e43190b1cac18fa07e8f8ec3215240d88ad4571c2d42583d3885f3fd2",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_cash_fetch(internal)",
+      "definition_hash": "942729d089f2e53409d618efed10a4ec60c238eb41f7bf0938bf8b8910c58d64",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_cash_penalty(internal,internal,internal)",
+      "definition_hash": "6a2674c581ea79d970467758bd2d6ba8690b661101719cb21bb90033d4f6a398",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_cash_picksplit(internal,internal)",
+      "definition_hash": "005d9a3d59ceec1b34de3d5b5b8978b5b19b54202bfb60eca8ed888d2bfc7e55",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_cash_same(gbtreekey16,gbtreekey16,internal)",
+      "definition_hash": "c1833b77b729b6de0835ab4fbc8ec6397705368c6710e09f4c278f15cbe42dcf",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_cash_union(internal,internal)",
+      "definition_hash": "11fef57e41787e930572040bf39dc72eb6b2fdf66748756b80ac767275e256e3",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_date_compress(internal)",
+      "definition_hash": "193b55a87768ba0457c293f4d2899f92037d52d6d6be3caf23d3f1fe9f63d913",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_date_consistent(internal,date,smallint,oid,internal)",
+      "definition_hash": "4e586bc2a74350e3e10d4504b7fed0d143c4f9fc62a6610b8308a77c98e31aa8",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_date_distance(internal,date,smallint,oid,internal)",
+      "definition_hash": "5362fcf992850e8d358b0fb9b2218001daa0a3b01324fb1bb4a692c4c650ca22",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_date_fetch(internal)",
+      "definition_hash": "ce2ea7b44fdcd94449388ba0a343120ca2e9207a1b4770d8b349952e004a0f9b",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_date_penalty(internal,internal,internal)",
+      "definition_hash": "dfdfd0845a2e8f6776013f03dfa08238345a5f80cdc18b7d17ddbc55fde4bf2d",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_date_picksplit(internal,internal)",
+      "definition_hash": "e554079b7c9535a608cf6113ff81efa74be306c4f0b60937422bef489e9e78a1",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_date_same(gbtreekey8,gbtreekey8,internal)",
+      "definition_hash": "e96998637664ce8474b14f572964e95e2c80dbc152f60a5d580b9bca824505f9",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_date_union(internal,internal)",
+      "definition_hash": "5df90df20e88b227c57a078b8c6dbdf4d7aedbf2591ae6cc564889e9b2052a7c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_decompress(internal)",
+      "definition_hash": "66dfb97b4151a563948567df45fd58cdd3c1eae8be274a8f4f6c8048932bd6ef",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_enum_compress(internal)",
+      "definition_hash": "e1b32db75bd534a8d6b366befe3a03a624548be621e22990d11a303a6131fd02",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_enum_consistent(internal,anyenum,smallint,oid,internal)",
+      "definition_hash": "7ad3c70098d630d5bcb636a66a3f0f401bdf973e3e4ccbad9275bd8d5397297c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_enum_fetch(internal)",
+      "definition_hash": "3d2cb6a1603c6dd789ee6452d7d7da3d9c64f8d2f7842cdea478aa44cad01b0b",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_enum_penalty(internal,internal,internal)",
+      "definition_hash": "ef988905dbce7a8b392ba5ebe1efc63e38bb839ded9a896f33be6c5fb8ea4a3a",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_enum_picksplit(internal,internal)",
+      "definition_hash": "ba9e6f173d645b93993d6fa85a946d66dc9ea147ca3968d2b7cb993104e7cbdd",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_enum_same(gbtreekey8,gbtreekey8,internal)",
+      "definition_hash": "a771d5af785bd5cb80db65be815c42b59221fb407b1f918e27b544d939347a27",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_enum_union(internal,internal)",
+      "definition_hash": "a06515b7376a5211042b5bc8e59c31be5a59de1de5da724c3e69d3a91fc16450",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float4_compress(internal)",
+      "definition_hash": "34a5e78adc19130cad39837fe89bfba1de69e565965ec019047e669669015d1e",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float4_consistent(internal,real,smallint,oid,internal)",
+      "definition_hash": "c1da4e2d355413ab8ab8ca8f9ada6bfa3722a175f49351381765d2bff69baf7a",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float4_distance(internal,real,smallint,oid,internal)",
+      "definition_hash": "89bb048df39d2e2b6c969e80faf193356307e2277ecbaea2975ad0b999f51cd1",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float4_fetch(internal)",
+      "definition_hash": "ae6ff20fd205bb44af50b34a2669e1ddbf1f1a42c4a3036a499f5ea5d667189a",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float4_penalty(internal,internal,internal)",
+      "definition_hash": "026ca9b53965bc9422cb348c49a73984708bf8560ba064228232b66a246cf639",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float4_picksplit(internal,internal)",
+      "definition_hash": "4afacbb7a25e075f79662e5781ce612116193b6a9cd18e4225212594ea6c5d0d",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float4_same(gbtreekey8,gbtreekey8,internal)",
+      "definition_hash": "ef0b92ab809cd57d66c480981172eda654af1541df196280cb81b280d88268ee",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float4_union(internal,internal)",
+      "definition_hash": "ba227c4a58db2e0affa10b685df8ed8362da843b9449f732cd72a3ac38909554",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float8_compress(internal)",
+      "definition_hash": "0f5466288b98e364d011a8d57e2b983c911df4efefa38289de35a4d4a194a0ef",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float8_consistent(internal,double precision,smallint,oid,internal)",
+      "definition_hash": "bc68c1e380e2827dbf83a3c5a495baf4778da2512cd4fd5bbd04bc7ff4ff3223",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float8_distance(internal,double precision,smallint,oid,internal)",
+      "definition_hash": "3d6d5de2eb3b166894625fad8a5077edaa596a1732f14247f451997c70f51783",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float8_fetch(internal)",
+      "definition_hash": "accc792130e4e3e5ede39006339479bf8261fcc1c106b73f8d342a31363d50f3",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float8_penalty(internal,internal,internal)",
+      "definition_hash": "0ae806df131c9523584b81fb092398d0717ac4eec15a81d0d8140ef533e46b14",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float8_picksplit(internal,internal)",
+      "definition_hash": "f447f72d66458c42b561d0d0299cee16983973a60e5894a11330cece6d2d425b",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float8_same(gbtreekey16,gbtreekey16,internal)",
+      "definition_hash": "c220d2d1a4bf8553f60b3ee2939f735c352fceda825d63c6ecb65dc912b4ad32",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_float8_union(internal,internal)",
+      "definition_hash": "90d6cb033ebe490879a97336c97460f72c7298dfe01a7559704445b12f767a36",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_inet_compress(internal)",
+      "definition_hash": "58e6a7285db9d4f304bdee1e674c7303e0454264108e8412f6849bce1a3924e3",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_inet_consistent(internal,inet,smallint,oid,internal)",
+      "definition_hash": "c21bbd8e7f63f4cfa8135b949a38d0d8bf50984986d875fc2d9d8e75ea532814",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_inet_penalty(internal,internal,internal)",
+      "definition_hash": "91f5cbd5f164f50f7918224b01bcaf1bccf7190cb71e04779f465a4dd5aaecd2",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_inet_picksplit(internal,internal)",
+      "definition_hash": "d6ec61e9752476bc44e99080cdff094a629180102bf109df435bc7a881bd7d55",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_inet_same(gbtreekey16,gbtreekey16,internal)",
+      "definition_hash": "7f59bc5604cd1b1071aa4a1e1b508b63bfad5f12a177e24c9d1c20445480085d",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_inet_union(internal,internal)",
+      "definition_hash": "31cb534f4a38c9038944da79965de861c9314fff2573586a266ae9427064f09e",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int2_compress(internal)",
+      "definition_hash": "3a3d1e9ffc4618c74af6290b69037b06c0e42d55e963ac8ca246a1fb1bd22b2f",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int2_consistent(internal,smallint,smallint,oid,internal)",
+      "definition_hash": "912ca9621b16101517db5e15f47827f0d6a7e163efc8540cbd10c7fdee1de21e",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int2_distance(internal,smallint,smallint,oid,internal)",
+      "definition_hash": "1af70c449b13dc6a05cc01dd5d1b6a3cfc8bd5efe0a8c22029ede1736054e06a",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int2_fetch(internal)",
+      "definition_hash": "1032c413c5a7e63a5aa41244171da65eaebfd1ff8d7e786f86845ad691891953",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int2_penalty(internal,internal,internal)",
+      "definition_hash": "5b9c7f01091675e3edf8fb7367aa3e474d5d9aff23f4c44bdd4d1191956d7437",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int2_picksplit(internal,internal)",
+      "definition_hash": "23efe3fe7d0efa9ed9d95d484c9fde5950516e1b20869597cfc7e0e665393e10",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int2_same(gbtreekey4,gbtreekey4,internal)",
+      "definition_hash": "6b9a8f9543a9ffee9fad97841d476b4e7acd6166d2824b399b5ab422a0cf1d64",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int2_union(internal,internal)",
+      "definition_hash": "c099188daccc7b6667a2af669f9496dfb8474dca5f11906fd90a98a58ec0256c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int4_compress(internal)",
+      "definition_hash": "8633724d456a2b7b8f083fd6bfcd4f7cab8514018a794974f0df8beb9b4bb9f5",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int4_consistent(internal,integer,smallint,oid,internal)",
+      "definition_hash": "65f007873afbb18861ce56e342b0399f1c55bf4a1fc7c41d2fe719f7130c1d4f",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int4_distance(internal,integer,smallint,oid,internal)",
+      "definition_hash": "ae295e24c194c7cc7c377664a969d4179a4a3e1dd349be4c3508c711b1605540",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int4_fetch(internal)",
+      "definition_hash": "9187b5b26e4a46805fd946a8bf056d19c831b5807056e21df66d9b1eeaaffc7a",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int4_penalty(internal,internal,internal)",
+      "definition_hash": "b93f83baa8d94b2a46418d4d4d4c575c3271f48e28b30600c0e65a55f8a9a1e5",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int4_picksplit(internal,internal)",
+      "definition_hash": "16b34ab5beb24c8120dae024106d3b8aa6eee2407f8a475ac5dd75721afdae24",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int4_same(gbtreekey8,gbtreekey8,internal)",
+      "definition_hash": "11dde0f3dc38d096d98ab5a5f8e1e8cfcb62d6c48f15a5eddf83543d2ce55908",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int4_union(internal,internal)",
+      "definition_hash": "1f1f0739aa3fbba67df6aa7f7fcee8f56d6513cd793b87761f1714c8636293f1",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int8_compress(internal)",
+      "definition_hash": "fbc88dff7a3a1cd9ef1aafe12c8f75331cd0e9b84100372db5adf1322cf5b622",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int8_consistent(internal,bigint,smallint,oid,internal)",
+      "definition_hash": "8b1c4868724c494a714dc6f01edf93e04d4eb5c15ee40f19d5ce16ded1a3a512",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int8_distance(internal,bigint,smallint,oid,internal)",
+      "definition_hash": "9ae7cfb71f17a8bbeb8d8f62d95a7cb5604db4e2e7ddf36717f0a8a6bd7f4cd9",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int8_fetch(internal)",
+      "definition_hash": "4593b4c910e543b0d4bcf71b80cb351443cbb03aad38cb446eedae35bec44306",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int8_penalty(internal,internal,internal)",
+      "definition_hash": "d3943c65edf597985cf22d2d7a7f2e54f81ad0503da39624f3569dde4a382861",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int8_picksplit(internal,internal)",
+      "definition_hash": "27186e62c950bc2520584a236fe20cece5b1cff329b03007d40fd25718514440",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int8_same(gbtreekey16,gbtreekey16,internal)",
+      "definition_hash": "986b5e374b25c6a50ad5d2e23fcb59bd9ea09e30e993037155a4f86ca94dc37c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_int8_union(internal,internal)",
+      "definition_hash": "41d68b5d14798573f954fcb661fe9668e86ab4cfe5ecf2156f4b003fa88386d5",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_intv_compress(internal)",
+      "definition_hash": "2dfd96ebdaa43e04f2b79ac0c01a26a4f211282e7d6487af47754237eb226346",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_intv_consistent(internal,interval,smallint,oid,internal)",
+      "definition_hash": "ee3cff0d729a92ba06788d628acb8ed32b686746c024d8382c9708d1da443c4a",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_intv_decompress(internal)",
+      "definition_hash": "731cb3cd488ab209950d3f6ec9b9b913128aa9a0dc8c44a676ceabde0f1d5e74",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_intv_distance(internal,interval,smallint,oid,internal)",
+      "definition_hash": "1b3ab31161e51bfad96c33daa0c5f8417d54ba704f0bd9e2ef52d91675da9ca3",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_intv_fetch(internal)",
+      "definition_hash": "243e010f40256a0ad4232c14c040e4eea7473ef322fb044a184197af0da04941",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_intv_penalty(internal,internal,internal)",
+      "definition_hash": "a0a2b298e68622a274a4008b48c22de0bf4e60562b4de991abcb8fb0d1e0cf4c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_intv_picksplit(internal,internal)",
+      "definition_hash": "a1d2cde551047895778c1198d16ba2841782345ac60d3f80a422964accc3e4e9",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_intv_same(gbtreekey32,gbtreekey32,internal)",
+      "definition_hash": "8bd8f62a16aad08da11937dcfc7cff9e55213ead93fcfae591d2f51b4858073a",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_intv_union(internal,internal)",
+      "definition_hash": "3ff8858e5916728d1ff940f3e5489528bd662a1afd81eff448a7236fadabf7c0",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad_compress(internal)",
+      "definition_hash": "cdee9fcc047ca964e2e20b515232189862ab098fdce87a9f64107c7477c43564",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad_consistent(internal,macaddr,smallint,oid,internal)",
+      "definition_hash": "d5111b7e1f14232e81888b226ebdd83e9fb1de821ec78d2e062b223b95d5c0ac",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad_fetch(internal)",
+      "definition_hash": "2d9f45e6f1e3928ab96bc58a5041a352bea38076042c0b4c34d02243bfcedc54",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad_penalty(internal,internal,internal)",
+      "definition_hash": "07b46db499de8118b5b48105495df014e0878e69bf1bd1309bf264f94ebf97da",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad_picksplit(internal,internal)",
+      "definition_hash": "e65fe8090e4f2e32424b9be5d6c4a78c8397a75189c9554dd7c4bc36c30eb64f",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad_same(gbtreekey16,gbtreekey16,internal)",
+      "definition_hash": "b2f995421ac04c348bb0ce275282d189dc2289f4f2958deed7a5f138de6ae5a9",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad_union(internal,internal)",
+      "definition_hash": "176ff297a1888353c06f5d333cda74d60c9d5c4e57c206f8d2eec316d2d3fc4b",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad8_compress(internal)",
+      "definition_hash": "98c4623fb1aa3d639123590c427570fce15dc5dfcb1704d8f8cfc5dfee1e1417",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad8_consistent(internal,macaddr8,smallint,oid,internal)",
+      "definition_hash": "3a0a0c04f1fbbcb92ebc80c1e4ac3c296a7baf11fbc4ad0b16c75a21836f510b",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad8_fetch(internal)",
+      "definition_hash": "28c33638e463d16eca7e7a848f94cc2df4fe7d8fc4ddfd9718b78c8273dcd0df",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad8_penalty(internal,internal,internal)",
+      "definition_hash": "9ebf0694ec00f22a527ef2f701223a8a00f66d694ef7f1d690ee00f1b3d5ffc8",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad8_picksplit(internal,internal)",
+      "definition_hash": "1006b7d1053b9e330681aca666009f13fa1494d9b80097e8d3e2afea29d06f69",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad8_same(gbtreekey16,gbtreekey16,internal)",
+      "definition_hash": "e55ebb52654155ac78f5a848cae34e8d2bcd98e252140d1ab311cb5975c7f3f4",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_macad8_union(internal,internal)",
+      "definition_hash": "7af851dc616754afa1752d6c6e9a343c3a7ba2f1ed705bbb2db615ec1a321c1a",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_numeric_compress(internal)",
+      "definition_hash": "0e2eac55bc85c2e4637fe05f2e772d4a784664213f818407895ebdff53553884",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_numeric_consistent(internal,numeric,smallint,oid,internal)",
+      "definition_hash": "664aeaafb795e49687f5a8d10d7a6c62cc631612f49b6e8306d69d9129dae8f7",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_numeric_penalty(internal,internal,internal)",
+      "definition_hash": "840b8a6220be8adf7415bd6edcd1a2e4136d50efc92cb6a4beb002e0ccb6d657",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_numeric_picksplit(internal,internal)",
+      "definition_hash": "33171c4c1b211ec0e324b75efd6b23f84d6d429a2354267e88f9a40d1fa03699",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_numeric_same(gbtreekey_var,gbtreekey_var,internal)",
+      "definition_hash": "9765dcb7d366d5528611838dfc50d37a7d2fa242a5f298e9b60dadab761fe5ff",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_numeric_union(internal,internal)",
+      "definition_hash": "d27c486498cd60db1eddd6969326c2f530aeca352dfc0636f84b99ab4e2dfdab",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_oid_compress(internal)",
+      "definition_hash": "ddc5450c3258ebd9eb94d0f2884512d183803c2edc6977bd6327bc1a7fea9a78",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_oid_consistent(internal,oid,smallint,oid,internal)",
+      "definition_hash": "8cd76b1958b35b2df079eb4356e1d14eee182cab20778286feb226af640c0036",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_oid_distance(internal,oid,smallint,oid,internal)",
+      "definition_hash": "18133cc062bf181a338a51db93222d99f9e6321c2b65ba89bee28675de3d8add",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_oid_fetch(internal)",
+      "definition_hash": "fe2be20a3cb20ce919fcc17741df5c3c39c72c20eda925cbf4e9f7eb071da1fe",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_oid_penalty(internal,internal,internal)",
+      "definition_hash": "f0839f879259d5747d155220dba41fd5f80cef07d1374a850929972de83836bf",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_oid_picksplit(internal,internal)",
+      "definition_hash": "e24a74d4aeee4b5f8a71d37f2eac547030ad2b676880bd7d43eb05e0fbd8e851",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_oid_same(gbtreekey8,gbtreekey8,internal)",
+      "definition_hash": "0579a36e3dca9521fa92b1dc9431130f5340b1d4478ebc438622eabf990a7f17",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_oid_union(internal,internal)",
+      "definition_hash": "f68b47c86d6fe3037fa17efae7df9d9c7f1c280e0fd266b63017a371e601a1ad",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_text_compress(internal)",
+      "definition_hash": "01d99e9e2af810efb39ce9f8e550b8f2e9efb2e6a6dc323fa32ad5c97f8df7be",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_text_consistent(internal,text,smallint,oid,internal)",
+      "definition_hash": "2b26b94e675e93cb3977c5aedfbc0bf7d2692dc8b2bc1e5274bd1de71337066e",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_text_penalty(internal,internal,internal)",
+      "definition_hash": "11ba507dc0e35543ba7ba08365be1f79d1730ca7e69ee19788a71d591cfde2d4",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_text_picksplit(internal,internal)",
+      "definition_hash": "384f2c51555ad8ec5a301c63a3db651c186e26488183255c7b8f88a35465f797",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_text_same(gbtreekey_var,gbtreekey_var,internal)",
+      "definition_hash": "41500bb7e7ba3c0814e2e16c9c498ccbeabcd31c44bebd8ca6c457af7270a69d",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_text_union(internal,internal)",
+      "definition_hash": "3a407abe53c01a7c94cc9587e04f7ddc07766082249d7a2dde6446722a4cc6d8",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_time_compress(internal)",
+      "definition_hash": "ec2c4d377cb545239c227210672df5600641600eada857d57b95b7d8ae7e0457",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_time_consistent(internal,time without time zone,smallint,oid,internal)",
+      "definition_hash": "159da651fef88a0345e3cd1a634c37d1424a335ffef397f33248df79a94072ea",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_time_distance(internal,time without time zone,smallint,oid,internal)",
+      "definition_hash": "357d47070ab1518ef6eebd94a44d9414b1de53066a2caa69062ed1d31e579299",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_time_fetch(internal)",
+      "definition_hash": "8e515397257dadde349d495b5ec136d3b807a30c0167f375a030988bbf690177",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_time_penalty(internal,internal,internal)",
+      "definition_hash": "79c91fd7d4111a5a54fee1db4f4423619ee41713d380b7f3fea516c7e0c6e9f3",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_time_picksplit(internal,internal)",
+      "definition_hash": "54e0ce28388af1779910ed63a9a8be157665554d8d1e95572732edae2b37ce41",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_time_same(gbtreekey16,gbtreekey16,internal)",
+      "definition_hash": "dfc3c8f25ba34c565c0536e0e099231b3e7c64d620234dcda07af021edab5eba",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_time_union(internal,internal)",
+      "definition_hash": "cd6c4643d69d0e85233eb43ff9e6c2f05cf2262001c03ad710ffb0b472ab2bb2",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_timetz_compress(internal)",
+      "definition_hash": "ae978aebdb207aca126c0f3d163303c7344dc7cafc177c1524255438d165176d",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_timetz_consistent(internal,time with time zone,smallint,oid,internal)",
+      "definition_hash": "c36dee264b75fcb8175d4b406618065732a1161e0513b79a40fc7bc4f0b7e3c2",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_ts_compress(internal)",
+      "definition_hash": "31442e566b971b719d7377c88ce11dd35faf73bde1027f00b8db8bab78a23230",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_ts_consistent(internal,timestamp without time zone,smallint,oid,internal)",
+      "definition_hash": "7ebb4007deb94613f3a7b4d77ea4327992efd41b19e42f58fa4d4256d465a793",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_ts_distance(internal,timestamp without time zone,smallint,oid,internal)",
+      "definition_hash": "a2b523136366339e241c81b312c75549e5795388e6321ac5efff3532cc61f72c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_ts_fetch(internal)",
+      "definition_hash": "17afcfdb115dd6423942d69ff8c02b36c7f9111528a70e24bd3fb55aa4df9a03",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_ts_penalty(internal,internal,internal)",
+      "definition_hash": "9a26b00bb1e735137be9f325f83ff1d8c287c7c44936b6c9a68bc5e14cb43711",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_ts_picksplit(internal,internal)",
+      "definition_hash": "cc5930d9ee510276230a906ae658be5b81aa73d2735169010f74074c7b80b787",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_ts_same(gbtreekey16,gbtreekey16,internal)",
+      "definition_hash": "06719222111ca961ef2bf4177c63fdbb4dec9d5b1c7ebe0c8691769d13c33d52",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_ts_union(internal,internal)",
+      "definition_hash": "f396b3b4976d3210682972fea8aeb5cda0c993e042149a7e6e8fac19eadfc82c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_tstz_compress(internal)",
+      "definition_hash": "442bc7a6e067b8d33fa004a9e3c50f492adc97bc754956610aedf2bb9762cd04",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_tstz_consistent(internal,timestamp with time zone,smallint,oid,internal)",
+      "definition_hash": "dcaef6821bdc546196e7460514c9f9dc7f36d9e379bf0a574198407c26283759",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_tstz_distance(internal,timestamp with time zone,smallint,oid,internal)",
+      "definition_hash": "119cc4c706b681aba782fefb56088a76f2956e260d657159ac008ea3e28c86be",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_uuid_compress(internal)",
+      "definition_hash": "1f529086db2f3c73e309103eaeba2824faad3bbec5c1959613fa019f1477a58c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_uuid_consistent(internal,uuid,smallint,oid,internal)",
+      "definition_hash": "fb3549c9e6f81e6294f809d7e06883bb840d5d4c7a18d1c59f717b6a1680c27b",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_uuid_fetch(internal)",
+      "definition_hash": "f116f8ba5bcf97d37d6f013073de305a78de958809fbef1c6dafadf2a7593028",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_uuid_penalty(internal,internal,internal)",
+      "definition_hash": "3550755097b740f8cc00262b93e1feb1c9d47b5fa2c8cfc7e96a2303bd81b4a1",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_uuid_picksplit(internal,internal)",
+      "definition_hash": "7539fffa2646515a873d3eeede4346727bddd66b58ab6e3485a51d4c77c2daf2",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_uuid_same(gbtreekey32,gbtreekey32,internal)",
+      "definition_hash": "a2f37caa1284591644e2176e1b6f2ea7f7cd29bca41f9802a167d908e12ba759",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_uuid_union(internal,internal)",
+      "definition_hash": "c0f9a09e788626260e2a8bad622ce2deb8d07a5494dfadfd820eef0a1a54485c",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_var_decompress(internal)",
+      "definition_hash": "87120d7a529f1e675268272a87ec6b35c49f7820f4369e00825992b8571fef05",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbt_var_fetch(internal)",
+      "definition_hash": "f54ac626c2c0b32e39063442a3a0ff4c083c1bb59ed77e2481d83d3bd962b62e",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey_var_in(cstring)",
+      "definition_hash": "8173e847cedd8b545ece5cf362b6ae6d6fd3812d370bb533deec6d7b39cd30e5",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey_var_out(gbtreekey_var)",
+      "definition_hash": "e303c38cc4aaccd5b295a63020b7ceb8702232537907880992d1cecee36e7428",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey16_in(cstring)",
+      "definition_hash": "ccba3ac5a6d6629c909c4570e9b52cf298711840f02c0c0a99cfc670f2444906",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey16_out(gbtreekey16)",
+      "definition_hash": "2402f2a79f21babed107aee6c0e07f8b434c6cf1a892eedab3a6f9b742a235e0",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey2_in(cstring)",
+      "definition_hash": "d4b9a3cd88738cde2a81ae19c93f4ee7f31c710bedc374884e2c91f7bfc9bc45",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey2_out(gbtreekey2)",
+      "definition_hash": "afd943838cbd7ddfa10da379c6038b548507fc99426ef3d0695445a496bcf200",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey32_in(cstring)",
+      "definition_hash": "2bc688a710e400e28c6c90a0f1e151220e51c1b0927dd075a160e88b8f825a40",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey32_out(gbtreekey32)",
+      "definition_hash": "dfa56392cd38150d9ed00885c0849cbd7a6dd171342eb8e0dbe35440d0db5692",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey4_in(cstring)",
+      "definition_hash": "d42e7ff01126aafcc0d76beb4111b58ad6d4a1cf1d5560283820caa91f2d4f8f",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey4_out(gbtreekey4)",
+      "definition_hash": "4d0055524e07f28fb80d542920989091ff80db7edaa0e2bbce21ef082ff40238",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey8_in(cstring)",
+      "definition_hash": "b2f8981c28e4fa01c3908c04c7d0cfe31045174a7082c029f490e666dd711b5f",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "gbtreekey8_out(gbtreekey8)",
+      "definition_hash": "6683fc8f02b6727b93ee98b637d2977c59a370f74e4569749119dccd0ccd013b",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "generar_clave_sede_modalidad(text,text,text)",
+      "definition_hash": "191c4d3e08d99a29575b049a558b12c4f5411df781904609c0b98eea8db03e30",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "generar_focalizacion_final(bigint)",
+      "definition_hash": "0c34320acb83e868d1ac5c78cb42c28023b1e9f78f3825affbe2c0747447be5d",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "focalizacion_final",
+        "focalizacion_preliminar"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "int2_dist(smallint,smallint)",
+      "definition_hash": "2be463cddafed5d9ec1d7854c212536161432d7fe82151fe7ea16021093836d2",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "int4_dist(integer,integer)",
+      "definition_hash": "af276df3bd2e20e2623d2a008e5ef4eb697bb597e1430b696ca7c5f2624b3fd0",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "int8_dist(bigint,bigint)",
+      "definition_hash": "7539be3b098eed084df0e184b219f0904fef4e534735f302553b2dcce871f984",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "interval_dist(interval,interval)",
+      "definition_hash": "c90e1373d4e6ce8e36f75d391a2b41fdf1a0562def4aa887e8101ddc60951e3d",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "nomina_invalidar_revision_condicion_economica()",
+      "definition_hash": "60e35553365ba5d369089cde0668e1de7e3aa49adada23b76a14b82d45462385",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "nomina_empleados",
+        "nomina_periodos",
+        "nomina_revision_operativa",
+        "vinculaciones"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "nomina_invalidar_revision_operativa()",
+      "definition_hash": "5d0961556babccafb0b17ab2152ed8935314a66b56297b1d3d2fc09dda19100b",
+      "available": true,
+      "dynamic_sql": true,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "nomina_asistencia_diaria",
+        "nomina_empleados",
+        "nomina_movimientos",
+        "nomina_novedades",
+        "nomina_periodos",
+        "nomina_revision_operativa",
+        "vinculaciones"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "nomina_validar_responsabilidad_contrato()",
+      "definition_hash": "f35e00def7ed594245ae8f9c3d3f1d6dd5b932b63f0b3637dab42d4e97cf4859",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "contratos"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "nomina_validar_scope_responsabilidad()",
+      "definition_hash": "d099f76880b4df36e113e6240fe4a77c367f969b4b06df8135f45de930a13a35",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "municipios",
+        "nomina_areas",
+        "nomina_responsabilidad_municipios",
+        "nomina_responsabilidades_usuario"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "nomina_validar_vinculacion_area_empresa()",
+      "definition_hash": "0695c31f660c624279ef160135959aa959615f91d7afa9e52fdf96f8da7cd1e6",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "contratos",
+        "nomina_areas",
+        "vinculaciones"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "normalizar_modalidad(text)",
+      "definition_hash": "f292a4234f0eba50eb0cb77328a1defecddcf36704efee270ccc99119614a627",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "modalidades"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "oid_dist(oid,oid)",
+      "definition_hash": "170b904520ccf88512e0b7e6eefb3630f5eb9c99d013707b7d947899a916b306",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "personas_prevent_identificador_interno_update()",
+      "definition_hash": "81de34f86179e457d49835ec28fbc14473f3e106642a3391a4bd7e2855df2af8",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "set_updated_at_persona_identificaciones()",
+      "definition_hash": "5a05a5707c889023e3d23b0d6b966068efd1f2053766c6efef25409a2eaeb82b",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "time_dist(time without time zone,time without time zone)",
+      "definition_hash": "2c74a65dbff9c632ce28105c127abe643fb8b10d4cadbaed57abcd45e151e010",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "ts_dist(timestamp without time zone,timestamp without time zone)",
+      "definition_hash": "fdefe94856f6ed88723ebdb28c1f9b61f901fbd1c9b3a5884144ce64baf247cf",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "tstz_dist(timestamp with time zone,timestamp with time zone)",
+      "definition_hash": "d0706b0cf1349beb1ae3cdb339b3c63d9d99d73abd27591cae7cc48dc5b769f0",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "unaccent_init(internal)",
+      "definition_hash": "cf83cd2677d344c88bcf2556e4cab6b88440d582a7183fffed55a2c476b63663",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "unaccent_lexize(internal,internal,internal,internal)",
+      "definition_hash": "eb43b6142b62fd27a052aae9a448bfad129c72f6706cc5fd187422dfd6b05ba7",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "unaccent(regdictionary,text)",
+      "definition_hash": "e9112366312e0220f4bcbbf22e23cb1b60f6d221396d4270f1e76d2121fce8b4",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "unaccent(text)",
+      "definition_hash": "2c09ff3d0897acc65ddc1d12a3b750dda9940bc76032fb8081bf3a11e37ce8db",
+      "available": false,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "usuario_tiene_rol(text[])",
+      "definition_hash": "28e752f8af4eb6d5050ad55e4a2a9ad54315522a18d7fc78c7f98e824f4de7f2",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "roles",
+        "usuario_roles",
+        "usuarios"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "validar_contrato_aplica_cobertura()",
+      "definition_hash": "0049f1cb1f847f777975d6676361dbebc19fd6a7b5e0d2d0a98bf0de233d1f62",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "contratos"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "validate_nomina_periodo_anulacion()",
+      "definition_hash": "730b8ab5b4d38e1bccbab8ebcfbdeb4ebb53077ffeeb54a15d0f7cea38ee6e86",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "nomina_periodos"
+      ],
+      "functions": []
+    }
+  ]
+}

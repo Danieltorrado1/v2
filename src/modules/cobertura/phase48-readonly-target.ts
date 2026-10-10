@@ -1,8 +1,11 @@
 import {URL} from 'node:url';
 import {createHash} from 'node:crypto';
 import {PROJECT_REF} from './phase48-readonly-contract';
+import {EXPECTED_CRITICAL_SCHEMA_DIGEST,SCHEMA_IDENTITY_VERSION} from './phase48-readonly-schema-identity';
 
-export const READ_SCHEMA_FINGERPRINT='2fbba2269828d8573ed10eb5a6749d89e30d62adc75652ac713f375467df19a9';
+export const LEGACY_READ_SCHEMA_FINGERPRINT='2fbba2269828d8573ed10eb5a6749d89e30d62adc75652ac713f375467df19a9';
+export const READ_SCHEMA_FINGERPRINT=EXPECTED_CRITICAL_SCHEMA_DIGEST;
+export const READ_SCHEMA_CANONICALIZATION_VERSION=SCHEMA_IDENTITY_VERSION;
 export const READ_IDENTITY_TABLES=['empresas','contratos','usuarios','usuario_roles','usuario_empresas','usuario_contratos','roles','cobertura_asignaciones','vinculaciones','focalizacion_final','nomina_asistencia_diaria','nomina_periodos','auditoria','auditoria_eventos'];
 const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
 function need(ok:unknown,code:string):asserts ok {if(!ok)throw Error(code);}
@@ -61,11 +64,12 @@ export function validateReadTarget(value:string,expected=PROJECT_REF){
  // verification and transaction settings cannot be overridden by the URL.
  return {classification,format,config:{host,port,user:username,password:decodeURIComponent(u.password),database:'postgres',ssl:{rejectUnauthorized:true},options:'-c default_transaction_read_only=on -c timezone=UTC'}};
 }
-export function verifyReadServerIdentity(identity:{database:string;version:string;empresa_exists:boolean;contrato_exists:boolean;schema_digest:string;tables:string[]},expectedDatabase:string){
+export function verifyReadServerIdentity(identity:{database:string;version:string;empresa_exists:boolean;contrato_exists:boolean;schema_digest:string;schema_identity_version:string;global_schema_digest?:string;tables:string[]},expectedDatabase:string){
  need(/^17\.\d+(?:\s|$)/.test(identity.version),'READ_SERVER_VERSION_INVALID');
  need(identity.database===expectedDatabase,'READ_SERVER_DATABASE_INVALID');
  need(identity.empresa_exists===true&&identity.contrato_exists===true,'READ_SERVER_SCOPE_INVALID');
  need(READ_IDENTITY_TABLES.every(t=>identity.tables.includes(t)),'READ_SERVER_TABLES_INVALID');
- need(identity.schema_digest===READ_SCHEMA_FINGERPRINT,'READ_SCHEMA_IDENTITY_MISMATCH');
- return {postgresql_17:true,database_expected:true,empresa:15,contrato:24,tables_expected:true,schema_digest:identity.schema_digest,schema_matches:true};
+ need(identity.schema_identity_version===SCHEMA_IDENTITY_VERSION,'READ_SCHEMA_IDENTITY_VERSION_INVALID');
+ if(identity.schema_digest!==READ_SCHEMA_FINGERPRINT)throw Object.assign(Error('READ_SCHEMA_IDENTITY_MISMATCH'),{expected_schema_digest:READ_SCHEMA_FINGERPRINT,observed_schema_digest:identity.schema_digest,canonicalization_version:READ_SCHEMA_CANONICALIZATION_VERSION,schema_divergence_phase:'server_identity.critical_schema',observed_global_schema_digest:identity.global_schema_digest});
+ return {postgresql_17:true,database_expected:true,empresa:15,contrato:24,tables_expected:true,schema_digest:identity.schema_digest,schema_identity_version:SCHEMA_IDENTITY_VERSION,global_schema_digest:identity.global_schema_digest,schema_matches:true};
 }

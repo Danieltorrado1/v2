@@ -1,0 +1,1005 @@
+{
+  "direct_relations": [
+    "auditoria",
+    "auditoria_eventos",
+    "calculadora_personal_config",
+    "cobertura_asignaciones",
+    "focalizacion_final",
+    "nomina_asistencia_diaria",
+    "nomina_categorias_salariales",
+    "nomina_periodos",
+    "sede_modalidades"
+  ],
+  "context_roots": [
+    "nomina_contextos_operativos_base",
+    "nomina_empleado_detalle",
+    "nomina_empleados",
+    "permisos",
+    "rol_permisos",
+    "roles",
+    "usuario_contratos",
+    "usuario_empresas",
+    "usuario_roles",
+    "usuarios",
+    "vinculacion_condiciones_economicas"
+  ],
+  "critical_relations": [
+    "auditoria",
+    "auditoria_eventos",
+    "calculadora_personal_config",
+    "cargos_operativos",
+    "cobertura_asignaciones",
+    "cobertura_externos",
+    "contrato_cargos",
+    "contratos",
+    "departamentos",
+    "documentos_persona",
+    "empresas",
+    "estados_civiles",
+    "focalizacion_cargas",
+    "focalizacion_final",
+    "focalizacion_preliminar",
+    "focalizacion_vigencias",
+    "instituciones",
+    "modalidades",
+    "municipios",
+    "nomina_asistencia_diaria",
+    "nomina_categorias_salariales",
+    "nomina_contextos_operativos_base",
+    "nomina_empleado_detalle",
+    "nomina_empleados",
+    "nomina_movimiento_tarifas",
+    "nomina_movimientos",
+    "nomina_novedades",
+    "nomina_periodos",
+    "nomina_revision_operativa",
+    "nomina_tipos_novedad",
+    "organizaciones",
+    "permisos",
+    "personas",
+    "rol_permisos",
+    "roles",
+    "sede_modalidades",
+    "sedes",
+    "sexo",
+    "sst_eventos",
+    "tipos_documentos",
+    "tipos_identificacion",
+    "tipos_jornada",
+    "tipos_sangre",
+    "tipos_vinculacion",
+    "usuario_contratos",
+    "usuario_empresas",
+    "usuario_roles",
+    "usuarios",
+    "vinculacion_condiciones_economicas",
+    "vinculaciones",
+    "zonas"
+  ],
+  "critical_functions": [
+    "fn_actualizar_periodo_pago_por_ingreso_retiro()",
+    "fn_crear_evento_sst_desde_nomina()",
+    "nomina_invalidar_revision_condicion_economica()",
+    "nomina_invalidar_revision_operativa()",
+    "personas_prevent_identificador_interno_update()",
+    "validar_contrato_aplica_cobertura()",
+    "validate_nomina_periodo_anulacion()"
+  ],
+  "cast_equivalences": {
+    "constraints:public.calculadora_personal_config.calculadora_personal_config_estado_check:definition": [
+      "c208c4aef75c0133938c5d95a65a5b55bb4e7eadbd2167b872ce889e2c2f473a",
+      "3d943090bee0bb3619e5d12e3af3e55acd694d3626f8d9531e1a74cec577a907"
+    ],
+    "constraints:public.calculadora_personal_config.calculadora_personal_config_metodo_check:definition": [
+      "d03a282dd194110477a3523e92bf0277a27703bd769a2ca78ee8b9685c37e6e0",
+      "1aee86c5098553dd084f54c85cbd842fb86e399a083e3a755c14a8320add1a5c"
+    ],
+    "constraints:public.calculadora_personal_config.calculadora_personal_config_regla_redondeo_check:definition": [
+      "941c908f467ec3c0febe22d0998dfc8c199f15d05d50afd34f797275e59298e0",
+      "8aca0e29c2e76473405202baa8765bc13db43e313d61438cca323d61f5f1055c"
+    ],
+    "constraints:public.calculadora_personal_rangos.calculadora_personal_rangos_estado_check:definition": [
+      "c208c4aef75c0133938c5d95a65a5b55bb4e7eadbd2167b872ce889e2c2f473a",
+      "3d943090bee0bb3619e5d12e3af3e55acd694d3626f8d9531e1a74cec577a907"
+    ],
+    "constraints:public.empresa_modulo_configuracion.ck_empresa_modulo_config_estado:definition": [
+      "019361a1d907bcfd903346f36e17b6b3573d370e22e4b302c89ad654ddd9c2fe",
+      "b7c9dac865bda45f93cc2aa08647bad82a777c8b4f76a53cbb7f7f95829bf6f3"
+    ],
+    "constraints:public.empresa_suscripciones.chk_empresa_suscripcion_estado:definition": [
+      "293a1ae16c9162ce8184fd5a06739a26799e7a7b777f871ddcf2374736ff2bdc",
+      "12e60b4112c0bb6ddfba5cdde59dcad06f27beee929ec09814a5d7d06fc58f67"
+    ],
+    "constraints:public.nomina_novedad_documentos.nomina_novedad_documentos_estado_revision_check:definition": [
+      "fb465487da7a6913a69c56bd17fbe3ebf9e50bf60dddab6c8e88f224c406cc21",
+      "53dcda855b01f22d44c4d8f06606ffa1df572e15fd93050afdf307b5e2655986"
+    ],
+    "constraints:public.nomina_novedad_documentos.nomina_novedad_documentos_tipo_relacion_check:definition": [
+      "7114c5f6221705060e238d33194aa3a8b13a0925d0f499896416a4a8a15224be",
+      "88f4a156872c757ab9fb56f88f26648bf08d66e7b05b60d4edab370fcca170c3"
+    ],
+    "constraints:public.nomina_parametros_economicos.ck_nomina_parametros_redondeo:definition": [
+      "04c03ce7e977430ad5f8e7c4b438958ab39c383645528a255241a2625147fc34",
+      "9f8babc89686f9ee47a5a6535adfe74789e0e1c757a86a396aa2c3074fde48f3"
+    ],
+    "constraints:public.planes.chk_planes_periodicidad:definition": [
+      "f2802b944e1e1dfcab3909e9e7cab02285c90be0a99ac6c60171e181f57fc9d0",
+      "c04a0b14c12583bdfb506d49f96031ddf9f1e6b64365c54c8f99c1ffc2b88a1e"
+    ],
+    "constraints:public.sst_matriz_riesgos.chk_sst_matriz_riesgos_clasificacion:definition": [
+      "7f24375c5998437bee3068172fac825ab6969d9cd0eadb8ef9930a53cba5baec",
+      "7df9335f4caf1bd447cc9ec5a13eb657cfecef3be69645ce75f10dd219d93504"
+    ],
+    "indexes:public.empresa_suscripciones.uq_empresa_suscripcion_abierta:definition": [
+      "54846f51fac61fd46be1b0bbc8c7c0f9aaf6dae67c59eb3e6814699c312702bf",
+      "17adb805c770bce68a6551b91effd7b295a81fc62b95db1edbbcc81bb096ee4e"
+    ]
+  },
+  "excluded_relations": [
+    {
+      "name": "agenda_cierre_tareas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "agenda_cierres_diarios",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "agenda_tarea_asignaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "agenda_tarea_participantes",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "agenda_tarea_seguimientos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "agenda_tareas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "agenda_top_tareas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "alertas_documentales",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "alertas_sistema",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "arl",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "asignaciones_operativas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "cajas_compensacion",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "calculadora_personal_rangos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "cobertura_cuenta_cobro_externa_detalle",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "cobertura_cuentas_cobro_externas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "cobertura_externo_documentos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "contrato_cargo_requisitos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "contrato_documento_requisitos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "contrato_eventos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "contrato_excepciones_documentales",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "contrato_perfiles_licitacion",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "contrato_plantillas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "contrato_requisitos_generales",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "contrato_ubicaciones_laborales",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "documentos_contrato",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "documentos_generados",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "documentos_requisitos_aliases",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "documentos_requisitos_canonicos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "documentos_requisitos_componentes",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "documentos_requisitos_reglas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "documentos_vinculacion",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "empresa_configuracion_general",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "empresa_modulo_configuracion",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "empresa_modulo_overrides",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "empresa_suscripciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "eps",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "evaluaciones_competencias",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "evaluaciones_desempeno",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "evaluaciones_persona",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "evaluaciones_planes_mejora",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "evaluaciones_planes_mejora_seguimientos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "evaluaciones_respuestas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "focalizacion_detallado",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "focalizacion_historial_cambios",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "focalizacion_novedades",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "focalizacion_validacion_cupos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "fondos_pension",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "gestor_institucion_asignaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "gestor_municipio_asignaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "gestor_personal_asignaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "historial_cambios",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "importacion_errores",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "importacion_lotes",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "importacion_staging_maestro",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "importacion_staging_personas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "importacion_staging_vinculaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "instituciones_identidad_historial",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "integracion_evento_impactos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "integracion_eventos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_bodegas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_conductores",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_inventario",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_items",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_movimientos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_novedades",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_recepciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_remision_items",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_remisiones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_rutas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "logistica_vehiculos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "modalidad_aliases",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "modulos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "niveles_estudio",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_ajustes_manuales",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_areas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_calendarios_contractuales",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_cesantias",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_coberturas_novedad",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_correcciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_cuenta_cobro_ops_detalle",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_cuentas_cobro_ops",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_cuentas_cobro_turnos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_desprendibles",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_exportes",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_intereses_cesantias",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_liquidacion_detalle",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_liquidaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_liquidaciones_finales",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_novedad_coberturas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_novedad_documentos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_novedad_turnos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_novedades_canonicas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_pagos_pendientes",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_parametros_economicos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_periodo_26_25_auditoria",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_prima",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_recargos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_responsabilidad_areas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_responsabilidad_municipios",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_responsabilidades_usuario",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_vacaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_vacaciones_solicitudes",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "nomina_vinculacion_areas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "notificacion_destinatarios",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "notificacion_reglas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "notificaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "novedades_operativas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "operacion_simat_importaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "operacion_simat_registros",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "ops_cuentas_cobro",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "ops_soportes_cuenta",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "persona_contactos_emergencia",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "persona_cuentas_bancarias",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "persona_estudios",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "persona_experiencia",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "persona_formacion_academica",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "persona_identificaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "personal_asignaciones_laborales",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "personal_bank_export_profiles",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "personal_export_templates",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "personal_presentaciones_licitacion",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "plan_modulos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "planes",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "plantilla_cargo_requisitos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "plantilla_cargos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "plantilla_variables",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "plantillas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "plantillas_contrato",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sede_institucion_historial",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sedes_identidad_historial",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sincronizaciones_operativas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_accidentes_acciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_accidentes_incidentes",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_capacitaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_capacitaciones_persona",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_comite_miembros",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_comite_reuniones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_comites",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_dotacion_epp",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_dotacion_epp_entregas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_examenes_ocupacionales",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_examenes_persona",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_indicador_mediciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_indicadores",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_indicadores_periodos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_inspecciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_inspecciones_acciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_inspecciones_hallazgos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_investigaciones_accidente",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_matriz_riesgos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_perfil_demografico",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_perfil_demografico_versiones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_perfil_restringido",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_plan_anual",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_plan_anual_actividades",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_planes_accion",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_planes_emergencia",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_preparacion_personas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_revision_casos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_riesgos_cargo",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "sst_simulacros",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "staging_afiliaciones_import",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "staging_cargo_operativo_import",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "staging_cargos_personal_import",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "staging_direcciones_import",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "staging_jornada_import",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "staging_personas_import",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "staging_sede_modalidades_import",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "staging_sincronizacion_operativa",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "tipos_novedad_operativa",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "usuario_municipio_visibilidad",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vinculacion_afiliaciones",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vinculacion_historial_cambios",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_alertas_contratos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_alertas_documentos",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_alertas_nomina",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_alertas_sst",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_asignaciones_operativas",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_cobertura_final",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_cobertura_manipuladores_asignados",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_contratos_con_cobertura",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_dashboard_documental",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_dashboard_nomina",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_dashboard_personal",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_dashboard_sst",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_documentos_faltantes",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_expediente_persona",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_focalizacion_final_cobertura",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_nomina_resumen_periodo",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_resumen_expediente_documental",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_sst_dashboard",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    },
+    {
+      "name": "vw_sst_perfil_demografico",
+      "reason": "No source query, FK, trigger/function body or view dependency reachable from the fixed Phase 48 scope"
+    }
+  ],
+  "function_dependencies": [
+    {
+      "function_identity": "fn_actualizar_periodo_pago_por_ingreso_retiro()",
+      "definition_hash": "611dd4c30d2b63974bd30dfa96a79c438f10f0684bcebd951d07413da2102291",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "nomina_empleados",
+        "nomina_periodos",
+        "nomina_tipos_novedad",
+        "vinculaciones"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "fn_crear_evento_sst_desde_nomina()",
+      "definition_hash": "65dec31a8e4e483c7494e5df4be13f7ed83a084622ca4a83920860ef177d7172",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "nomina_tipos_novedad",
+        "sst_eventos"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "nomina_invalidar_revision_condicion_economica()",
+      "definition_hash": "60e35553365ba5d369089cde0668e1de7e3aa49adada23b76a14b82d45462385",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "nomina_empleados",
+        "nomina_periodos",
+        "nomina_revision_operativa",
+        "vinculaciones"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "nomina_invalidar_revision_operativa()",
+      "definition_hash": "5d0961556babccafb0b17ab2152ed8935314a66b56297b1d3d2fc09dda19100b",
+      "available": true,
+      "dynamic_sql": true,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "nomina_asistencia_diaria",
+        "nomina_empleados",
+        "nomina_movimientos",
+        "nomina_novedades",
+        "nomina_periodos",
+        "nomina_revision_operativa",
+        "vinculaciones"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "personas_prevent_identificador_interno_update()",
+      "definition_hash": "81de34f86179e457d49835ec28fbc14473f3e106642a3391a4bd7e2855df2af8",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [],
+      "functions": []
+    },
+    {
+      "function_identity": "validar_contrato_aplica_cobertura()",
+      "definition_hash": "0049f1cb1f847f777975d6676361dbebc19fd6a7b5e0d2d0a98bf0de233d1f62",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "contratos"
+      ],
+      "functions": []
+    },
+    {
+      "function_identity": "validate_nomina_periodo_anulacion()",
+      "definition_hash": "730b8ab5b4d38e1bccbab8ebcfbdeb4ebb53077ffeeb54a15d0f7cea38ee6e86",
+      "available": true,
+      "dynamic_sql": false,
+      "unresolved_dynamic_sql": false,
+      "dynamic_sql_policy": "FIXED_STRING_LITERALS_ONLY",
+      "relations": [
+        "nomina_periodos"
+      ],
+      "functions": []
+    }
+  ]
+}

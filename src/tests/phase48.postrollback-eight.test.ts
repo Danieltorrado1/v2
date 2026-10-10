@@ -16,7 +16,7 @@ async function exercise(change?:string,fail?:string){
   const read=async(name:string,value:any)=>{traces[index].reads.push(name);if(index===1&&fail===name)throw Error('INDUCED_POST_DIGEST_FAILURE');return structuredClone(value);};
   return {
    session:()=>read('session',{pid:fail==='same_pid'?100:100+index,snapshot:'1:1:',virtual_transaction:fail==='same_transaction'?'1/1':'1/'+(index+1),read_only:'on',isolation:'repeatable read',version:'17.11',host:'127.0.0.1',port:55466}),
-   safePolicies:()=>read('safePolicies',true),targetIdentity:()=>read('targetIdentity',{}),actor:()=>read('actor',true),ssl:()=>read('ssl',true),
+   safePolicies:()=>read('safePolicies',true),targetIdentity:()=>{if(fail==='schema_identity'||fail==='post_schema_identity'&&index===1)throw Object.assign(Error('READ_SCHEMA_IDENTITY_MISMATCH'),{expected_schema_digest:'a'.repeat(64),observed_schema_digest:'b'.repeat(64),canonicalization_version:'phase48-global-canonical-v1',schema_divergence_phase:'server_identity.public_schema'});return read('targetIdentity',{});},actor:()=>read('actor',true),ssl:()=>read('ssl',true),
    activity:()=>read('activity',{waiting:0,ddl:0}),verify:()=>read('verify',true),
    snapshot:()=>read('snapshot',{schema:[{value:altered('schema_digest')?2:1}],constraints:[],indexes:[],routines:[],triggers:[],sequences:[],data:[{table:'cobertura_asignaciones',count:'730'},...Array.from({length:223},(_,i)=>({table:'t'+i,count:altered('protected_tables_digest')?'2':'1'}))],digest:(altered('source_digest')?'c':'a').repeat(64)}),
    candidates:()=>read('candidates',Array.from({length:730},(_,i)=>({id:i,value:altered('phase48_candidates_digest')?2:1}))),
@@ -50,6 +50,10 @@ test('eight independent reads match, two explicit rollbacks, no reused repositor
  for(const [k,v] of Object.entries(contract.HISTORICAL_ASSERTIONS))assert.equal(fields[k],v);
  const grant={authorization:'ACTIVE',actor:'12',empresa:15,contrato:24,expectedRows:730,backupSha:contract.BACKUP_SHA256,commit:r.commit,runId:r.run_id,projectRef:contract.PROJECT_REF,baseline:'a'.repeat(64),confirmation:'test',authorizationIssuedAt:r.issued_at,authorizationExpiresAt:r.expires_at,syncManualConfirmation:false,certificate_sha256:contract.CERTIFICATE_SHA256,authorizationPhrase:r.authorization_phrase};
  assert.equal(parseProductionGrant(JSON.stringify(grant)).authorizationPhrase,r.authorization_phrase);
+});
+for(const fail of ['schema_identity','post_schema_identity'])test('schema STOPPED preserves mismatch evidence without nonce: '+fail,async()=>{
+ const {result:r,traces}=await exercise(undefined,fail);
+ assert.equal(r.status,'STOPPED');assert.equal(r.reason,'READ_SCHEMA_IDENTITY_MISMATCH');assert.equal(r.expected_schema_digest,'a'.repeat(64));assert.equal(r.observed_schema_digest,'b'.repeat(64));assert.equal(r.canonicalization_version,'phase48-global-canonical-v1');assert.equal(r.schema_divergence_phase,'server_identity.public_schema');assert.equal(r.schema_divergence_connection,fail==='schema_identity'?'principal':'post_rollback');assert.equal(r.nonce,null);assert.equal(r.authorization_phrase,null);assert.equal(r.writes_productive,0);assert.ok(traces.every(t=>t.closed&&t.queries.at(-1)==='ROLLBACK'));
 });
 for(const field of contract.DIGEST_FIELDS)test('individual drift STOPPED_DRIFT: '+field,async()=>{
  const {result:r,traces}=await exercise(field);assert.equal(r.status,'STOPPED_DRIFT');assert.deepEqual(Array.from(r.changed_digests),[field]);assert.equal(r.stable,false);assert.equal(r.authorization_phrase,null);assert.equal(r.nonce,null);assert.equal(r.authorization_status,'REVOCADA');assert.equal(Object.values(r.digest_comparison).filter(Boolean).length,7);assert.equal(traces[1].queries.at(-1),'ROLLBACK');assert.equal(traces[1].closed,true);

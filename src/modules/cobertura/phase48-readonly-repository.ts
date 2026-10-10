@@ -3,6 +3,7 @@
 import type {PoolClient} from 'pg';
 import {createHash} from 'node:crypto';
 import {inspectProductionTls} from './phase48-readonly-tls';
+import {assertCriticalSchema,SCHEMA_IDENTITY_VERSION} from './phase48-readonly-schema-identity';
 import {contractDigest} from './phase48-readonly-contract';
 import {verifyReadServerIdentity,READ_IDENTITY_TABLES} from './phase48-readonly-target';
 
@@ -118,7 +119,7 @@ async function plannedId(db:Db,table:string){
 
 // SQL is private to this repository; callers cannot submit SQL or function names.
 // This second barrier examines executable tokens, not words inside literals.
-const permittedCalls=new Set('select and or not count encode sha256 convert_to coalesce string_agg to_jsonb md5 pg_get_functiondef pg_get_constraintdef pg_get_triggerdef pg_get_serial_sequence greatest max lower btrim exists in current_database current_setting pg_backend_pid pg_current_snapshot host inet_server_addr inet_server_port'.split(' '));
+const permittedCalls=new Set('select and or not count encode sha256 convert_to coalesce string_agg to_jsonb md5 pg_get_functiondef pg_get_constraintdef pg_get_triggerdef pg_get_serial_sequence greatest max lower btrim exists in current_database current_setting pg_backend_pid pg_current_snapshot host inet_server_addr inet_server_port format_type pg_get_expr pg_get_indexdef pg_get_function_result pg_get_viewdef has_table_privilege has_schema_privilege'.split(' '));
 export function assertReadQuery(sql:string){
  const tokens=sql.replace(/'(?:''|[^'])*'/g,"''").replace(/"((?:""|[^"])*)"/g,(_,s:string)=>s.replaceAll('""','"'));
  assert(/^\s*SELECT\b/i.test(tokens)&&!/[;]|--|\/\*/.test(tokens)&&! /\b(INSERT|UPDATE|DELETE|MERGE|ALTER|CREATE|DROP|TRUNCATE|WITH|INTO|FOR|CALL|DO|COPY|GRANT|REVOKE|LOCK)\b/i.test(tokens),'READ_QUERY_REQUIRED');
@@ -131,9 +132,10 @@ export function createReadOnlyRepository(client:Db){
   safePolicies:async()=>assert((await db.query(`SELECT r.rolsuper OR r.rolbypassrls OR NOT EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relrowsecurity) safe FROM pg_roles r WHERE r.rolname=current_user`)).rows[0]?.safe===true,'RLS_EXECUTION_NOT_SAFE'),
   targetIdentity:async(expectedDatabase:string)=>{
    const metadata=await schemaDefinition(db),tables=[...new Set(metadata.schema.map(r=>r.table_name as string))];
+   const critical=await assertCriticalSchema(db);
    assert(READ_IDENTITY_TABLES.every(t=>tables.includes(t)),'READ_SERVER_TABLES_INVALID');
    const identity=(await db.query(`SELECT pg_catalog.current_database() database,pg_catalog.current_setting('server_version') version,EXISTS(SELECT 1 FROM empresas WHERE id=15) empresa_exists,EXISTS(SELECT 1 FROM contratos WHERE id=24 AND empresa_id=15) contrato_exists`)).rows[0];
-   return verifyReadServerIdentity({...identity,tables,schema_digest:contractDigest(metadata)} as Parameters<typeof verifyReadServerIdentity>[0],expectedDatabase);
+   return verifyReadServerIdentity({...identity,tables,schema_digest:critical.observed_schema_digest,schema_identity_version:SCHEMA_IDENTITY_VERSION,global_schema_digest:contractDigest(metadata)} as Parameters<typeof verifyReadServerIdentity>[0],expectedDatabase);
   },
   snapshot:()=>historicalSnapshot(db),
   actor:()=>actorGate(db,'12'),

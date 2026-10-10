@@ -33,6 +33,7 @@ async function exercise(scenario:'ready'|'applied'|'snapshot-failure'|'rollback-
   if(name==='./phase48-readonly-contract')return contract;
   if(name==='./phase48-readonly-target')return {validateReadTarget:()=>assert.fail('no productive target')};
   if(name==='./phase48-readonly-tls')return {inspectProductionTls:()=>assert.fail('no productive TLS in local executor doubles')};
+  if(name==='./phase48-readonly-schema-identity')return {assertCriticalSchema:()=>assert.fail('no productive schema in local executor doubles')};
   if(name==='./phase48-readonly-repository')return {createReadOnlyRepository:()=>assert.fail('no productive authorization baseline')};
   if(name==='./phase48-historical-domain')return {actorGate:async()=>{},historicalPlan:async()=>structuredClone(plan),historicalSnapshot:async()=>{captures++;if(scenario==='snapshot-failure'||scenario==='rollback-failure')throw Error('INDUCED_SNAPSHOT_FAILURE');return structuredClone({...snapshot,digest:scenario==='drift'&&captures>1?'b'.repeat(64):snapshot.digest});},phaseSql:()=> 'SELECT 1;',nextId:()=>assert.fail('no sequence mutation'),restartSequence:()=>assert.fail('no sequence mutation')};
   if(name==='node:crypto')return require(name);assert.fail(name);

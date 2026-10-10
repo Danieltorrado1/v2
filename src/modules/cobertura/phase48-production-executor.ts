@@ -1,5 +1,6 @@
 import type {PoolClient} from 'pg';
 import {inspectProductionTls} from './phase48-readonly-tls';
+import {assertCriticalSchema} from './phase48-readonly-schema-identity';
 import {validateReadTarget} from './phase48-readonly-target';
 import {validateCertificateHash,parseAuthorizationPhrase,exactEqual,contractDigest,DIGEST_FIELDS} from './phase48-readonly-contract';
 import {createReadOnlyRepository} from './phase48-readonly-repository';
@@ -133,10 +134,11 @@ export async function executeAtomic(db:Db,observer:Db,o:Options){
  try{
   validateOptions(o);const mode=o.mode??'PreflightOnly';
   if(mode!=='MutateProduction'&&o.target!=='Production')await localIdentity(db);
-  else {inspectProductionTls(db);inspectProductionTls(observer);need((await db.query('SHOW server_version')).rows[0].server_version==='17.6','PRODUCTION_VERSION_INVALID');}
+  else {inspectProductionTls(db);inspectProductionTls(observer);await assertCriticalSchema(db);await assertCriticalSchema(observer);need((await db.query('SHOW server_version')).rows[0].server_version==='17.6','PRODUCTION_VERSION_INVALID');}
   if(mode!=='SimulateLocal')need(!o.simulation,'SIMULATION_HOOKS_FORBIDDEN');
   const sql=phaseSql();need(!/\b(?:BEGIN|COMMIT|ROLLBACK)\s*;/i.test(sql),'INNER_TRANSACTION_BOUNDARY');
   await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE READ ONLY');transaction=true;
+  if(mode==='MutateProduction'||o.target==='Production')await assertCriticalSchema(db);
   const initial=await capture(db),initialState=await state(db,initial.snapshot);await anomalies(db);
   const auditFirst:Record<string,string>={};
   for(const table of ['auditoria','auditoria_eventos']){
@@ -167,6 +169,7 @@ export async function executeAtomic(db:Db,observer:Db,o:Options){
   need((await historicalSnapshot(observer)).digest===initial.snapshot.digest,'SOURCE_DRIFT_DETECTED');
   const locked=await capture(db);need(locked.snapshot.digest===initial.snapshot.digest,'SOURCE_DRIFT_DETECTED');
   const lockedState=await state(db,locked.snapshot);need(!lockedState.applied&&sha(lockedState.identities)===sha(initialState.identities),'SOURCE_DRIFT_DETECTED');
+  if(mode==='MutateProduction'||o.target==='Production')await assertCriticalSchema(db);
   if(o.observeFlags){const flags=await o.observeFlags();validateOptions({...o,flags});}
   if(o.simulation?.failAt==='during-phase48'){await db.query('ALTER TABLE cobertura_asignaciones ADD COLUMN institucion_id bigint');wrote=true;throw Error('INDUCED_PHASE48_FAILURE');}
   await db.query(sql);wrote=true;

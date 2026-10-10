@@ -6,7 +6,7 @@ export const DIGEST_FIELDS = ['schema_digest','source_digest','phase48_candidate
 export const MUTATOR_COMMIT = 'a1e709ca89c37ed31e9ec27b4dff2e4c17c295ce';
 export const CERTIFICATE_SHA256 = '700723581420DD1AC98FD7E9AC529F0EF210EADCAF87FC868A3AD7D114C2F3B7';
 // Every runner at or before the certified base belongs to the revoked contract.
-const revokedRunnerCommits=new Set(execFileSync('git',['rev-list','9428f22644e895592e940193579d03202b9df1ec'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim().split(/\r?\n/));
+const revokedRunnerCommits=new Set(execFileSync('git',['rev-list','cfe8b63276ef948ce72bc36f535d74509542e447'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim().split(/\r?\n/));
 export function exactEqual(a:unknown,b:unknown):boolean {
  if(typeof a!=='string'||typeof b!=='string')return false;
  const left=Buffer.from(a),right=Buffer.from(b);
@@ -21,7 +21,7 @@ export function assertCertifiedContract(currentCommit:string){
  const source=(commit:string)=>execFileSync('git',['show',commit+':'+file],{encoding:'utf8',stdio:['ignore','pipe','ignore']});
  if(!exactEqual(normalize(source(MUTATOR_COMMIT)),normalize(source(currentCommit))))throw Error('CERTIFIED_CONTRACT_CHANGED');
  execFileSync('git',['merge-base','--is-ancestor',MUTATOR_COMMIT,currentCommit],{stdio:'ignore'});
- execFileSync('git',['diff','--exit-code',MUTATOR_COMMIT,currentCommit,'--','src/modules/cobertura/phase48-readonly-preflight.ts','src/scripts/phase48-production-readonly.ts'],{stdio:'ignore'});
+ execFileSync('git',['diff','--exit-code',MUTATOR_COMMIT,currentCommit,'--','src/modules/cobertura/phase48-readonly-preflight.ts','src/scripts/phase48-production-readonly.ts','src/modules/cobertura/phase48-readonly-schema-catalog.ts','src/modules/cobertura/phase48-readonly-schema-identity.ts','src/modules/cobertura/phase48-readonly-schema-scope.ts'],{stdio:'ignore'});
 }
 export const BACKUP_SHA256 = '4271775ee853bf03b9f70402f7ecfd7becbe048269e3b10c76f027f981303e26';
 export const PROJECT_REF = 'scuvsocqibbubqnesvuf';
