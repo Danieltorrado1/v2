@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 
 export const DIGEST_FIELDS = ['schema_digest','source_digest','phase48_candidates_digest','albeny_before_digest','dary_before_digest','protected_tables_digest','periods_4_6_digest','write_set_before_digest'] as const;
 // Pinned to the replacement mutator commit after local certification.
-export const MUTATOR_COMMIT = '806f6f058b57b11aeadc478e4f35530b601cc128';
+export const MUTATOR_COMMIT = '5759337bbdb8e936af4788491e4ab41cc6f31db3';
 export const CERTIFICATE_SHA256 = '700723581420DD1AC98FD7E9AC529F0EF210EADCAF87FC868A3AD7D114C2F3B7';
 // Every runner at or before the certified base belongs to the revoked contract.
 const revokedRunnerCommits=new Set(execFileSync('git',['rev-list','68d2c092c4d1fcc04708a81cd035567aff7b8663'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim().split(/\r?\n/));
