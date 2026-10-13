@@ -60,3 +60,4 @@ reports/territorial-contract-24-pre-migration.json
 /tmp/phase48-historical-cert/
 tmp/phase48-production-cert/
 tmp/phase48-production-receipts/
+tmp/phase48-pooler-local/

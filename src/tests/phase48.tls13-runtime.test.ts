@@ -23,6 +23,8 @@ const hash=(b:Buffer)=>createHash('sha256').update(b).digest('hex');
 const runtimeExports:any={};
 runInNewContext(ts.transpileModule(readFileSync('src/modules/cobertura/phase48-readonly-tls.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:runtimeExports,Buffer,Date,__dirname:resolve('src/modules/cobertura'),require:(n:string)=>n==='./phase48-readonly-contract'?{CERTIFICATE_SHA256:hash(ca).toUpperCase(),validateCertificateHash:(s:string)=>assert.equal(s,hash(ca).toUpperCase())}:n==='./phase48-readonly-target'?{}:require(n)});
 const inspect:typeof pinnedInspect=runtimeExports.inspectProductionTls;
+const connectionExports:any={};
+runInNewContext(ts.transpileModule(readFileSync('src/modules/cobertura/phase48-readonly-connection.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:connectionExports,Buffer,Date,setTimeout,clearTimeout,require:(n:string)=>n==='./phase48-readonly-tls'?runtimeExports:require(n)});
 const repositoryExports:any={};
 runInNewContext(ts.transpileModule(readFileSync('src/modules/cobertura/phase48-readonly-repository.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:repositoryExports,Buffer,Date,require:(n:string)=>n==='./phase48-readonly-tls'?runtimeExports:n.startsWith('./')?{}:require(n)});
 function client(patch:Record<string,unknown>={}){
@@ -55,7 +57,7 @@ test('wrong CA, disabled rejectUnauthorized, wrong checker and mismatched config
 });
 test('runner and mutator use same runtime helper; no backend pg_stat_ssl inference',()=>{
  for(const path of ['src/modules/cobertura/phase48-readonly-repository.ts','src/modules/cobertura/phase48-production-executor.ts']){const source=readFileSync(path,'utf8');assert.match(source,/import \{inspectProductionTls\} from '.\/phase48-readonly-tls'/);assert.match(source,/inspectProductionTls\((?:client|db)\)/);assert.ok(!source.includes('pg_stat_ssl'));}
- assert.match(readFileSync('src/scripts/phase48-production-readonly.ts','utf8'),/tlsEvidence=inspectProductionTls\(client\)/);
+ assert.match(readFileSync('src/modules/cobertura/phase48-readonly-connection.ts','utf8'),/tlsEvidence=inspectProductionTls\(client\)/);
 });
 test('repository inspects original client, not SELECT-only query wrapper, with zero queries',async()=>{
  let queries=0;const c={...client(),query:()=>{queries++;throw Error('SQL_FORBIDDEN');}};
@@ -90,4 +92,24 @@ test('real pg SSLRequest wrapper resolves TLSv1.3 only after secureConnect, with
  const pool=new Pool({host:'localhost',port:(server.address() as {port:number}).port,user:'synthetic',database:'synthetic',ssl:ssl as any,max:1,connectionTimeoutMillis:2000});pool.on('error',()=>{});
  try{const acquired=await pool.connect();try{const evidence=inspect(acquired);assert.equal(evidence.protocol,'TLSv1.3');assert.equal(await repositoryExports.createReadOnlyRepository(acquired).ssl(),true);console.log(JSON.stringify({scope:'LOOPBACK_SYNTHETIC',...evidence}));}finally{acquired.release(true);}}
  finally{await pool.end();for(const socket of sockets)socket.destroy();await new Promise<void>(done=>server.close(()=>done()));}
+});
+
+test('fresh Pool factory observes two real TLS handshakes and closes A before B with identical pooler backend PID',async()=>{
+ const context=createSecureContext({key:readFileSync(fixture+'/server-test-only.key'),cert:readFileSync(fixture+'/server.crt'),minVersion:'TLSv1.3'});
+ const sockets=new Set<TLSSocket>();let startups=0;
+ const server=createServer(raw=>raw.once('data',packet=>{
+  assert.equal(packet.toString('hex'),'0000000804d2162f');raw.write('S');
+  const socket=new TLSSocket(raw,{isServer:true,secureContext:context});sockets.add(socket);socket.on('error',()=>{});socket.on('close',()=>sockets.delete(socket));
+  socket.once('data',()=>{startups++;socket.write(Buffer.from('5200000008000000004b0000000c00000064000000015a0000000549','hex'));});
+ }));
+ server.listen(0,'127.0.0.1');await once(server,'listening');
+ const open=connectionExports.freshReadConnectionFactory({host:'localhost',port:(server.address() as {port:number}).port,user:'synthetic',database:'synthetic',ssl:client().connection.ssl},'Production');
+ try{
+  const a=await open();assert.equal(a.evidence.handshake_events,1);await a.close();assert.equal(a.isClosed(),true);assert.equal(a.stream.destroyed,true);
+  const b=await open();try{
+   assert.notEqual(a.pool,b.pool);assert.notEqual(a.client,b.client);assert.notEqual(a.stream,b.stream);assert.notEqual(a.tlsSocket,b.tlsSocket);assert.notEqual(a.evidence.connection_instance_id,b.evidence.connection_instance_id);
+   assert.equal(a.client.processID,b.client.processID);assert.equal(b.evidence.handshake_events,1);assert.equal(startups,2);assert.equal(a.evidence.tls_protocol,'TLSv1.3');assert.equal(b.evidence.tls_protocol,'TLSv1.3');assert.equal(b.queryCount(),0);
+   assert.ok(!/localhost|synthetic|BEGIN CERTIFICATE/.test(JSON.stringify([a.evidence,b.evidence])));
+  }finally{await b.close();assert.equal(b.isClosed(),true);}
+ }finally{for(const socket of sockets)socket.destroy();await new Promise<void>(done=>server.close(()=>done()));}
 });
