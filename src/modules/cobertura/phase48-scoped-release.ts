@@ -2,7 +2,7 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {requireScoped} from './phase48-scoped-contract';
-export const SCOPED_MUTATOR_COMMIT='UNPUBLISHED';
+export const SCOPED_MUTATOR_COMMIT='8e805730b5c00a2326ca748f82213bf69e38a701';
 export const SCOPED_REVOKED_BASE='3a45f141b90fb779814b12ad4e8b62db6d7991fa';
 export const SCOPED_CODE_FILES=['src/modules/cobertura/phase48-scoped-contract.ts','src/modules/cobertura/phase48-scoped-repository.ts','src/modules/cobertura/phase48-scoped-local.ts','src/modules/cobertura/phase48-scoped-release.ts','src/scripts/phase48-scoped-certification.ts',
  'src/modules/cobertura/phase48-readonly-contract.ts','src/modules/cobertura/phase48-readonly-schema-scope.ts','src/modules/cobertura/phase48-readonly-schema-catalog.ts','src/modules/cobertura/phase48-historical-domain.ts','src/modules/cobertura/phase48-readonly-receipts.ts','src/modules/cobertura/phase48-dynamic-local.ts',
