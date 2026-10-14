@@ -17,7 +17,7 @@ test('dynamic 730, 733, 734: exact rollback, protected salaries, Albeny/Dary and
  for(const n of [730,733,734]){
   const {authority,pre}=await setup(n);assert.equal(pre.seal.set.candidate_count,n);assert.equal(pre.connections.length,2);assert(pre.connections.every(r=>r.read_only==='on'&&r.rollback==='CONFIRMED'));
   const result=await executeScopedLocal(authority,pre,target,{definitions_window_confirmed:true});assert.equal(result.status,'LOCAL_ROLLED_BACK');assert.equal(result.economic_authorization,false);
-  if(n>=733){assert.deepEqual(pre.requires_salary_review,['1277','1279']);assert(pre.preview.every(r=>r.id==='1278'?!r.requires_salary_review:r.requires_salary_review));}
+  if(n>=733){assert.deepEqual(pre.requires_salary_review,['1277','1279']);assert(pre.preview.filter(r=>['1277','1278','1279'].includes(r.id)).every(r=>r.id==='1278'?!r.requires_salary_review:r.requires_salary_review));}
   assert(!pre.manifest.tables.includes('ajena'));assert(!pre.manifest.sequences.includes('ajena_seq'));assert(!pre.manifest.functions.includes('ajena_fn()'));
   if(n===733){writeFileSync('tmp/phase48-pooler-local/scoped-example.json',JSON.stringify({candidate_count:n,digests:pre.seal.set,manifest:pre.manifest,preview:pre.preview,connections:pre.connections},null,2)+'\n');}
  }
@@ -26,12 +26,12 @@ test('commit strictly audits review decision, preserves category 35 and all econ
  const {authority,pre}=await setup();const before=await sql('SELECT to_jsonb(t) row FROM nomina_empleados t ORDER BY id');
  const result=await executeScopedLocal(authority,pre,target,{mode:'Commit',definitions_window_confirmed:true,receipt_directory:'tmp/phase48-pooler-local/scoped-receipts'});assert.equal(result.status,'LOCAL_COMMITTED');
  assert.deepEqual((await sql('SELECT to_jsonb(t) row FROM nomina_empleados t ORDER BY id')).rows,before.rows);
- assert.equal((await sql('SELECT count(*)::int n FROM auditoria')).rows[0].n,3);assert.equal((await sql('SELECT count(*)::int n FROM auditoria_eventos')).rows[0].n,3);
+ assert.equal((await sql('SELECT count(*)::int n FROM auditoria')).rows[0].n,4);assert.equal((await sql('SELECT count(*)::int n FROM auditoria_eventos')).rows[0].n,4);
  const receipt=JSON.parse(readFileSync('tmp/phase48-pooler-local/scoped-receipts/'+pre.seal.run_id+'.receipt.json','utf8'));assert.equal(receipt.economic_authorization,false);assert.deepEqual(receipt.requires_salary_review,['1277','1279']);
  assert.equal((await executeScopedLocal(authority,pre,target,{mode:'Commit',definitions_window_confirmed:true})).status,'ALREADY_APPLIED');
  await sql("UPDATE ajena SET state='NEW_ACTIVITY'");await sql("SELECT nextval('ajena_seq')");
  assert.equal((await rollbackScopedPublishedLocal(authority,pre.seal,target,{definitions_window_confirmed:true})).status,'LOCAL_REVERSED');
- assert.equal((await sql('SELECT state FROM ajena')).rows[0].state,'NEW_ACTIVITY');assert.equal((await sql('SELECT count(*)::int n FROM auditoria')).rows[0].n,4);
+ assert.equal((await sql('SELECT state FROM ajena')).rows[0].state,'NEW_ACTIVITY');assert.equal((await sql('SELECT count(*)::int n FROM auditoria')).rows[0].n,5);
  assert.deepEqual((await sql('SELECT to_jsonb(t) row FROM nomina_empleados t ORDER BY id')).rows,before.rows);
 });
 test('foreign table, DML, function and sequence are informational only during critical locks',async()=>{
@@ -90,7 +90,7 @@ test('postcommit reversal refuses divergent critical postimage',async()=>{
  const {authority,pre}=await setup();await executeScopedLocal(authority,pre,target,{definitions_window_confirmed:true,mode:'Commit'});
  await sql("UPDATE cobertura_asignaciones SET observacion='EXTERNAL' WHERE id=1277");
  await assert.rejects(rollbackScopedPublishedLocal(authority,pre.seal,target,{definitions_window_confirmed:true}),/PUBLISHED_WRITE_SET_DIVERGENCE/);
- assert.equal((await sql('SELECT count(*)::int n FROM auditoria')).rows[0].n,3);
+ assert.equal((await sql('SELECT count(*)::int n FROM auditoria')).rows[0].n,4);
 });
 test('all digest fields, count, review block, nonce and old phrases are sealed',async()=>{
  const {authority,pre}=await setup();

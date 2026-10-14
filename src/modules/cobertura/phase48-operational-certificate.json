@@ -1,0 +1,23 @@
+{
+  "version": "phase48-operational-close-1203-v1",
+  "source_evidence_sha256": "c8477e9b6659bef4ed6b83554c4e8944645b96499a4fcaf324d8926047951c92",
+  "digest_algorithm": "sha256-json-stringify-pg-to_jsonb-row-v1",
+  "close": {
+    "id": "1203", "vinculacion_id": "1461", "persona_id": "1134",
+    "empresa_id": "15", "contrato_id": "24", "institucion_id": "110",
+    "sede_id": "592", "municipio_id": "1101", "modalidad_id": "1",
+    "modalidad": "CAA", "focalizacion_final_id": "829",
+    "fecha_inicio": "2026-07-29", "fecha_fin": "2026-11-30",
+    "retirement": "2026-08-31", "activo": true,
+    "before_digest": "05cf66574baabbf9b46a66184f0a4d35a962d3ba0463d52f6f3f53325a6f5fe1"
+  },
+  "archives": [
+    {"id":"1214","focalizacion_final_id":"173","before_digest":"011ee3ee9580ee1fa2569fe44ed9b22a239cc292023278a01357fed4f0d49cc0"},
+    {"id":"1215","focalizacion_final_id":"182","before_digest":"c4fabaed925b6a63b18b8136b2d5e21ccc048fba45c6fb8cc9968d3d304cc4b2"},
+    {"id":"1216","focalizacion_final_id":"173","before_digest":"0ac5e1aeb1873a476f40d31374bbac73e0c6001eee8302c8a90e72b096be9376"},
+    {"id":"1217","focalizacion_final_id":"182","before_digest":"32c1002858a88f2ef0d142e7e0a91f6394464d69ae79a02f61d94bd29d349e6b"},
+    {"id":"1218","focalizacion_final_id":"173","before_digest":"8d2ab785462b625309a00d28afae3a6c1f10a63fc3d84d8f698b002f9ed7ee55"},
+    {"id":"1219","focalizacion_final_id":"182","before_digest":"a3afeef8c0c58a43604343d22079c19d382aa5a567712795cbd56e3c3b809328"},
+    {"id":"1222","focalizacion_final_id":"173","before_digest":"d7dbac1a56f4d186fd3ca4c1200b9b57d1e05e3b82f247b38c966afc52ad8680"}
+  ]
+}

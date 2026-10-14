@@ -130,10 +130,10 @@ export function consumeCurrentNonce(directory:string,phrase:string){
   return publishAtomicReceipt(dir,name,consumed);
  });
 }
-// Scoped managed-events v3 hosts inject this durable, serialized nonce claim into their
+// Scoped close1203 v6 hosts inject this durable, serialized nonce claim into their
 // signing authority. A crash leaves the claim/lock burned, never a reusable grant.
 export function claimScopedLocalNonce(directory:string,seal:{version:string;nonce:string;run_id:string;mac:string}){
- if(seal.version!=='PHASE48_SCOPED_PSEUDORECORD_V5'||!/^[a-f0-9]{64}$/.test(seal.nonce)||!/^[a-f0-9]{64}$/.test(seal.mac))throw Error('SCOPED_NONCE_INVALID');
+ if(seal.version!=='PHASE48_SCOPED_CLOSE1203_V6'||!/^[a-f0-9]{64}$/.test(seal.nonce)||!/^[a-f0-9]{64}$/.test(seal.mac))throw Error('SCOPED_NONCE_INVALID');
  return withPublicationLock(directory,'phase48-scoped-nonce-registry',dir=>{
   const name='phase48-consumed-'+seal.nonce+'.json';if(present(join(dir,name)))throw Error('SCOPED_NONCE_REVOKED');
   return publishAtomicReceipt(dir,name,{run_id:seal.run_id,scope:seal.version,nonce:seal.nonce,seal_mac:seal.mac,status:'CONSUMED',consumed_at:new Date().toISOString()});

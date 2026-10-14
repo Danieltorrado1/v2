@@ -7,11 +7,12 @@ import {certifiedManagedEvents} from './phase48-managed-events';
 import {certifyConstantExecute,certifyConstantSqlContext} from './phase48-constant-sql';
 import {certifiedPseudorecordContext,sqlTableReferences} from './phase48-pseudorecord-parser';
 import {SALARY_DECISION,requireScoped,scopedDigest,sortScopedIds,type ScopedSet} from './phase48-scoped-contract';
+import {operationalPins,validateOperationalRows,validateCloseRetirement,OPERATIONAL_CERTIFICATE} from './phase48-operational-close';
 export type ScopedDb=Pick<PoolClient,'query'>;
 export const sq=(s:string)=>'"'+s.replaceAll('"','""')+'"';
 export type ManifestEntry={kind:string;name:string;reason:string;category:'A_SOURCE'|'B_MODIFIED'|'C_PROTECTED'|'D_SEQUENCE'|'E_DEFINITION'|'F_SCHEMA'|'G_TRANSITIVE'};
 export type ScopedManifest={version:'phase48-scoped-manifest-v2';tables:string[];sequences:string[];functions:string[];entries:ManifestEntry[];exclusions:{kind:string;name:string;reason:string}[]};
-export type ScopedCapture={set:ScopedSet;manifest:ScopedManifest;inventory:Record<string,any[]>;data:any[];sequences:any[];candidates:any[];coverage:any[];plan:any[];salary_preview:any[];informational_global_digest:string;informational_excluded_digest:string};
+export type ScopedCapture={set:ScopedSet;manifest:ScopedManifest;inventory:Record<string,any[]>;data:any[];sequences:any[];candidates:any[];coverage:any[];plan:any[];salary_preview:any[];operational:ReturnType<typeof validateOperationalRows>;informational_global_digest:string;informational_excluded_digest:string};
 export async function collectScopedSchema(db:ScopedDb,manifest:ScopedManifest){
  // Metadata formatting can itself acquire relation locks. Under the mutator
  // transaction never format or read unrelated relations merely for evidence.
@@ -37,6 +38,8 @@ export async function scopedManifest(db:ScopedDb,inventory:Record<string,any[]>)
  const present=new Set(relations.filter(r=>['r','p','v','m'].includes(r.kind)).map(r=>r.schema+'.'+r.name));
  const tables=new Set<string>(),functions=new Set<string>(),entries:ManifestEntry[]=[];
  const add=(kind:string,name:string,reason:string,category:ManifestEntry['category'])=>{if(!entries.some(e=>e.kind===kind&&e.name===name))entries.push({kind,name,reason,category});};
+ add('authorized_correction','public.cobertura_asignaciones:1203:fecha_fin','Retiro confirmado: 2026-11-30 -> 2026-08-31; activo y resto de campos preservados','B_MODIFIED');
+ for(const a of OPERATIONAL_CERTIFICATE.archives)add('archived_version','public.cobertura_asignaciones:'+a.id,'Version inactiva certificada por full-row digest; solo backfill estructural, nunca reactivar o eliminar','C_PROTECTED');
  for(const group of inventory.managed_events)for(const e of group.events)add('event_trigger',e.name,'PostgREST notification-only; exact metadata, definitions and dependency closure sealed','E_DEFINITION');
  for(const group of inventory.managed_events)for(const f of group.functions)add('managed_function',f.identity,'Managed event trigger function; no business DML/DDL/sequence effects','E_DEFINITION');
  for(const group of inventory.managed_events)for(const d of group.dependency_objects)add('managed_dependency',d,'Exact managed event dependency closure plus PostgreSQL native metadata','G_TRANSITIVE');
@@ -139,14 +142,18 @@ export async function scopedCapture(db:ScopedDb,lockedManifest?:ScopedManifest):
  const forensic=lockedManifest?await collectScopedSchema(db,lockedManifest):await collectSchemaForensic(db);forensic.inventory.functions=await scopedFunctions(db);const manifest=await scopedManifest(db,forensic.inventory);
  const inventory=projectScopedInventory(forensic.inventory,manifest),data=await tableHashes(db,manifest.tables),sequences=await sequenceStates(db,manifest,forensic.inventory);
  await actorGate(db,'12');
+ const coverage=(await db.query('SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca ORDER BY id')).rows.map(r=>r.row);
+ const linkage=(await db.query('SELECT to_jsonb(v) row FROM vinculaciones v WHERE id=1461')).rows[0]?.row;
+ const ff=(await db.query('SELECT to_jsonb(ff) row FROM focalizacion_final ff WHERE id=829')).rows[0]?.row;
+ const operational=validateOperationalRows(coverage,linkage,ff,await operationalPins(db));
+ await validateCloseRetirement(db);
  const candidates=(await db.query(`SELECT ca.id::text id,ff.institucion_id::text institucion_id,ff.sede_id::text sede_id,ff.modalidad_id::text modalidad_id FROM cobertura_asignaciones ca
  JOIN focalizacion_final ff ON ff.id=ca.focalizacion_final_id AND ff.contrato_id=ca.contrato_id JOIN contratos c ON c.id=ca.contrato_id WHERE c.id=24 AND c.empresa_id=15 ORDER BY ca.id`)).rows;
  requireScoped((await db.query('SELECT count(*)::int n FROM cobertura_asignaciones WHERE contrato_id=24')).rows[0].n===candidates.length&&candidates.every(c=>c.institucion_id&&c.sede_id&&c.modalidad_id),'CANDIDATE_IDENTITY_INVALID');
  requireScoped(!(await db.query(`SELECT 1 FROM cobertura_asignaciones a JOIN cobertura_asignaciones b ON a.id<b.id AND a.contrato_id=b.contrato_id AND a.vinculacion_id=b.vinculacion_id AND a.activo AND b.activo AND a.fecha_inicio<=COALESCE(b.fecha_fin,'infinity'::date) AND b.fecha_inicio<=COALESCE(a.fecha_fin,'infinity'::date) LIMIT 1`)).rowCount,'CANDIDATE_OVERLAP');
- requireScoped(!(await db.query(`SELECT 1 FROM cobertura_asignaciones ca JOIN vinculaciones v ON v.id=ca.vinculacion_id JOIN contratos c ON c.id=ca.contrato_id WHERE v.empresa_id<>c.empresa_id OR v.contrato_id<>ca.contrato_id OR ca.fecha_fin<ca.fecha_inicio OR ca.fecha_inicio<v.fecha_inicio OR ca.fecha_inicio<c.fecha_inicio OR ca.fecha_inicio>COALESCE(c.fecha_final_real,c.fecha_final_estimada,c.fecha_finalizacion) OR ca.fecha_fin>COALESCE(c.fecha_final_real,c.fecha_final_estimada,c.fecha_finalizacion) OR ca.fecha_inicio>v.fecha_fin OR ca.fecha_fin>v.fecha_fin LIMIT 1`)).rowCount,'CANDIDATE_CONTRADICTION');
- requireScoped(!(await db.query(`SELECT 1 FROM cobertura_asignaciones a JOIN cobertura_asignaciones b ON a.id<b.id AND a.contrato_id=b.contrato_id AND a.vinculacion_id=b.vinculacion_id AND a.focalizacion_final_id IS NOT DISTINCT FROM b.focalizacion_final_id AND a.fecha_inicio=b.fecha_inicio AND a.fecha_fin IS NOT DISTINCT FROM b.fecha_fin AND a.activo IS NOT DISTINCT FROM b.activo LIMIT 1`)).rowCount,'CANDIDATE_DUPLICATE');
+ requireScoped(!(await db.query(`SELECT 1 FROM cobertura_asignaciones ca JOIN vinculaciones v ON v.id=ca.vinculacion_id JOIN contratos c ON c.id=ca.contrato_id WHERE v.empresa_id<>c.empresa_id OR v.contrato_id<>ca.contrato_id OR ca.fecha_fin<ca.fecha_inicio OR ca.fecha_inicio<v.fecha_inicio OR ca.fecha_inicio<c.fecha_inicio OR ca.fecha_inicio>COALESCE(c.fecha_final_real,c.fecha_final_estimada,c.fecha_finalizacion) OR ca.fecha_fin>COALESCE(c.fecha_final_real,c.fecha_final_estimada,c.fecha_finalizacion) OR ca.fecha_inicio>v.fecha_fin OR (ca.fecha_fin>v.fecha_fin AND ca.id<>1203) LIMIT 1`)).rowCount,'CANDIDATE_CONTRADICTION');
+ requireScoped(!(await db.query(`SELECT 1 FROM cobertura_asignaciones a JOIN cobertura_asignaciones b ON a.id<b.id AND a.contrato_id=b.contrato_id AND a.vinculacion_id=b.vinculacion_id AND a.focalizacion_final_id IS NOT DISTINCT FROM b.focalizacion_final_id AND a.fecha_inicio=b.fecha_inicio AND a.fecha_fin IS NOT DISTINCT FROM b.fecha_fin AND a.activo IS NOT DISTINCT FROM b.activo WHERE NOT (a.activo IS FALSE AND b.activo IS FALSE AND a.id=ANY($1::bigint[]) AND b.id=ANY($1::bigint[])) LIMIT 1`,[operational.archives.map(r=>r.id)])).rowCount,'CANDIDATE_DUPLICATE');
  requireScoped(!(await db.query(`SELECT 1 FROM cobertura_asignaciones ca LEFT JOIN vinculaciones v ON v.id=ca.vinculacion_id LEFT JOIN focalizacion_final ff ON ff.id=ca.focalizacion_final_id LEFT JOIN instituciones i ON i.id=ff.institucion_id LEFT JOIN sedes s ON s.id=ff.sede_id LEFT JOIN modalidades m ON m.id=ff.modalidad_id WHERE ca.contrato_id=24 AND (v.id IS NULL OR i.id IS NULL OR s.id IS NULL OR m.id IS NULL OR i.contrato_id<>24 OR s.institucion_id<>i.id OR s.municipio_id<>ca.municipio_id) LIMIT 1`)).rowCount,'CANDIDATE_REFERENCE_INVALID');
- const coverage=(await db.query('SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca ORDER BY id')).rows.map(r=>r.row);
  const projected:ScopedDb={query:((sql:any,values?:any)=>{let text=String(sql);if(text.includes('SELECT ca.*,ca.id::text,ca.fecha_inicio::text desde'))text=text.replace('SELECT ca.*,','SELECT ca.*,ff.institucion_id,ff.sede_id,ff.modalidad_id,').replace(/FROM cobertura_asignaciones ca(?=\s+WHERE)/,'FROM cobertura_asignaciones ca LEFT JOIN focalizacion_final ff ON ff.id=ca.focalizacion_final_id AND ff.contrato_id=ca.contrato_id');return db.query(text,values);}) as ScopedDb['query']};
  const plan=await historicalPlan(projected);requireScoped(plan.every(p=>!p.applied)&&plan[0]?.category_id==='34'&&plan[1]?.category_id===null,'HISTORICAL_PLAN_CHANGED');
  const periods=(await db.query('SELECT to_jsonb(p) row FROM nomina_periodos p WHERE id IN(4,6) AND contrato_id=24 ORDER BY id')).rows;
@@ -157,9 +164,15 @@ export async function scopedCapture(db:ScopedDb,lockedManifest?:ScopedManifest):
   requireScoped(employees.length>0&&employees.every(r=>r.category_id===rule.category_id),'SALARY_CATEGORY_CHANGED:'+rule.id);
   salary_preview.push({...rule,estado_salarial:rule.requires_salary_review?'REQUIERE_REVISION_SALARIAL':'COMPATIBLE',economic_authorization:false,origin_attribution:'INDIRECT_AUDIT_CORRELATED',employee_ids:employees.map(r=>r.id)});
  }
+ for(const id of ['1280','1281','1282','1283','1284','1285','1286']){const ca=coverage.find(r=>String(r.id)===id);if(!ca)continue;
+  const employees=(await db.query('SELECT id::text id,categoria_salarial_id::text category_id FROM nomina_empleados WHERE vinculacion_id=$1 ORDER BY id',[ca.vinculacion_id])).rows;
+  const missing=employees.length===0||employees.some(r=>r.category_id===null);
+  salary_preview.push({id,category_ids:employees.map(r=>r.category_id),employee_ids:employees.map(r=>r.id),requires_salary_review:missing,estado_salarial:missing?'REQUIERE_REVISION_SALARIAL':'CATEGORIA_REGISTRADA_NO_RECLASIFICADA',economic_authorization:false});
+ }
  const candidate_ids=sortScopedIds(candidates.map(c=>c.id));
  const set:ScopedSet={candidate_count:candidate_ids.length,candidate_ids,candidate_ids_digest:scopedDigest(candidate_ids),phase48_candidates_digest:scopedDigest(candidates),source_digest:scopedDigest(data),write_set_before_digest:scopedDigest(data.find(r=>r.table==='cobertura_asignaciones')),critical_schema_digest:scopedDigest(Object.fromEntries(Object.entries(inventory).filter(([k])=>!['functions','triggers','managed_events','trigger_pseudorecords'].includes(k)))),critical_definition_digest:scopedDigest({functions:inventory.functions,triggers:inventory.triggers,managed_events:inventory.managed_events,trigger_pseudorecords:inventory.trigger_pseudorecords}),critical_sequences_digest:scopedDigest(sequences),manifest_digest:scopedDigest({...manifest,exclusions:[]}),salary_decision_digest:scopedDigest(SALARY_DECISION),albeny_digest:scopedDigest(plan[0]),dary_digest:scopedDigest(plan[1]),periods_4_6_digest:scopedDigest(periods)};
  // Excluded data and definitions are measurable but absent from blocking hashes.
  const informational=lockedManifest?{global_schema_digest:'NOT_SAMPLED_UNDER_MUTATOR_LOCKS',excluded_digest:'NOT_SAMPLED_UNDER_MUTATOR_LOCKS'}:await scopedInformational(db,manifest);
- return {set,manifest,inventory,data,sequences,candidates,coverage,plan,salary_preview,informational_global_digest:informational.global_schema_digest,informational_excluded_digest:informational.excluded_digest};
+ set.manifest_digest=scopedDigest({manifest:{...manifest,exclusions:[]},operational_certificate:OPERATIONAL_CERTIFICATE});
+ return {set,manifest,inventory,data,sequences,candidates,coverage,plan,salary_preview,operational,informational_global_digest:informational.global_schema_digest,informational_excluded_digest:informational.excluded_digest};
 }

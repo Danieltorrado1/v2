@@ -1,4 +1,5 @@
-import {readFileSync} from 'node:fs';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {OPERATIONAL_CERTIFICATE,operationalRowDigest} from '../../modules/cobertura/phase48-operational-close';
 import baseline from '../../modules/cobertura/phase48-managed-events-baseline.json';
 import constantBaseline from '../../modules/cobertura/phase48-constant-sql-baseline.json';
 import pseudoBaseline from '../../modules/cobertura/phase48-pseudorecord-baseline.json';
@@ -64,5 +65,19 @@ export async function scopedFixture(n=733){
    await db.query("INSERT INTO nomina_empleados(id,periodo_id,vinculacion_id,categoria_salarial_id,salario_base,auxilio_transporte,neto_pagar,estado,activo) VALUES($1,5,$2,$3,1345678,222222,999999,'PENDIENTE',TRUE)",[String(2376+x-731),v,category]);
   }
   await db.query("ALTER SEQUENCE cobertura_asignaciones_id_seq RESTART WITH "+(n>730?String(1276+n-730):'1276'));
+  // Eight historical rows replace eight synthetic candidates: population stays
+  // dynamic, and no personal name or productive row content enters this fixture.
+  await db.query(`DELETE FROM cobertura_asignaciones WHERE id BETWEEN 104 AND 111;
+   INSERT INTO municipios(id) VALUES(1101);
+   INSERT INTO instituciones(id,contrato_id,activo,nombre_institucion) VALUES(110,24,TRUE,'TECH_I110'),(3,24,TRUE,'TECH_I3');
+   INSERT INTO sedes(id,institucion_id,municipio_id,activo,nombre_sede) VALUES(592,110,1101,TRUE,'TECH_S592'),(9,3,4,TRUE,'TECH_S9');
+   INSERT INTO focalizacion_final(id,contrato_id,institucion_id,sede_id,modalidad_id,municipio_id,activo) VALUES(829,24,110,592,1,1101,TRUE),(173,24,3,9,3,4,TRUE),(182,24,6,18,5,4,TRUE);
+   INSERT INTO vinculaciones(id,empresa_id,contrato_id,persona_id,fecha_inicio,fecha_fin,estado_vinculacion) VALUES(1461,15,24,1134,'2026-07-29','2026-08-31','RETIRADA');
+   INSERT INTO cobertura_asignaciones(id,contrato_id,vinculacion_id,focalizacion_final_id,municipio_id,fecha_inicio,fecha_fin,activo,institucion,sede,modalidad,observacion,created_at) VALUES(1203,24,1461,829,1101,'2026-07-29','2026-11-30',TRUE,'TECH_I110','TECH_S592','CAA','TECH_BEFORE','2026-08-22 06:09:34.808094');`);
+  for(const rule of OPERATIONAL_CERTIFICATE.archives)await db.query(`INSERT INTO cobertura_asignaciones(id,contrato_id,vinculacion_id,focalizacion_final_id,municipio_id,fecha_inicio,fecha_fin,activo,institucion,sede,modalidad,created_at) SELECT $1,24,249,id,4,'2026-09-03','2026-09-03',FALSE,'TECH_I'||institucion_id,'TECH_S'||sede_id,CASE modalidad_id WHEN 3 THEN 'CAJM/JT-RI' ELSE 'CAA-JU' END,'2026-09-03 20:58:44' FROM focalizacion_final WHERE id=$2`,[rule.id,rule.focalizacion_final_id]);
+  const rows=(await db.query('SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca WHERE id=ANY($1::bigint[])',[['1203',...OPERATIONAL_CERTIFICATE.archives.map(r=>r.id)]])).rows.map(r=>r.row);
+  const pins=structuredClone(OPERATIONAL_CERTIFICATE);pins.close.before_digest=operationalRowDigest(rows.find(r=>String(r.id)==='1203'));
+  for(const a of pins.archives)a.before_digest=operationalRowDigest(rows.find(r=>String(r.id)===a.id));
+  writeFileSync('tmp/phase48-pooler-local/operational-synthetic-pins.json',JSON.stringify(pins));
  }finally{await db.end();}
 }
