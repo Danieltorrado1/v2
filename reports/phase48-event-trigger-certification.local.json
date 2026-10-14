@@ -5,7 +5,7 @@
   "branch": "fix/phase48-event-trigger-dependencies",
   "base": "9f478ae8d519421759845e9a1826f8414c59efac",
   "readonly_runner_commit": "RESOLVED_FROM_FINAL_HEAD_BY_scopedRelease",
-  "mutator_commit": "RESOLVED_FROM_SCOPED_MUTATOR_COMMIT",
+  "mutator_commit": "4c93e3a31a5d889c0874d4582a28ba6a79a8c11c",
   "classifications": [
     {
       "trigger": "pgrst_ddl_watch",
