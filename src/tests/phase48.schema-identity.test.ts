@@ -41,7 +41,7 @@ test('only object-bound proven PostgreSQL cast representations are equivalent',(
 test('catalog query barrier accepts only fixed SELECT catalog metadata',()=>{for(const sql of [...Object.values(LEGACY_SCHEMA_QUERIES),...Object.values(STRUCTURAL_QUERIES)])assertReadQuery(sql);});
 test('READ ONLY and mutator share identity helper and pinned source protection',()=>{
  for(const path of ['src/modules/cobertura/phase48-readonly-repository.ts','src/modules/cobertura/phase48-production-executor.ts'])assert.match(readFileSync(path,'utf8'),/assertCriticalSchema/);
- for(const path of ['src/scripts/phase48-production-readonly.ts','src/scripts/phase48-historical-production.ts','src/modules/cobertura/phase48-readonly-contract.ts'])for(const file of ['phase48-readonly-schema-catalog.ts','phase48-readonly-schema-identity.ts','phase48-readonly-schema-scope.ts'])assert.ok(readFileSync(path,'utf8').includes(file));
+ for(const path of ['src/modules/cobertura/phase48-scoped-release.ts','src/modules/cobertura/phase48-readonly-contract.ts'])for(const file of ['phase48-readonly-schema-catalog.ts','phase48-readonly-schema-identity.ts','phase48-readonly-schema-scope.ts'])assert.ok(readFileSync(path,'utf8').includes(file));
 });
 test('real mismatch evidence survives STOPPED and atomic publication with no nonce or row data',async()=>{
  const sample=fresh();mutations['critical column type']!(sample);

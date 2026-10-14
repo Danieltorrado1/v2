@@ -1,0 +1,107 @@
+{
+  "kind": "PHASE48_SCOPED_DYNAMIC_LOCAL_CERTIFICATE",
+  "version": "PHASE48_SCOPED_DYNAMIC_V2",
+  "success": true,
+  "base_commit": "3a45f141b90fb779814b12ad4e8b62db6d7991fa",
+  "branch": "fix/phase48-scoped-dynamic-contract",
+  "production_authorization": "REVOKED",
+  "production_connections_this_implementation": 0,
+  "production_writes_this_implementation": 0,
+  "production_seal_issued": false,
+  "observed_production_population_from_authorized_prior_snapshot": 733,
+  "observed_production_ids_digest_from_prior_forensic_snapshot": "6fe5848585b0eb1f2098eb834f804cd337eed7bae92b4028af55bb2d3e470277",
+  "local_fixture_population": 733,
+  "critical_tables": 51,
+  "critical_functions": 7,
+  "consumed_sequences": [
+    "auditoria_eventos_id_seq",
+    "auditoria_id_seq",
+    "cobertura_asignaciones_id_seq"
+  ],
+  "proof": {
+    "phase48-scoped-local-proof.tap": {
+      "tests": 66,
+      "passed": 66,
+      "sha256": "c2a1b9ee6cceaa46efeb25855897e903f383e17c0827922595207d89e374f3b4",
+      "source_sha256": "cd9337a3bb67b778aa8419391c035473debc45f9487131b76d79d888d0d59789",
+      "encoding": "UTF8"
+    },
+    "phase48-scoped-runner-proof.tap": {
+      "tests": 150,
+      "passed": 150,
+      "sha256": "6049f9d7bf2dc05610e8915ee046c39209e5985a388d56e732a797a933d45b68",
+      "source_sha256": "2d4fabe0aea7107c924a5cc62492a5ab5e6e992b2f5191348fd8435c34b53389",
+      "encoding": "UTF8"
+    },
+    "phase48-scoped-pooler-proof.tap": {
+      "tests": 1,
+      "passed": 1,
+      "sha256": "3c9839bbd00ea082047c05393b1d06832d97d713952151dc51c2076817f22197",
+      "source_sha256": "515f3b1f3a6c551bcded9ef379fbf16c5e4694ec1f65fda7b8a69fe9eaf2284a",
+      "encoding": "UTF8"
+    }
+  },
+  "code_sha256": {
+    "src/modules/cobertura/phase48-scoped-contract.ts": "7986d6366a5e76997f7916624341c3fbfc537e29cdbf98b5e876a3c36fe763eb",
+    "src/modules/cobertura/phase48-scoped-repository.ts": "b067c9ba4a85451f8a27cb097c6cc1876dc203cc777dc5236bdbe4a660ce4514",
+    "src/modules/cobertura/phase48-scoped-local.ts": "ae21a85e7f995e3490b275ccc962a287e442254107e0309487f003c0185674c2",
+    "src/modules/cobertura/phase48-scoped-release.ts": "af8ed5ca442d75fc0b30a2c7deab02c7e949de8d4f074357ffc02d65d3238c29",
+    "src/scripts/phase48-scoped-certification.ts": "25bb7b6d3af2154c1aba346f842e1cfe7d4836007e76d362f7c5feacf36ef7a8",
+    "src/modules/cobertura/phase48-readonly-contract.ts": "268e1df44bbe8db95b69db2a86f5c99e182906c0353e6839682f0c518badd9e4",
+    "src/modules/cobertura/phase48-readonly-schema-scope.ts": "f500b8d42bb6f5c404faab28de38d67372f19d32d1cf33ed927c4917222c3f91",
+    "src/modules/cobertura/phase48-readonly-schema-catalog.ts": "3b2f7903a6accb412974df05a3430913a3b2f1b86db16814bcf543e4a4b4b63c",
+    "src/modules/cobertura/phase48-historical-domain.ts": "be67949a3efe93cae92680cb2455f82bf8a5ed649a544ee7885eda4461d869eb",
+    "src/modules/cobertura/phase48-readonly-receipts.ts": "8eba32d97af3154b87c8a243ae4d686052da02199483b936042331ff2096894d",
+    "src/modules/cobertura/phase48-dynamic-local.ts": "ea2c61c91a724d4e2ee902153ff91da10d9a5b91e725ae0ac7534a560c2b5d37",
+    "src/modules/cobertura/phase48-readonly-tls.ts": "d453ee88c732a5596d921a043947526c0ada91a2e9052d9f33d6c1544f0ce8a4",
+    "src/modules/cobertura/phase48-readonly-target.ts": "754300d705ee2a1365e032f5859d683bb5017e3df5cc996cc7566ee0f2e5d235",
+    "src/modules/cobertura/phase48-readonly-connection.ts": "9d7409360ea7af9f5544277a3895eedc0b3a67f898eea5f703a755dc3cdfa3f2",
+    "src/modules/cobertura/phase48-readonly-schema-identity.ts": "633b994951b68fae68ea94630348bf4ba12f1ce8b8043333738adc675f67dbdf",
+    "src/scripts/phase48-production-readonly.ts": "5c2c49dd033c8ad8518680f025980297e6cfea191886fc9995f74b6924ac63b7",
+    "src/scripts/phase48-historical-production.ts": "1c563ead7f9cd515f0c469282e97fcf303d9202432d4f1aa41804e3358b9df3b",
+    "src/modules/cobertura/phase48-production-executor.ts": "94a0fafb605b91e1bb115d40bd41afbb24179864d8f8d28364d9140f055b1214",
+    "src/modules/cobertura/phase48-dynamic-gate.ts": "fa9ccf92c6fbd5de8d14fe9fb781a2dc2e5b7bc851a6184722cffa9bdecf31ce",
+    "package-lock.json": "db7a06196facc0fa6a6e080387b886673ea06d5486885b49dee8b7445e20bba4",
+    "package.json": "1aed1f1222235f7eeba959cf0d5075731624d15b37755cec26f5a7d51be960ee",
+    "tsconfig.json": "640a93d0b9de5607230949a5d59f391504b86f58fff733d723e8dc58f0d568f9"
+  },
+  "economic_proof": {
+    "category_35_preserved_for": [
+      "1277",
+      "1279"
+    ],
+    "requires_salary_review": [
+      "1277",
+      "1279"
+    ],
+    "category_35_compatibility_asserted": false,
+    "compatible_row": "1278",
+    "economic_authorization": false,
+    "all_economic_rows_before_after_equal_in_fixture": true,
+    "unexpected_economic_effect_rolls_back": true,
+    "recost_or_payroll_recalculation": false,
+    "new_attendances": false,
+    "new_novedades": false,
+    "new_movements": false,
+    "new_turns": false
+  },
+  "checks": {
+    "typecheck": "PASS",
+    "backend_build": "PASS",
+    "FrontendNuevo_build": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "signing": {
+    "private_key_in_certificate": false,
+    "ephemeral_cli_lab_key": true,
+    "persistent_key_injection_tested": true,
+    "durable_nonce_claim_tested": true,
+    "production_key_created": false
+  },
+  "pins": {
+    "mutator_commit": "PINNED_BY_SCOPED_MUTATOR_COMMIT_AFTER_IMPLEMENTATION_COMMIT",
+    "readonly_runner_commit": "RESOLVED_BY_scopedRelease_AT_FINAL_PUBLICATION_HEAD"
+  },
+  "decision": "CONTRATO DINÁMICO CERTIFICADO — LISTO PARA BACKUP ACTUAL",
+  "certification_scope": "LOCAL_ONLY; actual restored schema and production grant must be certified separately"
+}

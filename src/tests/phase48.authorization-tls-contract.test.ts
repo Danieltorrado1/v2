@@ -53,6 +53,6 @@ test('bad certificate stops both read lifecycle and TLS config before connection
 });
 test('mutator static approval checks pinned phrase, CA, nonce and exact confirmation before any query',()=>{
  const r=receipt(),o:Options={mode:'MutateProduction',target:'Production',actor:'12',empresa:15,contrato:24,expectedRows:730,backupSha:BACKUP_SHA256,commit:r.commit,actualCommit:r.commit,projectRef:PROJECT_REF,runId:'phase48-aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',flags:{health200:true,databaseOk:true,outbox:false,sync:false,recalc:false,worker:false},enabled:true,authorization:'ACTIVE',certificateSha:CERTIFICATE_SHA256,authorizationPhrase:r.authorization_phrase,nonceConsumed:true,baseline:'a'.repeat(64),authorizationIssuedAt:r.issued_at,authorizationExpiresAt:r.expires_at,observeFlags:async()=>o.flags,saveBaseline:async()=>{}};
- o.confirmation=confirmation(o,o.baseline!);validateOptions(o);
+ o.confirmation=confirmation(o,o.baseline!);assert.throws(()=>validateOptions(o),/LEGACY_PHASE48_CONTRACT_REVOKED/);
  for(const patch of [{certificateSha:undefined},{certificateSha:'0'.repeat(64)},{nonceConsumed:false},{authorizationPhrase:r.authorization_phrase.replace(MUTATOR_COMMIT,'dcbd37a')},{confirmation:o.confirmation+' '},{authorizationExpiresAt:'2000-01-01T00:00:00.000Z'}])assert.throws(()=>validateOptions({...o,...patch}));
 });

@@ -1,0 +1,19 @@
+{
+  "version": "PHASE48_HUMAN_SALARY_REVIEW_V1",
+  "provenance": "Explicit user decision after the second READ ONLY forensic audit",
+  "forensic_evidence_sha256": "06c35f462ea941f60172ac2fec3e242bb91e983404ba64655717425c34b1742d",
+  "rows": [
+    {"id":"1277","DATA_VALIDITY":"VALID_REQUIRES_SALARY_REVIEW","ORIGIN_ATTRIBUTION":"INDIRECT_AUDIT_CORRELATED","requires_salary_review":true,"estado_salarial":"REQUIERE_REVISION_SALARIAL","preserved_category_id":"35","salary_compatibility_asserted":false},
+    {"id":"1278","DATA_VALIDITY":"VALID_COMPATIBLE","ORIGIN_ATTRIBUTION":"INDIRECT_AUDIT_CORRELATED","requires_salary_review":false,"estado_salarial":"COMPATIBLE","preserved_category_id":"34","salary_compatibility_asserted":true},
+    {"id":"1279","DATA_VALIDITY":"VALID_REQUIRES_SALARY_REVIEW","ORIGIN_ATTRIBUTION":"INDIRECT_AUDIT_CORRELATED","requires_salary_review":true,"estado_salarial":"REQUIERE_REVISION_SALARIAL","preserved_category_id":"35","salary_compatibility_asserted":false}
+  ],
+  "economic_authorization": false,
+  "production_writes": 0,
+  "production_backfill_executed": false,
+  "payroll_recalculation_authorized": false,
+  "preserve_all_economic_fields": true,
+  "create_attendances": false,
+  "create_novedades": false,
+  "create_movements": false,
+  "create_turns": false
+}

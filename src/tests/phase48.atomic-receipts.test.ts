@@ -97,7 +97,7 @@ test('READ ONLY and mutator SUCCESS/STOPPED/ROLLED_BACK/baseline use identical p
  shared.saveReadReceipt(dir,receipt);
  for(const status of ['SUCCESS','STOPPED','ROLLED_BACK']){const run_id='phase48-'+status.replaceAll('_','-');shared.publishAtomicReceipt(dir,run_id+'.receipt.json',{run_id,status});}
  shared.publishAtomicReceipt(dir,'phase48-local.baseline.json',{run_id:'phase48-local',baseline:'a'.repeat(64)});assert.equal(writes.length,5);
- const entry=fs.readFileSync('src/scripts/phase48-historical-production.ts','utf8');assert.ok(entry.includes('publishAtomicReceipt(dir,opts.runId+\'.baseline.json\''));assert.ok(entry.includes('publishAtomicReceipt(dir,opts.runId+\'.receipt.json\''));assert.ok(!/writeFile|copyFile/.test(entry));
+ const entry=fs.readFileSync('src/modules/cobertura/phase48-scoped-local.ts','utf8');assert.ok(entry.includes("input.seal.run_id+'.baseline.json'"));assert.ok(entry.includes("seal.run_id+'.receipt.json'"));assert.ok(!/writeFile|copyFile/.test(entry));
 }));
 
 // Separate native Node process: slow partial temp writes allow the parent to

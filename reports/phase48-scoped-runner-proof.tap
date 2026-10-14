@@ -1,0 +1,924 @@
+TAP version 13
+# Subtest: unchanged mutator preflight READY and rollback through protocol doubles
+ok 1 - unchanged mutator preflight READY and rollback through protocol doubles
+  ---
+  duration_ms: 76.5291
+  type: 'test'
+  ...
+# Subtest: unchanged mutator already-applied idempotence: zero new writes/audits, explicit rollback
+ok 2 - unchanged mutator already-applied idempotence: zero new writes/audits, explicit rollback
+  ---
+  duration_ms: 28.7168
+  type: 'test'
+  ...
+# Subtest: unchanged mutator snapshot failure rolls back and returns STOPPED
+ok 3 - unchanged mutator snapshot failure rolls back and returns STOPPED
+  ---
+  duration_ms: 15.9676
+  type: 'test'
+  ...
+# Subtest: unchanged mutator unconfirmed rollback fails closed with UNKNOWN writes
+ok 4 - unchanged mutator unconfirmed rollback fails closed with UNKNOWN writes
+  ---
+  duration_ms: 20.4167
+  type: 'test'
+  ...
+# Subtest: unchanged mutator induced phase48 failure reports ROLLED_BACK, never COMMIT (mock query only)
+ok 5 - unchanged mutator induced phase48 failure reports ROLLED_BACK, never COMMIT (mock query only)
+  ---
+  duration_ms: 15.2038
+  type: 'test'
+  ...
+# Subtest: unchanged mutator independent baseline drift stops before mock DDL/DML
+ok 6 - unchanged mutator independent baseline drift stops before mock DDL/DML
+  ---
+  duration_ms: 17.5573
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":2}
+# Subtest: complete UTF-8 JSON immediately readable; published SHA/size and Unicode/newlines stable
+ok 7 - complete UTF-8 JSON immediately readable; published SHA/size and Unicode/newlines stable
+  ---
+  duration_ms: 183.3149
+  type: 'test'
+  ...
+# Subtest: controlled failure before-write: no visible partial JSON and no owned temporary remains
+ok 8 - controlled failure before-write: no visible partial JSON and no owned temporary remains
+  ---
+  duration_ms: 3.3004
+  type: 'test'
+  ...
+# Subtest: controlled failure partial-write: no visible partial JSON and no owned temporary remains
+ok 9 - controlled failure partial-write: no visible partial JSON and no owned temporary remains
+  ---
+  duration_ms: 3.1188
+  type: 'test'
+  ...
+# Subtest: controlled failure during-write: no visible partial JSON and no owned temporary remains
+ok 10 - controlled failure during-write: no visible partial JSON and no owned temporary remains
+  ---
+  duration_ms: 2.6721
+  type: 'test'
+  ...
+# Subtest: controlled failure fsync: no visible partial JSON and no owned temporary remains
+ok 11 - controlled failure fsync: no visible partial JSON and no owned temporary remains
+  ---
+  duration_ms: 2.5766
+  type: 'test'
+  ...
+# Subtest: controlled failure close: no visible partial JSON and no owned temporary remains
+ok 12 - controlled failure close: no visible partial JSON and no owned temporary remains
+  ---
+  duration_ms: 8.8072
+  type: 'test'
+  ...
+# Subtest: controlled failure before-rename: no visible partial JSON and no owned temporary remains
+ok 13 - controlled failure before-rename: no visible partial JSON and no owned temporary remains
+  ---
+  duration_ms: 8.7243
+  type: 'test'
+  ...
+# Subtest: controlled failure rename: no visible partial JSON and no owned temporary remains
+ok 14 - controlled failure rename: no visible partial JSON and no owned temporary remains
+  ---
+  duration_ms: 11.6565
+  type: 'test'
+  ...
+# Subtest: controlled failure verification: no visible partial JSON and no owned temporary remains
+ok 15 - controlled failure verification: no visible partial JSON and no owned temporary remains
+  ---
+  duration_ms: 8.3866
+  type: 'test'
+  ...
+# Subtest: short writes complete in a loop; final appears only after fsync and close at rename
+ok 16 - short writes complete in a loop; final appears only after fsync and close at rename
+  ---
+  duration_ms: 10.6354
+  type: 'test'
+  ...
+# Subtest: exact preexisting run/hash is idempotent without opening, deleting or renaming a file
+ok 17 - exact preexisting run/hash is idempotent without opening, deleting or renaming a file
+  ---
+  duration_ms: 158.7951
+  type: 'test'
+  ...
+# Subtest: different bytes or run_id, malformed JSON, directory, hardlink: no replacement/deletion
+ok 18 - different bytes or run_id, malformed JSON, directory, hardlink: no replacement/deletion
+  ---
+  duration_ms: 155.6854
+  type: 'test'
+  ...
+# Subtest: two publishers collide under exclusive lock; loser preserves winner and its temporary
+ok 19 - two publishers collide under exclusive lock; loser preserves winner and its temporary
+  ---
+  duration_ms: 155.1274
+  type: 'test'
+  ...
+# Subtest: exclusive temp open refuses preexisting unique temp without deleting another owner
+ok 20 - exclusive temp open refuses preexisting unique temp without deleting another owner
+  ---
+  duration_ms: 2.9328
+  type: 'test'
+  ...
+# Subtest: authorized basename/directory; traversal, NTFS streams and non-receipt names rejected before filesystem access
+ok 21 - authorized basename/directory; traversal, NTFS streams and non-receipt names rejected before filesystem access
+  ---
+  duration_ms: 0.6259
+  type: 'test'
+  ...
+# Subtest: Windows junction/reparse directory and symlink final (equivalent injected lstat) rejected; ACL unchanged
+ok 22 - Windows junction/reparse directory and symlink final (equivalent injected lstat) rejected; ACL unchanged
+  ---
+  duration_ms: 757.9079
+  type: 'test'
+  ...
+# Subtest: READ ONLY and mutator SUCCESS/STOPPED/ROLLED_BACK/baseline use identical publisher
+ok 23 - READ ONLY and mutator SUCCESS/STOPPED/ROLLED_BACK/baseline use identical publisher
+  ---
+  duration_ms: 34.5107
+  type: 'test'
+  ...
+# {"platform":"win32","node":"v24.14.1","observer_absences":73,"complete_reads":16,"partial_json_observations":0}
+# Subtest: native Windows/process observer never sees partial final JSON; simultaneous process loses safely
+ok 24 - native Windows/process observer never sees partial final JSON; simultaneous process loses safely
+  ---
+  duration_ms: 1151.7478
+  type: 'test'
+  ...
+# Subtest: process crash before rename leaves only own closed/synced temp and lock; next publisher fails closed
+ok 25 - process crash before rename leaves only own closed/synced temp and lock; next publisher fails closed
+  ---
+  duration_ms: 989.4168
+  type: 'test'
+  ...
+# Subtest: native Windows rename refuses a competing final created after the last existence check
+ok 26 - native Windows rename refuses a competing final created after the last existence check
+  ---
+  duration_ms: 193.984
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":2}
+# Subtest: strict phrase rejects missing/wrong/duplicate/unknown certificate, whitespace and ambiguous values
+ok 27 - strict phrase rejects missing/wrong/duplicate/unknown certificate, whitespace and ambiguous values
+  ---
+  duration_ms: 2.2059
+  type: 'test'
+  ...
+# Subtest: strict ACTIVE grant uses exact keys, canonical bytes, pinned CA and current phrase
+ok 28 - strict ACTIVE grant uses exact keys, canonical bytes, pinned CA and current phrase
+  ---
+  duration_ms: 0.6123
+  type: 'test'
+  ...
+# Subtest: nonce binds certificate, entire receipt and final postcheck, expires and is consumed once across publishers
+ok 29 - nonce binds certificate, entire receipt and final postcheck, expires and is consumed once across publishers
+  ---
+  duration_ms: 360.2497
+  type: 'test'
+  ...
+# Subtest: bad certificate stops both read lifecycle and TLS config before connection or credential callback
+ok 30 - bad certificate stops both read lifecycle and TLS config before connection or credential callback
+  ---
+  duration_ms: 0.8948
+  type: 'test'
+  ...
+# Subtest: mutator static approval checks pinned phrase, CA, nonce and exact confirmation before any query
+ok 31 - mutator static approval checks pinned phrase, CA, nonce and exact confirmation before any query
+  ---
+  duration_ms: 0.4894
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":2}
+# Subtest: eight independent reads match, two explicit rollbacks, no reused repository/results and no extra files
+ok 32 - eight independent reads match, two explicit rollbacks, no reused repository/results and no extra files
+  ---
+  duration_ms: 78.5153
+  type: 'test'
+  ...
+# Subtest: schema STOPPED preserves mismatch evidence without nonce: schema_identity
+ok 33 - schema STOPPED preserves mismatch evidence without nonce: schema_identity
+  ---
+  duration_ms: 20.4128
+  type: 'test'
+  ...
+# Subtest: schema STOPPED preserves mismatch evidence without nonce: post_schema_identity
+ok 34 - schema STOPPED preserves mismatch evidence without nonce: post_schema_identity
+  ---
+  duration_ms: 18.3288
+  type: 'test'
+  ...
+# Subtest: individual drift STOPPED_DRIFT: schema_digest
+ok 35 - individual drift STOPPED_DRIFT: schema_digest
+  ---
+  duration_ms: 17.6267
+  type: 'test'
+  ...
+# Subtest: individual drift STOPPED_DRIFT: source_digest
+ok 36 - individual drift STOPPED_DRIFT: source_digest
+  ---
+  duration_ms: 18.1554
+  type: 'test'
+  ...
+# Subtest: individual drift STOPPED_DRIFT: phase48_candidates_digest
+ok 37 - individual drift STOPPED_DRIFT: phase48_candidates_digest
+  ---
+  duration_ms: 18.1121
+  type: 'test'
+  ...
+# Subtest: individual drift STOPPED_DRIFT: albeny_before_digest
+ok 38 - individual drift STOPPED_DRIFT: albeny_before_digest
+  ---
+  duration_ms: 12.2326
+  type: 'test'
+  ...
+# Subtest: individual drift STOPPED_DRIFT: dary_before_digest
+ok 39 - individual drift STOPPED_DRIFT: dary_before_digest
+  ---
+  duration_ms: 11.0511
+  type: 'test'
+  ...
+# Subtest: individual drift STOPPED_DRIFT: protected_tables_digest
+ok 40 - individual drift STOPPED_DRIFT: protected_tables_digest
+  ---
+  duration_ms: 14.7357
+  type: 'test'
+  ...
+# Subtest: individual drift STOPPED_DRIFT: periods_4_6_digest
+ok 41 - individual drift STOPPED_DRIFT: periods_4_6_digest
+  ---
+  duration_ms: 11.0128
+  type: 'test'
+  ...
+# Subtest: individual drift STOPPED_DRIFT: write_set_before_digest
+ok 42 - individual drift STOPPED_DRIFT: write_set_before_digest
+  ---
+  duration_ms: 12.0753
+  type: 'test'
+  ...
+# Subtest: posterior failure revokes authorization: open
+ok 43 - posterior failure revokes authorization: open
+  ---
+  duration_ms: 8.8484
+  type: 'test'
+  ...
+# Subtest: posterior failure revokes authorization: snapshot
+ok 44 - posterior failure revokes authorization: snapshot
+  ---
+  duration_ms: 8.9379
+  type: 'test'
+  ...
+# Subtest: posterior failure revokes authorization: candidates
+ok 45 - posterior failure revokes authorization: candidates
+  ---
+  duration_ms: 9.126
+  type: 'test'
+  ...
+# Subtest: posterior failure revokes authorization: coverage
+ok 46 - posterior failure revokes authorization: coverage
+  ---
+  duration_ms: 10.55
+  type: 'test'
+  ...
+# Subtest: posterior failure revokes authorization: affected
+ok 47 - posterior failure revokes authorization: affected
+  ---
+  duration_ms: 11.2065
+  type: 'test'
+  ...
+# Subtest: posterior failure revokes authorization: minimalState
+ok 48 - posterior failure revokes authorization: minimalState
+  ---
+  duration_ms: 8.8927
+  type: 'test'
+  ...
+# Subtest: posterior failure revokes authorization: writeSet
+ok 49 - posterior failure revokes authorization: writeSet
+  ---
+  duration_ms: 10.8083
+  type: 'test'
+  ...
+# Subtest: posterior failure revokes authorization: rollback
+ok 50 - posterior failure revokes authorization: rollback
+  ---
+  duration_ms: 13.2555
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: same_pool
+ok 51 - connection/session independence and complete release required: same_pool
+  ---
+  duration_ms: 8.9011
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: same_client
+ok 52 - connection/session independence and complete release required: same_client
+  ---
+  duration_ms: 8.1179
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: same_stream
+ok 53 - connection/session independence and complete release required: same_stream
+  ---
+  duration_ms: 7.5315
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: same_tls
+ok 54 - connection/session independence and complete release required: same_tls
+  ---
+  duration_ms: 7.8834
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: still_open
+ok 55 - connection/session independence and complete release required: still_open
+  ---
+  duration_ms: 10.1415
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: same_transaction
+ok 56 - connection/session independence and complete release required: same_transaction
+  ---
+  duration_ms: 8.4874
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: handshake
+ok 57 - connection/session independence and complete release required: handshake
+  ---
+  duration_ms: 7.7358
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: first_close
+ok 58 - connection/session independence and complete release required: first_close
+  ---
+  duration_ms: 9.7377
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: close
+ok 59 - connection/session independence and complete release required: close
+  ---
+  duration_ms: 12.409
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: cached_clone
+ok 60 - connection/session independence and complete release required: cached_clone
+  ---
+  duration_ms: 7.5568
+  type: 'test'
+  ...
+# Subtest: connection/session independence and complete release required: shared_result
+ok 61 - connection/session independence and complete release required: shared_result
+  ---
+  duration_ms: 7.338
+  type: 'test'
+  ...
+# Subtest: transaction pooler accepts independent sockets: same_pid
+ok 62 - transaction pooler accepts independent sockets: same_pid
+  ---
+  duration_ms: 12.4807
+  type: 'test'
+  ...
+# Subtest: transaction pooler accepts independent sockets: different_snapshot
+ok 63 - transaction pooler accepts independent sockets: different_snapshot
+  ---
+  duration_ms: 8.9414
+  type: 'test'
+  ...
+# Subtest: Pool A must finish closing before creating Pool B: first_close
+ok 64 - Pool A must finish closing before creating Pool B: first_close
+  ---
+  duration_ms: 7.397
+  type: 'test'
+  ...
+# Subtest: Pool A must finish closing before creating Pool B: still_open
+ok 65 - Pool A must finish closing before creating Pool B: still_open
+  ---
+  duration_ms: 6.9287
+  type: 'test'
+  ...
+# Subtest: exact ordered fields reject aliases, duplicates, every missing/extra/altered field and prior contract
+ok 66 - exact ordered fields reject aliases, duplicates, every missing/extra/altered field and prior contract
+  ---
+  duration_ms: 11.2821
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":2}
+# Subtest: default preflight accepts exact scope; unknown modes and every unsafe scope are rejected
+ok 67 - default preflight accepts exact scope; unknown modes and every unsafe scope are rejected
+  ---
+  duration_ms: 0.9411
+  type: 'test'
+  ...
+# Subtest: each flag and public health gate fails closed
+ok 68 - each flag and public health gate fails closed
+  ---
+  duration_ms: 0.2314
+  type: 'test'
+  ...
+# Subtest: full confirmation binds run, commit, backup and immediate baseline but remains revoked
+ok 69 - full confirmation binds run, commit, backup and immediate baseline but remains revoked
+  ---
+  duration_ms: 0.2021
+  type: 'test'
+  ...
+# Subtest: new external approval requires exact phrase, fresh expiry, enabled process and observers
+ok 70 - new external approval requires exact phrase, fresh expiry, enabled process and observers
+  ---
+  duration_ms: 1.2239
+  type: 'test'
+  ...
+# Subtest: revoked mutation returns STOPPED before even querying a supplied client
+ok 71 - revoked mutation returns STOPPED before even querying a supplied client
+  ---
+  duration_ms: 0.5801
+  type: 'test'
+  ...
+# Subtest: simulation and original local runner reject remote identities without a network connection
+ok 72 - simulation and original local runner reject remote identities without a network connection
+  ---
+  duration_ms: 0.2677
+  type: 'test'
+  ...
+# Subtest: remote preflight also requires a new authorization; simulation cannot target production
+ok 73 - remote preflight also requires a new authorization; simulation cannot target production
+  ---
+  duration_ms: 0.1431
+  type: 'test'
+  ...
+# Subtest: production transport shares exact target validation with READ ONLY
+ok 74 - production transport shares exact target validation with READ ONLY
+  ---
+  duration_ms: 0.7337
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":2}
+# Subtest: read modes never accept mutation, resume or enabling options
+ok 75 - read modes never accept mutation, resume or enabling options
+  ---
+  duration_ms: 0.9346
+  type: 'test'
+  ...
+# Subtest: repository blocks writable CTE, statement stacking, row locks and side-effect functions
+ok 76 - repository blocks writable CTE, statement stacking, row locks and side-effect functions
+  ---
+  duration_ms: 0.5475
+  type: 'test'
+  ...
+# Subtest: static dependency barrier: no imports or dispatch to mutation modules
+ok 77 - static dependency barrier: no imports or dispatch to mutation modules
+  ---
+  duration_ms: 55.1103
+  type: 'test'
+  ...
+# Subtest: unavailable flags stop without issuing any query or inventing values
+ok 78 - unavailable flags stop without issuing any query or inventing values
+  ---
+  duration_ms: 1.5992
+  type: 'test'
+  ...
+# Subtest: canonical digests preserve NULL and microseconds while normalizing timestamp offsets
+ok 79 - canonical digests preserve NULL and microseconds while normalizing timestamp offsets
+  ---
+  duration_ms: 0.6659
+  type: 'test'
+  ...
+# Subtest: authorization rejects each missing field, invalid digest, unsafe flag and expiry
+ok 80 - authorization rejects each missing field, invalid digest, unsafe flag and expiry
+  ---
+  duration_ms: 1.2633
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":2}
+# Subtest: target 01: direct official host
+ok 81 - target 01: direct official host
+  ---
+  duration_ms: 1.5985
+  type: 'test'
+  ...
+# Subtest: target 02: shared transaction pooler uses exact username identity
+ok 82 - target 02: shared transaction pooler uses exact username identity
+  ---
+  duration_ms: 0.3442
+  type: 'test'
+  ...
+# Subtest: target 03: other official region and legacy regional endpoint
+ok 83 - target 03: other official region and legacy regional endpoint
+  ---
+  duration_ms: 0.2496
+  type: 'test'
+  ...
+# Subtest: target 04: other project is rejected
+ok 84 - target 04: other project is rejected
+  ---
+  duration_ms: 0.4213
+  type: 'test'
+  ...
+# Subtest: target 05: partial project and suffix are rejected
+ok 85 - target 05: partial project and suffix are rejected
+  ---
+  duration_ms: 0.2414
+  type: 'test'
+  ...
+# Subtest: target 06: lookalike and additional domain suffix are rejected
+ok 86 - target 06: lookalike and additional domain suffix are rejected
+  ---
+  duration_ms: 0.1821
+  type: 'test'
+  ...
+# Subtest: target 07: identity embedded in password grants nothing
+ok 87 - target 07: identity embedded in password grants nothing
+  ---
+  duration_ms: 0.1103
+  type: 'test'
+  ...
+# Subtest: target 08: localhost is rejected
+ok 88 - target 08: localhost is rejected
+  ---
+  duration_ms: 0.0971
+  type: 'test'
+  ...
+# Subtest: target 09: private IPv4 addresses are rejected
+ok 89 - target 09: private IPv4 addresses are rejected
+  ---
+  duration_ms: 0.2318
+  type: 'test'
+  ...
+# Subtest: target 10: local/private IPv6 literals are rejected
+ok 90 - target 10: local/private IPv6 literals are rejected
+  ---
+  duration_ms: 0.2589
+  type: 'test'
+  ...
+# Subtest: target 11: malformed URL produces a sanitized error only
+ok 91 - target 11: malformed URL produces a sanitized error only
+  ---
+  duration_ms: 0.2179
+  type: 'test'
+  ...
+# Subtest: target 12: encoded at sign is parsed without splitting credentials
+ok 92 - target 12: encoded at sign is parsed without splitting credentials
+  ---
+  duration_ms: 0.1296
+  type: 'test'
+  ...
+# Subtest: target 13: encoded reserved characters are preserved safely
+ok 93 - target 13: encoded reserved characters are preserved safely
+  ---
+  duration_ms: 0.1039
+  type: 'test'
+  ...
+# Subtest: target 14: pooler username without explicit project is rejected
+ok 94 - target 14: pooler username without explicit project is rejected
+  ---
+  duration_ms: 0.078
+  type: 'test'
+  ...
+# Subtest: target 15: other project in pooler username is rejected
+ok 95 - target 15: other project in pooler username is rejected
+  ---
+  duration_ms: 0.0766
+  type: 'test'
+  ...
+# Subtest: target 16: deceptive query identity and transport overrides are rejected
+ok 96 - target 16: deceptive query identity and transport overrides are rejected
+  ---
+  duration_ms: 0.3306
+  type: 'test'
+  ...
+# Subtest: target 17: hostname case normalizes; username case stays exact
+ok 97 - target 17: hostname case normalizes; username case stays exact
+  ---
+  duration_ms: 0.131
+  type: 'test'
+  ...
+# Subtest: target 18: env whitespace, quotes and comments are supported
+ok 98 - target 18: env whitespace, quotes and comments are supported
+  ---
+  duration_ms: 0.4571
+  type: 'test'
+  ...
+# Subtest: target 19: missing credential key fails closed
+ok 99 - target 19: missing credential key fails closed
+  ---
+  duration_ms: 0.1023
+  type: 'test'
+  ...
+# Subtest: target 20: duplicate conflicting credential keys fail closed
+ok 100 - target 20: duplicate conflicting credential keys fail closed
+  ---
+  duration_ms: 0.0687
+  type: 'test'
+  ...
+# Subtest: target 21: sanitized real format accepted only for exact expected project
+ok 101 - target 21: sanitized real format accepted only for exact expected project
+  ---
+  duration_ms: 0.1602
+  type: 'test'
+  ...
+# Subtest: offline SSL is mandatory in transport and cannot be downgraded
+ok 102 - offline SSL is mandatory in transport and cannot be downgraded
+  ---
+  duration_ms: 0.1846
+  type: 'test'
+  ...
+# Subtest: official DNS direct format supports IPv6 without accepting literal IP identity
+ok 103 - official DNS direct format supports IPv6 without accepting literal IP identity
+  ---
+  duration_ms: 0.1507
+  type: 'test'
+  ...
+# Subtest: future server identity requires PostgreSQL 17, tenant, tables and certified schema
+ok 104 - future server identity requires PostgreSQL 17, tenant, tables and certified schema
+  ---
+  duration_ms: 0.2914
+  type: 'test'
+  ...
+# Subtest: schema mismatch carries sanitized expected and observed digests and canonicalization version
+ok 105 - schema mismatch carries sanitized expected and observed digests and canonicalization version
+  ---
+  duration_ms: 0.1489
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":2}
+# {"tls_local_assertions":37,"trust_valid":true,"wrong_ca_rejected":true,"hostname_mismatch_rejected":true,"insecure_fallback":false,"sanitized_receipt":true,"additional_files":0}
+# Subtest: TLS certification: external paths, CA constraints, strict trust, hostname and pg SSLRequest
+ok 106 - TLS certification: external paths, CA constraints, strict trust, hostname and pg SSLRequest
+  ---
+  duration_ms: 6367.4752
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":9}
+# Subtest: backup-derived critical digest matches product catalogs while legacy global digest differs
+ok 107 - backup-derived critical digest matches product catalogs while legacy global digest differs
+  ---
+  duration_ms: 173.7546
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: critical column type
+ok 108 - material schema mutation rejected: critical column type
+  ---
+  duration_ms: 112.613
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: nullability
+ok 109 - material schema mutation rejected: nullability
+  ---
+  duration_ms: 104.0263
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: relevant default
+ok 110 - material schema mutation rejected: relevant default
+  ---
+  duration_ms: 102.9112
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: FK action
+ok 111 - material schema mutation rejected: FK action
+  ---
+  duration_ms: 106.0796
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: UK
+ok 112 - material schema mutation rejected: UK
+  ---
+  duration_ms: 106.7604
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: CHECK
+ok 113 - material schema mutation rejected: CHECK
+  ---
+  duration_ms: 98.8768
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: partial index
+ok 114 - material schema mutation rejected: partial index
+  ---
+  duration_ms: 97.4607
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: trigger
+ok 115 - material schema mutation rejected: trigger
+  ---
+  duration_ms: 98.5617
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: function
+ok 116 - material schema mutation rejected: function
+  ---
+  duration_ms: 95.3752
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: sequence
+ok 117 - material schema mutation rejected: sequence
+  ---
+  duration_ms: 100.0798
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: view in critical scope
+ok 118 - material schema mutation rejected: view in critical scope
+  ---
+  duration_ms: 98.1969
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: transitive dependency
+ok 119 - material schema mutation rejected: transitive dependency
+  ---
+  duration_ms: 97.5181
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: required permissions
+ok 120 - material schema mutation rejected: required permissions
+  ---
+  duration_ms: 96.1477
+  type: 'test'
+  ...
+# Subtest: material schema mutation rejected: RLS
+ok 121 - material schema mutation rejected: RLS
+  ---
+  duration_ms: 97.1205
+  type: 'test'
+  ...
+# Subtest: proven unrelated object ignored; all other digests remain independently enforced by lifecycle
+ok 122 - proven unrelated object ignored; all other digests remain independently enforced by lifecycle
+  ---
+  duration_ms: 51.8943
+  type: 'test'
+  ...
+# Subtest: row and property order does not change semantic identity
+ok 123 - row and property order does not change semantic identity
+  ---
+  duration_ms: 54.8172
+  type: 'test'
+  ...
+# Subtest: only object-bound proven PostgreSQL cast representations are equivalent
+ok 124 - only object-bound proven PostgreSQL cast representations are equivalent
+  ---
+  duration_ms: 102.0138
+  type: 'test'
+  ...
+# Subtest: catalog query barrier accepts only fixed SELECT catalog metadata
+ok 125 - catalog query barrier accepts only fixed SELECT catalog metadata
+  ---
+  duration_ms: 0.6725
+  type: 'test'
+  ...
+# Subtest: READ ONLY and mutator share identity helper and pinned source protection
+ok 126 - READ ONLY and mutator share identity helper and pinned source protection
+  ---
+  duration_ms: 0.5432
+  type: 'test'
+  ...
+# Subtest: real mismatch evidence survives STOPPED and atomic publication with no nonce or row data
+ok 127 - real mismatch evidence survives STOPPED and atomic publication with no nonce or row data
+  ---
+  duration_ms: 258.7805
+  type: 'test'
+  ...
+# Subtest: previous readonly runner and mutator contracts revoked
+ok 128 - previous readonly runner and mutator contracts revoked
+  ---
+  duration_ms: 0.5154
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":2}
+# Subtest: exact TLSv1.3 accepted through pg Client/PoolClient wrapper
+ok 129 - exact TLSv1.3 accepted through pg Client/PoolClient wrapper
+  ---
+  duration_ms: 3.173
+  type: 'test'
+  ...
+# Subtest: runtime rejects protocol "TLSv1.2"
+ok 130 - runtime rejects protocol "TLSv1.2"
+  ---
+  duration_ms: 1.0705
+  type: 'test'
+  ...
+# Subtest: runtime rejects protocol null
+ok 131 - runtime rejects protocol null
+  ---
+  duration_ms: 0.1756
+  type: 'test'
+  ...
+# Subtest: runtime rejects protocol "unknown"
+ok 132 - runtime rejects protocol "unknown"
+  ---
+  duration_ms: 0.0919
+  type: 'test'
+  ...
+# Subtest: runtime rejects protocol "TLS1.3"
+ok 133 - runtime rejects protocol "TLS1.3"
+  ---
+  duration_ms: 0.0884
+  type: 'test'
+  ...
+# Subtest: runtime rejects protocol "tlsv1.3"
+ok 134 - runtime rejects protocol "tlsv1.3"
+  ---
+  duration_ms: 0.0811
+  type: 'test'
+  ...
+# Subtest: runtime rejects protocol " TLSv1.3"
+ok 135 - runtime rejects protocol " TLSv1.3"
+  ---
+  duration_ms: 0.0868
+  type: 'test'
+  ...
+# Subtest: runtime rejects protocol "TLSv1.3 "
+ok 136 - runtime rejects protocol "TLSv1.3 "
+  ---
+  duration_ms: 0.0818
+  type: 'test'
+  ...
+# Subtest: runtime rejects before secureConnect
+ok 137 - runtime rejects before secureConnect
+  ---
+  duration_ms: 0.1978
+  type: 'test'
+  ...
+# Subtest: runtime rejects authorized=false
+ok 138 - runtime rejects authorized=false
+  ---
+  duration_ms: 0.1325
+  type: 'test'
+  ...
+# Subtest: runtime rejects authorizationError present
+ok 139 - runtime rejects authorizationError present
+  ---
+  duration_ms: 0.0625
+  type: 'test'
+  ...
+# Subtest: runtime rejects wrong servername
+ok 140 - runtime rejects wrong servername
+  ---
+  duration_ms: 0.0514
+  type: 'test'
+  ...
+# Subtest: runtime rejects wrong peer hostname
+ok 141 - runtime rejects wrong peer hostname
+  ---
+  duration_ms: 0.1102
+  type: 'test'
+  ...
+# Subtest: runtime rejects peer missing
+ok 142 - runtime rejects peer missing
+  ---
+  duration_ms: 0.0848
+  type: 'test'
+  ...
+# Subtest: wrong socket and arbitrary nested TLS decoys are rejected
+ok 143 - wrong socket and arbitrary nested TLS decoys are rejected
+  ---
+  duration_ms: 0.1074
+  type: 'test'
+  ...
+# Subtest: wrong CA, disabled rejectUnauthorized, wrong checker and mismatched config rejected
+ok 144 - wrong CA, disabled rejectUnauthorized, wrong checker and mismatched config rejected
+  ---
+  duration_ms: 2.2753
+  type: 'test'
+  ...
+# Subtest: runner and mutator use same runtime helper; no backend pg_stat_ssl inference
+ok 145 - runner and mutator use same runtime helper; no backend pg_stat_ssl inference
+  ---
+  duration_ms: 0.4351
+  type: 'test'
+  ...
+# Subtest: repository inspects original client, not SELECT-only query wrapper, with zero queries
+ok 146 - repository inspects original client, not SELECT-only query wrapper, with zero queries
+  ---
+  duration_ms: 0.5192
+  type: 'test'
+  ...
+# Subtest: TLS rejection before SQL publishes a complete immutable STOPPED receipt atomically
+ok 147 - TLS rejection before SQL publishes a complete immutable STOPPED receipt atomically
+  ---
+  duration_ms: 172.954
+  type: 'test'
+  ...
+# Subtest: base runner and old mutator phrases revoked
+ok 148 - base runner and old mutator phrases revoked
+  ---
+  duration_ms: 0.5013
+  type: 'test'
+  ...
+# {"scope":"LOOPBACK_SYNTHETIC","protocol":"TLSv1.3","stream_constructor":"TLSSocket","stream_type":"node:tls.TLSSocket","socket_path":"client.connection.stream","encrypted":true,"authorized":true,"authorizationError":null,"secure_connect_complete":true,"rejectUnauthorized":true,"servername_matches":true,"checkServerIdentity_active":true,"hostname_verified":true,"chain_verified":true,"external_ca_verified":true,"certificate_sha256":"15E7BC23C58F175DDA2B88844FA45C10765F9AC1C74BF2277C0A5915C98AD5BC","cipher":{"name":"TLS_AES_256_GCM_SHA384","version":"TLSv1.3"},"peer_certificate_present":true,"peer_certificate_sha256":"97128c26272d54ce2744b985c5d53c3039f6aa2a687326c1a587e4dce1adf4df"}
+# Subtest: real pg SSLRequest wrapper resolves TLSv1.3 only after secureConnect, without SQL
+ok 149 - real pg SSLRequest wrapper resolves TLSv1.3 only after secureConnect, without SQL
+  ---
+  duration_ms: 15.7688
+  type: 'test'
+  ...
+# Subtest: fresh Pool factory observes two real TLS handshakes and closes A before B with identical pooler backend PID
+ok 150 - fresh Pool factory observes two real TLS handshakes and closes A before B with identical pooler backend PID
+  ---
+  duration_ms: 11.417
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":5}
+1..150
+# tests 150
+# suites 0
+# pass 150
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 6576.5676
+{"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":0}

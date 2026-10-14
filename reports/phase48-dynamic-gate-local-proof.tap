@@ -1,0 +1,180 @@
+TAP version 13
+# Subtest: local engine refuses execution without local certification flag
+ok 1 - local engine refuses execution without local certification flag
+  ---
+  duration_ms: 0.8257
+  type: 'test'
+  ...
+# Subtest: dynamic 730: exact IDs and transactional DDL/DML rollback 8/8
+ok 2 - dynamic 730: exact IDs and transactional DDL/DML rollback 8/8
+  ---
+  duration_ms: 401.6548
+  type: 'test'
+  ...
+# Subtest: dynamic 733: exact IDs and transactional DDL/DML rollback 8/8
+ok 3 - dynamic 733: exact IDs and transactional DDL/DML rollback 8/8
+  ---
+  duration_ms: 399.7492
+  type: 'test'
+  ...
+# Subtest: dynamic 734: exact IDs and transactional DDL/DML rollback 8/8
+ok 4 - dynamic 734: exact IDs and transactional DDL/DML rollback 8/8
+  ---
+  duration_ms: 378.6535
+  type: 'test'
+  ...
+# Subtest: local commit updates only sealed tenant IDs; no insert or economic/correction DML
+ok 5 - local commit updates only sealed tenant IDs; no insert or economic/correction DML
+  ---
+  duration_ms: 221.7497
+  type: 'test'
+  ...
+# Subtest: intermediate new candidate invalidates seal before DDL/DML and burns nonce
+ok 6 - intermediate new candidate invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 306.9503
+  type: 'test'
+  ...
+# Subtest: intermediate deleted original invalidates seal before DDL/DML and burns nonce
+ok 7 - intermediate deleted original invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 209.7674
+  type: 'test'
+  ...
+# Subtest: intermediate candidate identity invalidates seal before DDL/DML and burns nonce
+ok 8 - intermediate candidate identity invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 327.3512
+  type: 'test'
+  ...
+# Subtest: intermediate technical field invalidates seal before DDL/DML and burns nonce
+ok 9 - intermediate technical field invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 203.4108
+  type: 'test'
+  ...
+# Subtest: intermediate protected table invalidates seal before DDL/DML and burns nonce
+ok 10 - intermediate protected table invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 302.5017
+  type: 'test'
+  ...
+# Subtest: intermediate annulled period invalidates seal before DDL/DML and burns nonce
+ok 11 - intermediate annulled period invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 198.9671
+  type: 'test'
+  ...
+# Subtest: intermediate schema invalidates seal before DDL/DML and burns nonce
+ok 12 - intermediate schema invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 424.9218
+  type: 'test'
+  ...
+# Subtest: same count, replaced ID is refused
+ok 13 - same count, replaced ID is refused
+  ---
+  duration_ms: 192.9466
+  type: 'test'
+  ...
+# Subtest: gate expiry at exactly 120 seconds, clock rollback and expiry after locking stop execution
+ok 14 - gate expiry at exactly 120 seconds, clock rollback and expiry after locking stop execution
+  ---
+  duration_ms: 429.9141
+  type: 'test'
+  ...
+# Subtest: caller tampering with each digest, IDs, count, lock manifest or expiry fails authentication
+ok 15 - caller tampering with each digest, IDs, count, lock manifest or expiry fails authentication
+  ---
+  duration_ms: 246.5025
+  type: 'test'
+  ...
+# Subtest: 8/8 digests revalidated, even individually divergent well-formed sets
+ok 16 - 8/8 digests revalidated, even individually divergent well-formed sets
+  ---
+  duration_ms: 146.8295
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent INSERT is blocked after lock before relevant SELECT
+ok 17 - non-cooperating concurrent INSERT is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 509.6954
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent UPDATE is blocked after lock before relevant SELECT
+ok 18 - non-cooperating concurrent UPDATE is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 406.6948
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent DELETE is blocked after lock before relevant SELECT
+ok 19 - non-cooperating concurrent DELETE is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 513.56
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent source identity is blocked after lock before relevant SELECT
+ok 20 - non-cooperating concurrent source identity is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 410.1198
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent protected table is blocked after lock before relevant SELECT
+ok 21 - non-cooperating concurrent protected table is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 404.8943
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent TRUNCATE is blocked after lock before relevant SELECT
+ok 22 - non-cooperating concurrent TRUNCATE is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 516.6031
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent DDL is blocked after lock before relevant SELECT
+ok 23 - non-cooperating concurrent DDL is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 497.478
+  type: 'test'
+  ...
+# Subtest: already active writer causes NOWAIT refusal and nonce revocation
+ok 24 - already active writer causes NOWAIT refusal and nonce revocation
+  ---
+  duration_ms: 161.0111
+  type: 'test'
+  ...
+# Subtest: first execution SELECT follows BEGIN/SERIALIZABLE and full relation lock
+ok 25 - first execution SELECT follows BEGIN/SERIALIZABLE and full relation lock
+  ---
+  duration_ms: 288.8199
+  type: 'test'
+  ...
+# Subtest: induced failure after update rolls back schema, identities and all protected tables
+ok 26 - induced failure after update rolls back schema, identities and all protected tables
+  ---
+  duration_ms: 373.5157
+  type: 'test'
+  ...
+# Subtest: unexpected protected changes inside local transaction are refused and rolled back
+ok 27 - unexpected protected changes inside local transaction are refused and rolled back
+  ---
+  duration_ms: 319.3803
+  type: 'test'
+  ...
+# Subtest: STOP boundary: relation locks do not fence concurrent creation of a public source table
+ok 28 - STOP boundary: relation locks do not fence concurrent creation of a public source table
+  ---
+  duration_ms: 448.1382
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":169}
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9400.115
+{"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":0}

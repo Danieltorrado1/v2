@@ -1,0 +1,313 @@
+﻿TAP version 13
+# {"operation":"INSERT","object":"candidato","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: INSERT | candidato
+ok 1 - INSERT | candidato
+  ---
+  duration_ms: 607.368
+  type: 'test'
+  ...
+# {"operation":"UPDATE","object":"candidato","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: UPDATE | candidato
+ok 2 - UPDATE | candidato
+  ---
+  duration_ms: 588.3008
+  type: 'test'
+  ...
+# {"operation":"DELETE","object":"candidato","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: DELETE | candidato
+ok 3 - DELETE | candidato
+  ---
+  duration_ms: 484.0204
+  type: 'test'
+  ...
+# {"operation":"ALTER TABLE","object":"candidato","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: ALTER TABLE | candidato
+ok 4 - ALTER TABLE | candidato
+  ---
+  duration_ms: 606.076
+  type: 'test'
+  ...
+# {"operation":"UPDATE","object":"fuente focalizacion","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: UPDATE | fuente focalizacion
+ok 5 - UPDATE | fuente focalizacion
+  ---
+  duration_ms: 490.355
+  type: 'test'
+  ...
+# {"operation":"ALTER TABLE","object":"fuente focalizacion","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: ALTER TABLE | fuente focalizacion
+ok 6 - ALTER TABLE | fuente focalizacion
+  ---
+  duration_ms: 812.7545
+  type: 'test'
+  ...
+# {"operation":"INSERT","object":"public.ajena","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: INSERT | public.ajena
+ok 7 - INSERT | public.ajena
+  ---
+  duration_ms: 700.2676
+  type: 'test'
+  ...
+# {"operation":"UPDATE","object":"public.ajena","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: UPDATE | public.ajena
+ok 8 - UPDATE | public.ajena
+  ---
+  duration_ms: 601.8907
+  type: 'test'
+  ...
+# {"operation":"DELETE","object":"public.ajena","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: DELETE | public.ajena
+ok 9 - DELETE | public.ajena
+  ---
+  duration_ms: 588.8885
+  type: 'test'
+  ...
+# {"operation":"ALTER TABLE","object":"public.ajena","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: ALTER TABLE | public.ajena
+ok 10 - ALTER TABLE | public.ajena
+  ---
+  duration_ms: 483.2276
+  type: 'test'
+  ...
+# {"operation":"INSERT","object":"audit_foreign.ajena","result":"COMMITTED_INDEPENDENT","candidate_drift":false,"rollback_verified":true}
+# Subtest: INSERT | audit_foreign.ajena
+ok 11 - INSERT | audit_foreign.ajena
+  ---
+  duration_ms: 540.8497
+  type: 'test'
+  ...
+# {"operation":"UPDATE","object":"audit_foreign.ajena","result":"COMMITTED_INDEPENDENT","candidate_drift":false,"rollback_verified":true}
+# Subtest: UPDATE | audit_foreign.ajena
+ok 12 - UPDATE | audit_foreign.ajena
+  ---
+  duration_ms: 437.5677
+  type: 'test'
+  ...
+# {"operation":"DELETE","object":"audit_foreign.ajena","result":"COMMITTED_INDEPENDENT","candidate_drift":false,"rollback_verified":true}
+# Subtest: DELETE | audit_foreign.ajena
+ok 13 - DELETE | audit_foreign.ajena
+  ---
+  duration_ms: 436.4687
+  type: 'test'
+  ...
+# {"operation":"ALTER TABLE","object":"audit_foreign.ajena","result":"COMMITTED_INDEPENDENT","candidate_drift":false,"rollback_verified":true}
+# Subtest: ALTER TABLE | audit_foreign.ajena
+ok 14 - ALTER TABLE | audit_foreign.ajena
+  ---
+  duration_ms: 319.0496
+  type: 'test'
+  ...
+# {"operation":"CREATE TABLE FK","object":"dependiente de candidato","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: CREATE TABLE FK | dependiente de candidato
+ok 15 - CREATE TABLE FK | dependiente de candidato
+  ---
+  duration_ms: 715.6816
+  type: 'test'
+  ...
+# {"operation":"CREATE TABLE LIKE","object":"dependiente de candidato","result":"BLOCKED_55P03","candidate_drift":false,"rollback_verified":true}
+# Subtest: CREATE TABLE LIKE | dependiente de candidato
+ok 16 - CREATE TABLE LIKE | dependiente de candidato
+  ---
+  duration_ms: 805.179
+  type: 'test'
+  ...
+# {"operation":"CREATE TABLE","object":"public.nueva_ajena(id","result":"ALLOWED_GLOBAL_DIGEST_DRIFT","candidate_drift":false}
+# Subtest: CREATE TABLE public.nueva_ajena(id bigint PRIMARY KEY) | dependency classification
+ok 17 - CREATE TABLE public.nueva_ajena(id bigint PRIMARY KEY) | dependency classification
+  ---
+  duration_ms: 402.2511
+  type: 'test'
+  ...
+# {"operation":"CREATE TABLE","object":"audit_foreign.nueva_ajena(id","result":"ALLOWED_OUTSIDE_DIGEST","candidate_drift":false}
+# Subtest: CREATE TABLE audit_foreign.nueva_ajena(id bigint PRIMARY KEY) | dependency classification
+ok 18 - CREATE TABLE audit_foreign.nueva_ajena(id bigint PRIMARY KEY) | dependency classification
+  ---
+  duration_ms: 632.3297
+  type: 'test'
+  ...
+# {"operation":"UPDATE","object":"certified_candidate_before_first_DML","result":"BLOCKED_55P03","candidate_drift":false}
+# Subtest: UPDATE certified candidate exactly AFTER revalidation and BEFORE first DML
+ok 19 - UPDATE certified candidate exactly AFTER revalidation and BEFORE first DML
+  ---
+  duration_ms: 514.2006
+  type: 'test'
+  ...
+# {"operation":"UPDATE","object":"candidate_before_locks","result":"STOPPED_DRIFT_BEFORE_DML"}
+# Subtest: intermediate candidate change committed BEFORE locks is detected
+ok 20 - intermediate candidate change committed BEFORE locks is detected
+  ---
+  duration_ms: 320.8149
+  type: 'test'
+  ...
+# {"operation":"CREATE OR REPLACE FUNCTION","object":"existing_public_certified_function","result":"NOT_BLOCKED_DETECTED_POSTROLLBACK","candidate_drift":false}
+# Subtest: existing public function can change after revalidation without a relation conflict
+ok 21 - existing public function can change after revalidation without a relation conflict
+  ---
+  duration_ms: 631.583
+  type: 'test'
+  ...
+# {"operation":"nextval","object":"public_sequence_in_historical_source_digest","result":"NOT_BLOCKED_NONTRANSACTIONAL","detectable_by_fresh_sequence_read":true,"candidate_drift":false}
+# Subtest: historical certified sequence nextval can advance between validation and DML without table conflict
+ok 22 - historical certified sequence nextval can advance between validation and DML without table conflict
+  ---
+  duration_ms: 352.9187
+  type: 'test'
+  ...
+# {"operation":"nextval","object":"historical_sequence_after_final_verification","result":"COMMIT_SUCCEEDED_WITH_UNCHECKED_SEQUENCE_DRIFT","candidate_drift":false,"executor_invoked":false}
+# Subtest: sequence can change AFTER final sequence verification and BEFORE COMMIT without automatic 40001
+ok 23 - sequence can change AFTER final sequence verification and BEFORE COMMIT without automatic 40001
+  ---
+  duration_ms: 650.7612
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"INSERT","object":"candidato","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | INSERT | candidato
+ok 24 - HISTORICAL SHARE ROW EXCLUSIVE | INSERT | candidato
+  ---
+  duration_ms: 590.3615
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"UPDATE","object":"candidato","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | UPDATE | candidato
+ok 25 - HISTORICAL SHARE ROW EXCLUSIVE | UPDATE | candidato
+  ---
+  duration_ms: 490.3089
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"DELETE","object":"candidato","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | DELETE | candidato
+ok 26 - HISTORICAL SHARE ROW EXCLUSIVE | DELETE | candidato
+  ---
+  duration_ms: 375.8026
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"ALTER TABLE","object":"candidato","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | ALTER TABLE | candidato
+ok 27 - HISTORICAL SHARE ROW EXCLUSIVE | ALTER TABLE | candidato
+  ---
+  duration_ms: 489.9201
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"UPDATE","object":"fuente focalizacion","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | UPDATE | fuente focalizacion
+ok 28 - HISTORICAL SHARE ROW EXCLUSIVE | UPDATE | fuente focalizacion
+  ---
+  duration_ms: 484.6889
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"ALTER TABLE","object":"fuente focalizacion","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | ALTER TABLE | fuente focalizacion
+ok 29 - HISTORICAL SHARE ROW EXCLUSIVE | ALTER TABLE | fuente focalizacion
+  ---
+  duration_ms: 487.7291
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"INSERT","object":"public.ajena","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | INSERT | public.ajena
+ok 30 - HISTORICAL SHARE ROW EXCLUSIVE | INSERT | public.ajena
+  ---
+  duration_ms: 375.3302
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"UPDATE","object":"public.ajena","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | UPDATE | public.ajena
+ok 31 - HISTORICAL SHARE ROW EXCLUSIVE | UPDATE | public.ajena
+  ---
+  duration_ms: 593.6597
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"DELETE","object":"public.ajena","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | DELETE | public.ajena
+ok 32 - HISTORICAL SHARE ROW EXCLUSIVE | DELETE | public.ajena
+  ---
+  duration_ms: 487.9386
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"ALTER TABLE","object":"public.ajena","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | ALTER TABLE | public.ajena
+ok 33 - HISTORICAL SHARE ROW EXCLUSIVE | ALTER TABLE | public.ajena
+  ---
+  duration_ms: 378.1709
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"INSERT","object":"audit_foreign.ajena","result":"ALLOWED","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | INSERT | audit_foreign.ajena
+ok 34 - HISTORICAL SHARE ROW EXCLUSIVE | INSERT | audit_foreign.ajena
+  ---
+  duration_ms: 439.0583
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"UPDATE","object":"audit_foreign.ajena","result":"ALLOWED","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | UPDATE | audit_foreign.ajena
+ok 35 - HISTORICAL SHARE ROW EXCLUSIVE | UPDATE | audit_foreign.ajena
+  ---
+  duration_ms: 541.1452
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"DELETE","object":"audit_foreign.ajena","result":"ALLOWED","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | DELETE | audit_foreign.ajena
+ok 36 - HISTORICAL SHARE ROW EXCLUSIVE | DELETE | audit_foreign.ajena
+  ---
+  duration_ms: 210.5726
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"ALTER TABLE","object":"audit_foreign.ajena","result":"ALLOWED","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | ALTER TABLE | audit_foreign.ajena
+ok 37 - HISTORICAL SHARE ROW EXCLUSIVE | ALTER TABLE | audit_foreign.ajena
+  ---
+  duration_ms: 216.1482
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"CREATE TABLE FK","object":"dependiente de candidato","result":"BLOCKED_55P03","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | CREATE TABLE FK | dependiente de candidato
+ok 38 - HISTORICAL SHARE ROW EXCLUSIVE | CREATE TABLE FK | dependiente de candidato
+  ---
+  duration_ms: 479.4576
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"CREATE TABLE LIKE","object":"dependiente de candidato","result":"ALLOWED","certified_rows_unchanged":true,"executor_invoked":false}
+# Subtest: HISTORICAL SHARE ROW EXCLUSIVE | CREATE TABLE LIKE | dependiente de candidato
+ok 39 - HISTORICAL SHARE ROW EXCLUSIVE | CREATE TABLE LIKE | dependiente de candidato
+  ---
+  duration_ms: 331.5752
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"CREATE TABLE","object":"public.historical_new","result":"ALLOWED","own_snapshot_detects_drift":false,"fresh_observer_detects_drift":true,"executor_invoked":false}
+# Subtest: HISTORICAL CREATE independent table | public
+ok 40 - HISTORICAL CREATE independent table | public
+  ---
+  duration_ms: 461.6599
+  type: 'test'
+  ...
+# {"mode":"SHARE ROW EXCLUSIVE","operation":"CREATE TABLE","object":"audit_foreign.historical_new","result":"ALLOWED","own_snapshot_detects_drift":false,"fresh_observer_detects_drift":false,"executor_invoked":false}
+# Subtest: HISTORICAL CREATE independent table | audit_foreign
+ok 41 - HISTORICAL CREATE independent table | audit_foreign
+  ---
+  duration_ms: 344.5414
+  type: 'test'
+  ...
+# {"operation":"UPDATE","object":"candidate_before_historical_locks","own_reread":"STALE_EQUAL","fresh_observer":"DRIFT_DETECTED","first_candidate_update":"ABORTED_40001","executor_invoked":false}
+# Subtest: historical early snapshot hides pre-lock candidate change; fresh observer detects it and own UPDATE aborts
+ok 42 - historical early snapshot hides pre-lock candidate change; fresh observer detects it and own UPDATE aborts
+  ---
+  duration_ms: 361.0404
+  type: 'test'
+  ...
+# {"operation":"nextval/setval","object":"sequence_after_actual_restartSequence","result":"BLOCKED_55P03","modes":["RowExclusiveLock","ShareRowExclusiveLock"],"restart_rollback_verified":true,"executor_invoked":false}
+# Subtest: actual restartSequence helper holds sequence exclusion until transaction end
+ok 43 - actual restartSequence helper holds sequence exclusion until transaction end
+  ---
+  duration_ms: 640.9688
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":312}
+1..43
+# tests 43
+# suites 0
+# pass 43
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 21913.9532
+{"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":0}

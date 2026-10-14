@@ -48,6 +48,7 @@ export function validatePreconnectionOptions(o:Options){
  need(o.projectRef===PROJECT_REF,'PROJECT_REF_INVALID');need(/^phase48-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(o.runId),'RUN_ID_INVALID');
  need(o.flags.health200&&o.flags.databaseOk&&!o.flags.outbox&&!o.flags.sync&&!o.flags.recalc&&!o.flags.worker,'HEALTH_OR_FLAGS_UNSAFE');
  if(o.mode==='MutateProduction'||o.target==='Production'){
+  need(false,'LEGACY_PHASE48_CONTRACT_REVOKED');
   // Default is revoked. Only a NEW, explicit external approval can activate it;
   // certification never creates one or enables this process automatically.
   need((o.authorization??PRODUCTION_AUTHORIZATION)==='ACTIVE','AUTHORIZATION_REVOKED');
