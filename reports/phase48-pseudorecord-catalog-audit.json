@@ -1,0 +1,303 @@
+{
+  "started_utc": "2026-10-14T18:38:49.505Z",
+  "evidence_manifest_sha256": "0c70fa12d996358e293d8226c687004da8ea51ccf69de0ad9cb53290c136da2d",
+  "evidence_artifacts": [
+    {
+      "file": "precheck-stopped.json",
+      "bytes": 8153,
+      "sha256": "f97605a3721418ac2f71de4151cc2b560df80757ff21cd301786ea63edf080cd"
+    },
+    {
+      "file": "catalog-diagnosis.json",
+      "bytes": 1297,
+      "sha256": "90c2f2f577be6467ea17c68dbab34cf84d6fa69b55e5cda6c5e12a552a1c5a64"
+    },
+    {
+      "file": "final-health.json",
+      "bytes": 399,
+      "sha256": "be1db49df3eef3c4f67cda4e1bf8c4fa77ed26b45a429e73876df09684e57c34"
+    },
+    {
+      "file": "RESULTADO-DETENIDO.md",
+      "bytes": 981,
+      "sha256": "09639f9800513f46b8a52be067d409ecebc8f334408cc5b1edebba6f0ee1ecaa"
+    }
+  ],
+  "production_writes": 0,
+  "business_row_reads": 0,
+  "function": {
+    "oid": "25847",
+    "identity": "personas_prevent_identificador_interno_update()",
+    "schema": "public",
+    "owner": "postgres",
+    "language": "plpgsql",
+    "security_definer": false,
+    "config": null,
+    "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "returns": "trigger",
+    "definition": "CREATE OR REPLACE FUNCTION public.personas_prevent_identificador_interno_update()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  IF NEW.identificador_interno IS DISTINCT FROM OLD.identificador_interno THEN\n    RAISE EXCEPTION 'identificador_interno is immutable';\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n",
+    "definition_sha256": "ac5951e93e991f155ffb498509228a7e62d5a35e00ab001c09edad3468a01745"
+  },
+  "triggers": [
+    {
+      "name": "trg_personas_prevent_identificador_interno_update",
+      "schema": "public",
+      "relation": "personas",
+      "enabled": "O",
+      "type": 19,
+      "internal": false,
+      "definition": "CREATE TRIGGER trg_personas_prevent_identificador_interno_update BEFORE UPDATE OF identificador_interno ON public.personas FOR EACH ROW EXECUTE FUNCTION personas_prevent_identificador_interno_update()"
+    }
+  ],
+  "columns": [
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "id",
+      "type": "bigint",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "tipo_documento_id",
+      "type": "bigint",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "numero_documento",
+      "type": "text",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "primer_nombre",
+      "type": "text",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "segundo_nombre",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "primer_apellido",
+      "type": "text",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "segundo_apellido",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "fecha_nacimiento",
+      "type": "date",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "fecha_expedicion_documento",
+      "type": "date",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "municipio_nacimiento_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "municipio_expedicion_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "municipio_residencia_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "sexo_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "estado_civil_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "tipo_sangre_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "estatura",
+      "type": "numeric",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "telefono",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "correo",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "direccion",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "barrio",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "zona_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "pais_nacimiento",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "nacimiento_extranjero",
+      "type": "boolean",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "ciudad_nacimiento_extranjero",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "identificador_interno",
+      "type": "uuid",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "manipulacion_modalidad",
+      "type": "text",
+      "not_null": false
+    }
+  ],
+  "ambiguities": [],
+  "callers": [],
+  "dependencies": [
+    {
+      "class": "pg_proc",
+      "oid": "25847",
+      "object": "function personas_prevent_identificador_interno_update()",
+      "depth": 0
+    },
+    {
+      "class": "pg_language",
+      "oid": "13619",
+      "object": "language plpgsql",
+      "depth": 1
+    },
+    {
+      "class": "pg_namespace",
+      "oid": "2200",
+      "object": "schema public",
+      "depth": 1
+    },
+    {
+      "class": "pg_extension",
+      "oid": "13615",
+      "object": "extension plpgsql",
+      "depth": 2
+    },
+    {
+      "class": "pg_proc",
+      "oid": "13616",
+      "object": "function plpgsql_call_handler()",
+      "depth": 2
+    },
+    {
+      "class": "pg_proc",
+      "oid": "13617",
+      "object": "function plpgsql_inline_handler(internal)",
+      "depth": 2
+    },
+    {
+      "class": "pg_proc",
+      "oid": "13618",
+      "object": "function plpgsql_validator(oid)",
+      "depth": 2
+    },
+    {
+      "class": "pg_extension",
+      "oid": "13615",
+      "object": "extension plpgsql",
+      "depth": 3
+    }
+  ],
+  "status": "CAPTURED",
+  "rollback": "CONFIRMED",
+  "closed": true,
+  "connection_evidence": {
+    "connection_instance_id": "1a6a90df-8351-4d16-94a7-120cb5bb019d",
+    "opened_at": "2026-10-14T18:38:50.586Z",
+    "handshake_events": 1,
+    "handshake_at": "2026-10-14T18:38:50.258Z",
+    "tls_protocol": "TLSv1.3",
+    "tls_cipher": "TLS_AES_256_GCM_SHA384",
+    "rollback_at": "2026-10-14T18:38:51.589Z",
+    "closed_at": "2026-10-14T18:38:51.679Z",
+    "query_count": 9
+  },
+  "finished_utc": "2026-10-14T18:38:51.679Z"
+}

@@ -13,7 +13,7 @@ const need=(v,c)=>{if(!v)throw Error(c);};
 async function main(){
  if(process.argv.slice(2).join(' ')!=='--sync-disabled-manual-confirmation')throw Error('MANUAL_SYNC_CONFIRMATION_REQUIRED');
  report.release=scopedRelease();need(cp.execFileSync('git',['status','--porcelain'],{encoding:'utf8'}).trim()==='','WORKING_TREE_DIRTY');
- report.remote_commit=cp.execFileSync('git',['ls-remote','--heads','origin','fix/phase48-constant-dynamic-sql'],{encoding:'utf8'}).trim().split(/\s/)[0];need(report.remote_commit===report.release.readonly_runner_commit,'REMOTE_MISMATCH');
+ report.remote_commit=cp.execFileSync('git',['ls-remote','--heads','origin','fix/phase48-trigger-pseudorecord-parser'],{encoding:'utf8'}).trim().split(/\s/)[0];need(report.remote_commit===report.release.readonly_runner_commit,'REMOTE_MISMATCH');
  report.client_version=cp.execFileSync('C:/Program Files/PostgreSQL/17/bin/pg_dump.exe',['--version'],{encoding:'utf8'}).trim();need(report.client_version==='pg_dump (PostgreSQL) 17.11','CLIENT_VERSION_MISMATCH');
  const hr=await fetch('https://api.empiriasuite.com/api/health',{signal:AbortSignal.timeout(15000)}),body=await hr.json(),h=body.data,o=h?.integracion_outbox;
  report.health={http_status:hr.status,database_status:h?.database?.status,outbox_configured:o?.configured,outbox_enabled:o?.enabled,worker_started:o?.started,worker_running:o?.running,recalc_requested:o?.recalc?.requested,recalc_active:o?.recalc?.active,sync:false,sync_evidence:'USER_MANUAL_RENDER_CONFIRMATION',observed_utc:new Date().toISOString()};

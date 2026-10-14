@@ -1,6 +1,7 @@
 import {readFileSync} from 'node:fs';
 import baseline from '../../modules/cobertura/phase48-managed-events-baseline.json';
 import constantBaseline from '../../modules/cobertura/phase48-constant-sql-baseline.json';
+import pseudoBaseline from '../../modules/cobertura/phase48-pseudorecord-baseline.json';
 import {SCHEMA_SCOPE} from '../../modules/cobertura/phase48-readonly-schema-scope';
 import {localClient} from '../../modules/cobertura/phase48-dynamic-local';
 import {sq} from '../../modules/cobertura/phase48-scoped-repository';
@@ -17,7 +18,8 @@ export async function scopedFixture(n=733){
    await db.query('CREATE TABLE public.'+sq(name)+' ('+cols.map((r:any)=>sq(r.name)+' '+r.type).join(',')+')');
    if(cols.some((r:any)=>r.name==='id'))await db.query('ALTER TABLE public.'+sq(name)+' ADD PRIMARY KEY(id)');
   }
-  for(const f of SCHEMA_SCOPE.critical_functions)await db.query(f===constantBaseline.identity?constantBaseline.definition:'CREATE FUNCTION public.'+f+' RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW;END$$');
+  for(const f of SCHEMA_SCOPE.critical_functions)await db.query(f===constantBaseline.identity?constantBaseline.definition:f===pseudoBaseline.identity?pseudoBaseline.definition:'CREATE FUNCTION public.'+f+' RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW;END$$');
+  await db.query(pseudoBaseline.triggers[0]!.definition);
   await db.query(`CREATE SEQUENCE public.nomina_revision_operativa_id_seq;
    ALTER TABLE public.nomina_revision_operativa ALTER COLUMN id SET DEFAULT nextval('public.nomina_revision_operativa_id_seq');
    ALTER TABLE public.nomina_revision_operativa ALTER COLUMN version_revision SET DEFAULT 1;

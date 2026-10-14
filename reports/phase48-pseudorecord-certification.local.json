@@ -1,0 +1,84 @@
+{
+  "status": "PSEUDORECORD_CERTIFIED_LOCAL",
+  "version": "PHASE48_SCOPED_PSEUDORECORD_V5",
+  "branch": "fix/phase48-trigger-pseudorecord-parser",
+  "base": "b03b827021addd06ffdc4acc8a6abad82b8b12f6",
+  "readonly_runner_commit": "RESOLVED_FROM_FINAL_HEAD_BY_scopedRelease",
+  "mutator_commit": "RESOLVED_FROM_SCOPED_MUTATOR_COMMIT",
+  "code_sha256": {
+    "src/modules/cobertura/phase48-pseudorecord-parser.ts": "2d8fcc681eaa247bcd164977702ce3920cf0525e8b97e3d336aa3fad2b7445e5",
+    "src/modules/cobertura/phase48-pseudorecord-baseline.json": "fc86f5c95a5ee37bc8484cb9c622ab5b2c4b2f39cc541e1b4a5d867df0b441c1",
+    "src/modules/cobertura/phase48-constant-sql.ts": "c14b7b782b437d26b4726237ac71fe01a48d88270dbad23c1ffb9a8db37f932f",
+    "src/modules/cobertura/phase48-constant-sql-baseline.json": "013b8e35bea145b27fcf14ea33b9bbc9eed1f4e6ac3330959869ad73a2a1170c",
+    "src/scripts/phase48-backup-precheck-readonly.cjs": "f6a8fade730ed4d428ffe6d81142a8175a9f8ae7108cd0b18bf808b75391775a",
+    "src/modules/cobertura/phase48-backup-readonly-precheck.ts": "0a4ed596de8aff140aa5a0ce5b8457c3e798c94522cda69196f2968fb78b1983",
+    "src/modules/cobertura/phase48-managed-events.ts": "8804be0754e254362ac03c323e4e0299b0603e43abad99b97bffb6bb4be0219e",
+    "src/modules/cobertura/phase48-managed-events-baseline.json": "c3f17c1fedf152b92e445e93917063be367c7f26010458a33e7ed84d292d3aab",
+    "src/modules/cobertura/phase48-scoped-contract.ts": "cd1520316f7e3323681ef9fe387fe11b265b970561c5d54cf2622371439833a9",
+    "src/modules/cobertura/phase48-scoped-repository.ts": "df3ed87407ca6f7556d689a3f37bffe954d9a6d547a5fbbc4daa264d0d30d874",
+    "src/modules/cobertura/phase48-scoped-local.ts": "a2a2adc77e0cb36dfb6f1d4dfb45939fc6c990540c524da00b5217f239adcf0b",
+    "src/modules/cobertura/phase48-scoped-release.ts": "1adaae389f05dcb7b0812aa3db876f048c2ea8afd4d6a205bbe8fa7fc7af8b91",
+    "src/scripts/phase48-scoped-certification.ts": "25bb7b6d3af2154c1aba346f842e1cfe7d4836007e76d362f7c5feacf36ef7a8",
+    "src/modules/cobertura/phase48-readonly-contract.ts": "268e1df44bbe8db95b69db2a86f5c99e182906c0353e6839682f0c518badd9e4",
+    "src/modules/cobertura/phase48-readonly-schema-scope.ts": "f500b8d42bb6f5c404faab28de38d67372f19d32d1cf33ed927c4917222c3f91",
+    "src/modules/cobertura/phase48-readonly-schema-catalog.ts": "3b2f7903a6accb412974df05a3430913a3b2f1b86db16814bcf543e4a4b4b63c",
+    "src/modules/cobertura/phase48-historical-domain.ts": "be67949a3efe93cae92680cb2455f82bf8a5ed649a544ee7885eda4461d869eb",
+    "src/modules/cobertura/phase48-readonly-receipts.ts": "2ec559f9fdfbfd2d47ff66698bf994925c03c5aa8dc609b40fe7945249d9aa64",
+    "src/modules/cobertura/phase48-dynamic-local.ts": "0e15ac33f72b3f2e8326ce4eeedf6d60551765ed57aa8e058bbcba39e2c06044",
+    "src/modules/cobertura/phase48-readonly-tls.ts": "d453ee88c732a5596d921a043947526c0ada91a2e9052d9f33d6c1544f0ce8a4",
+    "src/modules/cobertura/phase48-readonly-target.ts": "754300d705ee2a1365e032f5859d683bb5017e3df5cc996cc7566ee0f2e5d235",
+    "src/modules/cobertura/phase48-readonly-connection.ts": "9d7409360ea7af9f5544277a3895eedc0b3a67f898eea5f703a755dc3cdfa3f2",
+    "src/modules/cobertura/phase48-readonly-schema-identity.ts": "633b994951b68fae68ea94630348bf4ba12f1ce8b8043333738adc675f67dbdf",
+    "src/scripts/phase48-production-readonly.ts": "5c2c49dd033c8ad8518680f025980297e6cfea191886fc9995f74b6924ac63b7",
+    "src/scripts/phase48-historical-production.ts": "1c563ead7f9cd515f0c469282e97fcf303d9202432d4f1aa41804e3358b9df3b",
+    "src/modules/cobertura/phase48-production-executor.ts": "94a0fafb605b91e1bb115d40bd41afbb24179864d8f8d28364d9140f055b1214",
+    "src/modules/cobertura/phase48-dynamic-gate.ts": "fa9ccf92c6fbd5de8d14fe9fb781a2dc2e5b7bc851a6184722cffa9bdecf31ce",
+    "package-lock.json": "db7a06196facc0fa6a6e080387b886673ea06d5486885b49dee8b7445e20bba4",
+    "package.json": "1aed1f1222235f7eeba959cf0d5075731624d15b37755cec26f5a7d51be960ee",
+    "tsconfig.json": "640a93d0b9de5607230949a5d59f391504b86f58fff733d723e8dc58f0d568f9"
+  },
+  "function_hash": "ac5951e93e991f155ffb498509228a7e62d5a35e00ab001c09edad3468a01745",
+  "tests": {
+    "local_postgresql_17_11": 120,
+    "runner_mutator_tls_contract_schema_publication": 150,
+    "total": 270,
+    "failures": 0,
+    "typecheck": "PASSED",
+    "backend_build": "PASSED",
+    "FrontendNuevo_build": "PASSED_WITH_EXISTING_CHUNK_SIZE_WARNING",
+    "git_diff_check": "PASSED"
+  },
+  "production": {
+    "transactions": 1,
+    "reads": "CATALOGS_ONLY",
+    "writes": 0,
+    "tls": "TLSv1.3",
+    "rollback": "CONFIRMED",
+    "closed": true
+  },
+  "backup_created": false,
+  "productive_authorization": "REVOKED",
+  "local_cluster_removed": true,
+  "artifacts": [
+    {
+      "file": "reports/phase48-pseudorecord-catalog-audit.json",
+      "sha256": "d569d34e2be5cf904cbd29459c06236d5d247b43db9bda7e69228238c9168775"
+    },
+    {
+      "file": "reports/phase48-pseudorecord-local-proof.tap",
+      "sha256": "54186430bcb269e0902f044703bfcb24b0e50b0854a44bf9196c7d2ccb9d5a82"
+    },
+    {
+      "file": "reports/phase48-pseudorecord-runner-proof.tap",
+      "sha256": "77e8d00690c71e78626ea2972a2c9a95ce46b210502ef081057d3b9889e0363d"
+    },
+    {
+      "file": "reports/phase48-pseudorecord-observations.local.json",
+      "sha256": "ee0ca3a278578ab284e25266989e7b0eaa4f1b0252a5209762a7388a7d781090"
+    },
+    {
+      "file": "reports/phase48-pseudorecord-manifest-example.local.json",
+      "sha256": "e03433cf40fac615641b18f7a3008950f09f45b4b8013e6db722bfa430c54da4"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "actual_function_hash": "ac5951e93e991f155ffb498509228a7e62d5a35e00ab001c09edad3468a01745",
+  "phase48_commit": true,
+  "phase48_idempotent": true,
+  "phase48_reversal": true,
+  "phase48_rollback": true,
+  "personas_exactly_unchanged": true,
+  "trigger_enabled": "O",
+  "revision_sequence_unchanged": true
+}

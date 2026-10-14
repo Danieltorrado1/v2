@@ -1,0 +1,200 @@
+{
+  "identity": "personas_prevent_identificador_interno_update()",
+  "definition": "CREATE OR REPLACE FUNCTION public.personas_prevent_identificador_interno_update()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\nBEGIN\n  IF NEW.identificador_interno IS DISTINCT FROM OLD.identificador_interno THEN\n    RAISE EXCEPTION 'identificador_interno is immutable';\n  END IF;\n\n  RETURN NEW;\nEND;\n$function$\n",
+  "definition_sha256": "ac5951e93e991f155ffb498509228a7e62d5a35e00ab001c09edad3468a01745",
+  "triggers": [
+    {
+      "name": "trg_personas_prevent_identificador_interno_update",
+      "schema": "public",
+      "relation": "personas",
+      "enabled": "O",
+      "type": 19,
+      "internal": false,
+      "definition": "CREATE TRIGGER trg_personas_prevent_identificador_interno_update BEFORE UPDATE OF identificador_interno ON public.personas FOR EACH ROW EXECUTE FUNCTION personas_prevent_identificador_interno_update()"
+    }
+  ],
+  "columns": [
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "id",
+      "type": "bigint",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "tipo_documento_id",
+      "type": "bigint",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "numero_documento",
+      "type": "text",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "primer_nombre",
+      "type": "text",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "segundo_nombre",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "primer_apellido",
+      "type": "text",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "segundo_apellido",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "fecha_nacimiento",
+      "type": "date",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "fecha_expedicion_documento",
+      "type": "date",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "municipio_nacimiento_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "municipio_expedicion_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "municipio_residencia_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "sexo_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "estado_civil_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "tipo_sangre_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "estatura",
+      "type": "numeric",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "telefono",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "correo",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "direccion",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "barrio",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "zona_id",
+      "type": "bigint",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "pais_nacimiento",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "nacimiento_extranjero",
+      "type": "boolean",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "ciudad_nacimiento_extranjero",
+      "type": "text",
+      "not_null": false
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "identificador_interno",
+      "type": "uuid",
+      "not_null": true
+    },
+    {
+      "schema": "public",
+      "relation": "personas",
+      "name": "manipulacion_modalidad",
+      "type": "text",
+      "not_null": false
+    }
+  ]
+}

@@ -1,0 +1,737 @@
+﻿TAP version 13
+# Subtest: exact certified function/template is the only constant EXECUTE exception
+ok 1 - exact certified function/template is the only constant EXECUTE exception
+  ---
+  duration_ms: 0.8835
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects concat
+ok 2 - closed allowlist rejects concat
+  ---
+  duration_ms: 0.0917
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects format
+ok 3 - closed allowlist rejects format
+  ---
+  duration_ms: 0.0745
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects table
+ok 4 - closed allowlist rejects table
+  ---
+  duration_ms: 0.06
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects column
+ok 5 - closed allowlist rejects column
+  ---
+  duration_ms: 0.059
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects where
+ok 6 - closed allowlist rejects where
+  ---
+  duration_ms: 0.0499
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects interpolation
+ok 7 - closed allowlist rejects interpolation
+  ---
+  duration_ms: 0.0471
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects no USING
+ok 8 - closed allowlist rejects no USING
+  ---
+  duration_ms: 0.0427
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects extra parameter
+ok 9 - closed allowlist rejects extra parameter
+  ---
+  duration_ms: 0.05
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects second statement
+ok 10 - closed allowlist rejects second statement
+  ---
+  duration_ms: 0.0823
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects DDL
+ok 11 - closed allowlist rejects DDL
+  ---
+  duration_ms: 0.0517
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects DML
+ok 12 - closed allowlist rejects DML
+  ---
+  duration_ms: 0.0398
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects CALL
+ok 13 - closed allowlist rejects CALL
+  ---
+  duration_ms: 0.0539
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects DO
+ok 14 - closed allowlist rejects DO
+  ---
+  duration_ms: 0.0699
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects COPY
+ok 15 - closed allowlist rejects COPY
+  ---
+  duration_ms: 0.0294
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects volatile function
+ok 16 - closed allowlist rejects volatile function
+  ---
+  duration_ms: 0.0447
+  type: 'test'
+  ...
+# Subtest: closed allowlist rejects hidden comment
+ok 17 - closed allowlist rejects hidden comment
+  ---
+  duration_ms: 0.0352
+  type: 'test'
+  ...
+# Subtest: even a comment-only change of the complete function hash is rejected
+ok 18 - even a comment-only change of the complete function hash is rejected
+  ---
+  duration_ms: 0.1063
+  type: 'test'
+  ...
+# Subtest: removing EXECUTE does not silently remove the required function pin
+ok 19 - removing EXECUTE does not silently remove the required function pin
+  ---
+  duration_ms: 0.0575
+  type: 'test'
+  ...
+# Subtest: path ambiguity rejected; explicit public-before-pg_temp prevents temporary table hijack
+ok 20 - path ambiguity rejected; explicit public-before-pg_temp prevents temporary table hijack
+  ---
+  duration_ms: 214.3356
+  type: 'test'
+  ...
+# Subtest: parameterized SELECT existing, missing and NULL IDs; trigger invalidation COMMIT/ROLLBACK and economic preservation
+ok 21 - parameterized SELECT existing, missing and NULL IDs; trigger invalidation COMMIT/ROLLBACK and economic preservation
+  ---
+  duration_ms: 374.2047
+  type: 'test'
+  ...
+# Subtest: actual Phase48 does not activate invalidation triggers, preserves revision table and economic rows, rollback exact
+ok 22 - actual Phase48 does not activate invalidation triggers, preserves revision table and economic rows, rollback exact
+  ---
+  duration_ms: 1288.4764
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":16}
+# Subtest: local engine refuses execution without local certification flag
+ok 23 - local engine refuses execution without local certification flag
+  ---
+  duration_ms: 0.7412
+  type: 'test'
+  ...
+# Subtest: dynamic 730: exact IDs and transactional DDL/DML rollback 8/8
+ok 24 - dynamic 730: exact IDs and transactional DDL/DML rollback 8/8
+  ---
+  duration_ms: 356.6287
+  type: 'test'
+  ...
+# Subtest: dynamic 733: exact IDs and transactional DDL/DML rollback 8/8
+ok 25 - dynamic 733: exact IDs and transactional DDL/DML rollback 8/8
+  ---
+  duration_ms: 411.749
+  type: 'test'
+  ...
+# Subtest: dynamic 734: exact IDs and transactional DDL/DML rollback 8/8
+ok 26 - dynamic 734: exact IDs and transactional DDL/DML rollback 8/8
+  ---
+  duration_ms: 295.11
+  type: 'test'
+  ...
+# Subtest: local commit updates only sealed tenant IDs; no insert or economic/correction DML
+ok 27 - local commit updates only sealed tenant IDs; no insert or economic/correction DML
+  ---
+  duration_ms: 340.6847
+  type: 'test'
+  ...
+# Subtest: intermediate new candidate invalidates seal before DDL/DML and burns nonce
+ok 28 - intermediate new candidate invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 324.1901
+  type: 'test'
+  ...
+# Subtest: intermediate deleted original invalidates seal before DDL/DML and burns nonce
+ok 29 - intermediate deleted original invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 454.2831
+  type: 'test'
+  ...
+# Subtest: intermediate candidate identity invalidates seal before DDL/DML and burns nonce
+ok 30 - intermediate candidate identity invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 223.2943
+  type: 'test'
+  ...
+# Subtest: intermediate technical field invalidates seal before DDL/DML and burns nonce
+ok 31 - intermediate technical field invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 325.8766
+  type: 'test'
+  ...
+# Subtest: intermediate protected table invalidates seal before DDL/DML and burns nonce
+ok 32 - intermediate protected table invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 222.0798
+  type: 'test'
+  ...
+# Subtest: intermediate annulled period invalidates seal before DDL/DML and burns nonce
+ok 33 - intermediate annulled period invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 218.0056
+  type: 'test'
+  ...
+# Subtest: intermediate schema invalidates seal before DDL/DML and burns nonce
+ok 34 - intermediate schema invalidates seal before DDL/DML and burns nonce
+  ---
+  duration_ms: 219.4788
+  type: 'test'
+  ...
+# Subtest: same count, replaced ID is refused
+ok 35 - same count, replaced ID is refused
+  ---
+  duration_ms: 200.7254
+  type: 'test'
+  ...
+# Subtest: gate expiry at exactly 120 seconds, clock rollback and expiry after locking stop execution
+ok 36 - gate expiry at exactly 120 seconds, clock rollback and expiry after locking stop execution
+  ---
+  duration_ms: 670.9208
+  type: 'test'
+  ...
+# Subtest: caller tampering with each digest, IDs, count, lock manifest or expiry fails authentication
+ok 37 - caller tampering with each digest, IDs, count, lock manifest or expiry fails authentication
+  ---
+  duration_ms: 161.6832
+  type: 'test'
+  ...
+# Subtest: 8/8 digests revalidated, even individually divergent well-formed sets
+ok 38 - 8/8 digests revalidated, even individually divergent well-formed sets
+  ---
+  duration_ms: 258.4895
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent INSERT is blocked after lock before relevant SELECT
+ok 39 - non-cooperating concurrent INSERT is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 637.8085
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent UPDATE is blocked after lock before relevant SELECT
+ok 40 - non-cooperating concurrent UPDATE is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 434.8553
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent DELETE is blocked after lock before relevant SELECT
+ok 41 - non-cooperating concurrent DELETE is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 414.4904
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent source identity is blocked after lock before relevant SELECT
+ok 42 - non-cooperating concurrent source identity is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 435.2696
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent protected table is blocked after lock before relevant SELECT
+ok 43 - non-cooperating concurrent protected table is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 519.1147
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent TRUNCATE is blocked after lock before relevant SELECT
+ok 44 - non-cooperating concurrent TRUNCATE is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 520.0625
+  type: 'test'
+  ...
+# Subtest: non-cooperating concurrent DDL is blocked after lock before relevant SELECT
+ok 45 - non-cooperating concurrent DDL is blocked after lock before relevant SELECT
+  ---
+  duration_ms: 751.17
+  type: 'test'
+  ...
+# Subtest: already active writer causes NOWAIT refusal and nonce revocation
+ok 46 - already active writer causes NOWAIT refusal and nonce revocation
+  ---
+  duration_ms: 177.9799
+  type: 'test'
+  ...
+# Subtest: first execution SELECT follows BEGIN/SERIALIZABLE and full relation lock
+ok 47 - first execution SELECT follows BEGIN/SERIALIZABLE and full relation lock
+  ---
+  duration_ms: 307.5465
+  type: 'test'
+  ...
+# Subtest: induced failure after update rolls back schema, identities and all protected tables
+ok 48 - induced failure after update rolls back schema, identities and all protected tables
+  ---
+  duration_ms: 418.5862
+  type: 'test'
+  ...
+# Subtest: unexpected protected changes inside local transaction are refused and rolled back
+ok 49 - unexpected protected changes inside local transaction are refused and rolled back
+  ---
+  duration_ms: 515.9321
+  type: 'test'
+  ...
+# Subtest: STOP boundary: relation locks do not fence concurrent creation of a public source table
+ok 50 - STOP boundary: relation locks do not fence concurrent creation of a public source table
+  ---
+  duration_ms: 556.3237
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":169}
+# Subtest: PostgreSQL 17.11: original name[] is string; explicit text[] reliably decodes FK columns
+ok 51 - PostgreSQL 17.11: original name[] is string; explicit text[] reliably decodes FK columns
+  ---
+  duration_ms: 215.7144
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":4}
+# Subtest: backup reader requires RR READ ONLY, accepts exact triggers without issuing a mutator grant
+ok 52 - backup reader requires RR READ ONLY, accepts exact triggers without issuing a mutator grant
+  ---
+  duration_ms: 416.2851
+  type: 'test'
+  ...
+# Subtest: previous scoped commits and phrases are revoked; replication bypass is rejected
+ok 53 - previous scoped commits and phrases are revoked; replication bypass is rejected
+  ---
+  duration_ms: 755.7615
+  type: 'test'
+  ...
+# Subtest: managed event gate rejects missing
+ok 54 - managed event gate rejects missing
+  ---
+  duration_ms: 859.3579
+  type: 'test'
+  ...
+# Subtest: managed event gate rejects disabled
+ok 55 - managed event gate rejects disabled
+  ---
+  duration_ms: 727.2255
+  type: 'test'
+  ...
+# Subtest: managed event gate rejects enabled always
+ok 56 - managed event gate rejects enabled always
+  ---
+  duration_ms: 638.3036
+  type: 'test'
+  ...
+# Subtest: managed event gate rejects changed function
+ok 57 - managed event gate rejects changed function
+  ---
+  duration_ms: 877.8292
+  type: 'test'
+  ...
+# Subtest: managed event gate rejects changed tags
+ok 58 - managed event gate rejects changed tags
+  ---
+  duration_ms: 876.0395
+  type: 'test'
+  ...
+# Subtest: managed event gate rejects persistent write
+ok 59 - managed event gate rejects persistent write
+  ---
+  duration_ms: 653.3816
+  type: 'test'
+  ...
+# Subtest: managed event gate rejects new dependency
+ok 60 - managed event gate rejects new dependency
+  ---
+  duration_ms: 754.0373
+  type: 'test'
+  ...
+# Subtest: managed event gate rejects new relevant trigger
+ok 61 - managed event gate rejects new relevant trigger
+  ---
+  duration_ms: 847.9427
+  type: 'test'
+  ...
+# Subtest: unrelated event is informational; exact definitions and notifications are in definition digest
+ok 62 - unrelated event is informational; exact definitions and notifications are in definition digest
+  ---
+  duration_ms: 1732.9492
+  type: 'test'
+  ...
+# Subtest: exact triggers: Phase48 commit, transaction rollback, run reversal and idempotence; only expected notifications
+ok 63 - exact triggers: Phase48 commit, transaction rollback, run reversal and idempotence; only expected notifications
+  ---
+  duration_ms: 4507.4597
+  type: 'test'
+  ...
+# Subtest: failure in exact trigger replacement rolls back full Phase48 and pending NOTIFY
+ok 64 - failure in exact trigger replacement rolls back full Phase48 and pending NOTIFY
+  ---
+  duration_ms: 1168.7588
+  type: 'test'
+  ...
+# Subtest: CREATE ALTER DROP dispatch order and tags, NOTIFY commit/rollback semantics with exact managed bodies
+ok 65 - CREATE ALTER DROP dispatch order and tags, NOTIFY commit/rollback semantics with exact managed bodies
+  ---
+  duration_ms: 739.5648
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":109}
+# Subtest: UPDATE: OLD/NEW fields bound to actual row trigger; DISTINCT FROM is an operator
+ok 66 - UPDATE: OLD/NEW fields bound to actual row trigger; DISTINCT FROM is an operator
+  ---
+  duration_ms: 1.3877
+  type: 'test'
+  ...
+# Subtest: INSERT NEW and DELETE OLD accepted
+ok 67 - INSERT NEW and DELETE OLD accepted
+  ---
+  duration_ms: 0.0867
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects OLD on INSERT
+ok 68 - pseudorecord rejects OLD on INSERT
+  ---
+  duration_ms: 0.0838
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects NEW on DELETE
+ok 69 - pseudorecord rejects NEW on DELETE
+  ---
+  duration_ms: 0.0696
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects missing column
+ok 70 - pseudorecord rejects missing column
+  ---
+  duration_ms: 0.0714
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects non trigger
+ok 71 - pseudorecord rejects non trigger
+  ---
+  duration_ms: 0.0484
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects event trigger has no OLD row
+ok 72 - pseudorecord rejects event trigger has no OLD row
+  ---
+  duration_ms: 0.0453
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects no binding
+ok 73 - pseudorecord rejects no binding
+  ---
+  duration_ms: 0.0486
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects uncertified table
+ok 74 - pseudorecord rejects uncertified table
+  ---
+  duration_ms: 0.0726
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects disabled
+ok 75 - pseudorecord rejects disabled
+  ---
+  duration_ms: 0.109
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects ambiguous schema
+ok 76 - pseudorecord rejects ambiguous schema
+  ---
+  duration_ms: 0.0855
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects EXECUTE
+ok 77 - pseudorecord rejects EXECUTE
+  ---
+  duration_ms: 0.0693
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects concatenation
+ok 78 - pseudorecord rejects concatenation
+  ---
+  duration_ms: 0.0464
+  type: 'test'
+  ...
+# Subtest: pseudorecord rejects unknown TG
+ok 79 - pseudorecord rejects unknown TG
+  ---
+  duration_ms: 0.036
+  type: 'test'
+  ...
+# Subtest: quoted OLD, public.old, SQL alias and CTE remain real SQL references
+ok 80 - quoted OLD, public.old, SQL alias and CTE remain real SQL references
+  ---
+  duration_ms: 0.2221
+  type: 'test'
+  ...
+# Subtest: comments and strings are not blindly rewritten into dependency exceptions
+ok 81 - comments and strings are not blindly rewritten into dependency exceptions
+  ---
+  duration_ms: 0.1206
+  type: 'test'
+  ...
+# Subtest: real protector stays enabled; unchanged UPDATE idempotent, changed identifier rejected and rollback exact
+ok 82 - real protector stays enabled; unchanged UPDATE idempotent, changed identifier rejected and rollback exact
+  ---
+  duration_ms: 672.1487
+  type: 'test'
+  ...
+# Subtest: Phase48 COMMIT, idempotence, reversal and rollback preserve personas and enabled protector
+ok 83 - Phase48 COMMIT, idempotence, reversal and rollback preserve personas and enabled protector
+  ---
+  duration_ms: 3313.5438
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":29}
+# Subtest: dynamic 730, 733, 734: exact rollback, protected salaries, Albeny/Dary and independent reads
+ok 84 - dynamic 730, 733, 734: exact rollback, protected salaries, Albeny/Dary and independent reads
+  ---
+  duration_ms: 3820.4336
+  type: 'test'
+  ...
+# Subtest: commit strictly audits review decision, preserves category 35 and all economic rows; idempotent and exact run reversal
+ok 85 - commit strictly audits review decision, preserves category 35 and all economic rows; idempotent and exact run reversal
+  ---
+  duration_ms: 2616.2808
+  type: 'test'
+  ...
+# Subtest: foreign table, DML, function and sequence are informational only during critical locks
+ok 86 - foreign table, DML, function and sequence are informational only during critical locks
+  ---
+  duration_ms: 1608.7791
+  type: 'test'
+  ...
+# Subtest: sealed drift | same count different row
+ok 87 - sealed drift | same count different row
+  ---
+  duration_ms: 749.5742
+  type: 'test'
+  ...
+# Subtest: sealed drift | candidate disappearance
+ok 88 - sealed drift | candidate disappearance
+  ---
+  duration_ms: 1041.6146
+  type: 'test'
+  ...
+# Subtest: sealed drift | changed ID
+ok 89 - sealed drift | changed ID
+  ---
+  duration_ms: 705.3555
+  type: 'test'
+  ...
+# Subtest: sealed drift | category 35 changed
+ok 90 - sealed drift | category 35 changed
+  ---
+  duration_ms: 710.12
+  type: 'test'
+  ...
+# Subtest: sealed drift | critical schema
+ok 91 - sealed drift | critical schema
+  ---
+  duration_ms: 736.341
+  type: 'test'
+  ...
+# Subtest: sealed drift | critical index
+ok 92 - sealed drift | critical index
+  ---
+  duration_ms: 936.2657
+  type: 'test'
+  ...
+# Subtest: sealed drift | critical sequence
+ok 93 - sealed drift | critical sequence
+  ---
+  duration_ms: 826.8507
+  type: 'test'
+  ...
+# Subtest: sealed drift | critical function
+ok 94 - sealed drift | critical function
+  ---
+  duration_ms: 740.6482
+  type: 'test'
+  ...
+# Subtest: sealed drift | period 4 preserved
+ok 95 - sealed drift | period 4 preserved
+  ---
+  duration_ms: 704.3422
+  type: 'test'
+  ...
+# Subtest: sealed drift | Dary beforeimage changed
+ok 96 - sealed drift | Dary beforeimage changed
+  ---
+  duration_ms: 716.6532
+  type: 'test'
+  ...
+# Subtest: sealed drift | Albeny attendance lost
+ok 97 - sealed drift | Albeny attendance lost
+  ---
+  duration_ms: 798.2466
+  type: 'test'
+  ...
+# Subtest: additional assignments before preflight are included; after preflight they are refused
+ok 98 - additional assignments before preflight are included; after preflight they are refused
+  ---
+  duration_ms: 937.4419
+  type: 'test'
+  ...
+# Subtest: critical operation blocked after locks | INSERT
+ok 99 - critical operation blocked after locks | INSERT
+  ---
+  duration_ms: 1362.1545
+  type: 'test'
+  ...
+# Subtest: critical operation blocked after locks | UPDATE
+ok 100 - critical operation blocked after locks | UPDATE
+  ---
+  duration_ms: 1453.613
+  type: 'test'
+  ...
+# Subtest: critical operation blocked after locks | DELETE
+ok 101 - critical operation blocked after locks | DELETE
+  ---
+  duration_ms: 1568.3502
+  type: 'test'
+  ...
+# Subtest: critical operation blocked after locks | ALTER
+ok 102 - critical operation blocked after locks | ALTER
+  ---
+  duration_ms: 1546.3863
+  type: 'test'
+  ...
+# Subtest: critical operation blocked after locks | SALARY
+ok 103 - critical operation blocked after locks | SALARY
+  ---
+  duration_ms: 1578.6235
+  type: 'test'
+  ...
+# Subtest: critical operation blocked after locks | nextval
+ok 104 - critical operation blocked after locks | nextval
+  ---
+  duration_ms: 1341.7261
+  type: 'test'
+  ...
+# Subtest: critical operation blocked after locks | setval
+ok 105 - critical operation blocked after locks | setval
+  ---
+  duration_ms: 1291.4612
+  type: 'test'
+  ...
+# Subtest: function replacement exactly after validation aborts before Phase48 DDL
+ok 106 - function replacement exactly after validation aborts before Phase48 DDL
+  ---
+  duration_ms: 925.8087
+  type: 'test'
+  ...
+# Subtest: failure during correction or economic tampering rolls back schema, all DML and audits
+ok 107 - failure during correction or economic tampering rolls back schema, all DML and audits
+  ---
+  duration_ms: 1229.8814
+  type: 'test'
+  ...
+# Subtest: postcommit reversal refuses divergent critical postimage
+ok 108 - postcommit reversal refuses divergent critical postimage
+  ---
+  duration_ms: 1441.224
+  type: 'test'
+  ...
+# Subtest: all digest fields, count, review block, nonce and old phrases are sealed
+ok 109 - all digest fields, count, review block, nonce and old phrases are sealed
+  ---
+  duration_ms: 515.8434
+  type: 'test'
+  ...
+# Subtest: definition window cannot be omitted; expired seal never mutates
+ok 110 - definition window cannot be omitted; expired seal never mutates
+  ---
+  duration_ms: 685.7078
+  type: 'test'
+  ...
+# Subtest: new trigger dependencies enter manifest; unresolved dynamic critical SQL refuses certification
+ok 111 - new trigger dependencies enter manifest; unresolved dynamic critical SQL refuses certification
+  ---
+  duration_ms: 664.8562
+  type: 'test'
+  ...
+# Subtest: committed new candidate between early snapshot and lock is detected by mandatory fresh observer
+ok 112 - committed new candidate between early snapshot and lock is detected by mandatory fresh observer
+  ---
+  duration_ms: 940.1869
+  type: 'test'
+  ...
+# Subtest: a sequence owned by an untouched protected table is not a consumed sequence
+ok 113 - a sequence owned by an untouched protected table is not a consumed sequence
+  ---
+  duration_ms: 1686.5589
+  type: 'test'
+  ...
+# Subtest: quoted table lookup from a critical trigger function enters dependency closure
+ok 114 - quoted table lookup from a critical trigger function enters dependency closure
+  ---
+  duration_ms: 1262.1369
+  type: 'test'
+  ...
+# Subtest: disappearing review flag or forged rollback beforeimage in audit is rejected cryptographically
+ok 115 - disappearing review flag or forged rollback beforeimage in audit is rejected cryptographically
+  ---
+  duration_ms: 1335.2262
+  type: 'test'
+  ...
+# Subtest: critical routine ACL drift is detected even when function body is unchanged
+ok 116 - critical routine ACL drift is detected even when function body is unchanged
+  ---
+  duration_ms: 793.7871
+  type: 'test'
+  ...
+# Subtest: unrelated ALTER and DROP remain permitted after locked revalidation, without incidental evidence locks
+ok 117 - unrelated ALTER and DROP remain permitted after locked revalidation, without incidental evidence locks
+  ---
+  duration_ms: 1382.5328
+  type: 'test'
+  ...
+# Subtest: readonly seal publication is atomic and unchanged by excluded-object activity before execution
+ok 118 - readonly seal publication is atomic and unchanged by excluded-object activity before execution
+  ---
+  duration_ms: 1417.5219
+  type: 'test'
+  ...
+# Subtest: reloaded signing authority verifies publication and reversal; durable nonce forbids replay after rollback
+ok 119 - reloaded signing authority verifies publication and reversal; durable nonce forbids replay after rollback
+  ---
+  duration_ms: 3600.8362
+  type: 'test'
+  ...
+# Subtest: deferred critical trigger cannot defer economic effects until COMMIT
+ok 120 - deferred critical trigger cannot defer economic effects until COMMIT
+  ---
+  duration_ms: 1138.1268
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":274}
+1..120
+# tests 120
+# suites 0
+# pass 120
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 79862.6964
+{"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":0}

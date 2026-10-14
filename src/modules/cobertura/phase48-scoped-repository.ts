@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import {actorGate,historicalPlan} from './phase48-historical-domain';
 import {certifiedManagedEvents} from './phase48-managed-events';
 import {certifyConstantExecute,certifyConstantSqlContext} from './phase48-constant-sql';
+import {certifiedPseudorecordContext,sqlTableReferences} from './phase48-pseudorecord-parser';
 import {SALARY_DECISION,requireScoped,scopedDigest,sortScopedIds,type ScopedSet} from './phase48-scoped-contract';
 export type ScopedDb=Pick<PoolClient,'query'>;
 export const sq=(s:string)=>'"'+s.replaceAll('"','""')+'"';
@@ -31,6 +32,7 @@ export async function scopedFunctions(db:ScopedDb){
 }
 export async function scopedManifest(db:ScopedDb,inventory:Record<string,any[]>):Promise<ScopedManifest>{
  inventory.managed_events=(await certifiedManagedEvents(db)).critical;
+ inventory.trigger_pseudorecords=await certifiedPseudorecordContext(db,SCHEMA_SCOPE.critical_relations);
  const relations=inventory.relations??[],constraints=inventory.constraints??[];
  const present=new Set(relations.filter(r=>['r','p','v','m'].includes(r.kind)).map(r=>r.schema+'.'+r.name));
  const tables=new Set<string>(),functions=new Set<string>(),entries:ManifestEntry[]=[];
@@ -73,10 +75,13 @@ export async function scopedManifest(db:ScopedDb,inventory:Record<string,any[]>)
   for(const name of functions){const def=defs.find(d=>d.identity===name);requireScoped(def,'CRITICAL_FUNCTION_UNRESOLVED');
    const constant=certifyConstantExecute(name,def.definition);
    if(constant){await certifyConstantSqlContext(db);add('constant_sql_read',constant.relation+'.'+constant.column,'Exact function/hash/template/USING; public binding under sealed search_path','G_TRANSITIVE');}
-   for(const match of def.definition.matchAll(/\b(?:FROM|JOIN|UPDATE|INTO|TABLE)\s+(?:"([^"]+)"|([a-z_][a-z0-9_]*))(?:\.(?:"([^"]+)"|([a-z_][a-z0-9_]*)))?/gi)){
-    const first=match[1]??match[2]!,second=match[3]??match[4],table=second??first;
-    if(second)requireScoped(first==='public'||first==='pg_catalog','EXTERNAL_FUNCTION_TABLE_DEPENDENCY_UNCERTIFIED');
-    if(first==='pg_catalog'&&second)continue;
+   const pseudo=inventory.trigger_pseudorecords.find(r=>r.identity===name);
+   const references=[...sqlTableReferences(def.definition,pseudo?.refs.map((r:any)=>r.column)??[]),...(constant?sqlTableReferences(constant.sql):[])];
+   for(const reference of references){
+    const first=reference.schema,table=reference.name;
+    if(reference.cte)continue;
+    if(first)requireScoped(first==='public'||first==='pg_catalog','EXTERNAL_FUNCTION_TABLE_DEPENDENCY_UNCERTIFIED');
+    if(first==='pg_catalog')continue;
     if(present.has('public.'+table)&&!tables.has(table)){tables.add(table);changed=true;add('table','public.'+table,'Referencia literal en '+name,'G_TRANSITIVE');}
    }
    for(const dependency of defs)if(dependency.identity!==name&&new RegExp('(?:public\\.)?'+dependency.identity.split('(')[0]+'\\s*\\(','i').test(def.definition)){
@@ -110,7 +115,7 @@ export async function scopedManifest(db:ScopedDb,inventory:Record<string,any[]>)
 }
 export function projectScopedInventory(inventory:Record<string,any[]>,manifest:ScopedManifest){
  const result:Record<string,any[]>={};
- for(const [kind,rows] of Object.entries(inventory))result[kind]=kind==='managed_events'?rows:rows.filter(r=>r.schema==='public'&&(kind==='functions'?manifest.functions.includes(r.name):kind==='sequences'?manifest.sequences.includes(r.name):manifest.tables.includes(r.relation??r.name)||kind==='relations'&&manifest.sequences.includes(r.name)));
+ for(const [kind,rows] of Object.entries(inventory))result[kind]=['managed_events','trigger_pseudorecords'].includes(kind)?rows:rows.filter(r=>r.schema==='public'&&(kind==='functions'?manifest.functions.includes(r.name):kind==='sequences'?manifest.sequences.includes(r.name):manifest.tables.includes(r.relation??r.name)||kind==='relations'&&manifest.sequences.includes(r.name)));
  return result;
 }
 export async function scopedInformational(db:ScopedDb,manifest:ScopedManifest){
@@ -153,7 +158,7 @@ export async function scopedCapture(db:ScopedDb,lockedManifest?:ScopedManifest):
   salary_preview.push({...rule,estado_salarial:rule.requires_salary_review?'REQUIERE_REVISION_SALARIAL':'COMPATIBLE',economic_authorization:false,origin_attribution:'INDIRECT_AUDIT_CORRELATED',employee_ids:employees.map(r=>r.id)});
  }
  const candidate_ids=sortScopedIds(candidates.map(c=>c.id));
- const set:ScopedSet={candidate_count:candidate_ids.length,candidate_ids,candidate_ids_digest:scopedDigest(candidate_ids),phase48_candidates_digest:scopedDigest(candidates),source_digest:scopedDigest(data),write_set_before_digest:scopedDigest(data.find(r=>r.table==='cobertura_asignaciones')),critical_schema_digest:scopedDigest(Object.fromEntries(Object.entries(inventory).filter(([k])=>!['functions','triggers','managed_events'].includes(k)))),critical_definition_digest:scopedDigest({functions:inventory.functions,triggers:inventory.triggers,managed_events:inventory.managed_events}),critical_sequences_digest:scopedDigest(sequences),manifest_digest:scopedDigest({...manifest,exclusions:[]}),salary_decision_digest:scopedDigest(SALARY_DECISION),albeny_digest:scopedDigest(plan[0]),dary_digest:scopedDigest(plan[1]),periods_4_6_digest:scopedDigest(periods)};
+ const set:ScopedSet={candidate_count:candidate_ids.length,candidate_ids,candidate_ids_digest:scopedDigest(candidate_ids),phase48_candidates_digest:scopedDigest(candidates),source_digest:scopedDigest(data),write_set_before_digest:scopedDigest(data.find(r=>r.table==='cobertura_asignaciones')),critical_schema_digest:scopedDigest(Object.fromEntries(Object.entries(inventory).filter(([k])=>!['functions','triggers','managed_events','trigger_pseudorecords'].includes(k)))),critical_definition_digest:scopedDigest({functions:inventory.functions,triggers:inventory.triggers,managed_events:inventory.managed_events,trigger_pseudorecords:inventory.trigger_pseudorecords}),critical_sequences_digest:scopedDigest(sequences),manifest_digest:scopedDigest({...manifest,exclusions:[]}),salary_decision_digest:scopedDigest(SALARY_DECISION),albeny_digest:scopedDigest(plan[0]),dary_digest:scopedDigest(plan[1]),periods_4_6_digest:scopedDigest(periods)};
  // Excluded data and definitions are measurable but absent from blocking hashes.
  const informational=lockedManifest?{global_schema_digest:'NOT_SAMPLED_UNDER_MUTATOR_LOCKS',excluded_digest:'NOT_SAMPLED_UNDER_MUTATOR_LOCKS'}:await scopedInformational(db,manifest);
  return {set,manifest,inventory,data,sequences,candidates,coverage,plan,salary_preview,informational_global_digest:informational.global_schema_digest,informational_excluded_digest:informational.excluded_digest};
