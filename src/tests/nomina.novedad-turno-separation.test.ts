@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { AppError } from '../utils/AppError';
 import { resolveNominaMovimientoValue } from '../modules/nomina/nomina.movimientos';
+import { countInclusiveDays } from '../modules/nomina/nomina.effects';
 import { createNominaNovedadConTurnoSchema } from '../modules/nomina/nomina.schemas';
 
 // Execute the production orchestrator, coverage persistence and tariff/snapshot
@@ -22,7 +23,7 @@ const code = ts.transpileModule(selected.map(node => node.getText(source)).join(
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-function harness(resolvedCode: string, recalculateFails = false) {
+function harness(resolvedCode: string, recalculateFails = false, unitValue = 125000) {
   const queries: Array<{ sql: string; params: any[] }> = [];
   const recalculations: any[] = [];
   const creations: any[] = [];
@@ -38,7 +39,7 @@ function harness(resolvedCode: string, recalculateFails = false) {
       if (/INSERT INTO cobertura_externos/.test(sql)) return { rows: [{ id: '50' }] };
       if (/INSERT INTO nomina_novedad_turnos/.test(sql)) return { rows: [{ id: '60' }] };
       if (/SELECT id::text\s+FROM nomina_movimientos/.test(sql)) return { rows: [] };
-      if (/FROM nomina_movimiento_tarifas/.test(sql)) return { rows: [{ id: '70', valor_unitario: '125000' }] };
+      if (/FROM nomina_movimiento_tarifas/.test(sql)) return { rows: [{ id: '70', valor_unitario: String(unitValue) }] };
       if (/INSERT INTO nomina_movimientos/.test(sql)) return { rows: [{ id: '80' }] };
       if (/UPDATE nomina_novedad_turnos/.test(sql)) return { rows: [] };
       assert.fail(`Unexpected SQL: ${sql}`);
@@ -71,7 +72,7 @@ function harness(resolvedCode: string, recalculateFails = false) {
       return input;
     },
     resolveNominaMovimientoValue, toNumberValue: Number,
-    countInclusiveDays: (start: string, end: string) => (Date.parse(end) - Date.parse(start)) / 86400000 + 1,
+    countInclusiveDays,
     registerAuditEntry: async () => {}, registrarEventoLaboralNomina: async () => {},
   };
   runInNewContext(code, context);
@@ -88,6 +89,25 @@ function input(code: string, coverage: 'SIN_REEMPLAZO' | 'PERSONAL_VINCULADO' | 
       persona_externa_nombre: 'ANA', cobertura_documento_externo: '123', cobertura_interna_nomina_empleado_id: '11',
       ...(complete ? { institucion_id: '41', sede_id: '42', modalidad_id: '43' } : {}),
     } },
+  });
+}
+
+for (const [start, end, days] of [
+  ['2026-09-08', '2026-09-08', 1],
+  ['2026-09-08', '2026-09-09', 2],
+  ['2026-09-08', '2026-09-10', 3],
+  ['2026-08-31', '2026-09-01', 2],
+] as const) {
+  test(`creacion externa ${start}/${end}: ${days} dias a 97800 sin IBC`, async () => {
+    const h = harness('TURNO_ADICIONAL', false, 97800);
+    await h.save({ ...input('TURNO_ADICIONAL', 'PERSONA_EXTERNA', true), fecha_inicio: start, fecha_fin: end, dias: days }, '7');
+    const movements = h.queries.filter(q => /INSERT INTO nomina_movimientos/.test(q.sql));
+    assert.equal(movements.length, 1);
+    assert.equal(movements[0]!.params[7], days);
+    assert.equal(movements[0]!.params[8], 97800);
+    assert.equal(movements[0]!.params[9], days * 97800);
+    assert.equal(movements[0]!.params[10], days * 97800);
+    assert.equal(movements[0]!.params[23], false);
   });
 }
 
