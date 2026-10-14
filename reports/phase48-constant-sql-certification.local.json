@@ -4,7 +4,7 @@
   "branch": "fix/phase48-constant-dynamic-sql",
   "base": "474829ac5f0ba826d77f6c08f490c901a28bcb84",
   "readonly_runner_commit": "RESOLVED_FROM_FINAL_HEAD_BY_scopedRelease",
-  "mutator_commit": "RESOLVED_FROM_SCOPED_MUTATOR_COMMIT",
+  "mutator_commit": "af6121122088c82ebbad047ce2add9fe2202672d",
   "code_sha256": {
     "src/modules/cobertura/phase48-constant-sql.ts": "c14b7b782b437d26b4726237ac71fe01a48d88270dbad23c1ffb9a8db37f932f",
     "src/modules/cobertura/phase48-constant-sql-baseline.json": "013b8e35bea145b27fcf14ea33b9bbc9eed1f4e6ac3330959869ad73a2a1170c",
