@@ -1,0 +1,911 @@
+{
+  "base_main_sha": "09a71ddc2d2a769f6a7eacb9dc969cff339586f5",
+  "hotfix_sha": "7361187c728e98b1f5b389ff84bdc0d565abfeef",
+  "release_branch": "release/nomina-turnos-externos",
+  "baseline_counts": {
+    "tests": 540,
+    "failed": 33,
+    "passed": 507,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "topLevel": 518,
+    "suites": 1
+  },
+  "release_counts": {
+    "tests": 565,
+    "failed": 33,
+    "passed": 532,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "topLevel": 543,
+    "suites": 1
+  },
+  "new_failures": [],
+  "missing_baseline_cases": [],
+  "regressions_from_baseline_pass": [],
+  "new_passing_cases": [
+    {
+      "name": "snapshot positivo: un dia, tarifa conservada, reparacion idempotente",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "snapshot positivo: dos dias, tarifa conservada, reparacion idempotente",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "snapshot positivo: tres dias, tarifa conservada, reparacion idempotente",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "snapshot positivo: cruce de mes, tarifa conservada, reparacion idempotente",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "reparacion y auditoria se revierten juntas si la transaccion se cancela",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "el filtro por empleado no repara otros empleados del periodo",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "no altera interno de 34740",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "no altera periodo cerrado",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "no altera movimiento inactivo",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "no altera rechazado",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "no altera novedad inactiva",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "no altera sin tarifa certificada",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "no altera rango invertido",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "enlaces repetidos al mismo rango no duplican el movimiento ni su auditoria; rangos ambiguos se rechazan",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "DATE PostgreSQL e ISO del frontend conservan los dias en UTC y America/Bogota",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "editar un movimiento externo enlazado deriva cantidad de su novedad y conserva reglas internas",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "frontend y consolidado exportado consumen 2 dias y 195600 tras reparar",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "Nomina y desprendible no suman el pago externo al salario/IBC del titular",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "cuenta externa recibe el total persistido y dias inclusivos del mismo turno",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "expediente conserva un turno y actualiza su total externo a 195600",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "turno interno de 34740 permanece fuera del IBC sin cambiar su regla economica",
+      "file": "tests/nomina.external-turn-range.test.ts"
+    },
+    {
+      "name": "creacion externa 2026-09-08/2026-09-08: 1 dias a 97800 sin IBC",
+      "file": "tests/nomina.novedad-turno-separation.test.ts"
+    },
+    {
+      "name": "creacion externa 2026-09-08/2026-09-09: 2 dias a 97800 sin IBC",
+      "file": "tests/nomina.novedad-turno-separation.test.ts"
+    },
+    {
+      "name": "creacion externa 2026-09-08/2026-09-10: 3 dias a 97800 sin IBC",
+      "file": "tests/nomina.novedad-turno-separation.test.ts"
+    },
+    {
+      "name": "creacion externa 2026-08-31/2026-09-01: 2 dias a 97800 sin IBC",
+      "file": "tests/nomina.novedad-turno-separation.test.ts"
+    }
+  ],
+  "baseline_failures": [
+    {
+      "name": "5B.1 crea identidad externa deduplicada por empresa y documento",
+      "file": "tests/nomina-5b1-cobertura.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "5B.1 cuenta de cobro solo consolida movimientos activos del periodo y contrato",
+      "file": "tests/nomina-5b1-cobertura.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "5C.1 distingue captura de control: GESTOR no cierra ni reabre",
+      "file": "tests/nomina-5b1-cobertura.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "5C.1 filtro interno oculta consolidado externo y no cuenta checklist interno",
+      "file": "tests/nomina-5b1-cobertura.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "5C.1 turnos conserva filtro canonico y tabla compacta sin scroll horizontal",
+      "file": "tests/nomina-5b1-cobertura.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "liquidaciones filtran scope",
+      "file": "tests/nomina.4b1.scopes.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "eliminar todos representa NINGUNO",
+      "file": "tests/nomina.4b2.qa.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "combinación de procesos persiste por clave única",
+      "file": "tests/nomina.4b2.qa.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "CRUD áreas edita nombre",
+      "file": "tests/nomina.4b2.qa.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "CRUD áreas desactiva/reactiva",
+      "file": "tests/nomina.4b2.qa.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "áreas se crean sin código manual",
+      "file": "tests/nomina.4b3.qa.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "áreas se desactivan/reactivan",
+      "file": "tests/nomina.4b3.qa.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "áreas inactivas no se asignan",
+      "file": "tests/nomina.4b3.qa.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "estado vacío áreas",
+      "file": "tests/nomina.4b3.qa.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "estado vacío responsables",
+      "file": "tests/nomina.4b3.qa.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "4B.4: resolver de módulo resuelve empresa desde periodo en ruta real",
+      "file": "tests/nomina.4b4.context.test.ts",
+      "category": "local_database_unavailable"
+    },
+    {
+      "name": "4B.7: revision operativa resuelve empresa desde periodo y empleado en la ruta real del router",
+      "file": "tests/nomina.4b7.company-context-writes.test.ts",
+      "category": "local_database_unavailable"
+    },
+    {
+      "name": "4B.7: asistencia operativa resuelve empresa desde la ruta real y valida vinculacion del snapshot",
+      "file": "tests/nomina.4b7.company-context-writes.test.ts",
+      "category": "local_database_unavailable"
+    },
+    {
+      "name": "4B.7: periodo B mas empleado B resuelve empresa del segundo contexto",
+      "file": "tests/nomina.4b7.company-context-writes.test.ts",
+      "category": "local_database_unavailable"
+    },
+    {
+      "name": "4B.7: periodo B mas vinculacion B resuelve empresa del segundo contexto",
+      "file": "tests/nomina.4b7.company-context-writes.test.ts",
+      "category": "local_database_unavailable"
+    },
+    {
+      "name": "4B.7: periodo inexistente ya no cae en EMPRESA_CONTEXT_REQUIRED sino en error de entidad",
+      "file": "tests/nomina.4b7.company-context-writes.test.ts",
+      "category": "local_database_unavailable"
+    },
+    {
+      "name": "4B.7: periodo A mas empleado B bloquea cruces entre contextos empresariales",
+      "file": "tests/nomina.4b7.company-context-writes.test.ts",
+      "category": "local_database_unavailable"
+    },
+    {
+      "name": "4B.7: periodo A mas vinculacion B bloquea cruces entre contextos empresariales",
+      "file": "tests/nomina.4b7.company-context-writes.test.ts",
+      "category": "local_database_unavailable"
+    },
+    {
+      "name": "4B.7: empresa explicita incompatible queda bloqueada contra la entidad autoritativa",
+      "file": "tests/nomina.4b7.company-context-writes.test.ts",
+      "category": "local_database_unavailable"
+    },
+    {
+      "name": "4B.7: tenant de empresa A no puede operar empresa B aunque el contexto se resuelva desde la entidad",
+      "file": "tests/nomina.4b7.company-context-writes.test.ts",
+      "category": "local_database_unavailable"
+    },
+    {
+      "name": "4B.8 conserva soft-delete y exclusividad PRESENTE XOR NOVEDAD",
+      "file": "tests/nomina.4b8.reversibilidad.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "4B.8 expone inspector, modalidad y siguiente trabajador pendiente",
+      "file": "tests/nomina.4b8.reversibilidad.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "4B.9 asignaciones usa personas y nombres humanos, no inputs de ids",
+      "file": "tests/nomina.4b9.operacion-real.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "4B.9 corrección Personal es versionada, auditada y tenant scoped",
+      "file": "tests/nomina.4b9.operacion-real.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "4B.9 no sobrescribe modalidad histórica y orienta a Cambio Operativo",
+      "file": "tests/nomina.4b9.operacion-real.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "mapNominaPeriodo conserva campos, fechas, nulls y contrato",
+      "file": "tests/nomina.periodo.mapper.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "Planilla no pinta turnos externos ni anulados como adicionales internos",
+      "file": "tests/planilla-consistencia.test.ts",
+      "category": "preexisting_assertion"
+    },
+    {
+      "name": "el indicador de turno interno es accesible y coexiste con asistencia y novedad",
+      "file": "tests/planilla-consistencia.test.ts",
+      "category": "preexisting_assertion"
+    }
+  ],
+  "baseline_per_file": {
+    "pages/nomina/attendanceQueue.test.ts": {
+      "passed": 10,
+      "failed": 0
+    },
+    "pages/nomina/cambioOperativo.test.ts": {
+      "passed": 7,
+      "failed": 0
+    },
+    "pages/nomina/colombiaHolidays.test.ts": {
+      "passed": 5,
+      "failed": 0
+    },
+    "pages/nomina/nominaPeriods.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "pages/nomina/novedadTurnContext.test.ts": {
+      "passed": 13,
+      "failed": 0
+    },
+    "pages/nomina/payrollPresentation.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "pages/nomina/planillaBugs.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "pages/nomina/planillaOperativa.filters.test.ts": {
+      "passed": 6,
+      "failed": 0
+    },
+    "pages/nomina/planillaOperativa.test.ts": {
+      "passed": 33,
+      "failed": 0
+    },
+    "tests/actividad-laboral.schema.test.ts": {
+      "passed": 2,
+      "failed": 0
+    },
+    "tests/nomina-4b11-cobertura.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina-5b1-cobertura.test.ts": {
+      "passed": 16,
+      "failed": 5
+    },
+    "tests/nomina-action-icon-button.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina-admin-config-rbac.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina-economic-rbac.test.ts": {
+      "passed": 6,
+      "failed": 0
+    },
+    "tests/nomina-turnos-gestor-rbac.test.ts": {
+      "passed": 5,
+      "failed": 0
+    },
+    "tests/nomina.4b.procesos.test.ts": {
+      "passed": 10,
+      "failed": 0
+    },
+    "tests/nomina.4b1.scopes.test.ts": {
+      "passed": 19,
+      "failed": 1
+    },
+    "tests/nomina.4b2.qa.test.ts": {
+      "passed": 9,
+      "failed": 4
+    },
+    "tests/nomina.4b3.qa.test.ts": {
+      "passed": 24,
+      "failed": 5
+    },
+    "tests/nomina.4b4.context.test.ts": {
+      "passed": 2,
+      "failed": 1
+    },
+    "tests/nomina.4b5.tipos-novedad.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.4b6.asistencia.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.4b7.company-context-writes.test.ts": {
+      "passed": 1,
+      "failed": 9
+    },
+    "tests/nomina.4b8.backend-vigencia.test.ts": {
+      "passed": 7,
+      "failed": 0
+    },
+    "tests/nomina.4b8.reversibilidad.test.ts": {
+      "passed": 5,
+      "failed": 2
+    },
+    "tests/nomina.4b9.operacion-real.test.ts": {
+      "passed": 4,
+      "failed": 3
+    },
+    "tests/nomina.apoyo-mercado.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.asistencia.repository.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.calculo.repository.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.cambio-contexto.test.ts": {
+      "passed": 11,
+      "failed": 0
+    },
+    "tests/nomina.cobertura-cierre.test.ts": {
+      "passed": 6,
+      "failed": 0
+    },
+    "tests/nomina.cobertura.test.ts": {
+      "passed": 18,
+      "failed": 0
+    },
+    "tests/nomina.configuration.access.test.ts": {
+      "passed": 2,
+      "failed": 0
+    },
+    "tests/nomina.cuenta-cobro.pdf.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.dco.visual.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.documento.repository.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.economica.ui.test.ts": {
+      "passed": 7,
+      "failed": 0
+    },
+    "tests/nomina.effects-config.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.effects-matrix.test.ts": {
+      "passed": 26,
+      "failed": 0
+    },
+    "tests/nomina.empleado.repository.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.liquidacion.repository.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.month-base.test.ts": {
+      "passed": 20,
+      "failed": 0
+    },
+    "tests/nomina.movimiento.repository.test.ts": {
+      "passed": 6,
+      "failed": 0
+    },
+    "tests/nomina.movimientos.test.ts": {
+      "passed": 9,
+      "failed": 0
+    },
+    "tests/nomina.novedad-document-requirements.test.ts": {
+      "passed": 5,
+      "failed": 0
+    },
+    "tests/nomina.novedad-recalculation.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.novedad-records.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.novedad-turn-context.test.ts": {
+      "passed": 10,
+      "failed": 0
+    },
+    "tests/nomina.novedad-turno-separation.test.ts": {
+      "passed": 17,
+      "failed": 0
+    },
+    "tests/nomina.novedad.repository.test.ts": {
+      "passed": 6,
+      "failed": 0
+    },
+    "tests/nomina.novedades-gestion-filter.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.novedades-operativas.schemas.test.ts": {
+      "passed": 7,
+      "failed": 0
+    },
+    "tests/nomina.novedades-operativas.test.ts": {
+      "passed": 8,
+      "failed": 0
+    },
+    "tests/nomina.novedades-visual-structure.test.ts": {
+      "passed": 12,
+      "failed": 0
+    },
+    "tests/nomina.novedades.overlap.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.operational-cut.test.ts": {
+      "passed": 29,
+      "failed": 0
+    },
+    "tests/nomina.periodo.repository.test.ts": {
+      "passed": 2,
+      "failed": 0
+    },
+    "tests/nomina.periodos-poblacion.rules.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.periodos.automatico.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.periodos.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.phase57.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.planilla.context.test.ts": {
+      "passed": 2,
+      "failed": 0
+    },
+    "tests/nomina.poblacion.repository.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.poblacion.service.test.ts": {
+      "passed": 2,
+      "failed": 0
+    },
+    "tests/nomina.population-economic-sync.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.population-sync.test.ts": {
+      "passed": 11,
+      "failed": 0
+    },
+    "tests/nomina.population.test.ts": {
+      "passed": 12,
+      "failed": 0
+    },
+    "tests/nomina.tramos-operativos.test.ts": {
+      "passed": 8,
+      "failed": 0
+    },
+    "tests/nomina.turn-context.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.turn-projection.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.turnos-consolidado.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/planilla-consistencia.test.ts": {
+      "passed": 7,
+      "failed": 2
+    },
+    "tests/nomina.periodo.mapper.test.ts": {
+      "passed": 0,
+      "failed": 1
+    }
+  },
+  "release_per_file": {
+    "pages/nomina/attendanceQueue.test.ts": {
+      "passed": 10,
+      "failed": 0
+    },
+    "pages/nomina/cambioOperativo.test.ts": {
+      "passed": 7,
+      "failed": 0
+    },
+    "pages/nomina/colombiaHolidays.test.ts": {
+      "passed": 5,
+      "failed": 0
+    },
+    "pages/nomina/nominaPeriods.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "pages/nomina/novedadTurnContext.test.ts": {
+      "passed": 13,
+      "failed": 0
+    },
+    "pages/nomina/payrollPresentation.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "pages/nomina/planillaBugs.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "pages/nomina/planillaOperativa.filters.test.ts": {
+      "passed": 6,
+      "failed": 0
+    },
+    "pages/nomina/planillaOperativa.test.ts": {
+      "passed": 33,
+      "failed": 0
+    },
+    "tests/actividad-laboral.schema.test.ts": {
+      "passed": 2,
+      "failed": 0
+    },
+    "tests/nomina-4b11-cobertura.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina-5b1-cobertura.test.ts": {
+      "passed": 16,
+      "failed": 5
+    },
+    "tests/nomina-action-icon-button.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina-admin-config-rbac.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina-economic-rbac.test.ts": {
+      "passed": 6,
+      "failed": 0
+    },
+    "tests/nomina-turnos-gestor-rbac.test.ts": {
+      "passed": 5,
+      "failed": 0
+    },
+    "tests/nomina.4b.procesos.test.ts": {
+      "passed": 10,
+      "failed": 0
+    },
+    "tests/nomina.4b1.scopes.test.ts": {
+      "passed": 19,
+      "failed": 1
+    },
+    "tests/nomina.4b2.qa.test.ts": {
+      "passed": 9,
+      "failed": 4
+    },
+    "tests/nomina.4b3.qa.test.ts": {
+      "passed": 24,
+      "failed": 5
+    },
+    "tests/nomina.4b4.context.test.ts": {
+      "passed": 2,
+      "failed": 1
+    },
+    "tests/nomina.4b5.tipos-novedad.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.4b6.asistencia.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.4b7.company-context-writes.test.ts": {
+      "passed": 1,
+      "failed": 9
+    },
+    "tests/nomina.4b8.backend-vigencia.test.ts": {
+      "passed": 7,
+      "failed": 0
+    },
+    "tests/nomina.4b8.reversibilidad.test.ts": {
+      "passed": 5,
+      "failed": 2
+    },
+    "tests/nomina.4b9.operacion-real.test.ts": {
+      "passed": 4,
+      "failed": 3
+    },
+    "tests/nomina.apoyo-mercado.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.asistencia.repository.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.calculo.repository.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.cambio-contexto.test.ts": {
+      "passed": 11,
+      "failed": 0
+    },
+    "tests/nomina.cobertura-cierre.test.ts": {
+      "passed": 6,
+      "failed": 0
+    },
+    "tests/nomina.cobertura.test.ts": {
+      "passed": 18,
+      "failed": 0
+    },
+    "tests/nomina.configuration.access.test.ts": {
+      "passed": 2,
+      "failed": 0
+    },
+    "tests/nomina.cuenta-cobro.pdf.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.dco.visual.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.documento.repository.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.economica.ui.test.ts": {
+      "passed": 7,
+      "failed": 0
+    },
+    "tests/nomina.effects-config.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.effects-matrix.test.ts": {
+      "passed": 26,
+      "failed": 0
+    },
+    "tests/nomina.empleado.repository.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.external-turn-range.test.ts": {
+      "passed": 21,
+      "failed": 0
+    },
+    "tests/nomina.liquidacion.repository.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.month-base.test.ts": {
+      "passed": 20,
+      "failed": 0
+    },
+    "tests/nomina.movimiento.repository.test.ts": {
+      "passed": 6,
+      "failed": 0
+    },
+    "tests/nomina.movimientos.test.ts": {
+      "passed": 9,
+      "failed": 0
+    },
+    "tests/nomina.novedad-document-requirements.test.ts": {
+      "passed": 5,
+      "failed": 0
+    },
+    "tests/nomina.novedad-recalculation.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.novedad-records.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.novedad-turn-context.test.ts": {
+      "passed": 10,
+      "failed": 0
+    },
+    "tests/nomina.novedad-turno-separation.test.ts": {
+      "passed": 21,
+      "failed": 0
+    },
+    "tests/nomina.novedad.repository.test.ts": {
+      "passed": 6,
+      "failed": 0
+    },
+    "tests/nomina.novedades-gestion-filter.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.novedades-operativas.schemas.test.ts": {
+      "passed": 7,
+      "failed": 0
+    },
+    "tests/nomina.novedades-operativas.test.ts": {
+      "passed": 8,
+      "failed": 0
+    },
+    "tests/nomina.novedades-visual-structure.test.ts": {
+      "passed": 12,
+      "failed": 0
+    },
+    "tests/nomina.novedades.overlap.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.operational-cut.test.ts": {
+      "passed": 29,
+      "failed": 0
+    },
+    "tests/nomina.periodo.repository.test.ts": {
+      "passed": 2,
+      "failed": 0
+    },
+    "tests/nomina.periodos-poblacion.rules.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.periodos.automatico.test.ts": {
+      "passed": 4,
+      "failed": 0
+    },
+    "tests/nomina.periodos.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.phase57.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/nomina.planilla.context.test.ts": {
+      "passed": 2,
+      "failed": 0
+    },
+    "tests/nomina.poblacion.repository.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.poblacion.service.test.ts": {
+      "passed": 2,
+      "failed": 0
+    },
+    "tests/nomina.population-economic-sync.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.population-sync.test.ts": {
+      "passed": 11,
+      "failed": 0
+    },
+    "tests/nomina.population.test.ts": {
+      "passed": 12,
+      "failed": 0
+    },
+    "tests/nomina.tramos-operativos.test.ts": {
+      "passed": 8,
+      "failed": 0
+    },
+    "tests/nomina.turn-context.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.turn-projection.test.ts": {
+      "passed": 1,
+      "failed": 0
+    },
+    "tests/nomina.turnos-consolidado.test.ts": {
+      "passed": 3,
+      "failed": 0
+    },
+    "tests/planilla-consistencia.test.ts": {
+      "passed": 7,
+      "failed": 2
+    },
+    "tests/nomina.periodo.mapper.test.ts": {
+      "passed": 0,
+      "failed": 1
+    }
+  },
+  "checks": {
+    "backend_typecheck": "PASS",
+    "backend_build": "PASS",
+    "frontend_build": "PASS",
+    "diff_check": "PASS",
+    "conflict_markers": "NONE",
+    "preserved_main_service_statements": 287,
+    "preserved_main_test_statements": 22,
+    "production_writes": 0,
+    "browser_used": false,
+    "computer_use_used": false,
+    "main_merged": false,
+    "deployed": false
+  }
+}

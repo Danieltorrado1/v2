@@ -3,6 +3,7 @@ import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
 import { projectInternalTurnEmployees } from './nomina.turn-projection';
+import { loadNominaExternalTurnRange, repairPositiveExternalTurnSnapshots } from './nomina.turnos-externos';
 import { getSupabaseAdminClient } from '../../config/supabaseAdmin';
 import type { TenantAccessContext } from '../../middlewares/tenantMiddleware';
 import { AppError } from '../../utils/AppError';
@@ -4433,6 +4434,7 @@ const repairMissingNominaTurnMovementSnapshots = async (
   client: PoolClient,
   nominaEmpleadoIds?: string[],
 ): Promise<void> => {
+  await repairPositiveExternalTurnSnapshots(periodoId, actorUserId, client, nominaEmpleadoIds);
   const employeeFilter = nominaEmpleadoIds?.length
     ? 'AND nnt.nomina_empleado_id = ANY($2::bigint[])'
     : '';
@@ -9143,8 +9145,17 @@ export const updateNominaMovimiento = async (
     assertPeriodoAllowsOpenMutations(periodo.estado, 'updating payroll movements');
     assertNominaEmpleadoEditable(empleado, 'editar movimientos de nomina');
 
-    const nextFecha = input.fecha !== undefined ? input.fecha : toDateString(current.fecha);
     const nextTipoMovimiento = input.tipo_movimiento ?? current.tipo_movimiento;
+    const externalTurnRange = current.tipo_movimiento === 'TURNO_EXTERNO'
+      ? await loadNominaExternalTurnRange(client, movimientoId)
+      : null;
+    if (externalTurnRange && nextTipoMovimiento !== 'TURNO_EXTERNO') {
+      throw new AppError('El tipo del movimiento debe coincidir con su turno externo', 409, 'NOMINA_TURNO_EXTERNO_TIPO_ORIGEN');
+    }
+    if (externalTurnRange && input.fecha !== undefined && input.fecha !== externalTurnRange.fecha_inicio) {
+      throw new AppError('Edita las fechas desde la novedad del turno externo', 409, 'NOMINA_TURNO_EXTERNO_FECHA_ORIGEN');
+    }
+    const nextFecha = externalTurnRange?.fecha_inicio ?? (input.fecha !== undefined ? input.fecha : toDateString(current.fecha));
     const nextFamilia =
       input.familia_movimiento ??
       current.familia_movimiento ??
@@ -9341,7 +9352,7 @@ export const updateNominaMovimiento = async (
     const resolvedValues = isTurnMovement
       ? resolveNominaMovimientoValue({
           cantidad:
-            input.cantidad !== undefined ? input.cantidad : toOptionalNumberValue(current.cantidad),
+            externalTurnRange?.dias ?? (input.cantidad !== undefined ? input.cantidad : toOptionalNumberValue(current.cantidad)),
           valor_unitario: tarifa ? toNumberValue(tarifa.valor_unitario) : null
         })
       : resolveNominaMovimientoValue({
