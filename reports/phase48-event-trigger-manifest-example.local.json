@@ -1,0 +1,6158 @@
+{
+  "candidate_count": 733,
+  "digests": {
+    "candidate_count": 733,
+    "candidate_ids": [
+      "11",
+      "104",
+      "105",
+      "106",
+      "107",
+      "108",
+      "109",
+      "110",
+      "111",
+      "112",
+      "113",
+      "114",
+      "115",
+      "116",
+      "117",
+      "118",
+      "119",
+      "120",
+      "121",
+      "122",
+      "123",
+      "124",
+      "125",
+      "126",
+      "127",
+      "128",
+      "129",
+      "130",
+      "131",
+      "132",
+      "133",
+      "134",
+      "135",
+      "136",
+      "137",
+      "138",
+      "139",
+      "140",
+      "141",
+      "142",
+      "143",
+      "144",
+      "145",
+      "146",
+      "147",
+      "148",
+      "149",
+      "150",
+      "151",
+      "152",
+      "153",
+      "154",
+      "155",
+      "156",
+      "157",
+      "158",
+      "159",
+      "160",
+      "161",
+      "162",
+      "163",
+      "164",
+      "165",
+      "166",
+      "167",
+      "168",
+      "169",
+      "170",
+      "171",
+      "172",
+      "173",
+      "174",
+      "175",
+      "176",
+      "177",
+      "178",
+      "179",
+      "180",
+      "181",
+      "182",
+      "183",
+      "184",
+      "185",
+      "186",
+      "187",
+      "188",
+      "189",
+      "190",
+      "191",
+      "192",
+      "193",
+      "194",
+      "195",
+      "196",
+      "197",
+      "198",
+      "199",
+      "200",
+      "201",
+      "202",
+      "203",
+      "204",
+      "205",
+      "206",
+      "207",
+      "208",
+      "209",
+      "210",
+      "211",
+      "212",
+      "213",
+      "214",
+      "215",
+      "216",
+      "217",
+      "218",
+      "219",
+      "220",
+      "221",
+      "222",
+      "223",
+      "224",
+      "225",
+      "226",
+      "227",
+      "228",
+      "229",
+      "230",
+      "231",
+      "232",
+      "233",
+      "234",
+      "235",
+      "236",
+      "237",
+      "238",
+      "239",
+      "240",
+      "241",
+      "242",
+      "243",
+      "244",
+      "245",
+      "246",
+      "247",
+      "248",
+      "249",
+      "250",
+      "251",
+      "252",
+      "253",
+      "254",
+      "255",
+      "256",
+      "257",
+      "258",
+      "259",
+      "260",
+      "261",
+      "262",
+      "263",
+      "264",
+      "265",
+      "266",
+      "267",
+      "268",
+      "269",
+      "270",
+      "271",
+      "272",
+      "273",
+      "274",
+      "275",
+      "276",
+      "277",
+      "278",
+      "279",
+      "280",
+      "281",
+      "282",
+      "283",
+      "284",
+      "285",
+      "286",
+      "287",
+      "288",
+      "289",
+      "290",
+      "291",
+      "292",
+      "293",
+      "294",
+      "295",
+      "296",
+      "297",
+      "298",
+      "299",
+      "300",
+      "301",
+      "302",
+      "303",
+      "304",
+      "305",
+      "306",
+      "307",
+      "308",
+      "309",
+      "310",
+      "311",
+      "312",
+      "313",
+      "314",
+      "315",
+      "316",
+      "317",
+      "318",
+      "319",
+      "320",
+      "321",
+      "322",
+      "323",
+      "324",
+      "325",
+      "326",
+      "327",
+      "328",
+      "329",
+      "330",
+      "331",
+      "332",
+      "333",
+      "334",
+      "335",
+      "336",
+      "337",
+      "338",
+      "339",
+      "340",
+      "341",
+      "342",
+      "343",
+      "344",
+      "345",
+      "346",
+      "347",
+      "348",
+      "349",
+      "350",
+      "351",
+      "352",
+      "353",
+      "354",
+      "355",
+      "356",
+      "357",
+      "358",
+      "359",
+      "360",
+      "361",
+      "362",
+      "363",
+      "364",
+      "365",
+      "366",
+      "367",
+      "368",
+      "369",
+      "370",
+      "371",
+      "372",
+      "373",
+      "374",
+      "375",
+      "376",
+      "377",
+      "378",
+      "379",
+      "380",
+      "381",
+      "382",
+      "383",
+      "384",
+      "385",
+      "386",
+      "387",
+      "388",
+      "389",
+      "390",
+      "391",
+      "392",
+      "393",
+      "394",
+      "395",
+      "396",
+      "397",
+      "398",
+      "399",
+      "400",
+      "401",
+      "402",
+      "403",
+      "404",
+      "405",
+      "406",
+      "407",
+      "408",
+      "409",
+      "410",
+      "411",
+      "412",
+      "413",
+      "414",
+      "415",
+      "416",
+      "417",
+      "418",
+      "419",
+      "420",
+      "421",
+      "422",
+      "423",
+      "424",
+      "425",
+      "426",
+      "427",
+      "428",
+      "429",
+      "430",
+      "431",
+      "432",
+      "433",
+      "434",
+      "435",
+      "436",
+      "437",
+      "438",
+      "439",
+      "440",
+      "441",
+      "442",
+      "443",
+      "444",
+      "445",
+      "446",
+      "447",
+      "448",
+      "449",
+      "450",
+      "451",
+      "452",
+      "453",
+      "454",
+      "455",
+      "456",
+      "457",
+      "458",
+      "459",
+      "460",
+      "461",
+      "462",
+      "463",
+      "464",
+      "465",
+      "466",
+      "467",
+      "468",
+      "469",
+      "470",
+      "471",
+      "472",
+      "473",
+      "474",
+      "475",
+      "476",
+      "477",
+      "478",
+      "479",
+      "480",
+      "481",
+      "482",
+      "483",
+      "484",
+      "485",
+      "486",
+      "487",
+      "488",
+      "489",
+      "490",
+      "491",
+      "492",
+      "493",
+      "494",
+      "495",
+      "496",
+      "497",
+      "498",
+      "499",
+      "500",
+      "501",
+      "502",
+      "503",
+      "504",
+      "505",
+      "506",
+      "507",
+      "508",
+      "509",
+      "510",
+      "511",
+      "512",
+      "513",
+      "514",
+      "515",
+      "516",
+      "517",
+      "518",
+      "519",
+      "520",
+      "521",
+      "522",
+      "523",
+      "524",
+      "525",
+      "526",
+      "527",
+      "528",
+      "529",
+      "530",
+      "531",
+      "532",
+      "533",
+      "534",
+      "535",
+      "536",
+      "537",
+      "538",
+      "539",
+      "540",
+      "541",
+      "542",
+      "543",
+      "544",
+      "545",
+      "546",
+      "547",
+      "548",
+      "549",
+      "550",
+      "551",
+      "552",
+      "553",
+      "554",
+      "555",
+      "556",
+      "557",
+      "558",
+      "559",
+      "560",
+      "561",
+      "562",
+      "563",
+      "564",
+      "565",
+      "566",
+      "567",
+      "568",
+      "569",
+      "570",
+      "571",
+      "572",
+      "573",
+      "574",
+      "575",
+      "576",
+      "577",
+      "578",
+      "579",
+      "580",
+      "581",
+      "582",
+      "583",
+      "584",
+      "585",
+      "586",
+      "587",
+      "588",
+      "589",
+      "590",
+      "591",
+      "592",
+      "593",
+      "594",
+      "595",
+      "596",
+      "597",
+      "598",
+      "599",
+      "600",
+      "601",
+      "602",
+      "603",
+      "604",
+      "605",
+      "606",
+      "607",
+      "608",
+      "609",
+      "610",
+      "611",
+      "612",
+      "613",
+      "614",
+      "615",
+      "616",
+      "617",
+      "618",
+      "619",
+      "620",
+      "621",
+      "622",
+      "623",
+      "624",
+      "625",
+      "626",
+      "627",
+      "628",
+      "629",
+      "630",
+      "631",
+      "632",
+      "633",
+      "634",
+      "635",
+      "636",
+      "637",
+      "638",
+      "639",
+      "640",
+      "641",
+      "642",
+      "643",
+      "644",
+      "645",
+      "646",
+      "647",
+      "648",
+      "649",
+      "650",
+      "651",
+      "652",
+      "653",
+      "654",
+      "655",
+      "656",
+      "657",
+      "658",
+      "659",
+      "660",
+      "661",
+      "662",
+      "663",
+      "664",
+      "665",
+      "666",
+      "667",
+      "668",
+      "669",
+      "670",
+      "671",
+      "672",
+      "673",
+      "674",
+      "675",
+      "676",
+      "677",
+      "678",
+      "679",
+      "680",
+      "681",
+      "682",
+      "683",
+      "684",
+      "685",
+      "686",
+      "687",
+      "688",
+      "689",
+      "690",
+      "691",
+      "692",
+      "693",
+      "694",
+      "695",
+      "696",
+      "697",
+      "698",
+      "699",
+      "700",
+      "701",
+      "702",
+      "703",
+      "704",
+      "705",
+      "706",
+      "707",
+      "708",
+      "709",
+      "710",
+      "711",
+      "712",
+      "713",
+      "714",
+      "715",
+      "716",
+      "717",
+      "718",
+      "719",
+      "720",
+      "721",
+      "722",
+      "723",
+      "724",
+      "725",
+      "726",
+      "727",
+      "728",
+      "729",
+      "730",
+      "731",
+      "732",
+      "733",
+      "734",
+      "735",
+      "736",
+      "737",
+      "738",
+      "739",
+      "740",
+      "741",
+      "742",
+      "743",
+      "744",
+      "745",
+      "746",
+      "747",
+      "748",
+      "749",
+      "750",
+      "751",
+      "752",
+      "753",
+      "754",
+      "755",
+      "756",
+      "757",
+      "758",
+      "759",
+      "760",
+      "761",
+      "762",
+      "763",
+      "764",
+      "765",
+      "766",
+      "767",
+      "768",
+      "769",
+      "770",
+      "771",
+      "772",
+      "773",
+      "774",
+      "775",
+      "776",
+      "777",
+      "778",
+      "779",
+      "780",
+      "781",
+      "782",
+      "783",
+      "784",
+      "785",
+      "786",
+      "787",
+      "788",
+      "789",
+      "790",
+      "791",
+      "792",
+      "793",
+      "794",
+      "795",
+      "796",
+      "797",
+      "798",
+      "799",
+      "800",
+      "801",
+      "802",
+      "803",
+      "804",
+      "805",
+      "806",
+      "807",
+      "808",
+      "809",
+      "810",
+      "811",
+      "812",
+      "813",
+      "814",
+      "815",
+      "816",
+      "817",
+      "818",
+      "819",
+      "820",
+      "821",
+      "822",
+      "823",
+      "824",
+      "825",
+      "826",
+      "827",
+      "828",
+      "829",
+      "830",
+      "1221",
+      "1224",
+      "1277",
+      "1278",
+      "1279"
+    ],
+    "candidate_ids_digest": "ef556507899670b877a2e00c1d06f3d641597e11edd1db63dfdf98772365ec85",
+    "phase48_candidates_digest": "37520432b970ec62b1ae18d3a178c8dc8654446bcb03530d7b436f9fbf9d9457",
+    "source_digest": "1d2104e88bcba05c3223c52f32a56d8fde63f66822aba8d5bad51f674447713f",
+    "write_set_before_digest": "e6f7ed44c9aa54f0d473d4751f45dacada945f4d0ba7d5f2394c78703d2c1e0c",
+    "critical_schema_digest": "6da762b9ba7939413ead16ca270d309cdbd9e6dc5208e0fb2879daba38c61bdc",
+    "critical_definition_digest": "2adc38cde41847fb481f21fa9a353daa458851f3df7b08754cfe5daea88b4a0e",
+    "critical_sequences_digest": "acd0c9ac4806899e598314d501ce5ac3d5bc84871424323051a4c4afc211c7ed",
+    "manifest_digest": "006ac45a8f5f07e14aa6c0e19be4dd13374e0652cb53152afb38ba5df80eb124",
+    "salary_decision_digest": "5e83322433549c4560a0b01d57947ec15275f85d3852a2e9b2810dca0c3f6d1e",
+    "albeny_digest": "bc150c94c6ca18a4e779e79d85ba3cb100fbc5c240d3fa092474d95f050228eb",
+    "dary_digest": "ee617dad305eb2bad40b755622c27f7bdf982af126792388651255d1c9c3098c",
+    "periods_4_6_digest": "a9686543b16b70096fa6967aac873eb40a7acad4ff272a40fbf55700c244fa08"
+  },
+  "manifest": {
+    "version": "phase48-scoped-manifest-v2",
+    "tables": [
+      "auditoria",
+      "auditoria_eventos",
+      "calculadora_personal_config",
+      "cargos_operativos",
+      "cobertura_asignaciones",
+      "cobertura_externos",
+      "contrato_cargos",
+      "contratos",
+      "departamentos",
+      "documentos_persona",
+      "empresas",
+      "estados_civiles",
+      "focalizacion_cargas",
+      "focalizacion_final",
+      "focalizacion_preliminar",
+      "focalizacion_vigencias",
+      "instituciones",
+      "modalidades",
+      "municipios",
+      "nomina_asistencia_diaria",
+      "nomina_categorias_salariales",
+      "nomina_contextos_operativos_base",
+      "nomina_empleado_detalle",
+      "nomina_empleados",
+      "nomina_movimiento_tarifas",
+      "nomina_movimientos",
+      "nomina_novedades",
+      "nomina_periodos",
+      "nomina_revision_operativa",
+      "nomina_tipos_novedad",
+      "organizaciones",
+      "permisos",
+      "personas",
+      "rol_permisos",
+      "roles",
+      "sede_modalidades",
+      "sedes",
+      "sexo",
+      "sst_eventos",
+      "tipos_documentos",
+      "tipos_identificacion",
+      "tipos_jornada",
+      "tipos_sangre",
+      "tipos_vinculacion",
+      "usuario_contratos",
+      "usuario_empresas",
+      "usuario_roles",
+      "usuarios",
+      "vinculacion_condiciones_economicas",
+      "vinculaciones",
+      "zonas"
+    ],
+    "sequences": [
+      "auditoria_eventos_id_seq",
+      "auditoria_id_seq",
+      "cobertura_asignaciones_id_seq"
+    ],
+    "functions": [
+      "fn_actualizar_periodo_pago_por_ingreso_retiro()",
+      "fn_crear_evento_sst_desde_nomina()",
+      "nomina_invalidar_revision_condicion_economica()",
+      "nomina_invalidar_revision_operativa()",
+      "personas_prevent_identificador_interno_update()",
+      "validar_contrato_aplica_cobertura()",
+      "validate_nomina_periodo_anulacion()"
+    ],
+    "entries": [
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.accion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.datos_anteriores",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.datos_nuevos",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.descripcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.empresa_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.entidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.entidad_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.fecha_evento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.ip_address",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.modulo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.user_agent",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria_eventos.usuario_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.accion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.datos_anteriores",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.datos_nuevos",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.descripcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.ip",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.registro_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.tabla_afectada",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.user_agent",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.auditoria.usuario_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.config_padre_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.creado_en",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.descripcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.dominio_calculo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.factor_previo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.formula",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.fuente",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.metodo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.modalidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.modalidad_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.modificado_en",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.multiplicador_raciones",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.nombre",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.observacion_cambio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.observaciones",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.personal_maximo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.personal_minimo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.regla_redondeo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.updated_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.usuario_creacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.usuario_modificacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.variables_permitidas",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.version",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.vigencia_desde",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.calculadora_personal_config.vigencia_hasta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cargos_operativos.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cargos_operativos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cargos_operativos.nombre_cargo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.categoria_cobertura",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.consecutivo_sede",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.fecha_fin",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.fecha_inicio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.focalizacion_final_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.institucion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.modalidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.municipio_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.observacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.porcentaje_cobertura",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.sede",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.tipo_asignacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_asignaciones.vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.banco",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.empresa_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.nombre_completo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.numero_cuenta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.numero_documento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.tipo_cuenta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.tipo_documento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.cobertura_externos.updated_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contrato_cargos.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contrato_cargos.aplica_cobertura",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contrato_cargos.cantidad_requerida",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contrato_cargos.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contrato_cargos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contrato_cargos.nombre_cargo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.aplica_cobertura",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.contrato_padre_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.empresa_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.entidad_contratante",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.estado_contractual",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.fecha_final_estimada",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.fecha_final_real",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.fecha_finalizacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.fecha_inicio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.numero_contrato",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.numero_licitacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.objeto_contractual",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.contratos.observaciones",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.departamentos.codigo_dane",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.departamentos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.departamentos.nombre_departamento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.archivo_path",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.cargado_por",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.documento_reemplaza_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.es_vigente",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.estado_revision",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.fecha_carga",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.fecha_expedicion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.fecha_vencimiento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.metadatos_revision",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.mime_type",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.motivo_rechazo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.nombre_original",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.persona_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.revisado_en",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.revisado_por",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.storage_bucket",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.storage_path",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.tamano_bytes",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.tipo_documento_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.version",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.documentos_persona.vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.ciudad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.correo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.departamento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.direccion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.documento_representante",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.nit",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.nombre_empresa",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.organizacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.representante_legal",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.telefono",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.empresas.tipo_empresa",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.estados_civiles.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.estados_civiles.nombre_estado_civil",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.archivo_bytes",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.archivo_mime_type",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.archivo_sha256",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.created_by",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.es_vigente",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.fecha_carga",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.fecha_fin_vigencia",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.fecha_importacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.fecha_inicio_vigencia",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.fecha_recepcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.filas_alerta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.filas_error",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.filas_procesadas",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.nombre_archivo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.observacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.periodo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.resumen_json",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.storage_bucket",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.storage_path",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.total_filas",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.usuario_carga_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_cargas.version",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.carga_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.categoria_cobertura",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.clave_sede_modalidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.cobertura_estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.cobertura_requerida",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.codigo_dane_institucion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.codigo_dane_sede",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.consecutivo_final",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.cupos_aprobados",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.cupos_primaria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.cupos_secundaria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.estado_validacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.fecha_validacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.institucion_final",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.institucion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.modalidad_final",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.modalidad_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.municipio_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.municipio_texto",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.observacion_validacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.preliminar_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.sede_final",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.sede_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.sede_modalidad_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.updated_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.usuario_valida_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.vigente_desde",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_final.vigente_hasta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.carga_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.clave_sede_modalidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.cobertura_requerida",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.codigo_dane_institucion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.codigo_dane_sede",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.consecutivo_original",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.cupos_primaria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.cupos_reportados",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.cupos_secundaria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.estado_procesamiento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.fila_metadata",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.fila_origen",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.focalizacion_vigencia_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.institucion_id_resuelta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.institucion_original",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.mensaje_resultado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.modalidad_id_resuelta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.modalidad_original",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.municipio_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.municipio_texto",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.resultado_comparacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.sede_id_resuelta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.sede_original",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.techo_primaria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.techo_secundaria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_preliminar.techo_total",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.carga_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.cobertura_estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.cobertura_requerida",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.created_by",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.fecha_recepcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.focalizacion_primaria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.focalizacion_secundaria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.focalizacion_total",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.institucion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.modalidad_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.motivo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.municipio_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.observacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.origen",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.preliminar_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.regla_config_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.sede_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.soporte_storage_bucket",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.soporte_storage_path",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.techo_primaria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.techo_secundaria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.techo_total",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.updated_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.valor_anterior_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.vigente_desde",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.focalizacion_vigencias.vigente_hasta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.instituciones.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.instituciones.codigo_dane",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.instituciones.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.instituciones.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.instituciones.estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.instituciones.etc",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.instituciones.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.instituciones.jerarquia",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.instituciones.municipio_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.instituciones.nombre_institucion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.modalidades.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.modalidades.aplica_cobertura",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.modalidades.codigo_base",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.modalidades.codigo_original",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.modalidades.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.modalidades.descripcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.modalidades.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.modalidades.nombre_modalidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.municipios.codigo_dane",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.municipios.departamento_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.municipios.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.municipios.nombre_municipio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.estado_dia",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.fecha",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.hora_ingreso",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.hora_salida",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.horas_trabajadas",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.observacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.periodo_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_asistencia_diaria.vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.auxilio_transporte",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.codigo_categoria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.descripcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.modalidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.nombre_categoria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.otros_recargos",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.salario_base",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.vigente_desde",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_categorias_salariales.vigente_hasta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_contextos_operativos_base.contexto",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_contextos_operativos_base.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_contextos_operativos_base.created_by",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_contextos_operativos_base.fuente",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_contextos_operativos_base.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_contextos_operativos_base.nomina_empleado_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_contextos_operativos_base.periodo_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_contextos_operativos_base.vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.auxilio_transporte",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.categoria_salarial_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.devengado_otros",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.devengado_salario",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.devengado_transporte",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.dias",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.fecha_fin",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.fecha_inicio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.motivo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.nomina_empleado_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.otros_devengos",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.salario_base",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.valor_dia_salario",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleado_detalle.valor_dia_transporte",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.auxilio_transporte",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.categoria_salarial_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.detalle_calculo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.devengado_basico",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.devengado_otros",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.devengado_transporte",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.dias_pagados",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.dias_periodo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.fecha_fin_pago",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.fecha_inicio_pago",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.horas_extra_total",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.horas_trabajadas",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.metodo_liquidacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.motivo_caso_especial",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.neto_pagar",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.otros_devengos",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.pension",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.periodo_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.revisado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.salario_base",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.salud",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.total_adiciones",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.total_deducciones",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_empleados.vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.created_by",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.institucion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.modalidad_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.municipio_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.observacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.sede_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.tipo_movimiento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.updated_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.updated_by",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.valor_unitario",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.vigencia_desde",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimiento_tarifas.vigencia_hasta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.afecta_seguridad_social",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.alertas_validacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.aprobado_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.aprobado_por",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.cantidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.contexto_anterior",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.contexto_institucion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.contexto_modalidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.contexto_municipio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.contexto_nuevo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.contexto_sede",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.descripcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.documento_persona_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.es_deduccion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.es_devengado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.externo_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.familia_movimiento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.fecha",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.fecha_fin_efectiva",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.institucion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.modalidad_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.motivo_ajuste_valor",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.motivo_estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.motivo_operativo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.municipio_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.nomina_empleado_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.periodo_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.persona_reemplazada_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.posible_duplicado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.rechazado_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.rechazado_por",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.regla_fecha_efectiva",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.revisado_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.revisado_por",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.sede_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.tarifa_config_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.tipo_movimiento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.updated_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.updated_by",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.valor_calculado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.valor_total",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.valor_unitario",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_movimientos.vinculacion_reemplazada_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.categoria_anterior_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.categoria_nueva_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.cubierta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.dias",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.documento_persona_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.fecha_fin",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.fecha_inicio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.horas",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.nomina_empleado_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.observacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.periodo_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.requiere_cobertura",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.revisado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.tipo_novedad_codigo_operativo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.tipo_novedad_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.valor_manual",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_novedades.vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.anulado_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.anulado_por",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.fecha_fin",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.fecha_inicio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.motivo_anulacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.nombre_periodo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.periodo_canonico_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.requiere_asistencia",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_periodos.tipo_periodo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.estado_revision",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.invalidado_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.invalidado_por",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.motivo_invalidacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.nomina_empleado_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.periodo_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.persona_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.revisado_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.revisado_por",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.updated_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.version_revision",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_revision_operativa.vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.afecta_cobertura",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.afecta_dias_laborados",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.afecta_recargos",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.afecta_salario",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.afecta_transporte",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.bloquea_otras_novedades",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.categoria",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.codigo_operativo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.descripcion_operativa",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.efecto_auxilio_transporte",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.efecto_cobertura_config",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.efecto_liquidacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.efecto_operativo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.efecto_pago",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.efecto_recargos_detallado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.efecto_salario",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.es_accidente_laboral",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.es_adicion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.es_deduccion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.es_evento_operativo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.es_incapacidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.es_permiso",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.es_suspension",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.grupo_exclusividad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.modelo_registro",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.nombre",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.observacion_plantilla",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.permite_asistencia_simultanea",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.permite_rango",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.proyecta_periodos",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.requiere_autorizacion_descuento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.requiere_dias",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.requiere_fechas",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.requiere_horas",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.requiere_revision",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.requiere_solicitud_permiso",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.requiere_soporte",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.requiere_valor",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.nomina_tipos_novedad.soporte_documento_tipo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.organizaciones.codigo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.organizaciones.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.organizaciones.estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.organizaciones.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.organizaciones.nombre",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.organizaciones.updated_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.permisos.accion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.permisos.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.permisos.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.permisos.descripcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.permisos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.permisos.modulo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.barrio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.ciudad_nacimiento_extranjero",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.correo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.direccion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.estado_civil_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.estatura",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.fecha_expedicion_documento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.fecha_nacimiento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.identificador_interno",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.manipulacion_modalidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.municipio_expedicion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.municipio_nacimiento_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.municipio_residencia_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.nacimiento_extranjero",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.numero_documento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.pais_nacimiento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.primer_apellido",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.primer_nombre",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.segundo_apellido",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.segundo_nombre",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.sexo_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.telefono",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.tipo_documento_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.tipo_sangre_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.personas.zona_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.rol_permisos.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.rol_permisos.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.rol_permisos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.rol_permisos.permiso_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.rol_permisos.rol_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.roles.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.roles.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.roles.descripcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.roles.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.roles.nombre_rol",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sede_modalidades.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sede_modalidades.clave_sede_modalidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sede_modalidades.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sede_modalidades.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sede_modalidades.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sede_modalidades.modalidad_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sede_modalidades.sede_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.codigo_dane",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.consecutivo_dane",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.consecutivo_sede",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.institucion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.municipio_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.nombre_sede",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.updated_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.vigente_desde",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.vigente_hasta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.zona",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sedes.zona_sede",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sexo.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sexo.nombre_sexo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.descripcion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.estado",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.fecha_evento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.gravedad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.hora_evento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.lugar",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.requiere_investigacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.tipo_evento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.sst_eventos.vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.alcance",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.bloquea_cierre",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.bloquea_creacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.bloquea_ejecucion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.bloquea_inicio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.categoria_documento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.codigo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.criticidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.dias_alerta_amarilla",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.dias_alerta_naranja",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.dias_alerta_roja",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.es_identificacion_personal",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.nombre_documento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.requiere_fecha_expedicion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.requiere_fecha_vencimiento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.requiere_revision",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.tiene_vencimiento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_documentos.vigencia_dias_default",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_identificacion.codigo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_identificacion.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_identificacion.nombre_documento",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_jornada.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_jornada.nombre",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_sangre.codigo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_sangre.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_vinculacion.codigo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_vinculacion.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.tipos_vinculacion.nombre_vinculacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_contratos.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_contratos.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_contratos.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_contratos.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_contratos.usuario_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_empresas.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_empresas.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_empresas.empresa_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_empresas.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_empresas.usuario_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_roles.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_roles.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_roles.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_roles.rol_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuario_roles.usuario_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuarios.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuarios.auth_user_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuarios.correo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuarios.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuarios.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuarios.nombre_completo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.usuarios.telefono",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.activo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.created_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.created_by",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.motivo",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.tipo_condicion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.updated_at",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.updated_by",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.valor",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.vigencia_desde",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.vigencia_hasta",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculacion_condiciones_economicas.vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.cargo_operativo_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.contrato_cargo_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.contrato_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.cotiza_pension",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.cuenta_como_experiencia",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.empresa_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.estado_vinculacion",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.fecha_fin",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.fecha_inicio",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.manipulacion_modalidad",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.metodo_pago",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.motivo_retiro",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.persona_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.tipo_jornada_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.vinculaciones.tipo_vinculacion_id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.zonas.id",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "columns",
+        "name": "public.zonas.nombre_zona",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.auditoria_eventos.auditoria_eventos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.auditoria_eventos.auditoria_eventos_usuario_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.auditoria.auditoria_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.auditoria.auditoria_usuario_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.calculadora_personal_config.calculadora_personal_config_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.cargos_operativos.cargos_operativos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.cobertura_asignaciones.cobertura_asignaciones_contrato_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.cobertura_asignaciones.cobertura_asignaciones_focalizacion_final_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.cobertura_asignaciones.cobertura_asignaciones_municipio_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.cobertura_asignaciones.cobertura_asignaciones_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.cobertura_asignaciones.cobertura_asignaciones_vinculacion_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.cobertura_externos.cobertura_externos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.contrato_cargos.contrato_cargos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.contratos.contratos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.departamentos.departamentos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.documentos_persona.documentos_persona_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.empresas.empresas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.estados_civiles.estados_civiles_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.focalizacion_cargas.focalizacion_cargas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.focalizacion_final.focalizacion_final_contrato_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.focalizacion_final.focalizacion_final_institucion_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.focalizacion_final.focalizacion_final_modalidad_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.focalizacion_final.focalizacion_final_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.focalizacion_final.focalizacion_final_sede_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.focalizacion_preliminar.focalizacion_preliminar_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.focalizacion_vigencias.focalizacion_vigencias_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.instituciones.instituciones_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.modalidades.modalidades_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.municipios.municipios_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_asistencia_diaria.nomina_asistencia_diaria_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_categorias_salariales.nomina_categorias_salariales_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_contextos_operativos_base.nomina_contextos_operativos_base_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_empleado_detalle.nomina_empleado_detalle_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_empleados.nomina_empleados_categoria_salarial_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_empleados.nomina_empleados_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_empleados.nomina_empleados_vinculacion_id_fkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_movimiento_tarifas.nomina_movimiento_tarifas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_movimientos.nomina_movimientos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_novedades.nomina_novedades_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_periodos.nomina_periodos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_revision_operativa.nomina_revision_operativa_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.nomina_tipos_novedad.nomina_tipos_novedad_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.organizaciones.organizaciones_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.permisos.permisos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.personas.personas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.rol_permisos.rol_permisos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.roles.roles_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.sede_modalidades.sede_modalidades_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.sedes.sedes_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.sexo.sexo_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.sst_eventos.sst_eventos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.tipos_documentos.tipos_documentos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.tipos_identificacion.tipos_identificacion_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.tipos_jornada.tipos_jornada_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.tipos_sangre.tipos_sangre_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.tipos_vinculacion.tipos_vinculacion_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.usuario_contratos.usuario_contratos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.usuario_empresas.usuario_empresas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.usuario_roles.usuario_roles_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.usuarios.usuarios_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.vinculacion_condiciones_economicas.vinculacion_condiciones_economicas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.vinculaciones.vinculaciones_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "constraints",
+        "name": "public.zonas.zonas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "event_trigger",
+        "name": "pgrst_ddl_watch",
+        "reason": "PostgREST notification-only; exact metadata, definitions and dependency closure sealed",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "event_trigger",
+        "name": "pgrst_drop_watch",
+        "reason": "PostgREST notification-only; exact metadata, definitions and dependency closure sealed",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "function",
+        "name": "fn_actualizar_periodo_pago_por_ingreso_retiro()",
+        "reason": "Definición fijada por phase48-critical-schema-v1",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "function",
+        "name": "fn_crear_evento_sst_desde_nomina()",
+        "reason": "Definición fijada por phase48-critical-schema-v1",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "function",
+        "name": "nomina_invalidar_revision_condicion_economica()",
+        "reason": "Definición fijada por phase48-critical-schema-v1",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "function",
+        "name": "nomina_invalidar_revision_operativa()",
+        "reason": "Definición fijada por phase48-critical-schema-v1",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "function",
+        "name": "personas_prevent_identificador_interno_update()",
+        "reason": "Definición fijada por phase48-critical-schema-v1",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "function",
+        "name": "validar_contrato_aplica_cobertura()",
+        "reason": "Definición fijada por phase48-critical-schema-v1",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "function",
+        "name": "validate_nomina_periodo_anulacion()",
+        "reason": "Definición fijada por phase48-critical-schema-v1",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.auditoria_eventos.auditoria_eventos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.auditoria.auditoria_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.calculadora_personal_config.calculadora_personal_config_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.cargos_operativos.cargos_operativos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.cobertura_asignaciones.cobertura_asignaciones_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.cobertura_externos.cobertura_externos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.contrato_cargos.contrato_cargos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.contratos.contratos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.departamentos.departamentos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.documentos_persona.documentos_persona_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.empresas.empresas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.estados_civiles.estados_civiles_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.focalizacion_cargas.focalizacion_cargas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.focalizacion_final.focalizacion_final_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.focalizacion_preliminar.focalizacion_preliminar_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.focalizacion_vigencias.focalizacion_vigencias_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.instituciones.instituciones_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.modalidades.modalidades_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.municipios.municipios_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_asistencia_diaria.nomina_asistencia_diaria_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_categorias_salariales.nomina_categorias_salariales_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_contextos_operativos_base.nomina_contextos_operativos_base_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_empleado_detalle.nomina_empleado_detalle_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_empleados.nomina_empleados_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_movimiento_tarifas.nomina_movimiento_tarifas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_movimientos.nomina_movimientos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_novedades.nomina_novedades_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_periodos.nomina_periodos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_revision_operativa.nomina_revision_operativa_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.nomina_tipos_novedad.nomina_tipos_novedad_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.organizaciones.organizaciones_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.permisos.permisos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.personas.personas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.rol_permisos.rol_permisos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.roles.roles_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.sede_modalidades.sede_modalidades_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.sedes.sedes_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.sexo.sexo_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.sst_eventos.sst_eventos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.tipos_documentos.tipos_documentos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.tipos_identificacion.tipos_identificacion_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.tipos_jornada.tipos_jornada_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.tipos_sangre.tipos_sangre_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.tipos_vinculacion.tipos_vinculacion_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.usuario_contratos.usuario_contratos_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.usuario_empresas.usuario_empresas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.usuario_roles.usuario_roles_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.usuarios.usuarios_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.vinculacion_condiciones_economicas.vinculacion_condiciones_economicas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.vinculaciones.vinculaciones_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "indexes",
+        "name": "public.zonas.zonas_pkey",
+        "reason": "Definición estructural de relación crítica",
+        "category": "F_SCHEMA"
+      },
+      {
+        "kind": "managed_dependency",
+        "name": "pg_event_trigger|event trigger pgrst_ddl_watch",
+        "reason": "Exact managed event dependency closure plus PostgreSQL native metadata",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_dependency",
+        "name": "pg_event_trigger|event trigger pgrst_drop_watch",
+        "reason": "Exact managed event dependency closure plus PostgreSQL native metadata",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_dependency",
+        "name": "pg_extension|extension plpgsql",
+        "reason": "Exact managed event dependency closure plus PostgreSQL native metadata",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_dependency",
+        "name": "pg_language|language plpgsql",
+        "reason": "Exact managed event dependency closure plus PostgreSQL native metadata",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_dependency",
+        "name": "pg_namespace|schema extensions",
+        "reason": "Exact managed event dependency closure plus PostgreSQL native metadata",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_dependency",
+        "name": "pg_proc|function extensions.pgrst_ddl_watch()",
+        "reason": "Exact managed event dependency closure plus PostgreSQL native metadata",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_dependency",
+        "name": "pg_proc|function extensions.pgrst_drop_watch()",
+        "reason": "Exact managed event dependency closure plus PostgreSQL native metadata",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_dependency",
+        "name": "pg_proc|function plpgsql_call_handler()",
+        "reason": "Exact managed event dependency closure plus PostgreSQL native metadata",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_dependency",
+        "name": "pg_proc|function plpgsql_inline_handler(internal)",
+        "reason": "Exact managed event dependency closure plus PostgreSQL native metadata",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_dependency",
+        "name": "pg_proc|function plpgsql_validator(oid)",
+        "reason": "Exact managed event dependency closure plus PostgreSQL native metadata",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_function",
+        "name": "extensions.pgrst_ddl_watch()",
+        "reason": "Managed event trigger function; no business DML/DDL/sequence effects",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "managed_function",
+        "name": "extensions.pgrst_drop_watch()",
+        "reason": "Managed event trigger function; no business DML/DDL/sequence effects",
+        "category": "E_DEFINITION"
+      },
+      {
+        "kind": "managed_native_function",
+        "name": "pg_catalog.pg_event_trigger_ddl_commands()",
+        "reason": "Literal managed PL/pgSQL call omitted by pg_depend; native metadata sealed",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "managed_native_function",
+        "name": "pg_catalog.pg_event_trigger_dropped_objects()",
+        "reason": "Literal managed PL/pgSQL call omitted by pg_depend; native metadata sealed",
+        "category": "G_TRANSITIVE"
+      },
+      {
+        "kind": "sequence",
+        "name": "public.auditoria_eventos_id_seq",
+        "reason": "IDs explícitos de correcciones y auditoría estricta",
+        "category": "D_SEQUENCE"
+      },
+      {
+        "kind": "sequence",
+        "name": "public.auditoria_id_seq",
+        "reason": "IDs explícitos de correcciones y auditoría estricta",
+        "category": "D_SEQUENCE"
+      },
+      {
+        "kind": "sequence",
+        "name": "public.cobertura_asignaciones_id_seq",
+        "reason": "IDs explícitos de correcciones y auditoría estricta",
+        "category": "D_SEQUENCE"
+      },
+      {
+        "kind": "table",
+        "name": "public.auditoria",
+        "reason": "Lectura/write-set/condición histórica directa de Phase 48",
+        "category": "B_MODIFIED"
+      },
+      {
+        "kind": "table",
+        "name": "public.auditoria_eventos",
+        "reason": "Lectura/write-set/condición histórica directa de Phase 48",
+        "category": "B_MODIFIED"
+      },
+      {
+        "kind": "table",
+        "name": "public.calculadora_personal_config",
+        "reason": "Lectura/write-set/condición histórica directa de Phase 48",
+        "category": "A_SOURCE"
+      },
+      {
+        "kind": "table",
+        "name": "public.cargos_operativos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.cobertura_asignaciones",
+        "reason": "Lectura/write-set/condición histórica directa de Phase 48",
+        "category": "B_MODIFIED"
+      },
+      {
+        "kind": "table",
+        "name": "public.cobertura_externos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.contrato_cargos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.contratos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.departamentos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.documentos_persona",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.empresas",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.estados_civiles",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.focalizacion_cargas",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.focalizacion_final",
+        "reason": "Lectura/write-set/condición histórica directa de Phase 48",
+        "category": "A_SOURCE"
+      },
+      {
+        "kind": "table",
+        "name": "public.focalizacion_preliminar",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.focalizacion_vigencias",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.instituciones",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.modalidades",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.municipios",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_asistencia_diaria",
+        "reason": "Lectura/write-set/condición histórica directa de Phase 48",
+        "category": "A_SOURCE"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_categorias_salariales",
+        "reason": "Lectura/write-set/condición histórica directa de Phase 48",
+        "category": "A_SOURCE"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_contextos_operativos_base",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_empleado_detalle",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_empleados",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_movimiento_tarifas",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_movimientos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_novedades",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_periodos",
+        "reason": "Lectura/write-set/condición histórica directa de Phase 48",
+        "category": "A_SOURCE"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_revision_operativa",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.nomina_tipos_novedad",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.organizaciones",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.permisos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.personas",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.rol_permisos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.roles",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.sede_modalidades",
+        "reason": "Lectura/write-set/condición histórica directa de Phase 48",
+        "category": "A_SOURCE"
+      },
+      {
+        "kind": "table",
+        "name": "public.sedes",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.sexo",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.sst_eventos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.tipos_documentos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.tipos_identificacion",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.tipos_jornada",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.tipos_sangre",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.tipos_vinculacion",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.usuario_contratos",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.usuario_empresas",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.usuario_roles",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.usuarios",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.vinculacion_condiciones_economicas",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.vinculaciones",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      },
+      {
+        "kind": "table",
+        "name": "public.zonas",
+        "reason": "Contexto certificado de tenant, autorización, integridad o datos protegidos",
+        "category": "C_PROTECTED"
+      }
+    ],
+    "exclusions": [
+      {
+        "kind": "relation",
+        "name": "public.ajena",
+        "reason": "Sin vínculo desde fuentes/write-set ni clausura crítica certificada; evidencia informativa"
+      },
+      {
+        "kind": "relation",
+        "name": "public.ajena_seq",
+        "reason": "Sin vínculo desde fuentes/write-set ni clausura crítica certificada; evidencia informativa"
+      },
+      {
+        "kind": "function",
+        "name": "ajena_fn()",
+        "reason": "No invocada por fuentes, defaults, triggers ni rutinas críticas certificadas"
+      }
+    ]
+  },
+  "preview": [
+    {
+      "id": "1277",
+      "category_id": "35",
+      "classification": "VALID_REQUIRES_SALARY_REVIEW",
+      "requires_salary_review": true,
+      "estado_salarial": "REQUIERE_REVISION_SALARIAL",
+      "economic_authorization": false,
+      "origin_attribution": "INDIRECT_AUDIT_CORRELATED",
+      "employee_ids": [
+        "2376"
+      ]
+    },
+    {
+      "id": "1278",
+      "category_id": "34",
+      "classification": "VALID_COMPATIBLE",
+      "requires_salary_review": false,
+      "estado_salarial": "COMPATIBLE",
+      "economic_authorization": false,
+      "origin_attribution": "INDIRECT_AUDIT_CORRELATED",
+      "employee_ids": [
+        "2377"
+      ]
+    },
+    {
+      "id": "1279",
+      "category_id": "35",
+      "classification": "VALID_REQUIRES_SALARY_REVIEW",
+      "requires_salary_review": true,
+      "estado_salarial": "REQUIERE_REVISION_SALARIAL",
+      "economic_authorization": false,
+      "origin_attribution": "INDIRECT_AUDIT_CORRELATED",
+      "employee_ids": [
+        "2378"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "host": "127.0.0.1",
+      "port": 55470,
+      "directory": "C:/Users/CORE ULTRA/Desktop/V2-instituciones-modalidad/tmp/phase48-pooler-local/dynamic-cluster",
+      "version": "17.11",
+      "read_only": "on",
+      "isolation": "repeatable read",
+      "pid": 32276,
+      "snapshot": "3129:3129:",
+      "closed": true,
+      "connection_instance": 1,
+      "rollback": "CONFIRMED"
+    },
+    {
+      "host": "127.0.0.1",
+      "port": 55470,
+      "directory": "C:/Users/CORE ULTRA/Desktop/V2-instituciones-modalidad/tmp/phase48-pooler-local/dynamic-cluster",
+      "version": "17.11",
+      "read_only": "on",
+      "isolation": "repeatable read",
+      "pid": 32576,
+      "snapshot": "3129:3129:",
+      "closed": true,
+      "connection_instance": 2,
+      "rollback": "CONFIRMED"
+    }
+  ]
+}

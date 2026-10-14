@@ -1,3 +1,4 @@
+import {certifiedManagedEvents} from './phase48-managed-events';
 // Local certification implementation. There is no productive connection path.
 import {Client} from 'pg';
 import {resolve} from 'node:path';
@@ -50,6 +51,7 @@ async function freshDefinitions(observer:ScopedDb,manifest:ScopedManifest,expect
  // on our own exclusive lock. Read pg_proc directly for the unprotected part.
  const rows=(await scopedFunctions(observer)).filter(r=>manifest.functions.includes(r.name));
  requireScoped(scopedDigest(rows)===scopedDigest(expected.functions),'CRITICAL_DEFINITION_DRIFT');
+ const events=await certifiedManagedEvents(observer);requireScoped(scopedDigest(events.critical)===scopedDigest(expected.managed_events),'CRITICAL_MANAGED_EVENT_DRIFT');
 }
 function normalizedInventory(inventory:Record<string,any[]>,before:Record<string,any[]>){
  const originalColumns=before.columns!.filter(r=>r.relation==='cobertura_asignaciones').map(r=>r.name);
@@ -88,7 +90,7 @@ async function published(db:ScopedDb,authority:ScopedAuthority,seal:ScopedSeal){
  requireScoped(scopedDigest(current)===main.payload.coverage_after_digest,'PUBLISHED_WRITE_SET_DIVERGENCE');
  const data=await tableHashes(db,main.before.manifest.tables);
  for(const old of main.before.data)if(!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(old.table))requireScoped(scopedDigest(old)===scopedDigest(data.find(r=>r.table===old.table)),'PUBLISHED_PROTECTED_DATA_DIVERGENCE');
- const forensic=await collectScopedSchema(db,main.before.manifest);forensic.inventory.functions=await scopedFunctions(db);const inventory=projectScopedInventory(forensic.inventory,main.before.manifest);
+ const forensic=await collectScopedSchema(db,main.before.manifest);forensic.inventory.functions=await scopedFunctions(db);forensic.inventory.managed_events=(await certifiedManagedEvents(db)).critical;const inventory=projectScopedInventory(forensic.inventory,main.before.manifest);
  requireScoped(scopedDigest(normalizedInventory(inventory,main.before.inventory))===scopedDigest(main.before.inventory),'PUBLISHED_SCHEMA_DIVERGENCE');
  const states=await sequenceStates(db,main.before.manifest,forensic.inventory);
  for(const state of states){const prior=main.before.sequences.find((s:any)=>s.name===state.name);
@@ -150,7 +152,7 @@ export async function executeScopedLocal(authority:ScopedAuthority,input:Awaited
   const beforeJournal={coverage:locked.coverage,inventory:locked.inventory,manifest:locked.manifest,data:locked.data,sequences:locked.sequences};
   const payload={coverage_after_digest:scopedDigest(after),albeny_id:id.id,candidate_count:seal.set.candidate_count,candidate_ids_digest:seal.set.candidate_ids_digest,before_digests:seal.set,requires_salary_review:locked.salary_preview.filter(r=>r.requires_salary_review).map(r=>r.id),preview:locked.salary_preview};
   for(const action of ['PHASE48','ALBENY','DARY'])await audit(db,authority,seal,action,payload,action==='PHASE48'?beforeJournal:null);
-  const forensic=await collectScopedSchema(db,locked.manifest);forensic.inventory.functions=await scopedFunctions(db);const finalInventory=projectScopedInventory(forensic.inventory,locked.manifest);
+  const forensic=await collectScopedSchema(db,locked.manifest);forensic.inventory.functions=await scopedFunctions(db);forensic.inventory.managed_events=(await certifiedManagedEvents(db)).critical;const finalInventory=projectScopedInventory(forensic.inventory,locked.manifest);
   requireScoped(scopedDigest(normalizedInventory(finalInventory,locked.inventory))===scopedDigest(locked.inventory),'UNAUTHORIZED_CRITICAL_DDL');
   await options.hooks?.beforeCommit?.();await published(db,authority,seal);await freshDefinitions(observer,locked.manifest,locked.inventory);authority.assertLive(seal);
   if((options.mode??'Rollback')==='Rollback'){

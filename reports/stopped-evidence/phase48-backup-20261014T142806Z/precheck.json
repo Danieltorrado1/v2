@@ -1,0 +1,169 @@
+{
+  "kind": "PHASE48_DYNAMIC_BACKUP_PRECHECK",
+  "started_utc": "2026-10-14T14:28:06.161Z",
+  "status": "STOPPED",
+  "production_connections": 1,
+  "production_writes": 0,
+  "backup_started": false,
+  "local_restore_started": false,
+  "mutator_executed": false,
+  "release": {
+    "readonly_runner_commit": "9f478ae8d519421759845e9a1826f8414c59efac",
+    "mutator_commit": "8e805730b5c00a2326ca748f82213bf69e38a701",
+    "code_sha256": {
+      "src/modules/cobertura/phase48-scoped-contract.ts": "7986d6366a5e76997f7916624341c3fbfc537e29cdbf98b5e876a3c36fe763eb",
+      "src/modules/cobertura/phase48-scoped-repository.ts": "b067c9ba4a85451f8a27cb097c6cc1876dc203cc777dc5236bdbe4a660ce4514",
+      "src/modules/cobertura/phase48-scoped-local.ts": "ae21a85e7f995e3490b275ccc962a287e442254107e0309487f003c0185674c2",
+      "src/modules/cobertura/phase48-scoped-release.ts": "af8ed5ca442d75fc0b30a2c7deab02c7e949de8d4f074357ffc02d65d3238c29",
+      "src/scripts/phase48-scoped-certification.ts": "25bb7b6d3af2154c1aba346f842e1cfe7d4836007e76d362f7c5feacf36ef7a8",
+      "src/modules/cobertura/phase48-readonly-contract.ts": "268e1df44bbe8db95b69db2a86f5c99e182906c0353e6839682f0c518badd9e4",
+      "src/modules/cobertura/phase48-readonly-schema-scope.ts": "f500b8d42bb6f5c404faab28de38d67372f19d32d1cf33ed927c4917222c3f91",
+      "src/modules/cobertura/phase48-readonly-schema-catalog.ts": "3b2f7903a6accb412974df05a3430913a3b2f1b86db16814bcf543e4a4b4b63c",
+      "src/modules/cobertura/phase48-historical-domain.ts": "be67949a3efe93cae92680cb2455f82bf8a5ed649a544ee7885eda4461d869eb",
+      "src/modules/cobertura/phase48-readonly-receipts.ts": "8eba32d97af3154b87c8a243ae4d686052da02199483b936042331ff2096894d",
+      "src/modules/cobertura/phase48-dynamic-local.ts": "ea2c61c91a724d4e2ee902153ff91da10d9a5b91e725ae0ac7534a560c2b5d37",
+      "src/modules/cobertura/phase48-readonly-tls.ts": "d453ee88c732a5596d921a043947526c0ada91a2e9052d9f33d6c1544f0ce8a4",
+      "src/modules/cobertura/phase48-readonly-target.ts": "754300d705ee2a1365e032f5859d683bb5017e3df5cc996cc7566ee0f2e5d235",
+      "src/modules/cobertura/phase48-readonly-connection.ts": "9d7409360ea7af9f5544277a3895eedc0b3a67f898eea5f703a755dc3cdfa3f2",
+      "src/modules/cobertura/phase48-readonly-schema-identity.ts": "633b994951b68fae68ea94630348bf4ba12f1ce8b8043333738adc675f67dbdf",
+      "src/scripts/phase48-production-readonly.ts": "5c2c49dd033c8ad8518680f025980297e6cfea191886fc9995f74b6924ac63b7",
+      "src/scripts/phase48-historical-production.ts": "1c563ead7f9cd515f0c469282e97fcf303d9202432d4f1aa41804e3358b9df3b",
+      "src/modules/cobertura/phase48-production-executor.ts": "94a0fafb605b91e1bb115d40bd41afbb24179864d8f8d28364d9140f055b1214",
+      "src/modules/cobertura/phase48-dynamic-gate.ts": "fa9ccf92c6fbd5de8d14fe9fb781a2dc2e5b7bc851a6184722cffa9bdecf31ce",
+      "package-lock.json": "db7a06196facc0fa6a6e080387b886673ea06d5486885b49dee8b7445e20bba4",
+      "package.json": "1aed1f1222235f7eeba959cf0d5075731624d15b37755cec26f5a7d51be960ee",
+      "tsconfig.json": "640a93d0b9de5607230949a5d59f391504b86f58fff733d723e8dc58f0d568f9"
+    },
+    "productive_authorization": "REVOKED",
+    "revoked_ancestors_of": "3a45f141b90fb779814b12ad4e8b62db6d7991fa"
+  },
+  "remote_commit": "9f478ae8d519421759845e9a1826f8414c59efac",
+  "client_version": "pg_dump (PostgreSQL) 17.11",
+  "health": {
+    "http_status": 200,
+    "database_status": "ok",
+    "outbox_configured": false,
+    "outbox_enabled": false,
+    "worker_started": false,
+    "worker_running": false,
+    "recalc_requested": false,
+    "recalc_active": false,
+    "sync": false,
+    "sync_evidence": "USER_MANUAL_RENDER_CONFIRMATION",
+    "observed_utc": "2026-10-14T14:28:07.817Z"
+  },
+  "ca_sha256": "700723581420DD1AC98FD7E9AC529F0EF210EADCAF87FC868A3AD7D114C2F3B7",
+  "session": {
+    "read_only": "on",
+    "isolation": "repeatable read",
+    "snapshot": "131849:131849:",
+    "server_version": "17.6"
+  },
+  "metrics": {
+    "locks_waiting": 0,
+    "ddl_active": 0
+  },
+  "critical_schema": {
+    "schema_identity_version": "phase48-critical-schema-v1",
+    "expected_schema_digest": "b2721653fcb198b17c91d27e454c526fedc99a8e71e9d3e28f4c8e2f8e34d98a",
+    "observed_schema_digest": "b2721653fcb198b17c91d27e454c526fedc99a8e71e9d3e28f4c8e2f8e34d98a",
+    "global_schema_digest": "c5ac9e39dffedbca6638a6fe0fb0a1d3d486627dc5e0d11dbbb5735933267630",
+    "schema_matches": true
+  },
+  "phase48": "NO_APLICADA",
+  "periods": [
+    {
+      "id": "4",
+      "estado": "ANULADO"
+    },
+    {
+      "id": "6",
+      "estado": "ANULADO"
+    }
+  ],
+  "event_triggers": [
+    {
+      "name": "issue_graphql_placeholder",
+      "event": "sql_drop",
+      "enabled": "O",
+      "tags": [
+        "DROP EXTENSION"
+      ],
+      "function_schema": "extensions",
+      "function_name": "set_graphql_placeholder",
+      "definition_digest": "b0cadab880dc68f569b3e01057dc6f5acee9d05e122de6f4256130ae330bbcec",
+      "blocks_certified_manifest": false
+    },
+    {
+      "name": "issue_pg_cron_access",
+      "event": "ddl_command_end",
+      "enabled": "O",
+      "tags": [
+        "CREATE EXTENSION"
+      ],
+      "function_schema": "extensions",
+      "function_name": "grant_pg_cron_access",
+      "definition_digest": "eb3fa2e82a0135bc04a6236f93331911861c91b45d72cba5d9c03c1be2c34b4c",
+      "blocks_certified_manifest": false
+    },
+    {
+      "name": "issue_pg_graphql_access",
+      "event": "ddl_command_end",
+      "enabled": "O",
+      "tags": [
+        "CREATE EXTENSION"
+      ],
+      "function_schema": "extensions",
+      "function_name": "grant_pg_graphql_access",
+      "definition_digest": "9ec845adab4ba00bbf7740458b6c4461094697023f0f7adc693b373e2ea54f68",
+      "blocks_certified_manifest": false
+    },
+    {
+      "name": "issue_pg_net_access",
+      "event": "ddl_command_end",
+      "enabled": "O",
+      "tags": [
+        "CREATE EXTENSION"
+      ],
+      "function_schema": "extensions",
+      "function_name": "grant_pg_net_access",
+      "definition_digest": "e38c4060751c9695123350596f1cb0d0c943015f3267a2a455d8efe02c711184",
+      "blocks_certified_manifest": false
+    },
+    {
+      "name": "pgrst_ddl_watch",
+      "event": "ddl_command_end",
+      "enabled": "O",
+      "tags": null,
+      "function_schema": "extensions",
+      "function_name": "pgrst_ddl_watch",
+      "definition_digest": "2b4b5d702ddf70fbd1a05c9825f9f9016d5c0ef97dd3df5f5b012ea23d9b94b1",
+      "blocks_certified_manifest": true
+    },
+    {
+      "name": "pgrst_drop_watch",
+      "event": "sql_drop",
+      "enabled": "O",
+      "tags": null,
+      "function_schema": "extensions",
+      "function_name": "pgrst_drop_watch",
+      "definition_digest": "3a2696133853e17a0456cbfbb233a03815f50895492143e84df983b558d76593",
+      "blocks_certified_manifest": true
+    }
+  ],
+  "rollback": "CONFIRMED",
+  "connection_closed": true,
+  "connection_evidence": {
+    "connection_instance_id": "1572264e-99e8-42a6-8ccb-93daa8f2975b",
+    "opened_at": "2026-10-14T14:28:08.949Z",
+    "handshake_events": 1,
+    "handshake_at": "2026-10-14T14:28:08.611Z",
+    "tls_protocol": "TLSv1.3",
+    "tls_cipher": "TLS_AES_256_GCM_SHA384",
+    "rollback_at": "2026-10-14T14:28:15.116Z",
+    "closed_at": "2026-10-14T14:28:15.268Z",
+    "query_count": 45
+  },
+  "reason": "EVENT_TRIGGER_DEPENDENCIES_UNCERTIFIED",
+  "finished_utc": "2026-10-14T14:28:15.269Z"
+}

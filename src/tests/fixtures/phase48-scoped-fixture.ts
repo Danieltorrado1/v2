@@ -1,4 +1,5 @@
 import {readFileSync} from 'node:fs';
+import baseline from '../../modules/cobertura/phase48-managed-events-baseline.json';
 import {SCHEMA_SCOPE} from '../../modules/cobertura/phase48-readonly-schema-scope';
 import {localClient} from '../../modules/cobertura/phase48-dynamic-local';
 import {sq} from '../../modules/cobertura/phase48-scoped-repository';
@@ -6,7 +7,10 @@ export async function scopedFixture(n=733){
  if(!Number.isInteger(n)||n<730||n>750)throw Error('SYNTHETIC_POPULATION_REQUIRED');
  const db=localClient();await db.connect();
  try{
-  await db.query('DROP SCHEMA public CASCADE;CREATE SCHEMA public');
+  await db.query("DROP EVENT TRIGGER IF EXISTS pgrst_ddl_watch;DROP EVENT TRIGGER IF EXISTS pgrst_drop_watch;DROP SCHEMA IF EXISTS extensions CASCADE;DROP SCHEMA public CASCADE;CREATE SCHEMA public");
+  await db.query("DO $$BEGIN IF NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='supabase_admin') THEN CREATE ROLE supabase_admin SUPERUSER;END IF;END$$;CREATE SCHEMA extensions AUTHORIZATION supabase_admin");
+  for(const f of baseline.functions){await db.query(f.definition);await db.query('ALTER FUNCTION '+f.identity+' OWNER TO supabase_admin');}
+  for(const e of baseline.events){await db.query('CREATE EVENT TRIGGER '+e.name+' ON '+e.event+' EXECUTE FUNCTION '+e.function_identity);await db.query('ALTER EVENT TRIGGER '+e.name+' OWNER TO supabase_admin');}
   const catalog=JSON.parse(readFileSync('reports/phase48-schema-production-catalogs.json','utf8').replace(/^\uFEFF/,'')).schema.inventory;
   for(const name of SCHEMA_SCOPE.critical_relations){const cols=catalog.columns.filter((r:any)=>r.relation===name);if(!cols.length)throw Error('FIXTURE_CATALOG_MISSING:'+name);
    await db.query('CREATE TABLE public.'+sq(name)+' ('+cols.map((r:any)=>sq(r.name)+' '+r.type).join(',')+')');

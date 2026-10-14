@@ -1,0 +1,12 @@
+{
+  "kind": "STOPPED_EVIDENCE",
+  "source": "tmp/phase48-pooler-local/backup-dynamic-precheck-result.json",
+  "artifact": "precheck.json",
+  "sha256": "8dea8bb86d7c955eeae04b6ca6ee901b67876aa33572b73a84f2ecc04c6de805",
+  "bytes": 7378,
+  "reason": "EVENT_TRIGGER_DEPENDENCIES_UNCERTIFIED",
+  "production_writes": 0,
+  "rollback": "CONFIRMED",
+  "closed": true,
+  "preserved_utc": "2026-10-14T14:38:58.860Z"
+}

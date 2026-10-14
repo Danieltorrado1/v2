@@ -1,0 +1,73 @@
+{
+  "version": "phase48-managed-events-v1",
+  "events": [
+    {
+      "name": "pgrst_ddl_watch",
+      "event": "ddl_command_end",
+      "tags": null,
+      "enabled": "O",
+      "owner": "supabase_admin",
+      "function_identity": "extensions.pgrst_ddl_watch()"
+    },
+    {
+      "name": "pgrst_drop_watch",
+      "event": "sql_drop",
+      "tags": null,
+      "enabled": "O",
+      "owner": "supabase_admin",
+      "function_identity": "extensions.pgrst_drop_watch()"
+    }
+  ],
+  "functions": [
+    {
+      "schema": "extensions",
+      "name": "pgrst_ddl_watch",
+      "identity": "extensions.pgrst_ddl_watch()",
+      "owner": "supabase_admin",
+      "language": "plpgsql",
+      "security_definer": false,
+      "config": [
+        "search_path=\"\""
+      ],
+      "volatility": "v",
+      "acl": "{=X/supabase_admin,supabase_admin=X/supabase_admin,postgres=X*/supabase_admin}",
+      "definition": "CREATE OR REPLACE FUNCTION extensions.pgrst_ddl_watch()\n RETURNS event_trigger\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\nDECLARE\n  cmd record;\nBEGIN\n  FOR cmd IN SELECT * FROM pg_event_trigger_ddl_commands()\n  LOOP\n    IF cmd.command_tag IN (\n      'CREATE SCHEMA', 'ALTER SCHEMA'\n    , 'CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO', 'ALTER TABLE'\n    , 'CREATE FOREIGN TABLE', 'ALTER FOREIGN TABLE'\n    , 'CREATE VIEW', 'ALTER VIEW'\n    , 'CREATE MATERIALIZED VIEW', 'ALTER MATERIALIZED VIEW'\n    , 'CREATE FUNCTION', 'ALTER FUNCTION'\n    , 'CREATE TRIGGER'\n    , 'CREATE TYPE', 'ALTER TYPE'\n    , 'CREATE RULE'\n    , 'COMMENT'\n    )\n    -- don't notify in case of CREATE TEMP table or other objects created on pg_temp\n    AND cmd.schema_name is distinct from 'pg_temp'\n    THEN\n      NOTIFY pgrst, 'reload schema';\n    END IF;\n  END LOOP;\nEND; $function$\n",
+      "extension": null,
+      "definition_sha256": "2b4b5d702ddf70fbd1a05c9825f9f9016d5c0ef97dd3df5f5b012ea23d9b94b1"
+    },
+    {
+      "schema": "extensions",
+      "name": "pgrst_drop_watch",
+      "identity": "extensions.pgrst_drop_watch()",
+      "owner": "supabase_admin",
+      "language": "plpgsql",
+      "security_definer": false,
+      "config": [
+        "search_path=\"\""
+      ],
+      "volatility": "v",
+      "acl": "{=X/supabase_admin,supabase_admin=X/supabase_admin,postgres=X*/supabase_admin}",
+      "definition": "CREATE OR REPLACE FUNCTION extensions.pgrst_drop_watch()\n RETURNS event_trigger\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\nDECLARE\n  obj record;\nBEGIN\n  FOR obj IN SELECT * FROM pg_event_trigger_dropped_objects()\n  LOOP\n    IF obj.object_type IN (\n      'schema'\n    , 'table'\n    , 'foreign table'\n    , 'view'\n    , 'materialized view'\n    , 'function'\n    , 'trigger'\n    , 'type'\n    , 'rule'\n    )\n    AND obj.is_temporary IS false -- no pg_temp objects\n    THEN\n      NOTIFY pgrst, 'reload schema';\n    END IF;\n  END LOOP;\nEND; $function$\n",
+      "extension": null,
+      "definition_sha256": "3a2696133853e17a0456cbfbb233a03815f50895492143e84df983b558d76593"
+    }
+  ],
+  "dependency_objects": [
+    "pg_event_trigger|event trigger pgrst_ddl_watch",
+    "pg_event_trigger|event trigger pgrst_drop_watch",
+    "pg_extension|extension plpgsql",
+    "pg_language|language plpgsql",
+    "pg_namespace|schema extensions",
+    "pg_proc|function extensions.pgrst_ddl_watch()",
+    "pg_proc|function extensions.pgrst_drop_watch()",
+    "pg_proc|function plpgsql_call_handler()",
+    "pg_proc|function plpgsql_inline_handler(internal)",
+    "pg_proc|function plpgsql_validator(oid)"
+  ],
+  "expected_notification": {
+    "channel": "pgrst",
+    "payload": "reload schema"
+  },
+  "classification": "MANAGED_NOTIFICATION_ONLY",
+  "source_audit_sha256": "9a264dac77ae2f0a7fb0adb65641ab61acd5cd57ace27a671a8129a311c5d5e0"
+}

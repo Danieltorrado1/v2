@@ -1,0 +1,63 @@
+[
+  {
+    "test": "actual_local_phase48",
+    "rollback": "LOCAL_ROLLED_BACK",
+    "commit": "LOCAL_COMMITTED",
+    "reversal": "LOCAL_REVERSED",
+    "notifications": [
+      {
+        "channel": "pgrst",
+        "payload": "reload schema"
+      },
+      {
+        "channel": "pgrst",
+        "payload": "reload schema"
+      }
+    ],
+    "economic_hashes_unchanged": true,
+    "definition_digest": "2adc38cde41847fb481f21fa9a353daa458851f3df7b08754cfe5daea88b4a0e"
+  },
+  {
+    "test": "trigger_failure_during_actual_phase48",
+    "all_phase48_changes_rolled_back": true
+  },
+  {
+    "test": "dispatch_instrumented_only",
+    "trace": [
+      {
+        "event": "ddl_command_start",
+        "tag": "CREATE TABLE"
+      },
+      {
+        "event": "ddl_command_end",
+        "tag": "CREATE TABLE"
+      },
+      {
+        "event": "ddl_command_start",
+        "tag": "ALTER TABLE"
+      },
+      {
+        "event": "ddl_command_end",
+        "tag": "ALTER TABLE"
+      },
+      {
+        "event": "ddl_command_start",
+        "tag": "DROP TABLE"
+      },
+      {
+        "event": "sql_drop",
+        "tag": "DROP TABLE"
+      },
+      {
+        "event": "ddl_command_end",
+        "tag": "DROP TABLE"
+      }
+    ],
+    "rollback_notification_count": 0,
+    "committed_notification": {
+      "channel": "pgrst",
+      "payload": "reload schema"
+    },
+    "note": "trace observer adds local rows/sequence; it is absent from certified Phase48 tests and excluded from claims about managed function effects"
+  }
+]

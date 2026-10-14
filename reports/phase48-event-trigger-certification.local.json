@@ -1,0 +1,98 @@
+{
+  "status": "EVENT_TRIGGERS_CERTIFIED_LOCAL",
+  "version": "PHASE48_SCOPED_MANAGED_EVENTS_V3",
+  "created_utc": "2026-10-14T15:24:03.733Z",
+  "branch": "fix/phase48-event-trigger-dependencies",
+  "base": "9f478ae8d519421759845e9a1826f8414c59efac",
+  "readonly_runner_commit": "RESOLVED_FROM_FINAL_HEAD_BY_scopedRelease",
+  "mutator_commit": "RESOLVED_FROM_SCOPED_MUTATOR_COMMIT",
+  "classifications": [
+    {
+      "trigger": "pgrst_ddl_watch",
+      "classification": "MANAGED_NOTIFICATION_ONLY"
+    },
+    {
+      "trigger": "pgrst_drop_watch",
+      "classification": "MANAGED_NOTIFICATION_ONLY"
+    }
+  ],
+  "tests": {
+    "local_postgresql_17_11": 80,
+    "runner_mutator_tls_contract_schema_publication": 150,
+    "total": 230,
+    "failures": 0,
+    "typecheck": "PASSED",
+    "backend_build": "PASSED",
+    "FrontendNuevo_build": "PASSED_WITH_EXISTING_CHUNK_SIZE_WARNING",
+    "git_diff_check": "PASSED"
+  },
+  "code_sha256": {
+    "src/scripts/phase48-backup-precheck-readonly.cjs": "809713b0ba1cd354b5d160549be611e506c653e7acc377c812b1058a7bafab78",
+    "src/modules/cobertura/phase48-backup-readonly-precheck.ts": "0a4ed596de8aff140aa5a0ce5b8457c3e798c94522cda69196f2968fb78b1983",
+    "src/modules/cobertura/phase48-managed-events.ts": "8804be0754e254362ac03c323e4e0299b0603e43abad99b97bffb6bb4be0219e",
+    "src/modules/cobertura/phase48-managed-events-baseline.json": "c3f17c1fedf152b92e445e93917063be367c7f26010458a33e7ed84d292d3aab",
+    "src/modules/cobertura/phase48-scoped-contract.ts": "e7e993ece1883f4661bd293f44c478dfcbce92d4683843b90c7ff4cdbd6d9f6f",
+    "src/modules/cobertura/phase48-scoped-repository.ts": "76d68a68ec6173a7b37ae16ff0887929efc6fb76b1892e3e8912e6546540a1f0",
+    "src/modules/cobertura/phase48-scoped-local.ts": "084a1db241b6560cabdbd39a20aa8564a563b60be9f213f3a4452344ef2d5760",
+    "src/modules/cobertura/phase48-scoped-release.ts": "3e291a39dc22ebd4d1f5f6f28c2a45b8d0dcc1d1ec485686215f9dead9f7a3f3",
+    "src/scripts/phase48-scoped-certification.ts": "25bb7b6d3af2154c1aba346f842e1cfe7d4836007e76d362f7c5feacf36ef7a8",
+    "src/modules/cobertura/phase48-readonly-contract.ts": "268e1df44bbe8db95b69db2a86f5c99e182906c0353e6839682f0c518badd9e4",
+    "src/modules/cobertura/phase48-readonly-schema-scope.ts": "f500b8d42bb6f5c404faab28de38d67372f19d32d1cf33ed927c4917222c3f91",
+    "src/modules/cobertura/phase48-readonly-schema-catalog.ts": "3b2f7903a6accb412974df05a3430913a3b2f1b86db16814bcf543e4a4b4b63c",
+    "src/modules/cobertura/phase48-historical-domain.ts": "be67949a3efe93cae92680cb2455f82bf8a5ed649a544ee7885eda4461d869eb",
+    "src/modules/cobertura/phase48-readonly-receipts.ts": "efab6fc5c096ccf03bd6caa682a85f6cce33e115ad98ceea12be4b171ef266c9",
+    "src/modules/cobertura/phase48-dynamic-local.ts": "ea2c61c91a724d4e2ee902153ff91da10d9a5b91e725ae0ac7534a560c2b5d37",
+    "src/modules/cobertura/phase48-readonly-tls.ts": "d453ee88c732a5596d921a043947526c0ada91a2e9052d9f33d6c1544f0ce8a4",
+    "src/modules/cobertura/phase48-readonly-target.ts": "754300d705ee2a1365e032f5859d683bb5017e3df5cc996cc7566ee0f2e5d235",
+    "src/modules/cobertura/phase48-readonly-connection.ts": "9d7409360ea7af9f5544277a3895eedc0b3a67f898eea5f703a755dc3cdfa3f2",
+    "src/modules/cobertura/phase48-readonly-schema-identity.ts": "633b994951b68fae68ea94630348bf4ba12f1ce8b8043333738adc675f67dbdf",
+    "src/scripts/phase48-production-readonly.ts": "5c2c49dd033c8ad8518680f025980297e6cfea191886fc9995f74b6924ac63b7",
+    "src/scripts/phase48-historical-production.ts": "1c563ead7f9cd515f0c469282e97fcf303d9202432d4f1aa41804e3358b9df3b",
+    "src/modules/cobertura/phase48-production-executor.ts": "94a0fafb605b91e1bb115d40bd41afbb24179864d8f8d28364d9140f055b1214",
+    "src/modules/cobertura/phase48-dynamic-gate.ts": "fa9ccf92c6fbd5de8d14fe9fb781a2dc2e5b7bc851a6184722cffa9bdecf31ce",
+    "package-lock.json": "db7a06196facc0fa6a6e080387b886673ea06d5486885b49dee8b7445e20bba4",
+    "package.json": "1aed1f1222235f7eeba959cf0d5075731624d15b37755cec26f5a7d51be960ee",
+    "tsconfig.json": "640a93d0b9de5607230949a5d59f391504b86f58fff733d723e8dc58f0d568f9"
+  },
+  "artifacts": [
+    {
+      "file": "reports/phase48-event-trigger-catalog-audit.json",
+      "sha256": "9a264dac77ae2f0a7fb0adb65641ab61acd5cd57ace27a671a8129a311c5d5e0"
+    },
+    {
+      "file": "reports/phase48-event-trigger-local-proof.tap",
+      "sha256": "bf7cbe24e76f92a5e6c08d8a6f0878aaaf1925b0c41ba311e58a2be2c578a13f"
+    },
+    {
+      "file": "reports/phase48-event-trigger-runner-proof.tap",
+      "sha256": "96736ea72244e9a48b816cff2d7994b25c0887e3a152ad6868e351646f4557bf"
+    },
+    {
+      "file": "reports/phase48-event-trigger-observations.local.json",
+      "sha256": "406f753bef3839290660aee000bba12fcf5de260dd133496e3712238c1fb4afb"
+    },
+    {
+      "file": "reports/phase48-event-trigger-manifest-example.local.json",
+      "sha256": "d7b64d1ffe679816763db2ffa3e18f4ec9d3e1ab35ed3b3b39b7db462fecd944"
+    }
+  ],
+  "productive_audit": {
+    "transactions": 1,
+    "read_only": true,
+    "isolation": "repeatable read",
+    "server": "17.6",
+    "tls": "TLSv1.3",
+    "rollback": "CONFIRMED",
+    "connection_closed": true,
+    "production_writes": 0,
+    "business_row_reads": 0
+  },
+  "productive_authorization": "REVOKED",
+  "backup_created": false,
+  "local_cluster_removed": true,
+  "residual_risks": [
+    "No administrative routine/event DDL exclusion from table/advisory locks: operational no-deploy/no-migration window still mandatory",
+    "Standard installed PostgreSQL binary/native implementation trust; not a production binary audit",
+    "PostgreSQL LISTEN/NOTIFY reproduced; no local PostgREST service or Supabase platform clone"
+  ]
+}
