@@ -4,7 +4,7 @@
   "branch": "fix/phase48-trigger-pseudorecord-parser",
   "base": "b03b827021addd06ffdc4acc8a6abad82b8b12f6",
   "readonly_runner_commit": "RESOLVED_FROM_FINAL_HEAD_BY_scopedRelease",
-  "mutator_commit": "RESOLVED_FROM_SCOPED_MUTATOR_COMMIT",
+  "mutator_commit": "4a616e774fea82d57f2fc51e8902ab48a707bd4e",
   "code_sha256": {
     "src/modules/cobertura/phase48-pseudorecord-parser.ts": "2d8fcc681eaa247bcd164977702ce3920cf0525e8b97e3d336aa3fad2b7445e5",
     "src/modules/cobertura/phase48-pseudorecord-baseline.json": "fc86f5c95a5ee37bc8484cb9c622ab5b2c4b2f39cc541e1b4a5d867df0b441c1",
