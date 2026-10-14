@@ -1,9 +1,9 @@
 import {createHmac,randomBytes,timingSafeEqual} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {contractDigest} from './phase48-readonly-contract';
-export const SCOPED_VERSION='PHASE48_SCOPED_MANAGED_EVENTS_V3' as const;
+export const SCOPED_VERSION='PHASE48_SCOPED_CONSTANT_SQL_V4' as const;
 export const SCOPED_TTL_MS=120_000;
-const revokedCommits=new Set(execFileSync('git',['rev-list','9f478ae8d519421759845e9a1826f8414c59efac'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim().split(/\r?\n/));
+const revokedCommits=new Set(execFileSync('git',['rev-list','474829ac5f0ba826d77f6c08f490c901a28bcb84'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim().split(/\r?\n/));
 export const SCOPED_DIGESTS=['candidate_ids_digest','phase48_candidates_digest','source_digest','write_set_before_digest','critical_schema_digest','critical_definition_digest','critical_sequences_digest'] as const;
 export const scopedDigest=contractDigest;
 const deepFreeze=<T>(value:T):T=>{if(value&&typeof value==='object'){Object.freeze(value);for(const v of Object.values(value))deepFreeze(v);}return value;};

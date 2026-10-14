@@ -1,0 +1,190 @@
+{
+  "kind": "PHASE48_CONSTANT_SQL_CATALOG_AUDIT",
+  "started_utc": "2026-10-14T16:58:15.371Z",
+  "production_writes": 0,
+  "business_row_reads": 0,
+  "evidence_manifest_sha256": "bbcd04ebcc0e6b9e5faf1d11016c45af4e14e877f23febdae5ab7ea0f2560345",
+  "evidence_artifacts": [
+    {
+      "sha256": "3f09575bfacd3df9e646df2233c77205856b9c80273407a5c3c35d57dc347553",
+      "file": "precheck-stopped.json",
+      "bytes": 7889
+    },
+    {
+      "sha256": "b00af1810a64a64fff1ab07ab22418c42acdec0987d629a964cf67cdab1e2279",
+      "file": "catalog-diagnosis.json",
+      "bytes": 2413
+    }
+  ],
+  "session": {
+    "server_version": "17.6",
+    "isolation": "repeatable read",
+    "read_only": "on",
+    "search_path": "pg_catalog, public",
+    "temp_schema": "0"
+  },
+  "function": {
+    "oid": "28278",
+    "identity": "nomina_invalidar_revision_operativa()",
+    "schema": "public",
+    "owner": "postgres",
+    "language": "plpgsql",
+    "security_definer": false,
+    "config": null,
+    "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "arguments": "",
+    "returns": "trigger",
+    "definition": "CREATE OR REPLACE FUNCTION public.nomina_invalidar_revision_operativa()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE v_periodo BIGINT; v_empleado BIGINT; v_persona BIGINT; v_vinculacion BIGINT; v_reason TEXT; v_family TEXT; v_record BIGINT;\r\nBEGIN\r\n  v_periodo := COALESCE(NEW.periodo_id, OLD.periodo_id);\r\n  IF NOT EXISTS (SELECT 1 FROM nomina_periodos WHERE id=v_periodo AND estado='ABIERTO') THEN\r\n    IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\r\n  END IF;\r\n  IF TG_TABLE_NAME='nomina_asistencia_diaria' THEN\r\n    SELECT ne.id INTO v_empleado FROM nomina_empleados ne\r\n    WHERE ne.periodo_id=v_periodo AND ne.vinculacion_id=COALESCE(NEW.vinculacion_id, OLD.vinculacion_id)\r\n    ORDER BY ne.id LIMIT 1;\r\n  ELSE v_empleado := COALESCE(NEW.nomina_empleado_id, OLD.nomina_empleado_id); END IF;\r\n  v_reason := CASE WHEN TG_TABLE_NAME='nomina_novedades' THEN CASE WHEN TG_OP='INSERT' THEN 'NOVEDAD_CREADA' WHEN TG_OP='DELETE' THEN 'NOVEDAD_DESACTIVADA' ELSE 'NOVEDAD_MODIFICADA' END\r\n    WHEN TG_TABLE_NAME='nomina_asistencia_diaria' THEN 'ASISTENCIA_MODIFICADA'\r\n    WHEN TG_TABLE_NAME='nomina_movimientos' THEN 'TA_MODIFICADO' ELSE TG_TABLE_NAME||'_MODIFICADA' END;\r\n  IF TG_TABLE_NAME='nomina_movimientos' THEN\r\n    v_record := COALESCE(NEW.id, OLD.id);\r\n    EXECUTE 'SELECT familia_movimiento FROM nomina_movimientos WHERE id=$1' INTO v_family USING v_record;\r\n    IF v_family='CAMBIO_OPERATIVO' THEN v_reason := 'CAMBIO_OPERATIVO_MODIFICADO'; END IF;\r\n  END IF;\r\n  IF v_empleado IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;\r\n  SELECT ne.vinculacion_id,v.persona_id INTO v_vinculacion,v_persona FROM nomina_empleados ne\r\n    JOIN vinculaciones v ON v.id=ne.vinculacion_id WHERE ne.id=v_empleado LIMIT 1;\r\n  IF v_persona IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;\r\n  INSERT INTO nomina_revision_operativa(periodo_id,nomina_empleado_id,persona_id,vinculacion_id,estado_revision,invalidado_at,motivo_invalidacion,updated_at)\r\n  VALUES(v_periodo,v_empleado,v_persona,v_vinculacion,'REQUIERE_REVISION',NOW(),v_reason,NOW())\r\n  ON CONFLICT(periodo_id,nomina_empleado_id) DO UPDATE SET estado_revision='REQUIERE_REVISION',revisado_por=NULL,revisado_at=NULL,\r\n    invalidado_at=NOW(),motivo_invalidacion=v_reason,version_revision=nomina_revision_operativa.version_revision+1,updated_at=NOW();\r\n  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\r\nEND; $function$\n",
+    "definition_sha256": "e59bf71541ec1d4ec34c3f11779210874b93bc626055b34a5f8a1acc6f51ceff"
+  },
+  "triggers": [
+    {
+      "schema": "public",
+      "relation": "nomina_asistencia_diaria",
+      "name": "trg_nomina_asistencia_invalida_revision",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER trg_nomina_asistencia_invalida_revision AFTER INSERT OR DELETE OR UPDATE ON public.nomina_asistencia_diaria FOR EACH ROW EXECUTE FUNCTION nomina_invalidar_revision_operativa()"
+    },
+    {
+      "schema": "public",
+      "relation": "nomina_movimientos",
+      "name": "trg_nomina_movimientos_invalida_revision",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER trg_nomina_movimientos_invalida_revision AFTER INSERT OR DELETE OR UPDATE ON public.nomina_movimientos FOR EACH ROW EXECUTE FUNCTION nomina_invalidar_revision_operativa()"
+    },
+    {
+      "schema": "public",
+      "relation": "nomina_novedad_turnos",
+      "name": "trg_nomina_novedad_turnos_invalida_revision",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER trg_nomina_novedad_turnos_invalida_revision AFTER INSERT OR DELETE OR UPDATE ON public.nomina_novedad_turnos FOR EACH ROW EXECUTE FUNCTION nomina_invalidar_revision_operativa()"
+    },
+    {
+      "schema": "public",
+      "relation": "nomina_novedades",
+      "name": "trg_nomina_novedades_invalida_revision",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER trg_nomina_novedades_invalida_revision AFTER INSERT OR DELETE OR UPDATE ON public.nomina_novedades FOR EACH ROW EXECUTE FUNCTION nomina_invalidar_revision_operativa()"
+    }
+  ],
+  "callers": [],
+  "dependencies": [
+    {
+      "class": "pg_proc",
+      "oid": "28278",
+      "object": "function nomina_invalidar_revision_operativa()",
+      "depth": 0
+    },
+    {
+      "class": "pg_language",
+      "oid": "13619",
+      "object": "language plpgsql",
+      "depth": 1
+    },
+    {
+      "class": "pg_namespace",
+      "oid": "2200",
+      "object": "schema public",
+      "depth": 1
+    },
+    {
+      "class": "pg_extension",
+      "oid": "13615",
+      "object": "extension plpgsql",
+      "depth": 2
+    },
+    {
+      "class": "pg_proc",
+      "oid": "13616",
+      "object": "function plpgsql_call_handler()",
+      "depth": 2
+    },
+    {
+      "class": "pg_proc",
+      "oid": "13617",
+      "object": "function plpgsql_inline_handler(internal)",
+      "depth": 2
+    },
+    {
+      "class": "pg_proc",
+      "oid": "13618",
+      "object": "function plpgsql_validator(oid)",
+      "depth": 2
+    },
+    {
+      "class": "pg_extension",
+      "oid": "13615",
+      "object": "extension plpgsql",
+      "depth": 3
+    }
+  ],
+  "related_functions": [
+    {
+      "identity": "nomina_invalidar_revision_condicion_economica()",
+      "language": "plpgsql",
+      "security_definer": false,
+      "config": null,
+      "owner": "postgres",
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.nomina_invalidar_revision_condicion_economica()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE r RECORD;\r\nBEGIN\r\n  IF LOWER(BTRIM(COALESCE(NEW.tipo_condicion, OLD.tipo_condicion))) <> 'aporta_pension' THEN\r\n    RETURN COALESCE(NEW, OLD);\r\n  END IF;\r\n  FOR r IN\r\n    SELECT np.id AS periodo_id, ne.id AS nomina_empleado_id, ne.vinculacion_id\r\n    FROM nomina_periodos np JOIN nomina_empleados ne ON ne.periodo_id = np.id\r\n    WHERE ne.vinculacion_id = COALESCE(NEW.vinculacion_id, OLD.vinculacion_id)\r\n      AND np.estado = 'ABIERTO'\r\n      AND np.fecha_fin >= COALESCE(NEW.vigencia_desde, OLD.vigencia_desde)\r\n      AND np.fecha_inicio <= COALESCE(NEW.vigencia_hasta, OLD.vigencia_hasta, 'infinity'::date)\r\n  LOOP\r\n    INSERT INTO nomina_revision_operativa(periodo_id,nomina_empleado_id,persona_id,vinculacion_id,estado_revision,invalidado_at,motivo_invalidacion,updated_at)\r\n    SELECT r.periodo_id,r.nomina_empleado_id,v.persona_id,r.vinculacion_id,'REQUIERE_REVISION',NOW(),'FUENTE_APORTA_PENSION',NOW()\r\n    FROM vinculaciones v WHERE v.id=r.vinculacion_id\r\n    ON CONFLICT(periodo_id,nomina_empleado_id) DO UPDATE SET estado_revision='REQUIERE_REVISION',revisado_por=NULL,revisado_at=NULL,\r\n      invalidado_at=NOW(),motivo_invalidacion='FUENTE_APORTA_PENSION',version_revision=nomina_revision_operativa.version_revision+1,updated_at=NOW();\r\n  END LOOP;\r\n  RETURN COALESCE(NEW, OLD);\r\nEND;\r\n$function$\n"
+    },
+    {
+      "identity": "nomina_invalidar_revision_operativa()",
+      "language": "plpgsql",
+      "security_definer": false,
+      "config": null,
+      "owner": "postgres",
+      "acl": "{=X/postgres,postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "definition": "CREATE OR REPLACE FUNCTION public.nomina_invalidar_revision_operativa()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE v_periodo BIGINT; v_empleado BIGINT; v_persona BIGINT; v_vinculacion BIGINT; v_reason TEXT; v_family TEXT; v_record BIGINT;\r\nBEGIN\r\n  v_periodo := COALESCE(NEW.periodo_id, OLD.periodo_id);\r\n  IF NOT EXISTS (SELECT 1 FROM nomina_periodos WHERE id=v_periodo AND estado='ABIERTO') THEN\r\n    IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\r\n  END IF;\r\n  IF TG_TABLE_NAME='nomina_asistencia_diaria' THEN\r\n    SELECT ne.id INTO v_empleado FROM nomina_empleados ne\r\n    WHERE ne.periodo_id=v_periodo AND ne.vinculacion_id=COALESCE(NEW.vinculacion_id, OLD.vinculacion_id)\r\n    ORDER BY ne.id LIMIT 1;\r\n  ELSE v_empleado := COALESCE(NEW.nomina_empleado_id, OLD.nomina_empleado_id); END IF;\r\n  v_reason := CASE WHEN TG_TABLE_NAME='nomina_novedades' THEN CASE WHEN TG_OP='INSERT' THEN 'NOVEDAD_CREADA' WHEN TG_OP='DELETE' THEN 'NOVEDAD_DESACTIVADA' ELSE 'NOVEDAD_MODIFICADA' END\r\n    WHEN TG_TABLE_NAME='nomina_asistencia_diaria' THEN 'ASISTENCIA_MODIFICADA'\r\n    WHEN TG_TABLE_NAME='nomina_movimientos' THEN 'TA_MODIFICADO' ELSE TG_TABLE_NAME||'_MODIFICADA' END;\r\n  IF TG_TABLE_NAME='nomina_movimientos' THEN\r\n    v_record := COALESCE(NEW.id, OLD.id);\r\n    EXECUTE 'SELECT familia_movimiento FROM nomina_movimientos WHERE id=$1' INTO v_family USING v_record;\r\n    IF v_family='CAMBIO_OPERATIVO' THEN v_reason := 'CAMBIO_OPERATIVO_MODIFICADO'; END IF;\r\n  END IF;\r\n  IF v_empleado IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;\r\n  SELECT ne.vinculacion_id,v.persona_id INTO v_vinculacion,v_persona FROM nomina_empleados ne\r\n    JOIN vinculaciones v ON v.id=ne.vinculacion_id WHERE ne.id=v_empleado LIMIT 1;\r\n  IF v_persona IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;\r\n  INSERT INTO nomina_revision_operativa(periodo_id,nomina_empleado_id,persona_id,vinculacion_id,estado_revision,invalidado_at,motivo_invalidacion,updated_at)\r\n  VALUES(v_periodo,v_empleado,v_persona,v_vinculacion,'REQUIERE_REVISION',NOW(),v_reason,NOW())\r\n  ON CONFLICT(periodo_id,nomina_empleado_id) DO UPDATE SET estado_revision='REQUIERE_REVISION',revisado_por=NULL,revisado_at=NULL,\r\n    invalidado_at=NOW(),motivo_invalidacion=v_reason,version_revision=nomina_revision_operativa.version_revision+1,updated_at=NOW();\r\n  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\r\nEND; $function$\n"
+    }
+  ],
+  "relations": [
+    {
+      "schema": "public",
+      "name": "nomina_movimientos",
+      "kind": "r",
+      "owner": "postgres",
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": true
+    },
+    {
+      "schema": "public",
+      "name": "nomina_revision_operativa",
+      "kind": "r",
+      "owner": "postgres",
+      "acl": "{postgres=arwdDxtm/postgres,anon=arwdDxtm/postgres,authenticated=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+      "rls": false
+    }
+  ],
+  "role_settings": [
+    {
+      "database": "ALL",
+      "role": "postgres",
+      "config": [
+        "search_path=\"\\$user\", public, extensions"
+      ]
+    },
+    {
+      "database": "postgres",
+      "role": "ALL",
+      "config": [
+        "app.settings.jwt_exp=<VALUE_OMITTED>"
+      ]
+    }
+  ],
+  "status": "CAPTURED",
+  "rollback": "CONFIRMED",
+  "closed": true,
+  "connection_evidence": {
+    "connection_instance_id": "f186745a-3fa4-4bbc-994d-1ca6870701b7",
+    "opened_at": "2026-10-14T16:58:16.503Z",
+    "handshake_events": 1,
+    "handshake_at": "2026-10-14T16:58:16.222Z",
+    "tls_protocol": "TLSv1.3",
+    "tls_cipher": "TLS_AES_256_GCM_SHA384",
+    "rollback_at": "2026-10-14T16:58:17.781Z",
+    "closed_at": "2026-10-14T16:58:17.874Z",
+    "query_count": 11
+  },
+  "finished_utc": "2026-10-14T16:58:17.875Z"
+}

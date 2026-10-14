@@ -9,7 +9,7 @@ const identities=['institucion_id','sede_id','modalidad_id'];
 export type LocalTarget={clusterDirectory:string};
 export function localClient():Client {
  if(process.env.PHASE48_DYNAMIC_LOCAL_CERT!=='true')throw Error('LOCAL_CERTIFICATION_REQUIRED');
- return new Client({host:'127.0.0.1',port:55470,user:'phase48_dynamic_local',database:'postgres',ssl:false});
+ return new Client({host:'127.0.0.1',port:55470,user:'phase48_dynamic_local',database:'postgres',ssl:false,options:"-c search_path=public,pg_temp"});
 }
 async function identity(db:Client,target:LocalTarget) {
  const expected=resolve(process.cwd(),'tmp/phase48-pooler-local/dynamic-cluster');

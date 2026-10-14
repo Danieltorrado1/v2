@@ -21,7 +21,7 @@ export async function preflightScopedLocal(authority:ScopedAuthority,target:Loca
  let first:ScopedCapture|undefined;const connections=[];
  for(let i=0;i<2;i++){
   const db=localClient();await db.connect();let session:any;
-  try{await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await db.query("SET LOCAL search_path=pg_catalog,public");await db.query("SET LOCAL timezone='UTC'");
+  try{await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await db.query("SET LOCAL search_path=pg_catalog,public,pg_temp");await db.query("SET LOCAL timezone='UTC'");
    session=await identity(db,target);requireScoped(session.read_only==='on'&&session.isolation==='repeatable read','INDEPENDENT_READ_ONLY_REQUIRED');
    const capture=await scopedCapture(db);
    if(first)requireScoped(scopedDigest(first.set)===scopedDigest(capture.set),'SCOPED_DRIFT');else first=capture;
@@ -113,7 +113,7 @@ export async function executeScopedLocal(authority:ScopedAuthority,input:Awaited
   const initial=await scopedCapture(observer);authority.revalidate(seal,initial.set);
   if(options.receipt_directory)publishScopedPreflight(options.receipt_directory,{...input,seal});
   await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');begun=true;
-  await db.query("SET LOCAL lock_timeout='2s'");await db.query("SET LOCAL statement_timeout='120s'");await db.query("SET LOCAL search_path=pg_catalog,public");await db.query("SET LOCAL timezone='UTC'");
+  await db.query("SET LOCAL lock_timeout='2s'");await db.query("SET LOCAL statement_timeout='120s'");await db.query("SET LOCAL search_path=pg_catalog,public,pg_temp");await db.query("SET LOCAL timezone='UTC'");
   await db.query('SET CONSTRAINTS ALL IMMEDIATE');
   requireScoped((await db.query('SELECT pg_try_advisory_xact_lock(15,2449) locked')).rows[0].locked,'ADVISORY_LOCK_BUSY');
   await options.hooks?.beforeLock?.();

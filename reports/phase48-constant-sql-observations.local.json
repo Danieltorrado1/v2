@@ -1,0 +1,22 @@
+{
+  "sequence_before": {
+    "last_value": "1",
+    "is_called": false
+  },
+  "insert": [
+    {
+      "estado_revision": "REQUIERE_REVISION",
+      "motivo_invalidacion": "CAMBIO_OPERATIVO_MODIFICADO",
+      "version_revision": 1
+    }
+  ],
+  "sequence_after_rollback": {
+    "last_value": "1",
+    "is_called": true
+  },
+  "same_update_idempotent": false,
+  "reason": "Each invocation increments version_revision; deletion still invalidates with TA_MODIFICADO",
+  "economics_unchanged": true,
+  "rollback_rows_restored": true,
+  "sequence_note": "nextval from INSERT defaults is nontransactional; standalone invalidation can advance its sequence even on conflict or rollback"
+}

@@ -1,0 +1,88 @@
+{
+  "status": "CONSTANT_SQL_CERTIFIED_LOCAL",
+  "version": "PHASE48_SCOPED_CONSTANT_SQL_V4",
+  "branch": "fix/phase48-constant-dynamic-sql",
+  "base": "474829ac5f0ba826d77f6c08f490c901a28bcb84",
+  "readonly_runner_commit": "RESOLVED_FROM_FINAL_HEAD_BY_scopedRelease",
+  "mutator_commit": "RESOLVED_FROM_SCOPED_MUTATOR_COMMIT",
+  "code_sha256": {
+    "src/modules/cobertura/phase48-constant-sql.ts": "c14b7b782b437d26b4726237ac71fe01a48d88270dbad23c1ffb9a8db37f932f",
+    "src/modules/cobertura/phase48-constant-sql-baseline.json": "013b8e35bea145b27fcf14ea33b9bbc9eed1f4e6ac3330959869ad73a2a1170c",
+    "src/scripts/phase48-backup-precheck-readonly.cjs": "3dfdecf9eb868c223263eed65bfb6e16931d290400320cfbf4051131a752160f",
+    "src/modules/cobertura/phase48-backup-readonly-precheck.ts": "0a4ed596de8aff140aa5a0ce5b8457c3e798c94522cda69196f2968fb78b1983",
+    "src/modules/cobertura/phase48-managed-events.ts": "8804be0754e254362ac03c323e4e0299b0603e43abad99b97bffb6bb4be0219e",
+    "src/modules/cobertura/phase48-managed-events-baseline.json": "c3f17c1fedf152b92e445e93917063be367c7f26010458a33e7ed84d292d3aab",
+    "src/modules/cobertura/phase48-scoped-contract.ts": "7b8ad2c1aaf9adecf2e24eedb40b14c43e7ea113b4dc915decd6eea00232e7d1",
+    "src/modules/cobertura/phase48-scoped-repository.ts": "d90fd096022b69090e5981af271011367860a5d53d33c0c2a1d01a83851d9db9",
+    "src/modules/cobertura/phase48-scoped-local.ts": "36e52d0a150b813386dea0edec73b9aa9b3e6a2c2ced563d57de58516811ada6",
+    "src/modules/cobertura/phase48-scoped-release.ts": "56c82f8e92df81ee42d83ec6970e2640ce88685f9684ffe676c62a46f5de3bba",
+    "src/scripts/phase48-scoped-certification.ts": "25bb7b6d3af2154c1aba346f842e1cfe7d4836007e76d362f7c5feacf36ef7a8",
+    "src/modules/cobertura/phase48-readonly-contract.ts": "268e1df44bbe8db95b69db2a86f5c99e182906c0353e6839682f0c518badd9e4",
+    "src/modules/cobertura/phase48-readonly-schema-scope.ts": "f500b8d42bb6f5c404faab28de38d67372f19d32d1cf33ed927c4917222c3f91",
+    "src/modules/cobertura/phase48-readonly-schema-catalog.ts": "3b2f7903a6accb412974df05a3430913a3b2f1b86db16814bcf543e4a4b4b63c",
+    "src/modules/cobertura/phase48-historical-domain.ts": "be67949a3efe93cae92680cb2455f82bf8a5ed649a544ee7885eda4461d869eb",
+    "src/modules/cobertura/phase48-readonly-receipts.ts": "d790ae972a3d11e7d0cb23e6898bb94be063c4d166557b5d67e1647c55b3bb2f",
+    "src/modules/cobertura/phase48-dynamic-local.ts": "0e15ac33f72b3f2e8326ce4eeedf6d60551765ed57aa8e058bbcba39e2c06044",
+    "src/modules/cobertura/phase48-readonly-tls.ts": "d453ee88c732a5596d921a043947526c0ada91a2e9052d9f33d6c1544f0ce8a4",
+    "src/modules/cobertura/phase48-readonly-target.ts": "754300d705ee2a1365e032f5859d683bb5017e3df5cc996cc7566ee0f2e5d235",
+    "src/modules/cobertura/phase48-readonly-connection.ts": "9d7409360ea7af9f5544277a3895eedc0b3a67f898eea5f703a755dc3cdfa3f2",
+    "src/modules/cobertura/phase48-readonly-schema-identity.ts": "633b994951b68fae68ea94630348bf4ba12f1ce8b8043333738adc675f67dbdf",
+    "src/scripts/phase48-production-readonly.ts": "5c2c49dd033c8ad8518680f025980297e6cfea191886fc9995f74b6924ac63b7",
+    "src/scripts/phase48-historical-production.ts": "1c563ead7f9cd515f0c469282e97fcf303d9202432d4f1aa41804e3358b9df3b",
+    "src/modules/cobertura/phase48-production-executor.ts": "94a0fafb605b91e1bb115d40bd41afbb24179864d8f8d28364d9140f055b1214",
+    "src/modules/cobertura/phase48-dynamic-gate.ts": "fa9ccf92c6fbd5de8d14fe9fb781a2dc2e5b7bc851a6184722cffa9bdecf31ce",
+    "package-lock.json": "db7a06196facc0fa6a6e080387b886673ea06d5486885b49dee8b7445e20bba4",
+    "package.json": "1aed1f1222235f7eeba959cf0d5075731624d15b37755cec26f5a7d51be960ee",
+    "tsconfig.json": "640a93d0b9de5607230949a5d59f391504b86f58fff733d723e8dc58f0d568f9"
+  },
+  "tests": {
+    "local_postgresql_17_11": 102,
+    "runner_mutator_tls_contract_schema_publication": 150,
+    "total": 252,
+    "failures": 0,
+    "typecheck": "PASSED",
+    "backend_build": "PASSED",
+    "FrontendNuevo_build": "PASSED_WITH_EXISTING_CHUNK_SIZE_WARNING",
+    "git_diff_check": "PASSED"
+  },
+  "production": {
+    "transactions": 1,
+    "reads": "CATALOGS_ONLY",
+    "writes": 0,
+    "tls": "TLSv1.3",
+    "server": "17.6",
+    "rollback": "CONFIRMED",
+    "closed": true
+  },
+  "backup_created": false,
+  "production_mutator_authorization": "REVOKED",
+  "local_cluster_removed": true,
+  "function_hash": "e59bf71541ec1d4ec34c3f11779210874b93bc626055b34a5f8a1acc6f51ceff",
+  "classification": "CONSTANT_PARAMETERIZED_READ",
+  "complete_function_idempotent": false,
+  "phase48_idempotent": true,
+  "phase48_invalidation_write_set": [],
+  "protected_invalidation_table": "nomina_revision_operativa",
+  "artifacts": [
+    {
+      "file": "reports/phase48-constant-sql-catalog-audit.json",
+      "sha256": "f3c69900eccf45eebc6e367d8b76ec221e4aeea5193918dd43a1059bdc5c7de9"
+    },
+    {
+      "file": "reports/phase48-constant-sql-local-proof.tap",
+      "sha256": "0c1b4f07be5381b3f54067e111302aefd9163ce671cd20da82577f2506af6293"
+    },
+    {
+      "file": "reports/phase48-constant-sql-runner-proof.tap",
+      "sha256": "4c622be3f2f81e1fa8859f83c56bc4b0a3365de93dc2f5a9ae2a368b2222b953"
+    },
+    {
+      "file": "reports/phase48-constant-sql-observations.local.json",
+      "sha256": "84d79e74567c7c00bea88c16ddccf789c22b90d76fa209429c26006aeaff7648"
+    },
+    {
+      "file": "reports/phase48-constant-sql-manifest-example.local.json",
+      "sha256": "91a5eba95b2b8c91321338130fae0bdefc2da15a1d355a77364fe22dfb0e153b"
+    }
+  ]
+}

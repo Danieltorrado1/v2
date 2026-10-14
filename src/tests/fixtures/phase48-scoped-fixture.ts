@@ -1,5 +1,6 @@
 import {readFileSync} from 'node:fs';
 import baseline from '../../modules/cobertura/phase48-managed-events-baseline.json';
+import constantBaseline from '../../modules/cobertura/phase48-constant-sql-baseline.json';
 import {SCHEMA_SCOPE} from '../../modules/cobertura/phase48-readonly-schema-scope';
 import {localClient} from '../../modules/cobertura/phase48-dynamic-local';
 import {sq} from '../../modules/cobertura/phase48-scoped-repository';
@@ -12,11 +13,16 @@ export async function scopedFixture(n=733){
   for(const f of baseline.functions){await db.query(f.definition);await db.query('ALTER FUNCTION '+f.identity+' OWNER TO supabase_admin');}
   for(const e of baseline.events){await db.query('CREATE EVENT TRIGGER '+e.name+' ON '+e.event+' EXECUTE FUNCTION '+e.function_identity);await db.query('ALTER EVENT TRIGGER '+e.name+' OWNER TO supabase_admin');}
   const catalog=JSON.parse(readFileSync('reports/phase48-schema-production-catalogs.json','utf8').replace(/^\uFEFF/,'')).schema.inventory;
-  for(const name of SCHEMA_SCOPE.critical_relations){const cols=catalog.columns.filter((r:any)=>r.relation===name);if(!cols.length)throw Error('FIXTURE_CATALOG_MISSING:'+name);
+  for(const name of new Set([...SCHEMA_SCOPE.critical_relations,'nomina_novedad_turnos'])){const cols=catalog.columns.filter((r:any)=>r.relation===name);if(!cols.length)throw Error('FIXTURE_CATALOG_MISSING:'+name);
    await db.query('CREATE TABLE public.'+sq(name)+' ('+cols.map((r:any)=>sq(r.name)+' '+r.type).join(',')+')');
    if(cols.some((r:any)=>r.name==='id'))await db.query('ALTER TABLE public.'+sq(name)+' ADD PRIMARY KEY(id)');
   }
-  for(const f of SCHEMA_SCOPE.critical_functions)await db.query('CREATE FUNCTION public.'+f+' RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW;END$$');
+  for(const f of SCHEMA_SCOPE.critical_functions)await db.query(f===constantBaseline.identity?constantBaseline.definition:'CREATE FUNCTION public.'+f+' RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW;END$$');
+  await db.query(`CREATE SEQUENCE public.nomina_revision_operativa_id_seq;
+   ALTER TABLE public.nomina_revision_operativa ALTER COLUMN id SET DEFAULT nextval('public.nomina_revision_operativa_id_seq');
+   ALTER TABLE public.nomina_revision_operativa ALTER COLUMN version_revision SET DEFAULT 1;
+   ALTER TABLE public.nomina_revision_operativa ADD UNIQUE(periodo_id,nomina_empleado_id)`);
+  for(const table of ['nomina_asistencia_diaria','nomina_novedades','nomina_movimientos','nomina_novedad_turnos'])await db.query('CREATE TRIGGER '+table+'_invalidates AFTER INSERT OR UPDATE OR DELETE ON public.'+sq(table)+' FOR EACH ROW EXECUTE FUNCTION public.nomina_invalidar_revision_operativa()');
   for(const table of ['cobertura_asignaciones','auditoria','auditoria_eventos']){
    await db.query('CREATE SEQUENCE public.'+sq(table+'_id_seq')+' START '+(table==='cobertura_asignaciones'?'1276':table==='auditoria'?'100':'200')+' CACHE 1 OWNED BY public.'+sq(table)+'.id');
    await db.query('ALTER TABLE public.'+sq(table)+" ALTER COLUMN id SET DEFAULT nextval('public."+table+"_id_seq')");

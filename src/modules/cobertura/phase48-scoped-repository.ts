@@ -4,6 +4,7 @@ import {collectSchemaForensic,STRUCTURAL_QUERIES} from './phase48-readonly-schem
 import {createHash} from 'node:crypto';
 import {actorGate,historicalPlan} from './phase48-historical-domain';
 import {certifiedManagedEvents} from './phase48-managed-events';
+import {certifyConstantExecute,certifyConstantSqlContext} from './phase48-constant-sql';
 import {SALARY_DECISION,requireScoped,scopedDigest,sortScopedIds,type ScopedSet} from './phase48-scoped-contract';
 export type ScopedDb=Pick<PoolClient,'query'>;
 export const sq=(s:string)=>'"'+s.replaceAll('"','""')+'"';
@@ -70,7 +71,8 @@ export async function scopedManifest(db:ScopedDb,inventory:Record<string,any[]>)
   // pg_depend alone does not expose PL/pgSQL body lookups. Resolve literal
   // public table/function references and reject dynamic execution fail-closed.
   for(const name of functions){const def=defs.find(d=>d.identity===name);requireScoped(def,'CRITICAL_FUNCTION_UNRESOLVED');
-   requireScoped(!/\bEXECUTE\b/i.test(def.definition.replace(/--[^\n]*/g,'')),'DYNAMIC_CRITICAL_DEFINITION_UNCERTIFIED');
+   const constant=certifyConstantExecute(name,def.definition);
+   if(constant){await certifyConstantSqlContext(db);add('constant_sql_read',constant.relation+'.'+constant.column,'Exact function/hash/template/USING; public binding under sealed search_path','G_TRANSITIVE');}
    for(const match of def.definition.matchAll(/\b(?:FROM|JOIN|UPDATE|INTO|TABLE)\s+(?:"([^"]+)"|([a-z_][a-z0-9_]*))(?:\.(?:"([^"]+)"|([a-z_][a-z0-9_]*)))?/gi)){
     const first=match[1]??match[2]!,second=match[3]??match[4],table=second??first;
     if(second)requireScoped(first==='public'||first==='pg_catalog','EXTERNAL_FUNCTION_TABLE_DEPENDENCY_UNCERTIFIED');
