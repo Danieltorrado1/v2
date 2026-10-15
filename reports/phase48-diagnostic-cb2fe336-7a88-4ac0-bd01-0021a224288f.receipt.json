@@ -1,0 +1,42 @@
+{
+  "run_id": "phase48-diagnostic-cb2fe336-7a88-4ac0-bd01-0021a224288f",
+  "diagnostic_run_id": "cb2fe336-7a88-4ac0-bd01-0021a224288f",
+  "kind": "PHASE48_V6_READ_QUERY_DIAGNOSTIC",
+  "status": "STOPPED",
+  "phase": "precheck",
+  "final_status": "STOPPED",
+  "precheck": null,
+  "health_attempted": false,
+  "health_validated": false,
+  "health": null,
+  "credential_read_attempted": false,
+  "client_created": false,
+  "connect_attempted": false,
+  "tls_validated": false,
+  "transaction_started": false,
+  "query_id": null,
+  "rollback_attempted": false,
+  "rollback_confirmed": false,
+  "close_attempted": false,
+  "close_confirmed": false,
+  "connection_count": 0,
+  "instrument": null,
+  "error_code": "DIAGNOSTIC_BRANCH_INVALID",
+  "historical_stopped_receipts": {
+    "status": "NOT_AVAILABLE",
+    "blocking": false,
+    "expected_sha256": [
+      "e5a71ee01913b1ef778a80854a4ba8d2ac46189f81c1ac87dc25d2adeb26d9a4",
+      "b6368989c72dd8b21ecd48e52b0495d066fd51e22dce98dfbe986761c73b481a"
+    ]
+  },
+  "writes": 0,
+  "mutator_invoked": false,
+  "nonce_generated": false,
+  "phrase_generated": false,
+  "pins": {
+    "diagnostic_runner_commit": "f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa",
+    "readonly_runner_commit": "f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa",
+    "mutator_commit": "58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911"
+  }
+}

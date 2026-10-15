@@ -1,0 +1,68 @@
+{
+  "run_id": "phase48-diagnostic-d99121e4-fc90-47ac-bdff-cf88a368c98e",
+  "diagnostic_run_id": "d99121e4-fc90-47ac-bdff-cf88a368c98e",
+  "kind": "PHASE48_V6_READ_QUERY_DIAGNOSTIC",
+  "status": "STOPPED",
+  "phase": "read_query",
+  "final_status": "STOPPED",
+  "precheck": {
+    "branch": "fix/phase48-v6-diagnostic-metadata",
+    "head": "13bde88a2c58034884089cfe60d285da4d18ca7e",
+    "remote_verified": true,
+    "pins": {
+      "diagnostic_runner_commit": "4a0fa3c19c1a101fc7378efeaad9c52a5859a77c",
+      "readonly_runner_commit": "4a0fa3c19c1a101fc7378efeaad9c52a5859a77c",
+      "mutator_commit": "58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911"
+    },
+    "preserved_invalid_receipt": true,
+    "preserved_stopped_receipt": true,
+    "certificate_verified": true,
+    "mutator_imported": false,
+    "tracked_worktree_clean": true,
+    "ca_sha256": "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7",
+    "ca_valid": true,
+    "client_version": "24.14.1"
+  },
+  "health_attempted": true,
+  "health_validated": true,
+  "health": {
+    "http_status": 200,
+    "success": true,
+    "database_status": "ok",
+    "outbox": false,
+    "recalc_requested": false,
+    "recalc_active": false,
+    "worker_stopped": true,
+    "sync_manually_confirmed_false": true
+  },
+  "credential_read_attempted": true,
+  "client_created": false,
+  "connect_attempted": false,
+  "tls_validated": false,
+  "transaction_started": false,
+  "query_id": null,
+  "rollback_attempted": false,
+  "rollback_confirmed": false,
+  "close_attempted": false,
+  "close_confirmed": false,
+  "connection_count": 0,
+  "instrument": null,
+  "error_code": "CERTIFICATE_SHA256_INVALID",
+  "historical_stopped_receipts": {
+    "status": "NOT_AVAILABLE",
+    "blocking": false,
+    "expected_sha256": [
+      "e5a71ee01913b1ef778a80854a4ba8d2ac46189f81c1ac87dc25d2adeb26d9a4",
+      "b6368989c72dd8b21ecd48e52b0495d066fd51e22dce98dfbe986761c73b481a"
+    ]
+  },
+  "writes": 0,
+  "mutator_invoked": false,
+  "nonce_generated": false,
+  "phrase_generated": false,
+  "pins": {
+    "diagnostic_runner_commit": "4a0fa3c19c1a101fc7378efeaad9c52a5859a77c",
+    "readonly_runner_commit": "4a0fa3c19c1a101fc7378efeaad9c52a5859a77c",
+    "mutator_commit": "58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911"
+  }
+}
