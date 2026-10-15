@@ -122,4 +122,4 @@ Evidencias: [certificado inicial](certificate.local.json), [suplemento final enl
 
 [Frase sintética REVOCADA](synthetic-revoked-phrase.json): nonce fijo de ceros, commits ficticios y expiración en 1970. No constituye solicitud productiva. El nonce anterior real continúa CONSUMED.
 
-El nuevo `mutator_commit` queda fijado en `phase48-v6-evidence.ts` después del commit de implementación; `readonly_runner_commit` es el HEAD limpio que contiene ese pin. Se requiere un preflight nuevo y autorización literal nueva antes de cualquier ejecución productiva.
+El nuevo `mutator_commit` es `4f806531a4708cfa054b829e5467b46eed207926`, fijado en `phase48-v6-evidence.ts` después del commit de implementación; `readonly_runner_commit` es el HEAD limpio que contiene ese pin. Los JSON/TAP de esta carpeta usan atributos Git `-text` para conservar sus bytes al clonar en Windows. Se requiere un preflight nuevo y autorización literal nueva antes de cualquier ejecución productiva.
