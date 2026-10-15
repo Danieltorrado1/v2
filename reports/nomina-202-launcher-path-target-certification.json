@@ -1,0 +1,71 @@
+{
+  "status": "PASS_LOCAL_PATH_AND_TARGET_PIN_RECERTIFICATION",
+  "branch": "fix/nomina-turno-202-launcher-path-target-pins",
+  "base_head": "09141869f2519eae0be6af3fd53afbaaa2726970",
+  "production_launcher_commit": "d46c8e30b30969db3677032a807e2027bd8ab191",
+  "readonly_runner_commit": "d46c8e30b30969db3677032a807e2027bd8ab191",
+  "production_entry_commit": "610dd263d8f7734ac504a4b5fbb7d05c01a4ea9b",
+  "corrector_commit": "95fc6bb6879409d37a088e451fb64f2edafacb5f",
+  "target_pin": {
+    "path": "src/scripts/nomina-202-production-target-pin.json",
+    "sha256": "49a9a34efa6a411f78cc172fe90edcaf7364bbb84ae6e96fbe4f32c4e4d39557",
+    "canonical_sha256": "aca0f58339f7708ff2df697acbb94fd342510f17603f1458dd7f372fb8706bf5",
+    "project_ref_sha256": "2d48091f83ceb92569779c6416a3d03ec5631ee112a6ee75e9a7d065fb67078c",
+    "host": "aws-1-us-east-1.pooler.supabase.com",
+    "port": 6543,
+    "database": "postgres",
+    "protocol": "postgresql",
+    "tls": "TLSv1.3; fixed CA SHA-256; hostname verified; rejectUnauthorized=true"
+  },
+  "pin_sources": [
+    {
+      "path": "reports/nomina-operacion-real-audit-2026-08-31.json",
+      "sha256": "c03245ea7ea3130d8f49edcd007b9dab0baa8e30534355b2f67af25cac1aa3ea",
+      "fields": ["environment.database_host", "environment.supabase_url hostname label hashed in memory"]
+    },
+    {
+      "path": "reports/territorial-contract-24-pre-migration.json",
+      "sha256": "7a1ab4f084f3cda412d955d8566d24dafa0f24212096d36d121e980a5fd1dec2",
+      "fields": ["metadata.host", "metadata.database", "metadata.identity.database"]
+    },
+    {
+      "path": "src/scripts/nomina-turno-202-readonly-runner.ts",
+      "commit": "6ea616b5442c0654e2f3cc88ddf28dea381c4370",
+      "sha256": "3841b8060b423b37e3d0ea645e700e59d8932829b37c6e04f383cf9533646738",
+      "fields": ["TLS 1.3", "fixed CA", "hostname verification", "rejectUnauthorized"]
+    }
+  ],
+  "windows_paths": {
+    "accepted_separators": ["backslash", "slash", "mixed"],
+    "canonical_form": "path.win32 normalized drive-absolute path with uppercase drive letter",
+    "rejected": ["relative", "drive-relative", "UNC/device", "ADS", "dot components", "reparse points", "ambiguous trailing dot/space", "NUL", "non-ASCII confusables"]
+  },
+  "validation": {
+    "target_and_runner_tests": "23 passed, 0 failed",
+    "nomina_202_regression_tests": "90 passed, 0 failed",
+    "backend_typecheck": "PASS",
+    "backend_build": "PASS",
+    "frontend_build": "PASS",
+    "git_diff_check": "PASS",
+    "postgresql_tools": "17.11 via C:/Program Files/PostgreSQL/17/bin absolute paths",
+    "existing_local_postgresql_tls_evidence_sha256": "1bcc405e51f4819a074476169b866ca73f2869b2709065f7354cf57d67f19319"
+  },
+  "untracked_artifacts": {
+    "original_count": 384,
+    "original_inventory_sha256": "9c77ae07a8f4478b6e3a9d92d72f5074816a2888c2a98ef807c2ec19354f11c7",
+    "preserved": true
+  },
+  "productive_access": {
+    "credentials_read": 0,
+    "health_requests": 0,
+    "database_connections": 0,
+    "storage_reads": 0,
+    "writes": 0,
+    "corrector_runs": 0,
+    "authorization_or_nonce_issued": false
+  },
+  "notes": [
+    "The PostgreSQL 17.11/TLS 1.3 local two-client READ ONLY certification is retained as prior evidence; this path-and-pin recertification did not connect to or reuse an active PostgreSQL service.",
+    "No production .env, URL, credential, PDF bytes, or project ref in clear text was read or included."
+  ]
+}
