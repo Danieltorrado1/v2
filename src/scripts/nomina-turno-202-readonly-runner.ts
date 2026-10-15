@@ -60,7 +60,7 @@ export type HealthResponse=Readonly<{
 }>;
 export type PendingReceipt=Readonly<{
   status:'PENDING_USER_CONFIRMATION'; synthetic:boolean; generatedAt:string;
-  connections:readonly Readonly<{id:string;serverVersion:string;tlsProtocol:string;servername:string;transactionReadOnly:true}>[];
+  connections:readonly Readonly<{id:string;observedAt:string;serverVersion:string;tlsProtocol:string;servername:string;transactionReadOnly:true}>[];
   digests:Readonly<Record<string,string>>; sequenceBaseline:Readonly<Record<string,string>>;
   pdf:Readonly<{sha256:string;size:number;referenceSha256:string;mime:string;etag:string}>;
   checks:Readonly<Record<string,unknown>>;
@@ -69,7 +69,7 @@ export const READONLY_RECEIPT_ROUTES=Object.freeze({baseline:'baseline',pending:
 export type RunnerDependencies=Readonly<{
   plan:OfflinePlan;
   readCredentials:()=>Promise<DbCredentials>;
-  readPdf:()=>Promise<PdfRead>;
+  readPdf:(reference:Readonly<{bucket:string;path:string}>)=>Promise<PdfRead>;
   syncConfirmation:SyncConfirmation;
   now?:()=>Date;
   onConnectionClosed?:(id:string)=>void;
@@ -130,7 +130,9 @@ export async function validateUntrackedArtifactInventory(workspaceRoot:string){
 }
 
 export async function validateOfflinePlan(plan:OfflinePlan):Promise<Readonly<{root:string;caPem:Buffer;dumpBytes:Buffer;pdfBytes:Buffer;reportBytes:Buffer;entryReportBytes:Buffer}>>{
-  if(!absolute(plan.workspaceRoot)||plan.branch!=='fix/nomina-turno-202-correction-entry-gate'||!isCommit(plan.head)||!isCommit(plan.contractCommit)||plan.head!==plan.contractCommit)fail('CONTRACT_HEAD_MISMATCH');
+  const launcherBranch=plan.branch==='fix/nomina-turno-202-production-launcher';
+  const supportedBranch=launcherBranch||plan.branch==='fix/nomina-turno-202-correction-entry-gate';
+  if(!absolute(plan.workspaceRoot)||!supportedBranch||!isCommit(plan.head)||!isCommit(plan.contractCommit)||(!plan.localCertification&&launcherBranch&&plan.contractCommit!=='610dd263d8f7734ac504a4b5fbb7d05c01a4ea9b')||(!plan.localCertification&&!launcherBranch&&plan.head!==plan.contractCommit)||(plan.localCertification&&plan.head!==plan.contractCommit))fail('CONTRACT_HEAD_MISMATCH');
   if(plan.correctorCommit!==CORRECTOR_COMMIT)fail('CORRECTOR_COMMIT_MISMATCH');
   if(!isSha(plan.dumpSha256)||plan.dumpSha256!==DUMP_SHA256||!isSha(plan.historicalPdfSha256)||plan.historicalPdfSha256!==HISTORICAL_PDF_SHA256||plan.reportSha256!==CERTIFIED_REPORT_SHA256||plan.expectedReportSha256!==CERTIFIED_REPORT_SHA256||plan.entryReportSha256!==ENTRY_READONLY_REPORT_SHA256||plan.expectedEntryReportSha256!==ENTRY_READONLY_REPORT_SHA256||!isSha(plan.caSha256)||plan.caSha256!==plan.expectedCaSha256||(!plan.localCertification&&plan.expectedCaSha256!==PRODUCTION_CA_SHA256))fail('OFFLINE_HASH_PIN_MISMATCH');
   if(!plan.servername||plan.servername!==plan.expectedServername||!Number.isInteger(plan.port)||plan.port<1024||plan.port>65535||[5432,5433].includes(plan.port)||!plan.database)fail('DESTINATION_REJECTED');
@@ -140,10 +142,12 @@ export async function validateOfflinePlan(plan:OfflinePlan):Promise<Readonly<{ro
   if(health.hostname!==plan.healthHostname||health.username||health.password||health.search||health.hash||(!plan.localCertification&&health.protocol!=='https:')||(plan.localCertification&&!['127.0.0.1','::1','localhost'].includes(health.hostname)))fail('HEALTH_DESTINATION_REJECTED');
   for(const p of [plan.dumpPath,plan.historicalPdfPath,plan.reportPath,plan.entryReportPath,plan.caPath])if(!absolute(p))fail('ARTIFACT_PATH_NOT_ABSOLUTE');
   try{
-    if(execFileSync('git',['branch','--show-current'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim()!==plan.branch||execFileSync('git',['rev-parse','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim()!==plan.head)fail('GIT_STATE_MISMATCH');
+    const currentBranch=execFileSync('git',['branch','--show-current'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim();
+    const localBranchAlias=plan.localCertification&&currentBranch==='fix/nomina-turno-202-production-launcher'&&plan.branch==='fix/nomina-turno-202-correction-entry-gate';
+    if((currentBranch!==plan.branch&&!localBranchAlias)||execFileSync('git',['rev-parse','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim()!==plan.head)fail('GIT_STATE_MISMATCH');
+    if(launcherBranch)execFileSync('git',['merge-base','--is-ancestor',plan.contractCommit,plan.head],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
     execFileSync('git',['merge-base','--is-ancestor',CORRECTOR_COMMIT,plan.head],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
-    execFileSync('git',['diff','--quiet','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
-    execFileSync('git',['diff','--cached','--quiet','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
+    if(!plan.localCertification){execFileSync('git',['diff','--quiet','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});execFileSync('git',['diff','--cached','--quiet','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});}
   }catch{fail('OFFLINE_GIT_VALIDATION_FAILED');}
   if(!plan.localCertification){assertPostgres17ToolVersions(Object.fromEntries((['psql','pg_dump','pg_restore'] as const).map(name=>[name,execFileSync(path.join(POSTGRES17_BIN,`${name}.exe`),['--version'],{encoding:'utf8',windowsHide:true}).trim()])) as Record<'psql'|'pg_dump'|'pg_restore',string>);await validateUntrackedArtifactInventory(plan.workspaceRoot);}
   const [root,dumpBytes,pdfBytes,reportBytes,entryReportBytes,caPem]=await Promise.all([
@@ -160,7 +164,7 @@ function makeTlsConfig(plan:OfflinePlan,credentials:DbCredentials,caPem:Buffer):
   if(!credentials.user||typeof credentials.password!=='string')fail('CREDENTIALS_INVALID');
   return {
     host:plan.host,port:plan.port,database:plan.database,user:credentials.user,password:credentials.password,
-    connectionTimeoutMillis:8000,application_name:'nomina202_readonly_preflight',
+    connectionTimeoutMillis:8000,application_name:'nomina202_readonly_preflight',options:'-c statement_timeout=15000 -c lock_timeout=3000',
     ssl:{rejectUnauthorized:true,ca:caPem,minVersion:'TLSv1.3',maxVersion:'TLSv1.3',servername:plan.servername},
   };
 }
@@ -242,21 +246,29 @@ async function captureDatabase(client:Client,dependencies:RunnerDependencies){
   if(health.httpStatus!==200||health.databaseStatus!=='ok'||health.outbox||health.sync||health.recalcRequested||health.recalcActive||!health.workerStopped)fail('HEALTH_OR_FLAGS');
   const sync=dependencies.syncConfirmation,now=(dependencies.now?.()??new Date()).getTime(),observed=Date.parse(sync.observedAt),expires=Date.parse(sync.expiresAt);
   if(sync.source!=='MANUAL_CURRENT'||sync.enabled!==false||!Number.isFinite(observed)||!Number.isFinite(expires)||observed>now||expires<=now||now-observed>5*60_000)fail('SYNC_CONFIRMATION_STALE');
-  const pdf=await dependencies.readPdf();if(pdf.mime!=='application/pdf'||pdf.bytes.length!==3051||hash(pdf.bytes)!==HISTORICAL_PDF_SHA256||!pdf.etag||!pdf.reference)fail('HISTORICAL_PDF_MISMATCH');
-  const pdfMeta={sha256:hash(pdf.bytes),size:pdf.bytes.length,referenceSha256:hash(pdf.reference),mime:pdf.mime,etag:pdf.etag};
+  const accountDocument=(scope.cobertura_cuentas_cobro_externas??[]).find(x=>Number(x.id)===77);
+  if(!accountDocument?.generado_bucket||!accountDocument?.generado_path)return fail('PDF_REFERENCE_MISSING');
+  const pdf=await dependencies.readPdf({bucket:String(accountDocument.generado_bucket),path:String(accountDocument.generado_path)});
+  let pdfMeta:Readonly<{sha256:string;size:number;referenceSha256:string;mime:string;etag:string}>;
+  try{if(pdf.mime!=='application/pdf'||pdf.bytes.length!==3051||hash(pdf.bytes)!==HISTORICAL_PDF_SHA256||!pdf.etag||!pdf.reference)fail('HISTORICAL_PDF_MISMATCH');pdfMeta={sha256:hash(pdf.bytes),size:pdf.bytes.length,referenceSha256:hash(pdf.reference),mime:pdf.mime,etag:pdf.etag};}finally{pdf.bytes.fill(0);}
   const auditState={auditoria:related.auditoria??[],auditoria_eventos:related.auditoria_eventos??[],historial_cambios:related.historial_cambios??[]};
   if((auditState.auditoria_eventos as DbRow[]).filter(x=>x.accion===OPERATION).length|| (auditState.auditoria as DbRow[]).filter(x=>x.accion===OPERATION).length||(auditState.historial_cambios as DbRow[]).filter(x=>x.motivo===OPERATION).length)fail('PRIOR_REPAIR_FOUND');
   const digestSet={critical_schema:digest({tableSet,trigger}),sources:digest({actorScope,period:scope.nomina_periodos,turn:scope.nomina_novedad_turnos,novelty:scope.nomina_novedades,rate:scope.nomina_movimiento_tarifas,employee:scope.nomina_empleados,vinculation:scope.vinculaciones,person:scope.personas}),movement_192:digest(scope.nomina_movimientos),detail_220:digest(scope.cobertura_cuenta_cobro_externa_detalle),account_77:digest(scope.cobertura_cuentas_cobro_externas),revision_20114:digest(scope.nomina_revision_operativa),related_audits:digest(auditState),related_history:digest(auditState.historial_cambios),pdf_metadata:digest(pdfMeta),protected_tables:digest({company:scope.empresas,contract:scope.contratos,period:scope.nomina_periodos}),write_set_before:digest({movement:scope.nomina_movimientos,detail:scope.cobertura_cuenta_cobro_externa_detalle,account:scope.cobertura_cuentas_cobro_externas,revision:scope.nomina_revision_operativa}),sequence_baseline:digest(sequences)};
-  return {session:{serverVersion:session.server_version,database:session.database},target,actor:{roles:actorScope.active_roles,empresaOk:actorScope.empresa_ok,contratoOk:actorScope.contrato_ok},locks,tableSet,duplicates,priorRepair,blockers,triggerSha256:digest(trigger),auditCounts:Object.fromEntries(Object.entries(auditState).map(([k,v])=>[k,(v as DbRow[]).length])),historyRows:(auditState.historial_cambios as DbRow[]).length,health,syncConfirmation:Object.freeze({...sync}),pdfMeta,digestSet,sequences};
+  return {session:{serverVersion:session.server_version,database:session.database},target,accountDocument:{bucket:String(scope.cobertura_cuentas_cobro_externas?.find(x=>Number(x.id)===77)?.generado_bucket??''),path:String(scope.cobertura_cuentas_cobro_externas?.find(x=>Number(x.id)===77)?.generado_path??'')},actor:{roles:actorScope.active_roles,empresaOk:actorScope.empresa_ok,contratoOk:actorScope.contrato_ok},locks,tableSet,duplicates,priorRepair,blockers,triggerSha256:digest(trigger),auditCounts:Object.fromEntries(Object.entries(auditState).map(([k,v])=>[k,(v as DbRow[]).length])),historyRows:(auditState.historial_cambios as DbRow[]).length,health,syncConfirmation:Object.freeze({...sync}),pdfMeta,digestSet,sequences};
 }
 
-async function readHealthHttp(plan:OfflinePlan):Promise<HealthResponse>{
+export async function readHealthHttp(plan:OfflinePlan):Promise<HealthResponse>{
   const response=await (async()=>{try{return await fetch(plan.healthUrl,{method:'GET',redirect:'error',signal:AbortSignal.timeout(5000),headers:{accept:'application/json'}});}catch{return fail('HEALTH_REQUEST_FAILED');}})();
   if(response.status!==200)fail('HEALTH_HTTP_STATUS');
   let body:any;try{body=await response.json();}catch{fail('HEALTH_BODY_INVALID');}
-  const health:HealthResponse={httpStatus:response.status,databaseStatus:body?.database?.status==='ok'?'ok':'error',outbox:body?.OUTBOX!==false,sync:body?.SYNC!==false,recalcRequested:body?.RECALC?.requested!==false,recalcActive:body?.RECALC?.active!==false,workerStopped:body?.worker?.running===false};
+  const health=parseHealthPayload(response.status,body,plan.localCertification);
   if(health.databaseStatus!=='ok'||health.outbox||health.sync||health.recalcRequested||health.recalcActive||!health.workerStopped)fail('HEALTH_OR_FLAGS');
   return health;
+}
+export function parseHealthPayload(httpStatus:number,body:any,localCertification=false):HealthResponse{
+  if(localCertification)return {httpStatus,databaseStatus:body?.database?.status==='ok'?'ok':'error',outbox:body?.OUTBOX!==false,sync:body?.SYNC!==false,recalcRequested:body?.RECALC?.requested!==false,recalcActive:body?.RECALC?.active!==false,workerStopped:body?.worker?.running===false};
+  const api=body?.data,worker=api?.integracion_outbox;
+  return {httpStatus,databaseStatus:body?.success===true&&api?.database?.status==='ok'&&api?.status==='ok'?'ok':'error',outbox:worker?.enabled!==false,sync:false,recalcRequested:worker?.recalc?.requested!==false,recalcActive:worker?.recalc?.active!==false,workerStopped:worker?.started===false&&worker?.running===false};
 }
 function evaluateExactCase(scope:Record<string,DbRow[]>){return exactCase(scope);}
 
@@ -277,25 +289,23 @@ export async function runReadOnlyEntryPreflight(plan:OfflinePlan,dependencies:Ru
   // This is the first line at which the credential callback can be reached.
   let credentials:DbCredentials|undefined;try{credentials=await dependencies.readCredentials();}catch{fail('CREDENTIAL_SOURCE_FAILED');}
   const validatedOffline=offline??fail('OFFLINE_VALIDATION_FAILED');
-  const validatedCredentials=credentials??fail('CREDENTIAL_SOURCE_FAILED');
+  let validatedCredentials:DbCredentials|undefined=credentials??fail('CREDENTIAL_SOURCE_FAILED');
   const snapshots:unknown[]=[],connections:PendingReceipt['connections'][number][]=[];
-  for(let index=0;index<2;index++){
+  try{for(let index=0;index<2;index++){
     let opened:Awaited<ReturnType<typeof openReadOnlyClient>>|undefined,started=false,rolledBack=false;
     try{
-      opened=await openReadOnlyClient(plan,validatedCredentials,validatedOffline.caPem);
+      opened=await openReadOnlyClient(plan,validatedCredentials??fail('CREDENTIAL_SOURCE_FAILED'),validatedOffline.caPem);
       const active=opened??fail('TLS_CONNECTION_REJECTED');
       dependencies.onQuery?.('transaction');await active.client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');started=true;
       dependencies.onQuery?.('transaction');const state=(await active.client.query<{transaction_read_only:string;transaction_isolation:string}>('SELECT current_setting(\'transaction_read_only\') transaction_read_only,current_setting(\'transaction_isolation\') transaction_isolation')).rows[0]!;
       if(state.transaction_read_only!=='on'||state.transaction_isolation!=='repeatable read')fail('READ_ONLY_TRANSACTION_NOT_CONFIRMED');
-      const captured=await captureDatabase(active.client,dependencies),pdf=await dependencies.readPdf();
-      if(hash(pdf.bytes)!==captured.pdfMeta.sha256||pdf.bytes.length!==captured.pdfMeta.size||pdf.etag!==captured.pdfMeta.etag||hash(pdf.reference)!==captured.pdfMeta.referenceSha256)fail('PDF_CHANGED_DURING_SNAPSHOT');
-      snapshots.push(captured);
-      connections.push(Object.freeze({id:active.id,serverVersion:captured.session.serverVersion,tlsProtocol:active.stream.getProtocol()??'',servername:String(active.stream.servername??''),transactionReadOnly:true}));
+      const captured=await captureDatabase(active.client,dependencies),pdf=await dependencies.readPdf(captured.accountDocument);
+      try{if(hash(pdf.bytes)!==captured.pdfMeta.sha256||pdf.bytes.length!==captured.pdfMeta.size||pdf.etag!==captured.pdfMeta.etag||hash(pdf.reference)!==captured.pdfMeta.referenceSha256)fail('PDF_CHANGED_DURING_SNAPSHOT');snapshots.push(captured);connections.push(Object.freeze({id:active.id,observedAt:(dependencies.now?.()??new Date()).toISOString(),serverVersion:captured.session.serverVersion,tlsProtocol:active.stream.getProtocol()??'',servername:String(active.stream.servername??''),transactionReadOnly:true}));}finally{pdf.bytes.fill(0);}
     }catch(error){if(error instanceof Error&&error.message.startsWith('STOPPED_'))throw error;fail('SNAPSHOT_CAPTURE_FAILED');}
     finally{
       if(opened){try{if(started){dependencies.onQuery?.('transaction');await opened.client.query('ROLLBACK');rolledBack=true;}}finally{await opened.client.end();dependencies.onConnectionClosed?.(opened.id);}if(started&&!rolledBack)fail('SNAPSHOT_ROLLBACK_MISSING');}
     }
-  }
+  }}finally{credentials=undefined;validatedCredentials=undefined;}
   if(connections[0]!.id===connections[1]!.id||canonical(snapshots[0])!==canonical(snapshots[1]))fail('SNAPSHOT_DRIFT');
   const data=snapshots[0] as Awaited<ReturnType<typeof captureDatabase>>;
   return Object.freeze({status:'PENDING_USER_CONFIRMATION',synthetic:plan.localCertification,generatedAt:(dependencies.now?.()??new Date()).toISOString(),connections:Object.freeze(connections),digests:Object.freeze(data.digestSet),sequenceBaseline:Object.freeze(data.sequences),pdf:Object.freeze(data.pdfMeta),checks:Object.freeze({target:data.target,actor:data.actor,locks:data.locks,writeSet:data.tableSet,duplicates:data.duplicates,priorRepair:data.priorRepair,lifecycle:data.blockers,audits:data.auditCounts,historyRows:data.historyRows,health:data.health,syncConfirmation:data.syncConfirmation,readOnly:true,rollbackCompleted:true})});

@@ -1,0 +1,104 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { mkdtemp, writeFile, symlink, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { createClient } from '@supabase/supabase-js';
+import { ARGUMENT_ORDER, HISTORICAL_PDF_SIZE, PRODUCTION_HEALTH_URL, assertPrivateRegularFile, assertServiceRoleCredential, parseAllowlistedEnvironment, parseLauncherArguments, readHistoricalPdf, validateHealthUrl, validateServiceConfiguration } from '../scripts/nomina-turno-202-production-launcher';
+import { parseHealthPayload } from '../scripts/nomina-turno-202-readonly-runner';
+
+const hash=(x:Buffer|string)=>createHash('sha256').update(x).digest('hex');
+const ref='abcdefghijklmnopqrst';
+const jwt=(role:string)=>`header.${Buffer.from(JSON.stringify({role})).toString('base64url')}.signature`;
+const goodEnv=(overrides:Record<string,string>={})=>({
+  DATABASE_URL:`postgresql://postgres.${ref}:synthetic%2Fpassword@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require`,
+  SUPABASE_URL:`https://${ref}.supabase.co`,SUPABASE_SERVICE_ROLE_KEY:jwt('service_role'),SUPABASE_STORAGE_BUCKET:'cuentas-cobro',...overrides,
+});
+const validArgs=()=>[
+  `--env-file=C:/tmp/synthetic.env`,`--ca-file=C:/tmp/ca.crt`,`--health-url=${PRODUCTION_HEALTH_URL}`,
+  `--expected-head=${'a'.repeat(40)}`,'--expected-corrector-commit=95fc6bb6879409d37a088e451fb64f2edafacb5f',
+  '--native-report-sha256=4d9456973bc1433b5c6175d347497d603999fb1ed35995e7e2493415cda3da41',
+  '--readonly-report-sha256=1e2d8cfed0889bd238383054296870c1226be0f5fc89793d652755c584cabca8',
+  '--backup-sha256=dd1f9d298e83fb9664d1795c4e452698c26b274569cca11715b2c2f03ff99d75',
+  '--pdf-sha256=cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4','--pdf-size=3051',
+  '--untracked-manifest-sha256=9c77ae07a8f4478b6e3a9d92d72f5074816a2888c2a98ef807c2ec19354f11c7',
+  '--sync-confirmed=true','--pdf-attestation-confirmed=true','--output-directory=C:/tmp/receipts',
+  '--db-host=aws-0-us-east-1.pooler.supabase.com','--db-port=6543','--db-name=postgres',`--project-ref-sha256=${hash(ref)}`,
+];
+
+test('launcher requires the exact ordered argument grammar and certified pins',()=>{
+  assert.equal(ARGUMENT_ORDER.length,18);assert.equal(parseLauncherArguments(validArgs())['--health-url'],PRODUCTION_HEALTH_URL);
+  for(const bad of [validArgs().slice(1),[...validArgs(), '--extra=x'],validArgs().map((x,i)=>i===0?x.replace('--env-file','--unknown'):x),validArgs().map((x,i)=>i===1?'--env-file=C:/tmp/other.env':x),validArgs().map((x,i)=>i===2?'--health-url=https://evil.invalid/api/health':x),validArgs().map((x,i)=>i===11?'--sync-confirmed=false':x)])assert.throws(()=>parseLauncherArguments(bad));
+});
+
+test('health pin is exact, and the backend health payload maps to the real runner gates',()=>{
+  assert.equal(validateHealthUrl(PRODUCTION_HEALTH_URL),PRODUCTION_HEALTH_URL);
+  for(const bad of ['http://api.empiriasuite.com/api/health','https://api.empiriasuite.com/api/health?x=1','https://api.empiriasuite.com/health','https://user@api.empiriasuite.com/api/health'])assert.throws(()=>validateHealthUrl(bad));
+  const good=parseHealthPayload(200,{success:true,data:{status:'ok',database:{status:'ok'},integracion_outbox:{enabled:false,started:false,running:false,recalc:{requested:false,active:false}}}});
+  assert.deepEqual(good,{httpStatus:200,databaseStatus:'ok',outbox:false,sync:false,recalcRequested:false,recalcActive:false,workerStopped:true});
+  assert.notEqual(parseHealthPayload(503,{success:false,data:{}}).databaseStatus,'ok');
+  assert.equal(parseHealthPayload(200,{success:true,data:{database:{status:'ok'},integracion_outbox:{enabled:true,started:false,running:false,recalc:{requested:false,active:false}}}}).outbox,true);
+});
+
+test('dotenv reader extracts only required names and rejects duplicate/missing or wrong target variables',()=>{
+  const env=goodEnv();const text=Object.entries(env).map(([k,v])=>`${k}=${v}`).join('\n')+'\nUNRELATED=ignored\n';
+  assert.deepEqual(parseAllowlistedEnvironment(text),env);
+  assert.throws(()=>parseAllowlistedEnvironment(text+`DATABASE_URL=${env.DATABASE_URL}\n`),/ENV_DUPLICATE_VARIABLE/);
+  assert.throws(()=>parseAllowlistedEnvironment(text.replace(/SUPABASE_STORAGE_BUCKET=.*\n/,'')),/ENV_REQUIRED_VARIABLE_MISSING/);
+  assert.throws(()=>parseAllowlistedEnvironment(Object.entries({...env,DATABASE_URL:env.DATABASE_URL.replace(ref,'zzzzzzzzzzzzzzzzzzzz')}).map(([k,v])=>`${k}=${v}`).join('\n')),/DATABASE_TARGET_MISMATCH/);
+  assert.throws(()=>parseAllowlistedEnvironment(Object.entries({...env,DATABASE_URL:env.DATABASE_URL.replace('sslmode=require','sslmode=disable')}).map(([k,v])=>`${k}=${v}`).join('\n')),/DATABASE_URL_POLICY/);
+  assert.throws(()=>parseAllowlistedEnvironment(Object.entries({...env,SUPABASE_SERVICE_ROLE_KEY:jwt('anon')}).map(([k,v])=>`${k}=${v}`).join('\n')),/STORAGE_CREDENTIAL_ROLE_INVALID/);
+});
+
+test('service configuration pins Supabase project ref and validates TLS-compatible PostgreSQL destination',()=>{
+  assert.deepEqual(validateServiceConfiguration(goodEnv()),{projectRef:ref,databaseHost:'aws-0-us-east-1.pooler.supabase.com',databasePort:6543,databaseName:'postgres'});
+  assert.throws(()=>validateServiceConfiguration(goodEnv({SUPABASE_URL:'https://zzzzzzzzzzzzzzzzzzzz.supabase.co'})),/DATABASE_TARGET_MISMATCH/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('pooler.supabase.com','evil.example')})),/DATABASE_TARGET_MISMATCH/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('?sslmode=require','?sslmode=disable')})),/DATABASE_URL_POLICY/);
+});
+
+test('service-role parser never places synthetic token contents in errors',()=>{
+  assert.equal(assertServiceRoleCredential(jwt('service_role')),true);
+  const secret='do-not-print-this-synthetic-token';assert.throws(()=>assertServiceRoleCredential(secret),e=>!String(e).includes(secret));
+});
+
+test('explicit env paths reject relative paths, symlinks and broad Windows ACL grants',async t=>{
+  await assert.rejects(assertPrivateRegularFile('relative.env'),/ENV_PATH_NOT_ABSOLUTE/);
+  if(process.platform!=='win32'){t.skip('Windows ACL behavior is certified only on Windows');return;}
+  const dir=await mkdtemp(path.join(os.tmpdir(),'nomina202-launcher-acl-')),file=path.join(dir,'synthetic.env'),link=path.join(dir,'link.env');
+  try{
+    await writeFile(file,'SYNTHETIC_ONLY=not-a-secret\n',{mode:0o600});
+    await execFileSync('icacls.exe',[file,'/grant','*S-1-1-0:(R)'],{windowsHide:true,stdio:'ignore'});
+    await assert.rejects(assertPrivateRegularFile(file),/ENV_ACL_INSECURE/);
+    try{await symlink(file,link);await assert.rejects(assertPrivateRegularFile(link),/ENV_FILE_NOT_REGULAR/);}catch(error){if((error as NodeJS.ErrnoException).code!=='EPERM')throw error;t.diagnostic('Symlink rejection path remains enforced; host policy prevents synthetic symlink creation.');}
+  }finally{await rm(dir,{recursive:true,force:true});}
+});
+
+test('PDF provider reads only the expected bucket/key and verifies metadata and downloaded bytes in memory',async()=>{
+  const pdf=await readFile('C:/Users/CORE ULTRA/Documents/EmpiriaBackups/nomina-turno-202-pre-correccion-20261015T013132Z/historical-account-77.pdf');
+  assert.equal(pdf.length,HISTORICAL_PDF_SIZE);assert.equal(hash(pdf),'cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4');
+  let infoCalls=0,downloadCalls=0;
+  const fake=(()=>({storage:{from:(bucket:string)=>({info:async(key:string)=>{infoCalls++;assert.equal(bucket,'cuentas-cobro');assert.equal(key,'2026/account-77/current.pdf');return{data:{contentType:'application/pdf',size:3051,eTag:'"synthetic-etag"'},error:null};},download:async(key:string)=>{downloadCalls++;assert.equal(key,'2026/account-77/current.pdf');return{data:new Blob([pdf],{type:'application/pdf'}),error:null};}})}})) as unknown as typeof createClient;
+  const result=await readHistoricalPdf(goodEnv(),{bucket:'cuentas-cobro',path:'2026/account-77/current.pdf'},fake);
+  assert.equal(infoCalls,1);assert.equal(downloadCalls,1);assert.equal(result.mime,'application/pdf');assert.equal(result.etag,'"synthetic-etag"');assert.equal(hash(result.bytes),hash(pdf));result.bytes.fill(0);
+  await assert.rejects(readHistoricalPdf(goodEnv(),{bucket:'wrong-bucket',path:'2026/account-77/current.pdf'},fake),/PDF_REFERENCE_REJECTED/);
+  await assert.rejects(readHistoricalPdf(goodEnv(),{bucket:'cuentas-cobro',path:'../private.pdf'},fake),/PDF_REFERENCE_REJECTED/);
+});
+
+test('PDF provider rejects metadata, byte drift, and storage failures without leaking storage errors',async()=>{
+  const pdf=await readFile('C:/Users/CORE ULTRA/Documents/EmpiriaBackups/nomina-turno-202-pre-correccion-20261015T013132Z/historical-account-77.pdf');
+  const mock=(info:any,download:any)=>((()=>({storage:{from:()=>({info:async()=>info,download:async()=>download})}})) as unknown as typeof createClient);
+  const refObj={bucket:'cuentas-cobro',path:'2026/account-77/current.pdf'};
+  await assert.rejects(readHistoricalPdf(goodEnv(),refObj,mock({data:{contentType:'text/plain',size:3051,eTag:'x'},error:null},{data:new Blob([pdf]),error:null})),/PDF_METADATA_MISMATCH/);
+  await assert.rejects(readHistoricalPdf(goodEnv(),refObj,mock({data:{contentType:'application/pdf',size:3051,eTag:'x'},error:null},{data:new Blob([Buffer.concat([pdf,Buffer.from('x')])]),error:null})),/PDF_HASH_MISMATCH/);
+  await assert.rejects(readHistoricalPdf(goodEnv(),refObj,mock({data:null,error:new Error('secret-like backend detail')},{data:null,error:new Error('x')})),e=>/PDF_METADATA_READ_FAILED/.test(String(e))&&!String(e).includes('secret-like'));
+});
+
+test('launcher and runner imports contain no mutator dependency',async()=>{
+  const src=await readFile('src/scripts/nomina-turno-202-production-launcher.ts','utf8');
+  assert.doesNotMatch(src,/nomina-turno-202-integral-local|executeIntegral|claimNonceThenReadCredentials|activateAuthorization/);
+  assert.match(src,/runReadOnlyEntryPreflight/);assert.doesNotMatch(src,/setval\s*\(|nextval\s*\(|UPDATE\s+|INSERT\s+|DELETE\s+/i);
+});
