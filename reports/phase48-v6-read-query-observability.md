@@ -60,4 +60,6 @@ Los recibos STOPPED protegidos continúan intactos: SHA-256 `e5a71ee01913b1ef778
 - Commit de instrumento diagnóstico: `0160238c317637196bb38c8abde1ced5e4737339`.
 - El `readonly_runner_commit` definitivo se registra después del commit final de este certificado. No se revocan permisos ni se habilita ejecución productiva por esta certificación local.
 
+Para futuras ejecuciones que dependan de este instrumento quedan revocados los pins previos `readonly_runner_commit=4a2e9d94440442809b5b416532a53ca3403ad508` y `mutator_commit=1660e13508144c6b60c630343275a3bea3a8dc67`. Los nuevos pins definitivos se entregan con el HEAD publicado. No se revocan permisos ni se habilita ejecución productiva.
+
 No hubo producción, diagnóstico productivo, nonce/autorización real, merge ni deploy. Esta certificación sólo habilita solicitar una nueva autorización diagnóstica; no autoriza conexión productiva ni Phase 48.
