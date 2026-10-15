@@ -6,8 +6,13 @@ import {publishAtomicReceipt} from './phase48-readonly-receipts';
 import {fetchProductionHealth,type HealthSummary} from './phase48-v6-diagnostic-health';
 
 export const DIAGNOSTIC_PINS=Object.freeze({diagnostic_runner_commit:'f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa',readonly_runner_commit:'f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa',mutator_commit:'58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911'});
+export const EXPECTED_DIAGNOSTIC_BRANCH='fix/phase48-v6-diagnostic-metadata';
+export const CERTIFIED_DIAGNOSTIC_BASE_HEAD='febba7042337fe9a0055f5e7882ac01640b59b06';
 export const PRESERVED_INVALID_RECEIPT=Object.freeze({path:'reports/phase48-diagnostic-1a56c5bb-7c53-4acb-92d9-8cfbcac1e4dd.receipt.json',size:1402,sha256:'ca2688f45c0c7da7717c277163a45488a24ee0e8f7ba7c0cdbd4f704a6f5c2bb'});
+export const PRESERVED_STOPPED_RECEIPT=Object.freeze({path:'reports/phase48-diagnostic-cb2fe336-7a88-4ac0-bd01-0021a224288f.receipt.json',size:1341,sha256:'6dbec67ff2bdf74dc48493f63894b352fdbae1793c9d617ecf09051f446dca89'});
 export const LOCAL_CERTIFICATE=Object.freeze({path:'reports/phase48-v6-read-query-certificate-20261015T165906922Z-6b9eadce573b42fd84a265387903cf37.local.json',sha256:'24a8d02a55ce9096df2696cbe50d23a242c940f1d0723624fad6a53a47ee566e'});
+export const PRIOR_LOCAL_CERTIFICATE=Object.freeze({path:'reports/phase48-v6-read-query-certificate-20261015T172112962Z-74c6cf3fd77f4f168f67436e3d304c60.local.json',size:2499,sha256:'4c9698e9c521031f0f4608f7abd0451aa56b313b8a1eef394772c1959b21c437'});
+export const PRIOR_LOCAL_RECEIPT=Object.freeze({path:'reports/phase48-v6-read-query-20261015T172112962Z-74c6cf3fd77f4f168f67436e3d304c60.receipt.json',size:34378,sha256:'1bce3e9f2bf98391c4bfca68c635876316d9369bdd280c5f39d88f16bf85b00c'});
 export const HISTORICAL_STOPPED_RECEIPTS=Object.freeze({status:'NOT_AVAILABLE' as const,blocking:false as const,expected_sha256:Object.freeze(['e5a71ee01913b1ef778a80854a4ba8d2ac46189f81c1ac87dc25d2adeb26d9a4','b6368989c72dd8b21ecd48e52b0495d066fd51e22dce98dfbe986761c73b481a'] as const)});
 const hash=(b:Buffer|string)=>createHash('sha256').update(b).digest('hex');
 const need:(ok:unknown,code:string)=>asserts ok=(ok,code)=>{if(!ok)throw Error(code);};
@@ -30,16 +35,21 @@ export function parseDiagnosticLauncherArgs(args:string[]){
  return {mode:'ProductiveDiagnostic' as const,directory:resolve(out['receipt-directory']!),credentialPath:resolve(out['credential-path']!),caPath:resolve(out['ca-path']!),caSha256:out['ca-sha256']!.toLowerCase()};
 }
 
+export interface DiagnosticGitState {branch:string;head:string;parentHead:string;remoteHead:string;remoteRef:string;trackedStatus:string}
+export function validateDiagnosticGitState(state:DiagnosticGitState){
+ need(state.branch===EXPECTED_DIAGNOSTIC_BRANCH,'DIAGNOSTIC_BRANCH_INVALID');
+ need(/^[a-f0-9]{40}$/.test(state.head),'DIAGNOSTIC_HEAD_INVALID');
+ need(state.parentHead===CERTIFIED_DIAGNOSTIC_BASE_HEAD,'DIAGNOSTIC_HEAD_NOT_CERTIFIED');
+ need(state.remoteRef===`refs/heads/${EXPECTED_DIAGNOSTIC_BRANCH}`&&state.remoteHead===state.head,'DIAGNOSTIC_REMOTE_HEAD_MISMATCH');
+ need(state.trackedStatus==='','DIAGNOSTIC_WORKTREE_DIRTY');
+}
 export function verifyDiagnosticOffline(root:string,exec=(file:string,args:string[])=>execFileSync(file,args,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']})){
- const git=(...args:string[])=>exec('git',args).trim();
- need(git('branch','--show-current')==='fix/phase48-v6-diagnostic-launcher','DIAGNOSTIC_BRANCH_INVALID');
- const head=git('rev-parse','HEAD');need(/^[a-f0-9]{40}$/.test(head),'DIAGNOSTIC_HEAD_INVALID');
- for(const pin of Object.values(DIAGNOSTIC_PINS)){try{execFileSync('git',['merge-base','--is-ancestor',pin,head],{cwd:root,stdio:'ignore'});}catch{throw Error('DIAGNOSTIC_PIN_NOT_ANCESTOR');}}
- const status=git('status','--porcelain','--untracked-files=all').split(/\r?\n/).filter(Boolean);
- need(status.every(line=>line==='?? '+PRESERVED_INVALID_RECEIPT.path),'DIAGNOSTIC_WORKTREE_DIRTY');
- for(const item of [{...PRESERVED_INVALID_RECEIPT,size:1402},{...LOCAL_CERTIFICATE,size:undefined}])verifyPinnedFile(join(root,item.path),item.sha256,item.size);
+ const git=(...args:string[])=>exec('git',args).trim(),branch=git('branch','--show-current'),head=git('rev-parse','HEAD'),parentHead=git('rev-parse','HEAD^'),remoteLine=exec('git',['ls-remote','origin',`refs/heads/${EXPECTED_DIAGNOSTIC_BRANCH}`]).trim(),[remoteHead='',remoteRef='']=remoteLine.split(/\s+/),trackedStatus=git('status','--porcelain','--untracked-files=no');
+ validateDiagnosticGitState({branch,head,parentHead,remoteHead,remoteRef,trackedStatus});
+ for(const pin of Object.values(DIAGNOSTIC_PINS)){try{exec('git',['merge-base','--is-ancestor',pin,head]);}catch{throw Error('DIAGNOSTIC_PIN_NOT_ANCESTOR');}}
+ for(const item of [{...PRESERVED_INVALID_RECEIPT},{...PRESERVED_STOPPED_RECEIPT},{...LOCAL_CERTIFICATE,size:undefined},{...PRIOR_LOCAL_CERTIFICATE},{...PRIOR_LOCAL_RECEIPT}])verifyPinnedFile(join(root,item.path),item.sha256,item.size);
  const diagnosticSource=readFileSync(join(root,'src/modules/cobertura/phase48-v6-read-query-diagnostic.ts'),'utf8');need(!/phase48-v6-(?:atomic|entry|production-host)|phase48-production-executor/.test(diagnosticSource),'DIAGNOSTIC_MUTATOR_REFERENCE_FORBIDDEN');
- return {branch:'fix/phase48-v6-diagnostic-launcher',head,pins:{...DIAGNOSTIC_PINS},preserved_invalid_receipt:true,certificate_verified:true,mutator_imported:false,working_tree_clean_except_preserved_receipt:true};
+ return {branch,head,remote_verified:true,pins:{...DIAGNOSTIC_PINS},preserved_invalid_receipt:true,preserved_stopped_receipt:true,certificate_verified:true,mutator_imported:false,tracked_worktree_clean:true};
 }
 
 export interface LauncherReceipt {run_id:string;diagnostic_run_id:string;kind:'PHASE48_V6_READ_QUERY_DIAGNOSTIC';status:'STOPPED'|'CAPTURED';phase:string;final_status:string;precheck:any;health_attempted:boolean;health_validated:boolean;health:HealthSummary|null;credential_read_attempted:boolean;client_created:boolean;connect_attempted:boolean;tls_validated:boolean;transaction_started:boolean;query_id:string|null;rollback_attempted:boolean;rollback_confirmed:boolean;close_attempted:boolean;close_confirmed:boolean;connection_count:number;instrument:Record<string,unknown>|null;error_code:string|null;historical_stopped_receipts:typeof HISTORICAL_STOPPED_RECEIPTS;writes:0;mutator_invoked:false;nonce_generated:false;phrase_generated:false;pins:typeof DIAGNOSTIC_PINS}

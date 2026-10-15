@@ -8,7 +8,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {fetchProductionHealth,PHASE48_HEALTH_URL,requestHealthAtUrl,validateProductionHealthUrl} from '../modules/cobertura/phase48-v6-diagnostic-health';
-import {DIAGNOSTIC_PINS,HISTORICAL_STOPPED_RECEIPTS,LOCAL_CERTIFICATE,assertSha256Pin,launchReadQueryDiagnostic,parseDiagnosticLauncherArgs,validateDiagnosticLauncherReceipt,verifyPinnedFile,type LauncherDependencies,type LauncherReceipt} from '../modules/cobertura/phase48-v6-diagnostic-launcher';
+import {CERTIFIED_DIAGNOSTIC_BASE_HEAD,DIAGNOSTIC_PINS,EXPECTED_DIAGNOSTIC_BRANCH,HISTORICAL_STOPPED_RECEIPTS,LOCAL_CERTIFICATE,PRESERVED_STOPPED_RECEIPT,assertSha256Pin,launchReadQueryDiagnostic,parseDiagnosticLauncherArgs,validateDiagnosticGitState,validateDiagnosticLauncherReceipt,verifyDiagnosticOffline,verifyPinnedFile,type DiagnosticGitState,type LauncherDependencies,type LauncherReceipt} from '../modules/cobertura/phase48-v6-diagnostic-launcher';
 import {publishAtomicReceipt} from '../modules/cobertura/phase48-readonly-receipts';
 
 const good={success:true,data:{database:{status:'ok'},integracion_outbox:{configured:false,enabled:false,recalc:{requested:false,active:false},started:false,running:false}}};
@@ -27,6 +27,25 @@ test('launcher parser rejects unknown, duplicate, missing and non-false sync con
  for(const a of [[],[...valid,'--unknown=x'],[...valid,'--mode=ProductiveDiagnostic'],valid.filter(x=>!x.startsWith('--ca-sha256=')),valid.map(x=>x==='--sync-manually-confirmed=false'?'--sync-manually-confirmed=true':x)])assert.throws(()=>parseDiagnosticLauncherArgs(a));
 });
 test('diagnostic launcher pins the metadata-certified runners and unchanged mutator',()=>{assert.deepEqual(DIAGNOSTIC_PINS,{diagnostic_runner_commit:'f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa',readonly_runner_commit:'f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa',mutator_commit:'58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911'});assert.notEqual(DIAGNOSTIC_PINS.diagnostic_runner_commit,'38f5242ddb283ab8af03d0ea5dca1aae5fe44922');assert.notEqual(DIAGNOSTIC_PINS.readonly_runner_commit,'38f5242ddb283ab8af03d0ea5dca1aae5fe44922');assert.notEqual(DIAGNOSTIC_PINS.mutator_commit,'1660e13508144c6b60c630343275a3bea3a8dc67');});
+const validGitState=():DiagnosticGitState=>({branch:EXPECTED_DIAGNOSTIC_BRANCH,head:'a'.repeat(40),parentHead:CERTIFIED_DIAGNOSTIC_BASE_HEAD,remoteHead:'a'.repeat(40),remoteRef:`refs/heads/${EXPECTED_DIAGNOSTIC_BRANCH}`,trackedStatus:''});
+test('diagnostic branch gate accepts only the exact branch and certified clean remote HEAD',()=>{
+ assert.doesNotThrow(()=>validateDiagnosticGitState(validGitState()));
+ for(const branch of ['fix/phase48-v6-diagnostic-launcher','fix/phase48-v6-diagnostic-metadata-suffix','prefix-fix/phase48-v6-diagnostic-metadata','Fix/phase48-v6-diagnostic-metadata',''])assert.throws(()=>validateDiagnosticGitState({...validGitState(),branch}),/DIAGNOSTIC_BRANCH_INVALID/);
+ assert.throws(()=>validateDiagnosticGitState({...validGitState(),head:'invalid'}),/DIAGNOSTIC_HEAD_INVALID/);
+ assert.throws(()=>validateDiagnosticGitState({...validGitState(),parentHead:'b'.repeat(40)}),/DIAGNOSTIC_HEAD_NOT_CERTIFIED/);
+ assert.throws(()=>validateDiagnosticGitState({...validGitState(),remoteHead:'b'.repeat(40)}),/DIAGNOSTIC_REMOTE_HEAD_MISMATCH/);
+ assert.throws(()=>validateDiagnosticGitState({...validGitState(),remoteRef:'refs/heads/other'}),/DIAGNOSTIC_REMOTE_HEAD_MISMATCH/);
+ assert.throws(()=>validateDiagnosticGitState({...validGitState(),trackedStatus:' M src/example.ts'}),/DIAGNOSTIC_WORKTREE_DIRTY/);
+});
+test('offline gate ignores untracked receipt artifacts but verifies the authorized STOPPED receipt bytes',()=>{
+ const verified=verifyPinnedFile(join(process.cwd(),PRESERVED_STOPPED_RECEIPT.path),PRESERVED_STOPPED_RECEIPT.sha256,PRESERVED_STOPPED_RECEIPT.size);assert.equal(verified.bytes,1341);
+ const artifact=readFs(join(process.cwd(),PRESERVED_STOPPED_RECEIPT.path));assert.equal(createHash('sha256').update(artifact).digest('hex'),PRESERVED_STOPPED_RECEIPT.sha256);
+ assert.doesNotThrow(()=>validateDiagnosticGitState(validGitState()));
+});
+test('offline gate checks branch, exact parent, remote HEAD, tracked cleanliness, pins and fixed evidence',()=>{
+ const head='a'.repeat(40),fake=(file:string,args:string[])=>{assert.equal(file,'git');const key=args.join(' ');if(key==='branch --show-current')return EXPECTED_DIAGNOSTIC_BRANCH;if(key==='rev-parse HEAD')return head;if(key==='rev-parse HEAD^')return CERTIFIED_DIAGNOSTIC_BASE_HEAD;if(key===`ls-remote origin refs/heads/${EXPECTED_DIAGNOSTIC_BRANCH}`)return `${head}\trefs/heads/${EXPECTED_DIAGNOSTIC_BRANCH}`;if(key==='status --porcelain --untracked-files=no')return '';if(key.startsWith('merge-base --is-ancestor '))return '';throw Error('UNEXPECTED_GIT_QUERY');};
+ const result=verifyDiagnosticOffline(process.cwd(),fake);assert.equal(result.remote_verified,true);assert.equal(result.tracked_worktree_clean,true);assert.equal(result.preserved_stopped_receipt,true);
+});
 test('certificate pin is canonical 64-hex and matches the pinned certificate bytes',()=>{
  assert.equal(LOCAL_CERTIFICATE.sha256.length,64);assert.equal(LOCAL_CERTIFICATE.sha256,'24a8d02a55ce9096df2696cbe50d23a242c940f1d0723624fad6a53a47ee566e');
  const file=join(process.cwd(),LOCAL_CERTIFICATE.path);assert.equal(verifyPinnedFile(file,LOCAL_CERTIFICATE.sha256).sha256,LOCAL_CERTIFICATE.sha256);
