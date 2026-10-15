@@ -18,8 +18,8 @@ function compareFields(f:V6Fields,pre:V6Preflight,sha:string,env:Awaited<ReturnT
  requireScoped(pre.kind==='PHASE48_V6_PREFLIGHT'&&pre.status==='VERIFIED'&&pre.authorization==='REVOKED'&&clock>=Date.parse(pre.issued_at)&&clock<Date.parse(pre.expires_at),'V6_FRESH_PREFLIGHT_REQUIRED');
  requireScoped(pre.set.candidate_count===f.candidate_count&&pre.set.candidate_count!==730,'V6_CANDIDATE_COUNT_DRIFT');
  requireScoped(pre.release.readonly_runner_commit===f.readonly_runner_commit&&pre.release.mutator_commit===f.mutator_commit&&env.release.readonly_runner_commit===f.readonly_runner_commit&&env.release.mutator_commit===f.mutator_commit,'V6_COMMIT_MISMATCH');
- for(const k of V6_HASHES)requireScoped(f[k]===(k==='preflight_receipt_sha256'?sha:env.evidence[k]),'V6_EVIDENCE_BINDING:'+k);
- for(const k of V6_DIGESTS)requireScoped(f[k]===pre.digests[k],'V6_PREFLIGHT_DIGEST_BINDING:'+k);
+ for(const k of V6_HASHES)requireScoped(sha256HexEqual(f[k],k==='preflight_receipt_sha256'?sha:env.evidence[k]),'V6_EVIDENCE_BINDING:'+k);
+ for(const k of V6_DIGESTS)requireScoped(sha256HexEqual(f[k],pre.digests[k]),'V6_PREFLIGHT_DIGEST_BINDING:'+k);
  requireScoped(pre.connections.length===2&&pre.connections.every(c=>c.rollback&&c.closed)&&pre.connections[0].instance!==pre.connections[1].instance,'V6_INDEPENDENT_PREFLIGHT_REQUIRED');v6Flags(pre.flags);
 }
 async function withRead(h:V6Host,fn:(db:V6Client)=>Promise<ScopedCapture>){const db=h.client('observer');let began=false;const ev:any={instance:randomUUID(),rollback:false,closed:false};try{await db.connect();await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');began=true;await db.query('SET LOCAL search_path=pg_catalog,public,pg_temp');await db.query("SET LOCAL timezone='UTC'");await db.query("SET LOCAL statement_timeout='120s'");ev.identity=await h.identity(db,true);const capture=await fn(db);return {capture,evidence:ev};}finally{try{if(began){await db.query('ROLLBACK');ev.rollback=true;}}finally{await db.end();ev.closed=true;}}}

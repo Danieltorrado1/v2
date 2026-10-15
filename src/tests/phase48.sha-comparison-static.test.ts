@@ -18,7 +18,13 @@ function hashLike(node:ts.Node):boolean{
  }
  if(ts.isIdentifier(node))return /(?:sha256|_sha|hash|digest)/i.test(node.text)&&!excludedMetric.test(node.text);
  if(ts.isPropertyAccessExpression(node))return /(?:sha256|_sha|hash|digest)/i.test(node.name.text)&&!excludedMetric.test(node.name.text);
- if(ts.isElementAccessExpression(node))return hashLike(node.expression)||!!node.argumentExpression&&/sha256|hash|digest/i.test(node.argumentExpression.getText());
+ if(ts.isElementAccessExpression(node)){
+  if(hashLike(node.expression)||!!node.argumentExpression&&/sha256|hash|digest/i.test(node.argumentExpression.getText()))return true;
+  if(node.argumentExpression&&ts.isIdentifier(node.argumentExpression)){
+   let current:ts.Node=node;
+   while(current.parent){current=current.parent;if(ts.isForOfStatement(current)&&current.initializer.getText().includes(node.argumentExpression.text)&&/(?:HASHES|DIGESTS)/i.test(current.expression.getText()))return true;}
+  }
+ }
  return false;
 }
 
