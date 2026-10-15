@@ -148,6 +148,33 @@ test('explicit env paths reject relative paths, symlinks and broad Windows ACL g
   }finally{await rm(dir,{recursive:true,force:true});}
 });
 
+test('filesystem EPERM is reported at env.acl with a system code and never mislabeled as SQLSTATE',async t=>{
+  if(process.platform!=='win32'){assert.equal(sanitizeLauncherFailure(Object.assign(new Error('synthetic'),{code:'EPERM',syscall:'spawnSync powershell.exe',errno:-4048}),'OFFLINE_PRECHECK','env.acl').sqlstate,null);return;}
+  const root=await realpath(await mkdtemp(path.join(os.tmpdir(),'nomina202-acl-step-'))),file=path.join(root,'synthetic.env'),state=createLauncherExecutionState();
+  try{
+    await writeFile(file,'SYNTHETIC_ONLY=x\n');
+    try{await assertPrivateRegularFile(file,state);assert.equal(state.precheck_step_id,'env.stat');}
+    catch(error){
+      const e=error as NodeJS.ErrnoException;
+      assert.equal(state.precheck_step_id,'env.acl');
+      assert.equal(e.code,'EPERM');
+      assert.equal(e.syscall,'spawnSync powershell.exe');
+      const safe=sanitizeLauncherFailure(error,'OFFLINE_PRECHECK',state.precheck_step_id);
+      assert.equal(safe.system_error_code,'EPERM');assert.equal(safe.sqlstate,null);assert.equal(safe.precheck_step_id,'env.acl');
+      const last=state.precheck_steps.at(-1)!;assert.equal(last.step_id,'env.acl');assert.equal(last.artifact_class,'AUTHORIZED_ENV_FILE');assert.equal(last.path_id,'authorized-env');assert.equal(last.started,true);assert.equal(last.completed,false);assert.equal(last.acl_check,'FAIL');assert.equal(last.error_code,'EPERM');assert.equal(last.syscall,'spawnSync powershell.exe');assert.equal(last.errno,-4048);assert.equal(last.path_kind,'unknown');
+    }
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('filesystem error codes remain separate from PostgreSQL SQLSTATEs',()=>{
+  for(const code of ['EPERM','EACCES','ENOENT','EISDIR','EBUSY']){
+    const failure=sanitizeLauncherFailure(Object.assign(new Error('sanitized local fault'),{code,syscall:'open',errno:-1}),'OFFLINE_PRECHECK','artifact.open');
+    assert.equal(failure.system_error_code,code);assert.equal(failure.sqlstate,null);assert.equal(failure.syscall,'open');assert.equal(failure.precheck_step_id,'artifact.open');
+  }
+  const postgres=sanitizeLauncherFailure(Object.assign(new Error('database fault'),{code:'40001',severity:'ERROR'}),'FIRST_TRANSACTION');
+  assert.equal(postgres.sqlstate,'40001');assert.equal(postgres.system_error_code,null);
+});
+
 test('PDF provider reads only the expected bucket/key and verifies metadata and downloaded bytes in memory',async()=>{
   const pdf=await readFile('C:/Users/CORE ULTRA/Documents/EmpiriaBackups/nomina-turno-202-pre-correccion-20261015T013132Z/historical-account-77.pdf');
   assert.equal(pdf.length,HISTORICAL_PDF_SIZE);assert.equal(hash(pdf),'cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4');

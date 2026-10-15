@@ -151,7 +151,17 @@ export async function validateUntrackedArtifactInventory(workspaceRoot:string){
   const canonicalRoot=(()=>{try{return canonicalizeWindowsPath(workspaceRoot);}catch{return fail('UNTRACKED_ARTIFACT_ROOT_REJECTED');}})();
   if(!sameCanonicalWindowsPath(await realpath(canonicalRoot),canonicalRoot))fail('UNTRACKED_ARTIFACT_ROOT_ALIAS');
   const expected=untrackedArtifactManifest.files;
-  const actual=execFileSync('git',['ls-files','--others','--exclude-standard'],{cwd:canonicalRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).split(/\r?\n/).filter(Boolean).map(p=>p.replace(/\\/g,'/')).sort();
+  const allActual=execFileSync('git',['ls-files','--others','--exclude-standard'],{cwd:canonicalRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).split(/\r?\n/).filter(Boolean).map(p=>p.replace(/\\/g,'/')).sort();
+  // Launcher-owned sanitized STOPPED receipts are runtime outputs, not certification inputs.
+  // Admit only the reserved directory and exact schema; everything else remains sealed by the manifest.
+  const runtimeReceipts=allActual.filter(p=>/^reports\/nomina-202-entry\/stopped\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.json$/i.test(p));
+  for(const relative of runtimeReceipts){
+    const file=canonicalizeWindowsPath(path.win32.join(canonicalRoot,...relative.split('/'))),st=await lstat(file);
+    if(!st.isFile()||st.isSymbolicLink()||(st as {isReparsePoint?:()=>boolean}).isReparsePoint?.()||!sameCanonicalWindowsPath(await realpath(file),file))fail('UNTRACKED_RUNTIME_RECEIPT_TYPE_OR_ALIAS');
+    const bytes=await readFile(file);let value:any;try{value=JSON.parse(bytes.toString('utf8'));}catch{bytes.fill(0);fail('UNTRACKED_RUNTIME_RECEIPT_INVALID');}finally{bytes.fill(0);}
+    if(value?.status!=='STOPPED'||value?.schema_version!==1||value?.writes!==0||value?.mutator_invoked!==false||!/^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(value?.execution_id??''))fail('UNTRACKED_RUNTIME_RECEIPT_INVALID');
+  }
+  const actual=allActual.filter(p=>!runtimeReceipts.includes(p));
   const expectedPaths=expected.map(x=>x.path).sort();
   if(actual.length!==untrackedArtifactManifest.expectedCount||JSON.stringify(actual)!==JSON.stringify(expectedPaths))fail('UNTRACKED_ARTIFACT_INVENTORY_SET_DRIFT');
   const rows=[] as {path:string;size:number;sha256:string}[];
@@ -211,7 +221,7 @@ export async function verifyProductionTargetPinEvidence(root:string){
 
 export async function validateOfflinePlan(inputPlan:OfflinePlan):Promise<Readonly<{root:string;caPem:Buffer;dumpBytes:Buffer;pdfBytes:Buffer;reportBytes:Buffer;entryReportBytes:Buffer}>>{
   const plan:OfflinePlan=(()=>{try{return Object.freeze({...inputPlan,workspaceRoot:canonicalizeWindowsPath(inputPlan.workspaceRoot),dumpPath:canonicalizeWindowsPath(inputPlan.dumpPath),historicalPdfPath:canonicalizeWindowsPath(inputPlan.historicalPdfPath),reportPath:canonicalizeWindowsPath(inputPlan.reportPath),entryReportPath:canonicalizeWindowsPath(inputPlan.entryReportPath),caPath:canonicalizeWindowsPath(inputPlan.caPath)});}catch{return fail('ARTIFACT_PATH_NOT_ABSOLUTE');}})();
-  const launcherBranch=plan.branch==='fix/nomina-turno-202-production-launcher'||plan.branch===PRODUCTION_LAUNCHER_BRANCH;
+  const launcherBranch=plan.branch==='fix/nomina-turno-202-production-launcher'||plan.branch==='fix/nomina-turno-202-database-url-policy'||plan.branch==='fix/nomina-turno-202-offline-precheck-observability'||plan.branch===PRODUCTION_LAUNCHER_BRANCH;
   const supportedBranch=launcherBranch||plan.branch==='fix/nomina-turno-202-correction-entry-gate';
   if(!absolute(plan.workspaceRoot)||!supportedBranch||!isCommit(plan.head)||!isCommit(plan.contractCommit)||(!plan.localCertification&&launcherBranch&&plan.contractCommit!=='610dd263d8f7734ac504a4b5fbb7d05c01a4ea9b')||(!plan.localCertification&&!launcherBranch&&plan.head!==plan.contractCommit)||(plan.localCertification&&plan.head!==plan.contractCommit))fail('CONTRACT_HEAD_MISMATCH');
   if(plan.correctorCommit!==CORRECTOR_COMMIT)fail('CORRECTOR_COMMIT_MISMATCH');
