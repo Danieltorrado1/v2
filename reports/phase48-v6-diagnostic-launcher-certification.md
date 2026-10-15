@@ -26,7 +26,7 @@ Both launcher and instrument publish through the repository's exclusive `publish
 
 ## Local verification
 
-- Health/client and launcher tests: 13 tests passed, including local HTTP and HTTPS with the repository's test-only TLS fixture, redirects, 500/503, timeout, malformed/duplicate JSON, excessive body, wrong types, BOM, invalid UTF-8 and simulated `ReferenceError`.
+- Health/client and launcher tests: 14 tests passed, including local HTTP and HTTPS with the repository's test-only TLS fixture, redirects, 500/503, timeout, malformed/duplicate JSON, excessive body, wrong types, BOM, invalid UTF-8 and simulated `ReferenceError`.
 - READ_QUERY instrument tests: 19 tests passed, including first-query stop, SQLSTATE, rollback/close failures, one-client cap and sanitized receipts.
 - PostgreSQL 17.11 local certification: 164 queries (159 SELECTs), 740 fixture candidates, 17 digests, TLS 1.3, READ ONLY / REPEATABLE READ, explicit ROLLBACK, `Client.end()`, and atomic receipt all passed. Induced missing-column, missing-relation, permission and timeout errors also passed.
 - V6 local PostgreSQL/window/receipt/mutator regression harness: 148 tests passed, including complete 740-row operation, rollback points, digest drift, sequence locks, seal expiry, receipt collisions, restart recovery and idempotency. The 121-second slow-gate case passed; latency profiles measured the existing 100,000 ms internal TTL within its 120,000 ms hard limit.
