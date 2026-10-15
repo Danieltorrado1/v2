@@ -5,7 +5,7 @@ import {join,resolve} from 'node:path';
 import {publishAtomicReceipt} from './phase48-readonly-receipts';
 import {fetchProductionHealth,type HealthSummary} from './phase48-v6-diagnostic-health';
 
-export const DIAGNOSTIC_PINS=Object.freeze({diagnostic_runner_commit:'38f5242ddb283ab8af03d0ea5dca1aae5fe44922',readonly_runner_commit:'38f5242ddb283ab8af03d0ea5dca1aae5fe44922',mutator_commit:'58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911'});
+export const DIAGNOSTIC_PINS=Object.freeze({diagnostic_runner_commit:'f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa',readonly_runner_commit:'f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa',mutator_commit:'58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911'});
 export const PRESERVED_INVALID_RECEIPT=Object.freeze({path:'reports/phase48-diagnostic-1a56c5bb-7c53-4acb-92d9-8cfbcac1e4dd.receipt.json',size:1402,sha256:'ca2688f45c0c7da7717c277163a45488a24ee0e8f7ba7c0cdbd4f704a6f5c2bb'});
 export const LOCAL_CERTIFICATE=Object.freeze({path:'reports/phase48-v6-read-query-certificate-20261015T165906922Z-6b9eadce573b42fd84a265387903cf37.local.json',sha256:'24a8d02a55ce9096df2696cbe50d23a242c940f1d0723624fad6a53a47ee566e'});
 export const HISTORICAL_STOPPED_RECEIPTS=Object.freeze({status:'NOT_AVAILABLE' as const,blocking:false as const,expected_sha256:Object.freeze(['e5a71ee01913b1ef778a80854a4ba8d2ac46189f81c1ac87dc25d2adeb26d9a4','b6368989c72dd8b21ecd48e52b0495d066fd51e22dce98dfbe986761c73b481a'] as const)});

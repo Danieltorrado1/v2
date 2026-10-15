@@ -43,4 +43,11 @@ This records expected historical identifiers only. It does not claim that the fi
 
 ## Pins
 
-The launcher commit on this branch is the new `diagnostic_launcher_commit`. The diagnostic/read-only runner source remains pinned to `38f5242ddb283ab8af03d0ea5dca1aae5fe44922`; the unchanged mutator source remains `58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911` and its local regression tests passed. Previous launcher pins are superseded for future diagnostic attempts by the branch commit carrying this metadata correction. No merge or deployment is included.
+The final pins for a future, separately authorized attempt are:
+
+- `diagnostic_launcher_commit`: final branch HEAD after the pin update described by this report.
+- `diagnostic_runner_commit`: `f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa`.
+- `readonly_runner_commit`: `f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa`.
+- `mutator_commit`: `58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911` (unchanged logic, locally regression-tested).
+
+Pins `38f5242ddb283ab8af03d0ea5dca1aae5fe44922` for the runner pair are superseded for future attempts. No merge or deployment is included.
