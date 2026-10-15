@@ -4,10 +4,11 @@
  * Credentials are supplied only after offline pins, artifacts, CA and target
  * have passed validation.
  */
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { readFile, realpath, mkdir, open, link, unlink, lstat } from 'node:fs/promises';
 import path from 'node:path';
 import { Client, type ClientConfig, type QueryResultRow } from 'pg';
+import { checkServerIdentity } from 'node:tls';
 import { execFileSync } from 'node:child_process';
 import { ENTRY_CASE } from './nomina-turno-202-entry-contract';
 import productionTargetPinJson from './nomina-202-production-target-pin.json';
@@ -17,7 +18,7 @@ export const HISTORICAL_PDF_SHA256='cf061de69f85976bd884439e12a58281bde4d32d2542
 export const DUMP_SHA256='dd1f9d298e83fb9664d1795c4e452698c26b274569cca11715b2c2f03ff99d75';
 export const CORRECTOR_COMMIT='95fc6bb6879409d37a088e451fb64f2edafacb5f';
 export const PRODUCTION_CA_SHA256='700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7';
-export const PRODUCTION_LAUNCHER_BRANCH='fix/nomina-turno-202-launcher-path-target-pins';
+export const PRODUCTION_LAUNCHER_BRANCH='fix/nomina-turno-202-database-url-policy';
 export const CERTIFIED_REPORT_SHA256='4d9456973bc1433b5c6175d347497d603999fb1ed35995e7e2493415cda3da41';
 export const ENTRY_READONLY_REPORT_SHA256='1e2d8cfed0889bd238383054296870c1226be0f5fc89793d652755c584cabca8';
 export const POSTGRES17_BIN='C:/Program Files/PostgreSQL/17/bin';
@@ -38,12 +39,13 @@ const OFFLINE_GIT_ENV=Object.freeze(Object.fromEntries(['PATH','SystemRoot','WIN
 const hash=(value:string|Buffer)=>createHash('sha256').update(value).digest('hex');
 const canonical=(value:unknown):string=>JSON.stringify(value===null||typeof value!=='object'?value:Array.isArray(value)?value.map(x=>JSON.parse(canonical(x))):Object.fromEntries(Object.keys(value as object).sort().map(k=>[k,JSON.parse(canonical((value as Record<string,unknown>)[k]))])));
 export const PRODUCTION_TARGET_PIN=Object.freeze(productionTargetPinJson);
-export const PRODUCTION_TARGET_PIN_SHA256='49a9a34efa6a411f78cc172fe90edcaf7364bbb84ae6e96fbe4f32c4e4d39557';
-const PRODUCTION_TARGET_PIN_CANONICAL_SHA256='aca0f58339f7708ff2df697acbb94fd342510f17603f1458dd7f372fb8706bf5';
+export const PRODUCTION_TARGET_PIN_SHA256='1227f334795d49952b38fb4689b3587ff9a8505faa6dedda9d33d968d18c1227';
+const PRODUCTION_TARGET_PIN_CANONICAL_SHA256='c919591f8005da992f65dc56ce90aa960a58be5bf06b1393fcc3acb06263f22e';
 const digest=(value:unknown)=>hash(canonical(value));
 const fail=(code:string):never=>{throw new Error(`STOPPED_${code}`);};
 const windowsPathFail=(code:string):never=>{throw new Error(`WINDOWS_PATH_REJECTED_${code}`);};
 const isSha=(value:string)=>/^[a-f0-9]{64}$/.test(value);
+export const matchesSha256=(value:string,expected:string)=>{if(!isSha(expected))return false;const actual=createHash('sha256').update(value,'utf8').digest();return timingSafeEqual(actual,Buffer.from(expected,'hex'));};
 const isCommit=(value:string)=>/^[a-f0-9]{40}$/.test(value);
 if(hash(canonical(PRODUCTION_TARGET_PIN))!==PRODUCTION_TARGET_PIN_CANONICAL_SHA256)fail('TARGET_PIN_OBJECT_HASH_MISMATCH');
 /** Canonical lexical form for a local Windows drive path. User inputs may mix separators. */
@@ -80,11 +82,11 @@ export type OfflinePlan=Readonly<{
   entryReportPath:string; entryReportSha256:string; expectedEntryReportSha256:string;
   caPath:string; caSha256:string; expectedCaSha256:string;
   projectRefSha256:string;
-  host:string; servername:string; expectedServername:string; port:number; database:string;
+  host:string; servername:string; expectedServername:string; port:number; databaseSha256:string;
   healthUrl:string; healthHostname:string;
   localCertification:boolean;
 }>;
-export type DbCredentials=Readonly<{user:string;password:string}>;
+export type DbCredentials=Readonly<{user:string;password:string;database:string}>;
 export type SyncConfirmation=Readonly<{source:'MANUAL_CURRENT';enabled:false;observedAt:string;expiresAt:string}>;
 export type PdfRead=Readonly<{bytes:Buffer;reference:string;mime:string;etag:string}>;
 export type HealthResponse=Readonly<{
@@ -200,8 +202,8 @@ export async function verifyProductionTargetPinEvidence(root:string){
   const refHash=hash(projectRef);projectRef='';
   const historicalHost=String(operational?.environment?.database_host??'');
   const [snapshotHost,snapshotPort]=String(contract?.metadata?.host??'').split(':');
-  if(!/^[a-z0-9]{20}$/.test(refUrl.hostname.slice(0,-'.supabase.co'.length))||refHash!==pin.project_ref_sha256||historicalHost!==pin.host||snapshotHost!==pin.host||Number(snapshotPort)!==pin.port||contract?.metadata?.database!==pin.database||contract?.metadata?.identity?.database!==pin.database)fail('TARGET_PIN_EVIDENCE_MISMATCH');
-  if(pin.protocol!=='postgresql'||pin.tls?.min_version!=='TLSv1.3'||pin.tls?.max_version!=='TLSv1.3'||pin.tls?.reject_unauthorized!==true||pin.tls?.ca_sha256!==PRODUCTION_CA_SHA256)fail('TARGET_PIN_POLICY_MISMATCH');
+  if(!/^[a-z0-9]{20}$/.test(refUrl.hostname.slice(0,-'.supabase.co'.length))||refHash!==pin.project_ref_sha256||historicalHost!==pin.host||snapshotHost!==pin.host||Number(snapshotPort)!==pin.port||hash(String(contract?.metadata?.database??''))!==pin.database_sha256||hash(String(contract?.metadata?.identity?.database??''))!==pin.database_sha256)fail('TARGET_PIN_EVIDENCE_MISMATCH');
+  if(pin.protocol_class!=='POSTGRESQL'||pin.tls_policy!=='EXTERNAL_STRICT_TLS'||pin.tls?.min_version!=='TLSv1.3'||pin.tls?.max_version!=='TLSv1.3'||pin.tls?.reject_unauthorized!==true||pin.tls?.ca_sha256!==PRODUCTION_CA_SHA256)fail('TARGET_PIN_POLICY_MISMATCH');
   return Object.freeze({sources:byPath.size+1,projectRefSha256:refHash});
 }
 
@@ -211,9 +213,9 @@ export async function validateOfflinePlan(inputPlan:OfflinePlan):Promise<Readonl
   const supportedBranch=launcherBranch||plan.branch==='fix/nomina-turno-202-correction-entry-gate';
   if(!absolute(plan.workspaceRoot)||!supportedBranch||!isCommit(plan.head)||!isCommit(plan.contractCommit)||(!plan.localCertification&&launcherBranch&&plan.contractCommit!=='610dd263d8f7734ac504a4b5fbb7d05c01a4ea9b')||(!plan.localCertification&&!launcherBranch&&plan.head!==plan.contractCommit)||(plan.localCertification&&plan.head!==plan.contractCommit))fail('CONTRACT_HEAD_MISMATCH');
   if(plan.correctorCommit!==CORRECTOR_COMMIT)fail('CORRECTOR_COMMIT_MISMATCH');
-  if(!plan.localCertification&&(plan.host!==PRODUCTION_TARGET_PIN.host||plan.servername!==PRODUCTION_TARGET_PIN.host||plan.port!==PRODUCTION_TARGET_PIN.port||plan.database!==PRODUCTION_TARGET_PIN.database||plan.projectRefSha256!==PRODUCTION_TARGET_PIN.project_ref_sha256||PRODUCTION_TARGET_PIN.protocol!=='postgresql'||PRODUCTION_TARGET_PIN.tls.min_version!=='TLSv1.3'||PRODUCTION_TARGET_PIN.tls.max_version!=='TLSv1.3'||PRODUCTION_TARGET_PIN.tls.reject_unauthorized!==true||PRODUCTION_TARGET_PIN.tls.ca_sha256!==PRODUCTION_CA_SHA256))fail('TARGET_PIN_MISMATCH');
+  if(!plan.localCertification&&(plan.host!==PRODUCTION_TARGET_PIN.host||plan.servername!==PRODUCTION_TARGET_PIN.host||plan.port!==PRODUCTION_TARGET_PIN.port||plan.databaseSha256!==PRODUCTION_TARGET_PIN.database_sha256||plan.projectRefSha256!==PRODUCTION_TARGET_PIN.project_ref_sha256||PRODUCTION_TARGET_PIN.protocol_class!=='POSTGRESQL'||PRODUCTION_TARGET_PIN.tls_policy!=='EXTERNAL_STRICT_TLS'||PRODUCTION_TARGET_PIN.tls.min_version!=='TLSv1.3'||PRODUCTION_TARGET_PIN.tls.max_version!=='TLSv1.3'||PRODUCTION_TARGET_PIN.tls.reject_unauthorized!==true||PRODUCTION_TARGET_PIN.tls.ca_sha256!==PRODUCTION_CA_SHA256))fail('TARGET_PIN_MISMATCH');
   if(!isSha(plan.dumpSha256)||plan.dumpSha256!==DUMP_SHA256||!isSha(plan.historicalPdfSha256)||plan.historicalPdfSha256!==HISTORICAL_PDF_SHA256||plan.reportSha256!==CERTIFIED_REPORT_SHA256||plan.expectedReportSha256!==CERTIFIED_REPORT_SHA256||plan.entryReportSha256!==ENTRY_READONLY_REPORT_SHA256||plan.expectedEntryReportSha256!==ENTRY_READONLY_REPORT_SHA256||!isSha(plan.caSha256)||plan.caSha256!==plan.expectedCaSha256||(!plan.localCertification&&plan.expectedCaSha256!==PRODUCTION_CA_SHA256))fail('OFFLINE_HASH_PIN_MISMATCH');
-  if(!plan.servername||plan.servername!==plan.expectedServername||!Number.isInteger(plan.port)||plan.port<1024||plan.port>65535||[5432,5433].includes(plan.port)||!plan.database)fail('DESTINATION_REJECTED');
+  if(!plan.servername||plan.servername!==plan.expectedServername||!Number.isInteger(plan.port)||plan.port<1024||plan.port>65535||[5432,5433].includes(plan.port)||!isSha(plan.databaseSha256))fail('DESTINATION_REJECTED');
   if(plan.localCertification){if(!['127.0.0.1','::1','localhost'].includes(plan.host))fail('LOCAL_DESTINATION_REJECTED');}
   else if(plan.host!==plan.servername||plan.servername==='localhost')fail('PRODUCTION_HOST_PIN_REQUIRED');
   const health=(()=>{try{return new URL(plan.healthUrl);}catch{return fail('HEALTH_DESTINATION_INVALID');}})();
@@ -245,11 +247,12 @@ export async function validateOfflinePlan(inputPlan:OfflinePlan):Promise<Readonl
 }
 
 function makeTlsConfig(plan:OfflinePlan,credentials:DbCredentials,caPem:Buffer):ClientConfig{
-  if(!credentials.user||typeof credentials.password!=='string')fail('CREDENTIALS_INVALID');
+  if(!credentials.user||typeof credentials.password!=='string'||!credentials.database||!matchesSha256(credentials.database,plan.databaseSha256))fail('CREDENTIALS_INVALID');
+  if(!caPem.length||hash(caPem)!==PRODUCTION_CA_SHA256||plan.servername!==plan.expectedServername)fail('TLS_CONFIGURATION_MISMATCH');
   return {
-    host:plan.host,port:plan.port,database:plan.database,user:credentials.user,password:credentials.password,
+    host:plan.host,port:plan.port,database:credentials.database,user:credentials.user,password:credentials.password,
     connectionTimeoutMillis:8000,application_name:'nomina202_readonly_preflight',options:'-c statement_timeout=15000 -c lock_timeout=3000',
-    ssl:{rejectUnauthorized:true,ca:caPem,minVersion:'TLSv1.3',maxVersion:'TLSv1.3',servername:plan.servername},
+    ssl:{rejectUnauthorized:true,ca:caPem,minVersion:'TLSv1.3',maxVersion:'TLSv1.3',servername:plan.servername,checkServerIdentity:(_host,cert)=>checkServerIdentity(plan.servername,cert)},
   };
 }
 
@@ -298,6 +301,7 @@ async function captureDatabase(client:Client,dependencies:RunnerDependencies){
   const q=async<T extends QueryResultRow>(sql:string,values:unknown[]=[])=>(dependencies.onQuery?.('capture'),await client.query<T>(sql,values)).rows;
   const session=(await q<{server_version:string;database:string;transaction_read_only:string;transaction_isolation:string}>(`SELECT current_setting('server_version') server_version,current_database() database,current_setting('transaction_read_only') transaction_read_only,current_setting('transaction_isolation') transaction_isolation`))[0]!;
   if(!session.server_version.startsWith('17.')||session.transaction_read_only!=='on'||session.transaction_isolation!=='repeatable read')fail('DATABASE_SESSION_POLICY');
+  if(!matchesSha256(session.database,dependencies.plan.databaseSha256))fail('DATABASE_IDENTITY_MISMATCH');
   const scope=groupRows(await q<{table_name:string;row:DbRow}>(SCOPE_SQL));
   const targetIds=[192,220,77,20114];const relatedTables=['nomina_movimientos','cobertura_cuenta_cobro_externa_detalle','cobertura_cuentas_cobro_externas','nomina_revision_operativa'];
   const related=groupRows(await q<{table_name:string;row:DbRow}>(AUDIT_SQL,[OPERATION,relatedTables,targetIds]));
@@ -338,7 +342,7 @@ async function captureDatabase(client:Client,dependencies:RunnerDependencies){
   const auditState={auditoria:related.auditoria??[],auditoria_eventos:related.auditoria_eventos??[],historial_cambios:related.historial_cambios??[]};
   if((auditState.auditoria_eventos as DbRow[]).filter(x=>x.accion===OPERATION).length|| (auditState.auditoria as DbRow[]).filter(x=>x.accion===OPERATION).length||(auditState.historial_cambios as DbRow[]).filter(x=>x.motivo===OPERATION).length)fail('PRIOR_REPAIR_FOUND');
   const digestSet={critical_schema:digest({tableSet,trigger}),sources:digest({actorScope,period:scope.nomina_periodos,turn:scope.nomina_novedad_turnos,novelty:scope.nomina_novedades,rate:scope.nomina_movimiento_tarifas,employee:scope.nomina_empleados,vinculation:scope.vinculaciones,person:scope.personas}),movement_192:digest(scope.nomina_movimientos),detail_220:digest(scope.cobertura_cuenta_cobro_externa_detalle),account_77:digest(scope.cobertura_cuentas_cobro_externas),revision_20114:digest(scope.nomina_revision_operativa),related_audits:digest(auditState),related_history:digest(auditState.historial_cambios),pdf_metadata:digest(pdfMeta),protected_tables:digest({company:scope.empresas,contract:scope.contratos,period:scope.nomina_periodos}),write_set_before:digest({movement:scope.nomina_movimientos,detail:scope.cobertura_cuenta_cobro_externa_detalle,account:scope.cobertura_cuentas_cobro_externas,revision:scope.nomina_revision_operativa}),sequence_baseline:digest(sequences)};
-  return {session:{serverVersion:session.server_version,database:session.database},target,accountDocument:{bucket:String(scope.cobertura_cuentas_cobro_externas?.find(x=>Number(x.id)===77)?.generado_bucket??''),path:String(scope.cobertura_cuentas_cobro_externas?.find(x=>Number(x.id)===77)?.generado_path??'')},actor:{roles:actorScope.active_roles,empresaOk:actorScope.empresa_ok,contratoOk:actorScope.contrato_ok},locks,tableSet,duplicates,priorRepair,blockers,triggerSha256:digest(trigger),auditCounts:Object.fromEntries(Object.entries(auditState).map(([k,v])=>[k,(v as DbRow[]).length])),historyRows:(auditState.historial_cambios as DbRow[]).length,health,syncConfirmation:Object.freeze({...sync}),pdfMeta,digestSet,sequences};
+  return {session:{serverVersion:session.server_version,databaseSha256:hash(session.database)},target:{host:dependencies.plan.host,port:dependencies.plan.port,databaseSha256:hash(session.database),projectRefSha256:dependencies.plan.projectRefSha256},accountDocument:{bucket:String(scope.cobertura_cuentas_cobro_externas?.find(x=>Number(x.id)===77)?.generado_bucket??''),path:String(scope.cobertura_cuentas_cobro_externas?.find(x=>Number(x.id)===77)?.generado_path??'')},actor:{roles:actorScope.active_roles,empresaOk:actorScope.empresa_ok,contratoOk:actorScope.contrato_ok},locks,tableSet,duplicates,priorRepair,blockers,triggerSha256:digest(trigger),auditCounts:Object.fromEntries(Object.entries(auditState).map(([k,v])=>[k,(v as DbRow[]).length])),historyRows:(auditState.historial_cambios as DbRow[]).length,health,syncConfirmation:Object.freeze({...sync}),pdfMeta,digestSet,sequences};
 }
 
 export async function readHealthHttp(plan:OfflinePlan):Promise<HealthResponse>{

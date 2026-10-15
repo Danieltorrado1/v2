@@ -12,9 +12,9 @@ const plan=(patch:Partial<OfflinePlan>={}):OfflinePlan=>({
   reportPath:'C:/local/report.json',reportSha256:CERTIFIED_REPORT_SHA256,expectedReportSha256:CERTIFIED_REPORT_SHA256,
   entryReportPath:'C:/local/entry-report.json',entryReportSha256:ENTRY_READONLY_REPORT_SHA256,expectedEntryReportSha256:ENTRY_READONLY_REPORT_SHA256,
   caPath:'C:/local/ca.crt',caSha256:'b'.repeat(64),expectedCaSha256:'b'.repeat(64),projectRefSha256:'0'.repeat(64),
-  host:'127.0.0.1',servername:'localhost',expectedServername:'localhost',port:61001,database:'restore',healthUrl:'http://127.0.0.1:61002/health',healthHostname:'127.0.0.1',localCertification:true,...patch,
+  host:'127.0.0.1',servername:'localhost',expectedServername:'localhost',port:61001,databaseSha256:createHash('sha256').update('restore').digest('hex'),healthUrl:'http://127.0.0.1:61002/health',healthHostname:'127.0.0.1',localCertification:true,...patch,
 });
-const dependencies={plan:plan(),readCredentials:async()=>({user:'never-read',password:''}),readPdf:async()=>({bytes:Buffer.alloc(0),reference:'',mime:'application/pdf',etag:''}),syncConfirmation:{source:'MANUAL_CURRENT' as const,enabled:false as const,observedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60_000).toISOString()}};
+const dependencies={plan:plan(),readCredentials:async()=>({user:'never-read',password:'',database:'restore'}),readPdf:async()=>({bytes:Buffer.alloc(0),reference:'',mime:'application/pdf',etag:''}),syncConfirmation:{source:'MANUAL_CURRENT' as const,enabled:false as const,observedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60_000).toISOString()}};
 
 test('independent target pins reconcile to the versioned sanitized source reports',async()=>{
   const evidence=await verifyProductionTargetPinEvidence(path.resolve('.'));
@@ -57,7 +57,7 @@ test('untracked offline evidence is allowed only when all 384 paths and hashes m
 test('invalid offline contract is rejected before the credential callback',async()=>{
   let credentialReads=0;
   const invalid=plan({head:'x',contractCommit:'x'});
-  await assert.rejects(runReadOnlyEntryPreflight(invalid,{...dependencies,plan:invalid,readCredentials:async()=>{credentialReads++;return{user:'x',password:'x'};}}),/STOPPED_CONTRACT_HEAD_MISMATCH/);
+  await assert.rejects(runReadOnlyEntryPreflight(invalid,{...dependencies,plan:invalid,readCredentials:async()=>{credentialReads++;return{user:'x',password:'x',database:'restore'};}}),/STOPPED_CONTRACT_HEAD_MISMATCH/);
   assert.equal(credentialReads,0);
 });
 

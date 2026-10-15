@@ -5,11 +5,11 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
 import { ENTRY_CASE, buildPendingEntryPhrase, verifyPendingEntryPhrase, type EntryEvidence } from './nomina-turno-202-entry-contract';
-import { ENTRY_READONLY_REPORT_SHA256, CERTIFIED_REPORT_SHA256, CORRECTOR_COMMIT, DUMP_SHA256, HISTORICAL_PDF_SHA256, PRODUCTION_CA_SHA256, PRODUCTION_TARGET_PIN, PRODUCTION_TARGET_PIN_SHA256, canonicalizeWindowsPath, sameCanonicalWindowsPath, validateOfflinePlan, runReadOnlyEntryPreflight, readHealthHttp, publishReadOnlyReceipt, type OfflinePlan, type PdfRead } from './nomina-turno-202-readonly-runner';
+import { ENTRY_READONLY_REPORT_SHA256, CERTIFIED_REPORT_SHA256, CORRECTOR_COMMIT, DUMP_SHA256, HISTORICAL_PDF_SHA256, PRODUCTION_CA_SHA256, PRODUCTION_TARGET_PIN, PRODUCTION_TARGET_PIN_SHA256, matchesSha256, canonicalizeWindowsPath, sameCanonicalWindowsPath, validateOfflinePlan, runReadOnlyEntryPreflight, readHealthHttp, publishReadOnlyReceipt, type OfflinePlan, type PdfRead } from './nomina-turno-202-readonly-runner';
 
 export const PRODUCTION_HEALTH_URL='https://api.empiriasuite.com/api/health';
 export const BASE_CONTRACT_COMMIT='610dd263d8f7734ac504a4b5fbb7d05c01a4ea9b';
-export const PRODUCTION_LAUNCHER_BRANCH='fix/nomina-turno-202-launcher-path-target-pins';
+export const PRODUCTION_LAUNCHER_BRANCH='fix/nomina-turno-202-database-url-policy';
 export const UNTRACKED_AGGREGATE_SHA256='9c77ae07a8f4478b6e3a9d92d72f5074816a2888c2a98ef807c2ec19354f11c7';
 export const HISTORICAL_PDF_SIZE=3051;
 export const MEASUREMENT_ARTIFACT_CLASS='NON_EXECUTABLE_MEASUREMENT_ARTIFACT_UNAVAILABLE';
@@ -93,19 +93,38 @@ function projectRefFromSupabaseUrl(value:string){
 export function validateServiceConfiguration(env:LauncherEnvironment){
   const ref=projectRefFromSupabaseUrl(env.SUPABASE_URL);
   let db:URL;try{db=new URL(env.DATABASE_URL);}catch{return fail('DATABASE_URL_INVALID');}
+  if(!['postgres:','postgresql:'].includes(db.protocol))fail('DATABASE_URL_PROTOCOL_REJECTED');
   let decodedUser='',decodedPassword='';try{decodedUser=decodeURIComponent(db.username);decodedPassword=decodeURIComponent(db.password);}catch{return fail('DATABASE_URL_POLICY');}
-  if(db.protocol!=='postgresql:'||!decodedUser||!decodedPassword||!['require','verify-full'].includes(db.searchParams.get('sslmode')??'')||[...db.searchParams.keys()].some(k=>k!=='sslmode'))fail('DATABASE_URL_POLICY');
+  if(!decodedUser||!decodedPassword||db.hash)fail('DATABASE_URL_POLICY');
+  const query=[...db.searchParams.entries()],sslEntries=query.filter(([key])=>key.toLowerCase()==='sslmode');
+  if(query.some(([key])=>key!=='sslmode')||sslEntries.length>1)fail('DATABASE_URL_TLS_QUERY_REJECTED');
+  const sslmode=sslEntries[0]?.[1];if(sslmode!==undefined&&!['require','verify-full'].includes(sslmode))fail('DATABASE_URL_TLS_MODE_REJECTED');
+  const rawPath=extractRawDatabasePath(env.DATABASE_URL,db),database=canonicalDatabaseSegment(db,rawPath);
   const dbHost=db.hostname.toLowerCase(),dbRef=dbHost.startsWith('db.')?dbHost.split('.')[1]:decodeURIComponent(db.username).split('.').at(-1);
   if(dbRef!==ref||!(dbHost.endsWith('.supabase.co')||dbHost.endsWith('.pooler.supabase.com')))fail('DATABASE_TARGET_MISMATCH');
   if(!env.SUPABASE_SERVICE_ROLE_KEY||!env.SUPABASE_STORAGE_BUCKET||!/^[a-z0-9][a-z0-9._-]{0,62}$/.test(env.SUPABASE_STORAGE_BUCKET))fail('STORAGE_CONFIG_INVALID');
-  return Object.freeze({projectRef:ref,databaseHost:dbHost,databasePort:Number(db.port||5432),databaseName:decodeURIComponent(db.pathname.slice(1))});
+  return Object.freeze({protocolClass:'POSTGRESQL' as const,projectRef:ref,databaseHost:dbHost,databasePort:Number(db.port||5432),databaseName:database.name,databaseSha256:database.sha256,tlsPolicy:'EXTERNAL_STRICT_TLS' as const});
+}
+
+function extractRawDatabasePath(value:string,parsed:URL){
+  const match=/^[A-Za-z][A-Za-z0-9+.-]*:\/\/[^/?#]*(\/[^?#]*)?(?:[?#]|$)/.exec(value);if(!match)return fail('DATABASE_URL_INVALID');const raw=match[1]??'';
+  if(raw!==parsed.pathname)fail('DATABASE_PATH_PARSER_AMBIGUITY');return raw;
+}
+export function canonicalDatabaseSegment(parsed:URL,rawPath:string){
+  if(parsed.pathname!==rawPath||!rawPath.startsWith('/')||rawPath.startsWith('//')||rawPath.slice(1).includes('/'))fail('DATABASE_PATH_SEGMENT_COUNT');
+  const encoded=rawPath.slice(1);if(!encoded||encoded.includes('\\')||/%2f|%5c/i.test(encoded)||/%(?![0-9a-f]{2})/i.test(encoded))fail('DATABASE_PATH_ENCODING_REJECTED');
+  let decoded:string;try{decoded=decodeURIComponent(encoded);}catch{return fail('DATABASE_PATH_ENCODING_REJECTED');}
+  if(!decoded||decoded==='.'||decoded==='..'||decoded.includes('/')||decoded.includes('\\')||decoded.includes('\0')||decoded.includes('%')||decoded.normalize('NFC')!==decoded)fail('DATABASE_PATH_SEGMENT_REJECTED');
+  const bytes=Buffer.from(decoded,'utf8'),databaseSha256=createHash('sha256').update(bytes).digest('hex');
+  if(!matchesSha256(decoded,PRODUCTION_TARGET_PIN.database_sha256))fail('DATABASE_PATH_PIN_MISMATCH');
+  return Object.freeze({name:decoded,sha256:databaseSha256,byteLength:bytes.length});
 }
 
 export function assertTargetMatchesPin(target:ReturnType<typeof validateServiceConfiguration>,pin=PRODUCTION_TARGET_PIN){
-  return assertTargetDetailsMatchPin({host:target.databaseHost,port:target.databasePort,database:target.databaseName,projectRefSha256:sha(target.projectRef)},pin);
+  return assertTargetDetailsMatchPin({host:target.databaseHost,port:target.databasePort,databaseSha256:target.databaseSha256,projectRefSha256:sha(target.projectRef)},pin);
 }
-export function assertTargetDetailsMatchPin(target:Readonly<{host:string;port:number;database:string;projectRefSha256:string}>,pin=PRODUCTION_TARGET_PIN){
-  if(target.host!==pin.host||target.port!==pin.port||target.database!==pin.database||target.projectRefSha256!==pin.project_ref_sha256||pin.protocol!=='postgresql'||pin.tls.min_version!=='TLSv1.3'||pin.tls.max_version!=='TLSv1.3'||pin.tls.reject_unauthorized!==true||pin.tls.ca_sha256!==PRODUCTION_CA_SHA256)fail('DATABASE_TARGET_PIN_MISMATCH');
+export function assertTargetDetailsMatchPin(target:Readonly<{host:string;port:number;databaseSha256:string;projectRefSha256:string}>,pin=PRODUCTION_TARGET_PIN){
+  if(target.host!==pin.host||target.port!==pin.port||target.databaseSha256!==pin.database_sha256||target.projectRefSha256!==pin.project_ref_sha256||pin.protocol_class!=='POSTGRESQL'||pin.tls_policy!=='EXTERNAL_STRICT_TLS'||pin.tls.min_version!=='TLSv1.3'||pin.tls.max_version!=='TLSv1.3'||pin.tls.reject_unauthorized!==true||pin.tls.ca_sha256!==PRODUCTION_CA_SHA256)fail('DATABASE_TARGET_PIN_MISMATCH');
   return true;
 }
 
@@ -132,7 +151,7 @@ export async function createProductionPlan(args:LauncherArguments):Promise<Offli
   const historicalPdfPath=canonicalizeWindowsPath('C:/Users/CORE ULTRA/Documents/EmpiriaBackups/nomina-turno-202-pre-correccion-20261015T013132Z/historical-account-77.pdf');
   const nativeReportPath=canonicalizeWindowsPath(path.win32.join(root,'reports/nomina-202-performance-20261015T150430Z/report.json'));
   const entryReportPath=canonicalizeWindowsPath(path.win32.join(root,'reports/nomina-202-performance-20261015T155014Z/report.json'));
-  const plan:OfflinePlan={workspaceRoot:root,branch,head,contractCommit:BASE_CONTRACT_COMMIT,correctorCommit:args['--expected-corrector-commit'],dumpPath:backupPath,dumpSha256:args['--backup-sha256'],historicalPdfPath,historicalPdfSha256:args['--pdf-sha256'],reportPath:nativeReportPath,reportSha256:args['--native-report-sha256'],expectedReportSha256:CERTIFIED_REPORT_SHA256,entryReportPath,entryReportSha256:args['--readonly-report-sha256'],expectedEntryReportSha256:ENTRY_READONLY_REPORT_SHA256,caPath,caSha256:caSha,expectedCaSha256:PRODUCTION_CA_SHA256,projectRefSha256:PRODUCTION_TARGET_PIN.project_ref_sha256,host:PRODUCTION_TARGET_PIN.host,servername:PRODUCTION_TARGET_PIN.host,expectedServername:PRODUCTION_TARGET_PIN.host,port:PRODUCTION_TARGET_PIN.port,database:PRODUCTION_TARGET_PIN.database,healthUrl:validateHealthUrl(args['--health-url']),healthHostname:'api.empiriasuite.com',localCertification:false};
+  const plan:OfflinePlan={workspaceRoot:root,branch,head,contractCommit:BASE_CONTRACT_COMMIT,correctorCommit:args['--expected-corrector-commit'],dumpPath:backupPath,dumpSha256:args['--backup-sha256'],historicalPdfPath,historicalPdfSha256:args['--pdf-sha256'],reportPath:nativeReportPath,reportSha256:args['--native-report-sha256'],expectedReportSha256:CERTIFIED_REPORT_SHA256,entryReportPath,entryReportSha256:args['--readonly-report-sha256'],expectedEntryReportSha256:ENTRY_READONLY_REPORT_SHA256,caPath,caSha256:caSha,expectedCaSha256:PRODUCTION_CA_SHA256,projectRefSha256:PRODUCTION_TARGET_PIN.project_ref_sha256,host:PRODUCTION_TARGET_PIN.host,servername:PRODUCTION_TARGET_PIN.host,expectedServername:PRODUCTION_TARGET_PIN.host,port:PRODUCTION_TARGET_PIN.port,databaseSha256:PRODUCTION_TARGET_PIN.database_sha256,healthUrl:validateHealthUrl(args['--health-url']),healthHostname:'api.empiriasuite.com',localCertification:false};
   if(plan.head!==args['--expected-head']||plan.correctorCommit!==CORRECTOR_COMMIT||PRODUCTION_TARGET_PIN_SHA256.length!==64)fail('PLAN_PIN_MISMATCH');
   const validated=await validateOfflinePlan(plan);validated.caPem.fill(0);validated.dumpBytes.fill(0);validated.pdfBytes.fill(0);validated.reportBytes.fill(0);validated.entryReportBytes.fill(0);
   return plan;
@@ -182,7 +201,7 @@ export async function runProductionLauncher(args:LauncherArguments){
     const target=validateServiceConfiguration(env);assertTargetMatchesPin(target);
     assertServiceRoleCredential(env.SUPABASE_SERVICE_ROLE_KEY);
     const syncConfirmation={source:'MANUAL_CURRENT' as const,enabled:false as const,observedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+5*60_000).toISOString()};
-    const receipt=await runReadOnlyEntryPreflight(plan,{plan,readCredentials:async()=>({user:decodeURIComponent(new URL(env!.DATABASE_URL).username),password:decodeURIComponent(new URL(env!.DATABASE_URL).password)}),readPdf:ref=>readHistoricalPdf(env!,ref),syncConfirmation});
+    const receipt=await runReadOnlyEntryPreflight(plan,{plan,readCredentials:async()=>{const target=validateServiceConfiguration(env!);assertTargetMatchesPin(target);return{user:decodeURIComponent(new URL(env!.DATABASE_URL).username),password:decodeURIComponent(new URL(env!.DATABASE_URL).password),database:target.databaseName};},readPdf:ref=>readHistoricalPdf(env!,ref),syncConfirmation});
     const issuedAt=Date.now(),evidence=makeEntryEvidence(receipt,plan.head,issuedAt),phrase=buildPendingEntryPhrase(evidence,issuedAt);if(!verifyPendingEntryPhrase(phrase,evidence,issuedAt))fail('PENDING_PHRASE_SELF_CHECK');
     const output=await realpath(canonicalizeWindowsPath(args['--output-directory'])).catch(()=>fail('OUTPUT_DIRECTORY_MISSING'));if(!sameCanonicalWindowsPath(output,args['--output-directory']))fail('OUTPUT_DIRECTORY_SYMLINK_OR_PATH_MISMATCH');
     const id=randomUUID(),baseline=await publishReadOnlyReceipt(output,'baseline',id,{status:'BASELINE_VERIFIED',run_id:evidence.runId,head:plan.head,correctorCommit:CORRECTOR_COMMIT,reportSha256:CERTIFIED_REPORT_SHA256,entryReportSha256:ENTRY_READONLY_REPORT_SHA256,dumpSha256:DUMP_SHA256,pdfSha256:HISTORICAL_PDF_SHA256,digests:receipt.digests,sequenceBaseline:receipt.sequenceBaseline,checks:receipt.checks});

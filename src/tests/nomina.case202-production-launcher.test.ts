@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { parse as parsePgConnectionString } from 'pg-connection-string';
 import { readFile } from 'node:fs/promises';
 import { mkdtemp, writeFile, symlink, rm, realpath } from 'node:fs/promises';
 import os from 'node:os';
@@ -15,7 +16,7 @@ const hash=(x:Buffer|string)=>createHash('sha256').update(x).digest('hex');
 const ref='abcdefghijklmnopqrst';
 const jwt=(role:string)=>`header.${Buffer.from(JSON.stringify({role})).toString('base64url')}.signature`;
 const goodEnv=(overrides:Record<string,string>={})=>({
-  DATABASE_URL:`postgresql://postgres.${ref}:synthetic%2Fpassword@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require`,
+  DATABASE_URL:`postgresql://postgres.${ref}:synthetic%2Fpassword@aws-1-us-east-1.pooler.supabase.com:6543/postgres`,
   SUPABASE_URL:`https://${ref}.supabase.co`,SUPABASE_SERVICE_ROLE_KEY:jwt('service_role'),SUPABASE_STORAGE_BUCKET:'cuentas-cobro',...overrides,
 });
 const validArgs=()=>[
@@ -73,31 +74,58 @@ test('dotenv reader extracts only required names and rejects duplicate/missing o
   assert.throws(()=>parseAllowlistedEnvironment(text+`DATABASE_URL=${env.DATABASE_URL}\n`),/ENV_DUPLICATE_VARIABLE/);
   assert.throws(()=>parseAllowlistedEnvironment(text.replace(/SUPABASE_STORAGE_BUCKET=.*\n/,'')),/ENV_REQUIRED_VARIABLE_MISSING/);
   assert.throws(()=>parseAllowlistedEnvironment(Object.entries({...env,DATABASE_URL:env.DATABASE_URL.replace(ref,'zzzzzzzzzzzzzzzzzzzz')}).map(([k,v])=>`${k}=${v}`).join('\n')),/DATABASE_TARGET_MISMATCH/);
-  assert.throws(()=>parseAllowlistedEnvironment(Object.entries({...env,DATABASE_URL:env.DATABASE_URL.replace('sslmode=require','sslmode=disable')}).map(([k,v])=>`${k}=${v}`).join('\n')),/DATABASE_URL_POLICY/);
+  assert.throws(()=>parseAllowlistedEnvironment(Object.entries({...env,DATABASE_URL:env.DATABASE_URL+'?sslmode=disable'}).map(([k,v])=>`${k}=${v}`).join('\n')),/DATABASE_URL_TLS_MODE_REJECTED/);
   assert.throws(()=>parseAllowlistedEnvironment(Object.entries({...env,SUPABASE_SERVICE_ROLE_KEY:jwt('anon')}).map(([k,v])=>`${k}=${v}`).join('\n')),/STORAGE_CREDENTIAL_ROLE_INVALID/);
 });
 
-test('service configuration pins Supabase project ref and validates TLS-compatible PostgreSQL destination',()=>{
-  assert.deepEqual(validateServiceConfiguration(goodEnv()),{projectRef:ref,databaseHost:'aws-0-us-east-1.pooler.supabase.com',databasePort:6543,databaseName:'postgres'});
+test('service configuration pins Supabase project ref and validates canonical database hash under external strict TLS',()=>{
+  assert.deepEqual(validateServiceConfiguration(goodEnv()),{protocolClass:'POSTGRESQL',projectRef:ref,databaseHost:'aws-1-us-east-1.pooler.supabase.com',databasePort:6543,databaseName:'postgres',databaseSha256:'a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5',tlsPolicy:'EXTERNAL_STRICT_TLS'});
   assert.throws(()=>validateServiceConfiguration(goodEnv({SUPABASE_URL:'https://zzzzzzzzzzzzzzzzzzzz.supabase.co'})),/DATABASE_TARGET_MISMATCH/);
   assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('pooler.supabase.com','evil.example')})),/DATABASE_TARGET_MISMATCH/);
-  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('?sslmode=require','?sslmode=disable')})),/DATABASE_URL_POLICY/);
-  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('?sslmode=require','')})),/DATABASE_URL_POLICY/);
-  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('postgresql://','postgres://')})),/DATABASE_URL_POLICY/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('postgresql://','mysql://')})),/DATABASE_URL_PROTOCOL_REJECTED/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL+'?sslmode=disable'})),/DATABASE_URL_TLS_MODE_REJECTED/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL+'?sslmode=prefer'})),/DATABASE_URL_TLS_MODE_REJECTED/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL+'?sslmode=allow'})),/DATABASE_URL_TLS_MODE_REJECTED/);
+  for(const mode of ['require','verify-full'])assert.equal(validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL+`?sslmode=${mode}`})).tlsPolicy,'EXTERNAL_STRICT_TLS');
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL+'?sslmode=require&sslmode=verify-full'})),/DATABASE_URL_TLS_QUERY_REJECTED/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL+'?sslrootcert=%2Fbad'})),/DATABASE_URL_TLS_QUERY_REJECTED/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace(':6543/postgres',':6543/other')})),/DATABASE_PATH_PIN_MISMATCH/);
   assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace(`postgres.${ref}`,'postgres')})),/DATABASE_TARGET_MISMATCH/);
-  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:'postgresql://postgres:p%ZZ@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require'})),/DATABASE_URL_POLICY/);
-  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:`postgresql://postgres:${encodeURIComponent('pa:ss@word')}@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require`})),/DATABASE_TARGET_MISMATCH/);
-  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:`postgresql://postgres.${ref}:pw@[::1]:6543/postgres?sslmode=require`})),/DATABASE_TARGET_MISMATCH/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:'postgresql://postgres:p%ZZ@aws-1-us-east-1.pooler.supabase.com:6543/postgres'})),/DATABASE_URL_POLICY/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:`postgresql://postgres:${encodeURIComponent('pa:ss@word')}@aws-1-us-east-1.pooler.supabase.com:6543/postgres`})),/DATABASE_TARGET_MISMATCH/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:`postgresql://postgres.${ref}:pw@[::1]:6543/postgres`})),/DATABASE_TARGET_MISMATCH/);
+});
+
+test('canonical database path rejects ambiguous segment encodings and both PostgreSQL schemes normalize equally',()=>{
+  const build=(scheme:string,pathValue:string)=>`${scheme}//postgres.${ref}:pw@aws-1-us-east-1.pooler.supabase.com:6543${pathValue}`;
+  const a=validateServiceConfiguration(goodEnv({DATABASE_URL:build('postgres:','/postgres')}));
+  const b=validateServiceConfiguration(goodEnv({DATABASE_URL:build('postgresql:','/%70ostgres')}));
+  assert.deepEqual({...a,databaseName:undefined},{...b,databaseName:undefined});
+  for(const bad of ['', '//postgres', '/one/two', '/%252f', '/%2fpostgres', '/%5cpostgres', '/.', '/..', '/%00', '/%70%6f%73%74%67%72%65%73%25', '/po%CC%81stgres']){
+    assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:build('postgresql:',bad)})));
+  }
+  const directA=parsePgConnectionString(build('postgres:','/postgres'));
+  const directB=parsePgConnectionString(build('postgresql:','/postgres'));
+  assert.deepEqual({host:directA.host,port:directA.port,database:directA.database,user:directA.user},{host:directB.host,port:directB.port,database:directB.database,user:directB.user});
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:build('mysql:','/postgres')})),/DATABASE_URL_PROTOCOL_REJECTED/);
+});
+
+test('runner installs strict TLS directly and never passes a URL that could override the TLS object',async()=>{
+  const src=await readFile('src/scripts/nomina-turno-202-readonly-runner.ts','utf8');
+  assert.match(src,/ssl:\{rejectUnauthorized:true,ca:caPem,minVersion:'TLSv1\.3',maxVersion:'TLSv1\.3',servername:plan\.servername,checkServerIdentity:/);
+  assert.match(src,/TLS_CONFIGURATION_MISMATCH/);
+  assert.doesNotMatch(src,/connectionString\s*:/);
+  assert.match(src,/tls_policy!=='EXTERNAL_STRICT_TLS'/);
 });
 
 test('independent destination pin accepts only exact host, port, database, project-ref hash, protocol and TLS policy',()=>{
-  const fixed={host:PRODUCTION_TARGET_PIN.host,port:PRODUCTION_TARGET_PIN.port,database:PRODUCTION_TARGET_PIN.database,projectRefSha256:PRODUCTION_TARGET_PIN.project_ref_sha256};
+  const fixed={host:PRODUCTION_TARGET_PIN.host,port:PRODUCTION_TARGET_PIN.port,databaseSha256:PRODUCTION_TARGET_PIN.database_sha256,projectRefSha256:PRODUCTION_TARGET_PIN.project_ref_sha256};
   assert.equal(assertTargetDetailsMatchPin(fixed),true);
-  for(const patch of [{host:'evil.example'},{port:5432},{database:'other'},{projectRefSha256:hash('other-ref')}])assert.throws(()=>assertTargetDetailsMatchPin({...fixed,...patch}),/DATABASE_TARGET_PIN_MISMATCH/);
+  for(const patch of [{host:'evil.example'},{port:5432},{databaseSha256:hash('other')},{projectRefSha256:hash('other-ref')}])assert.throws(()=>assertTargetDetailsMatchPin({...fixed,...patch}),/DATABASE_TARGET_PIN_MISMATCH/);
   const target=validateServiceConfiguration(goodEnv());
-  const syntheticPin={...PRODUCTION_TARGET_PIN,host:target.databaseHost,port:target.databasePort,database:target.databaseName,project_ref_sha256:hash(ref),protocol:'postgresql',tls:{...PRODUCTION_TARGET_PIN.tls,ca_sha256:PRODUCTION_CA_SHA256}};
+  const syntheticPin={...PRODUCTION_TARGET_PIN,host:target.databaseHost,port:target.databasePort,database_sha256:target.databaseSha256,project_ref_sha256:hash(ref),protocol_class:'POSTGRESQL',tls_policy:'EXTERNAL_STRICT_TLS',tls:{...PRODUCTION_TARGET_PIN.tls,ca_sha256:PRODUCTION_CA_SHA256}};
   assert.equal(assertTargetMatchesPin(target,syntheticPin),true);
-  for(const patch of [{host:'evil.example'},{port:5432},{database:'other'},{project_ref_sha256:hash('other-ref')},{protocol:'postgres'},{tls:{...syntheticPin.tls,min_version:'TLSv1.2'}},{tls:{...syntheticPin.tls,reject_unauthorized:false}},{tls:{...syntheticPin.tls,ca_sha256:'0'.repeat(64)}}])assert.throws(()=>assertTargetMatchesPin(target,{...syntheticPin,...patch} as typeof syntheticPin),/DATABASE_TARGET_PIN_MISMATCH/);
+  for(const patch of [{host:'evil.example'},{port:5432},{database_sha256:hash('other')},{project_ref_sha256:hash('other-ref')},{protocol_class:'POSTGRES'},{tls_policy:'URL_TLS'},{tls:{...syntheticPin.tls,min_version:'TLSv1.2'}},{tls:{...syntheticPin.tls,reject_unauthorized:false}},{tls:{...syntheticPin.tls,ca_sha256:'0'.repeat(64)}}])assert.throws(()=>assertTargetMatchesPin(target,{...syntheticPin,...patch} as typeof syntheticPin),/DATABASE_TARGET_PIN_MISMATCH/);
   const direct=validateServiceConfiguration(goodEnv({DATABASE_URL:`postgresql://postgres:${encodeURIComponent('p:a@ss')}@db.${ref}.supabase.co:5432/postgres?sslmode=verify-full`}));
   assert.equal(direct.databaseHost,`db.${ref}.supabase.co`);
   assert.throws(()=>assertTargetMatchesPin(direct,syntheticPin),/DATABASE_TARGET_PIN_MISMATCH/);

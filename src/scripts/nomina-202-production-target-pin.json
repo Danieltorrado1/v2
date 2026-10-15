@@ -2,9 +2,10 @@
   "schema_version": 1,
   "host": "aws-1-us-east-1.pooler.supabase.com",
   "port": 6543,
-  "database": "postgres",
+  "database_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
   "project_ref_sha256": "2d48091f83ceb92569779c6416a3d03ec5631ee112a6ee75e9a7d065fb67078c",
-  "protocol": "postgresql",
+  "protocol_class": "POSTGRESQL",
+  "tls_policy": "EXTERNAL_STRICT_TLS",
   "tls": {
     "min_version": "TLSv1.3",
     "max_version": "TLSv1.3",
@@ -32,7 +33,9 @@
     "database": {
       "path": "reports/territorial-contract-24-pre-migration.json",
       "sha256": "7a1ab4f084f3cda412d955d8566d24dafa0f24212096d36d121e980a5fd1dec2",
-      "field": "metadata.database and metadata.identity.database"
+      "field": "SHA-256(UTF-8(NFC(single path segment after one structural slash removal and one percent-decode))) compared independently to metadata.database and metadata.identity.database",
+      "database_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+      "canonicalization": "URL pathname must be one absolute segment; remove one leading structural slash; percent-decode once; reject encoded separators, residual percent escapes, dot segments, NUL, backslash, and non-NFC; SHA-256 over UTF-8 bytes"
     },
     "project_ref_sha256": {
       "path": "reports/nomina-operacion-real-audit-2026-08-31.json",
@@ -42,7 +45,7 @@
     "protocol": {
       "path": "reports/territorial-contract-24-pre-migration.json",
       "sha256": "7a1ab4f084f3cda412d955d8566d24dafa0f24212096d36d121e980a5fd1dec2",
-      "field": "PostgreSQL identity snapshot; enforced as postgresql by launcher policy"
+      "field": "PostgreSQL identity snapshot; only postgres: and postgresql: URL schemes normalize to POSTGRESQL"
     },
     "tls": {
       "path": "src/scripts/nomina-turno-202-readonly-runner.ts",
