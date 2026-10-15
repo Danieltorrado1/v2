@@ -80,6 +80,10 @@ async function readonlyEntryPreflight(){
   negatives.push(await stopped('pdf_drift',plan,pdfDrift,'STOPPED_PDF_CHANGED_DURING_SNAPSHOT'));
   let driftPdfReads=0;const syncState=freshSync();const syncDrift=deps({syncConfirmation:syncState,readPdf:async()=>{driftPdfReads++;if(driftPdfReads===2)syncState.expiresAt=new Date(now.getTime()+59000).toISOString();const bytes=fs.readFileSync(path.join(backup,'historical-account-77.pdf'));return{bytes,reference:'local-backup/account-77.pdf',mime:'application/pdf',etag:'"'+hash(bytes)+'"'};}});
   negatives.push(await stopped('snapshot_digest_drift',plan,syncDrift,'STOPPED_SNAPSHOT_DRIFT'));
+  const originalAccountPath=(await db.query('SELECT generado_path FROM public.cobertura_cuentas_cobro_externas WHERE id=77')).rows[0].generado_path;let dbDriftReads=0;
+  const databaseDrift=deps({readPdf:async()=>{dbDriftReads++;if(dbDriftReads===2)await db.query('UPDATE public.cobertura_cuentas_cobro_externas SET generado_path=$1 WHERE id=77',[originalAccountPath+'.local-drift-probe']);const bytes=fs.readFileSync(path.join(backup,'historical-account-77.pdf'));return{bytes,reference:'local-backup/account-77.pdf',mime:'application/pdf',etag:'"'+hash(bytes)+'"'};}});
+  try{negatives.push(await stopped('database_row_drift_between_real_snapshots',plan,databaseDrift,'STOPPED_SNAPSHOT_DRIFT'));}finally{await db.query('UPDATE public.cobertura_cuentas_cobro_externas SET generado_path=$1 WHERE id=77',[originalAccountPath]);}
+  need((await db.query('SELECT generado_path FROM public.cobertura_cuentas_cobro_externas WHERE id=77')).rows[0].generado_path===originalAccountPath,'LOCAL_DRIFT_PROBE_NOT_RESTORED');
   report.tests.readonly_stopped_cases=negatives;
  }finally{await new Promise(resolve=>healthServer.close(resolve));}
 }
