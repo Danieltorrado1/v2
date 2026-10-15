@@ -2,7 +2,7 @@ import {createHash} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
 import {recordV6Timing,v6TimedSync} from './phase48-v6-timing';
 import {readFileSync} from 'node:fs';
-import {resolve,sep} from 'node:path';
+import {resolve,relative} from 'node:path';
 import certificate from './phase48-operational-certificate.json';
 import {requireScoped,scopedDigest} from './phase48-scoped-contract';
 import type {ScopedDb} from './phase48-scoped-repository';
@@ -42,7 +42,7 @@ export async function operationalPins(db:ScopedDb):Promise<typeof certificate>{
  const readQuery=process.env.PHASE48_READ_QUERY_LOCAL_CERT==='true';
  const expectedDirectory=readQuery?process.env.PHASE48_READ_QUERY_LOCAL_CLUSTER:resolve(window?'tmp/phase48-v6-window-local/cluster':'tmp/phase48-pooler-local/dynamic-cluster');
  const expectedPort=readQuery?Number(process.env.PHASE48_READ_QUERY_LOCAL_PORT):55470;
- if(readQuery){const root=resolve('tmp/phase48-v6-read-query-certification')+sep;const candidate=resolve(expectedDirectory??'');requireScoped(process.env.PHASE48_WINDOW_LOCAL_CERT==='true'&&process.env.PHASE48_READ_QUERY_LOCAL_PID&&expectedPort>49151&&expectedPort<65536&&candidate.startsWith(root)&&new RegExp('^run-[a-f0-9]{32}\\\\cluster$','i').test(candidate.slice(root.length).replaceAll('/','\\')),'READ_QUERY_LOCAL_CERTIFICATE_SCOPE_REQUIRED');}
+ if(readQuery){const root=resolve('tmp/phase48-v6-read-query-certification');const candidate=resolve(expectedDirectory??'');const rel=relative(root,candidate).replaceAll('\\','/');requireScoped(process.env.PHASE48_WINDOW_LOCAL_CERT==='true'&&process.env.PHASE48_READ_QUERY_LOCAL_PID&&expectedPort>49151&&expectedPort<65536&&/^run-[a-f0-9]{32}\/cluster$/i.test(rel),'READ_QUERY_LOCAL_CERTIFICATE_SCOPE_REQUIRED');}
  requireScoped(r.host==='127.0.0.1'&&r.port===expectedPort&&r.actor==='phase48_dynamic_local'&&r.database==='postgres'&&r.version==='17.11'&&resolve(r.directory)===resolve(expectedDirectory??''),'SYNTHETIC_CERTIFICATE_LOCAL_ONLY');
  const pins=JSON.parse(readFileSync(readQuery||window?'tmp/phase48-v6-window-local/operational-synthetic-pins.json':'tmp/phase48-pooler-local/operational-synthetic-pins.json','utf8'));
  requireScoped(pins.version===certificate.version&&scopedDigest({...pins.close,before_digest:certificate.close.before_digest})===scopedDigest(certificate.close)&&pins.archives.length===7,'SYNTHETIC_CERTIFICATE_SCOPE_CHANGED');
