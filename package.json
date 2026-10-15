@@ -6,7 +6,7 @@
   "main": "dist/server.js",
   "scripts": {
     "certify:nomina-202:native-local": "npm run build && node src/scripts/certify-nomina-202-native-performance.cjs",
-    "test:nomina-202:performance": "node --test dist/tests/nomina.case202-native-performance.test.js dist/tests/nomina.case202-integral-local.test.js dist/tests/nomina.case202-document-local.test.js dist/tests/nomina.case202-controlled-preview.test.js",
+    "test:nomina-202:performance": "node --test dist/tests/nomina.case202-native-performance.test.js dist/tests/nomina.case202-integral-local.test.js dist/tests/nomina.case202-document-local.test.js dist/tests/nomina.case202-controlled-preview.test.js dist/tests/nomina.case202-entry-contract.test.js dist/tests/nomina.case202-entry-runtime.test.js dist/tests/nomina.case202-readonly-runner.test.js",
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
