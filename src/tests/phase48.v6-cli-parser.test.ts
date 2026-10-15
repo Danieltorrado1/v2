@@ -67,7 +67,7 @@ test('synthetic V6 launcher either reaches its certified branch gate or fails cl
   .replace('C:/synthetic/ca-sentinel.crt',resolve('tmp/phase48-v6-window-local/NEVER_READ_parser_ca.crt'))
   .replace('C:/synthetic/receipts',resolve('tmp/phase48-v6-window-local')));
  const branch=execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim();
- if(branch==='fix/phase48-v6-diagnostic-launcher')await assert.rejects(runV6Cli(args),(error:any)=>error?.message==='V6_CLEAN_RELEASE_BRANCH_REQUIRED');
+ if(branch==='fix/phase48-v6-diagnostic-launcher'||branch==='fix/phase48-v6-diagnostic-metadata')await assert.rejects(runV6Cli(args),(error:any)=>error?.message==='V6_CLEAN_RELEASE_BRANCH_REQUIRED');
  else await assert.rejects(runV6Cli(args),(error:any)=>error?.code==='ENOENT'&&String(error.path).includes('parser-no-evidence')&&!String(error.path).includes('NEVER_READ'));
 });
 

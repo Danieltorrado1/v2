@@ -1,0 +1,1373 @@
+{
+  "kind": "PHASE48_V6_READ_QUERY_DIAGNOSTIC",
+  "run_id": "phase48-diagnostic-549ccf52-e093-4fdb-a6b2-26cd27a5455a",
+  "status": "CAPTURED",
+  "phase": "receipt_publication",
+  "client_created": true,
+  "connect_attempted": true,
+  "tls_validated": true,
+  "transaction_started": true,
+  "query_id": "read.capture.schema.dependencies.ec491972e2aa.02",
+  "rollback_attempted": true,
+  "rollback_confirmed": true,
+  "client_end_attempted": true,
+  "client_closed": true,
+  "pool_closed": false,
+  "connection_count": 1,
+  "queries": [
+    {
+      "sequence": 1,
+      "query_id": "read.transaction_begin.transaction.begin.884b307eaf68.01",
+      "category": "transaction.begin",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 2,
+      "query_id": "read.capture.transaction.setting.9934f4d02e6e.01",
+      "category": "transaction.setting",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 3,
+      "query_id": "read.capture.transaction.setting.b4e4a455b940.01",
+      "category": "transaction.setting",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 4,
+      "query_id": "read.capture.transaction.setting.8c8042e2ec87.01",
+      "category": "transaction.setting",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 5,
+      "query_id": "read.capture.transaction.setting.e5e74db4951a.01",
+      "category": "transaction.setting",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 6,
+      "query_id": "read.capture.server_identity.aade491ae10f.01",
+      "category": "server_identity",
+      "duration_ms": 7,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 7,
+      "query_id": "read.capture.select.5e5d5b6546f5.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 8,
+      "query_id": "read.capture.schema.columns.aff52cd10c43.01",
+      "category": "schema.columns",
+      "duration_ms": 37,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 9,
+      "query_id": "read.capture.schema.constraints.c4437a749100.01",
+      "category": "schema.constraints",
+      "duration_ms": 12,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 10,
+      "query_id": "read.capture.schema.indexes.347127b9c8fd.01",
+      "category": "schema.indexes",
+      "duration_ms": 4,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 11,
+      "query_id": "read.capture.definitions.a8968e844f4b.01",
+      "category": "definitions",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 12,
+      "query_id": "read.capture.select.e93e657ff3f5.01",
+      "category": "select",
+      "duration_ms": 3,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 13,
+      "query_id": "read.capture.select.dda74b4cea85.01",
+      "category": "select",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 14,
+      "query_id": "read.capture.select.c379e373fe4e.01",
+      "category": "select",
+      "duration_ms": 4,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 15,
+      "query_id": "read.capture.schema.constraints.6f6049fe088d.01",
+      "category": "schema.constraints",
+      "duration_ms": 3,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 16,
+      "query_id": "read.capture.select.8a5912c2c465.01",
+      "category": "select",
+      "duration_ms": 4,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 17,
+      "query_id": "read.capture.definitions.8cca24ad1ac0.01",
+      "category": "definitions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 18,
+      "query_id": "read.capture.definitions.b066925a7c2f.01",
+      "category": "definitions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 19,
+      "query_id": "read.capture.schema.dependencies.d042f9875b10.01",
+      "category": "schema.dependencies",
+      "duration_ms": 3,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 20,
+      "query_id": "read.capture.select.b060fd371bc9.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 21,
+      "query_id": "read.capture.schema.dependencies.83544a573e62.01",
+      "category": "schema.dependencies",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 22,
+      "query_id": "read.capture.select.95cf7d74eedc.01",
+      "category": "select",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 23,
+      "query_id": "read.capture.select.9984804621c9.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 24,
+      "query_id": "read.capture.definitions.7d0f2e19f2f2.01",
+      "category": "definitions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 25,
+      "query_id": "read.capture.select.b8a4af017b9d.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 26,
+      "query_id": "read.capture.event_triggers.f6c2f2915c26.01",
+      "category": "event_triggers",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 27,
+      "query_id": "read.capture.schema.dependencies.377a4c44610a.01",
+      "category": "schema.dependencies",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 28,
+      "query_id": "read.capture.schema.dependencies.490e83401370.01",
+      "category": "schema.dependencies",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 29,
+      "query_id": "read.capture.schema.dependencies.d0c7b4213d8d.01",
+      "category": "schema.dependencies",
+      "duration_ms": 8,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 30,
+      "query_id": "read.capture.event_triggers.13a02fd90328.01",
+      "category": "event_triggers",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 31,
+      "query_id": "read.capture.schema.dependencies.ec491972e2aa.01",
+      "category": "schema.dependencies",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 32,
+      "query_id": "read.capture.definitions.76ab663f5785.01",
+      "category": "definitions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 33,
+      "query_id": "read.capture.select.611b692d6eae.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 34,
+      "query_id": "read.capture.select.9521494d1e96.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 35,
+      "query_id": "read.capture.select.fa4e74c34788.01",
+      "category": "select",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 36,
+      "query_id": "read.capture.definitions.01172dae46d8.01",
+      "category": "definitions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 37,
+      "query_id": "read.capture.schema.dependencies.3e7962cd6fbf.01",
+      "category": "schema.dependencies",
+      "duration_ms": 5,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 38,
+      "query_id": "read.capture.select.d08ace99bd11.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 39,
+      "query_id": "read.capture.select.4131b2f5af12.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 40,
+      "query_id": "read.capture.definitions.64d1b40230ba.01",
+      "category": "definitions",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 41,
+      "query_id": "read.capture.select.43347272d384.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 42,
+      "query_id": "read.capture.select.5dad0474468c.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 43,
+      "query_id": "read.capture.select.7a25fcc4e1fd.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 44,
+      "query_id": "read.capture.select.cf25b21dcd3b.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 45,
+      "query_id": "read.capture.select.5c96fec5d00d.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 46,
+      "query_id": "read.capture.select.37728cda2c4b.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 47,
+      "query_id": "read.capture.select.e4b194ac8858.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 48,
+      "query_id": "read.capture.coverage.868c3f26151d.01",
+      "category": "coverage",
+      "duration_ms": 4,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 49,
+      "query_id": "read.capture.select.9ebc88fc6e54.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 50,
+      "query_id": "read.capture.select.ee82341fc7d3.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 51,
+      "query_id": "read.capture.select.a668152adee1.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 52,
+      "query_id": "read.capture.select.d292fcd93934.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 53,
+      "query_id": "read.capture.select.f3d52f55dc1f.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 54,
+      "query_id": "read.capture.select.648eccfa1642.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 55,
+      "query_id": "read.capture.select.1c8a71fd71cd.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 56,
+      "query_id": "read.capture.select.3a6a45dc91a3.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 57,
+      "query_id": "read.capture.candidates.f7c560ca3378.01",
+      "category": "candidates",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 58,
+      "query_id": "read.capture.select.84d704263b6e.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 59,
+      "query_id": "read.capture.select.edff9fc6cd2e.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 60,
+      "query_id": "read.capture.select.e83ef2691120.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 61,
+      "query_id": "read.capture.select.6b94d6cec497.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 62,
+      "query_id": "read.capture.select.b36924e5d5a3.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 63,
+      "query_id": "read.capture.select.c7e0b77cfeef.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 64,
+      "query_id": "read.capture.select.774b0a86736e.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 65,
+      "query_id": "read.capture.select.2145ebfec240.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 66,
+      "query_id": "read.capture.select.293098422f5e.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 67,
+      "query_id": "read.capture.salary_decisions.9d6d1dee1212.01",
+      "category": "salary_decisions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 68,
+      "query_id": "read.capture.select.e61032f8bc21.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 69,
+      "query_id": "read.capture.select.935dac044757.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 70,
+      "query_id": "read.capture.select.92e633e331d3.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 71,
+      "query_id": "read.capture.periods.b232244ea0e9.01",
+      "category": "periods",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 72,
+      "query_id": "read.capture.select.373021bcc217.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 73,
+      "query_id": "read.capture.select.254928c7c793.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 74,
+      "query_id": "read.capture.select.2a3380369e33.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 75,
+      "query_id": "read.capture.select.9b5288c31095.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 76,
+      "query_id": "read.capture.select.ccee1af8c696.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 77,
+      "query_id": "read.capture.select.6a3abe279d9c.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 78,
+      "query_id": "read.capture.select.37a225fa7840.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 79,
+      "query_id": "read.capture.select.85ee6da0b98e.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 80,
+      "query_id": "read.capture.select.8cdc1dba8391.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 81,
+      "query_id": "read.capture.select.84e858220dec.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 82,
+      "query_id": "read.capture.select.ad85054e1446.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 83,
+      "query_id": "read.capture.select.e32c3b4c60c8.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 84,
+      "query_id": "read.capture.select.8c62a7d94847.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 85,
+      "query_id": "read.capture.select.82db9fb49440.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 86,
+      "query_id": "read.capture.select.2f0b7ff82da2.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 87,
+      "query_id": "read.capture.select.a5aba1d82f16.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 88,
+      "query_id": "read.capture.select.1a07adf274eb.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 89,
+      "query_id": "read.capture.select.88b52168b4ed.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 90,
+      "query_id": "read.capture.select.a84cec3cf17c.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 91,
+      "query_id": "read.capture.select.e35ce6922bea.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 92,
+      "query_id": "read.capture.select.5c18c04c1292.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 93,
+      "query_id": "read.capture.select.46ada4414c70.01",
+      "category": "select",
+      "duration_ms": 4,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 94,
+      "query_id": "read.capture.select.1613612ba237.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 95,
+      "query_id": "read.capture.select.c7ddab1e1f13.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 96,
+      "query_id": "read.capture.select.fbcb5d301bee.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 97,
+      "query_id": "read.capture.coverage.4868df694cc6.01",
+      "category": "coverage",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 98,
+      "query_id": "read.capture.scope.db33b7b7edc2.01",
+      "category": "scope",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 99,
+      "query_id": "read.capture.coverage.e5c187e7db8b.01",
+      "category": "coverage",
+      "duration_ms": 5,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 100,
+      "query_id": "read.capture.select.33f90e162e08.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 101,
+      "query_id": "read.capture.candidates.ce51b61497a1.01",
+      "category": "candidates",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 102,
+      "query_id": "read.capture.select.e6061746846a.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 103,
+      "query_id": "read.capture.select.370ffe783ebd.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 104,
+      "query_id": "read.capture.candidates.763ec341ba0c.01",
+      "category": "candidates",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 105,
+      "query_id": "read.capture.coverage.617f77907c4e.01",
+      "category": "coverage",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 106,
+      "query_id": "read.capture.coverage.48eee3be4f16.01",
+      "category": "coverage",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 107,
+      "query_id": "read.capture.coverage.c3a43fecaa2b.01",
+      "category": "coverage",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 108,
+      "query_id": "read.capture.candidates.22dcfc7c6734.01",
+      "category": "candidates",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 109,
+      "query_id": "read.capture.candidates.8860b4a23d38.01",
+      "category": "candidates",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 110,
+      "query_id": "read.capture.select.c0e0c3356a69.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 111,
+      "query_id": "read.capture.select.bf11046feeb9.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 112,
+      "query_id": "read.capture.select.f6e1ebe99630.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 113,
+      "query_id": "read.capture.candidates.78cdaf4de514.01",
+      "category": "candidates",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 114,
+      "query_id": "read.capture.select.18b74f4e862b.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 115,
+      "query_id": "read.capture.select.4f942c9a4076.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 116,
+      "query_id": "read.capture.periods.6d5190195ab4.01",
+      "category": "periods",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 117,
+      "query_id": "read.capture.select.3e5b5cc1b869.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 118,
+      "query_id": "read.capture.coverage.40105a0be009.01",
+      "category": "coverage",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 119,
+      "query_id": "read.capture.select.c0e0c3356a69.02",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 120,
+      "query_id": "read.capture.select.bf11046feeb9.02",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 121,
+      "query_id": "read.capture.select.f6e1ebe99630.02",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 122,
+      "query_id": "read.capture.candidates.78cdaf4de514.02",
+      "category": "candidates",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 123,
+      "query_id": "read.capture.select.18b74f4e862b.02",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 124,
+      "query_id": "read.capture.select.4f942c9a4076.02",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 125,
+      "query_id": "read.capture.periods.6d5190195ab4.02",
+      "category": "periods",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 126,
+      "query_id": "read.capture.periods.e12a9b9b3d63.01",
+      "category": "periods",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 127,
+      "query_id": "read.capture.salary_decisions.d08eeebb3734.01",
+      "category": "salary_decisions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 128,
+      "query_id": "read.capture.salary_decisions.d08eeebb3734.02",
+      "category": "salary_decisions",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 129,
+      "query_id": "read.capture.salary_decisions.d08eeebb3734.03",
+      "category": "salary_decisions",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 130,
+      "query_id": "read.capture.salary_decisions.d08eeebb3734.04",
+      "category": "salary_decisions",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 131,
+      "query_id": "read.capture.salary_decisions.d08eeebb3734.05",
+      "category": "salary_decisions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 132,
+      "query_id": "read.capture.salary_decisions.d08eeebb3734.06",
+      "category": "salary_decisions",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 133,
+      "query_id": "read.capture.salary_decisions.d08eeebb3734.07",
+      "category": "salary_decisions",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 134,
+      "query_id": "read.capture.salary_decisions.d08eeebb3734.08",
+      "category": "salary_decisions",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 135,
+      "query_id": "read.capture.salary_decisions.d08eeebb3734.09",
+      "category": "salary_decisions",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 136,
+      "query_id": "read.capture.salary_decisions.d08eeebb3734.10",
+      "category": "salary_decisions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 137,
+      "query_id": "read.capture.schema.columns.aff52cd10c43.02",
+      "category": "schema.columns",
+      "duration_ms": 6,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 138,
+      "query_id": "read.capture.schema.constraints.c4437a749100.02",
+      "category": "schema.constraints",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 139,
+      "query_id": "read.capture.schema.indexes.347127b9c8fd.02",
+      "category": "schema.indexes",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 140,
+      "query_id": "read.capture.definitions.a8968e844f4b.02",
+      "category": "definitions",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 141,
+      "query_id": "read.capture.select.e93e657ff3f5.02",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 142,
+      "query_id": "read.capture.select.dda74b4cea85.02",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 143,
+      "query_id": "read.capture.select.c379e373fe4e.02",
+      "category": "select",
+      "duration_ms": 3,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 144,
+      "query_id": "read.capture.schema.constraints.6f6049fe088d.02",
+      "category": "schema.constraints",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 145,
+      "query_id": "read.capture.select.8a5912c2c465.02",
+      "category": "select",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 146,
+      "query_id": "read.capture.definitions.8cca24ad1ac0.02",
+      "category": "definitions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 147,
+      "query_id": "read.capture.definitions.b066925a7c2f.02",
+      "category": "definitions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 148,
+      "query_id": "read.capture.schema.dependencies.d042f9875b10.02",
+      "category": "schema.dependencies",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 149,
+      "query_id": "read.capture.select.b060fd371bc9.02",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 150,
+      "query_id": "read.capture.schema.dependencies.83544a573e62.02",
+      "category": "schema.dependencies",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 151,
+      "query_id": "read.capture.select.95cf7d74eedc.02",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 152,
+      "query_id": "read.capture.select.9984804621c9.02",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 153,
+      "query_id": "read.capture.definitions.7d0f2e19f2f2.02",
+      "category": "definitions",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 154,
+      "query_id": "read.capture.select.9f3d099638c3.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 155,
+      "query_id": "read.capture.select.3c9ffd490bbd.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 156,
+      "query_id": "read.capture.select.01bf24c41970.01",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 157,
+      "query_id": "read.capture.select.876776c0a10b.01",
+      "category": "select",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 158,
+      "query_id": "read.capture.select.b8a4af017b9d.02",
+      "category": "select",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 159,
+      "query_id": "read.capture.event_triggers.f6c2f2915c26.02",
+      "category": "event_triggers",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 160,
+      "query_id": "read.capture.schema.dependencies.377a4c44610a.02",
+      "category": "schema.dependencies",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 161,
+      "query_id": "read.capture.schema.dependencies.490e83401370.02",
+      "category": "schema.dependencies",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 162,
+      "query_id": "read.capture.schema.dependencies.d0c7b4213d8d.02",
+      "category": "schema.dependencies",
+      "duration_ms": 2,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 163,
+      "query_id": "read.capture.event_triggers.13a02fd90328.02",
+      "category": "event_triggers",
+      "duration_ms": 1,
+      "sqlstate": null,
+      "ok": true
+    },
+    {
+      "sequence": 164,
+      "query_id": "read.capture.schema.dependencies.ec491972e2aa.02",
+      "category": "schema.dependencies",
+      "duration_ms": 0,
+      "sqlstate": null,
+      "ok": true
+    }
+  ],
+  "first_error": null,
+  "operation_error": null,
+  "rollback_error": null,
+  "close_error": null,
+  "tls": {
+    "protocol": "TLSv1.3",
+    "encrypted": true,
+    "authorized": true,
+    "rejectUnauthorized": true,
+    "ca_pinned": true,
+    "hostname_verified": true,
+    "servername_matches": true,
+    "authorization_error": null
+  },
+  "capture_summary": {
+    "candidate_count": 740,
+    "digest_count": 17,
+    "digests": {
+      "candidates_digest": "1684e5cb2fbb5ebef59268d67c5b5622c3de959f14fd58de30f5c70c4b0afcf3",
+      "phase48_candidates_digest": "ac145f895c3dec957a995154f2cd1a3a259df1dc1af850a911f427ced2f52dc8",
+      "critical_schema_digest": "f873cca8e42198dbf6a89483e590b99590454eb2cfdbf26800cccb58c718b3b8",
+      "source_digest": "0bf9d122ba24be2231974725114005b450bfc4d6fe3b02a9de5d00bfe8aaf048",
+      "protected_tables_digest": "3731d4f5972f23e6ed22f05976801d669bf32fbf138592805d0700ccdcce6976",
+      "write_set_before_digest": "ace70fc9874e9327dda57213b4a4d6721a2b1eba3319190df8517c03dd9db329",
+      "periods_4_6_digest": "a9686543b16b70096fa6967aac873eb40a7acad4ff272a40fbf55700c244fa08",
+      "albeny_before_digest": "5cae6bfb53c8094deed8aa28e8c4b0c43b2e9c000e40766f4f2e44b751883409",
+      "dary_before_digest": "ee617dad305eb2bad40b755622c27f7bdf982af126792388651255d1c9c3098c",
+      "assignment_1203_before_digest": "84314b31d9a6afd7712012e8c9150eaea0c16ac36bd65c1bfeff615866d17dde",
+      "archived_versions_digest": "5622ef2c7138ece2678f63866b1fffa94ee005bef1e82c054419fb35642ad8af",
+      "event_triggers_digest": "676c9251747e5fb02358de275bfa4d3b1e25f5e8e256b28ed643a9efec631243",
+      "critical_definitions_digest": "3c73d47e5ba7ca09dbd0039209f8b91c812aa89367678cd39bffa6541f6d4318",
+      "critical_sequences_digest": "e6c2d0b57721a3def73cf664995e6968836538761c5c1f3e875bcc846ea6197b",
+      "manifest_digest": "834b8262fc49ef3f06eb8d650c6d229df8eece7b5e109bebae1dbfae7cd3b644",
+      "salary_decision_digest": "5e83322433549c4560a0b01d57947ec15275f85d3852a2e9b2810dca0c3f6d1e",
+      "salary_review_assignments_digest": "1923aa70ec2de163010d7f246e415967532341ab06383d21948ff34bf926f571"
+    }
+  },
+  "writes": 0,
+  "mutator_invoked": false,
+  "nonce_generated": false,
+  "phrase_generated": false,
+  "diagnostic_run_id": "549ccf52-e093-4fdb-a6b2-26cd27a5455a"
+}

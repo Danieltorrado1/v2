@@ -1,0 +1,40 @@
+{
+  "read_query": {
+    "port": 51009,
+    "postmaster_pid": 17384,
+    "backend_pid": 11064,
+    "data_directory": "C:\\Users\\CORE ULTRA\\Desktop\\V2-instituciones-modalidad\\tmp\\phase48-v6-read-query-certification\\run-6a594568b3db4b4a8f7ae70c89202ff0\\cluster",
+    "snapshot": "80009:80009:",
+    "virtual_tx": "1/2",
+    "read_only": "on",
+    "isolation": "repeatable read",
+    "queries": 164,
+    "selects": 159,
+    "candidate_count": 740,
+    "digest_count": 17,
+    "digests": {
+      "candidates_digest": "1684e5cb2fbb5ebef59268d67c5b5622c3de959f14fd58de30f5c70c4b0afcf3",
+      "phase48_candidates_digest": "ac145f895c3dec957a995154f2cd1a3a259df1dc1af850a911f427ced2f52dc8",
+      "critical_schema_digest": "f873cca8e42198dbf6a89483e590b99590454eb2cfdbf26800cccb58c718b3b8",
+      "source_digest": "0bf9d122ba24be2231974725114005b450bfc4d6fe3b02a9de5d00bfe8aaf048",
+      "protected_tables_digest": "3731d4f5972f23e6ed22f05976801d669bf32fbf138592805d0700ccdcce6976",
+      "write_set_before_digest": "ace70fc9874e9327dda57213b4a4d6721a2b1eba3319190df8517c03dd9db329",
+      "periods_4_6_digest": "a9686543b16b70096fa6967aac873eb40a7acad4ff272a40fbf55700c244fa08",
+      "albeny_before_digest": "5cae6bfb53c8094deed8aa28e8c4b0c43b2e9c000e40766f4f2e44b751883409",
+      "dary_before_digest": "ee617dad305eb2bad40b755622c27f7bdf982af126792388651255d1c9c3098c",
+      "assignment_1203_before_digest": "84314b31d9a6afd7712012e8c9150eaea0c16ac36bd65c1bfeff615866d17dde",
+      "archived_versions_digest": "5622ef2c7138ece2678f63866b1fffa94ee005bef1e82c054419fb35642ad8af",
+      "event_triggers_digest": "676c9251747e5fb02358de275bfa4d3b1e25f5e8e256b28ed643a9efec631243",
+      "critical_definitions_digest": "3c73d47e5ba7ca09dbd0039209f8b91c812aa89367678cd39bffa6541f6d4318",
+      "critical_sequences_digest": "e6c2d0b57721a3def73cf664995e6968836538761c5c1f3e875bcc846ea6197b",
+      "manifest_digest": "834b8262fc49ef3f06eb8d650c6d229df8eece7b5e109bebae1dbfae7cd3b644",
+      "salary_decision_digest": "5e83322433549c4560a0b01d57947ec15275f85d3852a2e9b2810dca0c3f6d1e",
+      "salary_review_assignments_digest": "1923aa70ec2de163010d7f246e415967532341ab06383d21948ff34bf926f571"
+    },
+    "rollback_confirmed": true,
+    "client_closed": true,
+    "tls_validated": true,
+    "receipt_path": "reports\\phase48-v6-read-query-20261015T172112962Z-74c6cf3fd77f4f168f67436e3d304c60.receipt.json",
+    "receipt_sha256": "1bce3e9f2bf98391c4bfca68c635876316d9369bdd280c5f39d88f16bf85b00c"
+  }
+}

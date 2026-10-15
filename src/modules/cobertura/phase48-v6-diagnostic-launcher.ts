@@ -1,4 +1,4 @@
-import {createHash,randomUUID} from 'node:crypto';
+import {createHash,randomUUID,timingSafeEqual} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {join,resolve} from 'node:path';
@@ -7,9 +7,21 @@ import {fetchProductionHealth,type HealthSummary} from './phase48-v6-diagnostic-
 
 export const DIAGNOSTIC_PINS=Object.freeze({diagnostic_runner_commit:'38f5242ddb283ab8af03d0ea5dca1aae5fe44922',readonly_runner_commit:'38f5242ddb283ab8af03d0ea5dca1aae5fe44922',mutator_commit:'58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911'});
 export const PRESERVED_INVALID_RECEIPT=Object.freeze({path:'reports/phase48-diagnostic-1a56c5bb-7c53-4acb-92d9-8cfbcac1e4dd.receipt.json',size:1402,sha256:'ca2688f45c0c7da7717c277163a45488a24ee0e8f7ba7c0cdbd4f704a6f5c2bb'});
-export const LOCAL_CERTIFICATE=Object.freeze({path:'reports/phase48-v6-read-query-certificate-20261015T162859144Z-3ecc13c737384db89363cbbe05b3485f.local.json',sha256:'24688bf41e0751f223defd72afd9c0f2b1275485bd44b3cb9ec00edaa389a1d'});
+export const LOCAL_CERTIFICATE=Object.freeze({path:'reports/phase48-v6-read-query-certificate-20261015T165906922Z-6b9eadce573b42fd84a265387903cf37.local.json',sha256:'24a8d02a55ce9096df2696cbe50d23a242c940f1d0723624fad6a53a47ee566e'});
+export const HISTORICAL_STOPPED_RECEIPTS=Object.freeze({status:'NOT_AVAILABLE' as const,blocking:false as const,expected_sha256:Object.freeze(['e5a71ee01913b1ef778a80854a4ba8d2ac46189f81c1ac87dc25d2adeb26d9a4','b6368989c72dd8b21ecd48e52b0495d066fd51e22dce98dfbe986761c73b481a'] as const)});
 const hash=(b:Buffer|string)=>createHash('sha256').update(b).digest('hex');
 const need:(ok:unknown,code:string)=>asserts ok=(ok,code)=>{if(!ok)throw Error(code);};
+export function assertSha256Pin(expected:string,actual:string){
+ need(/^[a-f0-9]{64}$/.test(expected),'DIAGNOSTIC_SHA256_PIN_INVALID');
+ need(/^[a-f0-9]{64}$/i.test(actual),'DIAGNOSTIC_SHA256_ACTUAL_INVALID');
+ const left=Buffer.from(expected,'hex'),right=Buffer.from(actual.toLowerCase(),'hex');
+ need(left.length===32&&right.length===32&&timingSafeEqual(left,right),'DIAGNOSTIC_EVIDENCE_SHA_MISMATCH');
+}
+export function verifyPinnedFile(path:string,expectedSha256:string,expectedSize?:number){
+ need(/^[a-f0-9]{64}$/.test(expectedSha256),'DIAGNOSTIC_SHA256_PIN_INVALID');
+ const bytes=readFileSync(path);if(expectedSize!==undefined)need(bytes.length===expectedSize,'DIAGNOSTIC_EVIDENCE_SIZE_MISMATCH');
+ assertSha256Pin(expectedSha256,hash(bytes));return {bytes:bytes.length,sha256:hash(bytes)};
+}
 
 export function parseDiagnosticLauncherArgs(args:string[]){
  const allowed=new Set(['mode','receipt-directory','credential-path','ca-path','ca-sha256','sync-manually-confirmed']);const out:Record<string,string>=Object.create(null);
@@ -25,17 +37,17 @@ export function verifyDiagnosticOffline(root:string,exec=(file:string,args:strin
  for(const pin of Object.values(DIAGNOSTIC_PINS)){try{execFileSync('git',['merge-base','--is-ancestor',pin,head],{cwd:root,stdio:'ignore'});}catch{throw Error('DIAGNOSTIC_PIN_NOT_ANCESTOR');}}
  const status=git('status','--porcelain','--untracked-files=all').split(/\r?\n/).filter(Boolean);
  need(status.every(line=>line==='?? '+PRESERVED_INVALID_RECEIPT.path),'DIAGNOSTIC_WORKTREE_DIRTY');
- for(const item of [{...PRESERVED_INVALID_RECEIPT,size:1402},{...LOCAL_CERTIFICATE,size:undefined}]){const bytes=readFileSync(join(root,item.path));if(typeof item.size==='number')need(bytes.length===item.size,'DIAGNOSTIC_EVIDENCE_SIZE_MISMATCH');need(hash(bytes)===item.sha256,'DIAGNOSTIC_EVIDENCE_SHA_MISMATCH');}
+ for(const item of [{...PRESERVED_INVALID_RECEIPT,size:1402},{...LOCAL_CERTIFICATE,size:undefined}])verifyPinnedFile(join(root,item.path),item.sha256,item.size);
  const diagnosticSource=readFileSync(join(root,'src/modules/cobertura/phase48-v6-read-query-diagnostic.ts'),'utf8');need(!/phase48-v6-(?:atomic|entry|production-host)|phase48-production-executor/.test(diagnosticSource),'DIAGNOSTIC_MUTATOR_REFERENCE_FORBIDDEN');
  return {branch:'fix/phase48-v6-diagnostic-launcher',head,pins:{...DIAGNOSTIC_PINS},preserved_invalid_receipt:true,certificate_verified:true,mutator_imported:false,working_tree_clean_except_preserved_receipt:true};
 }
 
-export interface LauncherReceipt {run_id:string;diagnostic_run_id:string;kind:'PHASE48_V6_READ_QUERY_DIAGNOSTIC';status:'STOPPED'|'CAPTURED';phase:string;final_status:string;precheck:any;health_attempted:boolean;health_validated:boolean;health:HealthSummary|null;credential_read_attempted:boolean;client_created:boolean;connect_attempted:boolean;tls_validated:boolean;transaction_started:boolean;query_id:string|null;rollback_attempted:boolean;rollback_confirmed:boolean;close_attempted:boolean;close_confirmed:boolean;connection_count:number;instrument:Record<string,unknown>|null;error_code:string|null;writes:0;mutator_invoked:false;nonce_generated:false;phrase_generated:false;pins:typeof DIAGNOSTIC_PINS}
+export interface LauncherReceipt {run_id:string;diagnostic_run_id:string;kind:'PHASE48_V6_READ_QUERY_DIAGNOSTIC';status:'STOPPED'|'CAPTURED';phase:string;final_status:string;precheck:any;health_attempted:boolean;health_validated:boolean;health:HealthSummary|null;credential_read_attempted:boolean;client_created:boolean;connect_attempted:boolean;tls_validated:boolean;transaction_started:boolean;query_id:string|null;rollback_attempted:boolean;rollback_confirmed:boolean;close_attempted:boolean;close_confirmed:boolean;connection_count:number;instrument:Record<string,unknown>|null;error_code:string|null;historical_stopped_receipts:typeof HISTORICAL_STOPPED_RECEIPTS;writes:0;mutator_invoked:false;nonce_generated:false;phrase_generated:false;pins:typeof DIAGNOSTIC_PINS}
 export interface LauncherDependencies {root:string;directory:string;syncManuallyConfirmedFalse:true;precheck():unknown;health():Promise<HealthSummary>;readCredential():string;runInstrument(input:{runId:string;credential:string;publish:(directory:string,name:string,receipt:unknown)=>{path:string;sha256:string}}):Promise<{receipt:any;primary_error?:unknown}>;publish?:(directory:string,name:string,receipt:any,exclusive:boolean)=>string}
 function sanitizeCode(error:unknown){const m=(error as any)?.message;return typeof m==='string'&&/^[A-Z0-9_:. -]{1,120}$/.test(m)?m.replace(/ /g,'_'):'DIAGNOSTIC_FAILED';}
-function validateReceipt(r:LauncherReceipt){need(r.kind==='PHASE48_V6_READ_QUERY_DIAGNOSTIC'&&/^phase48-diagnostic-[a-f0-9-]{36}$/.test(r.run_id)&&r.diagnostic_run_id===r.run_id.slice('phase48-diagnostic-'.length),'DIAGNOSTIC_RECEIPT_SCHEMA_INVALID');need(r.writes===0&&r.mutator_invoked===false&&r.nonce_generated===false&&r.phrase_generated===false&&r.connection_count<=1,'DIAGNOSTIC_RECEIPT_SCHEMA_INVALID');need(!r.health_validated||r.health?.http_status===200,'DIAGNOSTIC_RECEIPT_SCHEMA_INVALID');}
+export function validateDiagnosticLauncherReceipt(r:LauncherReceipt){need(r.kind==='PHASE48_V6_READ_QUERY_DIAGNOSTIC'&&/^phase48-diagnostic-[a-f0-9-]{36}$/.test(r.run_id)&&r.diagnostic_run_id===r.run_id.slice('phase48-diagnostic-'.length),'DIAGNOSTIC_RECEIPT_SCHEMA_INVALID');need(r.writes===0&&r.mutator_invoked===false&&r.nonce_generated===false&&r.phrase_generated===false&&r.connection_count<=1,'DIAGNOSTIC_RECEIPT_SCHEMA_INVALID');need(!r.health_validated||r.health?.http_status===200,'DIAGNOSTIC_RECEIPT_SCHEMA_INVALID');const h=r.historical_stopped_receipts;need(!!h&&h.status==='NOT_AVAILABLE'&&h.blocking===false&&Array.isArray(h.expected_sha256)&&h.expected_sha256.length===HISTORICAL_STOPPED_RECEIPTS.expected_sha256.length&&h.expected_sha256.every((value,index)=>value===HISTORICAL_STOPPED_RECEIPTS.expected_sha256[index]),'DIAGNOSTIC_HISTORICAL_RECEIPTS_SCHEMA_INVALID');}
 function publishVerified(directory:string,name:string,receipt:LauncherReceipt){
- validateReceipt(receipt);const serialized=JSON.stringify(receipt,null,2)+'\n',bytes=Buffer.from(serialized,'utf8');JSON.parse(bytes.toString('utf8'));
+ validateDiagnosticLauncherReceipt(receipt);const serialized=JSON.stringify(receipt,null,2)+'\n',bytes=Buffer.from(serialized,'utf8');JSON.parse(bytes.toString('utf8'));
  const path=publishAtomicReceipt(directory,name,receipt,{exclusive:true});const stored=readFileSync(path);need(stored.length===bytes.length&&hash(stored)===hash(bytes)&&stored.equals(bytes),'DIAGNOSTIC_RECEIPT_VERIFY_FAILED');need(stored.at(-1)===10&&stored.at(-2)!==13,'DIAGNOSTIC_RECEIPT_LF_INVALID');JSON.parse(stored.toString('utf8'));return path;
 }
 export async function launchReadQueryDiagnostic(deps:LauncherDependencies){
@@ -51,7 +63,7 @@ export async function launchReadQueryDiagnostic(deps:LauncherDependencies){
  }catch(e){primary=e;errorCode=sanitizeCode(e);}
  finally{
   const passed=!!healthValidated&&!!instrument&&instrument.status==='CAPTURED'&&instrument.operation_error==null&&instrument.tls_validated===true&&instrument.transaction_started===true&&instrument.rollback_confirmed===true&&instrument.client_closed===true;
-  const receipt:LauncherReceipt={run_id:runId,diagnostic_run_id:diagnosticRunId,kind:'PHASE48_V6_READ_QUERY_DIAGNOSTIC',status:passed?'CAPTURED':'STOPPED',phase,final_status:passed?'DIAGNOSTIC_READ_COMPLETED':'STOPPED',precheck,health_attempted:healthAttempted,health_validated:healthValidated,health,credential_read_attempted:credentialReadAttempted,...state,instrument,error_code:errorCode,writes:0,mutator_invoked:false,nonce_generated:false,phrase_generated:false,pins:{...DIAGNOSTIC_PINS}};
+  const receipt:LauncherReceipt={run_id:runId,diagnostic_run_id:diagnosticRunId,kind:'PHASE48_V6_READ_QUERY_DIAGNOSTIC',status:passed?'CAPTURED':'STOPPED',phase,final_status:passed?'DIAGNOSTIC_READ_COMPLETED':'STOPPED',precheck,health_attempted:healthAttempted,health_validated:healthValidated,health,credential_read_attempted:credentialReadAttempted,...state,instrument,error_code:errorCode,historical_stopped_receipts:HISTORICAL_STOPPED_RECEIPTS,writes:0,mutator_invoked:false,nonce_generated:false,phrase_generated:false,pins:{...DIAGNOSTIC_PINS}};
   const name=`${runId}.receipt.json`;try{const publisher=deps.publish??publishVerified;publishedPath=publisher(deps.directory,name,receipt,true);}catch(pub){if(!primary)primary=pub;}
  }
  if(primary&&!publishedPath)throw Object.assign(Error('DIAGNOSTIC_RECEIPT_PUBLICATION_FAILED'),{code:'DIAGNOSTIC_RECEIPT_PUBLICATION_FAILED',cause:primary});
