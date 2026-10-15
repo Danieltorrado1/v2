@@ -1,0 +1,11 @@
+{
+  "method": "GET",
+  "http_status": 200,
+  "downloaded_at": "2026-10-14T23:59:42.879Z",
+  "bytes": 3051,
+  "sha256": "cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4",
+  "etag": "\"87c206854451cd5852be88c0ac0e42d1\"",
+  "content_type": "application/pdf",
+  "local_copy": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\.worktrees\\nomina-turno-202-correction-preview\\tmp\\pdfs\\nomina-202-account-77-original-readonly.pdf",
+  "storage_mutation_requests": 0
+}

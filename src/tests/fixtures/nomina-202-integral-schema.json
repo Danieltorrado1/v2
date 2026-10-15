@@ -1,0 +1,1147 @@
+{
+  "source": "Preserved READ ONLY catalog 2026-10-14T23:59:16.519Z; identity enriched separately",
+  "columns": [
+    {
+      "table_name": "auditoria",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('auditoria_id_seq'::regclass)"
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "usuario_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "tabla_afectada",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "registro_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "accion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "descripcion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "datos_anteriores",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "datos_nuevos",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "ip",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "user_agent",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "usuario_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "empresa_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "contrato_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "modulo",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "entidad",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "entidad_id",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "accion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "descripcion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "datos_anteriores",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "datos_nuevos",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "ip_address",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "user_agent",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "fecha_evento",
+      "data_type": "timestamp without time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('cobertura_cuenta_cobro_externa_detalle_id_seq'::regclass)"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "cuenta_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "movimiento_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "turno_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "fecha",
+      "data_type": "date",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "valor",
+      "data_type": "numeric",
+      "column_default": "0"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "activo",
+      "data_type": "boolean",
+      "column_default": "true"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "tarifa_config_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "modalidad_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "modalidad",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "institucion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "sede",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "fecha_inicio",
+      "data_type": "date",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "fecha_fin",
+      "data_type": "date",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "dias_efectivos",
+      "data_type": "integer",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "valor_diario",
+      "data_type": "numeric",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "titular_referencia",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "municipio",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('cobertura_cuentas_cobro_externas_id_seq'::regclass)"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "empresa_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "contrato_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "periodo_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "externo_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "numero_cuenta",
+      "data_type": "bigint",
+      "column_default": "nextval('cobertura_cuentas_cobro_numero_seq'::regclass)"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "estado",
+      "data_type": "text",
+      "column_default": "'PENDIENTE'::text"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "valor_total",
+      "data_type": "numeric",
+      "column_default": "0"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "generado_bucket",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "generado_path",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "firmado_bucket",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "firmado_path",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "generado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "firmado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "activo",
+      "data_type": "boolean",
+      "column_default": "true"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "created_by",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "updated_by",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('historial_cambios_id_seq'::regclass)"
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "usuario_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "tabla_afectada",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "registro_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "campo",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "valor_anterior",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "valor_nuevo",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "motivo",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('nomina_movimientos_id_seq'::regclass)"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "periodo_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "nomina_empleado_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "vinculacion_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "fecha",
+      "data_type": "date",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "tipo_movimiento",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "descripcion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "cantidad",
+      "data_type": "numeric",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "valor_unitario",
+      "data_type": "numeric",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "valor_total",
+      "data_type": "numeric",
+      "column_default": "0"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "es_devengado",
+      "data_type": "boolean",
+      "column_default": "true"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "es_deduccion",
+      "data_type": "boolean",
+      "column_default": "false"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "afecta_seguridad_social",
+      "data_type": "boolean",
+      "column_default": "true"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "activo",
+      "data_type": "boolean",
+      "column_default": "true"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "familia_movimiento",
+      "data_type": "text",
+      "column_default": "'GENERAL'::text"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "estado",
+      "data_type": "text",
+      "column_default": "'PENDIENTE'::text"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "documento_persona_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "persona_reemplazada_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "vinculacion_reemplazada_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "municipio_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "institucion_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "sede_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "modalidad_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_municipio",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_institucion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_sede",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_modalidad",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "tarifa_config_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "valor_calculado",
+      "data_type": "numeric",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "motivo_ajuste_valor",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "alertas_validacion",
+      "data_type": "jsonb",
+      "column_default": "'[]'::jsonb"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "posible_duplicado",
+      "data_type": "boolean",
+      "column_default": "false"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "revisado_por",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "revisado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "aprobado_por",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "aprobado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "rechazado_por",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "rechazado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "motivo_estado",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "updated_by",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "fecha_fin_efectiva",
+      "data_type": "date",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_anterior",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_nuevo",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "motivo_operativo",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "regla_fecha_efectiva",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "externo_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('nomina_revision_operativa_id_seq'::regclass)"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "periodo_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "nomina_empleado_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "persona_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "vinculacion_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "estado_revision",
+      "data_type": "text",
+      "column_default": "'PENDIENTE'::text"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "revisado_por",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "revisado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "invalidado_por",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "invalidado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "motivo_invalidacion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "version_revision",
+      "data_type": "integer",
+      "column_default": "0"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    }
+  ],
+  "constraints": [
+    {
+      "source": "auditoria",
+      "target": "-",
+      "conname": "auditoria_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "auditoria",
+      "target": "usuarios",
+      "conname": "auditoria_usuario_id_fkey",
+      "definition": "FOREIGN KEY (usuario_id) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "auditoria_eventos",
+      "target": "contratos",
+      "conname": "auditoria_eventos_contrato_id_fkey",
+      "definition": "FOREIGN KEY (contrato_id) REFERENCES contratos(id)"
+    },
+    {
+      "source": "auditoria_eventos",
+      "target": "empresas",
+      "conname": "auditoria_eventos_empresa_id_fkey",
+      "definition": "FOREIGN KEY (empresa_id) REFERENCES empresas(id)"
+    },
+    {
+      "source": "auditoria_eventos",
+      "target": "-",
+      "conname": "auditoria_eventos_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "auditoria_eventos",
+      "target": "usuarios",
+      "conname": "auditoria_eventos_usuario_id_fkey",
+      "definition": "FOREIGN KEY (usuario_id) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "cobertura_cuentas_cobro_externas",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_cuenta_id_fkey",
+      "definition": "FOREIGN KEY (cuenta_id) REFERENCES cobertura_cuentas_cobro_externas(id) ON DELETE CASCADE"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "modalidades",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_modalidad_id_fkey",
+      "definition": "FOREIGN KEY (modalidad_id) REFERENCES modalidades(id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "nomina_movimientos",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_movimiento_id_fkey",
+      "definition": "FOREIGN KEY (movimiento_id) REFERENCES nomina_movimientos(id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "-",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "nomina_movimiento_tarifas",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_tarifa_config_id_fkey",
+      "definition": "FOREIGN KEY (tarifa_config_id) REFERENCES nomina_movimiento_tarifas(id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "nomina_novedad_turnos",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_turno_id_fkey",
+      "definition": "FOREIGN KEY (turno_id) REFERENCES nomina_novedad_turnos(id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "-",
+      "conname": "cobertura_cuenta_detalle_origen_check",
+      "definition": "CHECK (((movimiento_id IS NOT NULL) OR (turno_id IS NOT NULL)))"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "-",
+      "conname": "cobertura_cuenta_detalle_valor_check",
+      "definition": "CHECK ((valor >= (0)::numeric))"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "-",
+      "conname": "cobertura_cuenta_estado_check",
+      "definition": "CHECK ((estado = ANY (ARRAY['PENDIENTE'::text, 'GENERADA'::text, 'FIRMADA'::text])))"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "-",
+      "conname": "cobertura_cuenta_numero_unique",
+      "definition": "UNIQUE (numero_cuenta)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "-",
+      "conname": "cobertura_cuenta_valor_check",
+      "definition": "CHECK ((valor_total >= (0)::numeric))"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "contratos",
+      "conname": "cobertura_cuentas_cobro_externas_contrato_id_fkey",
+      "definition": "FOREIGN KEY (contrato_id) REFERENCES contratos(id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "usuarios",
+      "conname": "cobertura_cuentas_cobro_externas_created_by_fkey",
+      "definition": "FOREIGN KEY (created_by) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "empresas",
+      "conname": "cobertura_cuentas_cobro_externas_empresa_id_fkey",
+      "definition": "FOREIGN KEY (empresa_id) REFERENCES empresas(id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "cobertura_externos",
+      "conname": "cobertura_cuentas_cobro_externas_externo_id_fkey",
+      "definition": "FOREIGN KEY (externo_id) REFERENCES cobertura_externos(id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "nomina_periodos",
+      "conname": "cobertura_cuentas_cobro_externas_periodo_id_fkey",
+      "definition": "FOREIGN KEY (periodo_id) REFERENCES nomina_periodos(id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "-",
+      "conname": "cobertura_cuentas_cobro_externas_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "usuarios",
+      "conname": "cobertura_cuentas_cobro_externas_updated_by_fkey",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "historial_cambios",
+      "target": "-",
+      "conname": "historial_cambios_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "historial_cambios",
+      "target": "usuarios",
+      "conname": "historial_cambios_usuario_id_fkey",
+      "definition": "FOREIGN KEY (usuario_id) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "-",
+      "conname": "chk_nomina_movimiento_contextos_operativos",
+      "definition": "CHECK (((familia_movimiento <> 'CAMBIO_OPERATIVO'::text) OR ((fecha IS NOT NULL) AND (contexto_anterior IS NOT NULL) AND (contexto_nuevo IS NOT NULL) AND (jsonb_typeof(contexto_anterior) = 'object'::text) AND (jsonb_typeof(contexto_nuevo) = 'object'::text) AND (btrim(COALESCE(motivo_operativo, ''::text)) <> ''::text) AND (regla_fecha_efectiva = ANY (ARRAY['MISMO_DIA'::text, 'DIA_SIGUIENTE'::text]))))) NOT VALID"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "-",
+      "conname": "chk_nomina_movimiento_rango_efectivo",
+      "definition": "CHECK (((fecha_fin_efectiva IS NULL) OR (fecha IS NULL) OR (fecha_fin_efectiva >= fecha)))"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "-",
+      "conname": "chk_nomina_movimientos_estado",
+      "definition": "CHECK ((estado = ANY (ARRAY['PENDIENTE'::text, 'REVISADO'::text, 'APROBADO'::text, 'RECHAZADO'::text])))"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "-",
+      "conname": "chk_nomina_movimientos_familia_movimiento",
+      "definition": "CHECK ((familia_movimiento = ANY (ARRAY['GENERAL'::text, 'ADICION_DEVENGO'::text, 'CAMBIO_OPERATIVO'::text])))"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "usuarios",
+      "conname": "nomina_movimientos_aprobado_por_fkey",
+      "definition": "FOREIGN KEY (aprobado_por) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "documentos_persona",
+      "conname": "nomina_movimientos_documento_persona_id_fkey",
+      "definition": "FOREIGN KEY (documento_persona_id) REFERENCES documentos_persona(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "cobertura_externos",
+      "conname": "nomina_movimientos_externo_id_fkey",
+      "definition": "FOREIGN KEY (externo_id) REFERENCES cobertura_externos(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "instituciones",
+      "conname": "nomina_movimientos_institucion_id_fkey",
+      "definition": "FOREIGN KEY (institucion_id) REFERENCES instituciones(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "modalidades",
+      "conname": "nomina_movimientos_modalidad_id_fkey",
+      "definition": "FOREIGN KEY (modalidad_id) REFERENCES modalidades(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "municipios",
+      "conname": "nomina_movimientos_municipio_id_fkey",
+      "definition": "FOREIGN KEY (municipio_id) REFERENCES municipios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "nomina_empleados",
+      "conname": "nomina_movimientos_nomina_empleado_id_fkey",
+      "definition": "FOREIGN KEY (nomina_empleado_id) REFERENCES nomina_empleados(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "nomina_periodos",
+      "conname": "nomina_movimientos_periodo_id_fkey",
+      "definition": "FOREIGN KEY (periodo_id) REFERENCES nomina_periodos(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "personas",
+      "conname": "nomina_movimientos_persona_reemplazada_id_fkey",
+      "definition": "FOREIGN KEY (persona_reemplazada_id) REFERENCES personas(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "-",
+      "conname": "nomina_movimientos_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "usuarios",
+      "conname": "nomina_movimientos_rechazado_por_fkey",
+      "definition": "FOREIGN KEY (rechazado_por) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "usuarios",
+      "conname": "nomina_movimientos_revisado_por_fkey",
+      "definition": "FOREIGN KEY (revisado_por) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "sedes",
+      "conname": "nomina_movimientos_sede_id_fkey",
+      "definition": "FOREIGN KEY (sede_id) REFERENCES sedes(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "nomina_movimiento_tarifas",
+      "conname": "nomina_movimientos_tarifa_config_id_fkey",
+      "definition": "FOREIGN KEY (tarifa_config_id) REFERENCES nomina_movimiento_tarifas(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "usuarios",
+      "conname": "nomina_movimientos_updated_by_fkey",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "vinculaciones",
+      "conname": "nomina_movimientos_vinculacion_id_fkey",
+      "definition": "FOREIGN KEY (vinculacion_id) REFERENCES vinculaciones(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "vinculaciones",
+      "conname": "nomina_movimientos_vinculacion_reemplazada_id_fkey",
+      "definition": "FOREIGN KEY (vinculacion_reemplazada_id) REFERENCES vinculaciones(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "-",
+      "conname": "chk_nomina_revision_operativa_estado",
+      "definition": "CHECK ((estado_revision = ANY (ARRAY['PENDIENTE'::text, 'REVISADO'::text, 'REQUIERE_REVISION'::text])))"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "usuarios",
+      "conname": "nomina_revision_operativa_invalidado_por_fkey",
+      "definition": "FOREIGN KEY (invalidado_por) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "nomina_empleados",
+      "conname": "nomina_revision_operativa_nomina_empleado_id_fkey",
+      "definition": "FOREIGN KEY (nomina_empleado_id) REFERENCES nomina_empleados(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "nomina_periodos",
+      "conname": "nomina_revision_operativa_periodo_id_fkey",
+      "definition": "FOREIGN KEY (periodo_id) REFERENCES nomina_periodos(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "personas",
+      "conname": "nomina_revision_operativa_persona_id_fkey",
+      "definition": "FOREIGN KEY (persona_id) REFERENCES personas(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "-",
+      "conname": "nomina_revision_operativa_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "usuarios",
+      "conname": "nomina_revision_operativa_revisado_por_fkey",
+      "definition": "FOREIGN KEY (revisado_por) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "vinculaciones",
+      "conname": "nomina_revision_operativa_vinculacion_id_fkey",
+      "definition": "FOREIGN KEY (vinculacion_id) REFERENCES vinculaciones(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "-",
+      "conname": "uq_nomina_revision_operativa",
+      "definition": "UNIQUE (periodo_id, nomina_empleado_id)"
+    }
+  ]
+}

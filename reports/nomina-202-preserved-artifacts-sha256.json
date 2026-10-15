@@ -1,0 +1,22 @@
+﻿[
+    {
+        "path":  "reports/nomina-202-controlled-correction-preparation.md",
+        "sha256":  "f8ca1caff92012250027673962231c0b389d7e72e3341f9084865277ba20aac2"
+    },
+    {
+        "path":  "reports/nomina-202-controlled-correction-preparation.json",
+        "sha256":  "a57662c6d647015add57c1d4b8f6905827f487e06ea7d42e91efb0b9c85209b8"
+    },
+    {
+        "path":  "src/scripts/nomina-turno-202-controlled-preview.ts",
+        "sha256":  "addc8f8ae70ff3d0f7b9e150cfd93c865d8b3895347a92d86baa84ec4621ce03"
+    },
+    {
+        "path":  "src/tests/fixtures/nomina-202-sanitized-readonly.json",
+        "sha256":  "21e68d52220d3966637aef6134b87ed58f9d352bebf125e4b80929013708a9d2"
+    },
+    {
+        "path":  "src/tests/nomina.case202-controlled-preview.test.ts",
+        "sha256":  "c2fa52222a2c7c15e8d0f6c3885be380dae1b854c3c7305bdca0575afb6dc421"
+    }
+]

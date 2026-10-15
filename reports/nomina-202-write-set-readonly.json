@@ -1,0 +1,151 @@
+{
+  "mode": "READ_ONLY",
+  "production_writes": 0,
+  "transaction": [
+    {
+      "transaction_read_only": "on"
+    }
+  ],
+  "observed_at": [
+    {
+      "observed_at": "2026-10-15T00:00:25.537Z"
+    }
+  ],
+  "movement": [
+    {
+      "id": "192",
+      "familia_movimiento": "ADICION_DEVENGO",
+      "cantidad": "1.00",
+      "valor_total": "97800.00",
+      "updated_at": "2026-10-01T01:05:02.122Z"
+    }
+  ],
+  "period": [
+    {
+      "id": "3",
+      "estado": "ABIERTO"
+    }
+  ],
+  "bucket": [
+    {
+      "public": false,
+      "file_size_limit": "20971520"
+    }
+  ],
+  "revision": [
+    {
+      "id": "20114",
+      "estado_revision": "REVISADO",
+      "version_revision": 30,
+      "has_invalidator": false
+    }
+  ],
+  "existing_history": [
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "__snapshot__",
+      "rows": 2
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "activo",
+      "rows": 1
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "contrato_id",
+      "rows": 1
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "created_by",
+      "rows": 1
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "empresa_id",
+      "rows": 1
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "estado",
+      "rows": 1
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "externo_id",
+      "rows": 1
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "id",
+      "rows": 1
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "numero_cuenta",
+      "rows": 1
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "periodo_id",
+      "rows": 1
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "total",
+      "rows": 2
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "turnos",
+      "rows": 2
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "updated_by",
+      "rows": 1
+    },
+    {
+      "tabla_afectada": "cobertura_cuentas_cobro_externas",
+      "registro_id": "77",
+      "campo": "valor_total",
+      "rows": 1
+    }
+  ],
+  "public_path_columns_examined": 25,
+  "matching_path_references": [
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "generado_path",
+      "count": 1
+    }
+  ],
+  "history_triggers": [
+    {
+      "tgname": "RI_ConstraintTrigger_c_19730",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_19730\" AFTER INSERT ON public.historial_cambios FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()"
+    },
+    {
+      "tgname": "RI_ConstraintTrigger_c_19731",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_19731\" AFTER UPDATE ON public.historial_cambios FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()"
+    }
+  ]
+}

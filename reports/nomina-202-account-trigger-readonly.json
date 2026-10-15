@@ -1,0 +1,1993 @@
+{
+  "mode": "READ_ONLY",
+  "production_writes": 0,
+  "transaction": [
+    {
+      "transaction_read_only": "on"
+    }
+  ],
+  "observed_at": [
+    {
+      "observed_at": "2026-10-14T23:59:16.519Z"
+    }
+  ],
+  "columns": [
+    {
+      "table_name": "auditoria",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('auditoria_id_seq'::regclass)"
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "usuario_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "tabla_afectada",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "registro_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "accion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "descripcion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "datos_anteriores",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "datos_nuevos",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "ip",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "user_agent",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "usuario_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "empresa_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "contrato_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "modulo",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "entidad",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "entidad_id",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "accion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "descripcion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "datos_anteriores",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "datos_nuevos",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "ip_address",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "user_agent",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "fecha_evento",
+      "data_type": "timestamp without time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('cobertura_cuenta_cobro_externa_detalle_id_seq'::regclass)"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "cuenta_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "movimiento_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "turno_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "fecha",
+      "data_type": "date",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "valor",
+      "data_type": "numeric",
+      "column_default": "0"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "activo",
+      "data_type": "boolean",
+      "column_default": "true"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "tarifa_config_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "modalidad_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "modalidad",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "institucion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "sede",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "fecha_inicio",
+      "data_type": "date",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "fecha_fin",
+      "data_type": "date",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "dias_efectivos",
+      "data_type": "integer",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "valor_diario",
+      "data_type": "numeric",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "titular_referencia",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "column_name": "municipio",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('cobertura_cuentas_cobro_externas_id_seq'::regclass)"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "empresa_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "contrato_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "periodo_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "externo_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "numero_cuenta",
+      "data_type": "bigint",
+      "column_default": "nextval('cobertura_cuentas_cobro_numero_seq'::regclass)"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "estado",
+      "data_type": "text",
+      "column_default": "'PENDIENTE'::text"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "valor_total",
+      "data_type": "numeric",
+      "column_default": "0"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "generado_bucket",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "generado_path",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "firmado_bucket",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "firmado_path",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "generado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "firmado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "activo",
+      "data_type": "boolean",
+      "column_default": "true"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "created_by",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "updated_by",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('historial_cambios_id_seq'::regclass)"
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "usuario_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "tabla_afectada",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "registro_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "campo",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "valor_anterior",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "valor_nuevo",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "motivo",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "historial_cambios",
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('nomina_movimientos_id_seq'::regclass)"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "periodo_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "nomina_empleado_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "vinculacion_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "fecha",
+      "data_type": "date",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "tipo_movimiento",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "descripcion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "cantidad",
+      "data_type": "numeric",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "valor_unitario",
+      "data_type": "numeric",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "valor_total",
+      "data_type": "numeric",
+      "column_default": "0"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "es_devengado",
+      "data_type": "boolean",
+      "column_default": "true"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "es_deduccion",
+      "data_type": "boolean",
+      "column_default": "false"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "afecta_seguridad_social",
+      "data_type": "boolean",
+      "column_default": "true"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "activo",
+      "data_type": "boolean",
+      "column_default": "true"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "familia_movimiento",
+      "data_type": "text",
+      "column_default": "'GENERAL'::text"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "estado",
+      "data_type": "text",
+      "column_default": "'PENDIENTE'::text"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "documento_persona_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "persona_reemplazada_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "vinculacion_reemplazada_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "municipio_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "institucion_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "sede_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "modalidad_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_municipio",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_institucion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_sede",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_modalidad",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "tarifa_config_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "valor_calculado",
+      "data_type": "numeric",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "motivo_ajuste_valor",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "alertas_validacion",
+      "data_type": "jsonb",
+      "column_default": "'[]'::jsonb"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "posible_duplicado",
+      "data_type": "boolean",
+      "column_default": "false"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "revisado_por",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "revisado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "aprobado_por",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "aprobado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "rechazado_por",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "rechazado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "motivo_estado",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "updated_by",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "fecha_fin_efectiva",
+      "data_type": "date",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_anterior",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "contexto_nuevo",
+      "data_type": "jsonb",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "motivo_operativo",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "regla_fecha_efectiva",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "column_name": "externo_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "id",
+      "data_type": "bigint",
+      "column_default": "nextval('nomina_revision_operativa_id_seq'::regclass)"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "periodo_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "nomina_empleado_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "persona_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "vinculacion_id",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "estado_revision",
+      "data_type": "text",
+      "column_default": "'PENDIENTE'::text"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "revisado_por",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "revisado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "invalidado_por",
+      "data_type": "bigint",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "invalidado_at",
+      "data_type": "timestamp with time zone",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "motivo_invalidacion",
+      "data_type": "text",
+      "column_default": null
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "version_revision",
+      "data_type": "integer",
+      "column_default": "0"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "column_default": "now()"
+    }
+  ],
+  "triggers": [
+    {
+      "table_name": "auditoria",
+      "tgname": "RI_ConstraintTrigger_c_19092",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_19092\" AFTER INSERT ON public.auditoria FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "auditoria",
+      "tgname": "RI_ConstraintTrigger_c_19093",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_19093\" AFTER UPDATE ON public.auditoria FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "tgname": "RI_ConstraintTrigger_c_20645",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20645\" AFTER INSERT ON public.auditoria_eventos FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "tgname": "RI_ConstraintTrigger_c_20646",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20646\" AFTER UPDATE ON public.auditoria_eventos FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "tgname": "RI_ConstraintTrigger_c_20650",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20650\" AFTER INSERT ON public.auditoria_eventos FROM empresas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "tgname": "RI_ConstraintTrigger_c_20651",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20651\" AFTER UPDATE ON public.auditoria_eventos FROM empresas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "tgname": "RI_ConstraintTrigger_c_20655",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20655\" AFTER INSERT ON public.auditoria_eventos FROM contratos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "auditoria_eventos",
+      "tgname": "RI_ConstraintTrigger_c_20656",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20656\" AFTER UPDATE ON public.auditoria_eventos FROM contratos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "tgname": "RI_ConstraintTrigger_c_29206",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29206\" AFTER INSERT ON public.cobertura_cuenta_cobro_externa_detalle FROM cobertura_cuentas_cobro_externas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "tgname": "RI_ConstraintTrigger_c_29207",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29207\" AFTER UPDATE ON public.cobertura_cuenta_cobro_externa_detalle FROM cobertura_cuentas_cobro_externas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "tgname": "RI_ConstraintTrigger_c_29211",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29211\" AFTER INSERT ON public.cobertura_cuenta_cobro_externa_detalle FROM nomina_movimientos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "tgname": "RI_ConstraintTrigger_c_29212",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29212\" AFTER UPDATE ON public.cobertura_cuenta_cobro_externa_detalle FROM nomina_movimientos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "tgname": "RI_ConstraintTrigger_c_29216",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29216\" AFTER INSERT ON public.cobertura_cuenta_cobro_externa_detalle FROM nomina_novedad_turnos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "tgname": "RI_ConstraintTrigger_c_29217",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29217\" AFTER UPDATE ON public.cobertura_cuenta_cobro_externa_detalle FROM nomina_novedad_turnos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "tgname": "RI_ConstraintTrigger_c_29407",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29407\" AFTER INSERT ON public.cobertura_cuenta_cobro_externa_detalle FROM nomina_movimiento_tarifas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "tgname": "RI_ConstraintTrigger_c_29408",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29408\" AFTER UPDATE ON public.cobertura_cuenta_cobro_externa_detalle FROM nomina_movimiento_tarifas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "tgname": "RI_ConstraintTrigger_c_29412",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29412\" AFTER INSERT ON public.cobertura_cuenta_cobro_externa_detalle FROM modalidades NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuenta_cobro_externa_detalle",
+      "tgname": "RI_ConstraintTrigger_c_29413",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29413\" AFTER UPDATE ON public.cobertura_cuenta_cobro_externa_detalle FROM modalidades NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_a_29204",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_a_29204\" AFTER DELETE ON public.cobertura_cuentas_cobro_externas FROM cobertura_cuenta_cobro_externa_detalle NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_cascade_del\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_cascade_del\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_cascade_del$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_a_29205",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_a_29205\" AFTER UPDATE ON public.cobertura_cuentas_cobro_externas FROM cobertura_cuenta_cobro_externa_detalle NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_noaction_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_noaction_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_noaction_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29164",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29164\" AFTER INSERT ON public.cobertura_cuentas_cobro_externas FROM empresas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29165",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29165\" AFTER UPDATE ON public.cobertura_cuentas_cobro_externas FROM empresas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29169",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29169\" AFTER INSERT ON public.cobertura_cuentas_cobro_externas FROM contratos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29170",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29170\" AFTER UPDATE ON public.cobertura_cuentas_cobro_externas FROM contratos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29174",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29174\" AFTER INSERT ON public.cobertura_cuentas_cobro_externas FROM nomina_periodos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29175",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29175\" AFTER UPDATE ON public.cobertura_cuentas_cobro_externas FROM nomina_periodos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29179",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29179\" AFTER INSERT ON public.cobertura_cuentas_cobro_externas FROM cobertura_externos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29180",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29180\" AFTER UPDATE ON public.cobertura_cuentas_cobro_externas FROM cobertura_externos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29184",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29184\" AFTER INSERT ON public.cobertura_cuentas_cobro_externas FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29185",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29185\" AFTER UPDATE ON public.cobertura_cuentas_cobro_externas FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29189",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29189\" AFTER INSERT ON public.cobertura_cuentas_cobro_externas FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "cobertura_cuentas_cobro_externas",
+      "tgname": "RI_ConstraintTrigger_c_29190",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29190\" AFTER UPDATE ON public.cobertura_cuentas_cobro_externas FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "historial_cambios",
+      "tgname": "RI_ConstraintTrigger_c_19730",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_19730\" AFTER INSERT ON public.historial_cambios FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "historial_cambios",
+      "tgname": "RI_ConstraintTrigger_c_19731",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_19731\" AFTER UPDATE ON public.historial_cambios FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_a_25583",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_a_25583\" AFTER DELETE ON public.nomina_movimientos FROM nomina_correcciones NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_noaction_del\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_noaction_del\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_noaction_del$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_a_25584",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_a_25584\" AFTER UPDATE ON public.nomina_movimientos FROM nomina_correcciones NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_noaction_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_noaction_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_noaction_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_a_28211",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_a_28211\" AFTER DELETE ON public.nomina_movimientos FROM nomina_novedad_turnos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_noaction_del\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_noaction_del\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_noaction_del$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_a_28212",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_a_28212\" AFTER UPDATE ON public.nomina_movimientos FROM nomina_novedad_turnos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_noaction_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_noaction_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_noaction_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_a_29209",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_a_29209\" AFTER DELETE ON public.nomina_movimientos FROM cobertura_cuenta_cobro_externa_detalle NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_noaction_del\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_noaction_del\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_noaction_del$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_a_29210",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_a_29210\" AFTER UPDATE ON public.nomina_movimientos FROM cobertura_cuenta_cobro_externa_detalle NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_noaction_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_noaction_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_noaction_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_20737",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20737\" AFTER INSERT ON public.nomina_movimientos FROM nomina_periodos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_20738",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20738\" AFTER UPDATE ON public.nomina_movimientos FROM nomina_periodos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_20742",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20742\" AFTER INSERT ON public.nomina_movimientos FROM nomina_empleados NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_20743",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20743\" AFTER UPDATE ON public.nomina_movimientos FROM nomina_empleados NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_20747",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20747\" AFTER INSERT ON public.nomina_movimientos FROM vinculaciones NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_20748",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_20748\" AFTER UPDATE ON public.nomina_movimientos FROM vinculaciones NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28069",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28069\" AFTER INSERT ON public.nomina_movimientos FROM documentos_persona NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28070",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28070\" AFTER UPDATE ON public.nomina_movimientos FROM documentos_persona NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28074",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28074\" AFTER INSERT ON public.nomina_movimientos FROM personas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28075",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28075\" AFTER UPDATE ON public.nomina_movimientos FROM personas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28079",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28079\" AFTER INSERT ON public.nomina_movimientos FROM vinculaciones NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28080",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28080\" AFTER UPDATE ON public.nomina_movimientos FROM vinculaciones NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28084",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28084\" AFTER INSERT ON public.nomina_movimientos FROM municipios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28085",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28085\" AFTER UPDATE ON public.nomina_movimientos FROM municipios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28089",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28089\" AFTER INSERT ON public.nomina_movimientos FROM instituciones NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28090",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28090\" AFTER UPDATE ON public.nomina_movimientos FROM instituciones NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28094",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28094\" AFTER INSERT ON public.nomina_movimientos FROM sedes NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28095",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28095\" AFTER UPDATE ON public.nomina_movimientos FROM sedes NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28099",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28099\" AFTER INSERT ON public.nomina_movimientos FROM modalidades NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28100",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28100\" AFTER UPDATE ON public.nomina_movimientos FROM modalidades NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28104",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28104\" AFTER INSERT ON public.nomina_movimientos FROM nomina_movimiento_tarifas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28105",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28105\" AFTER UPDATE ON public.nomina_movimientos FROM nomina_movimiento_tarifas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28109",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28109\" AFTER INSERT ON public.nomina_movimientos FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28110",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28110\" AFTER UPDATE ON public.nomina_movimientos FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28114",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28114\" AFTER INSERT ON public.nomina_movimientos FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28115",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28115\" AFTER UPDATE ON public.nomina_movimientos FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28119",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28119\" AFTER INSERT ON public.nomina_movimientos FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28120",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28120\" AFTER UPDATE ON public.nomina_movimientos FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28124",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28124\" AFTER INSERT ON public.nomina_movimientos FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_28125",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28125\" AFTER UPDATE ON public.nomina_movimientos FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_29114",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29114\" AFTER INSERT ON public.nomina_movimientos FROM cobertura_externos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "RI_ConstraintTrigger_c_29115",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_29115\" AFTER UPDATE ON public.nomina_movimientos FROM cobertura_externos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_movimientos",
+      "tgname": "trg_nomina_movimientos_invalida_revision",
+      "tgenabled": "O",
+      "tgisinternal": false,
+      "trigger_definition": "CREATE TRIGGER trg_nomina_movimientos_invalida_revision AFTER INSERT OR DELETE OR UPDATE ON public.nomina_movimientos FOR EACH ROW EXECUTE FUNCTION nomina_invalidar_revision_operativa()",
+      "function_definition": "CREATE OR REPLACE FUNCTION public.nomina_invalidar_revision_operativa()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE v_periodo BIGINT; v_empleado BIGINT; v_persona BIGINT; v_vinculacion BIGINT; v_reason TEXT; v_family TEXT; v_record BIGINT;\r\nBEGIN\r\n  v_periodo := COALESCE(NEW.periodo_id, OLD.periodo_id);\r\n  IF NOT EXISTS (SELECT 1 FROM nomina_periodos WHERE id=v_periodo AND estado='ABIERTO') THEN\r\n    IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\r\n  END IF;\r\n  IF TG_TABLE_NAME='nomina_asistencia_diaria' THEN\r\n    SELECT ne.id INTO v_empleado FROM nomina_empleados ne\r\n    WHERE ne.periodo_id=v_periodo AND ne.vinculacion_id=COALESCE(NEW.vinculacion_id, OLD.vinculacion_id)\r\n    ORDER BY ne.id LIMIT 1;\r\n  ELSE v_empleado := COALESCE(NEW.nomina_empleado_id, OLD.nomina_empleado_id); END IF;\r\n  v_reason := CASE WHEN TG_TABLE_NAME='nomina_novedades' THEN CASE WHEN TG_OP='INSERT' THEN 'NOVEDAD_CREADA' WHEN TG_OP='DELETE' THEN 'NOVEDAD_DESACTIVADA' ELSE 'NOVEDAD_MODIFICADA' END\r\n    WHEN TG_TABLE_NAME='nomina_asistencia_diaria' THEN 'ASISTENCIA_MODIFICADA'\r\n    WHEN TG_TABLE_NAME='nomina_movimientos' THEN 'TA_MODIFICADO' ELSE TG_TABLE_NAME||'_MODIFICADA' END;\r\n  IF TG_TABLE_NAME='nomina_movimientos' THEN\r\n    v_record := COALESCE(NEW.id, OLD.id);\r\n    EXECUTE 'SELECT familia_movimiento FROM nomina_movimientos WHERE id=$1' INTO v_family USING v_record;\r\n    IF v_family='CAMBIO_OPERATIVO' THEN v_reason := 'CAMBIO_OPERATIVO_MODIFICADO'; END IF;\r\n  END IF;\r\n  IF v_empleado IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;\r\n  SELECT ne.vinculacion_id,v.persona_id INTO v_vinculacion,v_persona FROM nomina_empleados ne\r\n    JOIN vinculaciones v ON v.id=ne.vinculacion_id WHERE ne.id=v_empleado LIMIT 1;\r\n  IF v_persona IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;\r\n  INSERT INTO nomina_revision_operativa(periodo_id,nomina_empleado_id,persona_id,vinculacion_id,estado_revision,invalidado_at,motivo_invalidacion,updated_at)\r\n  VALUES(v_periodo,v_empleado,v_persona,v_vinculacion,'REQUIERE_REVISION',NOW(),v_reason,NOW())\r\n  ON CONFLICT(periodo_id,nomina_empleado_id) DO UPDATE SET estado_revision='REQUIERE_REVISION',revisado_por=NULL,revisado_at=NULL,\r\n    invalidado_at=NOW(),motivo_invalidacion=v_reason,version_revision=nomina_revision_operativa.version_revision+1,updated_at=NOW();\r\n  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\r\nEND; $function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28250",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28250\" AFTER INSERT ON public.nomina_revision_operativa FROM nomina_periodos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28251",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28251\" AFTER UPDATE ON public.nomina_revision_operativa FROM nomina_periodos NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28255",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28255\" AFTER INSERT ON public.nomina_revision_operativa FROM nomina_empleados NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28256",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28256\" AFTER UPDATE ON public.nomina_revision_operativa FROM nomina_empleados NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28260",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28260\" AFTER INSERT ON public.nomina_revision_operativa FROM personas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28261",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28261\" AFTER UPDATE ON public.nomina_revision_operativa FROM personas NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28265",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28265\" AFTER INSERT ON public.nomina_revision_operativa FROM vinculaciones NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28266",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28266\" AFTER UPDATE ON public.nomina_revision_operativa FROM vinculaciones NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28270",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28270\" AFTER INSERT ON public.nomina_revision_operativa FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28271",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28271\" AFTER UPDATE ON public.nomina_revision_operativa FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28275",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28275\" AFTER INSERT ON public.nomina_revision_operativa FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_ins\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_ins\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_ins$function$\n"
+    },
+    {
+      "table_name": "nomina_revision_operativa",
+      "tgname": "RI_ConstraintTrigger_c_28276",
+      "tgenabled": "O",
+      "tgisinternal": true,
+      "trigger_definition": "CREATE CONSTRAINT TRIGGER \"RI_ConstraintTrigger_c_28276\" AFTER UPDATE ON public.nomina_revision_operativa FROM usuarios NOT DEFERRABLE INITIALLY IMMEDIATE FOR EACH ROW EXECUTE FUNCTION \"RI_FKey_check_upd\"()",
+      "function_definition": "CREATE OR REPLACE FUNCTION pg_catalog.\"RI_FKey_check_upd\"()\n RETURNS trigger\n LANGUAGE internal\n PARALLEL SAFE STRICT\nAS $function$RI_FKey_check_upd$function$\n"
+    }
+  ],
+  "constraints": [
+    {
+      "source": "auditoria",
+      "target": "-",
+      "conname": "auditoria_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "auditoria",
+      "target": "usuarios",
+      "conname": "auditoria_usuario_id_fkey",
+      "definition": "FOREIGN KEY (usuario_id) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "auditoria_eventos",
+      "target": "contratos",
+      "conname": "auditoria_eventos_contrato_id_fkey",
+      "definition": "FOREIGN KEY (contrato_id) REFERENCES contratos(id)"
+    },
+    {
+      "source": "auditoria_eventos",
+      "target": "empresas",
+      "conname": "auditoria_eventos_empresa_id_fkey",
+      "definition": "FOREIGN KEY (empresa_id) REFERENCES empresas(id)"
+    },
+    {
+      "source": "auditoria_eventos",
+      "target": "-",
+      "conname": "auditoria_eventos_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "auditoria_eventos",
+      "target": "usuarios",
+      "conname": "auditoria_eventos_usuario_id_fkey",
+      "definition": "FOREIGN KEY (usuario_id) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "cobertura_cuentas_cobro_externas",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_cuenta_id_fkey",
+      "definition": "FOREIGN KEY (cuenta_id) REFERENCES cobertura_cuentas_cobro_externas(id) ON DELETE CASCADE"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "modalidades",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_modalidad_id_fkey",
+      "definition": "FOREIGN KEY (modalidad_id) REFERENCES modalidades(id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "nomina_movimientos",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_movimiento_id_fkey",
+      "definition": "FOREIGN KEY (movimiento_id) REFERENCES nomina_movimientos(id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "-",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "nomina_movimiento_tarifas",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_tarifa_config_id_fkey",
+      "definition": "FOREIGN KEY (tarifa_config_id) REFERENCES nomina_movimiento_tarifas(id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "nomina_novedad_turnos",
+      "conname": "cobertura_cuenta_cobro_externa_detalle_turno_id_fkey",
+      "definition": "FOREIGN KEY (turno_id) REFERENCES nomina_novedad_turnos(id)"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "-",
+      "conname": "cobertura_cuenta_detalle_origen_check",
+      "definition": "CHECK (((movimiento_id IS NOT NULL) OR (turno_id IS NOT NULL)))"
+    },
+    {
+      "source": "cobertura_cuenta_cobro_externa_detalle",
+      "target": "-",
+      "conname": "cobertura_cuenta_detalle_valor_check",
+      "definition": "CHECK ((valor >= (0)::numeric))"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "-",
+      "conname": "cobertura_cuenta_estado_check",
+      "definition": "CHECK ((estado = ANY (ARRAY['PENDIENTE'::text, 'GENERADA'::text, 'FIRMADA'::text])))"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "-",
+      "conname": "cobertura_cuenta_numero_unique",
+      "definition": "UNIQUE (numero_cuenta)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "-",
+      "conname": "cobertura_cuenta_valor_check",
+      "definition": "CHECK ((valor_total >= (0)::numeric))"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "contratos",
+      "conname": "cobertura_cuentas_cobro_externas_contrato_id_fkey",
+      "definition": "FOREIGN KEY (contrato_id) REFERENCES contratos(id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "usuarios",
+      "conname": "cobertura_cuentas_cobro_externas_created_by_fkey",
+      "definition": "FOREIGN KEY (created_by) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "empresas",
+      "conname": "cobertura_cuentas_cobro_externas_empresa_id_fkey",
+      "definition": "FOREIGN KEY (empresa_id) REFERENCES empresas(id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "cobertura_externos",
+      "conname": "cobertura_cuentas_cobro_externas_externo_id_fkey",
+      "definition": "FOREIGN KEY (externo_id) REFERENCES cobertura_externos(id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "nomina_periodos",
+      "conname": "cobertura_cuentas_cobro_externas_periodo_id_fkey",
+      "definition": "FOREIGN KEY (periodo_id) REFERENCES nomina_periodos(id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "-",
+      "conname": "cobertura_cuentas_cobro_externas_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "cobertura_cuentas_cobro_externas",
+      "target": "usuarios",
+      "conname": "cobertura_cuentas_cobro_externas_updated_by_fkey",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "historial_cambios",
+      "target": "-",
+      "conname": "historial_cambios_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "historial_cambios",
+      "target": "usuarios",
+      "conname": "historial_cambios_usuario_id_fkey",
+      "definition": "FOREIGN KEY (usuario_id) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_correcciones",
+      "target": "nomina_movimientos",
+      "conname": "nomina_correcciones_movimiento_id_fkey",
+      "definition": "FOREIGN KEY (movimiento_id) REFERENCES nomina_movimientos(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "-",
+      "conname": "chk_nomina_movimiento_contextos_operativos",
+      "definition": "CHECK (((familia_movimiento <> 'CAMBIO_OPERATIVO'::text) OR ((fecha IS NOT NULL) AND (contexto_anterior IS NOT NULL) AND (contexto_nuevo IS NOT NULL) AND (jsonb_typeof(contexto_anterior) = 'object'::text) AND (jsonb_typeof(contexto_nuevo) = 'object'::text) AND (btrim(COALESCE(motivo_operativo, ''::text)) <> ''::text) AND (regla_fecha_efectiva = ANY (ARRAY['MISMO_DIA'::text, 'DIA_SIGUIENTE'::text]))))) NOT VALID"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "-",
+      "conname": "chk_nomina_movimiento_rango_efectivo",
+      "definition": "CHECK (((fecha_fin_efectiva IS NULL) OR (fecha IS NULL) OR (fecha_fin_efectiva >= fecha)))"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "-",
+      "conname": "chk_nomina_movimientos_estado",
+      "definition": "CHECK ((estado = ANY (ARRAY['PENDIENTE'::text, 'REVISADO'::text, 'APROBADO'::text, 'RECHAZADO'::text])))"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "-",
+      "conname": "chk_nomina_movimientos_familia_movimiento",
+      "definition": "CHECK ((familia_movimiento = ANY (ARRAY['GENERAL'::text, 'ADICION_DEVENGO'::text, 'CAMBIO_OPERATIVO'::text])))"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "usuarios",
+      "conname": "nomina_movimientos_aprobado_por_fkey",
+      "definition": "FOREIGN KEY (aprobado_por) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "documentos_persona",
+      "conname": "nomina_movimientos_documento_persona_id_fkey",
+      "definition": "FOREIGN KEY (documento_persona_id) REFERENCES documentos_persona(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "cobertura_externos",
+      "conname": "nomina_movimientos_externo_id_fkey",
+      "definition": "FOREIGN KEY (externo_id) REFERENCES cobertura_externos(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "instituciones",
+      "conname": "nomina_movimientos_institucion_id_fkey",
+      "definition": "FOREIGN KEY (institucion_id) REFERENCES instituciones(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "modalidades",
+      "conname": "nomina_movimientos_modalidad_id_fkey",
+      "definition": "FOREIGN KEY (modalidad_id) REFERENCES modalidades(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "municipios",
+      "conname": "nomina_movimientos_municipio_id_fkey",
+      "definition": "FOREIGN KEY (municipio_id) REFERENCES municipios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "nomina_empleados",
+      "conname": "nomina_movimientos_nomina_empleado_id_fkey",
+      "definition": "FOREIGN KEY (nomina_empleado_id) REFERENCES nomina_empleados(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "nomina_periodos",
+      "conname": "nomina_movimientos_periodo_id_fkey",
+      "definition": "FOREIGN KEY (periodo_id) REFERENCES nomina_periodos(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "personas",
+      "conname": "nomina_movimientos_persona_reemplazada_id_fkey",
+      "definition": "FOREIGN KEY (persona_reemplazada_id) REFERENCES personas(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "-",
+      "conname": "nomina_movimientos_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "usuarios",
+      "conname": "nomina_movimientos_rechazado_por_fkey",
+      "definition": "FOREIGN KEY (rechazado_por) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "usuarios",
+      "conname": "nomina_movimientos_revisado_por_fkey",
+      "definition": "FOREIGN KEY (revisado_por) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "sedes",
+      "conname": "nomina_movimientos_sede_id_fkey",
+      "definition": "FOREIGN KEY (sede_id) REFERENCES sedes(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "nomina_movimiento_tarifas",
+      "conname": "nomina_movimientos_tarifa_config_id_fkey",
+      "definition": "FOREIGN KEY (tarifa_config_id) REFERENCES nomina_movimiento_tarifas(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "usuarios",
+      "conname": "nomina_movimientos_updated_by_fkey",
+      "definition": "FOREIGN KEY (updated_by) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "vinculaciones",
+      "conname": "nomina_movimientos_vinculacion_id_fkey",
+      "definition": "FOREIGN KEY (vinculacion_id) REFERENCES vinculaciones(id)"
+    },
+    {
+      "source": "nomina_movimientos",
+      "target": "vinculaciones",
+      "conname": "nomina_movimientos_vinculacion_reemplazada_id_fkey",
+      "definition": "FOREIGN KEY (vinculacion_reemplazada_id) REFERENCES vinculaciones(id)"
+    },
+    {
+      "source": "nomina_novedad_turnos",
+      "target": "nomina_movimientos",
+      "conname": "nomina_novedad_turnos_movimiento_id_fkey",
+      "definition": "FOREIGN KEY (movimiento_id) REFERENCES nomina_movimientos(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "-",
+      "conname": "chk_nomina_revision_operativa_estado",
+      "definition": "CHECK ((estado_revision = ANY (ARRAY['PENDIENTE'::text, 'REVISADO'::text, 'REQUIERE_REVISION'::text])))"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "usuarios",
+      "conname": "nomina_revision_operativa_invalidado_por_fkey",
+      "definition": "FOREIGN KEY (invalidado_por) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "nomina_empleados",
+      "conname": "nomina_revision_operativa_nomina_empleado_id_fkey",
+      "definition": "FOREIGN KEY (nomina_empleado_id) REFERENCES nomina_empleados(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "nomina_periodos",
+      "conname": "nomina_revision_operativa_periodo_id_fkey",
+      "definition": "FOREIGN KEY (periodo_id) REFERENCES nomina_periodos(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "personas",
+      "conname": "nomina_revision_operativa_persona_id_fkey",
+      "definition": "FOREIGN KEY (persona_id) REFERENCES personas(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "-",
+      "conname": "nomina_revision_operativa_pkey",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "usuarios",
+      "conname": "nomina_revision_operativa_revisado_por_fkey",
+      "definition": "FOREIGN KEY (revisado_por) REFERENCES usuarios(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "vinculaciones",
+      "conname": "nomina_revision_operativa_vinculacion_id_fkey",
+      "definition": "FOREIGN KEY (vinculacion_id) REFERENCES vinculaciones(id)"
+    },
+    {
+      "source": "nomina_revision_operativa",
+      "target": "-",
+      "conname": "uq_nomina_revision_operativa",
+      "definition": "UNIQUE (periodo_id, nomina_empleado_id)"
+    }
+  ],
+  "rules": [],
+  "account": [
+    {
+      "id": "77",
+      "empresa_id": "15",
+      "contrato_id": "24",
+      "periodo_id": "3",
+      "externo_id": "33",
+      "estado": "PENDIENTE",
+      "activo": true,
+      "valor_total": "97800.00",
+      "generado_at": "2026-10-02T19:56:31.439Z",
+      "firmado_at": null,
+      "created_at": "2026-10-01T01:05:17.740Z",
+      "updated_at": "2026-10-02T19:56:31.439Z",
+      "generated_file": true,
+      "signed_file": false
+    }
+  ],
+  "details": [
+    {
+      "id": "220",
+      "cuenta_id": "77",
+      "movimiento_id": "192",
+      "turno_id": "202",
+      "fecha": "2026-09-08",
+      "fecha_inicio": "2026-09-08",
+      "fecha_fin": "2026-09-09",
+      "dias_efectivos": 2,
+      "valor": "97800.00",
+      "valor_diario": "97800.00",
+      "tarifa_config_id": "1",
+      "modalidad_id": "1",
+      "activo": true
+    }
+  ],
+  "account_scope": [
+    {
+      "id": "77",
+      "estado": "PENDIENTE",
+      "activo": true,
+      "valor_total": "97800.00",
+      "generated_file": true,
+      "signed_file": false
+    }
+  ],
+  "source_movements": [
+    {
+      "id": "192",
+      "periodo_id": "3",
+      "nomina_empleado_id": "837",
+      "vinculacion_id": "847",
+      "externo_id": "33",
+      "tipo_movimiento": "TURNO_EXTERNO",
+      "fecha": "2026-09-08",
+      "cantidad": "1.00",
+      "valor_unitario": "97800.00",
+      "valor_calculado": "97800.00",
+      "valor_total": "97800.00",
+      "estado": "PENDIENTE",
+      "activo": true,
+      "afecta_seguridad_social": false
+    }
+  ],
+  "revision": [
+    {
+      "periodo_id": "3",
+      "nomina_empleado_id": "837",
+      "estado_revision": "REVISADO",
+      "version_revision": 30,
+      "has_reviewer": true,
+      "revisado_at": "2026-10-01T01:18:55.684Z",
+      "invalidado_at": null,
+      "motivo_invalidacion": null,
+      "updated_at": "2026-10-01T01:18:55.684Z"
+    }
+  ],
+  "audits": [
+    {
+      "repository": "auditoria_eventos",
+      "id": "60275",
+      "accion": "COBERTURA_CUENTA_GENERATE",
+      "entity": "cobertura_cuentas_cobro_externas",
+      "record_id": "77",
+      "before_total": null,
+      "after_total": null,
+      "total": "97800"
+    },
+    {
+      "repository": "auditoria_eventos",
+      "id": "58269",
+      "accion": "COBERTURA_CUENTA_SYNC",
+      "entity": "cobertura_cuentas_cobro_externas",
+      "record_id": "77",
+      "before_total": null,
+      "after_total": "97800.00",
+      "total": "97800"
+    },
+    {
+      "repository": "auditoria",
+      "id": "16480",
+      "accion": "COBERTURA_CUENTA_GENERATE",
+      "entity": "cobertura_cuentas_cobro_externas",
+      "record_id": "77",
+      "before_total": null,
+      "after_total": null,
+      "total": "97800"
+    },
+    {
+      "repository": "auditoria",
+      "id": "14970",
+      "accion": "COBERTURA_CUENTA_SYNC",
+      "entity": "cobertura_cuentas_cobro_externas",
+      "record_id": "77",
+      "before_total": null,
+      "after_total": "97800.00",
+      "total": "97800"
+    }
+  ],
+  "file_reference": {
+    "present": true,
+    "reference_sha256": "143de8a5d261b8e508a7d1b1e2228a56fbae77beee70fff04801844ba12c5263",
+    "other_account_references": [
+      {
+        "id": "77",
+        "activo": true,
+        "estado": "PENDIENTE"
+      }
+    ]
+  },
+  "storage": [
+    {
+      "id": "8b371aa0-8731-4c9e-b37c-c7259a3eaff2",
+      "created_at": "2026-10-02T19:56:32.706Z",
+      "updated_at": "2026-10-02T19:56:32.706Z",
+      "last_accessed_at": "2026-10-02T19:56:32.706Z",
+      "size": "3051",
+      "mimetype": "application/pdf",
+      "etag": "\"87c206854451cd5852be88c0ac0e42d1\""
+    }
+  ]
+}

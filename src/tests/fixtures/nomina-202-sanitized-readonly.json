@@ -1,0 +1,99 @@
+{
+  "schema_version": "nomina-202-sanitized-readonly-v1",
+  "observed_at": "2026-10-14T23:41:06.823Z",
+  "deployed_sha": "1effd71930d23a6e3fc26e9f8792858c6ef5995a",
+  "record": {
+    "turno_id": "202",
+    "periodo_id": "3",
+    "nomina_novedad_id": "929",
+    "empleado_referencia_id": "837",
+    "vinculacion_referencia_id": "847",
+    "reemplazante_id": "33",
+    "tipo_turno": "EXTERNO",
+    "turno_activo": true,
+    "movimiento_id": "192",
+    "movimiento_empleado_id": "837",
+    "movimiento_vinculacion_id": "847",
+    "tipo_movimiento": "TURNO_EXTERNO",
+    "fecha": "2026-09-08",
+    "cantidad": "1.00",
+    "valor_unitario": "97800.00",
+    "valor_calculado": "97800.00",
+    "valor_total": "97800.00",
+    "estado": "PENDIENTE",
+    "movimiento_activo": true,
+    "afecta_seguridad_social": false,
+    "tarifa_config_id": "1",
+    "es_devengado": true,
+    "es_deduccion": false,
+    "modalidad_id": "1",
+    "fecha_inicio": "2026-09-08",
+    "fecha_fin": "2026-09-09",
+    "dias": "2.00",
+    "novedad_activa": true,
+    "dias_inclusivos": 2,
+    "periodo_estado": "ABIERTO",
+    "contrato_id": "24",
+    "empresa_id": "15",
+    "tarifa_unitaria": "97800.00",
+    "tarifa_modalidad_id": "1",
+    "tarifa_contrato_id": "24",
+    "tarifa_tipo": "TURNO_EXTERNO",
+    "tarifa_activa": true,
+    "vigencia_desde": "2026-07-29",
+    "vigencia_hasta": "2026-12-31",
+    "modalidad_codigo": "CAA",
+    "nombre_modalidad": "Comida Caliente Almuerzo"
+  },
+  "external_accounts": [
+    {
+      "id": "77",
+      "empresa_id": "15",
+      "contrato_id": "24",
+      "periodo_id": "3",
+      "externo_id": "33",
+      "estado": "PENDIENTE",
+      "activo": true,
+      "valor_total": "97800.00",
+      "generated_file": true,
+      "signed_file": false,
+      "generado_at": "2026-10-02T19:56:31.439Z",
+      "firmado_at": null,
+      "detalle_id": "220",
+      "movimiento_id": "192",
+      "turno_id": "202",
+      "detalle_valor": "97800.00",
+      "dias_efectivos": 2,
+      "valor_diario": "97800.00",
+      "detalle_activo": true
+    }
+  ],
+  "revision": [
+    {
+      "periodo_id": "3",
+      "nomina_empleado_id": "837",
+      "persona_id": "668",
+      "vinculacion_id": "847",
+      "estado_revision": "REVISADO",
+      "version_revision": 30
+    }
+  ],
+  "triggers": [
+    {
+      "table_name": "nomina_movimientos",
+      "trigger_name": "trg_nomina_movimientos_invalida_revision",
+      "tgenabled": "O",
+      "definition": "CREATE TRIGGER trg_nomina_movimientos_invalida_revision AFTER INSERT OR DELETE OR UPDATE ON public.nomina_movimientos FOR EACH ROW EXECUTE FUNCTION nomina_invalidar_revision_operativa()",
+      "function_definition": "CREATE OR REPLACE FUNCTION public.nomina_invalidar_revision_operativa()\n RETURNS trigger\n LANGUAGE plpgsql\nAS $function$\r\nDECLARE v_periodo BIGINT; v_empleado BIGINT; v_persona BIGINT; v_vinculacion BIGINT; v_reason TEXT; v_family TEXT; v_record BIGINT;\r\nBEGIN\r\n  v_periodo := COALESCE(NEW.periodo_id, OLD.periodo_id);\r\n  IF NOT EXISTS (SELECT 1 FROM nomina_periodos WHERE id=v_periodo AND estado='ABIERTO') THEN\r\n    IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\r\n  END IF;\r\n  IF TG_TABLE_NAME='nomina_asistencia_diaria' THEN\r\n    SELECT ne.id INTO v_empleado FROM nomina_empleados ne\r\n    WHERE ne.periodo_id=v_periodo AND ne.vinculacion_id=COALESCE(NEW.vinculacion_id, OLD.vinculacion_id)\r\n    ORDER BY ne.id LIMIT 1;\r\n  ELSE v_empleado := COALESCE(NEW.nomina_empleado_id, OLD.nomina_empleado_id); END IF;\r\n  v_reason := CASE WHEN TG_TABLE_NAME='nomina_novedades' THEN CASE WHEN TG_OP='INSERT' THEN 'NOVEDAD_CREADA' WHEN TG_OP='DELETE' THEN 'NOVEDAD_DESACTIVADA' ELSE 'NOVEDAD_MODIFICADA' END\r\n    WHEN TG_TABLE_NAME='nomina_asistencia_diaria' THEN 'ASISTENCIA_MODIFICADA'\r\n    WHEN TG_TABLE_NAME='nomina_movimientos' THEN 'TA_MODIFICADO' ELSE TG_TABLE_NAME||'_MODIFICADA' END;\r\n  IF TG_TABLE_NAME='nomina_movimientos' THEN\r\n    v_record := COALESCE(NEW.id, OLD.id);\r\n    EXECUTE 'SELECT familia_movimiento FROM nomina_movimientos WHERE id=$1' INTO v_family USING v_record;\r\n    IF v_family='CAMBIO_OPERATIVO' THEN v_reason := 'CAMBIO_OPERATIVO_MODIFICADO'; END IF;\r\n  END IF;\r\n  IF v_empleado IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;\r\n  SELECT ne.vinculacion_id,v.persona_id INTO v_vinculacion,v_persona FROM nomina_empleados ne\r\n    JOIN vinculaciones v ON v.id=ne.vinculacion_id WHERE ne.id=v_empleado LIMIT 1;\r\n  IF v_persona IS NULL THEN IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF; END IF;\r\n  INSERT INTO nomina_revision_operativa(periodo_id,nomina_empleado_id,persona_id,vinculacion_id,estado_revision,invalidado_at,motivo_invalidacion,updated_at)\r\n  VALUES(v_periodo,v_empleado,v_persona,v_vinculacion,'REQUIERE_REVISION',NOW(),v_reason,NOW())\r\n  ON CONFLICT(periodo_id,nomina_empleado_id) DO UPDATE SET estado_revision='REQUIERE_REVISION',revisado_por=NULL,revisado_at=NULL,\r\n    invalidado_at=NOW(),motivo_invalidacion=v_reason,version_revision=nomina_revision_operativa.version_revision+1,updated_at=NOW();\r\n  IF TG_OP='DELETE' THEN RETURN OLD; ELSE RETURN NEW; END IF;\r\nEND; $function$\n"
+    }
+  ],
+  "derived_counts": {
+    "liquidations": 0,
+    "final_liquidations": 0,
+    "payslips": 0,
+    "pending_payments": 0,
+    "period_exports": 0
+  },
+  "personal_data_included": false,
+  "credentials_included": false
+}
