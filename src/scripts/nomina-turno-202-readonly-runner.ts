@@ -5,17 +5,22 @@
  * have passed validation.
  */
 import { createHash, randomUUID } from 'node:crypto';
-import { readFile, realpath, mkdir, open, link, unlink } from 'node:fs/promises';
+import { readFile, realpath, mkdir, open, link, unlink, lstat } from 'node:fs/promises';
 import path from 'node:path';
 import { Client, type ClientConfig, type QueryResultRow } from 'pg';
 import { execFileSync } from 'node:child_process';
 import { ENTRY_CASE } from './nomina-turno-202-entry-contract';
+import untrackedArtifactManifest from './nomina-202-untracked-artifacts.json';
 
 export const HISTORICAL_PDF_SHA256='cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4';
 export const DUMP_SHA256='dd1f9d298e83fb9664d1795c4e452698c26b274569cca11715b2c2f03ff99d75';
 export const CORRECTOR_COMMIT='95fc6bb6879409d37a088e451fb64f2edafacb5f';
 export const PRODUCTION_CA_SHA256='700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7';
 export const CERTIFIED_REPORT_SHA256='4d9456973bc1433b5c6175d347497d603999fb1ed35995e7e2493415cda3da41';
+export const ENTRY_READONLY_REPORT_SHA256='1e2d8cfed0889bd238383054296870c1226be0f5fc89793d652755c584cabca8';
+export const POSTGRES17_BIN='C:/Program Files/PostgreSQL/17/bin';
+const NATIVE_REPORT_CODE_COMMIT='9c2fc6a4907c9411473fc30c27c33eb35eaa5507';
+const ENTRY_REPORT_CODE_COMMIT='62e8c52f6a3ac4e3a7e495931beb0e535f299e03';
 export const WRITE_SET=Object.freeze([
   'nomina_movimientos','cobertura_cuenta_cobro_externa_detalle','cobertura_cuentas_cobro_externas',
   'nomina_revision_operativa','auditoria','auditoria_eventos','historial_cambios',
@@ -40,6 +45,7 @@ export type OfflinePlan=Readonly<{
   workspaceRoot:string; branch:string; head:string; contractCommit:string;
   correctorCommit:string; dumpPath:string; dumpSha256:string; historicalPdfPath:string;
   historicalPdfSha256:string; reportPath:string; reportSha256:string; expectedReportSha256:string;
+  entryReportPath:string; entryReportSha256:string; expectedEntryReportSha256:string;
   caPath:string; caSha256:string; expectedCaSha256:string;
   host:string; servername:string; expectedServername:string; port:number; database:string;
   healthUrl:string; healthHostname:string;
@@ -71,28 +77,83 @@ export type RunnerDependencies=Readonly<{
 }>;
 
 /** Offline validation: must be called before credential providers or sockets. */
-export async function validateOfflinePlan(plan:OfflinePlan):Promise<Readonly<{root:string;caPem:Buffer;dumpBytes:Buffer;pdfBytes:Buffer;reportBytes:Buffer}>>{
+export function assertPostgres17ToolVersions(versions:Readonly<Record<'psql'|'pg_dump'|'pg_restore',string>>){
+  for(const name of ['psql','pg_dump','pg_restore'] as const)if(!new RegExp(`^${name} \\(PostgreSQL\\) 17\\.\\d+(?:\\s|$)`).test(versions[name]))fail(`POSTGRES17_TOOL_REQUIRED_${name.toUpperCase()}`);
+}
+
+/** The two reports certify different layers and must remain independently pinned. */
+export function assertCertificationReports(reportBytes:Buffer,entryReportBytes:Buffer,workspaceRoot:string){
+  if(hash(reportBytes)!==CERTIFIED_REPORT_SHA256||hash(entryReportBytes)!==ENTRY_READONLY_REPORT_SHA256)fail('CERTIFICATION_REPORT_HASH_MISMATCH');
+  const nativeReport=JSON.parse(reportBytes.toString('utf8')) as Record<string,any>,entryReport=JSON.parse(entryReportBytes.toString('utf8')) as Record<string,any>;
+  if(nativeReport.branch!=='fix/nomina-turno-202-correction-entry-gate'||nativeReport.code?.commit!==NATIVE_REPORT_CODE_COMMIT||nativeReport.decision!=='CORRECTOR POSTGRESQL CERTIFICADO CON SECUENCIAS MONOTÓNICAS'||!nativeReport.code?.source_hashes?.['src/scripts/nomina-turno-202-integral-local.ts'])fail('NATIVE_CORRECTOR_REPORT_LINK_MISMATCH');
+  if(entryReport.branch!=='fix/nomina-turno-202-correction-entry-gate'||entryReport.code?.commit!==ENTRY_REPORT_CODE_COMMIT||entryReport.tests?.readonly_entry?.status!=='PENDING_USER_CONFIRMATION'||entryReport.tests?.readonly_entry?.synthetic!==true||!entryReport.code?.source_hashes?.['src/scripts/nomina-turno-202-readonly-runner.ts'])fail('ENTRY_READONLY_REPORT_LINK_MISMATCH');
+  for(const commit of [CORRECTOR_COMMIT,NATIVE_REPORT_CODE_COMMIT,ENTRY_REPORT_CODE_COMMIT])execFileSync('git',['merge-base','--is-ancestor',commit,'HEAD'],{cwd:workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
+  const shared=['src/scripts/nomina-turno-202-native-local.ts','src/scripts/nomina-turno-202-integral-local.ts','src/scripts/nomina-202-native-worker.cjs','src/scripts/nomina-202-certification-evidence.cjs','src/scripts/nomina-202-process-sampler.ps1'];
+  for(const source of shared)if(nativeReport.code.source_hashes[source]!==entryReport.code.source_hashes[source])fail('CERTIFICATION_REPORT_CODE_DRIFT');
+  let sourceCount=0,uncommittedHarnessPins=0;
+  for(const evidence of [{report:nativeReport,commit:NATIVE_REPORT_CODE_COMMIT},{report:entryReport,commit:ENTRY_REPORT_CODE_COMMIT}])for(const [source,expected] of Object.entries(evidence.report.code.source_hashes as Record<string,string>)){
+    // This report pins its local measurement harness, which was not itself committed;
+    // the economic mutator and all runtime sources are independently commit-verifiable.
+    if(evidence.report===nativeReport&&source==='src/scripts/certify-nomina-202-native-performance.cjs'){
+      if(expected!=='75cdc3ab478356349297af319e4daaf81a55f869469c441a2caf313db9b352bb')fail('NATIVE_HARNESS_PIN_MISMATCH');uncommittedHarnessPins++;continue;
+    }
+    const commits=execFileSync('git',['log','--format=%H','--',source],{cwd:workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim().split(/\r?\n/).filter(Boolean);
+    let found=false;
+    for(const commit of commits){
+      const text=execFileSync('git',['show',`${commit}:${source}`],{cwd:workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true,maxBuffer:8*1024*1024});
+      if(hash(Buffer.from(text))===expected||hash(Buffer.from(text.replace(/\r?\n/g,'\r\n')) )===expected){found=true;break;}
+    }
+    if(!found)fail(`CERTIFIED_SOURCE_HASH_MISMATCH_${source.replace(/[^a-zA-Z0-9_]/g,'_')}`);sourceCount++;
+  }
+  if(sourceCount!==18||uncommittedHarnessPins!==1)fail('CERTIFIED_SOURCE_INVENTORY_MISMATCH');
+  return Object.freeze({correctorReportSha256:CERTIFIED_REPORT_SHA256,entryReadonlyReportSha256:ENTRY_READONLY_REPORT_SHA256,correctorCommit:CORRECTOR_COMMIT,nativeReportCodeCommit:NATIVE_REPORT_CODE_COMMIT,entryCodeCommit:ENTRY_REPORT_CODE_COMMIT,sharedSourceCount:shared.length,sourceHashCount:sourceCount,reportOnlyHarnessPinCount:uncommittedHarnessPins});
+}
+
+/** Verifies and permits only the exact, hashed offline artifacts inventoried before certification. */
+export async function validateUntrackedArtifactInventory(workspaceRoot:string){
+  const expected=untrackedArtifactManifest.files;
+  const actual=execFileSync('git',['ls-files','--others','--exclude-standard'],{cwd:workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).split(/\r?\n/).filter(Boolean).map(p=>p.replace(/\\/g,'/')).sort();
+  const expectedPaths=expected.map(x=>x.path).sort();
+  if(actual.length!==untrackedArtifactManifest.expectedCount||JSON.stringify(actual)!==JSON.stringify(expectedPaths))fail('UNTRACKED_ARTIFACT_INVENTORY_SET_DRIFT');
+  const rows=[] as {path:string;size:number;sha256:string}[];
+  for(const item of expected){
+    const file=path.resolve(workspaceRoot,...item.path.split('/'));
+    const relative=path.relative(path.resolve(workspaceRoot),file);
+    if(path.isAbsolute(relative)||relative.startsWith('..'))fail('UNTRACKED_ARTIFACT_PATH_REJECTED');
+    const st=await lstat(file);if(!st.isFile()||st.isSymbolicLink()||st.size!==item.size)fail('UNTRACKED_ARTIFACT_METADATA_DRIFT');
+    const bytes=await readFile(file),actualHash=hash(bytes);if(actualHash!==item.sha256)fail('UNTRACKED_ARTIFACT_HASH_DRIFT');
+    rows.push({path:item.path,size:bytes.length,sha256:actualHash});
+  }
+  const aggregate=hash(rows.map(x=>`${x.path}\0${x.size}\0${x.sha256}\n`).join(''));
+  if(aggregate!==untrackedArtifactManifest.expectedAggregateSha256)fail('UNTRACKED_ARTIFACT_AGGREGATE_DRIFT');
+  return Object.freeze({count:rows.length,aggregateSha256:aggregate});
+}
+
+export async function validateOfflinePlan(plan:OfflinePlan):Promise<Readonly<{root:string;caPem:Buffer;dumpBytes:Buffer;pdfBytes:Buffer;reportBytes:Buffer;entryReportBytes:Buffer}>>{
   if(!absolute(plan.workspaceRoot)||plan.branch!=='fix/nomina-turno-202-correction-entry-gate'||!isCommit(plan.head)||!isCommit(plan.contractCommit)||plan.head!==plan.contractCommit)fail('CONTRACT_HEAD_MISMATCH');
   if(plan.correctorCommit!==CORRECTOR_COMMIT)fail('CORRECTOR_COMMIT_MISMATCH');
-  if(!isSha(plan.dumpSha256)||plan.dumpSha256!==DUMP_SHA256||!isSha(plan.historicalPdfSha256)||plan.historicalPdfSha256!==HISTORICAL_PDF_SHA256||!isSha(plan.reportSha256)||plan.reportSha256!==plan.expectedReportSha256||!isSha(plan.caSha256)||plan.caSha256!==plan.expectedCaSha256||(!plan.localCertification&&plan.expectedCaSha256!==PRODUCTION_CA_SHA256))fail('OFFLINE_HASH_PIN_MISMATCH');
+  if(!isSha(plan.dumpSha256)||plan.dumpSha256!==DUMP_SHA256||!isSha(plan.historicalPdfSha256)||plan.historicalPdfSha256!==HISTORICAL_PDF_SHA256||plan.reportSha256!==CERTIFIED_REPORT_SHA256||plan.expectedReportSha256!==CERTIFIED_REPORT_SHA256||plan.entryReportSha256!==ENTRY_READONLY_REPORT_SHA256||plan.expectedEntryReportSha256!==ENTRY_READONLY_REPORT_SHA256||!isSha(plan.caSha256)||plan.caSha256!==plan.expectedCaSha256||(!plan.localCertification&&plan.expectedCaSha256!==PRODUCTION_CA_SHA256))fail('OFFLINE_HASH_PIN_MISMATCH');
   if(!plan.servername||plan.servername!==plan.expectedServername||!Number.isInteger(plan.port)||plan.port<1024||plan.port>65535||[5432,5433].includes(plan.port)||!plan.database)fail('DESTINATION_REJECTED');
   if(plan.localCertification){if(!['127.0.0.1','::1','localhost'].includes(plan.host))fail('LOCAL_DESTINATION_REJECTED');}
   else if(plan.host!==plan.servername||plan.servername==='localhost')fail('PRODUCTION_HOST_PIN_REQUIRED');
   const health=(()=>{try{return new URL(plan.healthUrl);}catch{return fail('HEALTH_DESTINATION_INVALID');}})();
   if(health.hostname!==plan.healthHostname||health.username||health.password||health.search||health.hash||(!plan.localCertification&&health.protocol!=='https:')||(plan.localCertification&&!['127.0.0.1','::1','localhost'].includes(health.hostname)))fail('HEALTH_DESTINATION_REJECTED');
-  for(const p of [plan.dumpPath,plan.historicalPdfPath,plan.reportPath,plan.caPath])if(!absolute(p))fail('ARTIFACT_PATH_NOT_ABSOLUTE');
+  for(const p of [plan.dumpPath,plan.historicalPdfPath,plan.reportPath,plan.entryReportPath,plan.caPath])if(!absolute(p))fail('ARTIFACT_PATH_NOT_ABSOLUTE');
   try{
     if(execFileSync('git',['branch','--show-current'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim()!==plan.branch||execFileSync('git',['rev-parse','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim()!==plan.head)fail('GIT_STATE_MISMATCH');
     execFileSync('git',['merge-base','--is-ancestor',CORRECTOR_COMMIT,plan.head],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
-    if(!plan.localCertification&&execFileSync('git',['status','--porcelain'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim())fail('WORKTREE_NOT_CLEAN');
+    execFileSync('git',['diff','--quiet','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
+    execFileSync('git',['diff','--cached','--quiet','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
   }catch{fail('OFFLINE_GIT_VALIDATION_FAILED');}
-  const [root,dumpBytes,pdfBytes,reportBytes,caPem]=await Promise.all([
-    realpath(plan.workspaceRoot),readFile(plan.dumpPath),readFile(plan.historicalPdfPath),readFile(plan.reportPath),readFile(plan.caPath),
+  if(!plan.localCertification){assertPostgres17ToolVersions(Object.fromEntries((['psql','pg_dump','pg_restore'] as const).map(name=>[name,execFileSync(path.join(POSTGRES17_BIN,`${name}.exe`),['--version'],{encoding:'utf8',windowsHide:true}).trim()])) as Record<'psql'|'pg_dump'|'pg_restore',string>);await validateUntrackedArtifactInventory(plan.workspaceRoot);}
+  const [root,dumpBytes,pdfBytes,reportBytes,entryReportBytes,caPem]=await Promise.all([
+    realpath(plan.workspaceRoot),readFile(plan.dumpPath),readFile(plan.historicalPdfPath),readFile(plan.reportPath),readFile(plan.entryReportPath),readFile(plan.caPath),
   ]);
-  const reportReal=await realpath(plan.reportPath),reportsRoot=path.join(root,'reports'),reportRelative=path.relative(reportsRoot,reportReal);if(path.isAbsolute(reportRelative)||reportRelative.startsWith('..'))fail('EVIDENCE_PATH_OUTSIDE_WORKSPACE');
-  if(hash(dumpBytes)!==plan.dumpSha256||hash(pdfBytes)!==plan.historicalPdfSha256||hash(reportBytes)!==plan.reportSha256||hash(caPem)!==plan.caSha256)fail('OFFLINE_ARTIFACT_HASH_MISMATCH');
+  const reportsRoot=path.join(root,'reports');for(const reportPath of [plan.reportPath,plan.entryReportPath]){const reportReal=await realpath(reportPath),reportRelative=path.relative(reportsRoot,reportReal);if(path.isAbsolute(reportRelative)||reportRelative.startsWith('..'))fail('EVIDENCE_PATH_OUTSIDE_WORKSPACE');}
+  if(hash(dumpBytes)!==plan.dumpSha256||hash(pdfBytes)!==plan.historicalPdfSha256||hash(reportBytes)!==plan.reportSha256||hash(entryReportBytes)!==plan.entryReportSha256||hash(caPem)!==plan.caSha256)fail('OFFLINE_ARTIFACT_HASH_MISMATCH');
+  assertCertificationReports(reportBytes,entryReportBytes,plan.workspaceRoot);
   if(pdfBytes.length!==3051)fail('HISTORICAL_PDF_SIZE_MISMATCH');
-  return Object.freeze({root,caPem,dumpBytes,pdfBytes,reportBytes});
+  return Object.freeze({root,caPem,dumpBytes,pdfBytes,reportBytes,entryReportBytes});
 }
 
 function makeTlsConfig(plan:OfflinePlan,credentials:DbCredentials,caPem:Buffer):ClientConfig{

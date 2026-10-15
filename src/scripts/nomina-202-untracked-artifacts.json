@@ -1,0 +1,1931 @@
+{
+  "version": 1,
+  "expectedCount": 384,
+  "expectedAggregateSha256": "9c77ae07a8f4478b6e3a9d92d72f5074816a2888c2a98ef807c2ec19354f11c7",
+  "classification": {
+    "reports/": "certification-or-historical-evidence; immutable snapshot",
+    "tmp/": "local-only helpers/test artifacts; immutable snapshot"
+  },
+  "files": [
+    {
+      "path": "reports/nomina-202-backup-precheck-20261015T002219Z.stopped.json",
+      "size": 655,
+      "sha256": "d17b550f8d292aea7eb2ba61d1cf705b2487921f660ebdd5e8aef7493ccde2c3"
+    },
+    {
+      "path": "reports/nomina-202-backup-precheck-20261015T002556Z.stopped.json",
+      "size": 3617,
+      "sha256": "68a50ee920afebfdb4dfffbe4f59d408799221d95fc8ac3310e9a8e52758256e"
+    },
+    {
+      "path": "reports/nomina-202-backup-receipt-20261015T004626Z.json",
+      "size": 717,
+      "sha256": "31dce0485783d90de684281d983d212dec9817621e70bc16873f235817bc7581"
+    },
+    {
+      "path": "reports/nomina-202-backup-receipt-20261015T013132Z.json",
+      "size": 591,
+      "sha256": "af396be61353d45fe17cf87e5866d9b5620cca2a4a66f772b830578bb3605459"
+    },
+    {
+      "path": "reports/nomina-202-backup-stopped-20261015T002556Z.md",
+      "size": 4920,
+      "sha256": "4b0795894eac5eea0c4a5ba699da2e41bb5da0868145a2d29dd65d7722aaf630"
+    },
+    {
+      "path": "reports/nomina-202-backup-verified-20261015T013132Z.md",
+      "size": 9975,
+      "sha256": "7c21ba9eb4ab0548b2c423988eea7b5ac6ef9cc64be3d5f0039e0f8dd23c0c27"
+    },
+    {
+      "path": "reports/nomina-202-document-state-20261015T003207Z.md",
+      "size": 1314,
+      "sha256": "55f5ad18b67e698c93dad1fdfef8b7eb68b3175f0d01b78f2627828cbb1aa0f4"
+    },
+    {
+      "path": "reports/nomina-202-document-state-20261015T003422Z.md",
+      "size": 54045,
+      "sha256": "eaa17f30e3e99f7651b56939aa755892d54eb74b5dcbf95c9b0ab09c4628b977"
+    },
+    {
+      "path": "reports/nomina-202-final-preflight-20261015T131214Z/SHA256SUMS.txt",
+      "size": 173,
+      "sha256": "02b33b2c09217c8a145a57009bed49f912bd9ec8a4136b386295344353e70211"
+    },
+    {
+      "path": "reports/nomina-202-final-preflight-20261015T131214Z/final-receipt.json",
+      "size": 8773,
+      "sha256": "794e05bbadab98d708d0868594dfcc10782bbb33006a8a4082298eef79524e17"
+    },
+    {
+      "path": "reports/nomina-202-final-preflight-20261015T131214Z/offline-baseline.json",
+      "size": 4954,
+      "sha256": "4f11de8b7b608d83746ff5d3d73988f473cf55a2e389b97c28148d86fec5b08e"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T105255Z/report.json",
+      "size": 614,
+      "sha256": "fffc4c12d4f19c650fcaa98da4df8e70eb05ef1f811800b0f0d9646264bf0422"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111743Z/progress.json",
+      "size": 1012,
+      "sha256": "d6283424d2eb58268f7d40d3c254fc213bf4b2ed812b2a0a5330ad9d88f58adc"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111743Z/report.json",
+      "size": 6243,
+      "sha256": "ce5a25cfc854ab042cd74c9677a2f7584209da6fca0b6ce5cc502c6d487ac041"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111822Z/local-exclusions.json",
+      "size": 2343,
+      "sha256": "99f140caf1c596f2c0371e6df76026980c199039bcfe04d9c0bfeb6c77404ca2"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111822Z/progress.json",
+      "size": 1020,
+      "sha256": "385f1dde7f34705f8d2c114331967b13567a0a139cb53f2fd1ce7e4e5d0e93a0"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111822Z/report.json",
+      "size": 6541,
+      "sha256": "6c7370e156fe72887a9ac4a8050b10943f98ac41a6fab1dd590773a39c15d11d"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111822Z/restore-use-list.txt",
+      "size": 312021,
+      "sha256": "a67e0777981e7920920d6e526ef1d6a09ee135348681ad8eb407a9e43ece3773"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111836Z/local-exclusions.json",
+      "size": 2343,
+      "sha256": "99f140caf1c596f2c0371e6df76026980c199039bcfe04d9c0bfeb6c77404ca2"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111836Z/progress.json",
+      "size": 1012,
+      "sha256": "ac4d990fa9466f01153e134aabffb52f85b7c9e554b3c7716822d927f431528f"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111836Z/report.json",
+      "size": 6713,
+      "sha256": "0096404fd07b91b5a65a02456870d2f177dc956febf338d7eb2a4a47ecf234a8"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111836Z/restore-use-list.txt",
+      "size": 312021,
+      "sha256": "a67e0777981e7920920d6e526ef1d6a09ee135348681ad8eb407a9e43ece3773"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111903Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111903Z/local-exclusions.json",
+      "size": 2343,
+      "sha256": "99f140caf1c596f2c0371e6df76026980c199039bcfe04d9c0bfeb6c77404ca2"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111903Z/progress.json",
+      "size": 1093,
+      "sha256": "b26604f413db33c419ff7d24d676b6f96f59b80dee142dac3d140a675e8f296c"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111903Z/report.json",
+      "size": 97919,
+      "sha256": "d21594facc32c8bba05733d980dd50be9dbc2bf429cae872ce42d03990baf75d"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111903Z/restore-use-list.txt",
+      "size": 312021,
+      "sha256": "a67e0777981e7920920d6e526ef1d6a09ee135348681ad8eb407a9e43ece3773"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111934Z/critical-explain.json",
+      "size": 5131,
+      "sha256": "5fb7add1c5b6af767fa24e5326d28fc305c76a370647f795adfa6008195344e9"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111934Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111934Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111934Z/local-exclusions.json",
+      "size": 2343,
+      "sha256": "99f140caf1c596f2c0371e6df76026980c199039bcfe04d9c0bfeb6c77404ca2"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111934Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111934Z/progress.json",
+      "size": 1269,
+      "sha256": "31cbb8ebb2e028578546db0eda0e8b4e7aaed1d0fd6c940df07e4e4e6e1e492e"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111934Z/report.json",
+      "size": 259167,
+      "sha256": "15fc7d7a94467dfec8f12d1b26bf40c4001cd7f7a5803c157486cff445b69003"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T111934Z/restore-use-list.txt",
+      "size": 312021,
+      "sha256": "a67e0777981e7920920d6e526ef1d6a09ee135348681ad8eb407a9e43ece3773"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112134Z/report.json",
+      "size": 615,
+      "sha256": "f8734f777d80d408d2dee55249759798390dc3137ddc50a02f2ae58b8c56b9a6"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "6e61df3df3259191b71d6058e9783bb7ff7f903a568dafb9ff4b5abe4df586bc"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/INFORME.md",
+      "size": 5145,
+      "sha256": "0b6c0b79befbf025690fb14455421db2b25634ff10740e2822cc8c4e6f6952bb"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/SHA256SUMS.txt",
+      "size": 1469,
+      "sha256": "d170ae11bb2dffcfb20e85bdaaacc68e22b515ecaa7f6e5975bd273478842348"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/after-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/cleanup.json",
+      "size": 6051,
+      "sha256": "de1e3cf0b6d99174ca0081b57494c41089025cd7f72ef875718ba5bde1f2296c"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/critical-explain.json",
+      "size": 5131,
+      "sha256": "5fb7add1c5b6af767fa24e5326d28fc305c76a370647f795adfa6008195344e9"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/document-intents.json",
+      "size": 2846,
+      "sha256": "7541398fa98f8338e7db23af64812427f3acbca516057450e6daafac9fca45d4"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/local-exclusions.json",
+      "size": 2343,
+      "sha256": "99f140caf1c596f2c0371e6df76026980c199039bcfe04d9c0bfeb6c77404ca2"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/new-local-proof.png",
+      "size": 33626,
+      "sha256": "4711bbec14a0a126a4d94257ed27e66e67144d664c417a97cf5cbf55e74d85d3"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/progress.json",
+      "size": 4231,
+      "sha256": "c27e6284f306eddb3277fcebba26375271d23fe804c6b466a583793ded93c0de"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/report.json",
+      "size": 929970,
+      "sha256": "d8a4226dbea0ffc658ca2c23a3eccf6956937cbbef27d22e7af7d12a02228623"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/restore-use-list.txt",
+      "size": 312021,
+      "sha256": "a67e0777981e7920920d6e526ef1d6a09ee135348681ad8eb407a9e43ece3773"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/tested-native-adapter.cjs",
+      "size": 1985,
+      "sha256": "c6e309edad924ba57e2c9a8fb3d267190c0ac1bc5982b8637336112419d0a03c"
+    },
+    {
+      "path": "reports/nomina-202-native-20261015T112143Z/tested-native-kernel.ts",
+      "size": 22177,
+      "sha256": "8e8ab6fb52ac79133264eceb0f02f4275536966571adfc5f6baff0e45ec6cf43"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114029Z/cleanup.json",
+      "size": 831,
+      "sha256": "700e71664274e18304e6f2f13a52283854382b9e2ab95687a10080c613044092"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114029Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114029Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114029Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114029Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114029Z/progress.json",
+      "size": 309,
+      "sha256": "6a98b2b5d726e30b3c05b122d46b39a38d945261f2f92121d9ddca4040b73542"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114029Z/report.json",
+      "size": 253592,
+      "sha256": "a15eaee27358dd6a55c81e06e1090ff4f21100220e83252404a83dd4819388d1"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114029Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "25b8bc363342af25277a898e474d7b6578d6ed6b8dc960e9c7a52157f7dcb4cb"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/cleanup.json",
+      "size": 831,
+      "sha256": "3d2cbbc78804ec3d94c5b6ffa14bea9aa3268a9a107898a1633aee20d23de51a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/document-intents.json",
+      "size": 2846,
+      "sha256": "9f24b68dfcc22edd2b840cdff9b2338cdd9ec3d7b6a89858fa481271bbd3fb27"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/executor-apply.json",
+      "size": 12730,
+      "sha256": "72bc64ff80ea3009459d8df1dcbb9cffa1ac41a9db1958d53ed15bcbde6e83fb"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/executor-document_fail.json",
+      "size": 391,
+      "sha256": "6cf954f86a16531e1f760ffe724b1d00317d71740d5119b3cd9e8b8c06fd2e46"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/executor-document_recover.json",
+      "size": 1205,
+      "sha256": "9beac42a3e9291f6aecd552f8cfdc400d733ebdfb0dd1f57f0fb7949588e701a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/executor-idempotent.json",
+      "size": 5637,
+      "sha256": "75e9bdcad84c5c5ee6022e77ae8f3c601bd59e1f98857f40300d0e512bc251d5"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/executor-init.json",
+      "size": 3896,
+      "sha256": "e0a10a765f3fe7420a599330e6860f8e6124d475639666c230132f0ae0df552d"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/executor-rollback.json",
+      "size": 10009,
+      "sha256": "2ed2e7aaeb9df888d81619768950b8adcc6408a5aac1998c3887f7c3dc139aa8"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/executor-stop.json",
+      "size": 346,
+      "sha256": "6d4101d384d00aa2c3e1f77b29669d575327aa678283df106d839b0af22c081f"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/explain-analyze-sanitized.json",
+      "size": 80526,
+      "sha256": "8826178dff3fa9e3a13e41ceb9d6e15b6fb220fe19f83a37d7db544510ba8e80"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/process-memory.json",
+      "size": 637,
+      "sha256": "489c59120c17874098578abd555611d7573a06bbc3b3615e5b8702842a0086f5"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/progress.json",
+      "size": 3282,
+      "sha256": "f8229bc3c34e83c95726e240d88ff45cd6bd054778dc79745f84c14284aed6c5"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/report.json",
+      "size": 309398,
+      "sha256": "070eb6e7fb976207d78ea889dad21171679807c0c2631be52791e232d1951bd7"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/server-statements-first.json",
+      "size": 11267,
+      "sha256": "d7adbb995a53e63c6c02b5cb009d56e2a6a3a785f25c18ca9264964276c5624e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T114141Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T115102Z/ENTRY-CONTRACT-DESIGN.md",
+      "size": 3096,
+      "sha256": "08e7631efbcefc5b7da58058b3ce9e4be334a26403473cd2ec8be6eb2d634673"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T115102Z/ENTRY-CONTRACT-RECEIPT.json",
+      "size": 2411,
+      "sha256": "7c4584fca249d1eed1fd39eb7cac99356ed3b25df0b8e6cbfba348e509545eff"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T115102Z/ENTRY-GATE-RECERTIFICATION-20261015.md",
+      "size": 4866,
+      "sha256": "f35942cb212912d95967e4fc50116b8689cbc8cb67b6d9e186acc7e7cb2a000b"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T115102Z/ENTRY-GATE-STATUS.md",
+      "size": 3861,
+      "sha256": "2856a9fd72e13937ae4ecead348a7d13b23b9eb3688aef9881c903ca096027ad"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T135948Z/report.json",
+      "size": 731,
+      "sha256": "2e608d5a259f30821bab7f4173ffdc33024eb3784921e0a37727932c507e387d"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150152Z/report.json",
+      "size": 725,
+      "sha256": "7f0e08845f8b28468764f6a2ba69c7b43ecce1f37052e12e95314237e5e52267"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "4e661c898af16d0e8b582953988a8110978bac32c7cfc1ead32e7207a3217863"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/document-intents.json",
+      "size": 2846,
+      "sha256": "f6ef5926f8ea99d6a06f7bc08bee2795aa7a45d078837df9796032d80ef3bf05"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/executor-apply.json",
+      "size": 13730,
+      "sha256": "eac2d8353408074288f34ea362112f9093517ed088d79957e592455d880009af"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/executor-document_fail.json",
+      "size": 399,
+      "sha256": "b716c553a333e756f46755a2606badf58eab8cbcedb7bd91e13e65985d6566bc"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/executor-document_recover.json",
+      "size": 1205,
+      "sha256": "2ebc9083ad612724b72f7151dcf288d8d9b2aef384aa7170ec0b6bd1f9fa2f1d"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/executor-guards.json",
+      "size": 8260,
+      "sha256": "a4bc244dfabfc33b468067b6f0e85784ada1e5e15aa6f0101915a02e18ec1dde"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/executor-idempotent.json",
+      "size": 6024,
+      "sha256": "591ddd78742d31f9b09af518f50eb6a7c71bd65ca3657fd5b8590d99ed1cf40c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/executor-init.json",
+      "size": 4387,
+      "sha256": "f1a13e6021b2a3b33e024692b5e720dbaeff5133db1164459b62f97afba6e426"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/executor-rollback.json",
+      "size": 11297,
+      "sha256": "78a57d334baca32df5d4fc170425e28656858aeacd24c4ce35fa65765557bf89"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/executor-stop.json",
+      "size": 346,
+      "sha256": "d32c70cae9b2b2de34d9e63fa074f542e943c3aa8dae341cc87b195a6beb00b6"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/explain-analyze-sanitized.json",
+      "size": 92375,
+      "sha256": "dab5d929e7167510acf328fc1fff58f954d1749494c3c34c42fda4b485f27303"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/process-memory.json",
+      "size": 637,
+      "sha256": "60a33f62739a9b8a4b43e6702c6ef91b04d5e420c62440d2e72ae9b9213bba9b"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/progress.json",
+      "size": 3608,
+      "sha256": "5376c468e131c4de65b50e02e3e367c8e6b0cc21fbe8ef280c5fc2ad91656a0f"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/report.json",
+      "size": 866509,
+      "sha256": "ce3b42cbeca08d512b2d1c0c3b82776676037eb11bb69b805b6baf2bf6b62a26"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/server-statements-first.json",
+      "size": 12035,
+      "sha256": "ddbfa6e5b8bd0f9677796c19175d499daed878c68721415fe23bd983567a4831"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150259Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "a4528aa00150aadacf028748718bd3fe1cfcfa32882eebbcc2b8f778f0d67a72"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/document-intents.json",
+      "size": 2846,
+      "sha256": "92847bed9f7ce0239f30f965cfc7889aec273fcaa18508d232d1716790ff20f7"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/executor-apply.json",
+      "size": 13731,
+      "sha256": "65d90858699e85caf703f00ad8bc4030c4e13bf12934e8139cfd0d4b66e2c120"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/executor-document_fail.json",
+      "size": 395,
+      "sha256": "85e8fc91abffcb9b64c38dabaaf6b5b56bfc3f975914f81c950afe3cb1af0a2e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/executor-document_recover.json",
+      "size": 1209,
+      "sha256": "dd260b0359caa23c2640b487201d2aa7f5bb9ddcc1e59b30aecc06e1292aedf1"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/executor-guards.json",
+      "size": 8247,
+      "sha256": "70475dc7dc90e16a46639f933cc7d29674d40e7919db1adb3f33da353d6d220f"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/executor-idempotent.json",
+      "size": 6028,
+      "sha256": "e22b833e5ef9d1136b0373e3b3483649669f0caf06d7e61632d3a0a91eb26cde"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/executor-init.json",
+      "size": 4383,
+      "sha256": "809a1e78b89f970d2934f3534348c84a781988a966e7ee25d5b691b56e153300"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/executor-rollback.json",
+      "size": 11295,
+      "sha256": "d09f2a04247f3a7f7c4f4187ebfeadfe2d333484503513bb83d8259f07d14da2"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/executor-stop.json",
+      "size": 346,
+      "sha256": "e8b588e60400e73bc26b856abc808fe7bea1ae4551f59774539e2d4de27af795"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/explain-analyze-sanitized.json",
+      "size": 92375,
+      "sha256": "a8d6083f4f1941b80777aa66730eede9c497cadc34baaf90b13230b4c63f8fad"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/process-memory.json",
+      "size": 636,
+      "sha256": "906db949b826a9da8811260c1a68c5fd465e2bd4ca87771710386e73669123c5"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/progress.json",
+      "size": 4693,
+      "sha256": "d0c8cf95f1c8c194ebb5c6d302d33a2afe279f048a14fa9441e779e834e9a9f1"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/report.json",
+      "size": 867684,
+      "sha256": "4d9456973bc1433b5c6175d347497d603999fb1ed35995e7e2493415cda3da41"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/server-statements-first.json",
+      "size": 12039,
+      "sha256": "eaceca7fb669c07a1430906c6b6d0d9d6d75e945bb02f8b9583064e8439b58df"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T150430Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151801Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151801Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151801Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151801Z/progress.json",
+      "size": 300,
+      "sha256": "3cd2b55bd9c3d3b4171f80742741410f4a29d21bfbc737f3f9dd69faf79768a5"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151801Z/report.json",
+      "size": 166218,
+      "sha256": "fd42ac4a47659dd052da61e7664a211fdf836cf61a4b9c95ef690d9d1f9213a3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151801Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151950Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151950Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151950Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151950Z/progress.json",
+      "size": 308,
+      "sha256": "7c5c6e75a0b818e37604b9c993dd99d51d80acc7085b1947a760db90f9aecfba"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151950Z/report.json",
+      "size": 166261,
+      "sha256": "6a888dc9c8313b749e6f67d556a0633b00959a6e165fd7b19311e60c19818bfb"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T151950Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152123Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152123Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152123Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152123Z/progress.json",
+      "size": 285,
+      "sha256": "9a7fa5b54d1a94ce697093ec599a8f4e08fff9d3c4c1c9347737ffdad84b39a0"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152123Z/report.json",
+      "size": 166235,
+      "sha256": "fd2395f8e998aca55c8dac4f57cfec9c2450dbc8e80a8cccb1f31d3e699ce9c4"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152123Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "cc711919fa6d625da7af573c4d89af7ddee16fcea9893db6c78929932235cb3d"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/document-intents.json",
+      "size": 2846,
+      "sha256": "166dedd4f0fd0638ab4d9bbb53caef17793d36309e4a9d524b2b380e4c647e4f"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/executor-apply.json",
+      "size": 13729,
+      "sha256": "62027cfb1e1f8679b635ada02eb63655ba89d07c65abc2126f6ba9ff682bbc4b"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/executor-document_fail.json",
+      "size": 395,
+      "sha256": "ff1b3cf37a79d8f048403141b780031445c75d13834f5bee119a6872ac5bb7e4"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/executor-document_recover.json",
+      "size": 1205,
+      "sha256": "83142f19828334b0812a5ea8df350dc5505da289d81007fab14ed3ddde55b184"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/executor-guards.json",
+      "size": 8255,
+      "sha256": "97beeeefc6b90e7a730cb949a7f9437e244b2fad653d9e066da846b2ec08e614"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/executor-idempotent.json",
+      "size": 6027,
+      "sha256": "e5bdfbc527d8df7dec344824527adf9b0942dd7d57722d6f6ea04c77a25d621d"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/executor-init.json",
+      "size": 4390,
+      "sha256": "e8b2d91ccf91f6eb2a1d8f24d44243ad164ac3d888d443fe8a30fdffe9f9152b"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/executor-rollback.json",
+      "size": 11298,
+      "sha256": "91bce2e078a04c18166004b8b339d2edbff8b08fba6d177b30e530ef25814a2a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/executor-stop.json",
+      "size": 346,
+      "sha256": "9ea9adb1f2d9f7cfaeda5982ab695bd355f0869b9a911231f7dfe9b63b8f3fef"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/explain-analyze-sanitized.json",
+      "size": 92354,
+      "sha256": "f4e29af31876f92f81091349c2959fb38dae3a552f34a78100c74d9945060fbc"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/process-memory.json",
+      "size": 635,
+      "sha256": "78d9da0db501d1d06d9df4d64a4fe06bc1716862dcc4beb45dd572c7bf7b018d"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/progress.json",
+      "size": 9741,
+      "sha256": "3286443f70c770cda3a56b51aaf7f85c63f8bf491dc98e1eda29eb974a708e91"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/report.json",
+      "size": 872819,
+      "sha256": "5d3dbde46c33901b1fdf799a98438683315c09f9186c44138edc9445efad25ec"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/server-statements-first.json",
+      "size": 12078,
+      "sha256": "99fbdb0807eabe4d7e568eb4a9a2a8539f51c8b19c2cc9711422ef28b0fac663"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152206Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "a0e3a43d01b45ac1522fccbc846e8137a4e98a35236ef6c340b6a663450524f1"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/document-intents.json",
+      "size": 2846,
+      "sha256": "7b0e9c8e690ab8c352594833efb3d522b471c71c3cdb0476129190274c5e1c5e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/executor-apply.json",
+      "size": 13729,
+      "sha256": "d0e680a6a817eeb9268c813972e58a3baa1ae4418f033d6e2e10f0c5c0b41293"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/executor-document_fail.json",
+      "size": 399,
+      "sha256": "3899584ab33e3279017b324d3431f34e971d183ddfc32a67ce790360cf428455"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/executor-document_recover.json",
+      "size": 1205,
+      "sha256": "5630115bd498be4855ca7438317230667bbf78da91b245624fa5fc64ca45a079"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/executor-guards.json",
+      "size": 8260,
+      "sha256": "9a81df7f3a6e340931b9d0a17fd40107967c6d4675484eaef796d26ace39a889"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/executor-idempotent.json",
+      "size": 6026,
+      "sha256": "194c844e2a777d17adc04ef2b95ba8669ff168e7ac3883b6d7c85770a58f8686"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/executor-init.json",
+      "size": 4392,
+      "sha256": "63d87df42e4c990c31f9bec578e6c16596098258f2dba6c993b429080da744d5"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/executor-rollback.json",
+      "size": 11291,
+      "sha256": "89f38713e82e3807ffa43da6438cf9ae6eeaed2959268fc1439aaadd9c26824b"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/executor-stop.json",
+      "size": 346,
+      "sha256": "da6081ae0f315a1db632da95f6699b9fbcb3964465a56174d461dc2f2823b31a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/explain-analyze-sanitized.json",
+      "size": 92353,
+      "sha256": "12f014550d7260f95d16977c7a901334307a18309b74261127345bf35413445e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/process-memory.json",
+      "size": 637,
+      "sha256": "93b545c33dce396597add77183bfed40bc634893379dae9c55c601eb75176ac3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/progress.json",
+      "size": 10426,
+      "sha256": "1a2142c44080e25062e75459bdd5f9d124f44277284002ee204d9e4bdcc8c900"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/report.json",
+      "size": 873529,
+      "sha256": "fa243412ad15802e4d6da88be0971ba0cec644727b1a63b5ba98de58dd2d7f99"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/server-statements-first.json",
+      "size": 12038,
+      "sha256": "69a6114b508c3d196a0e966a46ff3b3fc47aa516bd342bd7486c0e654e2923ff"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T152845Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153028Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153028Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153028Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153028Z/progress.json",
+      "size": 5753,
+      "sha256": "a5359459a0a5c840c86bb5e2b11c03b2eeeb483ad7759d4c7303266b1a7355f5"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153028Z/report.json",
+      "size": 171693,
+      "sha256": "063c9a1c0f9011b92ce5273196d27afab0bea088e2d37fa33dc73410eeb2eb11"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153028Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "e02d427232056217a17017018059d3c8fcccf21a4ff339e7b92adaede5f4e68e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/document-intents.json",
+      "size": 2846,
+      "sha256": "ccd7cef7a4ed7018fe1dbd4ce898defd03ed9807ed2d9bf87bb68b1d58685a9e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/executor-apply.json",
+      "size": 13724,
+      "sha256": "58bd67f11ee34f746ee02547c58573bf2774a682fd6f0ee062a98f78853226d4"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/executor-document_fail.json",
+      "size": 395,
+      "sha256": "b0f3e755eb5899575a515405a94301940df3cba69b08730777364cda31d1156a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/executor-document_recover.json",
+      "size": 1205,
+      "sha256": "0833de192a8d0e52abb815a09bbbdbddeaed0fcb95867ea4e8eae141656357d8"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/executor-guards.json",
+      "size": 8253,
+      "sha256": "685d2cf729c4519942e5690150b7bd0dcb0427f29911df9b96c478f092e9dc03"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/executor-idempotent.json",
+      "size": 6034,
+      "sha256": "f6ed151a633533c05d28678db21e755254f388cf01109a792ae7d8107572cca9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/executor-init.json",
+      "size": 4396,
+      "sha256": "d0e848d625653610d4bf11b763eacb33cbb069c3f78ca3393d6baca94f9f9763"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/executor-rollback.json",
+      "size": 11289,
+      "sha256": "50abaeb35918dc643b9c3f08f23766601338eb31b9573541c4ffccd595e99f4e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/executor-stop.json",
+      "size": 346,
+      "sha256": "ce9c3f075f9f0ef50ef53d80a00a8fe604264983d7ae8b56444f5535fb3e33fe"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/explain-analyze-sanitized.json",
+      "size": 92369,
+      "sha256": "04aee91749c183075713e4359908a9bacc256cd4a798db0f17b8912c37858f54"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/process-memory.json",
+      "size": 638,
+      "sha256": "f6ca79b99a9ab0726ec69b0fb8e0e5de0e4aa8625895a23d3f3a151c16281388"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/progress.json",
+      "size": 11344,
+      "sha256": "9b51c54e45836263654a39771d616bf03ff183a039124a974b7460382f0efb82"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/report.json",
+      "size": 874431,
+      "sha256": "6a6450509fa510f37a0ad740793216be0784cd6ffab847381ea5953fb9623ac1"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/server-statements-first.json",
+      "size": 12084,
+      "sha256": "91f93c95b0cd2ecb5a8ac7f2ef9c70b292ac1b9b18d7941201826579e05fa6c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153124Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "9feb4184ee1fde3f974eb15d5a84ba7302fa7fba5289478cb078eda468796bd4"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/document-intents.json",
+      "size": 2846,
+      "sha256": "1cd8cc1a8ddfa797140e05a8dbba6c7b01b711dbac2566c465cc127bc06b081b"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/executor-apply.json",
+      "size": 13729,
+      "sha256": "529fc41ee6eedda78d5efc62642b78355f5aea72d80cbd7c8962e9e9b9f4498c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/executor-document_fail.json",
+      "size": 391,
+      "sha256": "0a787d1364a6fdca70bcd9a6cd368a4f28ff80e02b8d0aacc67974c10029ae7e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/executor-document_recover.json",
+      "size": 1205,
+      "sha256": "f8a58f3e1c3b215cc57608e10a204498afc8e059ee05bed6304bc936d08ad62f"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/executor-guards.json",
+      "size": 8248,
+      "sha256": "881206f3cef384038a186dcecaa4b30500e3d4a00e9e2ba3a898e8059794d61e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/executor-idempotent.json",
+      "size": 6031,
+      "sha256": "f4e2cee6532031948bb3951690190ffae7acad4f0f1a2095427ae13f3055eced"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/executor-init.json",
+      "size": 4392,
+      "sha256": "7179cd626b259c7c96e61a5beb2007413e4f21510cc5bb0d80bdc088a7e532b7"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/executor-rollback.json",
+      "size": 11291,
+      "sha256": "74a5f7e6e1db55e086c6e5d31c418dedc1996c3ef06dda690de4df17e826eec1"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/executor-stop.json",
+      "size": 346,
+      "sha256": "f0dd2d98ffd70bd2a757ddccc91c0c2a18cc4981a7523bc80e11af5ecab133fc"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/explain-analyze-sanitized.json",
+      "size": 92360,
+      "sha256": "965f035b119b93dbc00e5bba13aedd67e3242ad66b45b7b180846c3bbfdea99e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/process-memory.json",
+      "size": 636,
+      "sha256": "1c855f410652d3a9aed72f174b11102bdbdcd10e2bf9265c7906d80b5ad33758"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/progress.json",
+      "size": 11475,
+      "sha256": "e3750cdbd06fed6de5c5104584b1317216ea38bb2e0730843d33d470ecd8bf82"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/report.json",
+      "size": 874562,
+      "sha256": "4f85f3898a36a00f7d02dbf6a80358d461d4503d289ef231bb8f18e025e7fefd"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/server-statements-first.json",
+      "size": 12016,
+      "sha256": "5676c9f46c62e1ce165e384cd1af41dd9763fa5fc9c294825434acd4236d170e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153328Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "488547a681461168030d123d144f1bdc5433408d24fcd519296f493d1ce7e167"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/document-intents.json",
+      "size": 2846,
+      "sha256": "df4b4feef74f963800f1921de150d05d709dcae84e731bf60a49cd98934c01d0"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/executor-apply.json",
+      "size": 13735,
+      "sha256": "61d90b9416bb7c2b9f9d6a4eac3c03e7c4368c9bc385c333b93ca935d7eba80e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/executor-document_fail.json",
+      "size": 395,
+      "sha256": "cdbdde5721ca4125b4949b08f43965be0909c77703c170f9960e04b1db83b601"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/executor-document_recover.json",
+      "size": 1205,
+      "sha256": "10b369c2d953a7fa36662c45b8fc2315d524e1f3fe7a7fcbeb68b38151b98ce9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/executor-guards.json",
+      "size": 8260,
+      "sha256": "dc5163e7e8c9a3185629e289be1bbe353fdfb470eba4e789fd5bc93017951be8"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/executor-idempotent.json",
+      "size": 6032,
+      "sha256": "0ebd063e083e09acba992dd35d33248f47a2e968b5cedb2c46ec7439551d414f"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/executor-init.json",
+      "size": 4378,
+      "sha256": "3a97e5a2d6e9c8ffc18a0d6ea9c7f92448c6fa3a317694c2f8c4c552c88b027b"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/executor-rollback.json",
+      "size": 11289,
+      "sha256": "a8d7331cddfd6efc2c4ff633a1cdc7a741a5bc4a7801e92375fa971b720cbe16"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/executor-stop.json",
+      "size": 346,
+      "sha256": "e9d2c8bd3873384d4c2c00993abf9c19789d50a11de696e6a992101a30f75a1e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/explain-analyze-sanitized.json",
+      "size": 92357,
+      "sha256": "7cd0d8f1af5a74e5fde25d13104848571c2806844c3db60e8dc1b5c752ee36a2"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/process-memory.json",
+      "size": 636,
+      "sha256": "35093c485d25ea97052df5cd55f802a630597a39f586fb993ad1380af654267f"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/progress.json",
+      "size": 11510,
+      "sha256": "458869fc4a3e38a1b07ab13249a7176007aaa9eee713ee5b395511aff41cf092"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/report.json",
+      "size": 875450,
+      "sha256": "81b031d7bdac02487ea67f01ca2ec0137a2d9cd00d79ea4490853b1363bd7177"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/server-statements-first.json",
+      "size": 12051,
+      "sha256": "98eeb3ebef89b52f0ba2fdcef3f423044c2214c3ce37cf986d0b1fc4fcab63e2"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T153548Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "f2f7dd8c2c5f6759f39a277cd318532247b587d3a48e82051f238cea11a8b3ae"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/document-intents.json",
+      "size": 2846,
+      "sha256": "f90651d7d95dbe57af5260aeb43d24d065871bffc64c56d498c479384ce90a04"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/executor-apply.json",
+      "size": 13730,
+      "sha256": "0e658db63098f7b99f270e13d521c9187ae34bc667507cb08ea0d7f1c9e8ab54"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/executor-document_fail.json",
+      "size": 395,
+      "sha256": "1c2c21dae09e5cbad9c6e6b8da2d83e6676d84e11bef25b5692cd573c8a09dcb"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/executor-document_recover.json",
+      "size": 1205,
+      "sha256": "9abdd9ca842f0230b062ce85147a628916f839015017e6ee1aaee4eece9e1bb6"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/executor-guards.json",
+      "size": 8258,
+      "sha256": "c44e9e8cb79df124460cb17fe3fc30fb16e3c5f6ec5aa50bbd2d9cabaad04a78"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/executor-idempotent.json",
+      "size": 6029,
+      "sha256": "4a258742d02c1723b9b81dea9b022529630f6e7853b38263d3f08821ecf4c90e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/executor-init.json",
+      "size": 4395,
+      "sha256": "62ae86db2298554713881cba712466b728b31572b47a255452fc46c7b08eb7f2"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/executor-rollback.json",
+      "size": 11295,
+      "sha256": "27ed65d4910a4445eb645008b0defcd99a18fb435dba1f6a866e9e59ce91e934"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/executor-stop.json",
+      "size": 346,
+      "sha256": "a86dc5559b55d8e3f3f58ef315a2ddbb8fae7d4151576cfe29ec5c5ae153899c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/explain-analyze-sanitized.json",
+      "size": 92364,
+      "sha256": "2d8d808a4292a3adfaac1b7bedfd772aadc8c9407a41a41752c7eb7a3e972e00"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/process-memory.json",
+      "size": 639,
+      "sha256": "e4c6de58b031b7287a0a984d21b988cb4c3bb3fa113090a9eee12c9ee945b3d6"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/progress.json",
+      "size": 11510,
+      "sha256": "35e7a76cc93e75334d746fc57f99d30018d854ef0a5f8e0fa5a929959a8c610e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/report.json",
+      "size": 875450,
+      "sha256": "cc42073021f5f068d668f3e1885fd4e2df37cd0dc20508a5cce93ab73043024e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/server-statements-first.json",
+      "size": 12065,
+      "sha256": "9d93fc2f09e5bc4d03ca31c143d0d341ad5eb4d5cda409466e944ab61943e452"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154503Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "756c9d0f28f04a6b178ff7909998515019ffdf7588c65a985c4298c8247f9619"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/document-intents.json",
+      "size": 2846,
+      "sha256": "3e9d8d214c841549e703b30eec2410739e725b41a54e18b9598b16d35cb10331"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/executor-apply.json",
+      "size": 13732,
+      "sha256": "425b6e810ddd6baf04b065da0e4684d7cb8f6be7d4be52e7cf92bb91580cb2d4"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/executor-document_fail.json",
+      "size": 395,
+      "sha256": "615a8cb9ef703c69da3e1de96969967800412b8a0697310c576a1dee03b8aba2"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/executor-document_recover.json",
+      "size": 1205,
+      "sha256": "7f33f34601324034bb76e81e6414370f9c941b2c806264a99773c088faf74fda"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/executor-guards.json",
+      "size": 8259,
+      "sha256": "f667cd76bdb39f07daafee8d11d4487fbf482d1a43c20e18fa2ef88f6d4ef4fa"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/executor-idempotent.json",
+      "size": 6032,
+      "sha256": "15f266cf6a444a832a8999bd6dc1d697fcd86a098132cb85e9cb77790c577bb0"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/executor-init.json",
+      "size": 4398,
+      "sha256": "0ab64ee59cee8000c486009a578f50d83302d591080f73279f2b69943647cfcc"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/executor-rollback.json",
+      "size": 11294,
+      "sha256": "acb9da264cdedfa8c3bd4022e09221e1f8a1eeff82a1de66c523226277efafb0"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/executor-stop.json",
+      "size": 346,
+      "sha256": "a0099cfe7c7531b5cc886c73b58e7d3ec5e72156f49b1d0258a0a324fd20d16c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/explain-analyze-sanitized.json",
+      "size": 92374,
+      "sha256": "b5056cc541c9d6ac45b8b5451a31f12a2e21be35f269ae3cbe466fb1139df00c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/process-memory.json",
+      "size": 637,
+      "sha256": "7deefce7fa22c88992ab9300bfb537b863ee07c8b4bb6c7f025e2c06b10ecffb"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/progress.json",
+      "size": 11530,
+      "sha256": "889b8d2227a988b3d9da13d8ddfc5287bd7fcfd2e81ce6bb7588c909c70acc07"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/report.json",
+      "size": 875487,
+      "sha256": "91336f619712ccd4cfb9524590d0c44329479f86740fbe0c50998d5afabca686"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/server-statements-first.json",
+      "size": 12014,
+      "sha256": "c32de2820ff9e24f92728bc43fc32e197d0d07ad37a20950b89811e750f52682"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T154624Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/262-table-comparison.json",
+      "size": 83404,
+      "sha256": "b36a9f89464ca27b088ae31457e7ebf106e3576a2baabe2aabd73c594894be89"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/applied-sequences.json",
+      "size": 22579,
+      "sha256": "fdc0cfd3d7ea4165a5162773e1e913cf2a28d560aceedbfc7dda311d4930199e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/document-intents.json",
+      "size": 2846,
+      "sha256": "e891608185ca1f3fe7bd98b98abc2d8fa2eda8d4c2ddeca21ec546e82bc32b80"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/executor-apply.json",
+      "size": 13720,
+      "sha256": "4885f58977cbeb0802f9fe387f98e1cfaafdd479e5fb24d9591b08d3f4a50e4c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/executor-document_fail.json",
+      "size": 399,
+      "sha256": "0a1ba06024ca68529bd8cabd8ed3400c3612c20f90da64544c6b1f2a992ffb7c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/executor-document_recover.json",
+      "size": 1205,
+      "sha256": "0a1fd57025a5481b0c76600a58ef6fd7275ebdd24eae916ecf7485e2e95b3d63"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/executor-guards.json",
+      "size": 8259,
+      "sha256": "5a2f489241bb3b6179ffb4c0f297030f28a96c709331c8f4a0f4169d96b02f4b"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/executor-idempotent.json",
+      "size": 6033,
+      "sha256": "704c0cdc52864d5cfad6bca81e213eabc1b5825a8b341bfa0c906fa6bb1419a8"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/executor-init.json",
+      "size": 4382,
+      "sha256": "7ffbe0e2b77d7ce8200654598fd850066a828da3cd82ad1791f59c1dad58dd4e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/executor-rollback.json",
+      "size": 11291,
+      "sha256": "0d61262bbd5578996ae5274b22d9d7fdeb214e7d6dbf7514d28bf6c8a05c3371"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/executor-stop.json",
+      "size": 346,
+      "sha256": "3635011c3577e4ec373644df581de35da8eee3f7fae4cbc4860306621215c8e0"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/explain-analyze-sanitized.json",
+      "size": 92368,
+      "sha256": "1ba749390a40340219066d676e466a9039246649c6da5a2e8637d65845b76c36"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/initial-sequences.json",
+      "size": 22579,
+      "sha256": "146daf9dfbd13f935200f731aa8eadf6a810446b402b32ca0934bf6c4cc8403a"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/initial-table-digests.json",
+      "size": 44476,
+      "sha256": "7d7057696db64530fa4455b6699f2d554582e701b1204db262ccb50235d7d922"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/legacy-744-profile.json",
+      "size": 1000,
+      "sha256": "73445a2f00e352951c2e8481246f0098bd662101b23291ff8f6a0e7bdb5c876e"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/new-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/object-comparison.json",
+      "size": 760,
+      "sha256": "cbe97ff3e3cfbb5f834a892bf4387fa2bd9fb5eee8923ec6900c150a2bd6c224"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/process-memory.json",
+      "size": 638,
+      "sha256": "143139b6428b0b4a2a9cd70d40477be36ad570fce4f00a43d4cb0a02d7e90f7c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/progress.json",
+      "size": 11675,
+      "sha256": "2bd66d6d69660459698ffc6d097f886bb158c42a7f0da123d620b5bbf1cac028"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/report.json",
+      "size": 876703,
+      "sha256": "1e2d8cfed0889bd238383054296870c1226be0f5fc89793d652755c584cabca8"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/restore-use-list.txt",
+      "size": 312234,
+      "sha256": "7c707a189999e270e441ce5ccdcffea7535e997421f4469376679065a565d39c"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/server-statements-first.json",
+      "size": 12026,
+      "sha256": "e3055642a8754399325551b89aa7181ffa69eb9046bef8fd4be107cd5d0f1328"
+    },
+    {
+      "path": "reports/nomina-202-performance-20261015T155014Z/stop-sampler",
+      "size": 5,
+      "sha256": "a11c3d917a2149a4b548217038bc8f2dd2130a1966e0c7af5c4225d81f25a8c3"
+    },
+    {
+      "path": "tmp/cleanup-nomina-202-native.ps1",
+      "size": 3593,
+      "sha256": "657f696c2300f10204e10c4a3a1f0c64710d460afa16eaee298d6e93a79c021e"
+    },
+    {
+      "path": "tmp/finalize-nomina-202-backup-report.py",
+      "size": 11702,
+      "sha256": "78ba098c0b71aa68c9d94a14c21d3aebefba77e74c00691ab7196f9b520c3273"
+    },
+    {
+      "path": "tmp/finalize-nomina-202-document-report.py",
+      "size": 10160,
+      "sha256": "76b7084c08071b404c207a498e3eaf25ac4012fe108a8b768a2c4b8628333280"
+    },
+    {
+      "path": "tmp/finalize-nomina-202-native-stopped.cjs",
+      "size": 9472,
+      "sha256": "e754f9eac6c0956927e1999a6b12dbea08fbf1af3a9bab7216c242796b3ebdde"
+    },
+    {
+      "path": "tmp/finalize-nomina-202-performance-evidence.cjs",
+      "size": 18225,
+      "sha256": "169759e43d221897c478ddb0f313e5bba0350978342664158e39e0967a9e4c4e"
+    },
+    {
+      "path": "tmp/nomina-202-account-readonly.cjs",
+      "size": 6521,
+      "sha256": "6254b81b5b1dca192fe7153ef8e18c590ef7027c62e50efdd7ca2f921ebfab8c"
+    },
+    {
+      "path": "tmp/nomina-202-backup-precheck-readonly.cjs",
+      "size": 5322,
+      "sha256": "c6dd60fbb56ece1bd7bb5924d131bde05980a2a3640d2b7a4e75b82b2410c8a2"
+    },
+    {
+      "path": "tmp/nomina-202-backup-verified.cjs",
+      "size": 33094,
+      "sha256": "d9508405b4e205762f9a5656a6089172ba85605c8a4b690be14ec7d0aeb1c827"
+    },
+    {
+      "path": "tmp/nomina-202-document-readonly.cjs",
+      "size": 2454,
+      "sha256": "d23c35486bcc521c6a287451b41831af9921dd2a6d8dc49db34f67c74460766d"
+    },
+    {
+      "path": "tmp/nomina-202-document-state-readonly.cjs",
+      "size": 17000,
+      "sha256": "145411d0f25cb245e365e836663c057e35064e01607ec60f7a26f752539b664d"
+    },
+    {
+      "path": "tmp/nomina-202-document-supplement-readonly.cjs",
+      "size": 6981,
+      "sha256": "4447b93eb122e8dc99055f6ec85dd2ccd49d1e0c8253e54c88d8bb10c4c2cfc1"
+    },
+    {
+      "path": "tmp/nomina-202-equivalence-optimized.cjs",
+      "size": 25103,
+      "sha256": "fe33e8127fdcef258abe9a90bd6305ab8a8058a9475a78f9f949c79d5d90fe64"
+    },
+    {
+      "path": "tmp/nomina-202-equivalence-original.cjs",
+      "size": 23364,
+      "sha256": "1ccaa2eb7d90ffb1817ef9740e2f30bf0e544ce560dd513144804076b78e943f"
+    },
+    {
+      "path": "tmp/nomina-202-final-preflight-offline.cjs",
+      "size": 9110,
+      "sha256": "d15108302ae21c8638949345f272af8660df211a73b876e8d59cb8a7d23d1f52"
+    },
+    {
+      "path": "tmp/nomina-202-local-custody/01d8c0f2-ecd7-4b6e-87d2-3b6c9b54928f.key",
+      "size": 32,
+      "sha256": "6a888ecdafa89477f9037936ded654c8dfbe51dd31a47e989030bed5fa42bccf"
+    },
+    {
+      "path": "tmp/nomina-202-local-custody/0b555516-e12e-46f7-8513-59d09ccadd83.key",
+      "size": 32,
+      "sha256": "a2ba78df5006b1becc8e35ccc5b3149356beeb20a8e97612896ede8fe723d382"
+    },
+    {
+      "path": "tmp/nomina-202-local-custody/76c7b729-8d75-4e8f-8992-9cb39a1841e4.key",
+      "size": 32,
+      "sha256": "8e2208e541addc52cb3dc25a6d084a173dc732f9b70b07503f8152de94f9ccec"
+    },
+    {
+      "path": "tmp/nomina-202-native-adapter.cjs",
+      "size": 1985,
+      "sha256": "c6e309edad924ba57e2c9a8fb3d267190c0ac1bc5982b8637336112419d0a03c"
+    },
+    {
+      "path": "tmp/nomina-202-native-document.cjs",
+      "size": 5290,
+      "sha256": "2add8bdd3c2a68deb7394253180b84a648acc68315a39e8dfa242ec14560e27d"
+    },
+    {
+      "path": "tmp/nomina-202-native-final.cjs",
+      "size": 29664,
+      "sha256": "09ef4985766b27aaddb320b5456a525549dfb8c26f0427d2a83fca0035ff75ac"
+    },
+    {
+      "path": "tmp/nomina-202-native-kernel.cjs",
+      "size": 25129,
+      "sha256": "9fee0740995f1cc38b60a83c1b131c1cee3d2d4bc40229a0444ce6584af190b3"
+    },
+    {
+      "path": "tmp/nomina-202-native-kernel.ts",
+      "size": 22244,
+      "sha256": "41f7dd6947614d6d4ee1f99cfa1edc0ec19750168d7d5322e8f996a93cf6ba49"
+    },
+    {
+      "path": "tmp/nomina-202-offline-restore-trial.cjs",
+      "size": 29394,
+      "sha256": "d7aa224cefa2b7f1d412293dcaf139d558193094f0c322cfacbebc8a253abfe0"
+    },
+    {
+      "path": "tmp/nomina-202-release-start-pipes.cjs",
+      "size": 1310,
+      "sha256": "253d388e874e28af9a73d7479537947bc42dbb00f05525daf0ab1c8b850a426a"
+    },
+    {
+      "path": "tmp/nomina-202-restore-equivalences.json",
+      "size": 11754,
+      "sha256": "56f0543400c1c93f9f2df3fb735bd35f0459e21f909506b0f8cbf95d91fe5d56"
+    },
+    {
+      "path": "tmp/nomina-202-restored-pglite-simulation.cjs",
+      "size": 13352,
+      "sha256": "ed64bdfa376c97d8c3789821c0cf2cf481b2b990499ac062f4163ab13d27613a"
+    },
+    {
+      "path": "tmp/nomina-202-simulation-offline-only.cjs",
+      "size": 2560,
+      "sha256": "51098fec5ea6e32de76aab99764e16fea5bbf2d198aa9242f83944a77d759650"
+    },
+    {
+      "path": "tmp/nomina-202-write-set-readonly.cjs",
+      "size": 3195,
+      "sha256": "5845ab3c1c7c959c0c106a2e4a5e06db8a03967805d849b8e398b5b934a48b54"
+    },
+    {
+      "path": "tmp/pdfs/nomina-202-account-77-original-readonly.pdf",
+      "size": 3051,
+      "sha256": "cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4"
+    },
+    {
+      "path": "tmp/pdfs/nomina-202-account-77-original-readonly.png",
+      "size": 91815,
+      "sha256": "e296d55e18ca187ebac3edbaaaa622d44125a02773eeeb4b72818f5cd7c0d32f"
+    },
+    {
+      "path": "tmp/pdfs/nomina-202-backup-version-proof.png",
+      "size": 32060,
+      "sha256": "a143146dcedf04cf8449af7fc2fe738e5f012001e6d210c7680fbd48ace7d395"
+    },
+    {
+      "path": "tmp/pdfs/nomina-202-new-version-local-proof.pdf",
+      "size": 2947,
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9"
+    },
+    {
+      "path": "tmp/pdfs/nomina-202-new-version-local-proof.png",
+      "size": 41989,
+      "sha256": "439855229a61553518f359a49295b980396e2b069a4fd7ae848c735e576cb12e"
+    },
+    {
+      "path": "tmp/prepare-nomina-202-native.cjs",
+      "size": 4185,
+      "sha256": "53b74944be8306dcfea25a4efcd352c28895b8d918094e9828ebf84788b1fd82"
+    },
+    {
+      "path": "tmp/prepare-nomina-202-offline-restore.py",
+      "size": 2264,
+      "sha256": "9312ffb5be8924e9e45c394780e4597f066431b6be65fda0bdb3ce00c4ef68f7"
+    },
+    {
+      "path": "tmp/prepare-nomina-202-performance-helpers.cjs",
+      "size": 1577,
+      "sha256": "40e2a755ac27a568118c549aadc973e852c2c09a8f2ac1a928661dc6645021af"
+    },
+    {
+      "path": "tmp/prepare-nomina-202-restore-equivalences.py",
+      "size": 1099,
+      "sha256": "e289c54d0618ae2e1a3b7b05d13e464cfcf26a422a35b49b6e8cf0ed6acffe67"
+    },
+    {
+      "path": "tmp/render-nomina-202-native-pdf.py",
+      "size": 335,
+      "sha256": "5e3054523d5442830d6779405e0a179b4053f47229cd8aa8d3319c0e0bd1f131"
+    },
+    {
+      "path": "tmp/seal-nomina-202-native-evidence.cjs",
+      "size": 2432,
+      "sha256": "9610adf174c6b5df98a65dc7e83312b83e2af65b975ff46b09ce21cc3fb2fa07"
+    }
+  ]
+}
