@@ -2,7 +2,7 @@ import {Client} from 'pg';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {createHash} from 'node:crypto';
-import {parseDiagnosticLauncherArgs,verifyDiagnosticOffline,launchReadQueryDiagnostic} from '../modules/cobertura/phase48-v6-diagnostic-launcher';
+import {CERTIFIED_CA_SHA256,assertSha256Pin,parseDiagnosticLauncherArgs,verifyDiagnosticOffline,launchReadQueryDiagnostic} from '../modules/cobertura/phase48-v6-diagnostic-launcher';
 import {fetchProductionHealth} from '../modules/cobertura/phase48-v6-diagnostic-health';
 import {readDatabaseUrl} from '../modules/cobertura/phase48-readonly-target';
 import {verifiedProductionConfig,inspectProductionTls} from '../modules/cobertura/phase48-readonly-tls';
@@ -16,7 +16,7 @@ async function main(){
 const args=parseDiagnosticLauncherArgs(process.argv.slice(2)),root=resolve(__dirname,'../..');
 const precheck=()=>{
  const result=verifyDiagnosticOffline(root),ca=readFileSync(args.caPath),actual=createHash('sha256').update(ca).digest('hex');
- if(ca.length!==1367||actual!==args.caSha256||actual!=='700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7')throw Error('DIAGNOSTIC_CA_PIN_INVALID');
+ if(ca.length!==1367)throw Error('DIAGNOSTIC_CA_PIN_INVALID');try{assertSha256Pin(args.caSha256,actual);assertSha256Pin(CERTIFIED_CA_SHA256,actual);}catch{throw Error('DIAGNOSTIC_CA_PIN_INVALID');}
  const cert=inspectReadCa(ca);if(cert.sha256!==actual)throw Error('DIAGNOSTIC_CA_CERTIFICATE_INVALID');
  return {...result,ca_sha256:actual,ca_valid:true,client_version:process.versions.node};
 };

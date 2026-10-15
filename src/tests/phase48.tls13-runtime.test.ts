@@ -21,7 +21,7 @@ const hash=(b:Buffer)=>createHash('sha256').update(b).digest('hex');
 // Only the pinned hash is replaced with the synthetic fixture hash. The runtime
 // implementation, Node TLS class, identity checker and pg driver are unchanged.
 const runtimeExports:any={};
-runInNewContext(ts.transpileModule(readFileSync('src/modules/cobertura/phase48-readonly-tls.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:runtimeExports,Buffer,Date,__dirname:resolve('src/modules/cobertura'),require:(n:string)=>n==='./phase48-readonly-contract'?{CERTIFICATE_SHA256:hash(ca).toUpperCase(),validateCertificateHash:(s:string)=>assert.equal(s,hash(ca).toUpperCase())}:n==='./phase48-readonly-target'?{}:require(n)});
+runInNewContext(ts.transpileModule(readFileSync('src/modules/cobertura/phase48-readonly-tls.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:runtimeExports,Buffer,Date,__dirname:resolve('src/modules/cobertura'),require:(n:string)=>n==='./phase48-readonly-contract'?{CERTIFICATE_SHA256:hash(ca).toUpperCase(),validateCertificateHash:(s:string)=>assert.equal(s,hash(ca).toUpperCase())}:n==='./phase48-readonly-target'?{}:n==='./phase48-sha256'?require('../modules/cobertura/phase48-sha256'):require(n)});
 const inspect:typeof pinnedInspect=runtimeExports.inspectProductionTls;
 const connectionExports:any={};
 runInNewContext(ts.transpileModule(readFileSync('src/modules/cobertura/phase48-readonly-connection.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:connectionExports,Buffer,Date,setTimeout,clearTimeout,require:(n:string)=>n==='./phase48-readonly-tls'?runtimeExports:require(n)});

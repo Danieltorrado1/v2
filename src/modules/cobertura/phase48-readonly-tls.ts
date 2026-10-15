@@ -3,12 +3,14 @@ import {openSync, closeSync, readFileSync, fstatSync, lstatSync, realpathSync} f
 import {isAbsolute, resolve, relative, dirname, sep} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {checkServerIdentity, TLSSocket, type ConnectionOptions} from 'node:tls';
-import {CERTIFICATE_SHA256,validateCertificateHash,exactEqual} from './phase48-readonly-contract';
+import {CERTIFICATE_SHA256,exactEqual} from './phase48-readonly-contract';
 import {validateReadTarget} from './phase48-readonly-target';
+import {normalizeSha256Hex,sha256HexEqual} from './phase48-sha256';
 
 const sha=(bytes:Buffer|string)=>createHash('sha256').update(bytes).digest('hex');
 function need(ok:unknown,code:string):asserts ok {if(!ok)throw Error(code);}
 const inside=(file:string,dir:string)=>{const r=relative(dir,file);return r===''||(!r.startsWith('..'+sep)&&r!=='..'&&!isAbsolute(r));};
+export function assertCertifiedCaSha256(value:unknown){let matches=false;try{matches=sha256HexEqual(value,CERTIFICATE_SHA256);}catch{}if(!matches)throw Error('CERTIFICATE_SHA256_INVALID');}
 
 // Decode DER extension containers rather than relying on localized X.509 text.
 function nodes(bytes:Buffer):{tag:number;body:Buffer}[]{
@@ -52,7 +54,7 @@ export function loadReadTls(hostname:string,env:NodeJS.ProcessEnv=process.env,re
   need(lstatSync(canonical).isFile(),'READ_CA_FILE_REQUIRED');checkAcl(canonical);
   const fd=openSync(canonical,'r');let bytes:Buffer;
   try{need(fstatSync(fd).isFile()&&fstatSync(fd).size===1367,'READ_CA_SIZE_INVALID');bytes=readFileSync(fd);}finally{closeSync(fd);}
-  need(bytes.length===1367,'READ_CA_SIZE_INVALID');need(sha(bytes)===expected.toLowerCase(),'READ_CA_SHA_MISMATCH');
+  need(bytes.length===1367,'READ_CA_SIZE_INVALID');let hashMatches=false;try{hashMatches=sha256HexEqual(sha(bytes),expected);}catch{}need(hashMatches,'READ_CA_SHA_MISMATCH');
   const receipt=inspectReadCa(bytes);
   need(/^[a-zA-Z0-9.-]+$/.test(hostname),'READ_TLS_HOSTNAME_INVALID');
   return {ssl:{ca:bytes,minVersion:'TLSv1.3',rejectUnauthorized:true,servername:hostname,checkServerIdentity},receipt};
@@ -63,9 +65,10 @@ export function clearReadTlsEnvironment(){for(const key of ['DATABASE_URL','PGPA
 // The credential callback cannot run until the real external CA has passed all
 // file, ACL, validity and pinned SHA checks. Both production entries use this.
 export function verifiedProductionConfig(readCredential:()=>string,env:NodeJS.ProcessEnv=process.env){
- validateCertificateHash(env.PHASE48_SSL_ROOT_CERT_SHA256);
+ let normalizedPin:string;try{normalizedPin=normalizeSha256Hex(env.PHASE48_SSL_ROOT_CERT_SHA256);}catch{throw Error('CERTIFICATE_SHA256_INVALID');}
+ assertCertifiedCaSha256(normalizedPin);
  const verified=loadReadTls('certificate-validation.invalid',env);
- if(!exactEqual(verified.receipt.sha256.toUpperCase(),CERTIFICATE_SHA256))throw Error('CERTIFICATE_SHA256_INVALID');
+ assertCertifiedCaSha256(verified.receipt.sha256);
  const target=validateReadTarget(readCredential());
  const ssl={...verified.ssl,servername:target.config.host};
  assertVerifiedTls(ssl,target.config.host);
@@ -74,7 +77,7 @@ export function verifiedProductionConfig(readCredential:()=>string,env:NodeJS.Pr
 }
 export function assertVerifiedTls(ssl:ConnectionOptions,hostname:string){
  if(ssl.rejectUnauthorized!==true||ssl.minVersion!=='TLSv1.3'||ssl.servername!==hostname||ssl.checkServerIdentity!==checkServerIdentity||!Buffer.isBuffer(ssl.ca))throw Error('READ_TLS_CONFIGURATION_INVALID');
- validateCertificateHash(sha(ssl.ca as Buffer).toUpperCase());
+ try{assertCertifiedCaSha256(sha(ssl.ca as Buffer));}catch{throw Error('CERTIFICATE_SHA256_INVALID');}
 }
 
 // pg replaces connection.stream with tls.connect(options). PoolClient is the
