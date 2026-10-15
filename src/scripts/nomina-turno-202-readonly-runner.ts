@@ -51,6 +51,7 @@ export function canonicalizeWindowsPath(input:string):string{
   if(typeof input!=='string'||input.length===0||input.includes('\0'))windowsPathFail('EMPTY_OR_NUL');
   if(/[^\x20-\x7e]/.test(input))windowsPathFail('NON_ASCII');
   const normalized=input.replace(/\//g,'\\');
+  if(!path.win32.isAbsolute(normalized))windowsPathFail('NOT_ABSOLUTE');
   if(/^(?:\\\\[?.]\\|\\\\)/.test(normalized))windowsPathFail('UNC_OR_DEVICE_PATH');
   if(!/^[a-zA-Z]:\\/.test(normalized))windowsPathFail('NOT_DRIVE_ABSOLUTE');
   const tail=normalized.slice(3);
