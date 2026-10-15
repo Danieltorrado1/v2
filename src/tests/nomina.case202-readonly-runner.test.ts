@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createLauncherExecutionState, sanitizeLauncherFailure } from '../scripts/nomina-turno-202-production-launcher';
 import { CERTIFIED_REPORT_SHA256, CORRECTOR_COMMIT, DUMP_SHA256, ENTRY_READONLY_REPORT_SHA256, HISTORICAL_PDF_SHA256, SEQUENCE_MAX_ADVANCES, WRITE_SET, assertCertificationReports, assertPostgres17ToolVersions, publishReadOnlyReceipt, runReadOnlyEntryPreflight, validateOfflinePlan, validateUntrackedArtifactInventory, verifyProductionTargetPinEvidence, type OfflinePlan } from '../scripts/nomina-turno-202-readonly-runner';
 
 const plan=(patch:Partial<OfflinePlan>={}):OfflinePlan=>({
@@ -87,7 +88,9 @@ test('read-only receipts are routed separately, atomic, and cannot be replaced o
     assert.equal(JSON.parse(bytes.toString()).status,'PENDING_USER_CONFIRMATION');
     await assert.rejects(publishReadOnlyReceipt(root,'pending',id,pending),/STOPPED_RECEIPT_PUBLICATION_FAILED/);
     await assert.rejects(publishReadOnlyReceipt(root,'pending',randomUUID(),{...pending,status:'COMMITTED'}),/STOPPED_RECEIPT_STATUS_ROUTE_MISMATCH/);
-    const stopped=await publishReadOnlyReceipt(root,'stopped',id,{status:'STOPPED',reason:'LOCAL_TEST'});
+    const state=createLauncherExecutionState();state.execution_id=id;state.offline_precheck_started=true;state.phase='LOCAL_TEST';
+    const stoppedBody={status:'STOPPED',schema_version:1,execution_id:id,generated_at:new Date().toISOString(),phase:'LOCAL_TEST',error:sanitizeLauncherFailure(new Error('synthetic'),'LOCAL_TEST'),state,cleanup:{runnerRollbackConfirmed:false,clientsClosed:false,healthFinalAttempted:false,healthFinalCompleted:false,errors:[]},writes:0,mutator_invoked:false};
+    const stopped=await publishReadOnlyReceipt(root,'stopped',id,stoppedBody);
     assert.notEqual(published.path,stopped.path);
     assert.ok(published.path.endsWith(path.join('reports','nomina-202-entry','pending',`${id}.json`)));
     assert.ok(stopped.path.endsWith(path.join('reports','nomina-202-entry','stopped',`${id}.json`)));

@@ -43,6 +43,7 @@ export const PRODUCTION_TARGET_PIN_SHA256='1227f334795d49952b38fb4689b3587ff9a85
 const PRODUCTION_TARGET_PIN_CANONICAL_SHA256='c919591f8005da992f65dc56ce90aa960a58be5bf06b1393fcc3acb06263f22e';
 const digest=(value:unknown)=>hash(canonical(value));
 const fail=(code:string):never=>{throw new Error(`STOPPED_${code}`);};
+const failWithCause=(code:string,cause:unknown):never=>{const error=new Error(`STOPPED_${code}`);Object.defineProperty(error,'cause',{value:cause,enumerable:false});throw error;};
 const windowsPathFail=(code:string):never=>{throw new Error(`WINDOWS_PATH_REJECTED_${code}`);};
 const isSha=(value:string)=>/^[a-f0-9]{64}$/.test(value);
 export const matchesSha256=(value:string,expected:string)=>{if(!isSha(expected))return false;const actual=createHash('sha256').update(value,'utf8').digest();return timingSafeEqual(actual,Buffer.from(expected,'hex'));};
@@ -109,6 +110,7 @@ export type RunnerDependencies=Readonly<{
   now?:()=>Date;
   onConnectionClosed?:(id:string)=>void;
   onQuery?:(kind:'capture'|'transaction')=>void;
+  onExecutionEvent?:(event:Readonly<{name:string;index?:number;id?:string;stage?:string;code?:string}>)=>void;
 }>;
 
 /** Offline validation: must be called before credential providers or sockets. */
@@ -330,7 +332,7 @@ async function captureDatabase(client:Client,dependencies:RunnerDependencies){
   if(blockers.rows?.length)fail('PAYMENT_LIFECYCLE_BLOCKER');
   const sequenceRows=await q<{name:string;last_value:string}>(SEQUENCES_SQL),sequences=Object.fromEntries(sequenceRows.map(x=>[x.name,x.last_value]));
   if(canonical(Object.keys(sequences).sort())!==canonical(Object.keys(SEQUENCE_MAX_ADVANCES).sort())||Object.values(sequences).some(v=>!/^\d+$/.test(v)))fail('SEQUENCE_INVENTORY_MISMATCH');
-  const health=await readHealthHttp(dependencies.plan);
+  dependencies.onExecutionEvent?.({name:'snapshot_health_attempted'});const health=await readHealthHttp(dependencies.plan);
   if(health.httpStatus!==200||health.databaseStatus!=='ok'||health.outbox||health.sync||health.recalcRequested||health.recalcActive||!health.workerStopped)fail('HEALTH_OR_FLAGS');
   const sync=dependencies.syncConfirmation,now=(dependencies.now?.()??new Date()).getTime(),observed=Date.parse(sync.observedAt),expires=Date.parse(sync.expiresAt);
   if(sync.source!=='MANUAL_CURRENT'||sync.enabled!==false||!Number.isFinite(observed)||!Number.isFinite(expires)||observed>now||expires<=now||now-observed>5*60_000)fail('SYNC_CONFIRMATION_STALE');
@@ -346,9 +348,9 @@ async function captureDatabase(client:Client,dependencies:RunnerDependencies){
 }
 
 export async function readHealthHttp(plan:OfflinePlan):Promise<HealthResponse>{
-  const response=await (async()=>{try{return await fetch(plan.healthUrl,{method:'GET',redirect:'error',signal:AbortSignal.timeout(5000),headers:{accept:'application/json'}});}catch{return fail('HEALTH_REQUEST_FAILED');}})();
+  const response=await (async()=>{try{return await fetch(plan.healthUrl,{method:'GET',redirect:'error',signal:AbortSignal.timeout(5000),headers:{accept:'application/json'}});}catch(error){return failWithCause('HEALTH_REQUEST_FAILED',error);}})();
   if(response.status!==200)fail('HEALTH_HTTP_STATUS');
-  let body:any;try{body=await response.json();}catch{fail('HEALTH_BODY_INVALID');}
+  let body:any;try{body=await response.json();}catch(error){failWithCause('HEALTH_BODY_INVALID',error);}
   const health=parseHealthPayload(response.status,body,plan.localCertification);
   if(health.databaseStatus!=='ok'||health.outbox||health.sync||health.recalcRequested||health.recalcActive||!health.workerStopped)fail('HEALTH_OR_FLAGS');
   return health;
@@ -360,39 +362,51 @@ export function parseHealthPayload(httpStatus:number,body:any,localCertification
 }
 function evaluateExactCase(scope:Record<string,DbRow[]>){return exactCase(scope);}
 
-async function openReadOnlyClient(plan:OfflinePlan,credentials:DbCredentials,caPem:Buffer){
+async function openReadOnlyClient(plan:OfflinePlan,credentials:DbCredentials,caPem:Buffer,index:number,onEvent?:RunnerDependencies['onExecutionEvent']){
   const client=new Client(makeTlsConfig(plan,credentials,caPem));const id=randomUUID();
+  onEvent?.({name:'client_created',index,id});
   try{
     await client.connect();
     const stream=(client as unknown as {connection:{stream:import('node:tls').TLSSocket}}).connection.stream;
     if(!stream.encrypted||stream.authorized!==true||stream.getProtocol()!=='TLSv1.3'||stream.servername!==plan.servername)fail('TLS_CHANNEL_NOT_VERIFIED');
     return {id,client,stream};
-  }catch{await client.end().catch(()=>{});fail('TLS_CONNECTION_REJECTED');}
+  }catch(error){try{await client.end();}catch{}onEvent?.({name:'client_closed',index,id});failWithCause('TLS_CONNECTION_REJECTED',error);}
 }
 
 /** Two new sequential TLS clients and READ ONLY repeatable snapshots; no mutator is imported or callable. */
 export async function runReadOnlyEntryPreflight(plan:OfflinePlan,dependencies:RunnerDependencies):Promise<PendingReceipt>{
+  dependencies.onExecutionEvent?.({name:'offline_precheck_started'});
   let offline:Awaited<ReturnType<typeof validateOfflinePlan>>|undefined;
-  try{offline=await validateOfflinePlan(plan);}catch(error){if(error instanceof Error&&error.message.startsWith('STOPPED_'))throw error;fail('OFFLINE_VALIDATION_FAILED');}
+  try{offline=await validateOfflinePlan(plan);}catch(error){if(error instanceof Error&&error.message.startsWith('STOPPED_'))throw error;failWithCause('OFFLINE_VALIDATION_FAILED',error);}
+  dependencies.onExecutionEvent?.({name:'offline_precheck_completed'});
   // This is the first line at which the credential callback can be reached.
-  let credentials:DbCredentials|undefined;try{credentials=await dependencies.readCredentials();}catch{fail('CREDENTIAL_SOURCE_FAILED');}
+  dependencies.onExecutionEvent?.({name:'credential_read_attempted'});
+  let credentials:DbCredentials|undefined;try{credentials=await dependencies.readCredentials();}catch(error){failWithCause('CREDENTIAL_SOURCE_FAILED',error);}
+  dependencies.onExecutionEvent?.({name:'credential_read_completed'});
   const validatedOffline=offline??fail('OFFLINE_VALIDATION_FAILED');
   let validatedCredentials:DbCredentials|undefined=credentials??fail('CREDENTIAL_SOURCE_FAILED');
   const snapshots:unknown[]=[],connections:PendingReceipt['connections'][number][]=[];
   try{for(let index=0;index<2;index++){
-    let opened:Awaited<ReturnType<typeof openReadOnlyClient>>|undefined,started=false,rolledBack=false;
+    dependencies.onExecutionEvent?.({name:'client_create_attempted',index});
+    let opened:Awaited<ReturnType<typeof openReadOnlyClient>>|undefined,started=false,rolledBack=false,snapshotError:unknown;
     try{
-      opened=await openReadOnlyClient(plan,validatedCredentials??fail('CREDENTIAL_SOURCE_FAILED'),validatedOffline.caPem);
+      opened=await openReadOnlyClient(plan,validatedCredentials??fail('CREDENTIAL_SOURCE_FAILED'),validatedOffline.caPem,index,dependencies.onExecutionEvent);
       const active=opened??fail('TLS_CONNECTION_REJECTED');
+      dependencies.onExecutionEvent?.({name:'transaction_start_attempted',index,id:active.id});
       dependencies.onQuery?.('transaction');await active.client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');started=true;
+      dependencies.onExecutionEvent?.({name:'transaction_started',index,id:active.id});
       dependencies.onQuery?.('transaction');const state=(await active.client.query<{transaction_read_only:string;transaction_isolation:string}>('SELECT current_setting(\'transaction_read_only\') transaction_read_only,current_setting(\'transaction_isolation\') transaction_isolation')).rows[0]!;
       if(state.transaction_read_only!=='on'||state.transaction_isolation!=='repeatable read')fail('READ_ONLY_TRANSACTION_NOT_CONFIRMED');
-      const captured=await captureDatabase(active.client,dependencies),pdf=await dependencies.readPdf(captured.accountDocument);
+      dependencies.onExecutionEvent?.({name:'snapshot_capture_started',index,id:active.id});
+      const captured=await captureDatabase(active.client,{...dependencies,onQuery:(kind)=>{if(kind==='capture')dependencies.onExecutionEvent?.({name:'snapshot_query',index,id:active.id});dependencies.onQuery?.(kind);},onExecutionEvent:event=>dependencies.onExecutionEvent?.({...event,index})});
+      dependencies.onExecutionEvent?.({name:'pdf_read_attempted',index,id:active.id});const pdf=await dependencies.readPdf(captured.accountDocument);
+      dependencies.onExecutionEvent?.({name:'pdf_read_completed',index,id:active.id});
       try{if(hash(pdf.bytes)!==captured.pdfMeta.sha256||pdf.bytes.length!==captured.pdfMeta.size||pdf.etag!==captured.pdfMeta.etag||hash(pdf.reference)!==captured.pdfMeta.referenceSha256)fail('PDF_CHANGED_DURING_SNAPSHOT');snapshots.push(captured);connections.push(Object.freeze({id:active.id,observedAt:(dependencies.now?.()??new Date()).toISOString(),serverVersion:captured.session.serverVersion,tlsProtocol:active.stream.getProtocol()??'',servername:String(active.stream.servername??''),transactionReadOnly:true}));}finally{pdf.bytes.fill(0);}
-    }catch(error){if(error instanceof Error&&error.message.startsWith('STOPPED_'))throw error;fail('SNAPSHOT_CAPTURE_FAILED');}
+    }catch(error){snapshotError=error instanceof Error&&error.message.startsWith('STOPPED_')?error:Object.assign(new Error('STOPPED_SNAPSHOT_CAPTURE_FAILED'),{cause:error});}
     finally{
-      if(opened){try{if(started){dependencies.onQuery?.('transaction');await opened.client.query('ROLLBACK');rolledBack=true;}}finally{await opened.client.end();dependencies.onConnectionClosed?.(opened.id);}if(started&&!rolledBack)fail('SNAPSHOT_ROLLBACK_MISSING');}
+      if(opened){try{if(started){dependencies.onExecutionEvent?.({name:'rollback_attempted',index,id:opened.id});dependencies.onQuery?.('transaction');await opened.client.query('ROLLBACK');rolledBack=true;dependencies.onExecutionEvent?.({name:'rollback_confirmed',index,id:opened.id});}}catch(error){const code=error&&typeof error==='object'&&typeof (error as {code?:unknown}).code==='string'&&/^[0-9A-Z_]{1,40}$/.test((error as {code:string}).code)?(error as {code:string}).code:'UNCLASSIFIED';dependencies.onExecutionEvent?.({name:'cleanup_failed',index,stage:'ROLLBACK',code});if(snapshotError===undefined)snapshotError=Object.assign(new Error('STOPPED_SNAPSHOT_ROLLBACK_FAILED'),{cause:error});}finally{try{await opened.client.end();}catch(error){const code=error&&typeof error==='object'&&typeof (error as {code?:unknown}).code==='string'&&/^[0-9A-Z_]{1,40}$/.test((error as {code:string}).code)?(error as {code:string}).code:'UNCLASSIFIED';dependencies.onExecutionEvent?.({name:'cleanup_failed',index,stage:'CLIENT_CLOSE',code});if(snapshotError===undefined)snapshotError=Object.assign(new Error('STOPPED_SNAPSHOT_CLIENT_CLOSE_FAILED'),{cause:error});}finally{dependencies.onConnectionClosed?.(opened.id);dependencies.onExecutionEvent?.({name:'client_closed',index,id:opened.id});}}if(started&&!rolledBack&&snapshotError===undefined)snapshotError=new Error('STOPPED_SNAPSHOT_ROLLBACK_MISSING');}
     }
+    if(snapshotError!==undefined)throw snapshotError;
   }}finally{credentials=undefined;validatedCredentials=undefined;}
   if(connections[0]!.id===connections[1]!.id||canonical(snapshots[0])!==canonical(snapshots[1]))fail('SNAPSHOT_DRIFT');
   const data=snapshots[0] as Awaited<ReturnType<typeof captureDatabase>>;
@@ -403,11 +417,20 @@ export async function runReadOnlyEntryPreflight(plan:OfflinePlan,dependencies:Ru
 export async function publishReadOnlyReceipt(root:string,kind:'baseline'|'pending'|'stopped',receiptId:string,value:Readonly<Record<string,unknown>>){
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receiptId))fail('RECEIPT_ID_INVALID');
   const expected={baseline:'BASELINE_VERIFIED',pending:'PENDING_USER_CONFIRMATION',stopped:'STOPPED'}[kind];if(value.status!==expected)fail('RECEIPT_STATUS_ROUTE_MISMATCH');
+  if(kind==='stopped'){
+    const v=value as Record<string,any>,state=v.state,cleanup=v.cleanup,error=v.error;
+    if(v.schema_version!==1||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.execution_id)||!Number.isFinite(Date.parse(v.generated_at))||typeof v.phase!=='string'||!state||typeof state!=='object'||!cleanup||typeof cleanup!=='object'||!error||typeof error!=='object'||typeof error.error_type!=='string'||!/^[A-Z0-9_]{1,48}$/.test(error.code)||typeof error.category!=='string'||error.phase!==v.phase||!/^[a-f0-9]{64}$/.test(error.stack_hash)||v.writes!==0||v.mutator_invoked!==false)fail('STOPPED_RECEIPT_SCHEMA_INVALID');
+    const required=['execution_id','phase','offline_precheck_started','offline_precheck_completed','health_initial_attempted','health_initial_completed','credential_read_attempted','credential_read_completed','target_validation_completed','first_client_created','first_transaction_started','first_rollback_attempted','first_rollback_confirmed','first_client_closed','second_client_created','second_transaction_started','second_rollback_attempted','second_rollback_confirmed','second_client_closed','pdf_first_attempted','pdf_first_completed','pdf_second_attempted','pdf_second_completed','health_final_attempted','health_final_completed','baseline_published','final_receipt_published','writes','mutator_invoked','cleanup_errors'];
+    if(required.some(k=>!Object.hasOwn(state,k))||required.filter(k=>!['execution_id','phase','writes','cleanup_errors'].includes(k)).some(k=>typeof state[k]!=='boolean')||typeof state.writes!=='number'||state.mutator_invoked!==false||!Array.isArray(state.cleanup_errors)||state.cleanup_errors.some((x:any)=>!x||typeof x.stage!=='string'||!/^[A-Z0-9_]{1,40}$/.test(x.code))||!['runnerRollbackConfirmed','clientsClosed','healthFinalAttempted','healthFinalCompleted'].every(k=>typeof cleanup[k]==='boolean')||!Array.isArray(cleanup.errors))fail('STOPPED_RECEIPT_SCHEMA_INVALID');
+    const allowed=['status','schema_version','execution_id','generated_at','phase','error','state','cleanup','writes','mutator_invoked','primary_error'];if(Object.keys(v).some(k=>!allowed.includes(k)))fail('STOPPED_RECEIPT_SCHEMA_INVALID');
+  }
   const rootReal=await realpath(root),parent=path.join(rootReal,'reports','nomina-202-entry',READONLY_RECEIPT_ROUTES[kind]),target=path.join(parent,`${receiptId}.json`);
   await mkdir(parent,{recursive:true});if(await realpath(parent)!==parent)fail('RECEIPT_ROUTE_SYMLINK_REJECTED');
-  const bytes=Buffer.from(JSON.stringify(value,null,2)+'\n','utf8'),temp=path.join(parent,`.${receiptId}.${randomUUID()}.tmp`),handle=await open(temp,'wx',0o600);
-  try{await handle.writeFile(bytes);await handle.sync();await handle.close();await link(temp,target);}catch{await handle.close().catch(()=>{});await unlink(temp).catch(()=>{});fail('RECEIPT_PUBLICATION_FAILED');}
-  await unlink(temp);return Object.freeze({path:target,sha256:hash(bytes)});
+  const bytes=Buffer.from(JSON.stringify(value,null,2)+'\n','utf8');let parsed:unknown;try{parsed=JSON.parse(bytes.toString('utf8'));}catch{bytes.fill(0);fail('RECEIPT_SERIALIZATION_INVALID');}
+  if(!parsed||typeof parsed!=='object'||(parsed as Record<string,unknown>).status!==expected){bytes.fill(0);fail('RECEIPT_SERIALIZATION_INVALID');}
+  const temp=path.join(parent,`.${receiptId}.${randomUUID()}.tmp`),handle=await open(temp,'wx',0o600);
+  try{await handle.writeFile(bytes);await handle.sync();await handle.close();await link(temp,target);}catch(error){await handle.close().catch(()=>{});await unlink(temp).catch(()=>{});bytes.fill(0);const wrapped=new Error('STOPPED_RECEIPT_PUBLICATION_FAILED');Object.defineProperty(wrapped,'cause',{value:error,enumerable:false});throw wrapped;}
+  await unlink(temp);const verification=await readFile(target);try{if(verification.length!==bytes.length||hash(verification)!==hash(bytes)||JSON.parse(verification.toString('utf8'))===null)fail('RECEIPT_POSTWRITE_VERIFICATION_FAILED');return Object.freeze({path:target,sha256:hash(bytes),size:bytes.length});}finally{verification.fill(0);bytes.fill(0);}
 }
 
 /** Local-only helper for deterministic tests; the production caller must provide the pinned plan and credential source. */

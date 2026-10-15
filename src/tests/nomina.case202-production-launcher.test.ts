@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { parse as parsePgConnectionString } from 'pg-connection-string';
 import { readFile } from 'node:fs/promises';
-import { mkdtemp, writeFile, symlink, rm, realpath } from 'node:fs/promises';
+import { mkdtemp, writeFile, symlink, rm, realpath, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
-import { ARGUMENT_ORDER, HISTORICAL_PDF_SIZE, PRODUCTION_HEALTH_URL, assertPrivateRegularFile, assertServiceRoleCredential, assertTargetDetailsMatchPin, assertTargetMatchesPin, makeEntryEvidence, parseAllowlistedEnvironment, parseLauncherArguments, readHistoricalPdf, validateHealthUrl, validateServiceConfiguration } from '../scripts/nomina-turno-202-production-launcher';
-import { canonicalizeWindowsPath, parseHealthPayload, PRODUCTION_CA_SHA256, PRODUCTION_TARGET_PIN, sameCanonicalWindowsPath, type PendingReceipt } from '../scripts/nomina-turno-202-readonly-runner';
+import { ARGUMENT_ORDER, HISTORICAL_PDF_SIZE, PRODUCTION_HEALTH_URL, assertPrivateRegularFile, assertServiceRoleCredential, assertTargetDetailsMatchPin, assertTargetMatchesPin, createLauncherExecutionState, makeEntryEvidence, parseAllowlistedEnvironment, parseLauncherArguments, publishStoppedExecutionReceipt, readHistoricalPdf, recordLauncherFailure, sanitizeLauncherFailure, validateHealthUrl, validateServiceConfiguration } from '../scripts/nomina-turno-202-production-launcher';
+import { canonicalizeWindowsPath, parseHealthPayload, PRODUCTION_CA_SHA256, PRODUCTION_TARGET_PIN, publishReadOnlyReceipt, sameCanonicalWindowsPath, type PendingReceipt } from '../scripts/nomina-turno-202-readonly-runner';
 import { buildPendingEntryPhrase, verifyPendingEntryPhrase } from '../scripts/nomina-turno-202-entry-contract';
 
 const hash=(x:Buffer|string)=>createHash('sha256').update(x).digest('hex');
@@ -172,6 +172,34 @@ test('launcher and runner imports contain no mutator dependency',async()=>{
   const src=await readFile('src/scripts/nomina-turno-202-production-launcher.ts','utf8');
   assert.doesNotMatch(src,/nomina-turno-202-integral-local|executeIntegral|claimNonceThenReadCredentials|activateAuthorization/);
   assert.match(src,/runReadOnlyEntryPreflight/);assert.doesNotMatch(src,/setval\s*\(|nextval\s*\(|UPDATE\s+|INSERT\s+|DELETE\s+/i);
+});
+
+test('launcher classifies all failure phases and atomically emits sanitized STOPPED receipts for Error and non-Error throwables',async()=>{
+  const root=await realpath(await mkdtemp(path.join(os.tmpdir(),'nomina202-stopped-matrix-')));
+  const phases=['OFFLINE_PRECHECK','HEALTH_INITIAL','CREDENTIAL_READ','TARGET_VALIDATION','CA_VALIDATION','FIRST_CLIENT_CONNECT','FIRST_TRANSACTION_BEGIN','SNAPSHOT_FIRST_QUERY','FIRST_ROLLBACK','FIRST_CLIENT_CLOSE','SECOND_CLIENT_CONNECT','SNAPSHOT_DRIFT','PDF_FIRST','PDF_SECOND','BASELINE_PUBLICATION','PENDING_PUBLICATION','HEALTH_FINAL','STOPPED_RECEIPT_PUBLICATION'];
+  try{
+    for(const [index,phase] of phases.entries()){
+      const state=createLauncherExecutionState();state.phase=phase;state.offline_precheck_started=true;state.health_initial_attempted=!['OFFLINE_PRECHECK','HEALTH_INITIAL'].includes(phase);
+      const thrown:unknown=index===0?'synthetic non-Error throwable':Object.assign(new Error(`secret synthetic detail ${index}`),{code:index===6?'40001':'EIO'});
+      let caught:unknown;try{throw thrown;}catch(error){caught=error;}
+      const outcome=await recordLauncherFailure(state,root,caught,phase,phase==='HEALTH_FINAL'?async()=>{throw Object.assign(new Error('final health failed'),{code:'ECONNRESET'});}:async()=>({ok:true}));
+      assert.ok('published'in outcome);const published=outcome.published;const body=JSON.parse(await readFile(published.path,'utf8'));
+      assert.equal(body.status,'STOPPED');assert.equal(body.phase,phase);assert.equal(body.error.phase,phase);assert.equal(body.state.mutator_invoked,false);assert.equal(body.state.writes,0);
+      if(state.health_initial_attempted){assert.equal(body.state.health_final_attempted,true);if(phase==='HEALTH_FINAL')assert.equal(body.state.health_final_completed,false);else assert.equal(body.state.health_final_completed,true);}
+      assert.ok(/^[a-f0-9]{64}$/.test(body.error.stack_hash));assert.ok(!JSON.stringify(body).includes('secret synthetic detail'));assert.equal(hash(await readFile(published.path)),published.sha256);assert.ok(published.size>0);
+    }
+    const sanitized=sanitizeLauncherFailure('arbitrary thrown value','NON_ERROR_PHASE');assert.equal(sanitized.error_type,'string');assert.equal(sanitized.phase,'NON_ERROR_PHASE');assert.equal(sanitized.code,'UNCLASSIFIED_THROWABLE');assert.equal(sanitized.category,'UNCLASSIFIED_AT_NON_ERROR_PHASE');
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('STOPPED publication failure retries atomically on the reserved STOPPED route and records both sanitized failures',async()=>{
+  const root=await realpath(await mkdtemp(path.join(os.tmpdir(),'nomina202-stopped-emergency-'))),state=createLauncherExecutionState();state.offline_precheck_started=true;state.phase='BASELINE_PUBLICATION';
+  const reserved=path.join(root,'reports','nomina-202-entry','stopped');await mkdir(reserved,{recursive:true});await writeFile(path.join(reserved,`${state.execution_id}.json`),'collision sentinel');
+  try{
+    const result=await publishStoppedExecutionReceipt(root,state,new Error('private synthetic failure'),'BASELINE_PUBLICATION'),body=JSON.parse(await readFile(result.path,'utf8'));
+    assert.equal(body.status,'STOPPED');assert.equal(body.phase,'STOPPED_RECEIPT_PUBLICATION');assert.equal(body.error.code,'RECEIPT_PUBLICATION_FAILED');assert.equal(body.primary_error.phase,'BASELINE_PUBLICATION');assert.ok(!JSON.stringify(body).includes('private synthetic failure'));
+    assert.equal(await readFile(path.join(reserved,`${state.execution_id}.json`),'utf8'),'collision sentinel');
+  }finally{await rm(root,{recursive:true,force:true});}
 });
 
 test('a successful local runner receipt creates a fresh, short-lived phrase accepted by the inert contract parser',()=>{

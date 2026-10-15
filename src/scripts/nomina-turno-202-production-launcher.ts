@@ -23,8 +23,64 @@ export type LauncherArguments=Readonly<Record<(typeof ARGUMENT_ORDER)[number],st
 export type LauncherEnvironment=Readonly<{DATABASE_URL:string;SUPABASE_URL:string;SUPABASE_SERVICE_ROLE_KEY:string;SUPABASE_STORAGE_BUCKET:string}>;
 type MutableLauncherEnvironment={DATABASE_URL:string;SUPABASE_URL:string;SUPABASE_SERVICE_ROLE_KEY:string;SUPABASE_STORAGE_BUCKET:string};
 const fail=(code:string):never=>{throw new Error(`LAUNCHER_STOPPED_${code}`);};
+const failWithCause=(code:string,cause:unknown):never=>{const error=new Error(`LAUNCHER_STOPPED_${code}`);Object.defineProperty(error,'cause',{value:cause,enumerable:false});throw error;};
 const sha=(value:Buffer|string)=>createHash('sha256').update(value).digest('hex');
 const REQUIRED_ENV=['DATABASE_URL','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','SUPABASE_STORAGE_BUCKET'] as const;
+
+export type LauncherExecutionState={
+  execution_id:string;phase:string;offline_precheck_started:boolean;offline_precheck_completed:boolean;
+  health_initial_attempted:boolean;health_initial_completed:boolean;credential_read_attempted:boolean;credential_read_completed:boolean;target_validation_completed:boolean;
+  first_client_created:boolean;first_transaction_started:boolean;first_rollback_attempted:boolean;first_rollback_confirmed:boolean;first_client_closed:boolean;
+  second_client_created:boolean;second_transaction_started:boolean;second_rollback_attempted:boolean;second_rollback_confirmed:boolean;second_client_closed:boolean;
+  pdf_first_attempted:boolean;pdf_first_completed:boolean;pdf_second_attempted:boolean;pdf_second_completed:boolean;
+  health_final_attempted:boolean;health_final_completed:boolean;baseline_published:boolean;final_receipt_published:boolean;writes:number;mutator_invoked:false;
+  cleanup_errors:ReadonlyArray<Readonly<{stage:string;code:string}>>;
+};
+export function createLauncherExecutionState():LauncherExecutionState{return{execution_id:randomUUID(),phase:'INITIALIZING',offline_precheck_started:false,offline_precheck_completed:false,health_initial_attempted:false,health_initial_completed:false,credential_read_attempted:false,credential_read_completed:false,target_validation_completed:false,first_client_created:false,first_transaction_started:false,first_rollback_attempted:false,first_rollback_confirmed:false,first_client_closed:false,second_client_created:false,second_transaction_started:false,second_rollback_attempted:false,second_rollback_confirmed:false,second_client_closed:false,pdf_first_attempted:false,pdf_first_completed:false,pdf_second_attempted:false,pdf_second_completed:false,health_final_attempted:false,health_final_completed:false,baseline_published:false,final_receipt_published:false,writes:0,mutator_invoked:false,cleanup_errors:[]};}
+export function sanitizeLauncherFailure(error:unknown,phase:string){
+  const e=error&&typeof error==='object'?error as Record<string,unknown>:undefined;
+  const message=error instanceof Error?error.message:'';
+  const cause=e?.cause,root=cause&&typeof cause==='object'?cause as Record<string,unknown>:e;
+  const code=/^(?:LAUNCHER_STOPPED|STOPPED)_([A-Z0-9_]+)/.exec(message)?.[1]??(typeof root?.code==='string'&&/^[A-Z0-9_]{1,40}$/.test(root.code)?root.code:error instanceof Error?'UNCLASSIFIED_ERROR':'UNCLASSIFIED_THROWABLE');
+  const stackSource=cause instanceof Error?cause:error;const stack=stackSource instanceof Error?stackSource.stack??'':`${stackSource===null?'null':typeof stackSource}:${code}`;
+  const sqlstate=typeof root?.code==='string'&&/^[0-9A-Z]{5}$/.test(root.code)?root.code:undefined;
+  return Object.freeze({error_type:error instanceof Error?error.constructor?.name??'Error':error===null?'null':typeof error,code,sqlstate,category:code.startsWith('UNCLASSIFIED_')?`UNCLASSIFIED_AT_${phase.replace(/[^A-Z0-9_]/g,'_')}`:`STOPPED_${code}`,phase,cause_type:cause instanceof Error?cause.constructor.name:cause===undefined?undefined:cause===null?'null':typeof cause,stack_hash:sha(stack)});
+}
+function observeRunnerEvent(state:LauncherExecutionState,event:Readonly<{name:string;index?:number;stage?:string;code?:string}>){
+  const first=event.index===0,prefix=first?'first':'second';
+  switch(event.name){
+    case'offline_precheck_started':state.phase='OFFLINE_PRECHECK';state.offline_precheck_started=true;break;
+    case'offline_precheck_completed':state.offline_precheck_completed=true;break;
+    case'credential_read_attempted':state.phase='CREDENTIAL_READ';state.credential_read_attempted=true;break;
+    case'credential_read_completed':state.credential_read_completed=true;break;
+    case'client_create_attempted':state.phase=`${prefix.toUpperCase()}_CLIENT_CONNECT`;break;
+    case'client_created':(state as any)[`${prefix}_client_created`]=true;break;
+    case'transaction_start_attempted':state.phase=`${prefix.toUpperCase()}_TRANSACTION_BEGIN`;break;
+    case'transaction_started':(state as any)[`${prefix}_transaction_started`]=true;break;
+    case'snapshot_capture_started':state.phase=`SNAPSHOT_${prefix.toUpperCase()}_DATABASE`;break;
+    case'snapshot_query':state.phase=`SNAPSHOT_${prefix.toUpperCase()}_QUERY`;break;
+    case'snapshot_health_attempted':state.phase=`SNAPSHOT_${prefix.toUpperCase()}_HEALTH`;break;
+    case'pdf_read_attempted':state.phase=`PDF_${prefix.toUpperCase()}`;(state as any)[`pdf_${prefix}_attempted`]=true;break;
+    case'pdf_read_completed':(state as any)[`pdf_${prefix}_completed`]=true;break;
+    case'rollback_attempted':state.phase=`${prefix.toUpperCase()}_ROLLBACK`;(state as any)[`${prefix}_rollback_attempted`]=true;break;
+    case'rollback_confirmed':(state as any)[`${prefix}_rollback_confirmed`]=true;break;
+    case'client_closed':(state as any)[`${prefix}_client_closed`]=true;break;
+    case'cleanup_failed':state.cleanup_errors=Object.freeze([...state.cleanup_errors,Object.freeze({stage:event.stage??'unknown',code:event.code??'UNCLASSIFIED'})]);break;
+  }
+}
+export async function publishStoppedExecutionReceipt(output:string,state:LauncherExecutionState,error:unknown,phase:string){
+  const cleanup={runnerRollbackConfirmed:state.first_rollback_confirmed&&state.second_rollback_confirmed,clientsClosed:state.first_client_closed&&state.second_client_closed,healthFinalAttempted:state.health_final_attempted,healthFinalCompleted:state.health_final_completed,errors:state.cleanup_errors};
+  const receipt={status:'STOPPED',schema_version:1,execution_id:state.execution_id,generated_at:new Date().toISOString(),phase,error:sanitizeLauncherFailure(error,phase),state:{...state},cleanup,writes:0,mutator_invoked:false};
+  try{return await publishReadOnlyReceipt(output,'stopped',state.execution_id,receipt);}catch(primary){
+    const emergency={status:'STOPPED',schema_version:1,execution_id:randomUUID(),generated_at:new Date().toISOString(),phase:'STOPPED_RECEIPT_PUBLICATION',error:sanitizeLauncherFailure(primary,'STOPPED_RECEIPT_PUBLICATION'),state:{...state},cleanup,writes:0,mutator_invoked:false,primary_error:sanitizeLauncherFailure(error,phase)};
+    try{return await publishReadOnlyReceipt(output,'stopped',randomUUID(),emergency);}catch(secondary){const failure=new Error('LAUNCHER_STOPPED_STOPPED_RECEIPT_PUBLICATION');Object.defineProperty(failure,'cause',{value:primary,enumerable:false});Object.defineProperty(failure,'emergencyCause',{value:secondary,enumerable:false});throw failure;}
+  }
+}
+export async function recordLauncherFailure(state:LauncherExecutionState,output:string,error:unknown,phase:string,finalHealth?:()=>Promise<unknown>){
+  if(state.health_initial_attempted&&finalHealth){state.health_final_attempted=true;state.phase='HEALTH_FINAL';try{await finalHealth();state.health_final_completed=true;}catch(e){const code=e&&typeof e==='object'&&typeof (e as {code?:unknown}).code==='string'&&/^[A-Z0-9_]{1,40}$/.test((e as {code:string}).code)?(e as {code:string}).code:'UNCLASSIFIED';state.cleanup_errors=Object.freeze([...state.cleanup_errors,Object.freeze({stage:'FINAL_HEALTH',code})]);}}
+  try{const published=await publishStoppedExecutionReceipt(output,state,error,phase);state.phase='STOPPED_RECEIPT_PUBLISHED';return Object.freeze({published});}
+  catch(publicationError){return Object.freeze({publicationFailure:sanitizeLauncherFailure(publicationError,'STOPPED_RECEIPT_PUBLICATION')});}
+}
 
 /** Exact ordered --flag=value grammar; no aliases, duplicates, positionals, or unknown options. */
 export function parseLauncherArguments(argv:readonly string[]):LauncherArguments{
@@ -83,7 +139,7 @@ export function parseAllowlistedEnvironment(text:string):MutableLauncherEnvironm
     for(const key of REQUIRED_ENV)if(!seen.has(key))fail('ENV_REQUIRED_VARIABLE_MISSING');
     validateServiceConfiguration(values as LauncherEnvironment);assertServiceRoleCredential(values.SUPABASE_SERVICE_ROLE_KEY!);
     return values as LauncherEnvironment;
-  }catch(error){for(const key of Object.keys(values))values[key]='';throw error instanceof Error&&error.message.startsWith('LAUNCHER_STOPPED_')?error: new Error('LAUNCHER_STOPPED_ENV_INVALID');}
+  }catch(error){for(const key of Object.keys(values))values[key]='';if(error instanceof Error&&error.message.startsWith('LAUNCHER_STOPPED_'))throw error;return failWithCause('ENV_INVALID',error);}
 }
 
 function projectRefFromSupabaseUrl(value:string){
@@ -162,11 +218,11 @@ export async function readHistoricalPdf(env:LauncherEnvironment,expected:Readonl
   let client=createStorageClient(env.SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
   let bytes:Buffer|undefined;
   try{
-    const bucket=client.storage.from(expected.bucket),info=await bucket.info(expected.path);if(info.error||!info.data)fail('PDF_METADATA_READ_FAILED');
+    const bucket=client.storage.from(expected.bucket),info=await bucket.info(expected.path);if(info.error||!info.data)failWithCause('PDF_METADATA_READ_FAILED',info.error??new Error('missing metadata'));
     const meta=info.data as {contentType?:string;size?:number;eTag?:string;etag?:string};
     if(meta.contentType!=='application/pdf'||meta.size!==HISTORICAL_PDF_SIZE)fail('PDF_METADATA_MISMATCH');
     const contentType=meta.contentType;if(contentType!=='application/pdf'||meta.size!==HISTORICAL_PDF_SIZE)return fail('PDF_METADATA_MISMATCH');
-    const download=await bucket.download(expected.path),blob=download.data;if(download.error||blob===null)return fail('PDF_DOWNLOAD_FAILED');
+    const download=await bucket.download(expected.path),blob=download.data;if(download.error||blob===null)return failWithCause('PDF_DOWNLOAD_FAILED',download.error??new Error('missing object'));
     bytes=Buffer.from(await blob.arrayBuffer());if(bytes.length!==HISTORICAL_PDF_SIZE||sha(bytes)!==HISTORICAL_PDF_SHA256)fail('PDF_HASH_MISMATCH');
     const etag=meta.eTag??meta.etag;if(!etag)return fail('PDF_ETAG_MISSING');
     const result=Object.freeze({bytes,reference:`${expected.bucket}/${expected.path}`,mime:contentType,etag});bytes=undefined;return result;
@@ -193,22 +249,33 @@ export function makeEntryEvidence(receipt:Awaited<ReturnType<typeof runReadOnlyE
 
 /** Runs only after offline pins. Secrets remain local to this call and never enter logs or receipts. */
 export async function runProductionLauncher(args:LauncherArguments){
-  validateHealthUrl(args['--health-url']);
-  const plan=await createProductionPlan(args);let env:MutableLauncherEnvironment|undefined;
+  const state=createLauncherExecutionState();let plan:OfflinePlan|undefined,env:MutableLauncherEnvironment|undefined,result:Readonly<Record<string,unknown>>|undefined,original:unknown,failed=false,stoppedReceiptPublished=false,receiptPublishError:unknown,failurePhase='INITIALIZING';
   try{
-    const health=await readHealthHttp(plan);if(health.httpStatus!==200||health.databaseStatus!=='ok'||health.outbox||health.recalcRequested||health.recalcActive||!health.workerStopped)fail('HEALTH_OR_FLAGS');
+    state.phase='ARGUMENT_AND_HEALTH_PIN';validateHealthUrl(args['--health-url']);
+    state.phase='OFFLINE_PRECHECK';state.offline_precheck_started=true;plan=await createProductionPlan(args);state.offline_precheck_completed=true;
+    state.phase='HEALTH_INITIAL';state.health_initial_attempted=true;const health=await readHealthHttp(plan);state.health_initial_completed=true;if(health.httpStatus!==200||health.databaseStatus!=='ok'||health.outbox||health.recalcRequested||health.recalcActive||!health.workerStopped)fail('HEALTH_OR_FLAGS');
+    state.phase='CREDENTIAL_READ';state.credential_read_attempted=true;
     env=await readExplicitEnvironment(args['--env-file']);
-    const target=validateServiceConfiguration(env);assertTargetMatchesPin(target);
+    state.credential_read_completed=true;state.phase='TARGET_VALIDATION';const target=validateServiceConfiguration(env);assertTargetMatchesPin(target);state.target_validation_completed=true;
     assertServiceRoleCredential(env.SUPABASE_SERVICE_ROLE_KEY);
     const syncConfirmation={source:'MANUAL_CURRENT' as const,enabled:false as const,observedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+5*60_000).toISOString()};
-    const receipt=await runReadOnlyEntryPreflight(plan,{plan,readCredentials:async()=>{const target=validateServiceConfiguration(env!);assertTargetMatchesPin(target);return{user:decodeURIComponent(new URL(env!.DATABASE_URL).username),password:decodeURIComponent(new URL(env!.DATABASE_URL).password),database:target.databaseName};},readPdf:ref=>readHistoricalPdf(env!,ref),syncConfirmation});
+    state.phase='SNAPSHOTS';const receipt=await runReadOnlyEntryPreflight(plan,{plan,readCredentials:async()=>{const target=validateServiceConfiguration(env!);assertTargetMatchesPin(target);return{user:decodeURIComponent(new URL(env!.DATABASE_URL).username),password:decodeURIComponent(new URL(env!.DATABASE_URL).password),database:target.databaseName};},readPdf:ref=>readHistoricalPdf(env!,ref),syncConfirmation,onExecutionEvent:event=>observeRunnerEvent(state,event)});
     const issuedAt=Date.now(),evidence=makeEntryEvidence(receipt,plan.head,issuedAt),phrase=buildPendingEntryPhrase(evidence,issuedAt);if(!verifyPendingEntryPhrase(phrase,evidence,issuedAt))fail('PENDING_PHRASE_SELF_CHECK');
+    state.phase='RECEIPT_DIRECTORY';
     const output=await realpath(canonicalizeWindowsPath(args['--output-directory'])).catch(()=>fail('OUTPUT_DIRECTORY_MISSING'));if(!sameCanonicalWindowsPath(output,args['--output-directory']))fail('OUTPUT_DIRECTORY_SYMLINK_OR_PATH_MISMATCH');
+    state.phase='BASELINE_PUBLICATION';
     const id=randomUUID(),baseline=await publishReadOnlyReceipt(output,'baseline',id,{status:'BASELINE_VERIFIED',run_id:evidence.runId,head:plan.head,correctorCommit:CORRECTOR_COMMIT,reportSha256:CERTIFIED_REPORT_SHA256,entryReportSha256:ENTRY_READONLY_REPORT_SHA256,dumpSha256:DUMP_SHA256,pdfSha256:HISTORICAL_PDF_SHA256,digests:receipt.digests,sequenceBaseline:receipt.sequenceBaseline,checks:receipt.checks});
+    state.baseline_published=true;state.phase='PENDING_PUBLICATION';
     const sanitized={...receipt,connections:receipt.connections.map(c=>({id:c.id,observedAt:c.observedAt,serverVersion:c.serverVersion,tlsProtocol:c.tlsProtocol,servernameSha256:sha(c.servername),transactionReadOnly:c.transactionReadOnly}))};
     const pending=await publishReadOnlyReceipt(output,'pending',randomUUID(),{...sanitized,baseline:{path:path.relative(output,baseline.path).replace(/\\/g,'/'),sha256:baseline.sha256},phrase});
-    return Object.freeze({status:'PENDING_USER_CONFIRMATION',phrase,receiptPath:path.relative(plan.workspaceRoot,pending.path).replace(/\\/g,'/'),receiptSha256:pending.sha256,baselinePath:path.relative(plan.workspaceRoot,baseline.path).replace(/\\/g,'/'),baselineSha256:baseline.sha256});
-  }finally{if(env){env.DATABASE_URL='';env.SUPABASE_URL='';env.SUPABASE_SERVICE_ROLE_KEY='';env.SUPABASE_STORAGE_BUCKET='';env=undefined;}}
+    state.final_receipt_published=true;result=Object.freeze({status:'PENDING_USER_CONFIRMATION',phrase,receiptPath:path.relative(plan.workspaceRoot,pending.path).replace(/\\/g,'/'),receiptSha256:pending.sha256,baselinePath:path.relative(plan.workspaceRoot,baseline.path).replace(/\\/g,'/'),baselineSha256:baseline.sha256});
+  }catch(error){original=error;failed=true;failurePhase=state.phase;}
+  finally{
+    state.phase='CLEANUP';if(env){env.DATABASE_URL='';env.SUPABASE_URL='';env.SUPABASE_SERVICE_ROLE_KEY='';env.SUPABASE_STORAGE_BUCKET='';env=undefined;}
+    if(failed&&state.offline_precheck_started){const recorded=await recordLauncherFailure(state,canonicalizeWindowsPath(args['--output-directory']),original,failurePhase,plan&&state.health_initial_attempted?()=>readHealthHttp(plan!):undefined);stoppedReceiptPublished='published'in recorded;receiptPublishError='publicationFailure'in recorded?recorded.publicationFailure:undefined;}
+  }
+  if(failed){const safe=sanitizeLauncherFailure(original,failurePhase);const err=new Error(`LAUNCHER_STOPPED_${safe.code}`);Object.defineProperty(err,'cause',{value:original,enumerable:false});Object.defineProperty(err,'stoppedReceiptPublished',{value:stoppedReceiptPublished,enumerable:false});if(receiptPublishError!==undefined)Object.defineProperty(err,'receiptPublicationFailure',{value:sanitizeLauncherFailure(receiptPublishError,'STOPPED_RECEIPT_PUBLICATION'),enumerable:false});throw err;}
+  return result;
 }
 
 export async function productionLauncherCli(argv=process.argv.slice(2)){
