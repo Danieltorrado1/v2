@@ -3,7 +3,7 @@
   "branch": "fix/nomina-turno-202-launcher-path-target-pins",
   "base_head": "09141869f2519eae0be6af3fd53afbaaa2726970",
   "production_launcher_commit": "d46c8e30b30969db3677032a807e2027bd8ab191",
-  "readonly_runner_commit": "d46c8e30b30969db3677032a807e2027bd8ab191",
+  "readonly_runner_commit": "f76fdadc5bafcfe7ee1e7d3841c2df26dd15640f",
   "production_entry_commit": "610dd263d8f7734ac504a4b5fbb7d05c01a4ea9b",
   "corrector_commit": "95fc6bb6879409d37a088e451fb64f2edafacb5f",
   "target_pin": {
@@ -37,7 +37,7 @@
   ],
   "windows_paths": {
     "accepted_separators": ["backslash", "slash", "mixed"],
-    "canonical_form": "path.win32 normalized drive-absolute path with uppercase drive letter",
+    "canonical_form": "path.win32.isAbsolute + resolve + normalize; drive-absolute path with uppercase drive letter",
     "rejected": ["relative", "drive-relative", "UNC/device", "ADS", "dot components", "reparse points", "ambiguous trailing dot/space", "NUL", "non-ASCII confusables"]
   },
   "validation": {
