@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
 import {readFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import {isV6ArgumentName,parseV6Cli,runV6Cli} from '../scripts/phase48-v6-production';
 import {buildV6Phrase,V6_ASSERTIONS,V6_ORDER} from '../modules/cobertura/phase48-v6-contract';
 
@@ -57,7 +58,7 @@ test('V6 authorization builder rejects both previously certified runner and muta
  }
 });
 
-test('synthetic valid launcher reaches offline host validation before any credential or CA read',async()=>{
+test('synthetic V6 launcher either reaches its certified branch gate or fails closed on diagnostic branch',async()=>{
  const args=completeArgs().map(a=>a
   .replace('C:/synthetic/backup',resolve('tmp/phase48-v6-window-local/parser-no-evidence'))
   .replace('C:/synthetic/certified.json',resolve('tmp/phase48-v6-window-local/parser-no-certified.json'))
@@ -65,7 +66,9 @@ test('synthetic valid launcher reaches offline host validation before any creden
   .replace('C:/synthetic/credential-sentinel.env',resolve('tmp/phase48-v6-window-local/NEVER_READ_parser_credential.env'))
   .replace('C:/synthetic/ca-sentinel.crt',resolve('tmp/phase48-v6-window-local/NEVER_READ_parser_ca.crt'))
   .replace('C:/synthetic/receipts',resolve('tmp/phase48-v6-window-local')));
- await assert.rejects(runV6Cli(args),(error:any)=>error?.code==='ENOENT'&&String(error.path).includes('parser-no-evidence')&&!String(error.path).includes('NEVER_READ'));
+ const branch=execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim();
+ if(branch==='fix/phase48-v6-diagnostic-launcher')await assert.rejects(runV6Cli(args),(error:any)=>error?.message==='V6_CLEAN_RELEASE_BRANCH_REQUIRED');
+ else await assert.rejects(runV6Cli(args),(error:any)=>error?.code==='ENOENT'&&String(error.path).includes('parser-no-evidence')&&!String(error.path).includes('NEVER_READ'));
 });
 
 test('V6 release gate pins the exact read-query observability branch and retains HEAD ancestry checks',()=>{

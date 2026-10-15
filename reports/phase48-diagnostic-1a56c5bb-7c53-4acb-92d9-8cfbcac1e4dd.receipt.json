@@ -1,0 +1,37 @@
+{
+    "kind":  "PHASE48_V6_READ_QUERY_DIAGNOSTIC",
+    "diagnostic_run_id":  "1a56c5bb-7c53-4acb-92d9-8cfbcac1e4dd",
+    "status":  "STOPPED",
+    "phase":  "health_initial",
+    "stop_reason":  "HEALTH_GET_UNAVAILABLE_BEFORE_CREDENTIAL_READ",
+    "health_initial":  {
+                           "request":  "GET https://api.empiriasuite.com/api/health",
+                           "validated":  false,
+                           "http_status":  null,
+                           "error_type":  "NullReferenceException"
+                       },
+    "pins":  {
+                 "readonly_runner_commit":  "154dbdaf01d75685c6306a81a92bf7ab11a69585",
+                 "diagnostic_runner_commit":  "0160238c317637196bb38c8abde1ced5e4737339",
+                 "mutator_commit":  "58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911"
+             },
+    "client_created":  false,
+    "connect_attempted":  false,
+    "tls_validated":  false,
+    "transaction_started":  false,
+    "query_id":  null,
+    "queries_executed":  0,
+    "rollback_attempted":  false,
+    "rollback_confirmed":  false,
+    "client_end_attempted":  false,
+    "client_closed":  false,
+    "connection_count":  0,
+    "writes":  0,
+    "ddl":  0,
+    "dml":  0,
+    "nextval":  0,
+    "mutator_invoked":  false,
+    "credential_read":  false,
+    "nonce_generated":  false,
+    "phrase_generated":  false
+}`n

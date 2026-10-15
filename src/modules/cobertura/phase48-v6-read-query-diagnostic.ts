@@ -1,6 +1,7 @@
 import {createHash,randomUUID} from 'node:crypto';
-import {closeSync,fsyncSync,linkSync,mkdirSync,openSync,readFileSync,unlinkSync,writeSync} from 'node:fs';
-import {join,resolve} from 'node:path';
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {publishAtomicReceipt} from './phase48-readonly-receipts';
 
 export interface DiagnosticQueryResult {rows:any[];rowCount:number|null}
 export interface DiagnosticClient {connect():Promise<void>;query(sql:string,values?:unknown[]):Promise<DiagnosticQueryResult>;end():Promise<void>}
@@ -38,9 +39,12 @@ export function parseReadQueryDiagnosticArgs(args:string[]){
 
 /** Exclusive same-volume hard-link publication: the final name appears only after a complete fsynced file exists. */
 export function publishDiagnosticReceipt(directory:string,name:string,receipt:unknown){
- if(!canonicalName.test(name))throw Error('DIAGNOSTIC_RECEIPT_NAME_INVALID');mkdirSync(directory,{recursive:true});const final=join(directory,name),temp=join(directory,`.${name}.${randomUUID()}.tmp`);const bytes=Buffer.from(JSON.stringify(receipt,null,2)+'\n','utf8');let fd:number|undefined,owned=false;
- try{fd=openSync(temp,'wx',0o600);owned=true;let offset=0;while(offset<bytes.length){const n=writeSync(fd,bytes,offset,bytes.length-offset);if(n<=0)throw Error('DIAGNOSTIC_RECEIPT_SHORT_WRITE');offset+=n;}fsyncSync(fd);closeSync(fd);fd=undefined;linkSync(temp,final);unlinkSync(temp);owned=false;return {path:final,sha256:sha(bytes)};}
- finally{try{if(fd!==undefined)closeSync(fd);}finally{if(owned)try{unlinkSync(temp);}catch{}}}
+ if(!canonicalName.test(name))throw Error('DIAGNOSTIC_RECEIPT_NAME_INVALID');const uuid=name.slice('phase48-diagnostic-'.length,-'.receipt.json'.length);const original=receipt as any;
+ if(!original||original.run_id!==uuid)throw Error('DIAGNOSTIC_RECEIPT_RUN_ID_MISMATCH');
+ const atomicRunId=`phase48-diagnostic-${uuid}`,atomicName=`${atomicRunId}.receipt.json`;
+ const bytes=Buffer.from(JSON.stringify({...original,run_id:atomicRunId,diagnostic_run_id:uuid},null,2)+'\n','utf8');JSON.parse(bytes.toString('utf8'));
+ const path=publishAtomicReceipt(directory,atomicName,JSON.parse(bytes.toString('utf8')),{exclusive:true});const stored=readFileSync(path);
+ if(!stored.equals(bytes))throw Error('DIAGNOSTIC_RECEIPT_PUBLISHED_BYTES_MISMATCH');return {path,sha256:sha(stored)};
 }
 
 export async function runReadQueryDiagnostic(options:DiagnosticOptions){
@@ -61,7 +65,7 @@ export async function runReadQueryDiagnostic(options:DiagnosticOptions){
    catch(e){item.duration_ms=Date.now()-start;const fields=errorFields(e);item.sqlstate=fields.sqlstate as string|null;receipt.first_error={query_id:queryId,category:item.category,...fields};stopAfterFailure=true;throw e;}
   }};
   await phase('transaction_begin');await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
-  await phase('capture');const captured=await options.capture(db);const c=captured as any;receipt.capture_summary={candidate_count:Number.isInteger(c?.set?.candidate_count)?c.set.candidate_count:null,digest_count:c?.digests&&typeof c.digests==='object'?Object.keys(c.digests).length:17};receipt.status='CAPTURED';
+  await phase('capture');const captured=await options.capture(db);const c=captured as any;const digests=c?.digests&&typeof c.digests==='object'?c.digests:{};const digestEntries=Object.entries(digests);if(digestEntries.some(([key,value])=>!/^[a-z][a-z0-9_]*$/.test(key)||typeof value!=='string'||!/^[a-f0-9]{64}$/.test(value)))throw Error('DIAGNOSTIC_DIGEST_SHAPE_INVALID');receipt.capture_summary={candidate_count:Number.isInteger(c?.set?.candidate_count)?c.set.candidate_count:null,digest_count:digestEntries.length,digests:Object.fromEntries(digestEntries)};receipt.status='CAPTURED';
  }catch(e){primary=e;receipt.operation_error={phase:receipt.phase,...errorFields(e)};}
  finally{
   if(client&&connected){receipt.rollback_attempted=true;receipt.phase='rollback';try{await options.fault?.('rollback');}catch(e){receipt.rollback_error={phase:'rollback_instrumentation',...errorFields(e)};}try{await client.query('ROLLBACK');receipt.rollback_confirmed=true;}catch(e){receipt.rollback_error={phase:'rollback',...errorFields(e)};}}
