@@ -4,17 +4,23 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { CERTIFIED_REPORT_SHA256, CORRECTOR_COMMIT, DUMP_SHA256, ENTRY_READONLY_REPORT_SHA256, HISTORICAL_PDF_SHA256, SEQUENCE_MAX_ADVANCES, WRITE_SET, assertCertificationReports, assertPostgres17ToolVersions, publishReadOnlyReceipt, runReadOnlyEntryPreflight, validateOfflinePlan, validateUntrackedArtifactInventory, type OfflinePlan } from '../scripts/nomina-turno-202-readonly-runner';
+import { CERTIFIED_REPORT_SHA256, CORRECTOR_COMMIT, DUMP_SHA256, ENTRY_READONLY_REPORT_SHA256, HISTORICAL_PDF_SHA256, SEQUENCE_MAX_ADVANCES, WRITE_SET, assertCertificationReports, assertPostgres17ToolVersions, publishReadOnlyReceipt, runReadOnlyEntryPreflight, validateOfflinePlan, validateUntrackedArtifactInventory, verifyProductionTargetPinEvidence, type OfflinePlan } from '../scripts/nomina-turno-202-readonly-runner';
 
 const plan=(patch:Partial<OfflinePlan>={}):OfflinePlan=>({
   workspaceRoot:path.resolve('.'),branch:'fix/nomina-turno-202-correction-entry-gate',head:'9c2fc6a4907c9411473fc30c27c33eb35eaa5507',contractCommit:'9c2fc6a4907c9411473fc30c27c33eb35eaa5507',correctorCommit:CORRECTOR_COMMIT,
   dumpPath:'C:/local/full.dump',dumpSha256:DUMP_SHA256,historicalPdfPath:'C:/local/account.pdf',historicalPdfSha256:HISTORICAL_PDF_SHA256,
   reportPath:'C:/local/report.json',reportSha256:CERTIFIED_REPORT_SHA256,expectedReportSha256:CERTIFIED_REPORT_SHA256,
   entryReportPath:'C:/local/entry-report.json',entryReportSha256:ENTRY_READONLY_REPORT_SHA256,expectedEntryReportSha256:ENTRY_READONLY_REPORT_SHA256,
-  caPath:'C:/local/ca.crt',caSha256:'b'.repeat(64),expectedCaSha256:'b'.repeat(64),
+  caPath:'C:/local/ca.crt',caSha256:'b'.repeat(64),expectedCaSha256:'b'.repeat(64),projectRefSha256:'0'.repeat(64),
   host:'127.0.0.1',servername:'localhost',expectedServername:'localhost',port:61001,database:'restore',healthUrl:'http://127.0.0.1:61002/health',healthHostname:'127.0.0.1',localCertification:true,...patch,
 });
 const dependencies={plan:plan(),readCredentials:async()=>({user:'never-read',password:''}),readPdf:async()=>({bytes:Buffer.alloc(0),reference:'',mime:'application/pdf',etag:''}),syncConfirmation:{source:'MANUAL_CURRENT' as const,enabled:false as const,observedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60_000).toISOString()}};
+
+test('independent target pins reconcile to the versioned sanitized source reports',async()=>{
+  const evidence=await verifyProductionTargetPinEvidence(path.resolve('.'));
+  assert.equal(evidence.sources,3);
+  assert.match(evidence.projectRefSha256,/^[a-f0-9]{64}$/);
+});
 
 test('four sequence maxima are fixed and the database write-set is exactly seven tables',()=>{
   assert.deepEqual(SEQUENCE_MAX_ADVANCES,{'public.auditoria_id_seq':4,'public.auditoria_eventos_id_seq':4,'public.nomina_revision_operativa_id_seq':1,'public.historial_cambios_id_seq':42});

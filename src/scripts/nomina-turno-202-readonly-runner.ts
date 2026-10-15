@@ -10,12 +10,14 @@ import path from 'node:path';
 import { Client, type ClientConfig, type QueryResultRow } from 'pg';
 import { execFileSync } from 'node:child_process';
 import { ENTRY_CASE } from './nomina-turno-202-entry-contract';
+import productionTargetPinJson from './nomina-202-production-target-pin.json';
 import untrackedArtifactManifest from './nomina-202-untracked-artifacts.json';
 
 export const HISTORICAL_PDF_SHA256='cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4';
 export const DUMP_SHA256='dd1f9d298e83fb9664d1795c4e452698c26b274569cca11715b2c2f03ff99d75';
 export const CORRECTOR_COMMIT='95fc6bb6879409d37a088e451fb64f2edafacb5f';
 export const PRODUCTION_CA_SHA256='700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7';
+export const PRODUCTION_LAUNCHER_BRANCH='fix/nomina-turno-202-launcher-path-target-pins';
 export const CERTIFIED_REPORT_SHA256='4d9456973bc1433b5c6175d347497d603999fb1ed35995e7e2493415cda3da41';
 export const ENTRY_READONLY_REPORT_SHA256='1e2d8cfed0889bd238383054296870c1226be0f5fc89793d652755c584cabca8';
 export const POSTGRES17_BIN='C:/Program Files/PostgreSQL/17/bin';
@@ -35,11 +37,40 @@ const OPERATION='NOMINA_202_192_INTEGRAL_LOCAL_V1';
 const OFFLINE_GIT_ENV=Object.freeze(Object.fromEntries(['PATH','SystemRoot','WINDIR','TEMP','TMP','USERPROFILE','ComSpec','PATHEXT'].flatMap(key=>typeof process.env[key]==='string'?[[key,process.env[key]!]]:[])));
 const hash=(value:string|Buffer)=>createHash('sha256').update(value).digest('hex');
 const canonical=(value:unknown):string=>JSON.stringify(value===null||typeof value!=='object'?value:Array.isArray(value)?value.map(x=>JSON.parse(canonical(x))):Object.fromEntries(Object.keys(value as object).sort().map(k=>[k,JSON.parse(canonical((value as Record<string,unknown>)[k]))])));
+export const PRODUCTION_TARGET_PIN=Object.freeze(productionTargetPinJson);
+export const PRODUCTION_TARGET_PIN_SHA256='49a9a34efa6a411f78cc172fe90edcaf7364bbb84ae6e96fbe4f32c4e4d39557';
+const PRODUCTION_TARGET_PIN_CANONICAL_SHA256='aca0f58339f7708ff2df697acbb94fd342510f17603f1458dd7f372fb8706bf5';
 const digest=(value:unknown)=>hash(canonical(value));
 const fail=(code:string):never=>{throw new Error(`STOPPED_${code}`);};
+const windowsPathFail=(code:string):never=>{throw new Error(`WINDOWS_PATH_REJECTED_${code}`);};
 const isSha=(value:string)=>/^[a-f0-9]{64}$/.test(value);
 const isCommit=(value:string)=>/^[a-f0-9]{40}$/.test(value);
-const absolute=(value:string)=>path.isAbsolute(value)&&path.resolve(value)===value;
+if(hash(canonical(PRODUCTION_TARGET_PIN))!==PRODUCTION_TARGET_PIN_CANONICAL_SHA256)fail('TARGET_PIN_OBJECT_HASH_MISMATCH');
+/** Canonical lexical form for a local Windows drive path. User inputs may mix separators. */
+export function canonicalizeWindowsPath(input:string):string{
+  if(typeof input!=='string'||input.length===0||input.includes('\0'))windowsPathFail('EMPTY_OR_NUL');
+  if(/[^\x20-\x7e]/.test(input))windowsPathFail('NON_ASCII');
+  const normalized=input.replace(/\//g,'\\');
+  if(/^(?:\\\\[?.]\\|\\\\)/.test(normalized))windowsPathFail('UNC_OR_DEVICE_PATH');
+  if(!/^[a-zA-Z]:\\/.test(normalized))windowsPathFail('NOT_DRIVE_ABSOLUTE');
+  const tail=normalized.slice(3);
+  if(tail.includes('\\\\'))windowsPathFail('REPEATED_SEPARATOR');
+  const parts=tail.split('\\').filter((part,index,array)=>!(part===''&&index===array.length-1));
+  for(const part of parts){
+    if(part===''||part==='.'||part==='..')windowsPathFail('DOT_COMPONENT');
+    if(part.includes(':'))windowsPathFail('ALTERNATE_DATA_STREAM');
+    if(/[ .]$/.test(part))windowsPathFail('AMBIGUOUS_TRAILING_DOT_OR_SPACE');
+    if(/[<>"|?*]/.test(part))windowsPathFail('INVALID_COMPONENT');
+  }
+  let resolved=path.win32.normalize(path.win32.resolve(normalized));
+  if(resolved.length>3)resolved=resolved.replace(/\\+$/,'');
+  return `${resolved[0]!.toUpperCase()}${resolved.slice(1)}`;
+}
+export function sameCanonicalWindowsPath(left:string,right:string):boolean{
+  const normalizeFinal=(value:string)=>canonicalizeWindowsPath(value.replace(/^\\\\\?\\(?=[a-zA-Z]:\\)/,'')).toLowerCase();
+  try{return normalizeFinal(left)===normalizeFinal(right);}catch{return false;}
+}
+const absolute=(value:string)=>{try{canonicalizeWindowsPath(value);return true;}catch{return false;}};
 
 export type OfflinePlan=Readonly<{
   workspaceRoot:string; branch:string; head:string; contractCommit:string;
@@ -47,6 +78,7 @@ export type OfflinePlan=Readonly<{
   historicalPdfSha256:string; reportPath:string; reportSha256:string; expectedReportSha256:string;
   entryReportPath:string; entryReportSha256:string; expectedEntryReportSha256:string;
   caPath:string; caSha256:string; expectedCaSha256:string;
+  projectRefSha256:string;
   host:string; servername:string; expectedServername:string; port:number; database:string;
   healthUrl:string; healthHostname:string;
   localCertification:boolean;
@@ -111,16 +143,20 @@ export function assertCertificationReports(reportBytes:Buffer,entryReportBytes:B
 
 /** Verifies and permits only the exact, hashed offline artifacts inventoried before certification. */
 export async function validateUntrackedArtifactInventory(workspaceRoot:string){
+  const canonicalRoot=(()=>{try{return canonicalizeWindowsPath(workspaceRoot);}catch{return fail('UNTRACKED_ARTIFACT_ROOT_REJECTED');}})();
+  if(!sameCanonicalWindowsPath(await realpath(canonicalRoot),canonicalRoot))fail('UNTRACKED_ARTIFACT_ROOT_ALIAS');
   const expected=untrackedArtifactManifest.files;
-  const actual=execFileSync('git',['ls-files','--others','--exclude-standard'],{cwd:workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).split(/\r?\n/).filter(Boolean).map(p=>p.replace(/\\/g,'/')).sort();
+  const actual=execFileSync('git',['ls-files','--others','--exclude-standard'],{cwd:canonicalRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).split(/\r?\n/).filter(Boolean).map(p=>p.replace(/\\/g,'/')).sort();
   const expectedPaths=expected.map(x=>x.path).sort();
   if(actual.length!==untrackedArtifactManifest.expectedCount||JSON.stringify(actual)!==JSON.stringify(expectedPaths))fail('UNTRACKED_ARTIFACT_INVENTORY_SET_DRIFT');
   const rows=[] as {path:string;size:number;sha256:string}[];
   for(const item of expected){
-    const file=path.resolve(workspaceRoot,...item.path.split('/'));
-    const relative=path.relative(path.resolve(workspaceRoot),file);
-    if(path.isAbsolute(relative)||relative.startsWith('..'))fail('UNTRACKED_ARTIFACT_PATH_REJECTED');
-    const st=await lstat(file);if(!st.isFile()||st.isSymbolicLink()||st.size!==item.size)fail('UNTRACKED_ARTIFACT_METADATA_DRIFT');
+    if(item.path.startsWith('/')||item.path.split('/').some(p=>!p||p==='.'||p==='..'||p.includes('\\')))fail('UNTRACKED_ARTIFACT_PATH_REJECTED');
+    const file=canonicalizeWindowsPath(path.win32.join(canonicalRoot,...item.path.split('/')));
+    const relative=path.win32.relative(canonicalRoot,file);
+    if(path.win32.isAbsolute(relative)||relative==='..'||relative.startsWith(`..${path.win32.sep}`))fail('UNTRACKED_ARTIFACT_PATH_REJECTED');
+    const st=await lstat(file);if(!st.isFile()||st.isSymbolicLink()||(st as {isReparsePoint?:()=>boolean}).isReparsePoint?.()||st.size!==item.size)fail('UNTRACKED_ARTIFACT_METADATA_DRIFT');
+    if(!sameCanonicalWindowsPath(await realpath(file),file))fail('UNTRACKED_ARTIFACT_PATH_ALIAS');
     const bytes=await readFile(file),actualHash=hash(bytes);if(actualHash!==item.sha256)fail('UNTRACKED_ARTIFACT_HASH_DRIFT');
     rows.push({path:item.path,size:bytes.length,sha256:actualHash});
   }
@@ -129,11 +165,52 @@ export async function validateUntrackedArtifactInventory(workspaceRoot:string){
   return Object.freeze({count:rows.length,aggregateSha256:aggregate});
 }
 
-export async function validateOfflinePlan(plan:OfflinePlan):Promise<Readonly<{root:string;caPem:Buffer;dumpBytes:Buffer;pdfBytes:Buffer;reportBytes:Buffer;entryReportBytes:Buffer}>>{
-  const launcherBranch=plan.branch==='fix/nomina-turno-202-production-launcher';
+export async function verifyProductionTargetPinEvidence(root:string){
+  const pin=PRODUCTION_TARGET_PIN as any;
+  const sources=[
+    ...pin.provenance.host,
+    pin.provenance.port,pin.provenance.database,pin.provenance.project_ref_sha256,
+    pin.provenance.protocol,
+  ] as Array<{path:string;sha256:string;field:string}>;
+  const byPath=new Map<string,string>();
+  for(const source of sources){if(!source.path||!isSha(source.sha256))fail('TARGET_PIN_EVIDENCE_SCHEMA');byPath.set(source.path,source.sha256);}
+  const parsed=new Map<string,any>();
+  for(const [relative,expectedHash] of byPath){
+    if(relative.startsWith('/')||relative.includes('\\')||relative.split('/').some((x:string)=>!x||x==='.'||x==='..'))fail('TARGET_PIN_EVIDENCE_PATH');
+    const file=canonicalizeWindowsPath(path.win32.join(root,...relative.split('/')));
+    const tracked=execFileSync('git',['ls-files','--error-unmatch','--',relative],{cwd:root,env:OFFLINE_GIT_ENV,windowsHide:true,encoding:'utf8'}).trim();
+    if(tracked!==relative)fail('TARGET_PIN_EVIDENCE_NOT_TRACKED');
+    const st=await lstat(file);if(!st.isFile()||st.isSymbolicLink()||(st as {isReparsePoint?:()=>boolean}).isReparsePoint?.()||!sameCanonicalWindowsPath(await realpath(file),file))fail('TARGET_PIN_EVIDENCE_TYPE_OR_ALIAS');
+    const bytes=await readFile(file);
+    if(hash(bytes)!==expectedHash){bytes.fill(0);fail('TARGET_PIN_EVIDENCE_HASH');}
+    try{parsed.set(relative,JSON.parse(bytes.toString('utf8')));}catch{bytes.fill(0);fail('TARGET_PIN_EVIDENCE_FORMAT');}
+    bytes.fill(0);
+  }
+  const operational=parsed.get('reports/nomina-operacion-real-audit-2026-08-31.json');
+  const contract=parsed.get('reports/territorial-contract-24-pre-migration.json');
+  const tlsSource=pin.provenance.tls as {path:string;commit:string;sha256:string;field:string};
+  if(tlsSource.path!=='src/scripts/nomina-turno-202-readonly-runner.ts'||!isCommit(tlsSource.commit)||!isSha(tlsSource.sha256))fail('TARGET_PIN_TLS_SOURCE_SCHEMA');
+  try{execFileSync('git',['merge-base','--is-ancestor',tlsSource.commit,'HEAD'],{cwd:root,env:OFFLINE_GIT_ENV,windowsHide:true});}catch{fail('TARGET_PIN_TLS_SOURCE_COMMIT');}
+  const tlsSourceBytes=execFileSync('git',['show',`${tlsSource.commit}:${tlsSource.path}`],{cwd:root,env:OFFLINE_GIT_ENV,windowsHide:true,maxBuffer:8*1024*1024});
+  if(hash(tlsSourceBytes)!==tlsSource.sha256||!tlsSourceBytes.includes(Buffer.from("minVersion:'TLSv1.3'"))||!tlsSourceBytes.includes(Buffer.from('rejectUnauthorized:true')))fail('TARGET_PIN_TLS_SOURCE_MISMATCH');
+  const refUrl=(()=>{try{return new URL(operational?.environment?.supabase_url);}catch{return fail('TARGET_PIN_PROJECT_REF_SOURCE');}})();
+  if(refUrl.protocol!=='https:'||refUrl.username||refUrl.password||refUrl.port||refUrl.pathname!=='/'||refUrl.search||refUrl.hash||!refUrl.hostname.endsWith('.supabase.co'))fail('TARGET_PIN_PROJECT_REF_SOURCE');
+  let projectRef=refUrl.hostname.slice(0,-'.supabase.co'.length);
+  const refHash=hash(projectRef);projectRef='';
+  const historicalHost=String(operational?.environment?.database_host??'');
+  const [snapshotHost,snapshotPort]=String(contract?.metadata?.host??'').split(':');
+  if(!/^[a-z0-9]{20}$/.test(refUrl.hostname.slice(0,-'.supabase.co'.length))||refHash!==pin.project_ref_sha256||historicalHost!==pin.host||snapshotHost!==pin.host||Number(snapshotPort)!==pin.port||contract?.metadata?.database!==pin.database||contract?.metadata?.identity?.database!==pin.database)fail('TARGET_PIN_EVIDENCE_MISMATCH');
+  if(pin.protocol!=='postgresql'||pin.tls?.min_version!=='TLSv1.3'||pin.tls?.max_version!=='TLSv1.3'||pin.tls?.reject_unauthorized!==true||pin.tls?.ca_sha256!==PRODUCTION_CA_SHA256)fail('TARGET_PIN_POLICY_MISMATCH');
+  return Object.freeze({sources:byPath.size+1,projectRefSha256:refHash});
+}
+
+export async function validateOfflinePlan(inputPlan:OfflinePlan):Promise<Readonly<{root:string;caPem:Buffer;dumpBytes:Buffer;pdfBytes:Buffer;reportBytes:Buffer;entryReportBytes:Buffer}>>{
+  const plan:OfflinePlan=(()=>{try{return Object.freeze({...inputPlan,workspaceRoot:canonicalizeWindowsPath(inputPlan.workspaceRoot),dumpPath:canonicalizeWindowsPath(inputPlan.dumpPath),historicalPdfPath:canonicalizeWindowsPath(inputPlan.historicalPdfPath),reportPath:canonicalizeWindowsPath(inputPlan.reportPath),entryReportPath:canonicalizeWindowsPath(inputPlan.entryReportPath),caPath:canonicalizeWindowsPath(inputPlan.caPath)});}catch{return fail('ARTIFACT_PATH_NOT_ABSOLUTE');}})();
+  const launcherBranch=plan.branch==='fix/nomina-turno-202-production-launcher'||plan.branch===PRODUCTION_LAUNCHER_BRANCH;
   const supportedBranch=launcherBranch||plan.branch==='fix/nomina-turno-202-correction-entry-gate';
   if(!absolute(plan.workspaceRoot)||!supportedBranch||!isCommit(plan.head)||!isCommit(plan.contractCommit)||(!plan.localCertification&&launcherBranch&&plan.contractCommit!=='610dd263d8f7734ac504a4b5fbb7d05c01a4ea9b')||(!plan.localCertification&&!launcherBranch&&plan.head!==plan.contractCommit)||(plan.localCertification&&plan.head!==plan.contractCommit))fail('CONTRACT_HEAD_MISMATCH');
   if(plan.correctorCommit!==CORRECTOR_COMMIT)fail('CORRECTOR_COMMIT_MISMATCH');
+  if(!plan.localCertification&&(plan.host!==PRODUCTION_TARGET_PIN.host||plan.servername!==PRODUCTION_TARGET_PIN.host||plan.port!==PRODUCTION_TARGET_PIN.port||plan.database!==PRODUCTION_TARGET_PIN.database||plan.projectRefSha256!==PRODUCTION_TARGET_PIN.project_ref_sha256||PRODUCTION_TARGET_PIN.protocol!=='postgresql'||PRODUCTION_TARGET_PIN.tls.min_version!=='TLSv1.3'||PRODUCTION_TARGET_PIN.tls.max_version!=='TLSv1.3'||PRODUCTION_TARGET_PIN.tls.reject_unauthorized!==true||PRODUCTION_TARGET_PIN.tls.ca_sha256!==PRODUCTION_CA_SHA256))fail('TARGET_PIN_MISMATCH');
   if(!isSha(plan.dumpSha256)||plan.dumpSha256!==DUMP_SHA256||!isSha(plan.historicalPdfSha256)||plan.historicalPdfSha256!==HISTORICAL_PDF_SHA256||plan.reportSha256!==CERTIFIED_REPORT_SHA256||plan.expectedReportSha256!==CERTIFIED_REPORT_SHA256||plan.entryReportSha256!==ENTRY_READONLY_REPORT_SHA256||plan.expectedEntryReportSha256!==ENTRY_READONLY_REPORT_SHA256||!isSha(plan.caSha256)||plan.caSha256!==plan.expectedCaSha256||(!plan.localCertification&&plan.expectedCaSha256!==PRODUCTION_CA_SHA256))fail('OFFLINE_HASH_PIN_MISMATCH');
   if(!plan.servername||plan.servername!==plan.expectedServername||!Number.isInteger(plan.port)||plan.port<1024||plan.port>65535||[5432,5433].includes(plan.port)||!plan.database)fail('DESTINATION_REJECTED');
   if(plan.localCertification){if(!['127.0.0.1','::1','localhost'].includes(plan.host))fail('LOCAL_DESTINATION_REJECTED');}
@@ -147,13 +224,19 @@ export async function validateOfflinePlan(plan:OfflinePlan):Promise<Readonly<{ro
     if((currentBranch!==plan.branch&&!localBranchAlias)||execFileSync('git',['rev-parse','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim()!==plan.head)fail('GIT_STATE_MISMATCH');
     if(launcherBranch)execFileSync('git',['merge-base','--is-ancestor',plan.contractCommit,plan.head],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
     execFileSync('git',['merge-base','--is-ancestor',CORRECTOR_COMMIT,plan.head],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
-    if(!plan.localCertification){execFileSync('git',['diff','--quiet','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});execFileSync('git',['diff','--cached','--quiet','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});}
+    if(!plan.localCertification){execFileSync('git',['ls-files','--error-unmatch','--','src/scripts/nomina-202-production-target-pin.json'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});execFileSync('git',['diff','--quiet','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});execFileSync('git',['diff','--cached','--quiet','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});}
   }catch{fail('OFFLINE_GIT_VALIDATION_FAILED');}
   if(!plan.localCertification){assertPostgres17ToolVersions(Object.fromEntries((['psql','pg_dump','pg_restore'] as const).map(name=>[name,execFileSync(path.join(POSTGRES17_BIN,`${name}.exe`),['--version'],{encoding:'utf8',windowsHide:true}).trim()])) as Record<'psql'|'pg_dump'|'pg_restore',string>);await validateUntrackedArtifactInventory(plan.workspaceRoot);}
+  const targetPinPath=canonicalizeWindowsPath(path.win32.join(plan.workspaceRoot,'src/scripts/nomina-202-production-target-pin.json'));
+  const pinStat=await lstat(targetPinPath);if(!pinStat.isFile()||pinStat.isSymbolicLink()||(pinStat as {isReparsePoint?:()=>boolean}).isReparsePoint?.()||!sameCanonicalWindowsPath(await realpath(targetPinPath),targetPinPath))fail('TARGET_PIN_FILE_TYPE_OR_ALIAS');
+  const targetPinBytes=await readFile(targetPinPath);if(hash(targetPinBytes)!==PRODUCTION_TARGET_PIN_SHA256){targetPinBytes.fill(0);fail('TARGET_PIN_FILE_HASH_MISMATCH');}targetPinBytes.fill(0);
+  if(!plan.localCertification)await verifyProductionTargetPinEvidence(plan.workspaceRoot);
+  const pathBytes=[plan.dumpPath,plan.historicalPdfPath,plan.reportPath,plan.entryReportPath,plan.caPath];
+  for(const artifactPath of pathBytes){const st=await lstat(artifactPath);if(!st.isFile()||st.isSymbolicLink()||(st as {isReparsePoint?:()=>boolean}).isReparsePoint?.()||!sameCanonicalWindowsPath(await realpath(artifactPath),artifactPath))fail('ARTIFACT_PATH_TYPE_OR_ALIAS');}
   const [root,dumpBytes,pdfBytes,reportBytes,entryReportBytes,caPem]=await Promise.all([
     realpath(plan.workspaceRoot),readFile(plan.dumpPath),readFile(plan.historicalPdfPath),readFile(plan.reportPath),readFile(plan.entryReportPath),readFile(plan.caPath),
   ]);
-  const reportsRoot=path.join(root,'reports');for(const reportPath of [plan.reportPath,plan.entryReportPath]){const reportReal=await realpath(reportPath),reportRelative=path.relative(reportsRoot,reportReal);if(path.isAbsolute(reportRelative)||reportRelative.startsWith('..'))fail('EVIDENCE_PATH_OUTSIDE_WORKSPACE');}
+  const reportsRoot=canonicalizeWindowsPath(path.win32.join(root,'reports'));for(const reportPath of [plan.reportPath,plan.entryReportPath]){const reportReal=await realpath(reportPath),reportRelative=path.win32.relative(reportsRoot,canonicalizeWindowsPath(reportReal));if(path.win32.isAbsolute(reportRelative)||reportRelative==='..'||reportRelative.startsWith(`..${path.win32.sep}`))fail('EVIDENCE_PATH_OUTSIDE_WORKSPACE');}
   if(hash(dumpBytes)!==plan.dumpSha256||hash(pdfBytes)!==plan.historicalPdfSha256||hash(reportBytes)!==plan.reportSha256||hash(entryReportBytes)!==plan.entryReportSha256||hash(caPem)!==plan.caSha256)fail('OFFLINE_ARTIFACT_HASH_MISMATCH');
   assertCertificationReports(reportBytes,entryReportBytes,plan.workspaceRoot);
   if(pdfBytes.length!==3051)fail('HISTORICAL_PDF_SIZE_MISMATCH');

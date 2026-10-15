@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "host": "aws-1-us-east-1.pooler.supabase.com",
+  "port": 6543,
+  "database": "postgres",
+  "project_ref_sha256": "2d48091f83ceb92569779c6416a3d03ec5631ee112a6ee75e9a7d065fb67078c",
+  "protocol": "postgresql",
+  "tls": {
+    "min_version": "TLSv1.3",
+    "max_version": "TLSv1.3",
+    "reject_unauthorized": true,
+    "ca_sha256": "700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7"
+  },
+  "provenance": {
+    "host": [
+      {
+        "path": "reports/nomina-operacion-real-audit-2026-08-31.json",
+        "sha256": "c03245ea7ea3130d8f49edcd007b9dab0baa8e30534355b2f67af25cac1aa3ea",
+        "field": "environment.database_host"
+      },
+      {
+        "path": "reports/territorial-contract-24-pre-migration.json",
+        "sha256": "7a1ab4f084f3cda412d955d8566d24dafa0f24212096d36d121e980a5fd1dec2",
+        "field": "metadata.host hostname"
+      }
+    ],
+    "port": {
+      "path": "reports/territorial-contract-24-pre-migration.json",
+      "sha256": "7a1ab4f084f3cda412d955d8566d24dafa0f24212096d36d121e980a5fd1dec2",
+      "field": "metadata.host port"
+    },
+    "database": {
+      "path": "reports/territorial-contract-24-pre-migration.json",
+      "sha256": "7a1ab4f084f3cda412d955d8566d24dafa0f24212096d36d121e980a5fd1dec2",
+      "field": "metadata.database and metadata.identity.database"
+    },
+    "project_ref_sha256": {
+      "path": "reports/nomina-operacion-real-audit-2026-08-31.json",
+      "sha256": "c03245ea7ea3130d8f49edcd007b9dab0baa8e30534355b2f67af25cac1aa3ea",
+      "field": "environment.supabase_url hostname label SHA-256; raw label intentionally omitted"
+    },
+    "protocol": {
+      "path": "reports/territorial-contract-24-pre-migration.json",
+      "sha256": "7a1ab4f084f3cda412d955d8566d24dafa0f24212096d36d121e980a5fd1dec2",
+      "field": "PostgreSQL identity snapshot; enforced as postgresql by launcher policy"
+    },
+    "tls": {
+      "path": "src/scripts/nomina-turno-202-readonly-runner.ts",
+      "commit": "6ea616b5442c0654e2f3cc88ddf28dea381c4370",
+      "sha256": "3841b8060b423b37e3d0ea645e700e59d8932829b37c6e04f383cf9533646738",
+      "field": "runner TLS 1.3, fixed CA, hostname validation and rejectUnauthorized policy"
+    }
+  }
+}

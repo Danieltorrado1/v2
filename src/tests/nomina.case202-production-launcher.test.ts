@@ -7,8 +7,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
-import { ARGUMENT_ORDER, HISTORICAL_PDF_SIZE, PRODUCTION_HEALTH_URL, assertPrivateRegularFile, assertServiceRoleCredential, makeEntryEvidence, parseAllowlistedEnvironment, parseLauncherArguments, readHistoricalPdf, validateHealthUrl, validateServiceConfiguration } from '../scripts/nomina-turno-202-production-launcher';
-import { parseHealthPayload, type PendingReceipt } from '../scripts/nomina-turno-202-readonly-runner';
+import { ARGUMENT_ORDER, HISTORICAL_PDF_SIZE, PRODUCTION_HEALTH_URL, assertPrivateRegularFile, assertServiceRoleCredential, assertTargetDetailsMatchPin, assertTargetMatchesPin, makeEntryEvidence, parseAllowlistedEnvironment, parseLauncherArguments, readHistoricalPdf, validateHealthUrl, validateServiceConfiguration } from '../scripts/nomina-turno-202-production-launcher';
+import { canonicalizeWindowsPath, parseHealthPayload, PRODUCTION_CA_SHA256, PRODUCTION_TARGET_PIN, sameCanonicalWindowsPath, type PendingReceipt } from '../scripts/nomina-turno-202-readonly-runner';
 import { buildPendingEntryPhrase, verifyPendingEntryPhrase } from '../scripts/nomina-turno-202-entry-contract';
 
 const hash=(x:Buffer|string)=>createHash('sha256').update(x).digest('hex');
@@ -27,11 +27,34 @@ const validArgs=()=>[
   '--pdf-sha256=cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4','--pdf-size=3051',
   '--untracked-manifest-sha256=9c77ae07a8f4478b6e3a9d92d72f5074816a2888c2a98ef807c2ec19354f11c7',
   '--sync-confirmed=true','--pdf-attestation-confirmed=true','--output-directory=C:/tmp/receipts',
-  '--db-host=aws-0-us-east-1.pooler.supabase.com','--db-port=6543','--db-name=postgres',`--project-ref-sha256=${hash(ref)}`,
 ];
 
+test('Windows artifact paths canonicalize separators and drive case, while ambiguous paths fail closed',()=>{
+  const backslash='C:\\Users\\CORE ULTRA\\Documents\\Empiria Certificates\\root.crt';
+  const slash='C:/Users/CORE ULTRA/Documents/Empiria Certificates/root.crt';
+  const mixed='c:/Users\\CORE ULTRA/Documents/Empiria Certificates\\root.crt';
+  const expected='C:\\Users\\CORE ULTRA\\Documents\\Empiria Certificates\\root.crt';
+  assert.equal(canonicalizeWindowsPath(backslash),expected);
+  assert.equal(canonicalizeWindowsPath(slash),expected);
+  assert.equal(canonicalizeWindowsPath(mixed),expected);
+  assert.equal(canonicalizeWindowsPath(`${expected}\\`),expected);
+  assert.equal(canonicalizeWindowsPath(expected.toLowerCase()).toLowerCase(),expected.toLowerCase());
+  assert.equal(sameCanonicalWindowsPath(slash,backslash),true);
+  for(const bad of ['relative\\file','C:relative.env','\\\\server\\share\\file','\\\\?\\C:\\secret','\\\\.\\C:\\secret','C:\\file:secret','C:\\a\\..\\file','C:\\trailing.','C:\\trailing ','C:\\double\\\\separator','C:\\confusable-\u0430','C:\\nul\0byte'])assert.throws(()=>canonicalizeWindowsPath(bad));
+});
+
+test('launcher argument parser stores canonical paths so slash variants bind the same plan inputs',()=>{
+  const first=validArgs(),second=validArgs();
+  first[0]='--env-file=C:/tmp/nomina 202/.env';first[1]='--ca-file=C:/tmp/nomina 202/root.crt';first[13]='--output-directory=C:/tmp/nomina 202/receipts';
+  second[0]='--env-file=c:\\tmp\\nomina 202\\.env';second[1]='--ca-file=c:\\tmp\\nomina 202\\root.crt';second[13]='--output-directory=c:\\tmp\\nomina 202\\receipts\\';
+  const a=parseLauncherArguments(first),b=parseLauncherArguments(second);
+  for(const k of ['--env-file','--ca-file','--output-directory'] as const)assert.equal(a[k],b[k]);
+  assert.equal(hash(JSON.stringify(a)),hash(JSON.stringify(b)),'separator variants must bind the same canonical launcher plan');
+  assert.equal(a['--env-file'],'C:\\tmp\\nomina 202\\.env');
+});
+
 test('launcher requires the exact ordered argument grammar and certified pins',()=>{
-  assert.equal(ARGUMENT_ORDER.length,18);assert.equal(parseLauncherArguments(validArgs())['--health-url'],PRODUCTION_HEALTH_URL);
+  assert.equal(ARGUMENT_ORDER.length,14);assert.equal(parseLauncherArguments(validArgs())['--health-url'],PRODUCTION_HEALTH_URL);
   for(const bad of [validArgs().slice(1),[...validArgs(), '--extra=x'],validArgs().map((x,i)=>i===0?x.replace('--env-file','--unknown'):x),validArgs().map((x,i)=>i===1?'--env-file=C:/tmp/other.env':x),validArgs().map((x,i)=>i===2?'--health-url=https://evil.invalid/api/health':x),validArgs().map((x,i)=>i===11?'--sync-confirmed=false':x)])assert.throws(()=>parseLauncherArguments(bad));
 });
 
@@ -59,6 +82,25 @@ test('service configuration pins Supabase project ref and validates TLS-compatib
   assert.throws(()=>validateServiceConfiguration(goodEnv({SUPABASE_URL:'https://zzzzzzzzzzzzzzzzzzzz.supabase.co'})),/DATABASE_TARGET_MISMATCH/);
   assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('pooler.supabase.com','evil.example')})),/DATABASE_TARGET_MISMATCH/);
   assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('?sslmode=require','?sslmode=disable')})),/DATABASE_URL_POLICY/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('?sslmode=require','')})),/DATABASE_URL_POLICY/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace('postgresql://','postgres://')})),/DATABASE_URL_POLICY/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:goodEnv().DATABASE_URL.replace(`postgres.${ref}`,'postgres')})),/DATABASE_TARGET_MISMATCH/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:'postgresql://postgres:p%ZZ@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require'})),/DATABASE_URL_POLICY/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:`postgresql://postgres:${encodeURIComponent('pa:ss@word')}@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require`})),/DATABASE_TARGET_MISMATCH/);
+  assert.throws(()=>validateServiceConfiguration(goodEnv({DATABASE_URL:`postgresql://postgres.${ref}:pw@[::1]:6543/postgres?sslmode=require`})),/DATABASE_TARGET_MISMATCH/);
+});
+
+test('independent destination pin accepts only exact host, port, database, project-ref hash, protocol and TLS policy',()=>{
+  const fixed={host:PRODUCTION_TARGET_PIN.host,port:PRODUCTION_TARGET_PIN.port,database:PRODUCTION_TARGET_PIN.database,projectRefSha256:PRODUCTION_TARGET_PIN.project_ref_sha256};
+  assert.equal(assertTargetDetailsMatchPin(fixed),true);
+  for(const patch of [{host:'evil.example'},{port:5432},{database:'other'},{projectRefSha256:hash('other-ref')}])assert.throws(()=>assertTargetDetailsMatchPin({...fixed,...patch}),/DATABASE_TARGET_PIN_MISMATCH/);
+  const target=validateServiceConfiguration(goodEnv());
+  const syntheticPin={...PRODUCTION_TARGET_PIN,host:target.databaseHost,port:target.databasePort,database:target.databaseName,project_ref_sha256:hash(ref),protocol:'postgresql',tls:{...PRODUCTION_TARGET_PIN.tls,ca_sha256:PRODUCTION_CA_SHA256}};
+  assert.equal(assertTargetMatchesPin(target,syntheticPin),true);
+  for(const patch of [{host:'evil.example'},{port:5432},{database:'other'},{project_ref_sha256:hash('other-ref')},{protocol:'postgres'},{tls:{...syntheticPin.tls,min_version:'TLSv1.2'}},{tls:{...syntheticPin.tls,reject_unauthorized:false}},{tls:{...syntheticPin.tls,ca_sha256:'0'.repeat(64)}}])assert.throws(()=>assertTargetMatchesPin(target,{...syntheticPin,...patch} as typeof syntheticPin),/DATABASE_TARGET_PIN_MISMATCH/);
+  const direct=validateServiceConfiguration(goodEnv({DATABASE_URL:`postgresql://postgres:${encodeURIComponent('p:a@ss')}@db.${ref}.supabase.co:5432/postgres?sslmode=verify-full`}));
+  assert.equal(direct.databaseHost,`db.${ref}.supabase.co`);
+  assert.throws(()=>assertTargetMatchesPin(direct,syntheticPin),/DATABASE_TARGET_PIN_MISMATCH/);
 });
 
 test('service-role parser never places synthetic token contents in errors',()=>{
