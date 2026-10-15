@@ -1,0 +1,27 @@
+﻿{
+    "contract":  "phase48-scoped-v6",
+    "candidate_count":  740,
+    "previous_pass":  4,
+    "resumed_pass":  45,
+    "total_pass":  49,
+    "fail":  0,
+    "production_connections":  0,
+    "production_writes":  0,
+    "forbidden_attempts":  0,
+    "authorization":  "REVOKED",
+    "typecheck":  "PASS",
+    "backend_build":  "PASS",
+    "cluster":  "STOPPED_PRESERVED",
+    "proofs":  [
+                   {
+                       "file":  "prior-interrupted.tap",
+                       "sha256":  "533b28d273b9eaf85f97e9de256a1e9698536d9adcdd1fa429977973feec1074",
+                       "bytes":  932
+                   },
+                   {
+                       "file":  "resumed.tap",
+                       "sha256":  "1bff3beb2d8b594fce4c0ef718329798109b64be41256891363bb7b1822c50e0",
+                       "bytes":  9061
+                   }
+               ]
+}

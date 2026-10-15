@@ -1,0 +1,43 @@
+import {randomBytes} from 'node:crypto';
+import {scopedDigest,requireScoped,type ScopedSet} from './phase48-scoped-contract';
+import type {ScopedCapture} from './phase48-scoped-repository';
+export const V6_VERSION='phase48-scoped-v6';
+export const V6_MAX_TTL=900_000;
+export const V6_ASSERTIONS=Object.freeze({atomic_phase48_and_three_corrections:true,confirm_albeny:true,confirm_dary:true,confirm_close1203:true,dary_requires_salary_review:true,dary_category_null:true,preserve_periods_4_6:true,preserve_archived_versions:true,preserve_economic_salary_data:true,strict_audits:true,detect_drift:true,total_rollback:true,idempotent:true,no_payroll_recalculation:true,no_external_sync:true});
+export const V6_DIGESTS=['candidates_digest','phase48_candidates_digest','critical_schema_digest','source_digest','protected_tables_digest','write_set_before_digest','periods_4_6_digest','albeny_before_digest','dary_before_digest','assignment_1203_before_digest','archived_versions_digest','event_triggers_digest','critical_definitions_digest','critical_sequences_digest','manifest_digest','salary_decision_digest','salary_review_assignments_digest'] as const;
+export const V6_HASHES=['backup_sha256','manifest_sha256','supplement_sha256','final_report_sha256','preflight_receipt_sha256','certified_preflight_sha256','blocked_request_sha256'] as const;
+export const V6_ORDER=['contract_version','empresa','contrato','actor','candidate_count','readonly_runner_commit','mutator_commit',...V6_HASHES,...V6_DIGESTS,'run_id','nonce','issued_at','expires_at',...Object.keys(V6_ASSERTIONS)] as const;
+export type V6Fields=Record<string,string|number|boolean>;
+const exactKeys=(v:object,order:readonly string[])=>Object.keys(v).length===order.length&&Object.keys(v).every((k,i)=>k===order[i]);
+export function validateV6Fields(f:V6Fields,now=Date.now(),live=true){
+ requireScoped(exactKeys(f,V6_ORDER),'V6_CANONICAL_FIELDS_REQUIRED');
+ requireScoped(f.contract_version===V6_VERSION&&f.empresa===15&&f.contrato===24&&f.actor===12,'V6_SCOPE_REQUIRED');
+ requireScoped(Number.isSafeInteger(f.candidate_count)&&Number(f.candidate_count)>0&&f.candidate_count!==730,'V6_DYNAMIC_COUNT_REQUIRED');
+ for(const k of [...V6_HASHES,...V6_DIGESTS])requireScoped(typeof f[k]==='string'&&/^[a-f0-9]{64}$/.test(f[k] as string),'V6_HASH_OR_DIGEST_INVALID:'+k);
+ for(const k of ['readonly_runner_commit','mutator_commit'])requireScoped(typeof f[k]==='string'&&/^[a-f0-9]{40}$/.test(f[k] as string),'V6_COMMIT_INVALID');
+ requireScoped(typeof f.run_id==='string'&&/^phase48-[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(f.run_id),'V6_RUN_ID_INVALID');
+ requireScoped(typeof f.nonce==='string'&&/^[a-f0-9]{64}$/.test(f.nonce),'V6_NONCE_INVALID');
+ const issued=Date.parse(String(f.issued_at)),expires=Date.parse(String(f.expires_at));
+ requireScoped(Number.isFinite(issued)&&Number.isFinite(expires)&&new Date(issued).toISOString()===f.issued_at&&new Date(expires).toISOString()===f.expires_at&&expires>issued&&expires-issued<=V6_MAX_TTL,'V6_EXPIRATION_INVALID');
+ if(live)requireScoped(now>=issued&&now<expires,'V6_AUTHORIZATION_EXPIRED');
+ for(const [k,v] of Object.entries(V6_ASSERTIONS))requireScoped(f[k]===v,'V6_ASSERTION_REQUIRED:'+k);
+}
+export function buildV6Phrase(fields:V6Fields,now=Date.now()){validateV6Fields(fields,now);return 'AUTHORIZE_PHASE48_SCOPED_V6|'+V6_ORDER.map(k=>k+'='+fields[k]).join('|');}
+export function parseV6Phrase(raw:string,now=Date.now(),live=true):V6Fields{
+ requireScoped(typeof raw==='string'&&!/\s/.test(raw),'V6_EXACT_PHRASE_REQUIRED');const parts=raw.split('|');requireScoped(parts.shift()==='AUTHORIZE_PHASE48_SCOPED_V6'&&parts.length===V6_ORDER.length,'V6_LEGACY_PHRASE_REJECTED');const f:V6Fields={};
+ for(let i=0;i<V6_ORDER.length;i++){const k=V6_ORDER[i]!,part=parts[i]!;requireScoped(part.startsWith(k+'=')&&!part.slice(k.length+1).includes('='),'V6_EXACT_PHRASE_REQUIRED');const v=part.slice(k.length+1);f[k]=['empresa','contrato','actor','candidate_count'].includes(k)?Number(v):k in V6_ASSERTIONS?v==='true'?true:v==='false'?false:v:v;}
+ validateV6Fields(f,now,live);requireScoped(raw==='AUTHORIZE_PHASE48_SCOPED_V6|'+V6_ORDER.map(k=>k+'='+f[k]).join('|'),'V6_NON_CANONICAL_PHRASE');return f;
+}
+export function v6Digests(c:ScopedCapture){return {candidates_digest:c.set.candidate_ids_digest,phase48_candidates_digest:c.set.phase48_candidates_digest,critical_schema_digest:c.set.critical_schema_digest,source_digest:c.set.source_digest,protected_tables_digest:scopedDigest(c.data.filter(x=>!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(x.table))),write_set_before_digest:c.set.write_set_before_digest,periods_4_6_digest:c.set.periods_4_6_digest,albeny_before_digest:c.set.albeny_digest,dary_before_digest:c.set.dary_digest,assignment_1203_before_digest:c.operational.close.before_digest,archived_versions_digest:scopedDigest(c.operational.archives),event_triggers_digest:scopedDigest(c.inventory.managed_events),critical_definitions_digest:c.set.critical_definition_digest,critical_sequences_digest:c.set.critical_sequences_digest,manifest_digest:c.set.manifest_digest,salary_decision_digest:c.set.salary_decision_digest,salary_review_assignments_digest:scopedDigest(c.salary_preview)};}
+export function compareV6Capture(f:V6Fields,c:ScopedCapture){requireScoped(f.candidate_count===c.set.candidate_count,'V6_CANDIDATE_COUNT_DRIFT');const d=v6Digests(c);for(const k of V6_DIGESTS)requireScoped(f[k]===d[k],'V6_DIGEST_DRIFT:'+k);}
+export interface V6Preflight {run_id:string;kind:'PHASE48_V6_PREFLIGHT';status:'VERIFIED';issued_at:string;expires_at:string;release:{readonly_runner_commit:string;mutator_commit:string};evidence:Record<string,string>;set:ScopedSet;digests:ReturnType<typeof v6Digests>;manifest:ScopedCapture['manifest'];preview:any[];operational_preview:ScopedCapture['operational'];historical_preview:any[];informational:any;connections:any[];flags:V6Flags;authorization:'REVOKED';}
+export interface V6Flags {health200:boolean;success:boolean;databaseOk:boolean;outbox:boolean;sync:boolean;recalc_requested:boolean;recalc_active:boolean;worker_started:boolean;worker_running:boolean;}
+export function v6Flags(f:V6Flags){requireScoped(f.health200===true&&f.success===true&&f.databaseOk===true&&[f.outbox,f.sync,f.recalc_requested,f.recalc_active,f.worker_started,f.worker_running].every(v=>v===false),'V6_FLAGS_UNSAFE');}
+export function pendingV6Request(pre:V6Preflight,receiptSha:string,runId:string,now=Date.now(),ttl=120000){
+ requireScoped(pre.status==='VERIFIED'&&pre.authorization==='REVOKED'&&now<Date.parse(pre.expires_at)&&now>=Date.parse(pre.issued_at),'V6_FRESH_PREFLIGHT_REQUIRED');v6Flags(pre.flags);requireScoped(ttl>0&&ttl<=V6_MAX_TTL,'V6_EXPIRATION_INVALID');
+ const values:V6Fields={contract_version:V6_VERSION,empresa:15,contrato:24,actor:12,candidate_count:pre.set.candidate_count,readonly_runner_commit:pre.release.readonly_runner_commit,mutator_commit:pre.release.mutator_commit,...pre.evidence,preflight_receipt_sha256:receiptSha,...pre.digests,run_id:runId,nonce:randomBytes(32).toString('hex'),issued_at:new Date(now).toISOString(),expires_at:new Date(Math.min(now+ttl,Date.parse(pre.expires_at))).toISOString(),...V6_ASSERTIONS};
+ const fields=Object.fromEntries(V6_ORDER.map(k=>[k,values[k]!])) as V6Fields;const phrase=buildV6Phrase(fields,now);
+ return {run_id:runId,status:'PENDIENTE_DE_AUTORIZACION' as const,authorization:'REVOKED' as const,fields,phrase};
+}
+export const V6_APPROVAL_ORDER=['authorization','phrase','preflight_path','preflight_sha256','definitions_window_confirmed','sync_manual_confirmation'] as const;
+export function parseV6Approval(raw:string,now=Date.now(),live=true){let a:any;try{a=JSON.parse(raw);}catch{throw Error('V6_APPROVAL_JSON_INVALID');}requireScoped(a&&exactKeys(a,V6_APPROVAL_ORDER)&&JSON.stringify(a)===raw,'V6_EXACT_APPROVAL_REQUIRED');requireScoped(a.authorization==='ACTIVE'&&a.definitions_window_confirmed===true&&a.sync_manual_confirmation===false,'V6_ACTIVE_APPROVAL_REQUIRED');const f=parseV6Phrase(a.phrase,now,live);requireScoped(a.preflight_sha256===f.preflight_receipt_sha256&&typeof a.preflight_path==='string','V6_PREFLIGHT_BINDING_INVALID');return {approval:a,fields:f};}

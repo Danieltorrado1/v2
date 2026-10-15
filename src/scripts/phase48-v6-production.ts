@@ -1,0 +1,12 @@
+// Separate V6 CLI. No dotenv, automatic approval, seed, or legacy mutation dispatcher.
+import {readFileSync} from 'node:fs';
+import {preflightV6,publishV6Preflight,mutateV6} from '../modules/cobertura/phase48-v6-entry';
+import {productionV6Host} from '../modules/cobertura/phase48-v6-production-host';
+import {v6PrivatePath} from '../modules/cobertura/phase48-v6-evidence';
+import {requireScoped} from '../modules/cobertura/phase48-scoped-contract';
+export function parseV6Cli(args:string[]){const allowed=['mode','backup-directory','certified-preflight','blocked-request','credential-path','ca-path','ca-sha256','receipt-directory','key-path','approval-file','sync-manually-confirmed'];const values:Record<string,string>={};for(const a of args){const m=/^--([a-z-]+)=(.+)$/.exec(a);requireScoped(m&&allowed.includes(m[1]!)&&!(m[1]! in values),'V6_ARGUMENT_INVALID');values[m[1]!]=m[2]!;}requireScoped(['PreviewOnly','PreflightOnly','Mutate'].includes(values.mode??'PreviewOnly'),'V6_MODE_INVALID');if(values.mode==='Mutate')requireScoped(process.env.PHASE48_V6_ENABLE_MUTATION==='true'&&values['approval-file']&&values['key-path'],'V6_MUTATION_DISABLED');requireScoped(values['sync-manually-confirmed']==='false','V6_SYNC_CONFIRMATION_REQUIRED');for(const k of allowed.filter(k=>!['mode','key-path','approval-file','sync-manually-confirmed'].includes(k)))requireScoped(values[k],'V6_ARGUMENT_REQUIRED:'+k);return values;}
+export async function runV6Cli(args:string[]){const v=parseV6Cli(args);let approval:string|undefined;if(v.mode==='Mutate'){v6PrivatePath(v['approval-file']!);approval=readFileSync(v['approval-file']!,'utf8');}
+ const host=productionV6Host({evidence:{backupDirectory:v['backup-directory']!,certifiedPreflight:v['certified-preflight']!,blockedRequest:v['blocked-request']!},credentialPath:v['credential-path']!,caPath:v['ca-path']!,caSha256:v['ca-sha256']!,directory:v['receipt-directory']!,keyPath:v['key-path'],syncManuallyConfirmed:false});
+ if(v.mode==='Mutate')return mutateV6(host,approval!);const p=await preflightV6(host);const publication=publishV6Preflight(host,p);return {status:'VERIFIED_READ_ONLY',publication,authorization:'REVOKED',candidate_count:p.set.candidate_count,digests:p.digests};
+}
+if(require.main===module)runV6Cli(process.argv.slice(2)).then(r=>console.log(JSON.stringify(r))).catch(e=>{console.error(JSON.stringify({status:'STOPPED',reason:/^[A-Z0-9_:.-]+$/.test(e.message)?e.message:'V6_CONTROL_FAILED',committed:e.committed===true,authorization:'REVOKED'}));process.exitCode=1;});

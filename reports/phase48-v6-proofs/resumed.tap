@@ -1,0 +1,282 @@
+TAP version 13
+# Subtest: V6 complete data/schema/sequence rollback at AFTER_DARY
+ok 1 - V6 complete data/schema/sequence rollback at AFTER_DARY
+  ---
+  duration_ms: 2307.5455
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at BEFORE_CLOSE1203
+ok 2 - V6 complete data/schema/sequence rollback at BEFORE_CLOSE1203
+  ---
+  duration_ms: 2067.0547
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AFTER_CLOSE1203
+ok 3 - V6 complete data/schema/sequence rollback at AFTER_CLOSE1203
+  ---
+  duration_ms: 1780.3555
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AUDIT_PHASE48
+ok 4 - V6 complete data/schema/sequence rollback at AUDIT_PHASE48
+  ---
+  duration_ms: 1863.7901
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AUDIT_ALBENY
+ok 5 - V6 complete data/schema/sequence rollback at AUDIT_ALBENY
+  ---
+  duration_ms: 2151.4473
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AUDIT_DARY
+ok 6 - V6 complete data/schema/sequence rollback at AUDIT_DARY
+  ---
+  duration_ms: 2347.4694
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AUDIT_CLOSE1203
+ok 7 - V6 complete data/schema/sequence rollback at AUDIT_CLOSE1203
+  ---
+  duration_ms: 2406.028
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at BEFORE_COMMIT
+ok 8 - V6 complete data/schema/sequence rollback at BEFORE_COMMIT
+  ---
+  duration_ms: 2264.7908
+  type: 'test'
+  ...
+# Subtest: V6 real audit constraint failure rolls back whole operation
+ok 9 - V6 real audit constraint failure rolls back whole operation
+  ---
+  duration_ms: 2376.0489
+  type: 'test'
+  ...
+# Subtest: V6 rejects current population 730 against approved 740
+ok 10 - V6 rejects current population 730 against approved 740
+  ---
+  duration_ms: 1748.3002
+  type: 'test'
+  ...
+# Subtest: V6 rejects current population 739 against approved 740
+ok 11 - V6 rejects current population 739 against approved 740
+  ---
+  duration_ms: 1739.7089
+  type: 'test'
+  ...
+# Subtest: V6 rejects current population 741 against approved 740
+ok 12 - V6 rejects current population 741 against approved 740
+  ---
+  duration_ms: 1948.2248
+  type: 'test'
+  ...
+# Subtest: V6 rejects same count different candidate identity
+ok 13 - V6 rejects same count different candidate identity
+  ---
+  duration_ms: 1247.1042
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong candidates_digest
+ok 14 - V6 exact binding rejects wrong candidates_digest
+  ---
+  duration_ms: 1119.8797
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong phase48_candidates_digest
+ok 15 - V6 exact binding rejects wrong phase48_candidates_digest
+  ---
+  duration_ms: 1141.5504
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong critical_schema_digest
+ok 16 - V6 exact binding rejects wrong critical_schema_digest
+  ---
+  duration_ms: 1084.0923
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong source_digest
+ok 17 - V6 exact binding rejects wrong source_digest
+  ---
+  duration_ms: 966.5289
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong protected_tables_digest
+ok 18 - V6 exact binding rejects wrong protected_tables_digest
+  ---
+  duration_ms: 1183.0135
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong write_set_before_digest
+ok 19 - V6 exact binding rejects wrong write_set_before_digest
+  ---
+  duration_ms: 1116.6807
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong periods_4_6_digest
+ok 20 - V6 exact binding rejects wrong periods_4_6_digest
+  ---
+  duration_ms: 1190.0051
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong albeny_before_digest
+ok 21 - V6 exact binding rejects wrong albeny_before_digest
+  ---
+  duration_ms: 1133.8385
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong dary_before_digest
+ok 22 - V6 exact binding rejects wrong dary_before_digest
+  ---
+  duration_ms: 1124.3638
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong assignment_1203_before_digest
+ok 23 - V6 exact binding rejects wrong assignment_1203_before_digest
+  ---
+  duration_ms: 1005.1464
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong archived_versions_digest
+ok 24 - V6 exact binding rejects wrong archived_versions_digest
+  ---
+  duration_ms: 1365.2341
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong event_triggers_digest
+ok 25 - V6 exact binding rejects wrong event_triggers_digest
+  ---
+  duration_ms: 1135.2615
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong critical_definitions_digest
+ok 26 - V6 exact binding rejects wrong critical_definitions_digest
+  ---
+  duration_ms: 893.8263
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong critical_sequences_digest
+ok 27 - V6 exact binding rejects wrong critical_sequences_digest
+  ---
+  duration_ms: 1016.6392
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong manifest_digest
+ok 28 - V6 exact binding rejects wrong manifest_digest
+  ---
+  duration_ms: 899.8552
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong salary_decision_digest
+ok 29 - V6 exact binding rejects wrong salary_decision_digest
+  ---
+  duration_ms: 1153.4644
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong salary_review_assignments_digest
+ok 30 - V6 exact binding rejects wrong salary_review_assignments_digest
+  ---
+  duration_ms: 1124.1288
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong backup_sha256
+ok 31 - V6 exact binding rejects wrong backup_sha256
+  ---
+  duration_ms: 1064.4858
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong manifest_sha256
+ok 32 - V6 exact binding rejects wrong manifest_sha256
+  ---
+  duration_ms: 938.7598
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong supplement_sha256
+ok 33 - V6 exact binding rejects wrong supplement_sha256
+  ---
+  duration_ms: 1021.3419
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong final_report_sha256
+ok 34 - V6 exact binding rejects wrong final_report_sha256
+  ---
+  duration_ms: 1126.1944
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong preflight_receipt_sha256
+ok 35 - V6 exact binding rejects wrong preflight_receipt_sha256
+  ---
+  duration_ms: 1138.6945
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong certified_preflight_sha256
+ok 36 - V6 exact binding rejects wrong certified_preflight_sha256
+  ---
+  duration_ms: 1039.1759
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong blocked_request_sha256
+ok 37 - V6 exact binding rejects wrong blocked_request_sha256
+  ---
+  duration_ms: 1045.858
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong readonly_runner_commit
+ok 38 - V6 exact binding rejects wrong readonly_runner_commit
+  ---
+  duration_ms: 903.7598
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong mutator_commit
+ok 39 - V6 exact binding rejects wrong mutator_commit
+  ---
+  duration_ms: 930.1434
+  type: 'test'
+  ...
+# Subtest: V6 rejects expired/revoked/reused nonce and never accepts old phrase
+ok 40 - V6 rejects expired/revoked/reused nonce and never accepts old phrase
+  ---
+  duration_ms: 3938.9222
+  type: 'test'
+  ...
+# Subtest: V6 detects concurrent source change and excludes ordinary writers under locks
+ok 41 - V6 detects concurrent source change and excludes ordinary writers under locks
+  ---
+  duration_ms: 2960.6043
+  type: 'test'
+  ...
+# Subtest: V6 atomic publication never replaces an existing receipt; commit recovery stays idempotent
+ok 42 - V6 atomic publication never replaces an existing receipt; commit recovery stays idempotent
+  ---
+  duration_ms: 2098.0475
+  type: 'test'
+  ...
+# Subtest: V6 parser is canonical, no inferred salary flags, <=15m, and no mutation without explicit gate
+ok 43 - V6 parser is canonical, no inferred salary flags, <=15m, and no mutation without explicit gate
+  ---
+  duration_ms: 741.5655
+  type: 'test'
+  ...
+# Subtest: V6 flags unsafe and signed preparation tampering block writes
+ok 44 - V6 flags unsafe and signed preparation tampering block writes
+  ---
+  duration_ms: 2749.7904
+  type: 'test'
+  ...
+# Subtest: V6 source engines leave legacy parser, legacy entry and original local guard unchanged
+ok 45 - V6 source engines leave legacy parser, legacy entry and original local guard unchanged
+  ---
+  duration_ms: 1.522
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":301}
+1..45
+# tests 45
+# suites 0
+# pass 45
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 66818.2545
+{"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":0}
