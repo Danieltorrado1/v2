@@ -19,7 +19,7 @@ export function verifyV6Evidence(p:V6EvidencePaths){
 }
 const normalize=(file:string,value:string)=>value.replaceAll('\r\n','\n').replace(file.endsWith('phase48-v6-evidence.ts')?/export const V6_MUTATOR_COMMIT='[^']+';/:/$^/g,"export const V6_MUTATOR_COMMIT='<PIN>';" );
 export function v6Release(){
- const git=(args:string[])=>execFileSync('git',args,{encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+ const git=(args:string[])=>{const output=execFileSync('git',args,{encoding:'utf8',stdio:['ignore','pipe','pipe']});return args[0]==='show'?output:output.trim();};
  requireScoped(git(['branch','--show-current'])==='fix/phase48-v6-production-entry'&&git(['status','--porcelain=v1'])==='','V6_CLEAN_RELEASE_BRANCH_REQUIRED');const head=git(['rev-parse','HEAD']);requireScoped(/^[a-f0-9]{40}$/.test(V6_MUTATOR_COMMIT),'V6_RELEASE_UNPUBLISHED');git(['merge-base','--is-ancestor',V6_BASE,head]);git(['merge-base','--is-ancestor',V6_MUTATOR_COMMIT,head]);
  const files=git(['ls-tree','-r','--name-only',V6_MUTATOR_COMMIT]).split(/\r?\n/).filter(f=>f.startsWith('src/modules/cobertura/phase48-')||f.startsWith('src/scripts/phase48-')||['package.json','package-lock.json','tsconfig.json'].includes(f));
  const hashes:Record<string,string>={};for(const file of files){const live=normalize(file,v6ReadFile(file).toString('utf8')),pinned=normalize(file,git(['show',V6_MUTATOR_COMMIT+':'+file])+'\n');requireScoped(live.trimEnd()===pinned.trimEnd(),'V6_CERTIFIED_CODE_CHANGED:'+file);hashes[file]=v6Hash(live);}
