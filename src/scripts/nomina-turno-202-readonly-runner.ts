@@ -27,6 +27,7 @@ export const SEQUENCE_MAX_ADVANCES=Object.freeze({
   'public.historial_cambios_id_seq':42,
 });
 const OPERATION='NOMINA_202_192_INTEGRAL_LOCAL_V1';
+const OFFLINE_GIT_ENV=Object.freeze(Object.fromEntries(['PATH','SystemRoot','WINDIR','TEMP','TMP','USERPROFILE','ComSpec','PATHEXT'].flatMap(key=>typeof process.env[key]==='string'?[[key,process.env[key]!]]:[])));
 const hash=(value:string|Buffer)=>createHash('sha256').update(value).digest('hex');
 const canonical=(value:unknown):string=>JSON.stringify(value===null||typeof value!=='object'?value:Array.isArray(value)?value.map(x=>JSON.parse(canonical(x))):Object.fromEntries(Object.keys(value as object).sort().map(k=>[k,JSON.parse(canonical((value as Record<string,unknown>)[k]))])));
 const digest=(value:unknown)=>hash(canonical(value));
@@ -72,11 +73,6 @@ export type RunnerDependencies=Readonly<{
 /** Offline validation: must be called before credential providers or sockets. */
 export async function validateOfflinePlan(plan:OfflinePlan):Promise<Readonly<{root:string;caPem:Buffer;dumpBytes:Buffer;pdfBytes:Buffer;reportBytes:Buffer}>>{
   if(!absolute(plan.workspaceRoot)||plan.branch!=='fix/nomina-turno-202-correction-entry-gate'||!isCommit(plan.head)||!isCommit(plan.contractCommit)||plan.head!==plan.contractCommit)fail('CONTRACT_HEAD_MISMATCH');
-  try{
-    if(execFileSync('git',['branch','--show-current'],{cwd:plan.workspaceRoot,encoding:'utf8',windowsHide:true}).trim()!==plan.branch||execFileSync('git',['rev-parse','HEAD'],{cwd:plan.workspaceRoot,encoding:'utf8',windowsHide:true}).trim()!==plan.head)fail('GIT_STATE_MISMATCH');
-    execFileSync('git',['merge-base','--is-ancestor',CORRECTOR_COMMIT,plan.head],{cwd:plan.workspaceRoot,windowsHide:true});
-    if(!plan.localCertification&&execFileSync('git',['status','--porcelain'],{cwd:plan.workspaceRoot,encoding:'utf8',windowsHide:true}).trim())fail('WORKTREE_NOT_CLEAN');
-  }catch{fail('OFFLINE_GIT_VALIDATION_FAILED');}
   if(plan.correctorCommit!==CORRECTOR_COMMIT)fail('CORRECTOR_COMMIT_MISMATCH');
   if(!isSha(plan.dumpSha256)||plan.dumpSha256!==DUMP_SHA256||!isSha(plan.historicalPdfSha256)||plan.historicalPdfSha256!==HISTORICAL_PDF_SHA256||!isSha(plan.reportSha256)||plan.reportSha256!==plan.expectedReportSha256||!isSha(plan.caSha256)||plan.caSha256!==plan.expectedCaSha256||(!plan.localCertification&&plan.expectedCaSha256!==PRODUCTION_CA_SHA256))fail('OFFLINE_HASH_PIN_MISMATCH');
   if(!plan.servername||plan.servername!==plan.expectedServername||!Number.isInteger(plan.port)||plan.port<1024||plan.port>65535||[5432,5433].includes(plan.port)||!plan.database)fail('DESTINATION_REJECTED');
@@ -85,6 +81,11 @@ export async function validateOfflinePlan(plan:OfflinePlan):Promise<Readonly<{ro
   const health=(()=>{try{return new URL(plan.healthUrl);}catch{return fail('HEALTH_DESTINATION_INVALID');}})();
   if(health.hostname!==plan.healthHostname||health.username||health.password||health.search||health.hash||(!plan.localCertification&&health.protocol!=='https:')||(plan.localCertification&&!['127.0.0.1','::1','localhost'].includes(health.hostname)))fail('HEALTH_DESTINATION_REJECTED');
   for(const p of [plan.dumpPath,plan.historicalPdfPath,plan.reportPath,plan.caPath])if(!absolute(p))fail('ARTIFACT_PATH_NOT_ABSOLUTE');
+  try{
+    if(execFileSync('git',['branch','--show-current'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim()!==plan.branch||execFileSync('git',['rev-parse','HEAD'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim()!==plan.head)fail('GIT_STATE_MISMATCH');
+    execFileSync('git',['merge-base','--is-ancestor',CORRECTOR_COMMIT,plan.head],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,windowsHide:true});
+    if(!plan.localCertification&&execFileSync('git',['status','--porcelain'],{cwd:plan.workspaceRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).trim())fail('WORKTREE_NOT_CLEAN');
+  }catch{fail('OFFLINE_GIT_VALIDATION_FAILED');}
   const [root,dumpBytes,pdfBytes,reportBytes,caPem]=await Promise.all([
     realpath(plan.workspaceRoot),readFile(plan.dumpPath),readFile(plan.historicalPdfPath),readFile(plan.reportPath),readFile(plan.caPath),
   ]);
