@@ -1,11 +1,12 @@
 // Offline only. Run under phase48-atomic-local-guard.cjs; no transport or credential host.
 require('tsx/cjs');
+const {sha256HexEqual}=require('../modules/cobertura/phase48-sha256.ts');
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process'),Module=require('node:module'),ts=require('typescript');
 const out='reports/phase48-v6-execution-window';
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const need=(x,c)=>{if(!x)throw Error(c);};
 const manifest=JSON.parse(fs.readFileSync(path.join(out,'preserved-evidence.json'),'utf8'));
-for(const f of manifest.files){const b=fs.readFileSync(f.path);need(b.length===f.bytes&&hash(b)===f.sha256,'PRESERVATION_CHANGED');}
+for(const f of manifest.files){const b=fs.readFileSync(f.path);need(b.length===f.bytes&&sha256HexEqual(hash(b),f.sha256),'PRESERVATION_CHANGED');}
 const previous=JSON.parse(fs.readFileSync(path.join(path.dirname(manifest.files[0].path),'phase48-d4cab040-3bdd-467b-a683-e03621fba6a3.receipt.json'),'utf8'));
 const source=cp.execFileSync('git',['show','6f0e6930dfcb8752e7c9cdbea9360a57f2d4c769:src/modules/cobertura/phase48-v6-contract.ts'],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
 const filename=path.resolve('src/modules/cobertura/archived-v6-parser-offline.cjs');

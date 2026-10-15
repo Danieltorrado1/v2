@@ -1,4 +1,6 @@
 // Fixed isolated loopback cluster. Never loads .env or accepts connection URLs.
+require('tsx/cjs');
+const {sha256HexEqual}=require('../modules/cobertura/phase48-sha256.ts');
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 const {spawnSync}=require('node:child_process');
 const {Client}=require('pg');
@@ -155,7 +157,7 @@ async function certify(db){
  console.log(JSON.stringify({status:report.status,checks:report.checks.length,protected_tables:report.protected_table_count,phase48:report.phase48,historical_first:historyFirst.status,historical_second:historySecond.status,production_writes:0}));
 }
 async function main(){
- check(hash(fs.readFileSync(path.join(backup,'full.dump')))===backupHash,'BACKUP_HASH_MISMATCH');
+ check(sha256HexEqual(hash(fs.readFileSync(path.join(backup,'full.dump'))),backupHash),'BACKUP_HASH_MISMATCH');
  const admin=new Client({...conn,database:'postgres'});await admin.connect();
  try{
   await identity(admin);

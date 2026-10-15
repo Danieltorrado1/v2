@@ -5,7 +5,9 @@ import test from 'node:test';
 import * as ts from 'typescript';
 
 const roots=['src/modules/cobertura','src/scripts','src/tests'];
-const files=roots.flatMap(root=>readdirSync(root,{withFileTypes:true}).filter(entry=>entry.isFile()&&/^phase48.*\.ts$/.test(entry.name)).map(entry=>join(root,entry.name)));
+const files=roots.flatMap(root=>readdirSync(root,{withFileTypes:true}).filter(entry=>entry.isFile()&&/phase48/i.test(entry.name)&&/\.(?:ts|cjs|js)$/.test(entry.name)).map(entry=>join(root,entry.name)));
+// Documented non-SHA comparisons: TLS compares a DER object identifier string;
+// schema-build-scope compares raw SQL text stored under the legacy name definition_hash.
 const excludedMetric=/(?:count|entries|fields|keys|names|order|algorithm|digests|comparison|length)$/i;
 function hashLike(node:ts.Node):boolean{
  if(ts.isParenthesizedExpression(node))return hashLike(node.expression);
@@ -31,11 +33,13 @@ function hashLike(node:ts.Node):boolean{
 test('Phase 48 identity hashes use the shared SHA-256 comparator at every call site',()=>{
  const violations:string[]=[];
  for(const file of files){
-  const source=ts.createSourceFile(file,readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TS);
+  const source=ts.createSourceFile(file,readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true,file.endsWith('.ts')?ts.ScriptKind.TS:ts.ScriptKind.JS);
   const visit=(node:ts.Node)=>{
    if(ts.isBinaryExpression(node)&&[ts.SyntaxKind.EqualsEqualsEqualsToken,ts.SyntaxKind.ExclamationEqualsEqualsToken,ts.SyntaxKind.EqualsEqualsToken,ts.SyntaxKind.ExclamationEqualsToken].includes(node.operatorToken.kind)&&(hashLike(node.left)||hashLike(node.right))){
-    const derOid=file.replaceAll('\\','/')==='src/modules/cobertura/phase48-readonly-tls.ts'&&node.getText(source).includes("toString('hex')===oid");
-    if(!derOid)violations.push(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line+1}`);
+    const text=node.getText(source);
+    const derOid=file.replaceAll('\\','/')==='src/modules/cobertura/phase48-readonly-tls.ts'&&text.includes("toString('hex')===oid");
+    const rawSchemaDefinition=file.replaceAll('\\','/')==='src/scripts/phase48-schema-build-scope.cjs'&&text.includes('current.definition!==dep.definition_hash');
+    if(!derOid&&!rawSchemaDefinition)violations.push(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line+1}`);
    }
    if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&['includes','indexOf','startsWith','endsWith','equals'].includes(node.expression.name.text)&&hashLike(node.expression.expression))violations.push(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line+1}:partial-or-buffer-comparison`);
    ts.forEachChild(node,visit);

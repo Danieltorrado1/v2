@@ -1,4 +1,6 @@
 // Decode schema-only dump into memory; never persist or print SQL definitions.
+require('tsx/cjs');
+const {sha256HexEqual}=require('../modules/cobertura/phase48-sha256.ts');
 const fs=require('node:fs'),crypto=require('node:crypto'),{spawnSync}=require('node:child_process');
 const backup='C:/Users/CORE ULTRA/Documents/EmpiriaBackups/phase48-modalidad-pre-migracion-20261007T132031Z/full.dump';
 const local=JSON.parse(fs.readFileSync('reports/phase48-schema-backup-catalogs.json')).schema;
@@ -16,7 +18,7 @@ for(const kind of Object.keys(local.legacy_objects)){
   if(kind==='constraints'){const name=key.split('.')[1];const marker='CONSTRAINT '+name+' CHECK ';const at=sql.indexOf(marker);if(at>=0)definition='CHECK '+balanced(at+marker.length);}
   if(kind==='indexes'){const name=key.split('.')[1],pattern=new RegExp('CREATE (?:UNIQUE )?INDEX '+name+' [^;]+;');definition=sql.match(pattern)?.[0].slice(0,-1);}
   const property=kind==='constraints'?'definition':'indexdef';
-  differences.push({kind,object:key,restored_property:a.get(key)?.[property],productive_property:b.get(key)?.[property],original_dump_property:definition?sha(definition):null,productive_matches_original_dump:!!definition&&sha(definition)===b.get(key)?.[property],first_evidence:'certified backup 2026-10-07',raw_definition_persisted:false});
+  differences.push({kind,object:key,restored_property:a.get(key)?.[property],productive_property:b.get(key)?.[property],original_dump_property:definition?sha(definition):null,productive_matches_original_dump:!!definition&&sha256HexEqual(sha(definition),b.get(key)?.[property]),first_evidence:'certified backup 2026-10-07',raw_definition_persisted:false});
  }
 }
 const dependencies=[];
