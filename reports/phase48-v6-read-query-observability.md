@@ -1,40 +1,63 @@
-# Phase 48 V6 READ_QUERY diagnostic observability
+# Certificación local del instrumento READ_QUERY V6
 
-Status: `OPERACIÓN DETENIDA — INSTRUMENTO READ_QUERY NO CERTIFICADO`.
+Decisión: **INSTRUMENTO READ_QUERY CERTIFICADO LOCALMENTE — REQUIERE NUEVA AUTORIZACIÓN DIAGNÓSTICA**.
 
-This work is isolated on `fix/phase48-v6-read-query-observability`, based on `4a2e9d94440442809b5b416532a53ca3403ad508`. No production credential was read and no production connection was opened during this task. The original read-query failure remains undetermined.
+Se trabajó en `fix/phase48-v6-read-query-observability`, desde la base `4a2e9d94440442809b5b416532a53ca3403ad508`. No se leyó `.env`, `DATABASE_URL`, CA productiva ni credenciales; no se abrió conexión ni se escribió en producción. No se generó nonce, frase ni autorización productiva.
 
-## Forensic limit of the previous attempt
+## Forense del ReferenceError anterior
 
-The failed diagnostic was a temporary script, `tmp/phase48-v6-window-local/read-query-diagnostic.ts`, not the versioned V6 runner. Its terminal catch at line 47 emitted only `error_type` and a generic `SANITIZED` code. It discarded the stack, active phase, current query ID, and resource flags. No diagnostic receipt was written. Therefore the original undefined identifier, originating file/line, whether a Client had connected, and the rollback/close result cannot be recovered from retained evidence. Naming an identifier would be speculation. The attempt is not recoverably auditable.
+El intento no produjo stack persistente ni recibo. Su script temporal tenía un `catch` genérico (conservado, SHA-256 `0bc0564d25f4f8dcced9ffa63b43e2aeb5fd6909dbdef0e1e7700e6eb0daaf5f`) que descartó el identificador, archivo, línea, fase y estado de recursos. El resultado esperado está ausente. No se puede recuperar la causa exacta ni afirmar que ese intento cerró una conexión. El fallo original permanece `NO_DETERMINADO`; el instrumento versionado ahora publica recibo sanitizado en `catch/finally`.
 
-The failed script was preserved unchanged for this work: 10,170 bytes, SHA-256 `0bc0564d25f4f8dcced9ffa63b43e2aeb5fd6909dbdef0e1e7700e6eb0daaf5f`. Its expected result path `tmp/phase48-v6-window-local/read-query-diagnostic-result.json` is absent. The pre-existing local query catalog remains at `tmp/phase48-v6-window-local/query-diagnostic-905fe806da114aa38a7f06577e1fa3a7/query-catalog-scoped.json` (24,302 bytes); it records 164 successful fixture queries, candidate_count 740, 17 digests, explicit rollback, and closed client.
+## Puerto y harness
 
-Protected STOPPED receipts were verified before implementation and remain unchanged:
+El puerto fijo 55470 produjo `Permission denied` al enlazar PostgreSQL. No había listener, la reserva TCP excluida no lo cubría y un bind separado funcionó después; por ello no se atribuye una causa que no está demostrada. Clasificación: `LOCAL_BIND_FAILURE_NO_DETERMINABLE`. El harness selecciona y registra un puerto loopback alto, clona el fixture detenido a un directorio único, crea TLS local y comprueba ejecutable, PID, puerto y data directory antes de ejecutar. Falla cerradamente ante carrera/identidad incorrecta y no detiene clusters externos.
 
-| Receipt | Bytes | SHA-256 |
-|---|---:|---|
-| `phase48-0223427b-8d52-4f56-9e67-a474a30b7e53.stopped.json` | 304 | `e5a71ee01913b1ef778a80854a4ba8d2ac46189f81c1ac87dc25d2adeb26d9a4` |
-| `phase48-84d12b7b-ddb3-45bf-a59e-452e4b14a262.stopped.json` | 270 | `b6368989c72dd8b21ecd48e52b0495d066fd51e22dce98dfbe986761c73b481a` |
+Corrida final: PostgreSQL **17.11**, `127.0.0.1:52927`, postmaster PID `2808`, data directory temporal `tmp/phase48-v6-read-query-certification/run-96c71c72b79c41788d61db2e24d21468/cluster`. Tras las pruebas se confirmó `pg_ctl status = no server`, ausencia del listener propio, y se eliminó únicamente ese directorio de la corrida exitosa. Los directorios/logs de corridas fallidas anteriores se conservaron y están detenidos.
 
-## Instrument added
+El release gate dejó de ser circular: el checkpoint local contiene el runner y las pruebas; el harness ejecuta parser/launcher con árbol limpio antes de crear cluster, recibos o temporales. El guard de los subprocesos comprueba el puerto alto y la ruta exacta `run-<GUID>/cluster`. No se relajó el chequeo de rama, HEAD ni ancestro.
 
-`src/modules/cobertura/phase48-v6-read-query-diagnostic.ts` is a mutation-independent diagnostic library. It creates at most one injected client, validates an injected TLS evidence record against TLS 1.3, encrypted/authorized state, pinned CA, hostname and servername, wraps every query with a stable phase/category/SQL-hash ID, halts subsequent queries at the first query failure, and omits SQL text, values and rows. An outer catch/finally independently records operation, rollback, close and publication failures. It attempts rollback after any attempted connect and always attempts client end. The receipt uses a unique diagnostic UUID and exclusive same-volume hard-link publication, so a pre-existing final name is never replaced. There is no Pool, mutator import, nonce, authorization, baseline or phrase path.
+## Resultado PostgreSQL real
 
-`src/tests/phase48.v6-read-query-diagnostic.test.ts` covers 19 cases: argument validation; ReferenceError before/after client creation; connect/TLS/begin/SELECT failures with and without SQLSTATE; rollback and close failures; publication errors and collisions; failure injection at lifecycle phases; first-query stop behavior; sanitization; single-client limit; and a 164-query synthetic capture with 740 candidates and 17 digests.
+El instrumento usó un `pg.Client` real sobre TLS local TLSv1.3, CA local fijada, hostname `localhost`, `rejectUnauthorized=true` y autorización TLS. Ejecutó `BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY`; leyó `transaction_read_only=on` e `isolation=repeatable read`; ejecutó secuencialmente **164 consultas** (159 SELECT), obtuvo **740 candidatos** y calculó **17/17 digests**. El `virtualtransaction` fue `1/2`, snapshot `80009:80009:`. Confirmó `ROLLBACK`, `client.end()` y publicación atómica del recibo. No hubo DDL, DML, `nextval`, llamada/importación del mutador ni filas personales en el recibo.
 
-## Validation and remaining blocker
+Digests de la captura local:
 
-The diagnostic suite passed 19/19. Backend typecheck and build passed; FrontendNuevo build passed with its existing large-chunk advisory; `git diff --check` passed. The combined Phase 48 test run passed 82 tests and failed the launcher offline-validation case because this new branch is not the branch hard-coded in the existing V6 release gate. The remaining local Phase 48 transaction tests also require the guarded local cluster.
+| Digest | SHA-256 |
+|---|---|
+| candidates_digest | `1684e5cb2fbb5ebef59268d67c5b5622c3de959f14fd58de30f5c70c4b0afcf3` |
+| phase48_candidates_digest | `ac145f895c3dec957a995154f2cd1a3a259df1dc1af850a911f427ced2f52dc8` |
+| critical_schema_digest | `f873cca8e42198dbf6a89483e590b99590454eb2cfdbf26800cccb58c718b3b8` |
+| source_digest | `0bf9d122ba24be2231974725114005b450bfc4d6fe3b02a9de5d00bfe8aaf048` |
+| protected_tables_digest | `3731d4f5972f23e6ed22f05976801d669bf32fbf138592805d0700ccdcce6976` |
+| write_set_before_digest | `ace70fc9874e9327dda57213b4a4d6721a2b1eba3319190df8517c03dd9db329` |
+| periods_4_6_digest | `a9686543b16b70096fa6967aac873eb40a7acad4ff272a40fbf55700c244fa08` |
+| albeny_before_digest | `5cae6bfb53c8094deed8aa28e8c4b0c43b2e9c000e40766f4f2e44b751883409` |
+| dary_before_digest | `ee617dad305eb2bad40b755622c27f7bdf982af126792388651255d1c9c3098c` |
+| assignment_1203_before_digest | `84314b31d9a6afd7712012e8c9150eaea0c16ac36bd65c1bfeff615866d17dde` |
+| archived_versions_digest | `5622ef2c7138ece2678f63866b1fffa94ee005bef1e82c054419fb35642ad8af` |
+| event_triggers_digest | `676c9251747e5fb02358de275bfa4d3b1e25f5e8e256b28ed643a9efec631243` |
+| critical_definitions_digest | `3c73d47e5ba7ca09dbd0039209f8b91c812aa89367678cd39bffa6541f6d4318` |
+| critical_sequences_digest | `e6c2d0b57721a3def73cf664995e6968836538761c5c1f3e875bcc846ea6197b` |
+| manifest_digest | `834b8262fc49ef3f06eb8d650c6d229df8eece7b5e109bebae1dbfae7cd3b644` |
+| salary_decision_digest | `5e83322433549c4560a0b01d57947ec15275f85d3852a2e9b2810dca0c3f6d1e` |
+| salary_review_assignments_digest | `1923aa70ec2de163010d7f246e415967532341ab06383d21948ff34bf926f571` |
 
-The preserved PostgreSQL 17.11 cluster could not be started in this environment: the OS denied binding `127.0.0.1:55470` (`could not create any TCP/IP sockets`), including the escalated local-start attempt. It has been left stopped and intact. Consequently the instrument has not been exercised against the PostgreSQL fixture through its client lifecycle, and the required local full certification is incomplete. The mock 164-query test does not substitute for that certification. No commits or push were made.
+## Fallos y regresiones
 
-## Continuation: dynamic-port probe and branch gate
+En PostgreSQL real se indujeron columna inexistente (`42703`), relación inexistente (`42P01`), permiso denegado (`42501`), `statement_timeout` (`57014`) y colisión de destino; el instrumento detuvo la secuencia, confirmó rollback/cierre y preservó el destino. Las pruebas unitarias inyectaron ReferenceError antes/después de crear Client, conexión/TLS/transacción, excepción sin SQLSTATE, rollback/end/publicación fallidos, sanitización, primer SELECT fallido, cierre y carrera. Cubren 19/19 casos del instrumento.
 
-The port investigation found no listener on 55470 and no Windows excluded-port range covering it. A standalone loopback bind to 55470 succeeded later in the same environment, so the exact underlying source of the PostgreSQL `Permission denied` cannot be established from retained evidence. It was not an occupied port. A fresh filesystem clone of the preserved stopped fixture started successfully on dynamically selected `127.0.0.1:53626` (PostgreSQL 17.11, PID 17452); `pg_isready` succeeded and a local read-only identity/count query returned server 17.11, the clone's data directory, and 740 rows in `cobertura_asignaciones`. That owned clone was then stopped and verified stopped. This probe did not exercise the diagnostic instrument, its 164-query capture, TLS, or 17 digests.
+La primera suite ampliada dio 208/251; las 43 fallas apuntaron al guard antiguo que aún fijaba 55470 en subprocesos. Se corrigió el harness, no el contrato operativo. La corrida final tuvo **148/148 PASS** en V6, ventanas/sellos, procesos, recibos atómicos y regresiones del mutador; incluyó una operación sintética local de 740 filas con COMMIT e idempotencia y reversiones/rollbacks en el fixture desechable. Los cuatro `ALTER SEQUENCE ... CACHE 1` se verificaron con locks, bloqueo de `nextval/setval` y rollback de metadatos.
 
-The release branch gate now names exactly `fix/phase48-v6-read-query-observability`; the old branch name is normalized only in the certified source comparison. HEAD and mutator ancestry checks remain in place. The launcher integration test reaches the clean-release gate only after the working tree is committed, so its current pre-commit invocation fails closed with `V6_CLEAN_RELEASE_BRANCH_REQUIRED`. The parser/diagnostic unit invocation otherwise reports 24 passing tests and 2 failures: that clean-tree-dependent launcher test and its associated branch-gate assertion (the latter was corrected after this run). No remote push or commit was made. Full local PostgreSQL certification remains incomplete, so the branch is not certified.
+También pasaron: launcher/parser 7/7; PostgreSQL real 4/4; runner/TLS/autorización 59/59; `npm run typecheck`; `npm run build` backend; `npm run build` en `FrontendNuevo`; `git diff --check`. Frontend informó su advertencia preexistente de chunk mayor de 500 kB.
 
-The two protected STOPPED receipts were found under `tmp/phase48-pooler-local/final-readonly-receipts/` (304 and 270 bytes) and rehashed after this work: `phase48-0223427b-8d52-4f56-9e67-a474a30b7e53.stopped.json` remains SHA-256 `e5a71ee01913b1ef778a80854a4ba8d2ac46189f81c1ac87dc25d2adeb26d9a4`; `phase48-84d12b7b-ddb3-45bf-a59e-452e4b14a262.stopped.json` remains SHA-256 `b6368989c72dd8b21ecd48e52b0495d066fd51e22dce98dfbe986761c73b481a`.
+Los recibos STOPPED protegidos continúan intactos: SHA-256 `e5a71ee01913b1ef778a80854a4ba8d2ac46189f81c1ac87dc25d2adeb26d9a4` y `b6368989c72dd8b21ecd48e52b0495d066fd51e22dce98dfbe986761c73b481a`.
 
-The original failure must remain `NO_DETERMINADO` until a future, separately authorized diagnostic run produces a stack/query ID. This report does not authorize or perform that run.
+## Evidencia y pins
+
+- Certificado sanitizado: `reports/phase48-v6-read-query-certificate-20261015T162859144Z-3ecc13c737384db89363cbbe05b3485f.local.json`, 2,497 bytes, SHA-256 `24688bf41e0751f223defd72afd9c0f2b1275485bd44b3cb9ec00edaa389a1d`.
+- Recibo real del instrumento: `reports/phase48-v6-read-query-20261015T162859144Z-3ecc13c737384db89363cbbe05b3485f.receipt.json`, 32,573 bytes, SHA-256 `299568c249889c1f06f44208d9cdbd37b43d1569019d3595854da66f513bd07d`.
+- Checkpoint provisional local inicial: `d894dc909b0e4ba764f9a326a3724842bb1cd704`; fue actualizado mediante amend autorizado para incluir el harness. El commit de fuente mutadora recertificada es `58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911`.
+- Commit de instrumento diagnóstico: `0160238c317637196bb38c8abde1ced5e4737339`.
+- El `readonly_runner_commit` definitivo se registra después del commit final de este certificado. No se revocan permisos ni se habilita ejecución productiva por esta certificación local.
+
+No hubo producción, diagnóstico productivo, nonce/autorización real, merge ni deploy. Esta certificación sólo habilita solicitar una nueva autorización diagnóstica; no autoriza conexión productiva ni Phase 48.
