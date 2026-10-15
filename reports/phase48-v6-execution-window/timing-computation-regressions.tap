@@ -1,0 +1,24 @@
+TAP version 13
+# Subtest: WINDOW full atomic operation with all four sequence locks and linked postflight
+ok 1 - WINDOW full atomic operation with all four sequence locks and linked postflight
+  ---
+  duration_ms: 3326.9743
+  type: 'test'
+  ...
+# Subtest: V6 full 740 COMMIT, protected economics, archives, four paired audits, durable restart idempotence and separate sealed reversal
+ok 2 - V6 full 740 COMMIT, protected economics, archives, four paired audits, durable restart idempotence and separate sealed reversal
+  ---
+  duration_ms: 4665.1086
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":32}
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 8256.121
+{"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":0}

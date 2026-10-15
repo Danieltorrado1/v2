@@ -1,0 +1,613 @@
+TAP version 13
+# Subtest: WINDOW slow validations consume human validity but never internal TTL
+ok 1 - WINDOW slow validations consume human validity but never internal TTL
+  ---
+  duration_ms: 2543.1325
+  type: 'test'
+  ...
+# Subtest: WINDOW internal expiry rolls back at INTERNAL_SEAL_CREATED
+ok 2 - WINDOW internal expiry rolls back at INTERNAL_SEAL_CREATED
+  ---
+  duration_ms: 2952.4362
+  type: 'test'
+  ...
+# Subtest: WINDOW internal expiry rolls back at AFTER_PHASE48
+ok 3 - WINDOW internal expiry rolls back at AFTER_PHASE48
+  ---
+  duration_ms: 3010.2841
+  type: 'test'
+  ...
+# Subtest: WINDOW internal expiry rolls back at BEFORE_COMMIT
+ok 4 - WINDOW internal expiry rolls back at BEFORE_COMMIT
+  ---
+  duration_ms: 2858.2705
+  type: 'test'
+  ...
+# Subtest: WINDOW expired human authorization before authority forbids any schema/DML change
+ok 5 - WINDOW expired human authorization before authority forbids any schema/DML change
+  ---
+  duration_ms: 2270.6157
+  type: 'test'
+  ...
+# Subtest: WINDOW expiry in an actual internal postcheck rolls back all audits
+ok 6 - WINDOW expiry in an actual internal postcheck rolls back all audits
+  ---
+  duration_ms: 2855.5465
+  type: 'test'
+  ...
+# Subtest: WINDOW no DML before internal seal; transaction binding cannot be replayed after rollback
+ok 7 - WINDOW no DML before internal seal; transaction binding cannot be replayed after rollback
+  ---
+  duration_ms: 4495.4802
+  type: 'test'
+  ...
+# Subtest: WINDOW immutable collision for preflight
+ok 8 - WINDOW immutable collision for preflight
+  ---
+  duration_ms: 1138.0309
+  type: 'test'
+  ...
+# Subtest: WINDOW immutable collision for pending
+ok 9 - WINDOW immutable collision for pending
+  ---
+  duration_ms: 883.0985
+  type: 'test'
+  ...
+# Subtest: WINDOW immutable collision for started
+ok 10 - WINDOW immutable collision for started
+  ---
+  duration_ms: 1012.4858
+  type: 'test'
+  ...
+# Subtest: WINDOW immutable collision for seal
+ok 11 - WINDOW immutable collision for seal
+  ---
+  duration_ms: 1000.4918
+  type: 'test'
+  ...
+# Subtest: WINDOW immutable collision for stopped
+ok 12 - WINDOW immutable collision for stopped
+  ---
+  duration_ms: 1019.5021
+  type: 'test'
+  ...
+# Subtest: WINDOW immutable collision for rolledback
+ok 13 - WINDOW immutable collision for rolledback
+  ---
+  duration_ms: 1098.3904
+  type: 'test'
+  ...
+# Subtest: WINDOW immutable collision for committed
+ok 14 - WINDOW immutable collision for committed
+  ---
+  duration_ms: 995.896
+  type: 'test'
+  ...
+# Subtest: WINDOW immutable collision for postflight
+ok 15 - WINDOW immutable collision for postflight
+  ---
+  duration_ms: 1001.2711
+  type: 'test'
+  ...
+# Subtest: WINDOW immutable collision for idempotency
+ok 16 - WINDOW immutable collision for idempotency
+  ---
+  duration_ms: 1125.4129
+  type: 'test'
+  ...
+# Subtest: WINDOW immutable collision for reversed
+ok 17 - WINDOW immutable collision for reversed
+  ---
+  duration_ms: 1131.8994
+  type: 'test'
+  ...
+# Subtest: WINDOW sequence locks block nextval and setval, preserve cache 1 and 7, rollback metadata
+ok 18 - WINDOW sequence locks block nextval and setval, preserve cache 1 and 7, rollback metadata
+  ---
+  duration_ms: 1665.6008
+  type: 'test'
+  ...
+# Subtest: WINDOW prior production receipts byte-exact, old contract rejected, consumed nonce preserved
+ok 19 - WINDOW prior production receipts byte-exact, old contract rejected, consumed nonce preserved
+  ---
+  duration_ms: 2.8784
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at OFFLINE
+ok 20 - WINDOW process death and restart at OFFLINE
+  ---
+  duration_ms: 1681.2421
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at CONNECTED
+ok 21 - WINDOW process death and restart at CONNECTED
+  ---
+  duration_ms: 1754.5018
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at SERIALIZABLE
+ok 22 - WINDOW process death and restart at SERIALIZABLE
+  ---
+  duration_ms: 1963.0801
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at ADVISORY
+ok 23 - WINDOW process death and restart at ADVISORY
+  ---
+  duration_ms: 1876.1425
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at TABLE_LOCKS
+ok 24 - WINDOW process death and restart at TABLE_LOCKS
+  ---
+  duration_ms: 2158.4165
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at SEQUENCE_LOCKS
+ok 25 - WINDOW process death and restart at SEQUENCE_LOCKS
+  ---
+  duration_ms: 1912.8451
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at INTERNAL_SEAL_CREATED
+ok 26 - WINDOW process death and restart at INTERNAL_SEAL_CREATED
+  ---
+  duration_ms: 2537.2808
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at BEFORE_PHASE48
+ok 27 - WINDOW process death and restart at BEFORE_PHASE48
+  ---
+  duration_ms: 2458.0671
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AFTER_PHASE48
+ok 28 - WINDOW process death and restart at AFTER_PHASE48
+  ---
+  duration_ms: 2493.2817
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AFTER_ALBENY
+ok 29 - WINDOW process death and restart at AFTER_ALBENY
+  ---
+  duration_ms: 2374.4005
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AFTER_DARY
+ok 30 - WINDOW process death and restart at AFTER_DARY
+  ---
+  duration_ms: 2309.7278
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at BEFORE_CLOSE1203
+ok 31 - WINDOW process death and restart at BEFORE_CLOSE1203
+  ---
+  duration_ms: 2338.5456
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AFTER_CLOSE1203
+ok 32 - WINDOW process death and restart at AFTER_CLOSE1203
+  ---
+  duration_ms: 2591.3114
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AUDIT_PHASE48
+ok 33 - WINDOW process death and restart at AUDIT_PHASE48
+  ---
+  duration_ms: 2520.1943
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AUDIT_ALBENY
+ok 34 - WINDOW process death and restart at AUDIT_ALBENY
+  ---
+  duration_ms: 2532.723
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AUDIT_DARY
+ok 35 - WINDOW process death and restart at AUDIT_DARY
+  ---
+  duration_ms: 2804.3114
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AUDIT_CLOSE1203
+ok 36 - WINDOW process death and restart at AUDIT_CLOSE1203
+  ---
+  duration_ms: 2578.1615
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at BEFORE_COMMIT
+ok 37 - WINDOW process death and restart at BEFORE_COMMIT
+  ---
+  duration_ms: 2629.9719
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at COMMITTED
+ok 38 - WINDOW process death and restart at COMMITTED
+  ---
+  duration_ms: 3127.0808
+  type: 'test'
+  ...
+# Subtest: WINDOW two publishers race without replacing final evidence
+ok 39 - WINDOW two publishers race without replacing final evidence
+  ---
+  duration_ms: 317.822
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication BEFORE started
+ok 40 - WINDOW process death in immutable publication BEFORE started
+  ---
+  duration_ms: 1519.2499
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication AFTER started
+ok 41 - WINDOW process death in immutable publication AFTER started
+  ---
+  duration_ms: 1814.2342
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication BEFORE seal
+ok 42 - WINDOW process death in immutable publication BEFORE seal
+  ---
+  duration_ms: 2499.4622
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication AFTER seal
+ok 43 - WINDOW process death in immutable publication AFTER seal
+  ---
+  duration_ms: 2542.5947
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication BEFORE committed
+ok 44 - WINDOW process death in immutable publication BEFORE committed
+  ---
+  duration_ms: 3049.9091
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication AFTER committed
+ok 45 - WINDOW process death in immutable publication AFTER committed
+  ---
+  duration_ms: 3250.0092
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication BEFORE postflight
+ok 46 - WINDOW process death in immutable publication BEFORE postflight
+  ---
+  duration_ms: 3351.9319
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication AFTER postflight
+ok 47 - WINDOW process death in immutable publication AFTER postflight
+  ---
+  duration_ms: 3284.4884
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication BEFORE idempotency
+ok 48 - WINDOW process death in immutable publication BEFORE idempotency
+  ---
+  duration_ms: 3333.0136
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication AFTER idempotency
+ok 49 - WINDOW process death in immutable publication AFTER idempotency
+  ---
+  duration_ms: 3478.6534
+  type: 'test'
+  ...
+# Subtest: WINDOW real 121s slow gate precedes seal creation and successful COMMIT
+ok 50 - WINDOW real 121s slow gate precedes seal creation and successful COMMIT
+  ---
+  duration_ms: 123580.5069
+  type: 'test'
+  ...
+# WINDOW_MEASUREMENT=tmp/phase48-v6-window-local/window-measurement-a873a6d0-ed75-46ff-8b0e-59cf9ff1a938.json TTL=100000
+# Subtest: WINDOW measured complete execution profiles 0ms, 25ms, 100ms roundtrip latency
+ok 51 - WINDOW measured complete execution profiles 0ms, 25ms, 100ms roundtrip latency
+  ---
+  duration_ms: 64530.3438
+  type: 'test'
+  ...
+# Subtest: V6 full 740 COMMIT, protected economics, archives, four paired audits, durable restart idempotence and separate sealed reversal
+ok 52 - V6 full 740 COMMIT, protected economics, archives, four paired audits, durable restart idempotence and separate sealed reversal
+  ---
+  duration_ms: 4333.8701
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at BEFORE_PHASE48
+ok 53 - V6 complete data/schema/sequence rollback at BEFORE_PHASE48
+  ---
+  duration_ms: 2412.8419
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AFTER_PHASE48
+ok 54 - V6 complete data/schema/sequence rollback at AFTER_PHASE48
+  ---
+  duration_ms: 2386.3323
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AFTER_ALBENY
+ok 55 - V6 complete data/schema/sequence rollback at AFTER_ALBENY
+  ---
+  duration_ms: 6133.8408
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AFTER_DARY
+ok 56 - V6 complete data/schema/sequence rollback at AFTER_DARY
+  ---
+  duration_ms: 2874.9401
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at BEFORE_CLOSE1203
+ok 57 - V6 complete data/schema/sequence rollback at BEFORE_CLOSE1203
+  ---
+  duration_ms: 2432.3741
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AFTER_CLOSE1203
+ok 58 - V6 complete data/schema/sequence rollback at AFTER_CLOSE1203
+  ---
+  duration_ms: 2549.406
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AUDIT_PHASE48
+ok 59 - V6 complete data/schema/sequence rollback at AUDIT_PHASE48
+  ---
+  duration_ms: 2706.862
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AUDIT_ALBENY
+ok 60 - V6 complete data/schema/sequence rollback at AUDIT_ALBENY
+  ---
+  duration_ms: 2628.6625
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AUDIT_DARY
+ok 61 - V6 complete data/schema/sequence rollback at AUDIT_DARY
+  ---
+  duration_ms: 2703.9601
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at AUDIT_CLOSE1203
+ok 62 - V6 complete data/schema/sequence rollback at AUDIT_CLOSE1203
+  ---
+  duration_ms: 2701.6246
+  type: 'test'
+  ...
+# Subtest: V6 complete data/schema/sequence rollback at BEFORE_COMMIT
+ok 63 - V6 complete data/schema/sequence rollback at BEFORE_COMMIT
+  ---
+  duration_ms: 2675.4783
+  type: 'test'
+  ...
+# Subtest: V6 real audit constraint failure rolls back whole operation
+ok 64 - V6 real audit constraint failure rolls back whole operation
+  ---
+  duration_ms: 2646.5657
+  type: 'test'
+  ...
+# Subtest: V6 rejects current population 730 against approved 740
+ok 65 - V6 rejects current population 730 against approved 740
+  ---
+  duration_ms: 2124.4945
+  type: 'test'
+  ...
+# Subtest: V6 rejects current population 739 against approved 740
+ok 66 - V6 rejects current population 739 against approved 740
+  ---
+  duration_ms: 1968.3202
+  type: 'test'
+  ...
+# Subtest: V6 rejects current population 741 against approved 740
+ok 67 - V6 rejects current population 741 against approved 740
+  ---
+  duration_ms: 2251.6203
+  type: 'test'
+  ...
+# Subtest: V6 rejects same count different candidate identity
+ok 68 - V6 rejects same count different candidate identity
+  ---
+  duration_ms: 1927.2415
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong candidates_digest
+ok 69 - V6 exact binding rejects wrong candidates_digest
+  ---
+  duration_ms: 999.6113
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong phase48_candidates_digest
+ok 70 - V6 exact binding rejects wrong phase48_candidates_digest
+  ---
+  duration_ms: 1008.5015
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong critical_schema_digest
+ok 71 - V6 exact binding rejects wrong critical_schema_digest
+  ---
+  duration_ms: 1143.6365
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong source_digest
+ok 72 - V6 exact binding rejects wrong source_digest
+  ---
+  duration_ms: 998.3921
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong protected_tables_digest
+ok 73 - V6 exact binding rejects wrong protected_tables_digest
+  ---
+  duration_ms: 901.633
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong write_set_before_digest
+ok 74 - V6 exact binding rejects wrong write_set_before_digest
+  ---
+  duration_ms: 1123.1599
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong periods_4_6_digest
+ok 75 - V6 exact binding rejects wrong periods_4_6_digest
+  ---
+  duration_ms: 1006.9504
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong albeny_before_digest
+ok 76 - V6 exact binding rejects wrong albeny_before_digest
+  ---
+  duration_ms: 907.3694
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong dary_before_digest
+ok 77 - V6 exact binding rejects wrong dary_before_digest
+  ---
+  duration_ms: 1033.9259
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong assignment_1203_before_digest
+ok 78 - V6 exact binding rejects wrong assignment_1203_before_digest
+  ---
+  duration_ms: 1013.1805
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong archived_versions_digest
+ok 79 - V6 exact binding rejects wrong archived_versions_digest
+  ---
+  duration_ms: 914.4622
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong event_triggers_digest
+ok 80 - V6 exact binding rejects wrong event_triggers_digest
+  ---
+  duration_ms: 1015.1754
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong critical_definitions_digest
+ok 81 - V6 exact binding rejects wrong critical_definitions_digest
+  ---
+  duration_ms: 1021.5835
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong critical_sequences_digest
+ok 82 - V6 exact binding rejects wrong critical_sequences_digest
+  ---
+  duration_ms: 1028.0786
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong manifest_digest
+ok 83 - V6 exact binding rejects wrong manifest_digest
+  ---
+  duration_ms: 1074.4628
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong salary_decision_digest
+ok 84 - V6 exact binding rejects wrong salary_decision_digest
+  ---
+  duration_ms: 962.4599
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong salary_review_assignments_digest
+ok 85 - V6 exact binding rejects wrong salary_review_assignments_digest
+  ---
+  duration_ms: 951.3513
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong backup_sha256
+ok 86 - V6 exact binding rejects wrong backup_sha256
+  ---
+  duration_ms: 959.0467
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong manifest_sha256
+ok 87 - V6 exact binding rejects wrong manifest_sha256
+  ---
+  duration_ms: 1205.7815
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong supplement_sha256
+ok 88 - V6 exact binding rejects wrong supplement_sha256
+  ---
+  duration_ms: 1105.5384
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong final_report_sha256
+ok 89 - V6 exact binding rejects wrong final_report_sha256
+  ---
+  duration_ms: 904.8799
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong preflight_receipt_sha256
+ok 90 - V6 exact binding rejects wrong preflight_receipt_sha256
+  ---
+  duration_ms: 1012.8555
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong certified_preflight_sha256
+ok 91 - V6 exact binding rejects wrong certified_preflight_sha256
+  ---
+  duration_ms: 1009.3491
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong blocked_request_sha256
+ok 92 - V6 exact binding rejects wrong blocked_request_sha256
+  ---
+  duration_ms: 1002.416
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong readonly_runner_commit
+ok 93 - V6 exact binding rejects wrong readonly_runner_commit
+  ---
+  duration_ms: 909.32
+  type: 'test'
+  ...
+# Subtest: V6 exact binding rejects wrong mutator_commit
+ok 94 - V6 exact binding rejects wrong mutator_commit
+  ---
+  duration_ms: 897.5276
+  type: 'test'
+  ...
+# Subtest: V6 rejects expired/revoked/reused nonce and never accepts old phrase
+ok 95 - V6 rejects expired/revoked/reused nonce and never accepts old phrase
+  ---
+  duration_ms: 4462.5044
+  type: 'test'
+  ...
+# Subtest: V6 detects concurrent source change and excludes ordinary writers under locks
+ok 96 - V6 detects concurrent source change and excludes ordinary writers under locks
+  ---
+  duration_ms: 3807.11
+  type: 'test'
+  ...
+# Subtest: V6 collision stops before opening connections, consuming nonce or writing data
+ok 97 - V6 collision stops before opening connections, consuming nonce or writing data
+  ---
+  duration_ms: 998.6613
+  type: 'test'
+  ...
+# Subtest: V6 parser is canonical, no inferred salary flags, <=15m, and no mutation without explicit gate
+ok 98 - V6 parser is canonical, no inferred salary flags, <=15m, and no mutation without explicit gate
+  ---
+  duration_ms: 1083.6955
+  type: 'test'
+  ...
+# Subtest: V6 flags unsafe and signed preparation tampering block writes
+ok 99 - V6 flags unsafe and signed preparation tampering block writes
+  ---
+  duration_ms: 3296.3148
+  type: 'test'
+  ...
+# Subtest: V6 source engines leave legacy parser, legacy entry and original local guard unchanged
+ok 100 - V6 source engines leave legacy parser, legacy entry and original local guard unchanged
+  ---
+  duration_ms: 0.9186
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":688}
+1..100
+# tests 100
+# suites 0
+# pass 100
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 381734.6718
+{"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":0}

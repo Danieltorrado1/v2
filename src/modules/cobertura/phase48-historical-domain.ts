@@ -1,3 +1,5 @@
+import {recordV6Timing} from './phase48-v6-timing';
+import {performance} from 'node:perf_hooks';
 // Pure rules copied from fd6e4aa; no connection transport or mutation runner.
 // The original local runner and LOCAL_RESTORATION_REQUIRED guard remain unchanged.
 import type {PoolClient} from 'pg';
@@ -53,6 +55,7 @@ const cases=Object.freeze([
 export async function historicalPlan(db:Db){
  const plan:Row[]=[];
  for(const c of cases){
+  const phaseStart=performance.now();
   const v=(await db.query(`SELECT v.id::text,v.fecha_inicio::text,v.fecha_fin::text FROM vinculaciones v JOIN contratos ct ON ct.id=v.contrato_id
    WHERE v.id=$1::bigint AND v.empresa_id=15 AND v.contrato_id=24 AND ct.empresa_id=15
    AND ct.fecha_inicio<=$2::date AND COALESCE(ct.fecha_final_real,ct.fecha_final_estimada,ct.fecha_finalizacion)>=$3::date`,[c.vinculacion,c.desde,c.hasta])).rows[0];
@@ -100,6 +103,7 @@ export async function historicalPlan(db:Db){
   plan.push({...c,applied,coverage_id:expectedId,category_id:category,estado_salarial,observation,target,
    periodos_abiertos:periods.filter(r=>r.estado==='ABIERTO').map(r=>r.id),periodos_protegidos:periods.filter(r=>r.estado!=='ABIERTO').map(r=>r.id),
    automatic_recalculation:false,external_sync:false});
+  recordV6Timing(c.vinculacion==='1555'?'validation:albeny':'validation:dary',phaseStart);
  }
  assert(plan.every(p=>p.applied)||plan.every(p=>!p.applied),'PARTIAL_HISTORICAL_APPLICATION');
  return plan;

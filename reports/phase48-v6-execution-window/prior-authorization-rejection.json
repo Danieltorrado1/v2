@@ -1,0 +1,12 @@
+{
+  "status": "REVOKED_EXPIRED_CONSUMED",
+  "archived_parser_commit": "6f0e6930dfcb8752e7c9cdbea9360a57f2d4c769",
+  "archived_parser_source_sha256": "5314039c7541ce8c7d9537db930a18986496ce1e28ec98fc0c1ac04c4066b9b5",
+  "phrase_sha256": "cf1a470a981e7845bba8d07fe0d0352b48b673c3f3db97e34e6a231c46fc3d8f",
+  "archived_parser_rejection": "V6_AUTHORIZATION_EXPIRED",
+  "current_parser_rejection": "V6_SCOPE_REQUIRED",
+  "nonce_marker_status": "CONSUMED",
+  "nonce_marker_sha256": "3eb99d6b3c3f6d88194d0fb6f092042c4ef86dbe45498e3faf6c73c3b28a4b2e",
+  "production_connections": 0,
+  "production_writes": 0
+}

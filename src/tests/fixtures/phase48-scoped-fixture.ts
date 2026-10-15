@@ -1,4 +1,4 @@
-import {readFileSync,writeFileSync} from 'node:fs';
+﻿import {readFileSync,writeFileSync} from 'node:fs';
 import {OPERATIONAL_CERTIFICATE,operationalRowDigest} from '../../modules/cobertura/phase48-operational-close';
 import baseline from '../../modules/cobertura/phase48-managed-events-baseline.json';
 import constantBaseline from '../../modules/cobertura/phase48-constant-sql-baseline.json';
@@ -78,6 +78,6 @@ export async function scopedFixture(n=733){
   const rows=(await db.query('SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca WHERE id=ANY($1::bigint[])',[['1203',...OPERATIONAL_CERTIFICATE.archives.map(r=>r.id)]])).rows.map(r=>r.row);
   const pins=structuredClone(OPERATIONAL_CERTIFICATE);pins.close.before_digest=operationalRowDigest(rows.find(r=>String(r.id)==='1203'));
   for(const a of pins.archives)a.before_digest=operationalRowDigest(rows.find(r=>String(r.id)===a.id));
-  writeFileSync('tmp/phase48-pooler-local/operational-synthetic-pins.json',JSON.stringify(pins));
+  writeFileSync(process.env.PHASE48_WINDOW_LOCAL_CERT==='true'?'tmp/phase48-v6-window-local/operational-synthetic-pins.json':'tmp/phase48-pooler-local/operational-synthetic-pins.json',JSON.stringify(pins));
  }finally{await db.end();}
 }

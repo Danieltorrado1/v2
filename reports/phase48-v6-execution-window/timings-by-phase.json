@@ -1,0 +1,293 @@
+{
+  "source": "four-sequence complete local run; monotonic performance.now()",
+  "phases": {
+    "authorization_read": {
+      "calls": 1,
+      "total_ms": 0.11160000000018044,
+      "max_ms": 0.11160000000018044
+    },
+    "offline": {
+      "calls": 1,
+      "total_ms": 0.006499999999505235,
+      "max_ms": 0.006499999999505235
+    },
+    "writer_connection": {
+      "calls": 1,
+      "total_ms": 14.64969999999812,
+      "max_ms": 14.64969999999812
+    },
+    "observer_connection": {
+      "calls": 1,
+      "total_ms": 14.62619999999879,
+      "max_ms": 14.62619999999879
+    },
+    "writer_query": {
+      "calls": 384,
+      "total_ms": 275.2920000000522,
+      "max_ms": 13.310900000000402
+    },
+    "validation:1203": {
+      "calls": 3,
+      "total_ms": 0.10359999999855063,
+      "max_ms": 0.04079999999885331
+    },
+    "validation:archives": {
+      "calls": 3,
+      "total_ms": 0.14860000000044238,
+      "max_ms": 0.05959999999686261
+    },
+    "validation:1203_and_archives": {
+      "calls": 3,
+      "total_ms": 2.3224000000009255,
+      "max_ms": 0.8620999999984633
+    },
+    "population": {
+      "calls": 3,
+      "total_ms": 5.354400000000169,
+      "max_ms": 1.8119000000006054
+    },
+    "validation:albeny": {
+      "calls": 5,
+      "total_ms": 19.142799999997806,
+      "max_ms": 7.187099999999191
+    },
+    "validation:dary": {
+      "calls": 5,
+      "total_ms": 14.702000000001135,
+      "max_ms": 5.077199999999721
+    },
+    "validation:albeny_and_dary": {
+      "calls": 3,
+      "total_ms": 11.5992999999944,
+      "max_ms": 4.174599999998463
+    },
+    "validation:periods_4_6": {
+      "calls": 3,
+      "total_ms": 0.5313999999998487,
+      "max_ms": 0.21459999999933643
+    },
+    "initial_capture": {
+      "calls": 1,
+      "total_ms": 161.54109999999855,
+      "max_ms": 161.54109999999855
+    },
+    "digest:candidates_digest": {
+      "calls": 5,
+      "total_ms": 0.004300000000512227,
+      "max_ms": 0.0011999999987892807
+    },
+    "digest:phase48_candidates_digest": {
+      "calls": 5,
+      "total_ms": 0.001299999999901047,
+      "max_ms": 0.000499999998282874
+    },
+    "digest:critical_schema_digest": {
+      "calls": 5,
+      "total_ms": 0.0013000000035390258,
+      "max_ms": 0.0006000000030326191
+    },
+    "digest:source_digest": {
+      "calls": 5,
+      "total_ms": 0.0007000000041443855,
+      "max_ms": 0.00020000000222353265
+    },
+    "digest:protected_tables_digest": {
+      "calls": 5,
+      "total_ms": 0.30719999999928405,
+      "max_ms": 0.07029999999940628
+    },
+    "digest:write_set_before_digest": {
+      "calls": 5,
+      "total_ms": 0.0013000000035390258,
+      "max_ms": 0.0005999999993946403
+    },
+    "digest:periods_4_6_digest": {
+      "calls": 5,
+      "total_ms": 0.0006999999968684278,
+      "max_ms": 0.00029999999969732016
+    },
+    "digest:albeny_before_digest": {
+      "calls": 5,
+      "total_ms": 0.0011999999951513018,
+      "max_ms": 0.000499999998282874
+    },
+    "digest:dary_before_digest": {
+      "calls": 5,
+      "total_ms": 0.0009000000027299393,
+      "max_ms": 0.0004000000008090865
+    },
+    "digest:assignment_1203_before_digest": {
+      "calls": 5,
+      "total_ms": 0.002300000000104774,
+      "max_ms": 0.0007999999979801942
+    },
+    "digest:archived_versions_digest": {
+      "calls": 5,
+      "total_ms": 0.0684000000001106,
+      "max_ms": 0.017400000000634464
+    },
+    "digest:event_triggers_digest": {
+      "calls": 5,
+      "total_ms": 0.20660000000498258,
+      "max_ms": 0.046900000001187436
+    },
+    "digest:critical_definitions_digest": {
+      "calls": 5,
+      "total_ms": 0.0012000000024272595,
+      "max_ms": 0.00029999999969732016
+    },
+    "digest:critical_sequences_digest": {
+      "calls": 5,
+      "total_ms": 0.0006000000066705979,
+      "max_ms": 0.00020000000222353265
+    },
+    "digest:manifest_digest": {
+      "calls": 5,
+      "total_ms": 0.0008999999990919605,
+      "max_ms": 0.00029999999969732016
+    },
+    "digest:salary_decision_digest": {
+      "calls": 5,
+      "total_ms": 0.0008999999954539817,
+      "max_ms": 0.000499999998282874
+    },
+    "digest:salary_review_assignments_digest": {
+      "calls": 5,
+      "total_ms": 0.08359999999811407,
+      "max_ms": 0.018799999998009298
+    },
+    "begin_serializable": {
+      "calls": 1,
+      "total_ms": 0.22260000000096625,
+      "max_ms": 0.22260000000096625
+    },
+    "advisory_lock": {
+      "calls": 1,
+      "total_ms": 0.25380000000222935,
+      "max_ms": 0.25380000000222935
+    },
+    "table_locks": {
+      "calls": 1,
+      "total_ms": 0.5758999999998196,
+      "max_ms": 0.5758999999998196
+    },
+    "sequence_lock:auditoria_eventos_id_seq": {
+      "calls": 1,
+      "total_ms": 1.638599999998405,
+      "max_ms": 1.638599999998405
+    },
+    "sequence_lock:auditoria_id_seq": {
+      "calls": 1,
+      "total_ms": 0.5620999999991909,
+      "max_ms": 0.5620999999991909
+    },
+    "sequence_lock:cobertura_asignaciones_id_seq": {
+      "calls": 1,
+      "total_ms": 0.9454999999979918,
+      "max_ms": 0.9454999999979918
+    },
+    "sequence_lock:nomina_periodo_26_25_auditoria_id_seq": {
+      "calls": 1,
+      "total_ms": 0.48809999999866704,
+      "max_ms": 0.48809999999866704
+    },
+    "fresh_locked_observer_capture": {
+      "calls": 1,
+      "total_ms": 108.57090000000244,
+      "max_ms": 108.57090000000244
+    },
+    "locked_capture": {
+      "calls": 1,
+      "total_ms": 127.41489999999976,
+      "max_ms": 127.41489999999976
+    },
+    "slow_validation_gate": {
+      "calls": 1,
+      "total_ms": 0.009900000000925502,
+      "max_ms": 0.009900000000925502
+    },
+    "fresh_definitions": {
+      "calls": 1,
+      "total_ms": 9.033100000000559,
+      "max_ms": 9.033100000000559
+    },
+    "internal_seal_creation": {
+      "calls": 1,
+      "total_ms": 156.1136000000006,
+      "max_ms": 156.1136000000006
+    },
+    "dml:phase48": {
+      "calls": 1,
+      "total_ms": 11.586300000002666,
+      "max_ms": 11.586300000002666
+    },
+    "dml:albeny": {
+      "calls": 1,
+      "total_ms": 0.9687000000012631,
+      "max_ms": 0.9687000000012631
+    },
+    "dml:dary": {
+      "calls": 1,
+      "total_ms": 0.31110000000262517,
+      "max_ms": 0.31110000000262517
+    },
+    "dml:1203": {
+      "calls": 1,
+      "total_ms": 0.3304000000025553,
+      "max_ms": 0.3304000000025553
+    },
+    "validation:write_set": {
+      "calls": 1,
+      "total_ms": 6.114700000001903,
+      "max_ms": 6.114700000001903
+    },
+    "audits": {
+      "calls": 8,
+      "total_ms": 24.649200000007113,
+      "max_ms": 11.208600000001752
+    },
+    "internal_postchecks": {
+      "calls": 1,
+      "total_ms": 138.98569999999745,
+      "max_ms": 138.98569999999745
+    },
+    "commit": {
+      "calls": 1,
+      "total_ms": 7.137900000001537,
+      "max_ms": 7.137900000001537
+    },
+    "external_postchecks": {
+      "calls": 1,
+      "total_ms": 102.63330000000133,
+      "max_ms": 102.63330000000133
+    },
+    "receipt_publication": {
+      "calls": 1,
+      "total_ms": 149.07749999999942,
+      "max_ms": 149.07749999999942
+    }
+  },
+  "first_dml_monotonic_ms": 24356.9351,
+  "last_dml_including_audits_monotonic_ms": 24532.4158,
+  "internal_ttl_ms": 100000,
+  "measurement_profiles": [
+    {
+      "delay_ms": 0,
+      "internal_ms": 548.5409999999974,
+      "total_ms": 1703.6076000000176,
+      "sealed_queries": 247
+    },
+    {
+      "delay_ms": 25,
+      "internal_ms": 9461.889999999985,
+      "total_ms": 14139.1538,
+      "sealed_queries": 247
+    },
+    {
+      "delay_ms": 100,
+      "internal_ms": 32018.3787,
+      "total_ms": 45616.25269999998,
+      "sealed_queries": 247
+    }
+  ]
+}

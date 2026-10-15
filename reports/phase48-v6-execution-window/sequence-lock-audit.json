@@ -1,0 +1,58 @@
+{
+  "old": [
+    {
+      "relname": "auditoria_eventos_id_seq",
+      "seqcache": "1"
+    },
+    {
+      "relname": "auditoria_id_seq",
+      "seqcache": "1"
+    },
+    {
+      "relname": "cobertura_asignaciones_id_seq",
+      "seqcache": "1"
+    },
+    {
+      "relname": "nomina_periodo_26_25_auditoria_id_seq",
+      "seqcache": "7"
+    }
+  ],
+  "locks": [
+    {
+      "relname": "auditoria_eventos_id_seq",
+      "mode": "RowExclusiveLock"
+    },
+    {
+      "relname": "auditoria_eventos_id_seq",
+      "mode": "ShareRowExclusiveLock"
+    },
+    {
+      "relname": "auditoria_id_seq",
+      "mode": "RowExclusiveLock"
+    },
+    {
+      "relname": "auditoria_id_seq",
+      "mode": "ShareRowExclusiveLock"
+    },
+    {
+      "relname": "cobertura_asignaciones_id_seq",
+      "mode": "RowExclusiveLock"
+    },
+    {
+      "relname": "cobertura_asignaciones_id_seq",
+      "mode": "ShareRowExclusiveLock"
+    },
+    {
+      "relname": "nomina_periodo_26_25_auditoria_id_seq",
+      "mode": "RowExclusiveLock"
+    },
+    {
+      "relname": "nomina_periodo_26_25_auditoria_id_seq",
+      "mode": "ShareRowExclusiveLock"
+    }
+  ],
+  "blocked_nextval": true,
+  "blocked_setval": true,
+  "lock_table_sequence_rejected": true,
+  "cache_rollback_verified": true
+}

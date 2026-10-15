@@ -1,0 +1,246 @@
+TAP version 13
+# Subtest: WINDOW slow validations consume human validity but never internal TTL
+ok 1 - WINDOW slow validations consume human validity but never internal TTL
+  ---
+  duration_ms: 2616.4068
+  type: 'test'
+  ...
+# Subtest: WINDOW internal expiry rolls back at INTERNAL_SEAL_CREATED
+ok 2 - WINDOW internal expiry rolls back at INTERNAL_SEAL_CREATED
+  ---
+  duration_ms: 2915.1268
+  type: 'test'
+  ...
+# Subtest: WINDOW internal expiry rolls back at AFTER_PHASE48
+ok 3 - WINDOW internal expiry rolls back at AFTER_PHASE48
+  ---
+  duration_ms: 3012.4647
+  type: 'test'
+  ...
+# Subtest: WINDOW internal expiry rolls back at BEFORE_COMMIT
+ok 4 - WINDOW internal expiry rolls back at BEFORE_COMMIT
+  ---
+  duration_ms: 3029.5059
+  type: 'test'
+  ...
+# Subtest: WINDOW expiry in an actual internal postcheck rolls back all audits
+ok 5 - WINDOW expiry in an actual internal postcheck rolls back all audits
+  ---
+  duration_ms: 2592.8864
+  type: 'test'
+  ...
+# Subtest: WINDOW no DML before internal seal; transaction binding cannot be replayed after rollback
+ok 6 - WINDOW no DML before internal seal; transaction binding cannot be replayed after rollback
+  ---
+  duration_ms: 4285.8498
+  type: 'test'
+  ...
+# Subtest: WINDOW legacy early-seal API and legacy receipt routing are revoked offline
+ok 7 - WINDOW legacy early-seal API and legacy receipt routing are revoked offline
+  ---
+  duration_ms: 0.4383
+  type: 'test'
+  ...
+# Subtest: WINDOW committed receipt tampering blocks restart without new DML
+ok 8 - WINDOW committed receipt tampering blocks restart without new DML
+  ---
+  duration_ms: 3166.6662
+  type: 'test'
+  ...
+# Subtest: WINDOW full atomic operation with all four sequence locks and linked postflight
+ok 9 - WINDOW full atomic operation with all four sequence locks and linked postflight
+  ---
+  duration_ms: 3329.3996
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at OFFLINE
+ok 10 - WINDOW process death and restart at OFFLINE
+  ---
+  duration_ms: 1529.2335
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at CONNECTED
+ok 11 - WINDOW process death and restart at CONNECTED
+  ---
+  duration_ms: 1842.7152
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at SERIALIZABLE
+ok 12 - WINDOW process death and restart at SERIALIZABLE
+  ---
+  duration_ms: 1870.9685
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at ADVISORY
+ok 13 - WINDOW process death and restart at ADVISORY
+  ---
+  duration_ms: 1980.5499
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at TABLE_LOCKS
+ok 14 - WINDOW process death and restart at TABLE_LOCKS
+  ---
+  duration_ms: 2224.3947
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at SEQUENCE_LOCKS
+ok 15 - WINDOW process death and restart at SEQUENCE_LOCKS
+  ---
+  duration_ms: 2114.6884
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at INTERNAL_SEAL_CREATED
+ok 16 - WINDOW process death and restart at INTERNAL_SEAL_CREATED
+  ---
+  duration_ms: 2397.9383
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at BEFORE_PHASE48
+ok 17 - WINDOW process death and restart at BEFORE_PHASE48
+  ---
+  duration_ms: 2294.6064
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AFTER_PHASE48
+ok 18 - WINDOW process death and restart at AFTER_PHASE48
+  ---
+  duration_ms: 2519.611
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AFTER_ALBENY
+ok 19 - WINDOW process death and restart at AFTER_ALBENY
+  ---
+  duration_ms: 2540.7489
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AFTER_DARY
+ok 20 - WINDOW process death and restart at AFTER_DARY
+  ---
+  duration_ms: 2659.3762
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at BEFORE_CLOSE1203
+ok 21 - WINDOW process death and restart at BEFORE_CLOSE1203
+  ---
+  duration_ms: 2893.6507
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AFTER_CLOSE1203
+ok 22 - WINDOW process death and restart at AFTER_CLOSE1203
+  ---
+  duration_ms: 2445.5673
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AUDIT_PHASE48
+ok 23 - WINDOW process death and restart at AUDIT_PHASE48
+  ---
+  duration_ms: 2611.2335
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AUDIT_ALBENY
+ok 24 - WINDOW process death and restart at AUDIT_ALBENY
+  ---
+  duration_ms: 2637.3429
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AUDIT_DARY
+ok 25 - WINDOW process death and restart at AUDIT_DARY
+  ---
+  duration_ms: 2547.3556
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at AUDIT_CLOSE1203
+ok 26 - WINDOW process death and restart at AUDIT_CLOSE1203
+  ---
+  duration_ms: 2553.8185
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at BEFORE_COMMIT
+ok 27 - WINDOW process death and restart at BEFORE_COMMIT
+  ---
+  duration_ms: 2630.982
+  type: 'test'
+  ...
+# Subtest: WINDOW process death and restart at COMMITTED
+ok 28 - WINDOW process death and restart at COMMITTED
+  ---
+  duration_ms: 2964.2786
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication BEFORE started
+ok 29 - WINDOW process death in immutable publication BEFORE started
+  ---
+  duration_ms: 1537.3031
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication AFTER started
+ok 30 - WINDOW process death in immutable publication AFTER started
+  ---
+  duration_ms: 1804.7776
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication BEFORE seal
+ok 31 - WINDOW process death in immutable publication BEFORE seal
+  ---
+  duration_ms: 2497.0224
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication AFTER seal
+ok 32 - WINDOW process death in immutable publication AFTER seal
+  ---
+  duration_ms: 2411.6609
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication BEFORE committed
+ok 33 - WINDOW process death in immutable publication BEFORE committed
+  ---
+  duration_ms: 2928.0019
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication AFTER committed
+ok 34 - WINDOW process death in immutable publication AFTER committed
+  ---
+  duration_ms: 3316.6047
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication BEFORE postflight
+ok 35 - WINDOW process death in immutable publication BEFORE postflight
+  ---
+  duration_ms: 3343.8036
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication AFTER postflight
+ok 36 - WINDOW process death in immutable publication AFTER postflight
+  ---
+  duration_ms: 3390.4973
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication BEFORE idempotency
+ok 37 - WINDOW process death in immutable publication BEFORE idempotency
+  ---
+  duration_ms: 3623.8208
+  type: 'test'
+  ...
+# Subtest: WINDOW process death in immutable publication AFTER idempotency
+ok 38 - WINDOW process death in immutable publication AFTER idempotency
+  ---
+  duration_ms: 4200.3692
+  type: 'test'
+  ...
+# Subtest: V6 full 740 COMMIT, protected economics, archives, four paired audits, durable restart idempotence and separate sealed reversal
+ok 39 - V6 full 740 COMMIT, protected economics, archives, four paired audits, durable restart idempotence and separate sealed reversal
+  ---
+  duration_ms: 4372.4626
+  type: 'test'
+  ...
+# {"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":307}
+1..39
+# tests 39
+# suites 0
+# pass 39
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 103885.7178
+{"guard":"PHASE48_ATOMIC_LOCAL","production_connections":0,"production_writes":0,"forbidden_attempts":0,"loopback_connect_calls":0}

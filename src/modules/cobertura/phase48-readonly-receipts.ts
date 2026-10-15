@@ -60,21 +60,23 @@ function renameWithoutReplacement(from:string,to:string){
  * Windows: no portable directory fsync; no power-loss durability guarantee
  * for the rename/directory entry. A process crash may leave its private temp
  * and lock; they are deliberately not scavenged by another invocation. */
-export function publishAtomicReceipt(directory:string,name:string,receipt:any){
- if(!/^(phase48-production-preflight-current|phase48-[A-Za-z0-9-]+\.(?:baseline|receipt)|phase48-consumed-[a-f0-9]{64})\.json$/.test(name))throw Error('RECEIPT_NAME_UNAUTHORIZED');
+export function publishAtomicReceipt(directory:string,name:string,receipt:any,options:{exclusive?:boolean}={}){
+ const typed=/^phase48-[a-f0-9-]{36}\.(?:preflight|pending|started|seal|stopped|rolledback|committed|postflight|idempotency|reversed)\.json$/.test(name);
+ if(!typed&&!/^(phase48-production-preflight-current|phase48-[A-Za-z0-9-]+\.(?:baseline|receipt)|phase48-consumed-[a-f0-9]{64})\.json$/.test(name))throw Error('RECEIPT_NAME_UNAUTHORIZED');
  if(!receipt||typeof receipt.run_id!=='string'||!/^phase48-[A-Za-z0-9-]+$/.test(receipt.run_id))throw Error('RECEIPT_RUN_ID_INVALID');
  const bytes=Buffer.from(JSON.stringify(receipt,null,2)+'\n','utf8');
  const decoded=JSON.parse(bytes.toString('utf8'));
  if(decoded.run_id!==receipt.run_id)throw Error('RECEIPT_SERIALIZATION_INVALID');
- if(name!==RECEIPT_FILE&&!name.startsWith('phase48-consumed-')&&name!==decoded.run_id+'.baseline.json'&&name!==decoded.run_id+'.receipt.json')throw Error('RECEIPT_NAME_RUN_MISMATCH');
+ if(typed?!name.startsWith(decoded.run_id+'.'):name!==RECEIPT_FILE&&!name.startsWith('phase48-consumed-')&&name!==decoded.run_id+'.baseline.json'&&name!==decoded.run_id+'.receipt.json')throw Error('RECEIPT_NAME_RUN_MISMATCH');
  const digest=hash(bytes);
- return withPublicationLock(directory,name,dir=>publishLocked(dir,name,bytes,decoded.run_id,digest));
+ return withPublicationLock(directory,name,dir=>publishLocked(dir,name,bytes,decoded.run_id,digest,options.exclusive===true||typed));
 }
-function publishLocked(dir:string,name:string,bytes:Buffer,runId:string,digest:string){
+function publishLocked(dir:string,name:string,bytes:Buffer,runId:string,digest:string,exclusive=false){
  const directoryIdentity=lstatSync(dir);
  const file=join(dir,name),temporary=join(dir,'.'+name+'.'+randomUUID()+'.tmp');
  const identical=()=>{
   if(!present(file))return false;
+  if(exclusive)throw Error('RECEIPT_DESTINATION_EXISTS');
   regular(file);const prior=readFileSync(file);
   if(prior.length!==bytes.length||hash(prior)!==digest||!prior.equals(bytes)||JSON.parse(prior.toString('utf8')).run_id!==runId)throw Error('RECEIPT_ALREADY_EXISTS_DIFFERENT');
   return true;

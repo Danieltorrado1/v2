@@ -1,4 +1,4 @@
-import {Client} from 'pg';
+﻿import {Client} from 'pg';
 import {readFileSync} from 'node:fs';
 import {requireScoped} from './phase48-scoped-contract';
 import {assertCriticalSchema} from './phase48-readonly-schema-identity';
@@ -14,15 +14,15 @@ export function productionV6Host(options:V6ProductionOptions):V6Host{
  const offline=async()=>{const release=v6Release(),evidence=verifyV6Evidence(options.evidence);v6PrivatePath(options.directory,true);clearReadTlsEnvironment();process.env.PHASE48_SSL_ROOT_CERT_PATH=options.caPath;process.env.PHASE48_SSL_ROOT_CERT_SHA256=options.caSha256;
   // CA/ACL/hash checks run before this callback is allowed to read the credential.
   config=verifiedProductionConfig(()=>readDatabaseUrl(readFileSync(options.credentialPath,'utf8'))).config;clearReadTlsEnvironment();requireScoped(options.syncManuallyConfirmed===false,'V6_CURRENT_SYNC_CONFIRMATION_REQUIRED');requireScoped(process.env.PHASE48_DYNAMIC_LOCAL_CERT!=='true','V6_SYNTHETIC_CERTIFICATE_FORBIDDEN');offlineVerified=true;return {release,evidence};};
- const client=(role:'writer'|'observer')=>{requireScoped(offlineVerified&&config,'V6_OFFLINE_VERIFICATION_REQUIRED');const c=new Client({...config,application_name:role==='writer'?'phase48_v6_writer':'phase48_v6_observer'});c.on('error',()=>{});if(role==='writer'){natives.set(c,c);return c as unknown as V6Client;}
+ const client=(role:'writer'|'observer')=>{requireScoped(offlineVerified&&config,'V6_OFFLINE_VERIFICATION_REQUIRED');const c=new Client({...config,query_timeout:5000,application_name:role==='writer'?'phase48_v6_writer':'phase48_v6_observer'});c.on('error',()=>{});if(role==='writer'){natives.set(c,c);return c as unknown as V6Client;}
   let inTransaction=false;
   const query=async(sql:string,values?:any[])=>{
    if(sql==='BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY'){requireScoped(!inTransaction,'V6_NESTED_OBSERVER_TRANSACTION');await c.query(sql);inTransaction=true;return {rows:[],rowCount:0};}
    if(sql==='ROLLBACK'){const r=await c.query(sql);inTransaction=false;return r;}
-   const control=["SET LOCAL search_path=pg_catalog,public,pg_temp","SET LOCAL timezone='UTC'","SET LOCAL statement_timeout='120s'"];
+   const control=["SET LOCAL search_path=pg_catalog,public,pg_temp","SET LOCAL timezone='UTC'","SET LOCAL statement_timeout='120s'","SET LOCAL statement_timeout='5s'"];
    const tokens=sql.replace(/'(?:''|[^'])*'/g,"''");requireScoped(control.includes(sql)||/^\s*(SELECT|WITH RECURSIVE nodes\()/.test(sql)&&!/\b(INSERT|UPDATE|DELETE|MERGE|ALTER|CREATE|DROP|TRUNCATE|CALL|DO|COPY|GRANT|REVOKE|LOCK|nextval|setval|pg_notify)\b|;|--|\/\*/i.test(tokens),'V6_OBSERVER_READ_ONLY_QUERY_REQUIRED');
    if(inTransaction)return c.query(sql,values);requireScoped(!control.includes(sql),'V6_OBSERVER_CONTROL_OUTSIDE_TRANSACTION');
-   await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');try{await c.query('SET LOCAL search_path=pg_catalog,public,pg_temp');await c.query("SET LOCAL statement_timeout='120s'");return await c.query(sql,values);}finally{await c.query('ROLLBACK');}
+   await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');try{await c.query('SET LOCAL search_path=pg_catalog,public,pg_temp');await c.query("SET LOCAL statement_timeout='5s'");return await c.query(sql,values);}finally{await c.query('ROLLBACK');}
   };
   const wrapped={connect:async()=>{await c.connect();},end:async()=>{await c.end();},query:query as V6Client['query']};natives.set(wrapped,c);return wrapped;
  };

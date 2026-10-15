@@ -1,0 +1,10 @@
+{
+  "version": "phase48-v6-execution-window-1",
+  "internal_ttl_ms": 100000,
+  "maximum_ttl_ms": 120000,
+  "measurement_required": true,
+  "query_limit_after_seal": 400,
+  "safety_factor": 3,
+  "fixed_margin_ms": 2000,
+  "round_up_ms": 5000
+}

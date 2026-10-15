@@ -4,7 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {resolve,relative,isAbsolute,dirname} from 'node:path';
 import {requireScoped} from './phase48-scoped-contract';
 export const V6_BASE='4588fa2e00fafc9ceb396c3f13c18297bc6350a1';
-export const V6_MUTATOR_COMMIT='e165a537c577334241cf013d3f474d4c226333e8';
+export const V6_MUTATOR_COMMIT='UNPUBLISHED_EXECUTION_WINDOW';
 export const V6_EVIDENCE={backup_sha256:'7b899f07210f09fbebb0facf1ba9b356510c2316d26a0e521a42639ba135b16c',manifest_sha256:'c672cc42378b956af3efd35d2910e486ecd42da30d94c88646b125cc2d653635',supplement_sha256:'081ecb79a064e48106d5b308af73b45d11bd8fae827068547c4bbf2a50989ef0',final_report_sha256:'3ff062f47ffe1f733b60d844aeaa4c5274e59ee40e1c80c953a66b5521ac04ff',certified_preflight_sha256:'4fe345365f5df29d8c6cdb3f911dc15a140cb184ad5c3ede6d4e01ee4dbe9732',blocked_request_sha256:'cb8d2db7218d138c5b3deeb9fbf6d423f456ec20ac2895f14db0224e0fb34d66'};
 export const v6Hash=(b:Buffer|string)=>createHash('sha256').update(b).digest('hex');
 export function v6ReadFile(file:string){let cursor=resolve(file);while(true){requireScoped(!lstatSync(cursor).isSymbolicLink(),'V6_SYMLINK_FORBIDDEN');const parent=dirname(cursor);if(parent===cursor)break;cursor=parent;}const s=lstatSync(file);requireScoped(s.isFile()&&s.nlink===1,'V6_REGULAR_FILE_REQUIRED');return readFileSync(file);}
@@ -20,7 +20,7 @@ export function verifyV6Evidence(p:V6EvidencePaths){
 const normalize=(file:string,value:string)=>value.replaceAll('\r\n','\n').replace(file.endsWith('phase48-v6-evidence.ts')?/export const V6_MUTATOR_COMMIT='[^']+';/:/$^/g,"export const V6_MUTATOR_COMMIT='<PIN>';" );
 export function v6Release(){
  const git=(args:string[])=>{const output=execFileSync('git',args,{encoding:'utf8',stdio:['ignore','pipe','pipe']});return args[0]==='show'?output:output.trim();};
- requireScoped(git(['branch','--show-current'])==='fix/phase48-v6-production-entry'&&git(['status','--porcelain=v1'])==='','V6_CLEAN_RELEASE_BRANCH_REQUIRED');const head=git(['rev-parse','HEAD']);requireScoped(/^[a-f0-9]{40}$/.test(V6_MUTATOR_COMMIT),'V6_RELEASE_UNPUBLISHED');git(['merge-base','--is-ancestor',V6_BASE,head]);git(['merge-base','--is-ancestor',V6_MUTATOR_COMMIT,head]);
+ requireScoped(git(['branch','--show-current'])==='fix/phase48-v6-execution-window'&&git(['status','--porcelain=v1'])==='','V6_CLEAN_RELEASE_BRANCH_REQUIRED');const head=git(['rev-parse','HEAD']);requireScoped(/^[a-f0-9]{40}$/.test(V6_MUTATOR_COMMIT),'V6_RELEASE_UNPUBLISHED');git(['merge-base','--is-ancestor',V6_BASE,head]);git(['merge-base','--is-ancestor',V6_MUTATOR_COMMIT,head]);
  const files=git(['ls-tree','-r','--name-only',V6_MUTATOR_COMMIT]).split(/\r?\n/).filter(f=>f.startsWith('src/modules/cobertura/phase48-')||f.startsWith('src/scripts/phase48-')||['package.json','package-lock.json','tsconfig.json'].includes(f));
  const hashes:Record<string,string>={};for(const file of files){const live=normalize(file,v6ReadFile(file).toString('utf8')),pinned=normalize(file,git(['show',V6_MUTATOR_COMMIT+':'+file])+'\n');requireScoped(live.trimEnd()===pinned.trimEnd(),'V6_CERTIFIED_CODE_CHANGED:'+file);hashes[file]=v6Hash(live);}
  return {readonly_runner_commit:head,mutator_commit:V6_MUTATOR_COMMIT,code_sha256:hashes,authorization:'REVOKED'};

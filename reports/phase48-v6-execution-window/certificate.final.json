@@ -1,0 +1,70 @@
+{
+  "decision": "V6 RECERTIFICADO — REQUIERE NUEVO PREFLIGHT Y AUTORIZACIÓN",
+  "parent": {
+    "path": "reports\\phase48-v6-execution-window\\certificate.local.json",
+    "sha256": "f820532b377ef6cd2b4cc744592ab80b954e0cdedad792847c892b6c53831c61"
+  },
+  "supplement_files": [
+    {
+      "path": "reports\\phase48-v6-execution-window\\timing-computation-regressions.tap",
+      "bytes": 940,
+      "sha256": "473a68fdef377d3f9c112be0906189ba2e14d485a85c973fb8f839bc51503fb8"
+    },
+    {
+      "path": "reports\\phase48-v6-execution-window\\timing-computation-final.json",
+      "bytes": 83141,
+      "sha256": "8b9b41269f0081093824595a37868961dee74bc854346845223a32f9a93d285f"
+    }
+  ],
+  "tests_unique": 103,
+  "final_additional_full_runs": 2,
+  "policy": {
+    "version": "phase48-v6-execution-window-1",
+    "internal_ttl_ms": 100000,
+    "maximum_ttl_ms": 120000,
+    "measurement_required": true,
+    "query_limit_after_seal": 400,
+    "safety_factor": 3,
+    "fixed_margin_ms": 2000,
+    "round_up_ms": 5000
+  },
+  "sequence_lock_modes": [
+    {
+      "relname": "auditoria_eventos_id_seq",
+      "mode": "RowExclusiveLock"
+    },
+    {
+      "relname": "auditoria_eventos_id_seq",
+      "mode": "ShareRowExclusiveLock"
+    },
+    {
+      "relname": "auditoria_id_seq",
+      "mode": "RowExclusiveLock"
+    },
+    {
+      "relname": "auditoria_id_seq",
+      "mode": "ShareRowExclusiveLock"
+    },
+    {
+      "relname": "cobertura_asignaciones_id_seq",
+      "mode": "RowExclusiveLock"
+    },
+    {
+      "relname": "cobertura_asignaciones_id_seq",
+      "mode": "ShareRowExclusiveLock"
+    },
+    {
+      "relname": "nomina_periodo_26_25_auditoria_id_seq",
+      "mode": "RowExclusiveLock"
+    },
+    {
+      "relname": "nomina_periodo_26_25_auditoria_id_seq",
+      "mode": "ShareRowExclusiveLock"
+    }
+  ],
+  "measurement_scope": "Synthetic PostgreSQL 17.11, 127.0.0.1:55470; no production credentials or connections",
+  "productive_authorization": "REVOKED_REQUIRES_NEW_PREFLIGHT",
+  "productive_nonce_generated": false,
+  "production_connections": 0,
+  "production_writes": 0
+}

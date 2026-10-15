@@ -1,0 +1,20 @@
+{
+  "kind": "IMMUTABLE_PREVIOUS_ATTEMPT",
+  "files": [
+    {
+      "path": "C:\\Users\\CORE ULTRA\\Desktop\\V2-instituciones-modalidad\\tmp\\phase48-pooler-local\\final-readonly-receipts\\phase48-83ad06bd-c233-4a8e-a838-7d8529192ea0.receipt.json",
+      "bytes": 2854,
+      "sha256": "a36aff78c7c95cd371c20250a88280698b2ddb0ec56501c35c99193d941da4bc"
+    },
+    {
+      "path": "C:\\Users\\CORE ULTRA\\Desktop\\V2-instituciones-modalidad\\tmp\\phase48-pooler-local\\final-readonly-receipts\\phase48-f51ef59d-01ff-4175-a473-c0275be8ffc0.receipt.json",
+      "bytes": 13710,
+      "sha256": "373b865481d556bc7d668658c991e43e3bda4367f82073ae910977de4cc8af3f"
+    },
+    {
+      "path": "C:\\Users\\CORE ULTRA\\Desktop\\V2-instituciones-modalidad\\tmp\\phase48-pooler-local\\final-readonly-receipts\\phase48-consumed-b5bf09b9bb13f55f1f55c3f5b36aad60bf03c8cf4f097907e5b15f73c0497eba.json",
+      "bytes": 338,
+      "sha256": "3eb99d6b3c3f6d88194d0fb6f092042c4ef86dbe45498e3faf6c73c3b28a4b2e"
+    }
+  ]
+}

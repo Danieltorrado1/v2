@@ -3,11 +3,13 @@ import {certifiedManagedEvents} from './phase48-managed-events';
 import {operationalRowDigest,validateCloseRetirement} from './phase48-operational-close';
 // Transport-neutral copy of the certified atomic algorithm. No connection is created without an explicit runtime.
 import {Client} from 'pg';
+import {v6Timed} from './phase48-v6-timing';
+import {V6_WINDOW_POLICY} from './phase48-v6-window-authority';
 import {resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
 export interface V6Client {connect():Promise<void>;end():Promise<void>;query:Client['query'];}
-export interface V6Runtime {client(role:'writer'|'observer'):V6Client;identity(db:V6Client):Promise<any>;validateCapture(capture:ScopedCapture):Promise<void>;beforeCommit():Promise<void>;}
-export interface V6Input {seal:ScopedSeal;manifest:ScopedManifest;preview:any[];operational_preview:any;historical_preview?:any[];informational:any;economic_authorization:false;}
+export interface V6Runtime {client(role:'writer'|'observer'):V6Client;identity(db:V6Client):Promise<any>;validateCapture(capture:ScopedCapture):Promise<void>;beforeCommit():Promise<void>;issueLocked?(capture:ScopedCapture,db:V6Client):Promise<ScopedSeal>;issueReversalLocked?(journal:any,db:V6Client):Promise<ScopedSeal>;}
+export interface V6Input {seal?:ScopedSeal;manifest:ScopedManifest;preview:any[];operational_preview:any;historical_preview?:any[];informational:any;economic_authorization:false;}
 import {actorGate,historicalPlan,nextId,restartSequence} from './phase48-historical-domain';
 import {publishAtomicReceipt} from './phase48-readonly-receipts';
 import {SALARY_DECISION,requireScoped,scopedDigest,sortScopedIds,type ScopedAuthority,type ScopedSeal} from './phase48-scoped-contract';
@@ -17,20 +19,19 @@ const identities=['institucion_id','sede_id','modalidad_id'];
 async function identity(db:V6Client,target:V6Runtime){return target.identity(db);}
 async function observerCapture(db:V6Client){
  await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
- try{await db.query('SET LOCAL search_path=pg_catalog,public,pg_temp');await db.query("SET LOCAL timezone='UTC'");return await scopedCapture(db);}finally{await db.query('ROLLBACK');}
+ try{await db.query('SET LOCAL search_path=pg_catalog,public,pg_temp');await db.query("SET LOCAL timezone='UTC'");await db.query("SET LOCAL statement_timeout='5s'");return await scopedCapture(db);}finally{await db.query('ROLLBACK');}
 }
 async function ddlIdle(db:ScopedDb){requireScoped((await db.query("SELECT count(*)::int n FROM pg_stat_activity WHERE pid<>pg_backend_pid() AND state='active' AND query ~* '^\\s*(ALTER|CREATE|DROP|TRUNCATE|REINDEX|GRANT|REVOKE)\\s'")).rows[0].n===0,'DDL_ACTIVE');}
 export function publishV6Baseline(directory:string,input:V6Input){
- requireScoped(input.economic_authorization===false&&input.seal.economic_authorization===false,'ECONOMIC_AUTHORIZATION_FORBIDDEN');
- return publishAtomicReceipt(directory,input.seal.run_id+'.baseline.json',{run_id:input.seal.run_id,seal:input.seal,manifest:{...input.manifest,exclusions:[]},preview:input.preview,operational_preview:input.operational_preview,economic_authorization:false});
+ throw Error('V6_LEGACY_RECEIPT_ROUTE_REVOKED');
 }
 async function lockScope(db:ScopedDb,capture:{manifest:ScopedManifest;sequences:any[]}){
- await db.query('LOCK TABLE '+capture.manifest.tables.map(t=>'public.'+sq(t)).join(',')+' IN SHARE ROW EXCLUSIVE MODE NOWAIT');
+ await v6Timed('table_locks',()=>db.query('LOCK TABLE '+capture.manifest.tables.map(t=>'public.'+sq(t)).join(',')+' IN SHARE ROW EXCLUSIVE MODE NOWAIT'));
  for(const sequence of capture.sequences){
   const cache=sequence.metadata.cache;requireScoped(/^[1-9]\d*$/.test(cache),'SEQUENCE_CACHE_INVALID');
   // ALTER CACHE to its already sealed value obtains a sequence lock, without
   // consuming IDs or resetting last_value/is_called. Revalidate AFTER all locks.
-  await db.query('ALTER SEQUENCE public.'+sq(sequence.name)+' CACHE '+cache);
+  await v6Timed('sequence_lock:'+sequence.name,()=>db.query('ALTER SEQUENCE public.'+sq(sequence.name)+' CACHE '+cache));
  }
 }
 async function freshDefinitions(observer:ScopedDb,manifest:ScopedManifest,expected:Record<string,any[]>){
@@ -65,7 +66,7 @@ async function audit(db:ScopedDb,authority:ScopedAuthority,seal:ScopedSeal,actio
 async function originalAudits(db:ScopedDb,table:string,run_id:string){
  return (await db.query(`SELECT count(*)::text count,encode(sha256(convert_to(COALESCE(string_agg(to_jsonb(t)::text,E'\n' ORDER BY to_jsonb(t)::text),''),'UTF8')),'hex') digest FROM public.${sq(table)} t WHERE (descripcion=$1 AND datos_nuevos->>'run_id'=$2) IS NOT TRUE`,[SCOPED_MARKER,run_id])).rows[0];
 }
-async function published(db:ScopedDb,authority:ScopedAuthority,seal:ScopedSeal){
+export async function verifyV6Published(db:ScopedDb,authority:ScopedAuthority,seal:ScopedSeal){
  const logs=(await db.query('SELECT id::text id,usuario_id::text actor,datos_anteriores before,datos_nuevos payload FROM auditoria WHERE descripcion=$1 AND datos_nuevos->>\'run_id\'=$2 ORDER BY id',[SCOPED_MARKER,seal.run_id])).rows;
  if(!logs.length)return null;
  for(const r of logs){const {witness_mac,...body}=r.payload;authority.verifyWitness(seal,{body,before:r.before},witness_mac);}
@@ -87,31 +88,53 @@ async function published(db:ScopedDb,authority:ScopedAuthority,seal:ScopedSeal){
   requireScoped(state.last_value===expected&&state.is_called===(['cobertura_asignaciones_id_seq','auditoria_id_seq','auditoria_eventos_id_seq'].includes(state.name)?false:prior.is_called),'PUBLISHED_SEQUENCE_DIVERGENCE');
  }
  for(const table of ['auditoria','auditoria_eventos']){const old=main.before.data.find((r:any)=>r.table===table),actual=await originalAudits(db,table,seal.run_id);requireScoped(actual.count===old.count&&actual.digest===old.digest,'PUBLISHED_EXISTING_AUDIT_DIVERGENCE');}
- return main;
+ return {...main,sequence_postchecks:states};
 }
 export type ScopedHooks={beforeLock?:()=>Promise<void>;afterLock?:(db:V6Client)=>Promise<void>;beforeDml?:()=>Promise<void>;afterUpdate?:(db:V6Client)=>Promise<void>;beforeCommit?:()=>Promise<void>;checkpoint?:(stage:string,db:V6Client)=>Promise<void>};
 export async function executeV6Atomic(authority:ScopedAuthority,input:V6Input,target:V6Runtime,options:{mode?:'Rollback'|'Commit';definitions_window_confirmed:boolean;receipt_directory?:string;hooks?:ScopedHooks}){
- const seal=structuredClone(input.seal);authority.authenticate(seal);
+ let seal:ScopedSeal=input.seal?structuredClone(input.seal):undefined!;if(seal)authority.authenticate(seal);
+ requireScoped(target.issueLocked&&!seal,'V6_LATE_SEAL_REQUIRED');
+ requireScoped(!options.receipt_directory,'V6_LEGACY_RECEIPT_ROUTE_REVOKED');
  requireScoped(options.definitions_window_confirmed===true,'DEFINITION_WINDOW_REQUIRED');
- const db=target.client('writer'),observer=target.client('observer');let begun=false,committed=false;
+ const db=target.client('writer'),observer=target.client('observer');let begun=false,committed=false,commitAttempted=false,sealedQueries=0;let failure:any;
+ const originalQuery=db.query.bind(db);
+ db.query=(async(sql:any,values?:any)=>{
+  const text=String(sql);if(text==='ROLLBACK')return originalQuery(sql,values);
+  const mutation=/^\s*(INSERT|UPDATE|DELETE|MERGE|CREATE|DROP|TRUNCATE|ALTER TABLE)\b/i.test(text);
+  if(target.issueLocked&&mutation)requireScoped(seal,'V6_DML_BEFORE_INTERNAL_SEAL');
+  if(seal&&target.issueLocked){authority.assertLive(seal);requireScoped(++sealedQueries<=V6_WINDOW_POLICY.query_limit_after_seal,'V6_WINDOW_QUERY_LIMIT');
+   // Reads inherit a <=5s statement timeout and have live checks on both sides.
+   // Refresh the exact remaining deadline for mutations and COMMIT.
+   if(mutation||text==='COMMIT')await originalQuery("SET LOCAL statement_timeout='"+Math.max(1,Math.min(5000,Math.floor(seal.expires_at-Date.now())))+"ms'");
+   if(mutation||text==='COMMIT'){
+    const binding=(seal as any).binding;
+    const tx=(await originalQuery("SELECT pg_backend_pid() pid,pg_current_xact_id_if_assigned()::text transaction_id,current_setting('transaction_isolation') isolation,(SELECT count(DISTINCT relation)::int FROM pg_locks WHERE pid=pg_backend_pid() AND granted AND relation::text=ANY($1::text[]) AND mode IN('ShareRowExclusiveLock','AccessExclusiveLock')) protected_locks",[binding.required_locks.map((l:any)=>l.oid)])).rows[0];
+    requireScoped(tx.pid===binding.pid&&tx.transaction_id===binding.transaction_id&&tx.isolation==='serializable'&&tx.protected_locks>=binding.required_locks.length,'V6_TRANSACTION_OR_LOCK_BINDING_LOST');authority.assertLive(seal);
+   }
+  }
+  if(text==='COMMIT')commitAttempted=true;
+  const label=/^\s*(INSERT|UPDATE|DELETE)\b/i.test(text)?(/^INSERT INTO auditoria/.test(text)?'audits':/^INSERT INTO cobertura_asignaciones/.test(text)?'dml:albeny':text.includes('WHERE id=11')?'dml:dary':text.includes('fecha_fin=\'2026-08-31\'')?'dml:1203':'dml:phase48'):text.includes('WHERE id<>$1::bigint')?'validation:write_set':'writer_query';
+  const result=await v6Timed(label,()=>originalQuery(sql,values));
+  if(seal&&target.issueLocked&&text!=='COMMIT')authority.assertLive(seal);return result;
+ }) as V6Client['query'];
  try{
-  await db.connect();await observer.connect();
+  await v6Timed('writer_connection',()=>db.connect());await v6Timed('observer_connection',()=>observer.connect());
   await identity(db,target);await identity(observer,target);
-  const prior=await published(observer,authority,seal);if(prior)return {status:'ALREADY_APPLIED',run_id:seal.run_id,economic_authorization:false,writes:0};
-  authority.consume(seal);await ddlIdle(observer);
-  const initial=await observerCapture(observer);authority.revalidate(seal,initial.set);await target.validateCapture(initial);
-  if(options.receipt_directory)publishV6Baseline(options.receipt_directory,{...input,seal});
-  await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');begun=true;
+  await ddlIdle(observer);
+  const initial=await v6Timed('initial_capture',()=>observerCapture(observer));await target.validateCapture(initial);
+  await v6Timed('begin_serializable',()=>db.query('BEGIN ISOLATION LEVEL SERIALIZABLE'));begun=true;
   await db.query("SET LOCAL lock_timeout='2s'");await db.query("SET LOCAL statement_timeout='120s'");await db.query("SET LOCAL search_path=pg_catalog,public,pg_temp");await db.query("SET LOCAL timezone='UTC'");
   await db.query('SET CONSTRAINTS ALL IMMEDIATE');
-  requireScoped((await db.query('SELECT pg_try_advisory_xact_lock(15,2449) locked')).rows[0].locked,'ADVISORY_LOCK_BUSY');
+  requireScoped((await v6Timed('advisory_lock',()=>db.query('SELECT pg_try_advisory_xact_lock(15,2449) locked'))).rows[0].locked,'ADVISORY_LOCK_BUSY');
   await options.hooks?.beforeLock?.();
   await lockScope(db,initial);await options.hooks?.afterLock?.(db);
   // Advisory SELECT pins a snapshot before table locks. This fresh independent
   // observer is mandatory, including if the locks had to wait on a sequence.
-  const fresh=await observerCapture(observer);authority.revalidate(seal,fresh.set);await target.validateCapture(fresh);
-  const locked=await scopedCapture(db,initial.manifest);authority.revalidate(seal,locked.set);await target.validateCapture(locked);
-  await options.hooks?.beforeDml?.();await freshDefinitions(observer,locked.manifest,locked.inventory);authority.assertLive(seal);
+  const fresh=await v6Timed('fresh_locked_observer_capture',()=>observerCapture(observer));await target.validateCapture(fresh);
+  const locked=await v6Timed('locked_capture',()=>scopedCapture(db,initial.manifest));await target.validateCapture(locked);
+  await v6Timed('slow_validation_gate',async()=>{await options.hooks?.beforeDml?.();});await v6Timed('fresh_definitions',()=>freshDefinitions(observer,locked.manifest,locked.inventory));
+  if(target.issueLocked){seal=await v6Timed('internal_seal_creation',()=>target.issueLocked!(locked,db));input.seal=seal;authority.assertLive(seal);}
+  authority.assertLive(seal);
   requireScoped(!locked.inventory.columns!.some(r=>r.relation==='cobertura_asignaciones'&&identities.includes(r.name)),'PHASE48_PARTIAL_SCHEMA');
   await options.hooks?.checkpoint?.('BEFORE_PHASE48',db);
   await db.query(`ALTER TABLE cobertura_asignaciones ADD COLUMN institucion_id bigint REFERENCES instituciones(id),ADD COLUMN sede_id bigint REFERENCES sedes(id),ADD COLUMN modalidad_id bigint REFERENCES modalidades(id)`);
@@ -162,31 +185,42 @@ export async function executeV6Atomic(authority:ScopedAuthority,input:V6Input,ta
   for(const action of ['PHASE48','ALBENY','DARY','CLOSE1203']){await options.hooks?.checkpoint?.('AUDIT_'+action,db);await audit(db,authority,seal,action,action==='CLOSE1203'?{...payload,assignment_id:'1203',linkage_id:'1461',old_date:'2026-11-30',new_date:'2026-08-31',reason:'RETIRO_CONFIRMADO',before_digest:close.before_digest,after_digest:close.after_digest}:payload,action==='PHASE48'?beforeJournal:null);}
   const forensic=await collectScopedSchema(db,locked.manifest);forensic.inventory.functions=await scopedFunctions(db);forensic.inventory.managed_events=(await certifiedManagedEvents(db)).critical;forensic.inventory.trigger_pseudorecords=await certifiedPseudorecordContext(db,locked.manifest.tables);const finalInventory=projectScopedInventory(forensic.inventory,locked.manifest);
   requireScoped(scopedDigest(normalizedInventory(finalInventory,locked.inventory))===scopedDigest(locked.inventory),'UNAUTHORIZED_CRITICAL_DDL');
-  await options.hooks?.checkpoint?.('BEFORE_COMMIT',db);await options.hooks?.beforeCommit?.();await published(db,authority,seal);await freshDefinitions(observer,locked.manifest,locked.inventory);authority.assertLive(seal);
+  await options.hooks?.checkpoint?.('BEFORE_COMMIT',db);await options.hooks?.beforeCommit?.();await v6Timed('internal_postchecks',()=>verifyV6Published(db,authority,seal));await freshDefinitions(observer,locked.manifest,locked.inventory);authority.assertLive(seal);
   if((options.mode??'Rollback')==='Rollback'){
    await db.query('ROLLBACK');begun=false;
    authority.revalidate(seal,(await observerCapture(observer)).set);
    return {status:'LOCAL_ROLLED_BACK',run_id:seal.run_id,processed_ids:seal.set.candidate_ids,preview:locked.salary_preview,operational_preview:locked.operational,rollback_verified:true,economic_authorization:false,informational_before:input.informational,informational_after:await scopedInformational(observer,locked.manifest)};
   }
-  await target.beforeCommit();await db.query('COMMIT');begun=false;committed=true;await published(observer,authority,seal);
-  const receipt={run_id:seal.run_id,status:'LOCAL_COMMITTED',candidate_count:seal.set.candidate_count,digests:seal.set,manifest:locked.manifest,preview:locked.salary_preview,operational_preview:locked.operational,requires_salary_review:payload.requires_salary_review,economic_authorization:false,external_validation:'VERIFIED',informational_before:input.informational,informational_after:await scopedInformational(observer,locked.manifest),definitions_window_confirmed:true,definitions_residual_risk:'An administrator can replace a routine after the last check. The no-deploy/no-migration window is an operational precondition, not a table-lock guarantee.'};
-  if(options.receipt_directory)publishAtomicReceipt(options.receipt_directory,seal.run_id+'.receipt.json',receipt);
+  await target.beforeCommit();await v6Timed('commit',()=>db.query('COMMIT'));begun=false;committed=true;const external=await v6Timed('external_postchecks',()=>verifyV6Published(observer,authority,seal));
+  const receipt={run_id:seal.run_id,internal_seal:seal,sealed_query_count:sealedQueries,sequence_postchecks:external?.sequence_postchecks,status:'LOCAL_COMMITTED',candidate_count:seal.set.candidate_count,digests:seal.set,manifest:locked.manifest,preview:locked.salary_preview,operational_preview:locked.operational,requires_salary_review:payload.requires_salary_review,economic_authorization:false,external_validation:'VERIFIED',informational_before:input.informational,informational_after:await scopedInformational(observer,locked.manifest),definitions_window_confirmed:true,definitions_residual_risk:'An administrator can replace a routine after the last check. The no-deploy/no-migration window is an operational precondition, not a table-lock guarantee.'};
   return receipt;
- }catch(error){if(committed)throw Object.assign(new Error('COMMITTED_REQUIRES_RECOVERY'),{cause:error,committed:true});throw error;}
- finally{try{if(begun)await db.query('ROLLBACK');}finally{await Promise.allSettled([db.end(),observer.end()]);}}
+ }catch(error){failure=committed||commitAttempted?Object.assign(new Error('COMMITTED_REQUIRES_RECOVERY'),{cause:error,committed,commit_unknown:!committed}):error;failure.rollback_confirmed=!begun;throw failure;}
+ finally{try{if(begun){await db.query('ROLLBACK');if(failure)failure.rollback_confirmed=true;}}finally{const results=await Promise.allSettled([db.end(),observer.end()]);if(failure)failure.connections_closed=results.every(r=>r.status==='fulfilled');}}
 }
 // Reverses only this run after exact postimages have been verified. It never
 // rewinds sequences or deletes publication audits; reversal audits are appended.
 export async function rollbackV6Published(authority:ScopedAuthority,seal:ScopedSeal,target:V6Runtime,options:{definitions_window_confirmed:boolean}){
- authority.authenticate(seal);requireScoped(options.definitions_window_confirmed===true,'DEFINITION_WINDOW_REQUIRED');const db=target.client('writer'),observer=target.client('observer');let begun=false,committed=false;
+ authority.authenticate(seal);requireScoped(options.definitions_window_confirmed===true,'DEFINITION_WINDOW_REQUIRED');const db=target.client('writer'),observer=target.client('observer');let begun=false,committed=false,commitAttempted=false;let internal:ScopedSeal|undefined;let count=0;let failure:any;
+ const originalQuery=db.query.bind(db);
+ db.query=(async(sql:any,values?:any)=>{const text=String(sql);if(text==='ROLLBACK')return originalQuery(sql,values);
+  const dml=/^\s*(INSERT|UPDATE|DELETE|MERGE|CREATE|DROP|TRUNCATE|ALTER TABLE)\b/i.test(text);
+  if(dml)requireScoped(internal,'V6_REVERSAL_DML_BEFORE_SEAL');
+  if(internal){authority.assertLive(internal);requireScoped(++count<=V6_WINDOW_POLICY.query_limit_after_seal,'V6_WINDOW_QUERY_LIMIT');
+   if(dml||text==='COMMIT'){await originalQuery("SET LOCAL statement_timeout='"+Math.max(1,Math.min(5000,internal.expires_at-Date.now()))+"ms'");
+    const binding=(internal as any).binding;const tx=(await originalQuery("SELECT pg_backend_pid() pid,pg_current_xact_id_if_assigned()::text transaction_id,current_setting('transaction_isolation') isolation")).rows[0];
+    requireScoped(tx.pid===binding.pid&&tx.transaction_id===binding.transaction_id&&tx.isolation==='serializable','V6_TRANSACTION_OR_LOCK_BINDING_LOST');authority.assertLive(internal);}
+  }
+  if(text==='COMMIT')commitAttempted=true;const result=await originalQuery(sql,values);if(internal&&text!=='COMMIT')authority.assertLive(internal);return result;}) as V6Client['query'];
  try{
   await db.connect();await observer.connect();await identity(observer,target);await ddlIdle(observer);
-  await identity(db,target);const journal=await published(db,authority,seal);requireScoped(journal,'PUBLISHED_RUN_REQUIRED');
+  await identity(db,target);const journal=await verifyV6Published(db,authority,seal);requireScoped(journal,'PUBLISHED_RUN_REQUIRED');
   await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');begun=true;await db.query("SET LOCAL lock_timeout='2s'");
   await db.query('SET CONSTRAINTS ALL IMMEDIATE');
   requireScoped((await db.query('SELECT pg_try_advisory_xact_lock(15,2449) locked')).rows[0].locked,'ADVISORY_LOCK_BUSY');
-  await lockScope(db,journal.before);await published(db,authority,seal);
+  await lockScope(db,journal.before);await verifyV6Published(db,authority,seal);
   await freshDefinitions(observer,journal.before.manifest,journal.before.inventory);
+  requireScoped(target.issueReversalLocked,'V6_REVERSAL_LATE_AUTHORITY_REQUIRED');
+  internal=await target.issueReversalLocked(journal,db);authority.assertLive(internal);
   requireScoped((await db.query('DELETE FROM cobertura_asignaciones WHERE id=$1 AND vinculacion_id=1555 AND focalizacion_final_id IS NULL',[journal.payload.albeny_id])).rowCount===1,'REVERSAL_NEW_ROW_DIVERGENCE');
   const originalDary=journal.before.coverage.find((r:any)=>String(r.id)==='11');
   await db.query('UPDATE cobertura_asignaciones SET activo=$1,observacion=$2 WHERE id=11',[originalDary.activo,originalDary.observacion]);
@@ -204,8 +238,8 @@ export async function rollbackV6Published(authority:ScopedAuthority,seal:ScopedS
   };
   await verifyRestored(db);
   await freshDefinitions(observer,journal.before.manifest,journal.before.inventory);
-  await db.query('COMMIT');begun=false;committed=true;await verifyRestored(observer);
-  return {status:'LOCAL_REVERSED',run_id:seal.run_id,economic_authorization:false,publication_audits_preserved:true,external_validation:'VERIFIED'};
- }catch(error){if(committed)throw Object.assign(new Error('COMMITTED_REVERSAL_REQUIRES_RECOVERY'),{cause:error,committed:true});throw error;
- }finally{try{if(begun)await db.query('ROLLBACK');}finally{await Promise.allSettled([db.end(),observer.end()]);}}
+  await target.beforeCommit();await db.query('COMMIT');begun=false;committed=true;await verifyRestored(observer);
+  return {internal_seal:internal,sealed_query_count:count,status:'LOCAL_REVERSED',run_id:seal.run_id,economic_authorization:false,publication_audits_preserved:true,external_validation:'VERIFIED'};
+ }catch(error){failure=committed||commitAttempted?Object.assign(new Error('COMMITTED_REVERSAL_REQUIRES_RECOVERY'),{cause:error,committed,commit_unknown:!committed}):error;failure.rollback_confirmed=!begun;throw failure;
+ }finally{try{if(begun){await db.query('ROLLBACK');if(failure)failure.rollback_confirmed=true;}}finally{await Promise.allSettled([db.end(),observer.end()]);}}
 }
