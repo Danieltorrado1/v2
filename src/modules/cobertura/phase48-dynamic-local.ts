@@ -1,7 +1,8 @@
 // Deliberately isolated from production dispatch and all historical corrections.
 // Only the ephemeral cluster created by certify-phase48-dynamic-local.ps1 is accepted.
 import {Client} from 'pg';
-import {resolve} from 'node:path';
+import {resolve,sep} from 'node:path';
+import {readFileSync} from 'node:fs';
 import {digest, orderedIds, DynamicSeal, DynamicSet, LocalGateAuthority} from './phase48-dynamic-gate';
 
 const q=(s:string)=>'"'+s.replaceAll('"','""')+'"';
@@ -9,6 +10,14 @@ const identities=['institucion_id','sede_id','modalidad_id'];
 export type LocalTarget={clusterDirectory:string};
 export function localClient():Client {
  if(process.env.PHASE48_DYNAMIC_LOCAL_CERT!=='true')throw Error('LOCAL_CERTIFICATION_REQUIRED');
+ if(process.env.PHASE48_READ_QUERY_LOCAL_CERT==='true'){
+  const root=resolve('tmp/phase48-v6-read-query-certification')+sep;
+  const directory=resolve(process.env.PHASE48_READ_QUERY_LOCAL_CLUSTER??'');
+  const port=Number(process.env.PHASE48_READ_QUERY_LOCAL_PORT),pid=Number(process.env.PHASE48_READ_QUERY_LOCAL_PID);
+  const ca=process.env.PHASE48_READ_QUERY_LOCAL_CA;
+  if(!directory.startsWith(root)||!new RegExp('^run-[a-f0-9]{32}\\\\cluster$','i').test(directory.slice(root.length).replaceAll('/','\\'))||!Number.isInteger(port)||port<49152||port>65535||!Number.isInteger(pid)||pid<1||!ca)throw Error('READ_QUERY_LOCAL_CERTIFICATE_SCOPE_REQUIRED');
+  return new Client({host:'127.0.0.1',port,user:'phase48_dynamic_local',database:'postgres',ssl:{ca:readFileSync(ca,'utf8'),rejectUnauthorized:true,servername:'localhost'},options:"-c search_path=public,pg_temp"});
+ }
  return new Client({host:'127.0.0.1',port:55470,user:'phase48_dynamic_local',database:'postgres',ssl:false,options:"-c search_path=public,pg_temp"});
 }
 async function identity(db:Client,target:LocalTarget) {

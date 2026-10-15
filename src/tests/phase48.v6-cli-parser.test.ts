@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
+import {readFileSync} from 'node:fs';
 import {isV6ArgumentName,parseV6Cli,runV6Cli} from '../scripts/phase48-v6-production';
 import {buildV6Phrase,V6_ASSERTIONS,V6_ORDER} from '../modules/cobertura/phase48-v6-contract';
 
@@ -65,4 +66,13 @@ test('synthetic valid launcher reaches offline host validation before any creden
   .replace('C:/synthetic/ca-sentinel.crt',resolve('tmp/phase48-v6-window-local/NEVER_READ_parser_ca.crt'))
   .replace('C:/synthetic/receipts',resolve('tmp/phase48-v6-window-local')));
  await assert.rejects(runV6Cli(args),(error:any)=>error?.code==='ENOENT'&&String(error.path).includes('parser-no-evidence')&&!String(error.path).includes('NEVER_READ'));
+});
+
+test('V6 release gate pins the exact read-query observability branch and retains HEAD ancestry checks',()=>{
+ const source=readFileSync('src/modules/cobertura/phase48-v6-evidence.ts','utf8');
+ assert.match(source,/git\(\['branch','--show-current'\]\)==='fix\/phase48-v6-read-query-observability'/);
+ assert.match(source,/git\(\['rev-parse','HEAD'\]\)/);
+ assert.match(source,/git\(\['merge-base','--is-ancestor',V6_MUTATOR_COMMIT,head\]\)/);
+ assert.match(source,/replaceAll\("'fix\/phase48-v6-argument-parser'","'<BRANCH>'"\)/);
+ assert.match(source,/replace\(file\.endsWith\('phase48-v6-evidence\.ts'\)\?\/const normalize=\[\^\\r\\n\]\+\/:\/\$\^\/g,'const normalize=<NORMALIZER>;'\)/);
 });

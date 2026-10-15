@@ -65,3 +65,9 @@ tmp/phase48-pooler-local/
 # V6 local synthetic receipts, interrupted cluster evidence, and run logs
 /tmp/phase48-v6-local/
 /tmp/phase48-v6-window-local/
+
+# Disposable READ_QUERY PostgreSQL 17.11 certification clones and local receipts
+/tmp/phase48-v6-read-query-certification/
+/tmp/v6-clean-gate-probe-*/
+reports/phase48-v6-read-query-*.local.json
+reports/phase48-v6-read-query-*.receipt.json

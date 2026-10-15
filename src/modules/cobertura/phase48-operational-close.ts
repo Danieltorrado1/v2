@@ -2,7 +2,7 @@ import {createHash} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
 import {recordV6Timing,v6TimedSync} from './phase48-v6-timing';
 import {readFileSync} from 'node:fs';
-import {resolve} from 'node:path';
+import {resolve,sep} from 'node:path';
 import certificate from './phase48-operational-certificate.json';
 import {requireScoped,scopedDigest} from './phase48-scoped-contract';
 import type {ScopedDb} from './phase48-scoped-repository';
@@ -35,12 +35,16 @@ export function validateOperationalRows(coverage:any[],linkage:any,ff:any,pins:t
 }
 export async function operationalPins(db:ScopedDb):Promise<typeof certificate>{
  if(process.env.PHASE48_DYNAMIC_LOCAL_CERT!=='true')return certificate;
- // Synthetic fixture pins have no productive path. A local certificate is
- // accepted only in the existing guarded disposable PostgreSQL 17.11 cluster.
+ // Synthetic fixture pins have no productive path. Local harnesses must
+ // identify their exact disposable data directory and dynamic loopback port.
  const r=(await db.query("SELECT host(inet_server_addr()) host,inet_server_port() port,current_user actor,current_database() database,current_setting('data_directory') directory,current_setting('server_version') version")).rows[0];
  const window=process.env.PHASE48_WINDOW_LOCAL_CERT==='true';
- requireScoped(r.host==='127.0.0.1'&&r.port===55470&&r.actor==='phase48_dynamic_local'&&r.database==='postgres'&&r.version==='17.11'&&resolve(r.directory)===resolve(window?'tmp/phase48-v6-window-local/cluster':'tmp/phase48-pooler-local/dynamic-cluster'),'SYNTHETIC_CERTIFICATE_LOCAL_ONLY');
- const pins=JSON.parse(readFileSync(window?'tmp/phase48-v6-window-local/operational-synthetic-pins.json':'tmp/phase48-pooler-local/operational-synthetic-pins.json','utf8'));
+ const readQuery=process.env.PHASE48_READ_QUERY_LOCAL_CERT==='true';
+ const expectedDirectory=readQuery?process.env.PHASE48_READ_QUERY_LOCAL_CLUSTER:resolve(window?'tmp/phase48-v6-window-local/cluster':'tmp/phase48-pooler-local/dynamic-cluster');
+ const expectedPort=readQuery?Number(process.env.PHASE48_READ_QUERY_LOCAL_PORT):55470;
+ if(readQuery){const root=resolve('tmp/phase48-v6-read-query-certification')+sep;const candidate=resolve(expectedDirectory??'');requireScoped(process.env.PHASE48_WINDOW_LOCAL_CERT==='true'&&process.env.PHASE48_READ_QUERY_LOCAL_PID&&expectedPort>49151&&expectedPort<65536&&candidate.startsWith(root)&&new RegExp('^run-[a-f0-9]{32}\\\\cluster$','i').test(candidate.slice(root.length).replaceAll('/','\\')),'READ_QUERY_LOCAL_CERTIFICATE_SCOPE_REQUIRED');}
+ requireScoped(r.host==='127.0.0.1'&&r.port===expectedPort&&r.actor==='phase48_dynamic_local'&&r.database==='postgres'&&r.version==='17.11'&&resolve(r.directory)===resolve(expectedDirectory??''),'SYNTHETIC_CERTIFICATE_LOCAL_ONLY');
+ const pins=JSON.parse(readFileSync(readQuery||window?'tmp/phase48-v6-window-local/operational-synthetic-pins.json':'tmp/phase48-pooler-local/operational-synthetic-pins.json','utf8'));
  requireScoped(pins.version===certificate.version&&scopedDigest({...pins.close,before_digest:certificate.close.before_digest})===scopedDigest(certificate.close)&&pins.archives.length===7,'SYNTHETIC_CERTIFICATE_SCOPE_CHANGED');
  return pins;
 }
