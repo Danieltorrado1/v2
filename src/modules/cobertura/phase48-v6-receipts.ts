@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import {existsSync,readFileSync,mkdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {publishAtomicReceipt} from './phase48-readonly-receipts';
@@ -8,7 +9,7 @@ export type V6ReceiptType=typeof V6_RECEIPT_TYPES[number];
 export const v6ReceiptPath=(directory:string,run:string,type:V6ReceiptType)=>join(directory,run+'.'+type+'.json');
 export function publishV6Receipt(directory:string,run:string,type:V6ReceiptType,body:any,parents:{path:string;sha256:string}[]=[]){
  requireScoped(/^phase48-[a-f0-9-]{36}$/.test(run)&&V6_RECEIPT_TYPES.includes(type),'V6_RECEIPT_TYPE_REQUIRED');
- for(const parent of parents)requireScoped(v6Hash(readFileSync(parent.path))===parent.sha256,'V6_PARENT_RECEIPT_CHANGED');
+ for(const parent of parents)requireScoped(sha256HexEqual(v6Hash(readFileSync(parent.path)),parent.sha256),'V6_PARENT_RECEIPT_CHANGED');
  const receipt={...body,run_id:run,receipt_type:type,parents};
  const path=publishAtomicReceipt(directory,run+'.'+type+'.json',receipt,{exclusive:true});
  return {path,sha256:v6Hash(readFileSync(path))};

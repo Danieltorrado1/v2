@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 // Deliberately isolated from production dispatch and all historical corrections.
 // Only the ephemeral cluster created by certify-phase48-dynamic-local.ps1 is accepted.
 import {Client} from 'pg';
@@ -77,7 +78,7 @@ export async function certifyDynamicLocal(authority:LocalGateAuthority,target:Lo
    await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await identity(db,target);
    if((await db.query(`SELECT current_setting('transaction_read_only') r`)).rows[0].r!=='on')throw Error('READ_ONLY_REQUIRED');
    const set=await capture(db);
-   if(first && digest(set)!==digest(first))throw Error('STOPPED_DRIFT');first=set;
+   if(first && !sha256HexEqual(digest(set),digest(first)))throw Error('STOPPED_DRIFT');first=set;
   } finally {try{await db.query('ROLLBACK');}finally{await db.end();}}
   prior=db; // next Client is created only after the previous connection has ended.
  }
@@ -115,20 +116,20 @@ export async function executeDynamicLocal(authority:LocalGateAuthority,seal:Dyna
    AND ca.institucion_id IS NULL AND ca.sede_id IS NULL AND ca.modalidad_id IS NULL
    RETURNING ca.id::text id, ca.institucion_id::text institucion_id,ca.sede_id::text sede_id,ca.modalidad_id::text modalidad_id`,[seal.set.candidate_ids])).rows;
   const processed_ids=orderedIds(changed.map(r=>r.id));
-  if(digest(processed_ids)!==seal.set.candidate_ids_digest || digest(changed.sort((a,b)=>BigInt(a.id)<BigInt(b.id)?-1:1))!==seal.set.phase48_candidates_digest)
+  if(!sha256HexEqual(digest(processed_ids),seal.set.candidate_ids_digest) || !sha256HexEqual(digest(changed.sort((a,b)=>BigInt(a.id)<BigInt(b.id)?-1:1)),seal.set.phase48_candidates_digest))
    throw Error('WRITE_SET_NOT_EXACT');
   await db.query('CREATE INDEX idx_cobertura_asignaciones_timeline ON cobertura_asignaciones(contrato_id,vinculacion_id,fecha_inicio,fecha_fin)');
   await hooks.afterUpdate?.(db);
   // Verify every pre-existing assignment field, including economic fields and special cases.
   const write=(await db.query(`SELECT encode(sha256(convert_to(COALESCE(string_agg((to_jsonb(ca)-'institucion_id'-'sede_id'-'modalidad_id')::text,E'\n' ORDER BY ca.id),''),'UTF8')),'hex') digest FROM cobertura_asignaciones ca WHERE contrato_id=24`)).rows[0].digest;
-  if(write!==seal.set.write_set_before_digest)throw Error('PROTECTED_ASSIGNMENT_DRIFT');
+  if(!sha256HexEqual(write,seal.set.write_set_before_digest))throw Error('PROTECTED_ASSIGNMENT_DRIFT');
   const afterData:any[]=[];
   for(const table of seal.set.lock_tables) {
    const expression=table==='cobertura_asignaciones'?"(to_jsonb(t)-'institucion_id'-'sede_id'-'modalidad_id')::text":'to_jsonb(t)::text';
    const row=(await db.query(`SELECT count(*)::text count, encode(sha256(convert_to(COALESCE(string_agg(${expression},E'\n' ORDER BY ${expression}),''),'UTF8')),'hex') digest FROM public.${q(table)} t`)).rows[0];
    afterData.push({table,...row});
   }
-  if(digest(afterData)!==seal.set.source_digest)throw Error('PROTECTED_TABLE_DRIFT');
+  if(!sha256HexEqual(digest(afterData),seal.set.source_digest))throw Error('PROTECTED_TABLE_DRIFT');
   authority.assertLive(seal);
   await db.query(mode==='Commit'?'COMMIT':'ROLLBACK');finished=true;
   if(mode==='Rollback') {

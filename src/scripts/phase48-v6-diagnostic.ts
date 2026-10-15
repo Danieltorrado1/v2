@@ -1,3 +1,4 @@
+import {sha256HexEqual} from '../modules/cobertura/phase48-sha256';
 import {Client} from 'pg';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
@@ -17,7 +18,7 @@ const args=parseDiagnosticLauncherArgs(process.argv.slice(2)),root=resolve(__dir
 const precheck=()=>{
  const result=verifyDiagnosticOffline(root),ca=readFileSync(args.caPath),actual=createHash('sha256').update(ca).digest('hex');
  if(ca.length!==1367)throw Error('DIAGNOSTIC_CA_PIN_INVALID');try{assertSha256Pin(args.caSha256,actual);assertSha256Pin(CERTIFIED_CA_SHA256,actual);}catch{throw Error('DIAGNOSTIC_CA_PIN_INVALID');}
- const cert=inspectReadCa(ca);if(cert.sha256!==actual)throw Error('DIAGNOSTIC_CA_CERTIFICATE_INVALID');
+ const cert=inspectReadCa(ca);if(!sha256HexEqual(cert.sha256,actual))throw Error('DIAGNOSTIC_CA_CERTIFICATE_INVALID');
  return {...result,ca_sha256:actual,ca_valid:true,client_version:process.versions.node};
 };
 let clientCount=0;
@@ -28,7 +29,7 @@ const outcome=await launchReadQueryDiagnostic({root,directory:args.directory,syn
   const verified=verifiedProductionConfig(()=>credential,env);let native:Client|undefined;
   const api:DiagnosticClient={async connect(){native=new Client({...verified.config,query_timeout:10000,application_name:'phase48_read_query_diagnostic'});native.on('error',()=>{});await native.connect();},async query(sql,values){if(!native)throw Error('DIAGNOSTIC_CLIENT_NOT_CONNECTED');const result=await native.query(sql,values as any[]|undefined);return {rows:result.rows,rowCount:result.rowCount};},async end(){if(native)await native.end();}};
   return runReadQueryDiagnostic({directory:args.directory,runId,createClient:()=>{if(clientCount!==1)throw Error('DIAGNOSTIC_CONNECTION_LIMIT');return api;},validateTls:async()=>{
-   if(!native)throw Error('DIAGNOSTIC_TLS_CLIENT_MISSING');const observed=inspectProductionTls(native);return {...observed,ca_pinned:observed.certificate_sha256===args.caSha256,authorization_error:observed.authorizationError} as unknown as DiagnosticTlsEvidence;
+   if(!native)throw Error('DIAGNOSTIC_TLS_CLIENT_MISSING');const observed=inspectProductionTls(native);return {...observed,ca_pinned:sha256HexEqual(observed.certificate_sha256,args.caSha256),authorization_error:observed.authorizationError} as unknown as DiagnosticTlsEvidence;
   },async capture(db){
    await db.query('SET LOCAL search_path=pg_catalog,public,pg_temp');await db.query("SET LOCAL timezone='UTC'");await db.query("SET LOCAL statement_timeout='12s'");await db.query("SET LOCAL lock_timeout='2s'");
    const identity=(await db.query("SELECT current_setting('server_version') version,current_setting('transaction_read_only') read_only,current_setting('transaction_isolation') isolation,current_database() database,pg_backend_pid() pid,pg_current_snapshot()::text snapshot,(SELECT virtualtransaction FROM pg_locks WHERE pid=pg_backend_pid() AND virtualxid IS NOT NULL LIMIT 1) virtual_tx")).rows[0];

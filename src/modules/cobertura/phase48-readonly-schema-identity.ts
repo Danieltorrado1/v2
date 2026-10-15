@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import {contractDigest,canonical} from './phase48-readonly-contract';
 import {SCHEMA_SCOPE} from './phase48-readonly-schema-scope';
 import {collectSchemaForensic} from './phase48-readonly-schema-catalog';
@@ -46,7 +47,7 @@ export function criticalSchema(inventory:Record<string,any[]>){
 export const criticalSchemaDigest=(inventory:Record<string,any[]>)=>contractDigest(criticalSchema(inventory));
 export function validateCriticalSchema(inventory:Record<string,any[]>,globalDigest:string){
  const observed=criticalSchemaDigest(inventory);
- if(observed!==EXPECTED_CRITICAL_SCHEMA_DIGEST)throw Object.assign(Error('READ_SCHEMA_IDENTITY_MISMATCH'),{expected_schema_digest:EXPECTED_CRITICAL_SCHEMA_DIGEST,observed_schema_digest:observed,canonicalization_version:SCHEMA_IDENTITY_VERSION,schema_identity_version:SCHEMA_IDENTITY_VERSION,schema_divergence_phase:'server_identity.critical_schema',observed_global_schema_digest:globalDigest});
+ if(!sha256HexEqual(observed,EXPECTED_CRITICAL_SCHEMA_DIGEST))throw Object.assign(Error('READ_SCHEMA_IDENTITY_MISMATCH'),{expected_schema_digest:EXPECTED_CRITICAL_SCHEMA_DIGEST,observed_schema_digest:observed,canonicalization_version:SCHEMA_IDENTITY_VERSION,schema_identity_version:SCHEMA_IDENTITY_VERSION,schema_divergence_phase:'server_identity.critical_schema',observed_global_schema_digest:globalDigest});
  return {schema_identity_version:SCHEMA_IDENTITY_VERSION,expected_schema_digest:EXPECTED_CRITICAL_SCHEMA_DIGEST,observed_schema_digest:observed,global_schema_digest:globalDigest,schema_matches:true};
 }
 export async function assertCriticalSchema(db:{query:(sql:string)=>Promise<{rows:any[]}>}){const metadata=await collectSchemaForensic(db);return validateCriticalSchema(metadata.inventory,metadata.global_digest);}

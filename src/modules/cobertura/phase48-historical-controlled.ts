@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import type {PoolClient} from 'pg';
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
@@ -71,7 +72,7 @@ async function historicalPlan(db:Db){
   const attendance=(await db.query(`SELECT id::text FROM nomina_asistencia_diaria WHERE vinculacion_id=$1::bigint
    AND fecha BETWEEN $2::date AND $3::date ORDER BY id`,[c.vinculacion,c.desde,c.hasta])).rows.map(r=>r.id);
   const expectedAttendance=c.vinculacion==='1555'?['13195','13196','13197','13198','13199','13200','13201','13202','13203','13204','19830','19833','19834','19837','19838','19841']:[];
-  assert(sha(attendance)===sha(expectedAttendance),'EXPECTED_HISTORICAL_ATTENDANCE_IDS_CHANGED');
+  assert(sha256HexEqual(sha(attendance),sha(expectedAttendance)),'EXPECTED_HISTORICAL_ATTENDANCE_IDS_CHANGED');
   const target=(await db.query(`SELECT i.id::text institucion_id,s.id::text sede_id,s.municipio_id::text municipio_id,m.id::text modalidad_id,
    i.nombre_institucion institucion,s.nombre_sede sede,COALESCE(m.codigo_original,m.nombre_modalidad) modalidad
    FROM instituciones i JOIN sedes s ON s.institucion_id=i.id CROSS JOIN modalidades m
@@ -160,7 +161,7 @@ export async function runPhase48HistoricalLocal(db:Db,operation:'Phase48'|'Histo
   }
   await actorGate(db,options.actor);
   const before=await historicalSnapshot(db);
-  if(mode==='MutateLocal')assert(options.baseline===before.digest,'IMMEDIATE_BASELINE_CHANGED');
+  if(mode==='MutateLocal')assert(sha256HexEqual(options.baseline,before.digest),'IMMEDIATE_BASELINE_CHANGED');
   const columns=before.schema.filter(r=>r.table_name==='cobertura_asignaciones');
   const identities=columns.filter(r=>['institucion_id','sede_id','modalidad_id'].includes(r.column_name));
   assert(identities.length===0||identities.length===3&&identities.every(r=>r.data_type==='bigint'&&r.is_nullable==='YES'),'PARTIAL_PHASE48_SCHEMA');
@@ -201,10 +202,10 @@ export async function runPhase48HistoricalLocal(db:Db,operation:'Phase48'|'Histo
    await db.query(sql);
    if(options.failAt==='after-phase-ddl')throw Error('INDUCED_FAILURE_AFTER_PHASE_DDL');
    const afterRows=(await db.query(`SELECT to_jsonb(ca)-'institucion_id'-'sede_id'-'modalidad_id' row FROM cobertura_asignaciones ca ORDER BY id`)).rows.map(r=>r.row);
-   assert(sha(originalCoverage)===sha(afterRows),'PHASE48_CHANGED_EXISTING_COVERAGE');
+   assert(sha256HexEqual(sha(originalCoverage),sha(afterRows)),'PHASE48_CHANGED_EXISTING_COVERAGE');
    const actual=(await db.query(`SELECT ca.id::text cobertura_id,ca.institucion_id::text,ca.sede_id::text,ca.modalidad_id::text
     FROM cobertura_asignaciones ca WHERE ca.id=ANY($1::bigint[]) ORDER BY ca.id`,[plan[0]!.expected_identities.map((r:Row)=>r.cobertura_id)])).rows;
-   assert(sha(actual)===sha(plan[0]!.expected_identities),'PHASE48_BACKFILL_POSTFLIGHT_FAILED');
+   assert(sha256HexEqual(sha(actual),sha(plan[0]!.expected_identities)),'PHASE48_BACKFILL_POSTFLIGHT_FAILED');
   }else{
    for(let i=0;i<plan.length;i++){
     const p=plan[i]!;
@@ -223,10 +224,10 @@ export async function runPhase48HistoricalLocal(db:Db,operation:'Phase48'|'Histo
     if(i===0&&options.failAt==='after-first-correction')throw Error('INDUCED_FAILURE_AFTER_FIRST_CORRECTION');
    }
    const remaining=(await db.query(`SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca WHERE id=ANY($1::bigint[]) ORDER BY id`,[originalCoverage.filter(r=>r.id!==11).map(r=>r.id)])).rows.map(r=>r.row);
-   assert(sha(originalCoverage.filter(r=>r.id!==11))===sha(remaining),'EXISTING_COVERAGE_CHANGED');
+   assert(sha256HexEqual(sha(originalCoverage.filter(r=>r.id!==11)),sha(remaining)),'EXISTING_COVERAGE_CHANGED');
    const old=originalCoverage.find(r=>r.id===11);const current=(await db.query(`SELECT to_jsonb(ca)-'activo'-'observacion' row FROM cobertura_asignaciones ca WHERE id=11`)).rows[0].row;
    const {activo:ignoredActive,observacion:ignoredObservation,...rest}=old;
-   assert(sha(rest)===sha(current),'HISTORICAL_11_OTHER_FIELDS_CHANGED');
+   assert(sha256HexEqual(sha(rest),sha(current)),'HISTORICAL_11_OTHER_FIELDS_CHANGED');
    plan=await historicalPlan(db);assert(plan.every(r=>r.applied),'HISTORICAL_POSTFLIGHT_FAILED');
   }
   const afterData=await historicalSnapshot(db);protectedGate(before,afterData,operation==='Phase48');

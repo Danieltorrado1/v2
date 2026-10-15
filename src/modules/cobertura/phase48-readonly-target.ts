@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import {URL} from 'node:url';
 import {createHash} from 'node:crypto';
 import {PROJECT_REF} from './phase48-readonly-contract';
@@ -70,6 +71,6 @@ export function verifyReadServerIdentity(identity:{database:string;version:strin
  need(identity.empresa_exists===true&&identity.contrato_exists===true,'READ_SERVER_SCOPE_INVALID');
  need(READ_IDENTITY_TABLES.every(t=>identity.tables.includes(t)),'READ_SERVER_TABLES_INVALID');
  need(identity.schema_identity_version===SCHEMA_IDENTITY_VERSION,'READ_SCHEMA_IDENTITY_VERSION_INVALID');
- if(identity.schema_digest!==READ_SCHEMA_FINGERPRINT)throw Object.assign(Error('READ_SCHEMA_IDENTITY_MISMATCH'),{expected_schema_digest:READ_SCHEMA_FINGERPRINT,observed_schema_digest:identity.schema_digest,canonicalization_version:READ_SCHEMA_CANONICALIZATION_VERSION,schema_divergence_phase:'server_identity.critical_schema',observed_global_schema_digest:identity.global_schema_digest});
+ if(!sha256HexEqual(identity.schema_digest,READ_SCHEMA_FINGERPRINT))throw Object.assign(Error('READ_SCHEMA_IDENTITY_MISMATCH'),{expected_schema_digest:READ_SCHEMA_FINGERPRINT,observed_schema_digest:identity.schema_digest,canonicalization_version:READ_SCHEMA_CANONICALIZATION_VERSION,schema_divergence_phase:'server_identity.critical_schema',observed_global_schema_digest:identity.global_schema_digest});
  return {postgresql_17:true,database_expected:true,empresa:15,contrato:24,tables_expected:true,schema_digest:identity.schema_digest,schema_identity_version:SCHEMA_IDENTITY_VERSION,global_schema_digest:identity.global_schema_digest,schema_matches:true};
 }

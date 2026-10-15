@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import {recordV6Timing} from './phase48-v6-timing';
 import {performance} from 'node:perf_hooks';
 // Pure rules copied from fd6e4aa; no connection transport or mutation runner.
@@ -63,7 +64,7 @@ export async function historicalPlan(db:Db){
   const attendance=(await db.query(`SELECT id::text FROM nomina_asistencia_diaria WHERE vinculacion_id=$1::bigint
    AND fecha BETWEEN $2::date AND $3::date ORDER BY id`,[c.vinculacion,c.desde,c.hasta])).rows.map(r=>r.id);
   const expectedAttendance=c.vinculacion==='1555'?['13195','13196','13197','13198','13199','13200','13201','13202','13203','13204','19830','19833','19834','19837','19838','19841']:[];
-  assert(sha(attendance)===sha(expectedAttendance),'EXPECTED_HISTORICAL_ATTENDANCE_IDS_CHANGED');
+  assert(sha256HexEqual(sha(attendance),sha(expectedAttendance)),'EXPECTED_HISTORICAL_ATTENDANCE_IDS_CHANGED');
   const target=(await db.query(`SELECT i.id::text institucion_id,s.id::text sede_id,s.municipio_id::text municipio_id,m.id::text modalidad_id,
    i.nombre_institucion institucion,s.nombre_sede sede,COALESCE(m.codigo_original,m.nombre_modalidad) modalidad
    FROM instituciones i JOIN sedes s ON s.institucion_id=i.id CROSS JOIN modalidades m

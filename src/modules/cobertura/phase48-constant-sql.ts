@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import {createHash} from 'node:crypto';
 import type {PoolClient} from 'pg';
 import baseline from './phase48-constant-sql-baseline.json';
@@ -12,7 +13,7 @@ export function certifyConstantExecute(identity:string,definition:string){
  const matches=[...normalized.matchAll(/\bEXECUTE\s+'((?:[^']|'')*)'\s+INTO\s+(\w+)\s+USING\s+(\w+)\s*;/gi)];
  need(matches.length===1&&matches[0]![1]===baseline.sql&&matches[0]![2]==='v_family'&&matches[0]![3]==='v_record','CONSTANT_SQL_TEMPLATE_UNCERTIFIED');
  need((normalized.match(/\bEXECUTE\b/gi)??[]).length===1&&!/\b(?:format|quote_ident|quote_literal)\s*\(/i.test(normalized),'CONSTANT_SQL_STRUCTURE_UNCERTIFIED');
- need(constantSqlHash(normalized)===baseline.definition_sha256,'CONSTANT_SQL_FUNCTION_HASH_DRIFT');
+ need(sha256HexEqual(constantSqlHash(normalized),baseline.definition_sha256),'CONSTANT_SQL_FUNCTION_HASH_DRIFT');
  return {identity,definition_sha256:baseline.definition_sha256,classification:baseline.classification,sql:baseline.sql,using:baseline.using,relation:baseline.qualified_relation,column:baseline.column,predicate:baseline.predicate};
 }
 export async function certifyConstantSqlContext(db:Pick<PoolClient,'query'>){

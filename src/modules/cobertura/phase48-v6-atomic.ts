@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import {certifiedPseudorecordContext} from './phase48-pseudorecord-parser';
 import {certifiedManagedEvents} from './phase48-managed-events';
 import {operationalRowDigest,validateCloseRetirement} from './phase48-operational-close';
@@ -39,9 +40,9 @@ async function freshDefinitions(observer:ScopedDb,manifest:ScopedManifest,expect
  // their formatted definitions from another session after our ALTER can wait
  // on our own exclusive lock. Read pg_proc directly for the unprotected part.
  const rows=(await scopedFunctions(observer)).filter(r=>manifest.functions.includes(r.name));
- requireScoped(scopedDigest(rows)===scopedDigest(expected.functions),'CRITICAL_DEFINITION_DRIFT');
- const pseudo=await certifiedPseudorecordContext(observer,manifest.tables);requireScoped(scopedDigest(pseudo)===scopedDigest(expected.trigger_pseudorecords),'CRITICAL_PSEUDORECORD_DRIFT');
- const events=await certifiedManagedEvents(observer);requireScoped(scopedDigest(events.critical)===scopedDigest(expected.managed_events),'CRITICAL_MANAGED_EVENT_DRIFT');
+ requireScoped(sha256HexEqual(scopedDigest(rows),scopedDigest(expected.functions)),'CRITICAL_DEFINITION_DRIFT');
+ const pseudo=await certifiedPseudorecordContext(observer,manifest.tables);requireScoped(sha256HexEqual(scopedDigest(pseudo),scopedDigest(expected.trigger_pseudorecords)),'CRITICAL_PSEUDORECORD_DRIFT');
+ const events=await certifiedManagedEvents(observer);requireScoped(sha256HexEqual(scopedDigest(events.critical),scopedDigest(expected.managed_events)),'CRITICAL_MANAGED_EVENT_DRIFT');
 }
 function normalizedInventory(inventory:Record<string,any[]>,before:Record<string,any[]>){
  const originalColumns=before.columns!.filter(r=>r.relation==='cobertura_asignaciones').map(r=>r.name);
@@ -70,24 +71,24 @@ export async function verifyV6Published(db:ScopedDb,authority:ScopedAuthority,se
  const logs=(await db.query('SELECT id::text id,usuario_id::text actor,datos_anteriores before,datos_nuevos payload FROM auditoria WHERE descripcion=$1 AND datos_nuevos->>\'run_id\'=$2 ORDER BY id',[SCOPED_MARKER,seal.run_id])).rows;
  if(!logs.length)return null;
  for(const r of logs){const {witness_mac,...body}=r.payload;authority.verifyWitness(seal,{body,before:r.before},witness_mac);}
- requireScoped(logs.length===4&&logs.every(r=>r.actor==='12'&&r.payload.seal_digest===scopedDigest(seal)&&r.payload.economic_authorization===false&&scopedDigest(r.payload.salary_decision)===scopedDigest(SALARY_DECISION)),'PUBLISHED_AUDIT_DIVERGENCE');
+ requireScoped(logs.length===4&&logs.every(r=>r.actor==='12'&&sha256HexEqual(r.payload.seal_digest,scopedDigest(seal))&&r.payload.economic_authorization===false&&sha256HexEqual(scopedDigest(r.payload.salary_decision),scopedDigest(SALARY_DECISION))),'PUBLISHED_AUDIT_DIVERGENCE');
  requireScoped(logs.every(r=>r.id===r.payload.legacy_audit_id&&r.payload.actor===12&&r.payload.empresa===15&&r.payload.contrato===24),'PUBLISHED_AUDIT_IDENTITY_DIVERGENCE');
  const events=(await db.query('SELECT id::text id,usuario_id::text actor,empresa_id::text empresa,contrato_id::text contrato,datos_anteriores before,datos_nuevos payload FROM auditoria_eventos WHERE descripcion=$1 AND datos_nuevos->>\'run_id\'=$2 ORDER BY id',[SCOPED_MARKER,seal.run_id])).rows;
- requireScoped(events.length===4&&events.every((r,i)=>r.actor==='12'&&r.empresa==='15'&&r.contrato==='24'&&scopedDigest(r.payload)===scopedDigest(logs[i]!.payload)&&scopedDigest(r.before)===scopedDigest(logs[i]!.before)),'PUBLISHED_EVENT_DIVERGENCE');
+ requireScoped(events.length===4&&events.every((r,i)=>r.actor==='12'&&r.empresa==='15'&&r.contrato==='24'&&sha256HexEqual(scopedDigest(r.payload),scopedDigest(logs[i]!.payload))&&sha256HexEqual(scopedDigest(r.before),scopedDigest(logs[i]!.before))),'PUBLISHED_EVENT_DIVERGENCE');
  requireScoped(events.every(r=>r.id===r.payload.event_audit_id),'PUBLISHED_EVENT_IDENTITY_DIVERGENCE');
  const main=logs.find(r=>r.payload.action==='PHASE48');requireScoped(main&&logs.some(r=>r.payload.action==='ALBENY')&&logs.some(r=>r.payload.action==='DARY')&&logs.some(r=>r.payload.action==='CLOSE1203'),'PUBLISHED_ACTIONS_DIVERGENCE');
  const current=(await db.query('SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca ORDER BY id')).rows.map(r=>r.row);
- requireScoped(scopedDigest(current)===main.payload.coverage_after_digest,'PUBLISHED_WRITE_SET_DIVERGENCE');
+ requireScoped(sha256HexEqual(scopedDigest(current),main.payload.coverage_after_digest),'PUBLISHED_WRITE_SET_DIVERGENCE');
  const data=await tableHashes(db,main.before.manifest.tables);
- for(const old of main.before.data)if(!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(old.table))requireScoped(scopedDigest(old)===scopedDigest(data.find(r=>r.table===old.table)),'PUBLISHED_PROTECTED_DATA_DIVERGENCE');
+ for(const old of main.before.data)if(!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(old.table))requireScoped(sha256HexEqual(scopedDigest(old),scopedDigest(data.find(r=>r.table===old.table))),'PUBLISHED_PROTECTED_DATA_DIVERGENCE');
  const forensic=await collectScopedSchema(db,main.before.manifest);forensic.inventory.functions=await scopedFunctions(db);forensic.inventory.managed_events=(await certifiedManagedEvents(db)).critical;forensic.inventory.trigger_pseudorecords=await certifiedPseudorecordContext(db,main.before.manifest.tables);const inventory=projectScopedInventory(forensic.inventory,main.before.manifest);
- requireScoped(scopedDigest(normalizedInventory(inventory,main.before.inventory))===scopedDigest(main.before.inventory),'PUBLISHED_SCHEMA_DIVERGENCE');
+ requireScoped(sha256HexEqual(scopedDigest(normalizedInventory(inventory,main.before.inventory)),scopedDigest(main.before.inventory)),'PUBLISHED_SCHEMA_DIVERGENCE');
  const states=await sequenceStates(db,main.before.manifest,forensic.inventory);
  for(const state of states){const prior=main.before.sequences.find((s:any)=>s.name===state.name);
   const expected=state.name==='cobertura_asignaciones_id_seq'?String(BigInt(main.payload.albeny_id)+1n):state.name==='auditoria_id_seq'?String(BigInt(logs[3]!.id)+1n):state.name==='auditoria_eventos_id_seq'?String(BigInt(events[3]!.id)+1n):prior.last_value;
   requireScoped(state.last_value===expected&&state.is_called===(['cobertura_asignaciones_id_seq','auditoria_id_seq','auditoria_eventos_id_seq'].includes(state.name)?false:prior.is_called),'PUBLISHED_SEQUENCE_DIVERGENCE');
  }
- for(const table of ['auditoria','auditoria_eventos']){const old=main.before.data.find((r:any)=>r.table===table),actual=await originalAudits(db,table,seal.run_id);requireScoped(actual.count===old.count&&actual.digest===old.digest,'PUBLISHED_EXISTING_AUDIT_DIVERGENCE');}
+ for(const table of ['auditoria','auditoria_eventos']){const old=main.before.data.find((r:any)=>r.table===table),actual=await originalAudits(db,table,seal.run_id);requireScoped(actual.count===old.count&&sha256HexEqual(actual.digest,old.digest),'PUBLISHED_EXISTING_AUDIT_DIVERGENCE');}
  return {...main,sequence_postchecks:states};
 }
 export type ScopedHooks={beforeLock?:()=>Promise<void>;afterLock?:(db:V6Client)=>Promise<void>;beforeDml?:()=>Promise<void>;afterUpdate?:(db:V6Client)=>Promise<void>;beforeCommit?:()=>Promise<void>;checkpoint?:(stage:string,db:V6Client)=>Promise<void>};
@@ -140,10 +141,10 @@ export async function executeV6Atomic(authority:ScopedAuthority,input:V6Input,ta
   await db.query(`ALTER TABLE cobertura_asignaciones ADD COLUMN institucion_id bigint REFERENCES instituciones(id),ADD COLUMN sede_id bigint REFERENCES sedes(id),ADD COLUMN modalidad_id bigint REFERENCES modalidades(id)`);
   await db.query('ALTER TABLE cobertura_asignaciones ALTER COLUMN focalizacion_final_id DROP NOT NULL');
   const changed=(await db.query(`UPDATE cobertura_asignaciones ca SET institucion_id=ff.institucion_id,sede_id=ff.sede_id,modalidad_id=ff.modalidad_id FROM focalizacion_final ff,contratos c WHERE ca.id=ANY($1::bigint[]) AND ca.contrato_id=24 AND c.id=ca.contrato_id AND c.empresa_id=15 AND ff.id=ca.focalizacion_final_id AND ff.contrato_id=ca.contrato_id AND ca.institucion_id IS NULL AND ca.sede_id IS NULL AND ca.modalidad_id IS NULL RETURNING ca.id::text id,ca.institucion_id::text institucion_id,ca.sede_id::text sede_id,ca.modalidad_id::text modalidad_id`,[seal.set.candidate_ids])).rows;
-  changed.sort((a,b)=>BigInt(a.id)<BigInt(b.id)?-1:1);requireScoped(scopedDigest(sortScopedIds(changed.map(r=>r.id)))===seal.set.candidate_ids_digest&&scopedDigest(changed)===seal.set.phase48_candidates_digest,'EXACT_WRITE_SET_FAILED');
+  changed.sort((a,b)=>BigInt(a.id)<BigInt(b.id)?-1:1);requireScoped(sha256HexEqual(scopedDigest(sortScopedIds(changed.map(r=>r.id))),seal.set.candidate_ids_digest)&&sha256HexEqual(scopedDigest(changed),seal.set.phase48_candidates_digest),'EXACT_WRITE_SET_FAILED');
   await db.query('CREATE INDEX idx_cobertura_asignaciones_timeline ON cobertura_asignaciones(contrato_id,vinculacion_id,fecha_inicio,fecha_fin)');
   await options.hooks?.checkpoint?.('AFTER_PHASE48',db);
-  const plan=await historicalPlan(db);requireScoped(scopedDigest(plan)===scopedDigest(locked.plan),'HISTORICAL_PLAN_DRIFT');
+  const plan=await historicalPlan(db);requireScoped(sha256HexEqual(scopedDigest(plan),scopedDigest(locked.plan)),'HISTORICAL_PLAN_DRIFT');
   const a=plan[0]!,d=plan[1]!,id=await nextId(db,'cobertura_asignaciones');requireScoped(id.id===a.coverage_id,'HISTORICAL_ID_DRIFT');
   requireScoped((await db.query(`INSERT INTO cobertura_asignaciones(id,contrato_id,vinculacion_id,municipio_id,focalizacion_final_id,institucion_id,sede_id,modalidad_id,institucion,sede,modalidad,tipo_asignacion,porcentaje_cobertura,fecha_inicio,fecha_fin,observacion,activo) VALUES($1,24,1555,477,NULL,44,196,1,$2,$3,'CAA','PRINCIPAL',1,'2026-08-18','2026-09-08',$4,TRUE) RETURNING id`,[id.id,a.target.institucion,a.target.sede,a.observation])).rowCount===1,'ALBENY_INSERT_FAILED');await restartSequence(db,id.sequence,id.id);
   const insertedAlbeny=(await db.query('SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca WHERE id=$1',[id.id])).rows[0].row;
@@ -156,35 +157,35 @@ export async function executeV6Atomic(authority:ScopedAuthority,input:V6Input,ta
   await validateCloseRetirement(db);
   const beforeClose=(await db.query('SELECT to_jsonb(t) row FROM cobertura_asignaciones t WHERE id=1203')).rows[0]?.row;
   const {institucion_id:ci,sede_id:cs,modalidad_id:cm,...closeOriginal}=beforeClose??{};
-  requireScoped(ci===110&&cs===592&&cm===1&&operationalRowDigest(closeOriginal)===close.before_digest,'CLOSE1203_BEFORE_DML_DRIFT');
+  requireScoped(ci===110&&cs===592&&cm===1&&sha256HexEqual(operationalRowDigest(closeOriginal),close.before_digest),'CLOSE1203_BEFORE_DML_DRIFT');
   requireScoped((await db.query(`UPDATE cobertura_asignaciones ca SET fecha_fin='2026-08-31' WHERE ca.id=1203 AND ca.vinculacion_id=1461 AND ca.contrato_id=24 AND ca.fecha_fin='2026-11-30' AND EXISTS(SELECT 1 FROM vinculaciones v WHERE v.id=ca.vinculacion_id AND v.persona_id=1134 AND v.empresa_id=15 AND v.fecha_fin='2026-08-31' AND v.estado_vinculacion='RETIRADA') RETURNING ca.id`)).rowCount===1,'CLOSE1203_UPDATE_FAILED');
   const closedRow=(await db.query('SELECT to_jsonb(t) row FROM cobertura_asignaciones t WHERE id=1203')).rows[0].row;
-  requireScoped(scopedDigest(closedRow)===scopedDigest({...beforeClose,fecha_fin:'2026-08-31'}),'CLOSE1203_UNAUTHORIZED_FIELD_CHANGED');
+  requireScoped(sha256HexEqual(scopedDigest(closedRow),scopedDigest({...beforeClose,fecha_fin:'2026-08-31'})),'CLOSE1203_UNAUTHORIZED_FIELD_CHANGED');
   requireScoped(!(await db.query(`SELECT 1 FROM cobertura_asignaciones a JOIN cobertura_asignaciones b ON a.id<b.id AND a.vinculacion_id=b.vinculacion_id AND a.contrato_id=b.contrato_id AND a.activo AND b.activo AND a.fecha_inicio<=COALESCE(b.fecha_fin,'infinity'::date) AND b.fecha_inicio<=COALESCE(a.fecha_fin,'infinity'::date) LIMIT 1`)).rowCount,'CANDIDATE_OVERLAP');
   requireScoped(!(await db.query('SELECT 1 FROM cobertura_asignaciones ca JOIN vinculaciones v ON v.id=ca.vinculacion_id WHERE ca.id=1203 AND (ca.fecha_fin>v.fecha_fin OR ca.fecha_inicio>v.fecha_fin)')).rowCount,'CLOSE1203_AFTER_RETIREMENT');
   await options.hooks?.checkpoint?.('AFTER_CLOSE1203',db);
   await options.hooks?.afterUpdate?.(db);
   const after=(await db.query('SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca ORDER BY id')).rows.map(r=>r.row);
   requireScoped(after.length===locked.coverage.length+1,'UNAUTHORIZED_COVERAGE_INSERT');
-  requireScoped(scopedDigest(after.find(r=>String(r.id)===id.id))===scopedDigest(insertedAlbeny),'ALBENY_POSTIMAGE_CHANGED');
+  requireScoped(sha256HexEqual(scopedDigest(after.find(r=>String(r.id)===id.id)),scopedDigest(insertedAlbeny)),'ALBENY_POSTIMAGE_CHANGED');
   for(const old of locked.coverage){const current=after.find(r=>r.id===old.id);requireScoped(current,'UNAUTHORIZED_COVERAGE_DELETE');const {institucion_id,sede_id,modalidad_id,...original}=current;
    if(String(old.id)==='11'){requireScoped(original.activo===true&&original.observacion===d.observation,'DARY_POSTIMAGE_CHANGED');original.activo=old.activo;original.observacion=old.observacion;}
    if(String(old.id)==='1203'){requireScoped(original.fecha_fin==='2026-08-31','CLOSE1203_POSTIMAGE_CHANGED');original.fecha_fin=old.fecha_fin;}
-   requireScoped(scopedDigest(original)===scopedDigest(old),'PROTECTED_COVERAGE_CHANGED');
+   requireScoped(sha256HexEqual(scopedDigest(original),scopedDigest(old)),'PROTECTED_COVERAGE_CHANGED');
   }
   // SQL full-row projection keeps PostgreSQL numeric and timestamp precision;
   // JSON parsed by JavaScript is not the sole protection of an original field.
   const daryBefore=locked.coverage.find(r=>String(r.id)==='11');
   const expression="(CASE WHEN t.id=11 THEN (to_jsonb(t)-'institucion_id'-'sede_id'-'modalidad_id')||jsonb_build_object('activo',$2::boolean,'observacion',$3::text) WHEN t.id=1203 THEN (to_jsonb(t)-'institucion_id'-'sede_id'-'modalidad_id')||jsonb_build_object('fecha_fin','2026-11-30'::text) ELSE to_jsonb(t)-'institucion_id'-'sede_id'-'modalidad_id' END)::text";
   const originalCoverage=(await db.query(`SELECT count(*)::text count,encode(sha256(convert_to(COALESCE(string_agg(${expression},E'\n' ORDER BY ${expression}),''),'UTF8')),'hex') digest FROM cobertura_asignaciones t WHERE id<>$1::bigint`,[id.id,daryBefore.activo,daryBefore.observacion])).rows[0];
-  const sealedCoverage=locked.data.find(r=>r.table==='cobertura_asignaciones');requireScoped(originalCoverage.count===sealedCoverage.count&&originalCoverage.digest===sealedCoverage.digest,'EXACT_ORIGINAL_COVERAGE_CHANGED');
+  const sealedCoverage=locked.data.find(r=>r.table==='cobertura_asignaciones');requireScoped(originalCoverage.count===sealedCoverage.count&&sha256HexEqual(originalCoverage.digest,sealedCoverage.digest),'EXACT_ORIGINAL_COVERAGE_CHANGED');
   const protectedAfter=await tableHashes(db,locked.manifest.tables);
-  for(const old of locked.data)if(!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(old.table))requireScoped(scopedDigest(old)===scopedDigest(protectedAfter.find(r=>r.table===old.table)),'PROTECTED_DATA_CHANGED:'+old.table);
+  for(const old of locked.data)if(!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(old.table))requireScoped(sha256HexEqual(scopedDigest(old),scopedDigest(protectedAfter.find(r=>r.table===old.table))),'PROTECTED_DATA_CHANGED:'+old.table);
   const beforeJournal={coverage:locked.coverage,inventory:locked.inventory,manifest:locked.manifest,data:locked.data,sequences:locked.sequences};
   const payload={coverage_after_digest:scopedDigest(after),albeny_id:id.id,candidate_count:seal.set.candidate_count,candidate_ids_digest:seal.set.candidate_ids_digest,before_digests:seal.set,requires_salary_review:locked.salary_preview.filter(r=>r.requires_salary_review).map(r=>r.id),preview:locked.salary_preview,operational_preview:locked.operational};
   for(const action of ['PHASE48','ALBENY','DARY','CLOSE1203']){await options.hooks?.checkpoint?.('AUDIT_'+action,db);await audit(db,authority,seal,action,action==='CLOSE1203'?{...payload,assignment_id:'1203',linkage_id:'1461',old_date:'2026-11-30',new_date:'2026-08-31',reason:'RETIRO_CONFIRMADO',before_digest:close.before_digest,after_digest:close.after_digest}:payload,action==='PHASE48'?beforeJournal:null);}
   const forensic=await collectScopedSchema(db,locked.manifest);forensic.inventory.functions=await scopedFunctions(db);forensic.inventory.managed_events=(await certifiedManagedEvents(db)).critical;forensic.inventory.trigger_pseudorecords=await certifiedPseudorecordContext(db,locked.manifest.tables);const finalInventory=projectScopedInventory(forensic.inventory,locked.manifest);
-  requireScoped(scopedDigest(normalizedInventory(finalInventory,locked.inventory))===scopedDigest(locked.inventory),'UNAUTHORIZED_CRITICAL_DDL');
+  requireScoped(sha256HexEqual(scopedDigest(normalizedInventory(finalInventory,locked.inventory)),scopedDigest(locked.inventory)),'UNAUTHORIZED_CRITICAL_DDL');
   await options.hooks?.checkpoint?.('BEFORE_COMMIT',db);await options.hooks?.beforeCommit?.();await v6Timed('internal_postchecks',()=>verifyV6Published(db,authority,seal));await freshDefinitions(observer,locked.manifest,locked.inventory);authority.assertLive(seal);
   if((options.mode??'Rollback')==='Rollback'){
    await db.query('ROLLBACK');begun=false;
@@ -229,12 +230,12 @@ export async function rollbackV6Published(authority:ScopedAuthority,seal:ScopedS
   await db.query('DROP INDEX public.idx_cobertura_asignaciones_timeline');
   await db.query('ALTER TABLE cobertura_asignaciones DROP COLUMN institucion_id,DROP COLUMN sede_id,DROP COLUMN modalidad_id,ALTER COLUMN focalizacion_final_id SET NOT NULL');
   const restored=(await db.query('SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca ORDER BY id')).rows.map(r=>r.row);
-  requireScoped(scopedDigest(restored)===scopedDigest(journal.before.coverage),'REVERSAL_BEFORE_IMAGE_FAILED');
-  const exact=(await tableHashes(db,['cobertura_asignaciones']))[0],original=journal.before.data.find((r:any)=>r.table==='cobertura_asignaciones');requireScoped(scopedDigest(exact)===scopedDigest(original),'REVERSAL_EXACT_IMAGE_FAILED');
+  requireScoped(sha256HexEqual(scopedDigest(restored),scopedDigest(journal.before.coverage)),'REVERSAL_BEFORE_IMAGE_FAILED');
+  const exact=(await tableHashes(db,['cobertura_asignaciones']))[0],original=journal.before.data.find((r:any)=>r.table==='cobertura_asignaciones');requireScoped(sha256HexEqual(scopedDigest(exact),scopedDigest(original)),'REVERSAL_EXACT_IMAGE_FAILED');
   await audit(db,authority,seal,'REVERSAL',{published_run_id:seal.run_id,reversed_write_set:seal.set.candidate_ids,restored_coverage_digest:scopedDigest(restored)});
   const verifyRestored=async(reader:ScopedDb)=>{
    const rows=await tableHashes(reader,journal.before.manifest.tables);
-   for(const row of journal.before.data)if(!['auditoria','auditoria_eventos'].includes(row.table))requireScoped(scopedDigest(row)===scopedDigest(rows.find(r=>r.table===row.table)),'REVERSAL_PROTECTED_DATA_CHANGED');
+   for(const row of journal.before.data)if(!['auditoria','auditoria_eventos'].includes(row.table))requireScoped(sha256HexEqual(scopedDigest(row),scopedDigest(rows.find(r=>r.table===row.table))),'REVERSAL_PROTECTED_DATA_CHANGED');
   };
   await verifyRestored(db);
   await freshDefinitions(observer,journal.before.manifest,journal.before.inventory);

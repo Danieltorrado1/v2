@@ -6,6 +6,7 @@ import {execFileSync} from 'node:child_process';
 import {platform} from 'node:os';
 import {env} from 'node:process';
 import {authorizationFields,buildAuthorizationPhrase,parseAuthorizationPhrase,exactEqual,validateCertificateHash,DIGEST_FIELDS} from './phase48-readonly-contract';
+import {sha256HexEqual} from './phase48-sha256';
 
 export const RECEIPT_FILE='phase48-production-preflight-current.json';
 const hash=(bytes:Buffer)=>createHash('sha256').update(bytes).digest('hex');
@@ -78,7 +79,7 @@ function publishLocked(dir:string,name:string,bytes:Buffer,runId:string,digest:s
   if(!present(file))return false;
   if(exclusive)throw Error('RECEIPT_DESTINATION_EXISTS');
   regular(file);const prior=readFileSync(file);
-  if(prior.length!==bytes.length||hash(prior)!==digest||!prior.equals(bytes)||JSON.parse(prior.toString('utf8')).run_id!==runId)throw Error('RECEIPT_ALREADY_EXISTS_DIFFERENT');
+  if(prior.length!==bytes.length||!sha256HexEqual(hash(prior),digest)||!prior.equals(bytes)||JSON.parse(prior.toString('utf8')).run_id!==runId)throw Error('RECEIPT_ALREADY_EXISTS_DIFFERENT');
   return true;
  };
  if(identical())return file;
@@ -89,7 +90,7 @@ function publishLocked(dir:string,name:string,bytes:Buffer,runId:string,digest:s
   while(offset<bytes.length){const count=writeSync(fd,bytes,offset,bytes.length-offset);if(count<=0)throw Error('RECEIPT_SHORT_WRITE');offset+=count;}
   fsyncSync(fd);closeSync(fd);fd=undefined;
   const current=regular(temporary);
-  if(!sameFile(owned,current)||statSync(temporary).size!==bytes.length||hash(readFileSync(temporary))!==digest)throw Error('RECEIPT_TEMP_VERIFICATION_FAILED');
+  if(!sameFile(owned,current)||statSync(temporary).size!==bytes.length||!sha256HexEqual(hash(readFileSync(temporary)),digest))throw Error('RECEIPT_TEMP_VERIFICATION_FAILED');
   if(!sameFile(directoryIdentity,lstatSync(safeDirectory(dir))))throw Error('RECEIPT_DIRECTORY_CHANGED');
   if(identical())return file;
   renameWithoutReplacement(temporary,file);
@@ -103,7 +104,7 @@ function publishLocked(dir:string,name:string,bytes:Buffer,runId:string,digest:s
 }
 function verifiedEight(receipt:any){
  const exact=(value:any)=>value&&Object.keys(value).length===8&&Object.keys(value).every(k=>DIGEST_FIELDS.includes(k as typeof DIGEST_FIELDS[number]));
- return receipt.stable===true&&exact(receipt.first_digests)&&exact(receipt.post_rollback_digests)&&exact(receipt.digest_comparison)&&receipt.first_snapshot?.read_only==='on'&&receipt.post_rollback_snapshot?.read_only==='on'&&receipt.first_snapshot.pid!==receipt.post_rollback_snapshot.pid&&receipt.first_snapshot.virtual_transaction!==receipt.post_rollback_snapshot.virtual_transaction&&DIGEST_FIELDS.every(k=>/^[a-f0-9]{64}$/.test(receipt.first_digests[k])&&exactEqual(receipt.first_digests[k],receipt.post_rollback_digests[k])&&exactEqual(receipt.digests?.[k],receipt.first_digests[k])&&receipt.digest_comparison[k]===true);
+ return receipt.stable===true&&exact(receipt.first_digests)&&exact(receipt.post_rollback_digests)&&exact(receipt.digest_comparison)&&receipt.first_snapshot?.read_only==='on'&&receipt.post_rollback_snapshot?.read_only==='on'&&receipt.first_snapshot.pid!==receipt.post_rollback_snapshot.pid&&receipt.first_snapshot.virtual_transaction!==receipt.post_rollback_snapshot.virtual_transaction&&DIGEST_FIELDS.every(k=>/^[a-f0-9]{64}$/.test(receipt.first_digests[k])&&sha256HexEqual(receipt.first_digests[k],receipt.post_rollback_digests[k])&&sha256HexEqual(receipt.digests?.[k],receipt.first_digests[k])&&receipt.digest_comparison[k]===true);
 }
 export function saveReadReceipt(directory:string,receipt:any){
  receipt=JSON.parse(JSON.stringify(receipt));

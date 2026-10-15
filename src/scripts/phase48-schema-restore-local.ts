@@ -1,3 +1,4 @@
+import {sha256HexEqual} from '../modules/cobertura/phase48-sha256';
 import {Client} from 'pg';
 import {readFileSync,writeFileSync,openSync,closeSync,existsSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
@@ -26,11 +27,11 @@ async function main(){
  const schema=await collectSchemaForensic(db);await db.query('ROLLBACK');
  if(!existsSync('reports/phase48-schema-backup-catalogs.json'))writeFileSync('reports/phase48-schema-backup-catalogs.json',JSON.stringify({scope:'LOCAL_CERTIFIED_BACKUP',version:'17.11',backup_sha256:sha,restore_exclusions:'9 previously certified Supabase-only entries; no public schema entries excluded',ownership_and_acl:'--no-owner --no-privileges; ACL differences are restoration artifacts',schema,rollback:'CONFIRMED',completed_utc:new Date().toISOString()},null,2)+'\n',{flag:'wx'});
  else {
-  if(schema.global_digest!=='2fbba2269828d8573ed10eb5a6749d89e30d62adc75652ac713f375467df19a9'||criticalSchemaDigest(schema.inventory)!==EXPECTED_CRITICAL_SCHEMA_DIGEST)throw Error('LOCAL_BASELINE_NOT_REPRODUCED');
+  if(!sha256HexEqual(schema.global_digest,'2fbba2269828d8573ed10eb5a6749d89e30d62adc75652ac713f375467df19a9')||!sha256HexEqual(criticalSchemaDigest(schema.inventory),EXPECTED_CRITICAL_SCHEMA_DIGEST))throw Error('LOCAL_BASELINE_NOT_REPRODUCED');
   const cases=[];
   for(const [name,ddl,material] of [['critical column','ALTER TABLE public.cobertura_asignaciones ADD COLUMN phase48_schema_probe integer',true],['unrelated object','CREATE TABLE public.phase48_unrelated_schema_probe (id integer)',false]] as const){
    await db.query('BEGIN');await db.query(ddl);await db.query('SET LOCAL search_path=pg_catalog,public');const sample=await collectSchemaForensic(db),digest=criticalSchemaDigest(sample.inventory);await db.query('ROLLBACK');
-   if((digest!==EXPECTED_CRITICAL_SCHEMA_DIGEST)!==material)throw Error('LOCAL_MATERIALITY_TEST_FAILED');cases.push({name,material,detected:digest!==EXPECTED_CRITICAL_SCHEMA_DIGEST,rollback:'CONFIRMED'});
+   if((!sha256HexEqual(digest,EXPECTED_CRITICAL_SCHEMA_DIGEST))!==material)throw Error('LOCAL_MATERIALITY_TEST_FAILED');cases.push({name,material,detected:!sha256HexEqual(digest,EXPECTED_CRITICAL_SCHEMA_DIGEST),rollback:'CONFIRMED'});
   }
   writeFileSync('reports/phase48-schema-local-validation.json',JSON.stringify({scope:'LOCAL_ONLY',postgresql:'17.11',backup_sha256:sha,legacy_pin_reproduced:schema.global_digest,critical_digest:EXPECTED_CRITICAL_SCHEMA_DIGEST,live_ddl_tests:cases,production_connections:0,production_writes:0,cluster_cleanup:'Launcher stops and removes cluster plus all raw temporaries in finally'},null,2)+'\n',{flag:'wx'});
  }

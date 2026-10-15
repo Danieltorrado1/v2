@@ -7,6 +7,7 @@ import {runInNewContext} from 'node:vm';
 import {spawn,execFileSync} from 'node:child_process';
 import ts from 'typescript';
 import * as contract from '../modules/cobertura/phase48-readonly-contract';
+import * as sha256 from '../modules/cobertura/phase48-sha256';
 import {publishAtomicReceipt,saveReadReceipt,RECEIPT_FILE} from '../modules/cobertura/phase48-readonly-receipts';
 
 const root=resolve('tmp/phase48-atomic-tests');fs.mkdirSync(root,{recursive:true});
@@ -16,7 +17,7 @@ const receipt={run_id:'phase48-atomic-fixture',status:'STOPPED',writes:0,certifi
 const bytes=Buffer.from(JSON.stringify(receipt,null,2)+'\n','utf8');
 const sha=(b:Buffer)=>createHash('sha256').update(b).digest('hex');
 function fixture(body:(dir:string)=>void){const dir=fs.mkdtempSync(join(root,'case-'));try{body(dir);}finally{assert.ok(dir.startsWith(root+ '\\')||dir.startsWith(root+'/'));fs.rmSync(dir,{recursive:true,force:true});}}
-function api(overrides:Record<string,unknown>={}){const exports:any={};runInNewContext(compiled,{exports,Buffer,Date,require:(name:string)=>name==='node:fs'?{...fs,...overrides}:name==='node:child_process'&&overrides.renameSync?{execFileSync:(_exe:string,_args:string[],options:any)=>(overrides.renameSync as Function)(options.env.PHASE48_RECEIPT_SOURCE,options.env.PHASE48_RECEIPT_DESTINATION)}:name==='./phase48-readonly-contract'?contract:require(name)});return exports;}
+function api(overrides:Record<string,unknown>={}){const exports:any={};runInNewContext(compiled,{exports,Buffer,Date,require:(name:string)=>name==='node:fs'?{...fs,...overrides}:name==='node:child_process'&&overrides.renameSync?{execFileSync:(_exe:string,_args:string[],options:any)=>(overrides.renameSync as Function)(options.env.PHASE48_RECEIPT_SOURCE,options.env.PHASE48_RECEIPT_DESTINATION)}:name==='./phase48-readonly-contract'?contract:name==='./phase48-sha256'?sha256:require(name)});return exports;}
 function absent(dir:string){assert.equal(fs.existsSync(join(dir,RECEIPT_FILE)),false);}
 
 test('complete UTF-8 JSON immediately readable; published SHA/size and Unicode/newlines stable',()=>fixture(dir=>{
@@ -103,7 +104,7 @@ test('READ ONLY and mutator SUCCESS/STOPPED/ROLLED_BACK/baseline use identical p
 // Separate native Node process: slow partial temp writes allow the parent to
 // repeatedly inspect the final path; crash exits with no finally before rename.
 function child(dir:string,crash=false){
- const code=`const fs=require('node:fs'),ts=require('typescript'),vm=require('node:vm'),cp=require('node:child_process');const exports={};const real={...fs};let first=true;const wrapped={...fs,writeSync:(fd,b,o,n)=>{if(first){process.stdout.write('WRITING\\n');first=false;}const end=Date.now()+2;while(Date.now()<end){}return real.writeSync(fd,b,o,Math.min(n,512));}};vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/modules/cobertura/phase48-readonly-receipts.ts','utf8'),{compilerOptions:{module:1,target:9}}).outputText,{exports,Buffer,Date,require:n=>n==='node:fs'?wrapped:n==='node:child_process'?{execFileSync:(...args)=>{if(${crash})process.exit(73);return cp.execFileSync(...args);}}:n==='./phase48-readonly-contract'?{validateCertificateHash:()=>{}}:require(n)});exports.publishAtomicReceipt(process.argv[1],'phase48-process.receipt.json',{run_id:'phase48-process',status:'SUCCESS',text:'漢字🧪'.repeat(20000)});`;
+ const code=`const fs=require('node:fs'),ts=require('typescript'),vm=require('node:vm'),cp=require('node:child_process');const exports={};const real={...fs};let first=true;const wrapped={...fs,writeSync:(fd,b,o,n)=>{if(first){process.stdout.write('WRITING\\n');first=false;}const end=Date.now()+2;while(Date.now()<end){}return real.writeSync(fd,b,o,Math.min(n,512));}};vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/modules/cobertura/phase48-readonly-receipts.ts','utf8'),{compilerOptions:{module:1,target:9}}).outputText,{exports,Buffer,Date,require:n=>n==='node:fs'?wrapped:n==='node:child_process'?{execFileSync:(...args)=>{if(${crash})process.exit(73);return cp.execFileSync(...args);}}:n==='./phase48-readonly-contract'?{validateCertificateHash:()=>{}}:n==='./phase48-sha256'?{sha256HexEqual:(a,b)=>typeof a==='string'&&typeof b==='string'&&/^[0-9a-fA-F]{64}$/.test(a)&&/^[0-9a-fA-F]{64}$/.test(b)&&require('node:crypto').timingSafeEqual(Buffer.from(a,'hex'),Buffer.from(b,'hex'))}:require(n)});exports.publishAtomicReceipt(process.argv[1],'phase48-process.receipt.json',{run_id:'phase48-process',status:'SUCCESS',text:'漢字🧪'.repeat(20000)});`;
  return spawn(process.execPath,['-e',code,dir],{cwd:resolve('.'),stdio:['ignore','pipe','pipe'],windowsHide:true});
 }
 test('native Windows/process observer never sees partial final JSON; simultaneous process loses safely',async()=>{
@@ -132,7 +133,7 @@ test('native Windows rename refuses a competing final created after the last exi
  runInNewContext(compiled,{exports,Buffer,Date,require:(name:string)=>name==='node:child_process'?{execFileSync:(exe:string,args:string[],options:any)=>{
   fs.writeFileSync(options.env.PHASE48_RECEIPT_DESTINATION,other,{flag:'wx'});
   return cp.execFileSync(exe,args,options);
- }}:name==='./phase48-readonly-contract'?contract:require(name)});
+ }}:name==='./phase48-readonly-contract'?contract:name==='./phase48-sha256'?sha256:require(name)});
  assert.throws(()=>exports.saveReadReceipt(dir,receipt),/ATOMIC_RENAME_FAILED/);
  assert.deepEqual(fs.readFileSync(join(dir,RECEIPT_FILE)),other);assert.deepEqual(fs.readdirSync(dir),[RECEIPT_FILE]);
 }));

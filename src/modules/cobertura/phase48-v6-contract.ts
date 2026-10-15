@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import {v6TimedSync} from './phase48-v6-timing';
 import {randomBytes} from 'node:crypto';
 import {scopedDigest,requireScoped,type ScopedSet} from './phase48-scoped-contract';
@@ -43,4 +44,4 @@ export function pendingV6Request(pre:V6Preflight,receiptSha:string,runId:string,
  return {run_id:runId,status:'PENDIENTE_DE_AUTORIZACION' as const,authorization:'REVOKED' as const,fields,phrase};
 }
 export const V6_APPROVAL_ORDER=['authorization','phrase','preflight_path','preflight_sha256','definitions_window_confirmed','sync_manual_confirmation'] as const;
-export function parseV6Approval(raw:string,now=Date.now(),live=true){let a:any;try{a=JSON.parse(raw);}catch{throw Error('V6_APPROVAL_JSON_INVALID');}requireScoped(a&&exactKeys(a,V6_APPROVAL_ORDER)&&JSON.stringify(a)===raw,'V6_EXACT_APPROVAL_REQUIRED');requireScoped(a.authorization==='ACTIVE'&&a.definitions_window_confirmed===true&&a.sync_manual_confirmation===false,'V6_ACTIVE_APPROVAL_REQUIRED');const f=parseV6Phrase(a.phrase,now,live);requireScoped(a.preflight_sha256===f.preflight_receipt_sha256&&typeof a.preflight_path==='string','V6_PREFLIGHT_BINDING_INVALID');return {approval:a,fields:f};}
+export function parseV6Approval(raw:string,now=Date.now(),live=true){let a:any;try{a=JSON.parse(raw);}catch{throw Error('V6_APPROVAL_JSON_INVALID');}requireScoped(a&&exactKeys(a,V6_APPROVAL_ORDER)&&JSON.stringify(a)===raw,'V6_EXACT_APPROVAL_REQUIRED');requireScoped(a.authorization==='ACTIVE'&&a.definitions_window_confirmed===true&&a.sync_manual_confirmation===false,'V6_ACTIVE_APPROVAL_REQUIRED');const f=parseV6Phrase(a.phrase,now,live);requireScoped(sha256HexEqual(a.preflight_sha256,f.preflight_receipt_sha256)&&typeof a.preflight_path==='string','V6_PREFLIGHT_BINDING_INVALID');return {approval:a,fields:f};}

@@ -3,6 +3,7 @@ import {randomBytes,randomUUID} from 'node:crypto';
 import type {ReadConnection} from './phase48-readonly-connection';
 import {createReadOnlyRepository} from './phase48-readonly-repository';
 import {contractDigest,authorizationFields,buildAuthorizationPhrase,MUTATOR_COMMIT,validateCertificateHash,DIGEST_FIELDS,exactEqual} from './phase48-readonly-contract';
+import {sha256HexEqual} from './phase48-sha256';
 
 export const READ_MODES=['PreflightOnly','PreviewOnly','PreflightAndPreview'] as const;
 export const READ_BACKUP_SHA='4271775ee853bf03b9f70402f7ecfd7becbe048269e3b10c76f027f981303e26';
@@ -18,7 +19,7 @@ function retainSchemaStop(result:any,error:unknown,connectionPhase:string){
 }
 export function validateReadOptions(o:ReadOptions){
  need(READ_MODES.includes((o.mode??'PreflightAndPreview') as typeof READ_MODES[number]),'UNKNOWN_READ_MODE');
- need(['Local','Production'].includes(o.target)&&/^[a-f0-9]{40}$/.test(o.commit)&&o.backupSha===READ_BACKUP_SHA&&typeof o.observeFlags==='function','READ_CONFIGURATION_INVALID');
+ need(['Local','Production'].includes(o.target)&&/^[a-f0-9]{40}$/.test(o.commit)&&sha256HexEqual(o.backupSha,READ_BACKUP_SHA)&&typeof o.observeFlags==='function','READ_CONFIGURATION_INVALID');
  validateCertificateHash(o.certificateSha);
  need(Object.keys(o).every(k=>['mode','target','commit','backupSha','certificateSha','observeFlags'].includes(k)),'READ_OPTION_NOT_ALLOWED');
 }
@@ -54,7 +55,7 @@ export async function productionReadOnlyPreflight(client:Pick<PoolClient,'query'
   result.first_digests={...digests};
   const preview=plan.map(p=>({vinculacion:p.vinculacion,institucion_id:p.target.institucion_id,sede_id:p.target.sede_id,municipio_id:p.target.municipio_id,coverage_id:p.coverage_id,desde:p.desde,hasta:p.hasta,modalidad_id:p.modalidad,category_id:p.category_id,estado_salarial:p.estado_salarial,following_coverage_id:p.siguiente,following_from:p.siguienteDesde,preserved_attendances:p.vinculacion==='1555'?16:0,created_attendances:0,automatic_recalculation:false,external_sync:false}));
   const final=await repo.snapshot(),finalMinimal=await repo.minimalState(),finalWriteSet=await repo.writeSet(final,await repo.candidates(),await repo.coverage(),await repo.affected()),finalSession=await repo.session(),finalLocks=await repo.activity(),finalFlags=await o.observeFlags();flagsGate(finalFlags);
-  need(initial.digest===final.digest&&digests.write_set_before_digest===finalWriteSet&&digest(minimal)===digest(finalMinimal)&&digest(session)===digest(finalSession)&&digest(locks)===digest(finalLocks)&&digest(firstFlags)===digest(finalFlags),'READ_SAMPLE_CHANGED');
+  need(sha256HexEqual(initial.digest,final.digest)&&sha256HexEqual(digests.write_set_before_digest,finalWriteSet)&&sha256HexEqual(digest(minimal),digest(finalMinimal))&&sha256HexEqual(digest(session),digest(finalSession))&&sha256HexEqual(digest(locks),digest(finalLocks))&&sha256HexEqual(digest(firstFlags),digest(finalFlags)),'READ_SAMPLE_CHANGED');
   Object.assign(result,{status:'READY_POSTCHECK',phase48_state:'NO_APLICADA',phase48_rows:730,counts:initial.data,digests,locks,preview,minimal_baseline:minimal,stability:{same_snapshot:true,same_session:true,snapshot_digest_unchanged:true}});
  }catch(error){const e=error as Error&{code?:string};Object.assign(result,{status:'STOPPED',reason:/^[A-Z0-9_]+$/.test(e.message)?e.message:'READ_PREFLIGHT_FAILED',sqlstate:e.code});retainSchemaStop(result,error,'principal');}
  finally{if(begun)try{await client.query('ROLLBACK');result.rollback='CONFIRMED';}catch{result={...result,status:'STOPPED',reason:'READ_CONNECTION_LOST_ROLLBACK_UNCONFIRMED',authorization_phrase:null,rollback:'CONNECTION_CLOSED_REQUIRED'};}}
@@ -95,7 +96,7 @@ export async function runReadOnlyLifecycle(open:()=>Promise<ReadConnection>,o:Re
   result.principal_connection_closed=true;
   if(result.status!=='READY_POSTCHECK')return result;
   const health=await o.observeFlags();result.health.final=health;flagsGate(health);
-  need(digest(health)===digest(result.flags),'POST_ROLLBACK_FLAGS_CHANGED');
+  need(sha256HexEqual(digest(health),digest(result.flags)),'POST_ROLLBACK_FLAGS_CHANGED');
   post=await open();
   result.connection_evidence.second=post.evidence;
   need(post.pool!==first.pool,'SEPARATE_READ_POOL_REQUIRED');
@@ -129,7 +130,7 @@ export async function runReadOnlyLifecycle(open:()=>Promise<ReadConnection>,o:Re
   inputQueries.write_set=post.queryCount()-beforeWriteSet;
   result.independence={distinct_pools:true,distinct_clients:true,distinct_streams:true,distinct_tls_sockets:!!first.tlsSocket&&!!post.tlsSocket,independent_handshakes:first.evidence.handshake_events+post.evidence.handshake_events,first_closed_before_second:true,distinct_virtual_transactions:true,backend_pid_equal:session.pid===result.session.pid,snapshot_text_equal:session.snapshot===result.session.snapshot,posterior_input_queries:inputQueries,posterior_digest_query_count:post.queryCount()-posteriorStart,shared_result_objects:0};
   result.post_rollback_digests={...digests};
-  result.digest_comparison=Object.fromEntries(DIGEST_FIELDS.map(k=>[k,exactEqual(result.first_digests[k],digests[k])]));
+  result.digest_comparison=Object.fromEntries(DIGEST_FIELDS.map(k=>[k,sha256HexEqual(result.first_digests[k],digests[k])]));
   const changed=DIGEST_FIELDS.filter(k=>!result.digest_comparison[k]);
   if(changed.length){result.changed_digests=changed;throw Error('POST_ROLLBACK_DIGEST_DRIFT');}
   await repo.targetIdentity(o.target==='Production'?'postgres':'phase48_production');await repo.actor();
@@ -138,7 +139,7 @@ export async function runReadOnlyLifecycle(open:()=>Promise<ReadConnection>,o:Re
   need(locks.waiting===0&&locks.ddl===0,'POST_ROLLBACK_LOCK_OR_DDL');
   need(minimal.phase48_state==='NO_APLICADA'&&minimal.count===730&&minimal.candidate_count===730&&candidates.length===730,'POST_ROLLBACK_STATE_CHANGED');
   need(plan.every(p=>!p.applied)&&plan[0]?.category_id==='34'&&plan[1]?.category_id===null&&plan[1]?.estado_salarial==='REQUIERE_REVISION_SALARIAL','POST_ROLLBACK_HISTORICAL_STATE_CHANGED');
-  need(digest(finalFlags)===digest(result.flags),'POST_ROLLBACK_FLAGS_CHANGED');
+  need(sha256HexEqual(digest(finalFlags),digest(result.flags)),'POST_ROLLBACK_FLAGS_CHANGED');
   result.health.final=finalFlags;result.september='NOT_APPLICABLE';
   result.post_rollback_verification={status:'OBSERVED',session:result.post_rollback_snapshot,locks,minimal,digests_compared:8};
  }catch(error){

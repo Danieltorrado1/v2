@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 // Local certification contract. This envelope is NOT a production grant.
 import {createHash, createHmac, randomBytes, timingSafeEqual} from 'node:crypto';
 
@@ -22,7 +23,7 @@ export function orderedIds(ids:string[]):string[] {
 }
 function validSet(set:DynamicSet) {
  if(!Number.isSafeInteger(set.candidate_count)||set.candidate_count<1 ||
-  set.candidate_count!==set.candidate_ids.length || digest(orderedIds(set.candidate_ids))!==set.candidate_ids_digest ||
+  set.candidate_count!==set.candidate_ids.length || !sha256HexEqual(digest(orderedIds(set.candidate_ids)),set.candidate_ids_digest) ||
   JSON.stringify(orderedIds(set.candidate_ids))!==JSON.stringify(set.candidate_ids) ||
   DYNAMIC_DIGESTS.some(k=>!/^([a-f0-9]{64})$/.test(set[k])) ||
   !set.lock_tables.length || new Set(set.lock_tables).size!==set.lock_tables.length ||
@@ -61,7 +62,7 @@ export function createLocalGateAuthority(clock:()=>number=Date.now) {
   },
   revalidate(seal:DynamicSeal,current:DynamicSet) {
    live(seal);validSet(current);
-   if(digest(current)!==digest(seal.set))throw Error('STOPPED_DRIFT');
+   if(!sha256HexEqual(digest(current),digest(seal.set)))throw Error('STOPPED_DRIFT');
   },
   assertLive:live,
  };

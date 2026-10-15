@@ -1,3 +1,4 @@
+import {sha256HexEqual} from '../modules/cobertura/phase48-sha256';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {criticalSchema,criticalSchemaDigest,EXPECTED_CRITICAL_SCHEMA_DIGEST,SCHEMA_IDENTITY_VERSION} from '../modules/cobertura/phase48-readonly-schema-identity';
 import {SCHEMA_SCOPE} from '../modules/cobertura/phase48-readonly-schema-scope';
@@ -5,7 +6,7 @@ const baseline=JSON.parse(readFileSync('reports/phase48-schema-backup-catalogs.j
 const observed=JSON.parse(readFileSync('reports/phase48-schema-production-catalogs.json','utf8'));
 const proof=JSON.parse(readFileSync('reports/phase48-schema-original-dump-comparison.json','utf8'));
 const scope=JSON.parse(readFileSync('reports/phase48-schema-scope.json','utf8'));
-if(criticalSchemaDigest(baseline.schema.inventory)!==EXPECTED_CRITICAL_SCHEMA_DIGEST||criticalSchemaDigest(observed.schema.inventory)!==EXPECTED_CRITICAL_SCHEMA_DIGEST)throw Error('CRITICAL_SCHEMA_NOT_RECONCILED');
+if(!sha256HexEqual(criticalSchemaDigest(baseline.schema.inventory),EXPECTED_CRITICAL_SCHEMA_DIGEST)||!sha256HexEqual(criticalSchemaDigest(observed.schema.inventory),EXPECTED_CRITICAL_SCHEMA_DIGEST))throw Error('CRITICAL_SCHEMA_NOT_RECONCILED');
 const critical=new Set<string>(SCHEMA_SCOPE.critical_relations);
 const identifier=(r:any)=>[r.schema,r.relation??'',r.name??'',r.reference_schema??'',r.reference_relation??''].join('.');
 const differences:any[]=[];

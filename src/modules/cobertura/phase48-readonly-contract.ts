@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import {createHash,timingSafeEqual} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 
@@ -12,7 +13,7 @@ export function exactEqual(a:unknown,b:unknown):boolean {
  const left=Buffer.from(a),right=Buffer.from(b);
  return left.length===right.length&&timingSafeEqual(left,right);
 }
-export function validateCertificateHash(hash:unknown){if(!exactEqual(hash,CERTIFICATE_SHA256))throw Error('CERTIFICATE_SHA256_INVALID');}
+export function validateCertificateHash(hash:unknown){if(!sha256HexEqual(hash,CERTIFICATE_SHA256))throw Error('CERTIFICATE_SHA256_INVALID');}
 // Publishing the certified commit pin is the only permitted contract change
 // after the mutator code commit; any other contract drift blocks connection.
 export function assertCertifiedContract(currentCommit:string){
@@ -69,7 +70,7 @@ export function validateAuthorizationFields(fields:Record<string,unknown>) {
  if(Object.keys(fields).length!==AUTHORIZATION_ORDER.length||Object.keys(fields).some(k=>!AUTHORIZATION_ORDER.includes(k))||AUTHORIZATION_ORDER.some(k=>fields[k]===undefined||fields[k]===null))throw Error('AUTHORIZATION_FIELD_REQUIRED');
  validateCertificateHash(fields.certificate_sha256);
  if(revokedRunnerCommits.has(String(fields.readonly_runner_commit)))throw Error('READONLY_RUNNER_COMMIT_REVOKED');
- if(typeof fields.readonly_runner_commit!=='string'||!/^[a-f0-9]{40}$/.test(fields.readonly_runner_commit)||fields.readonly_runner_commit==='dba731471164e5ff3c24ec64d868dbabddd327d8'||fields.readonly_runner_commit==='9c344ce12ae196558ca1dab1c8f52a14150cdda7'||fields.mutator_commit!==MUTATOR_COMMIT||fields.backup_sha256!==BACKUP_SHA256||fields.project_ref!==PROJECT_REF||fields.empresa!==15||fields.contrato!==24||fields.actor!==12||fields.expected_rows!==730||DIGEST_FIELDS.some(k=>typeof fields[k]!=='string'||!/^[a-f0-9]{64}$/.test(fields[k] as string))||typeof fields.nonce!=='string'||!/^[a-f0-9]{64}$/.test(fields.nonce))throw Error('AUTHORIZATION_FIELD_INVALID');
+ if(typeof fields.readonly_runner_commit!=='string'||!/^[a-f0-9]{40}$/.test(fields.readonly_runner_commit)||fields.readonly_runner_commit==='dba731471164e5ff3c24ec64d868dbabddd327d8'||fields.readonly_runner_commit==='9c344ce12ae196558ca1dab1c8f52a14150cdda7'||fields.mutator_commit!==MUTATOR_COMMIT||!sha256HexEqual(fields.backup_sha256,BACKUP_SHA256)||fields.project_ref!==PROJECT_REF||fields.empresa!==15||fields.contrato!==24||fields.actor!==12||fields.expected_rows!==730||DIGEST_FIELDS.some(k=>typeof fields[k]!=='string'||!/^[a-f0-9]{64}$/.test(fields[k] as string))||typeof fields.nonce!=='string'||!/^[a-f0-9]{64}$/.test(fields.nonce))throw Error('AUTHORIZATION_FIELD_INVALID');
  for(const [k,v] of Object.entries(HISTORICAL_ASSERTIONS))if(fields[k]!==v)throw Error('AUTHORIZATION_FLAGS_INVALID');
  const issued=Date.parse(String(fields.issued_at)),expires=Date.parse(String(fields.expires_at));
  if(!Number.isFinite(issued)||!Number.isFinite(expires)||issued>Date.now()||expires<=issued||expires-issued>600_000||new Date(issued).toISOString()!==fields.issued_at||new Date(expires).toISOString()!==fields.expires_at||expires<=Date.now())throw Error('AUTHORIZATION_EXPIRATION_INVALID');

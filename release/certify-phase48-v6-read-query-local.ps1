@@ -1,7 +1,7 @@
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if($root -ne 'C:\Users\CORE ULTRA\Desktop\V2-instituciones-modalidad'){throw 'WORKSPACE_MISMATCH'}
-if((git -C $root branch --show-current).Trim() -ne 'fix/phase48-v6-ca-hash-normalization'){throw 'BRANCH_MISMATCH'}
+if((git -C $root branch --show-current).Trim() -ne 'fix/phase48-v6-sha-comparison-unification'){throw 'BRANCH_MISMATCH'}
 $bin='C:\Program Files\PostgreSQL\17\bin';$openssl='C:\Program Files\Git\usr\bin\openssl.exe'
 if((& (Join-Path $bin 'postgres.exe') --version) -notmatch '17\.11'){throw 'POSTGRES_17_11_REQUIRED'}
 if(-not (Test-Path -LiteralPath $openssl)){throw 'LOCAL_OPENSSL_REQUIRED'}

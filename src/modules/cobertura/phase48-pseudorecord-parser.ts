@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import type {PoolClient} from 'pg';
 import {createHash} from 'node:crypto';
 import baseline from './phase48-pseudorecord-baseline.json';
@@ -56,7 +57,7 @@ export function sqlTableReferences(source:string,certifiedPseudoColumns:string[]
 }
 export async function certifiedPseudorecordContext(db:Pick<PoolClient,'query'>,tables:readonly string[]){
  const f=(await db.query("SELECT pg_get_functiondef(p.oid) definition,pg_get_function_result(p.oid) returns,l.lanname language,p.proowner::regrole::text owner,p.prosecdef security_definer,p.proconfig config,p.proacl::text acl FROM pg_proc p JOIN pg_language l ON l.oid=p.prolang WHERE p.oid='public.personas_prevent_identificador_interno_update()'::regprocedure")).rows[0];
- need(f&&hash(f.definition)===baseline.definition_sha256&&f.returns==='trigger'&&f.language==='plpgsql'&&!f.security_definer&&f.config===null,'PSEUDORECORD_FUNCTION_DRIFT');
+ need(f&&sha256HexEqual(hash(f.definition),baseline.definition_sha256)&&f.returns==='trigger'&&f.language==='plpgsql'&&!f.security_definer&&f.config===null,'PSEUDORECORD_FUNCTION_DRIFT');
  const triggers=(await db.query("SELECT t.tgname name,n.nspname schema,c.relname relation,t.tgenabled enabled,t.tgtype::int type,t.tgisinternal internal,pg_get_triggerdef(t.oid) definition FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE t.tgfoid='public.personas_prevent_identificador_interno_update()'::regprocedure ORDER BY 1")).rows;
  need(JSON.stringify(triggers)===JSON.stringify(baseline.triggers),'PSEUDORECORD_TRIGGER_DRIFT');
  const columns=(await db.query("SELECT n.nspname schema,c.relname relation,a.attname name,a.atttypid::regtype::text type,a.attnotnull not_null FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE a.attnum>0 AND NOT a.attisdropped AND a.attrelid IN(SELECT tgrelid FROM pg_trigger WHERE tgfoid='public.personas_prevent_identificador_interno_update()'::regprocedure) ORDER BY 1,2,a.attnum")).rows;

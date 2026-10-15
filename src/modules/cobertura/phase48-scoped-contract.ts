@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import {createHmac,randomBytes,timingSafeEqual} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {contractDigest} from './phase48-readonly-contract';
@@ -18,9 +19,9 @@ export function requireScoped(ok:unknown,code:string):asserts ok{if(!ok)throw Er
 export function sortScopedIds(ids:string[]){requireScoped(ids.every(id=>/^[1-9]\d*$/.test(id))&&new Set(ids).size===ids.length,'INVALID_CANDIDATE_IDS');return [...ids].sort((a,b)=>BigInt(a)<BigInt(b)?-1:1);}
 export function validateScopedSet(set:ScopedSet){
  requireScoped(Number.isSafeInteger(set.candidate_count)&&set.candidate_count>0&&set.candidate_ids.length===set.candidate_count,'INVALID_CANDIDATE_COUNT');
- requireScoped(scopedDigest(sortScopedIds(set.candidate_ids))===set.candidate_ids_digest&&JSON.stringify(sortScopedIds(set.candidate_ids))===JSON.stringify(set.candidate_ids),'INVALID_CANDIDATE_IDS');
+ requireScoped(sha256HexEqual(scopedDigest(sortScopedIds(set.candidate_ids)),set.candidate_ids_digest)&&JSON.stringify(sortScopedIds(set.candidate_ids))===JSON.stringify(set.candidate_ids),'INVALID_CANDIDATE_IDS');
  for(const name of [...SCOPED_DIGESTS,'manifest_digest','salary_decision_digest','albeny_digest','dary_digest','periods_4_6_digest'] as const)requireScoped(/^[a-f0-9]{64}$/.test(set[name]),'INVALID_SCOPED_DIGEST');
- requireScoped(set.salary_decision_digest===scopedDigest(SALARY_DECISION),'SALARY_REVIEW_POLICY_CHANGED');
+ requireScoped(sha256HexEqual(set.salary_decision_digest,scopedDigest(SALARY_DECISION)),'SALARY_REVIEW_POLICY_CHANGED');
 }
 // This authority is deliberately in-process and LOCAL_ONLY. It cannot issue a
 // production grant. A future cross-process grant needs a newly authorized entry.
@@ -47,7 +48,7 @@ export function createScopedLocalAuthority(clock:()=>number=Date.now,persistence
    const seal={...body,mac:sign(body)};authenticate(seal);return seal;
   },
   consume(seal:ScopedSeal){authenticate(seal);requireScoped(!used.has(seal.nonce),'SCOPED_NONCE_REVOKED');used.add(seal.nonce);const claimed=persistence?.claimNonce(seal);requireScoped(!claimed||typeof (claimed as any).then!=='function','SYNCHRONOUS_NONCE_CLAIM_REQUIRED');live(seal);},
-  revalidate(seal:ScopedSeal,set:ScopedSet){live(seal);validateScopedSet(set);requireScoped(scopedDigest(set)===scopedDigest(seal.set),'SCOPED_DRIFT');}
+  revalidate(seal:ScopedSeal,set:ScopedSet){live(seal);validateScopedSet(set);requireScoped(sha256HexEqual(scopedDigest(set),scopedDigest(seal.set)),'SCOPED_DRIFT');}
  };
 }
 export type ScopedAuthority=ReturnType<typeof createScopedLocalAuthority>;

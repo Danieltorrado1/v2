@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import type {PoolClient} from 'pg';
 import {inspectProductionTls} from './phase48-readonly-tls';
 import {assertCriticalSchema} from './phase48-readonly-schema-identity';
@@ -43,7 +44,7 @@ export function validatePreconnectionOptions(o:Options){
  need(o.target===undefined||['Local','Production'].includes(o.target),'UNKNOWN_TARGET');
  need(o.mode!=='SimulateLocal'||o.target!=='Production','SIMULATION_LOOPBACK_REQUIRED');
  need(o.actor==='12'&&o.empresa===15&&o.contrato===24,'SCOPE_OR_ACTOR_INVALID');
- need(o.expectedRows===730,'EXPECTED_ROWS_INVALID');need(o.backupSha===BACKUP_SHA,'BACKUP_SHA_INVALID');
+ need(o.expectedRows===730,'EXPECTED_ROWS_INVALID');need(sha256HexEqual(o.backupSha,BACKUP_SHA),'BACKUP_SHA_INVALID');
  need(/^[a-f0-9]{40}$/.test(o.commit)&&o.commit===o.actualCommit,'RUNNER_COMMIT_INVALID');
  need(o.projectRef===PROJECT_REF,'PROJECT_REF_INVALID');need(/^phase48-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(o.runId),'RUN_ID_INVALID');
  need(o.flags.health200&&o.flags.databaseOk&&!o.flags.outbox&&!o.flags.sync&&!o.flags.recalc&&!o.flags.worker,'HEALTH_OR_FLAGS_UNSAFE');
@@ -80,7 +81,7 @@ async function authorizationBaseline(db:Db,o:Options,s:Snapshot){
  await repo.safePolicies();
  const candidates=await repo.candidates(),coverage=await repo.coverage(),affected=await repo.affected(),minimal=await repo.minimalState();
  const actual={schema_digest:contractDigest({schema:s.schema,constraints:s.constraints,indexes:s.indexes,routines:s.routines,triggers:s.triggers}),source_digest:s.digest,phase48_candidates_digest:contractDigest(candidates),albeny_before_digest:minimal.albeny_before_digest,dary_before_digest:minimal.dary_before_digest,protected_tables_digest:contractDigest(s.data.filter(r=>!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(r.table))),periods_4_6_digest:minimal.periods_4_6_digest,write_set_before_digest:await repo.writeSet(s,candidates,coverage,affected)};
- for(const key of DIGEST_FIELDS)need(exactEqual(actual[key],fields[key]),'AUTHORIZATION_BASELINE_CHANGED:'+key);
+ for(const key of DIGEST_FIELDS)need(sha256HexEqual(actual[key],fields[key]),'AUTHORIZATION_BASELINE_CHANGED:'+key);
 }
 async function state(db:Db,s:Snapshot){
  await actorGate(db,'12');await activity(db);
@@ -94,9 +95,9 @@ async function state(db:Db,s:Snapshot){
   const p=await historicalPlan(db);need(p.every(r=>r.applied),'PARTIAL_STATE_DETECTED');
   need([...a,...e].every(r=>r.datos_nuevos&&typeof r.datos_nuevos==='object'&&!Array.isArray(r.datos_nuevos)&&/^phase48-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(r.datos_nuevos.run_id)&&/^[a-f0-9]{64}$/.test(r.datos_nuevos.before_digest)&&/^[a-f0-9]{64}$/.test(r.datos_nuevos.after_digest)&&r.datos_nuevos.result==='SUCCESS'&&typeof r.datos_nuevos.timestamp==='string'&&Number.isFinite(Date.parse(r.datos_nuevos.timestamp))),'PARTIAL_STATE_DETECTED');
   need(a.every(r=>r.datos_nuevos?.run_id===a[0].datos_nuevos.run_id)&&e.every(r=>r.datos_nuevos?.run_id===a[0].datos_nuevos.run_id),'PARTIAL_STATE_DETECTED');
-  need(a[0].datos_nuevos.backup_sha===BACKUP_SHA,'PARTIAL_STATE_DETECTED');
-  need([...a,...e].every(r=>r.usuario_id==='12'&&r.accion==='UPDATE'&&r.datos_nuevos.actor===12&&r.datos_nuevos.empresa===15&&r.datos_nuevos.contrato===24&&r.datos_nuevos.backup_sha===BACKUP_SHA&&/^[a-f0-9]{40}$/.test(r.datos_nuevos.runner_commit))&&a.every(r=>r.tabla_afectada==='cobertura_asignaciones')&&e.every(r=>r.empresa_id==='15'&&r.contrato_id==='24'&&r.entidad==='cobertura_asignaciones'),'PARTIAL_STATE_DETECTED');
-  need(sha(a.map(r=>r.datos_nuevos.action).sort())===sha(['ALBENY','DARY','PHASE48'])&&sha(e.map(r=>r.datos_nuevos.action).sort())===sha(['ALBENY','DARY','PHASE48']),'PARTIAL_STATE_DETECTED');
+  need(sha256HexEqual(a[0].datos_nuevos.backup_sha,BACKUP_SHA),'PARTIAL_STATE_DETECTED');
+  need([...a,...e].every(r=>r.usuario_id==='12'&&r.accion==='UPDATE'&&r.datos_nuevos.actor===12&&r.datos_nuevos.empresa===15&&r.datos_nuevos.contrato===24&&sha256HexEqual(r.datos_nuevos.backup_sha,BACKUP_SHA)&&/^[a-f0-9]{40}$/.test(r.datos_nuevos.runner_commit))&&a.every(r=>r.tabla_afectada==='cobertura_asignaciones')&&e.every(r=>r.empresa_id==='15'&&r.contrato_id==='24'&&r.entidad==='cobertura_asignaciones'),'PARTIAL_STATE_DETECTED');
+  need(sha256HexEqual(sha(a.map(r=>r.datos_nuevos.action).sort()),sha(['ALBENY','DARY','PHASE48']))&&sha256HexEqual(sha(e.map(r=>r.datos_nuevos.action).sort()),sha(['ALBENY','DARY','PHASE48'])),'PARTIAL_STATE_DETECTED');
   need(!(await db.query(`SELECT 1 FROM cobertura_asignaciones ca JOIN focalizacion_final ff ON ff.id=ca.focalizacion_final_id AND ff.contrato_id=ca.contrato_id WHERE ca.institucion_id IS DISTINCT FROM ff.institucion_id OR ca.sede_id IS DISTINCT FROM ff.sede_id OR ca.modalidad_id IS DISTINCT FROM ff.modalidad_id LIMIT 1`)).rowCount,'PARTIAL_STATE_DETECTED');
   return {applied:true,plan:p,identities:[] as Record<string,any>[]};
  }
@@ -126,9 +127,9 @@ async function audit(db:Db,o:Options,action:string,ids:string[],before:string,af
  await restartSequence(db,event.sequence,event.id);
 }
 function protectedData(before:Snapshot,after:Snapshot){
- for(const r of before.data)if(!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(r.table))need(sha(r)===sha(after.data.find(a=>a.table===r.table)),'PROTECTED_TABLE_CHANGED:'+r.table);
- for(const r of before.sequences)if(!['cobertura_asignaciones_id_seq','auditoria_id_seq','auditoria_eventos_id_seq'].includes(r.sequence))need(sha(r)===sha(after.sequences.find(a=>a.sequence===r.sequence)),'PROTECTED_SEQUENCE_CHANGED');
- need(sha(before.routines)===sha(after.routines)&&sha(before.triggers)===sha(after.triggers),'FUNCTION_OR_TRIGGER_CHANGED');
+ for(const r of before.data)if(!['cobertura_asignaciones','auditoria','auditoria_eventos'].includes(r.table))need(sha256HexEqual(sha(r),sha(after.data.find(a=>a.table===r.table))),'PROTECTED_TABLE_CHANGED:'+r.table);
+ for(const r of before.sequences)if(!['cobertura_asignaciones_id_seq','auditoria_id_seq','auditoria_eventos_id_seq'].includes(r.sequence))need(sha256HexEqual(sha(r),sha(after.sequences.find(a=>a.sequence===r.sequence))),'PROTECTED_SEQUENCE_CHANGED');
+ need(sha256HexEqual(sha(before.routines),sha(after.routines))&&sha256HexEqual(sha(before.triggers),sha(after.triggers)),'FUNCTION_OR_TRIGGER_CHANGED');
 }
 export async function executeAtomic(db:Db,observer:Db,o:Options){
  let transaction=false,wrote=false,committed=false,commitAttempted=false;
@@ -149,12 +150,12 @@ export async function executeAtomic(db:Db,observer:Db,o:Options){
    auditFirst[table]=String((max>last?max:last)+1n);
   }
   if(!initialState.applied)need(!(await db.query(`SELECT 1 FROM auditoria WHERE datos_nuevos->>'run_id'=$1 UNION ALL SELECT 1 FROM auditoria_eventos WHERE datos_nuevos->>'run_id'=$1 LIMIT 1`,[o.runId])).rowCount,'RUN_ID_ALREADY_USED');
-  if(mode==='MutateProduction'&&!initialState.applied){need(o.baseline===initial.snapshot.digest,'IMMEDIATE_BASELINE_CHANGED');await authorizationBaseline(db,o,initial.snapshot);}
+  if(mode==='MutateProduction'&&!initialState.applied){need(sha256HexEqual(o.baseline,initial.snapshot.digest),'IMMEDIATE_BASELINE_CHANGED');await authorizationBaseline(db,o,initial.snapshot);}
   await db.query('ROLLBACK');transaction=false;
   const receipt={run_id:o.runId,commit:o.commit,backup_sha:BACKUP_SHA,certificate_sha256:o.certificateSha??null,sql_sha256:createHash('sha256').update(sql).digest('hex'),baseline:initial.snapshot.digest,tables:initial.snapshot.data,sequences:initial.snapshot.sequences,schema_digest:sha({schema:initial.snapshot.schema,constraints:initial.snapshot.constraints,indexes:initial.snapshot.indexes,routines:initial.snapshot.routines,triggers:initial.snapshot.triggers}),affected_rows_digest:sha(initial.coverage),authorization:o.authorization??PRODUCTION_AUTHORIZATION,plan:initialState.plan.map(({target,...p})=>p)};
   if(initialState.applied)return {status:'ALREADY_APPLIED',writes:0,newAudits:0,receipt};
   if(mode==='PreflightOnly'||mode==='PreviewOnly')return {status:'READY',writes:0,newAudits:0,receipt,phase48Rows:730};
-  if(mode==='MutateProduction')need(o.baseline===initial.snapshot.digest,'IMMEDIATE_BASELINE_CHANGED');
+  if(mode==='MutateProduction')need(sha256HexEqual(o.baseline,initial.snapshot.digest),'IMMEDIATE_BASELINE_CHANGED');
   await o.saveBaseline?.(receipt);
   await o.simulation?.beforeLock?.();
   await db.query('BEGIN ISOLATION LEVEL SERIALIZABLE');transaction=true;
@@ -162,22 +163,22 @@ export async function executeAtomic(db:Db,observer:Db,o:Options){
   await db.query("SELECT set_config('application_name',$1,true),set_config('empiria.run_id',$2,true),set_config('empiria.actor_id','12',true)",['phase48:'+o.runId,o.runId]);
   need((await db.query('SELECT pg_try_advisory_xact_lock(15,2448) locked')).rows[0].locked,'ADVISORY_LOCK_BUSY');
   await o.simulation?.insideLock?.();
-  const live=await historicalSnapshot(observer);need(live.digest===initial.snapshot.digest,'SOURCE_DRIFT_DETECTED');
+  const live=await historicalSnapshot(observer);need(sha256HexEqual(live.digest,initial.snapshot.digest),'SOURCE_DRIFT_DETECTED');
   await db.query(`LOCK TABLE ${initial.snapshot.data.map(r=>'public.'+q(r.table)).join(',')} IN SHARE ROW EXCLUSIVE MODE`);
   // SERIALIZABLE pins this session's snapshot at the first lock query. An
   // independent READ COMMITTED observer catches commits between that snapshot
   // and acquisition of every table lock; own-session rereads alone cannot.
-  need((await historicalSnapshot(observer)).digest===initial.snapshot.digest,'SOURCE_DRIFT_DETECTED');
-  const locked=await capture(db);need(locked.snapshot.digest===initial.snapshot.digest,'SOURCE_DRIFT_DETECTED');
-  const lockedState=await state(db,locked.snapshot);need(!lockedState.applied&&sha(lockedState.identities)===sha(initialState.identities),'SOURCE_DRIFT_DETECTED');
+  need(sha256HexEqual((await historicalSnapshot(observer)).digest,initial.snapshot.digest),'SOURCE_DRIFT_DETECTED');
+  const locked=await capture(db);need(sha256HexEqual(locked.snapshot.digest,initial.snapshot.digest),'SOURCE_DRIFT_DETECTED');
+  const lockedState=await state(db,locked.snapshot);need(!lockedState.applied&&sha256HexEqual(sha(lockedState.identities),sha(initialState.identities)),'SOURCE_DRIFT_DETECTED');
   if(mode==='MutateProduction'||o.target==='Production')await assertCriticalSchema(db);
   if(o.observeFlags){const flags=await o.observeFlags();validateOptions({...o,flags});}
   if(o.simulation?.failAt==='during-phase48'){await db.query('ALTER TABLE cobertura_asignaciones ADD COLUMN institucion_id bigint');wrote=true;throw Error('INDUCED_PHASE48_FAILURE');}
   await db.query(sql);wrote=true;
   const phaseRows=(await db.query(`SELECT ca.id::text cobertura_id,ca.institucion_id::text,ca.sede_id::text,ca.modalidad_id::text FROM cobertura_asignaciones ca ORDER BY ca.id`)).rows;
-  need(sha(phaseRows)===sha(initialState.identities),'PHASE48_POSTCHECK_FAILED');
+  need(sha256HexEqual(sha(phaseRows),sha(initialState.identities)),'PHASE48_POSTCHECK_FAILED');
   if(o.simulation?.failAt==='after-phase48')throw Error('INDUCED_AFTER_PHASE48');
-  const plan=await historicalPlan(db);need(sha(plan)===sha(initialState.plan),'HISTORICAL_PLAN_DRIFT_DETECTED');
+  const plan=await historicalPlan(db);need(sha256HexEqual(sha(plan),sha(initialState.plan)),'HISTORICAL_PLAN_DRIFT_DETECTED');
   for(let i=0;i<plan.length;i++){
    const p=plan[i]!;
    if(p.historica)need((await db.query(`UPDATE cobertura_asignaciones SET activo=TRUE,observacion=$1 WHERE id=11 AND vinculacion_id=249 AND contrato_id=24 AND NOT activo RETURNING id`,[p.observation])).rowCount===1,'DARY_UPDATE_FAILED');
@@ -190,8 +191,8 @@ export async function executeAtomic(db:Db,observer:Db,o:Options){
   const applied=await historicalPlan(db);need(applied.every(p=>p.applied)&&applied[1]?.category_id===null,'HISTORICAL_POSTCHECK_FAILED');await anomalies(db);
   const afterCoverage=(await db.query('SELECT to_jsonb(ca) row FROM cobertura_asignaciones ca ORDER BY id')).rows.map(r=>r.row);
   for(const old of initial.coverage){const current=afterCoverage.find(r=>r.id===old.id);need(current,'EXISTING_COVERAGE_MISSING');const {institucion_id,sede_id,modalidad_id,...rest}=current;
-   if(old.id===11){const {activo,observacion,...other}=rest;const {activo:oldActive,observacion:oldObservation,...expected}=old;need(sha(other)===sha(expected)&&activo===true&&observacion===applied[1]!.observation,'UNAUTHORIZED_COVERAGE_CHANGE');}
-   else need(sha(rest)===sha(old),'UNAUTHORIZED_COVERAGE_CHANGE');
+   if(old.id===11){const {activo,observacion,...other}=rest;const {activo:oldActive,observacion:oldObservation,...expected}=old;need(sha256HexEqual(sha(other),sha(expected))&&activo===true&&observacion===applied[1]!.observation,'UNAUTHORIZED_COVERAGE_CHANGE');}
+   else need(sha256HexEqual(sha(rest),sha(old)),'UNAUTHORIZED_COVERAGE_CHANGE');
   }
   need(afterCoverage.length===initial.coverage.length+1,'UNEXPECTED_COVERAGE_WRITE');
   let auditIndex=0;
@@ -202,20 +203,20 @@ export async function executeAtomic(db:Db,observer:Db,o:Options){
   }
   const newColumns=['institucion_id','sede_id','modalidad_id'];
   const originalSchema=final.schema.filter(r=>!(r.table_name==='cobertura_asignaciones'&&newColumns.includes(r.column_name))).map(r=>r.table_name==='cobertura_asignaciones'&&r.column_name==='focalizacion_final_id'?{...r,is_nullable:'NO'}:r);
-  need(sha(originalSchema)===sha(initial.snapshot.schema),'UNAUTHORIZED_SCHEMA_CHANGE');
+  need(sha256HexEqual(sha(originalSchema),sha(initial.snapshot.schema)),'UNAUTHORIZED_SCHEMA_CHANGE');
   const addedFks=final.constraints.filter(r=>r.relname==='cobertura_asignaciones'&&r.definition.startsWith('FOREIGN KEY')&&/\((institucion_id|sede_id|modalidad_id)\)/.test(r.definition));
-  need(addedFks.length===3&&sha(final.constraints.filter(r=>!addedFks.includes(r)))===sha(initial.snapshot.constraints),'UNAUTHORIZED_CONSTRAINT_CHANGE');
-  need(sha(final.indexes.filter(r=>r.indexname!=='idx_cobertura_asignaciones_timeline'))===sha(initial.snapshot.indexes)&&final.indexes.some(r=>r.tablename==='cobertura_asignaciones'&&r.indexname==='idx_cobertura_asignaciones_timeline'),'UNAUTHORIZED_INDEX_CHANGE');
+  need(addedFks.length===3&&sha256HexEqual(sha(final.constraints.filter(r=>!addedFks.includes(r))),sha(initial.snapshot.constraints)),'UNAUTHORIZED_CONSTRAINT_CHANGE');
+  need(sha256HexEqual(sha(final.indexes.filter(r=>r.indexname!=='idx_cobertura_asignaciones_timeline')),sha(initial.snapshot.indexes))&&final.indexes.some(r=>r.tablename==='cobertura_asignaciones'&&r.indexname==='idx_cobertura_asignaciones_timeline'),'UNAUTHORIZED_INDEX_CHANGE');
   for(const table of ['auditoria','auditoria_eventos'])need(BigInt(final.data.find(r=>r.table===table)!.count)===BigInt(initial.snapshot.data.find(r=>r.table===table)!.count)+3n,'STRICT_AUDIT_COUNT_FAILED');
   // Each appended audit must be attributable to this run; existing audit rows
   // are protected by digest, not merely by the final row count.
   for(const table of ['auditoria','auditoria_eventos']){
    const existing=(await db.query(`SELECT count(*)::text count,encode(sha256(convert_to(COALESCE(string_agg(to_jsonb(t)::text,E'\\n' ORDER BY to_jsonb(t)::text),''),'UTF8')),'hex') digest FROM ${q(table)} t WHERE (descripcion=$1 AND datos_nuevos->>'run_id'=$2) IS NOT TRUE`,[MARKER,o.runId])).rows[0];
-   const before=initial.snapshot.data.find(r=>r.table===table)!;need(existing.count===before.count&&existing.digest===before.digest,'EXISTING_AUDIT_CHANGED');
+   const before=initial.snapshot.data.find(r=>r.table===table)!;need(existing.count===before.count&&sha256HexEqual(existing.digest,before.digest),'EXISTING_AUDIT_CHANGED');
   }
   await activity(db);if(o.observeFlags)validateOptions({...o,flags:await o.observeFlags()});
   commitAttempted=true;await db.query('COMMIT');transaction=false;committed=true;
-  need((await historicalSnapshot(observer)).digest===final.digest,'POST_COMMIT_DRIFT_DETECTED');
+  need(sha256HexEqual((await historicalSnapshot(observer)).digest,final.digest),'POST_COMMIT_DRIFT_DETECTED');
   need((await db.query("SELECT count(*)::int n FROM pg_locks WHERE pid=pg_backend_pid() AND locktype='advisory'")).rows[0].n===0,'ADVISORY_LOCK_NOT_RELEASED');
   if(o.observeFlags)validateOptions({...o,flags:await o.observeFlags()});
   return {status:'SUCCESS',writes:{phase48:730,coverages:2,auditoria:3,auditoria_eventos:3},newAudits:6,receipt,plan:applied.map(({target,...p})=>p),before:initial.snapshot,after:final};

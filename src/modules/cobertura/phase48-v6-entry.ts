@@ -1,3 +1,4 @@
+import {sha256HexEqual} from './phase48-sha256';
 import {existsSync,readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -23,7 +24,7 @@ function compareFields(f:V6Fields,pre:V6Preflight,sha:string,env:Awaited<ReturnT
 }
 async function withRead(h:V6Host,fn:(db:V6Client)=>Promise<ScopedCapture>){const db=h.client('observer');let began=false;const ev:any={instance:randomUUID(),rollback:false,closed:false};try{await db.connect();await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');began=true;await db.query('SET LOCAL search_path=pg_catalog,public,pg_temp');await db.query("SET LOCAL timezone='UTC'");await db.query("SET LOCAL statement_timeout='120s'");ev.identity=await h.identity(db,true);const capture=await fn(db);return {capture,evidence:ev};}finally{try{if(began){await db.query('ROLLBACK');ev.rollback=true;}}finally{await db.end();ev.closed=true;}}}
 export async function preflightV6(h:V6Host):Promise<V6Preflight>{
- const off=await h.offline(),flags=await h.flags();v6Flags(flags);const a=await withRead(h,scopedCapture),b=await withRead(h,scopedCapture);requireScoped(scopedDigest(a.capture.set)===scopedDigest(b.capture.set)&&scopedDigest(v6Digests(a.capture))===scopedDigest(v6Digests(b.capture)),'V6_INDEPENDENT_READ_DRIFT');v6Flags(await h.flags());
+ const off=await h.offline(),flags=await h.flags();v6Flags(flags);const a=await withRead(h,scopedCapture),b=await withRead(h,scopedCapture);requireScoped(sha256HexEqual(scopedDigest(a.capture.set),scopedDigest(b.capture.set))&&sha256HexEqual(scopedDigest(v6Digests(a.capture)),scopedDigest(v6Digests(b.capture))),'V6_INDEPENDENT_READ_DRIFT');v6Flags(await h.flags());
  const c=a.capture,t=now(h);requireScoped(c.set.candidate_count!==730,'V6_LEGACY_POPULATION_REJECTED');
  return {run_id:'phase48-'+randomUUID(),kind:'PHASE48_V6_PREFLIGHT',status:'VERIFIED',issued_at:new Date(t).toISOString(),expires_at:new Date(t+900000).toISOString(),release:off.release,evidence:off.evidence,set:c.set,digests:v6Digests(c),manifest:c.manifest,preview:c.salary_preview,operational_preview:c.operational,historical_preview:c.plan.map(({target,...p})=>p),informational:{global_digest:c.informational_global_digest,excluded_digest:c.informational_excluded_digest},connections:[a.evidence,b.evidence],flags,authorization:'REVOKED'};
 }
@@ -40,7 +41,7 @@ export async function mutateV6(h:V6Host,approvalRaw:string,hooks?:ScopedHooks){
  const parsed=await v6Timed('authorization_read',async()=>parseV6Approval(approvalRaw,now(h),false)),f=parsed.fields,approval=parsed.approval;
  const off=await v6Timed('offline',()=>h.offline());
  const bytes=readFileSync(approval.preflight_path),sha=v6Hash(bytes);
- requireScoped(sha===approval.preflight_sha256,'V6_PREFLIGHT_HASH_MISMATCH');const pre=JSON.parse(bytes.toString('utf8')) as V6Preflight;
+ requireScoped(sha256HexEqual(sha,approval.preflight_sha256),'V6_PREFLIGHT_HASH_MISMATCH');const pre=JSON.parse(bytes.toString('utf8')) as V6Preflight;
  requireScoped(pre.release.readonly_runner_commit===off.release.readonly_runner_commit&&pre.release.mutator_commit===off.release.mutator_commit,'V6_COMMIT_MISMATCH');
  const run=String(f.run_id),phraseHash=v6Hash(approval.phrase),authority=createV6WindowAuthority(()=>now(h),h.key());
  const marker=join(h.directory,'phase48-consumed-'+f.nonce+'.json');
@@ -49,7 +50,7 @@ export async function mutateV6(h:V6Host,approvalRaw:string,hooks?:ScopedHooks){
   // Restart recovery is read-only. Consumed attempts can never acquire a new seal.
   requireScoped(existsSync(sealPath),'V6_NONCE_REVOKED_OR_REUSED');
   const saved=JSON.parse(readFileSync(sealPath,'utf8'));authority.authenticate(saved.seal);
-  requireScoped(saved.phrase_sha256===phraseHash&&saved.preflight_sha256===sha,'V6_RUN_BINDING_MISMATCH');
+  requireScoped(sha256HexEqual(saved.phrase_sha256,phraseHash)&&sha256HexEqual(saved.preflight_sha256,sha),'V6_RUN_BINDING_MISMATCH');
   authority.verifyWitness(saved.seal,{phrase_sha256:phraseHash,preflight_sha256:sha},saved.witness_mac);
   const db=h.client('observer');let began=false;
   try{await db.connect();await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');began=true;await db.query('SET LOCAL search_path=pg_catalog,public,pg_temp');await db.query("SET LOCAL timezone='UTC'");await h.identity(db,false);
@@ -58,8 +59,8 @@ export async function mutateV6(h:V6Host,approvalRaw:string,hooks?:ScopedHooks){
   const commitPath=v6ReceiptPath(h.directory,run,'committed');
   if(existsSync(commitPath)){
    const prior=JSON.parse(readFileSync(commitPath,'utf8'));
-   requireScoped(prior.run_id===run&&prior.receipt_type==='committed'&&prior.committed===true&&prior.phrase_sha256===phraseHash&&scopedDigest(prior.seal)===scopedDigest(saved.seal)&&prior.parents?.some((p:any)=>p.path===sealPath&&p.sha256===v6Hash(readFileSync(sealPath))),'V6_COMMITTED_RECEIPT_BINDING_MISMATCH');
-   const postPath=v6ReceiptPath(h.directory,run,'postflight');if(existsSync(postPath)){const post=JSON.parse(readFileSync(postPath,'utf8'));requireScoped(post.parents?.some((p:any)=>p.path===commitPath&&p.sha256===v6Hash(readFileSync(commitPath))),'V6_COMMITTED_RECEIPT_HASH_DRIFT');}
+   requireScoped(prior.run_id===run&&prior.receipt_type==='committed'&&prior.committed===true&&sha256HexEqual(prior.phrase_sha256,phraseHash)&&sha256HexEqual(scopedDigest(prior.seal),scopedDigest(saved.seal))&&prior.parents?.some((p:any)=>p.path===sealPath&&sha256HexEqual(p.sha256,v6Hash(readFileSync(sealPath)))),'V6_COMMITTED_RECEIPT_BINDING_MISMATCH');
+   const postPath=v6ReceiptPath(h.directory,run,'postflight');if(existsSync(postPath)){const post=JSON.parse(readFileSync(postPath,'utf8'));requireScoped(post.parents?.some((p:any)=>p.path===commitPath&&sha256HexEqual(p.sha256,v6Hash(readFileSync(commitPath)))),'V6_COMMITTED_RECEIPT_HASH_DRIFT');}
   }
   const commit=existsSync(commitPath)?{path:commitPath,sha256:v6Hash(readFileSync(commitPath))}:publishV6Receipt(h.directory,run,'committed',{status:'V6_COMMITTED_RECOVERED',seal:saved.seal,phrase_sha256:phraseHash,committed:true},[{path:sealPath,sha256:v6Hash(readFileSync(sealPath))}]);
   const idempotency=publishV6Receipt(h.directory,run,'idempotency',{status:'ALREADY_APPLIED',writes:0,timings},[commit]);
@@ -113,7 +114,7 @@ export async function reverseV6(h:V6Host,raw:string){
  requireScoped(h.enabled,'V6_MUTATION_ENV_REQUIRED');const f=parseV6Reversal(raw,now(h)),off=await h.offline();
  requireScoped(off.release.readonly_runner_commit===f.readonly_runner_commit&&off.release.mutator_commit===f.mutator_commit,'V6_REVERSAL_COMMIT_MISMATCH');
  const publicationPath=v6ReceiptPath(h.directory,f.run_id!,'committed'),publication=readFileSync(publicationPath);
- requireScoped(v6Hash(publication)===f.publication_receipt_sha256,'V6_REVERSAL_RECEIPT_HASH');
+ requireScoped(sha256HexEqual(v6Hash(publication),f.publication_receipt_sha256),'V6_REVERSAL_RECEIPT_HASH');
  const pub=JSON.parse(publication.toString('utf8')),authority=createV6WindowAuthority(()=>now(h),h.key());authority.authenticate(pub.seal);v6Flags(await h.flags());
  const name='phase48-consumed-'+f.nonce+'.json';requireScoped(!existsSync(join(h.directory,name)),'V6_REVERSAL_NONCE_REUSED');
  const run='phase48-'+randomUUID();claimV6Attempt(h.directory,run,f.nonce!);

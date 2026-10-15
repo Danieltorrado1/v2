@@ -6,6 +6,7 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import ts from 'typescript';
 import * as contract from '../modules/cobertura/phase48-readonly-contract';
+import * as sha256 from '../modules/cobertura/phase48-sha256';
 
 async function exercise(scenario:'ready'|'applied'|'snapshot-failure'|'rollback-failure'|'during-phase48'|'drift'){
  const queries:string[]=[];let captures=0;
@@ -31,6 +32,7 @@ async function exercise(scenario:'ready'|'applied'|'snapshot-failure'|'rollback-
  const code=ts.transpileModule(readFileSync('src/modules/cobertura/phase48-production-executor.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
  runInNewContext(code,{exports,Date,Buffer,require:(name:string)=>{
   if(name==='./phase48-readonly-contract')return contract;
+  if(name==='./phase48-sha256')return sha256;
   if(name==='./phase48-readonly-target')return {validateReadTarget:()=>assert.fail('no productive target')};
   if(name==='./phase48-readonly-tls')return {inspectProductionTls:()=>assert.fail('no productive TLS in local executor doubles')};
   if(name==='./phase48-readonly-schema-identity')return {assertCriticalSchema:()=>assert.fail('no productive schema in local executor doubles')};

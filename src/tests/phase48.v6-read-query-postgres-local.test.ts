@@ -1,3 +1,4 @@
+import {sha256HexEqual} from '../modules/cobertura/phase48-sha256';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Client} from 'pg';
@@ -20,7 +21,7 @@ const makeClient=(port:number,ca:Buffer)=>{
 };
 const tlsEvidence=(client:any,caSha:string)=>async():Promise<DiagnosticTlsEvidence>=>{
  const socket=client.connection.stream;const cert=socket.getPeerCertificate(true);const hostError=checkServerIdentity('localhost',cert);
- return {protocol:socket.getProtocol(),encrypted:socket.encrypted===true,authorized:socket.authorized===true,rejectUnauthorized:true,ca_pinned:caSha===createHash('sha256').update(readFileSync(required('PHASE48_READ_QUERY_LOCAL_CA'))).digest('hex'),hostname_verified:hostError===undefined,servername_matches:socket.servername==='localhost',authorization_error:socket.authorizationError??null} as DiagnosticTlsEvidence;
+ return {protocol:socket.getProtocol(),encrypted:socket.encrypted===true,authorized:socket.authorized===true,rejectUnauthorized:true,ca_pinned:sha256HexEqual(caSha,createHash('sha256').update(readFileSync(required('PHASE48_READ_QUERY_LOCAL_CA'))).digest('hex')),hostname_verified:hostError===undefined,servername_matches:socket.servername==='localhost',authorization_error:socket.authorizationError??null} as DiagnosticTlsEvidence;
 };
 const setup=()=>{const {port,ca,caSha256}=config();const directory=required('PHASE48_READ_QUERY_LOCAL_RECEIPTS');mkdirSync(directory,{recursive:true});const holder=makeClient(port,ca);return {directory,holder,port,ca,caSha256};};
 const readOnlyCapture=async(db:{query(sql:string,values?:unknown[]):Promise<any>})=>{
@@ -33,10 +34,10 @@ const readOnlyCapture=async(db:{query(sql:string,values?:unknown[]):Promise<any>
 
 test('REAL PostgreSQL 17.11 TLS fixture: V6 capture, 740 rows, 17 digests, rollback, end and atomic receipt',{skip:!enabled},async()=>{
  observed.value=undefined;const x=setup(),expected=config(),runId=randomUUID(),instrument=await runReadQueryDiagnostic({directory:x.directory,runId,createClient:()=>x.holder.api,validateTls:tlsEvidence(x.holder.c,x.caSha256),capture:readOnlyCapture});
- const failedHash=instrument.receipt.query_id?.split('.')[3];const failedIndex=x.holder.calls.findIndex(sql=>createHash('sha256').update(sql.replace(/\s+/g,' ').trim()).digest('hex').startsWith(failedHash??'!'));
+ const failedHash=/\.([a-f0-9]{64})\.\d{2}$/.exec(instrument.receipt.query_id??'')?.[1];assert.ok(failedHash);const failedIndex=x.holder.calls.findIndex(sql=>sha256HexEqual(createHash('sha256').update(sql.replace(/\s+/g,' ').trim()).digest('hex'),failedHash));
  assert.equal(instrument.receipt.status,'CAPTURED',`query_id=${instrument.receipt.query_id}; raw_call_index=${failedIndex}; sqlstate=${instrument.receipt.first_error?.sqlstate}`);assert.equal(instrument.receipt.rollback_confirmed,true);assert.equal(instrument.receipt.client_closed,true);assert.equal(instrument.receipt.tls_validated,true);assert.equal(instrument.receipt.capture_summary?.candidate_count,740);assert.equal(instrument.receipt.capture_summary?.digest_count,17);assert.deepEqual(instrument.receipt.capture_summary?.digests,latestCapture().digests);
  const selectCount=x.holder.calls.filter(s=>/^\s*(SELECT|WITH)\b/i.test(s)).length;assert.equal(selectCount,159);assert.equal(instrument.receipt.queries.length,164);assert.ok(!x.holder.calls.some(s=>/^\s*(INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|CALL)\b/i.test(s)||/\b(?:nextval|setval)\s*\(/i.test(s)));
- const receipt=readFileSync(instrument.publication.path,'utf8');assert.equal(createHash('sha256').update(receipt).digest('hex'),instrument.publication.sha256);assert.equal(JSON.parse(receipt).mutator_invoked,false);assert.equal(JSON.parse(receipt).tls.protocol,'TLSv1.3');assert.equal(JSON.parse(receipt).tls.encrypted,true);assert.equal(JSON.parse(receipt).tls.authorized,true);
+ const receipt=readFileSync(instrument.publication.path,'utf8');assert.equal(sha256HexEqual(createHash('sha256').update(receipt).digest('hex'),instrument.publication.sha256),true);assert.equal(JSON.parse(receipt).mutator_invoked,false);assert.equal(JSON.parse(receipt).tls.protocol,'TLSv1.3');assert.equal(JSON.parse(receipt).tls.encrypted,true);assert.equal(JSON.parse(receipt).tls.authorized,true);
  const receiptExport=required('PHASE48_READ_QUERY_LOCAL_RECEIPT_OUT');writeFileSync(receiptExport,receipt,{flag:'wx'});
  const capture=latestCapture();assert.ok(capture);assert.equal(resolve(capture.identity.data_directory),expected.dataDirectory);assert.equal(capture.identity.port,x.port);assert.ok(Number(capture.identity.pid)>0);assert.ok(capture.identity.snapshot);
  const certificate=JSON.parse(readFileSync(required('PHASE48_READ_QUERY_LOCAL_CERTIFICATE'),'utf8'));certificate.read_query={port:x.port,postmaster_pid:expected.serverPid,backend_pid:Number(capture.identity.pid),data_directory:expected.dataDirectory,snapshot:capture.identity.snapshot,virtual_tx:capture.identity.virtual_tx,read_only:capture.identity.read_only,isolation:capture.identity.isolation,queries:instrument.receipt.queries.length,selects:selectCount,candidate_count:740,digest_count:17,digests:capture.digests,rollback_confirmed:true,client_closed:true,tls_validated:true,receipt_path:receiptExport.replace(resolve(),'').replace(/^[/\\]/,''),receipt_sha256:instrument.publication.sha256};

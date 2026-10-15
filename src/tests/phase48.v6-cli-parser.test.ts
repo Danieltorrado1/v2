@@ -67,13 +67,13 @@ test('synthetic V6 launcher either reaches its certified branch gate or fails cl
   .replace('C:/synthetic/ca-sentinel.crt',resolve('tmp/phase48-v6-window-local/NEVER_READ_parser_ca.crt'))
   .replace('C:/synthetic/receipts',resolve('tmp/phase48-v6-window-local')));
  const branch=execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim();
- if(branch==='fix/phase48-v6-diagnostic-launcher'||branch==='fix/phase48-v6-diagnostic-metadata'||branch==='fix/phase48-v6-ca-hash-normalization')await assert.rejects(runV6Cli(args),(error:any)=>error?.message==='V6_CLEAN_RELEASE_BRANCH_REQUIRED');
+ if(branch==='fix/phase48-v6-diagnostic-launcher'||branch==='fix/phase48-v6-diagnostic-metadata'||branch==='fix/phase48-v6-ca-hash-normalization'||branch==='fix/phase48-v6-sha-comparison-unification')await assert.rejects(runV6Cli(args),(error:any)=>error?.message==='V6_CLEAN_RELEASE_BRANCH_REQUIRED');
  else await assert.rejects(runV6Cli(args),(error:any)=>error?.code==='ENOENT'&&String(error.path).includes('parser-no-evidence')&&!String(error.path).includes('NEVER_READ'));
 });
 
 test('V6 release gate pins the exact read-query observability branch and retains HEAD ancestry checks',()=>{
  const source=readFileSync('src/modules/cobertura/phase48-v6-evidence.ts','utf8');
- assert.match(source,/git\(\['branch','--show-current'\]\)==='fix\/phase48-v6-read-query-observability'/);
+ assert.match(source,/git\(\['branch','--show-current'\]\)==='fix\/phase48-v6-sha-comparison-unification'/);
  assert.match(source,/git\(\['rev-parse','HEAD'\]\)/);
  assert.match(source,/git\(\['merge-base','--is-ancestor',V6_MUTATOR_COMMIT,head\]\)/);
  assert.match(source,/replaceAll\("'fix\/phase48-v6-argument-parser'","'<BRANCH>'"\)/);
