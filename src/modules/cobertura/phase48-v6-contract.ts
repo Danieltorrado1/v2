@@ -3,7 +3,7 @@ import {randomBytes} from 'node:crypto';
 import {scopedDigest,requireScoped,type ScopedSet} from './phase48-scoped-contract';
 import type {ScopedCapture} from './phase48-scoped-repository';
 export const V6_VERSION='phase48-scoped-v6-window-1';
-export const V6_REVOKED_COMMITS=['6f0e6930dfcb8752e7c9cdbea9360a57f2d4c769','e165a537c577334241cf013d3f474d4c226333e8'];
+export const V6_REVOKED_COMMITS=['6f0e6930dfcb8752e7c9cdbea9360a57f2d4c769','e165a537c577334241cf013d3f474d4c226333e8','9d894290388600a34d9c377eb69ad102b453ca4b','4f806531a4708cfa054b829e5467b46eed207926'];
 export const V6_MAX_TTL=900_000;
 export const V6_ASSERTIONS=Object.freeze({atomic_phase48_and_three_corrections:true,confirm_albeny:true,confirm_dary:true,confirm_close1203:true,dary_requires_salary_review:true,dary_category_null:true,preserve_periods_4_6:true,preserve_archived_versions:true,preserve_economic_salary_data:true,strict_audits:true,detect_drift:true,total_rollback:true,idempotent:true,no_payroll_recalculation:true,no_external_sync:true});
 export const V6_DIGESTS=['candidates_digest','phase48_candidates_digest','critical_schema_digest','source_digest','protected_tables_digest','write_set_before_digest','periods_4_6_digest','albeny_before_digest','dary_before_digest','assignment_1203_before_digest','archived_versions_digest','event_triggers_digest','critical_definitions_digest','critical_sequences_digest','manifest_digest','salary_decision_digest','salary_review_assignments_digest'] as const;
