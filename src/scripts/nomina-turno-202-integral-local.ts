@@ -32,7 +32,7 @@ export class LocalEvidenceStore {
  }
 }
 export type Manifest={before:DatabaseState;documentSha256:string;referenceSha256:string;triggerHash:string;actorId:number;technicalActorIds:readonly number[]};
-type Ticket={runId:string;actorId:number;nonce:string;expiresAt:number;confirmation:string;manifestHash:string};
+export type Ticket={runId:string;actorId:number;nonce:string;expiresAt:number;confirmation:string;manifestHash:string};
 const tickets=new WeakMap<object,string>();
 const consumed=new WeakSet<object>();
 const activeDatabases=new WeakSet<PGlite>();
@@ -56,7 +56,7 @@ export async function triggerHash(db:PGlite){
  const r=(await db.query<{definition:string;fn:string;enabled:string}>(`SELECT pg_get_triggerdef(t.oid) AS definition,pg_get_functiondef(t.tgfoid) AS fn,t.tgenabled AS enabled FROM pg_trigger t WHERE t.tgrelid='public.nomina_movimientos'::regclass AND t.tgname='trg_nomina_movimientos_invalida_revision'`)).rows;
  if(r.length!==1||r[0]?.enabled!=='O')fail('MANDATORY_TRIGGER_MISSING');return digest(r);
 }
-function assertObserved(m:Manifest,store:LocalEvidenceStore){
+export function assertObserved(m:Manifest,store:LocalEvidenceStore){
  const s=m.before,mv=targetRow(s,'nomina_movimientos'),d=targetRow(s,'cobertura_cuenta_cobro_externa_detalle'),cc=targetRow(s,'cobertura_cuentas_cobro_externas'),r=targetRow(s,'nomina_revision_operativa');
  const subset=(row:Row,expected:Row,label:string)=>{for(const k of Object.keys(expected))equal(row[k],expected[k],label+'_'+k);};
  subset(mv,{id:192,periodo_id:3,nomina_empleado_id:837,vinculacion_id:847,externo_id:33,tipo_movimiento:'TURNO_EXTERNO',familia_movimiento:'ADICION_DEVENGO',fecha:'2026-09-08',cantidad:1,valor_unitario:97800,valor_calculado:97800,valor_total:97800,estado:'PENDIENTE',afecta_seguridad_social:false,activo:true,tarifa_config_id:1,modalidad_id:1,aprobado_at:null},'MOVEMENT_BEFORE');
@@ -77,22 +77,22 @@ function assertObserved(m:Manifest,store:LocalEvidenceStore){
  const actor=s.usuarios?.find(x=>x.id===m.actorId);if(!actor?.activo||!m.technicalActorIds.includes(m.actorId))fail('VALIDATED_TECHNICAL_ACTOR_REQUIRED');
  store.verify(m.documentSha256);
 }
-function sanitized(row:Row,table:string,envelope:Envelope,m:Manifest){
+export function sanitized(row:Row,table:string,envelope:Envelope,m:Manifest){
  const result=structuredClone(row);
  if(table==='cobertura_cuentas_cobro_externas'&&result.generado_path){result.generado_bucket='[ENCRYPTED]';result.generado_path='[ENCRYPTED]';result.historical_document={alias:'account-77-original',sha256:m.documentSha256,reference_sha256:m.referenceSha256,reference_envelope:envelope};}
  return result;
 }
 const auditTables=['auditoria','auditoria_eventos','historial_cambios'];
 const flatten=(value:any,prefix=''):Record<string,string|null>=>value!==null&&typeof value==='object'&&!Array.isArray(value)?Object.assign({},...Object.entries(value).map(([k,v])=>flatten(v,prefix?prefix+'.'+k:k))):{[prefix||'root']:value===null?null:typeof value==='string'?value:canonical(value)};
-function historyDiff(before:Row,after:Row){const a=flatten(before),b=flatten(after);return [...new Set([...Object.keys(a),...Object.keys(b)])].filter(k=>(a[k]??null)!==(b[k]??null)).sort().map(campo=>({campo,valor_anterior:a[campo]??null,valor_nuevo:b[campo]??null}));}
-async function appendAudit(db:PGlite,table:string,id:number,before:Row,after:Row,t:Ticket,m:Manifest){
+export function historyDiff(before:Row,after:Row){const a=flatten(before),b=flatten(after);return [...new Set([...Object.keys(a),...Object.keys(b)])].filter(k=>(a[k]??null)!==(b[k]??null)).sort().map(campo=>({campo,valor_anterior:a[campo]??null,valor_nuevo:b[campo]??null}));}
+export async function appendAudit(db:PGlite,table:string,id:number,before:Row,after:Row,t:Ticket,m:Manifest){
  const a={...after,run_id:t.runId,operation_key:ACTION,manifest_hash:manifestHash(m)};
  await db.query(`INSERT INTO auditoria_eventos(usuario_id,empresa_id,contrato_id,modulo,entidad,entidad_id,accion,descripcion,datos_anteriores,datos_nuevos) VALUES($1,15,24,'NOMINA',$2,$3,$4,$4,$5,$6)`,[t.actorId,table,String(id),ACTION,JSON.stringify(before),JSON.stringify(a)]);
  await db.query(`INSERT INTO auditoria(usuario_id,tabla_afectada,registro_id,accion,descripcion,datos_anteriores,datos_nuevos) VALUES($1,$2,$3,$4,$4,$5,$6)`,[t.actorId,table,id,ACTION,JSON.stringify(before),JSON.stringify(a)]);
  await db.query(`INSERT INTO historial_cambios(usuario_id,tabla_afectada,registro_id,campo,valor_anterior,valor_nuevo,motivo) VALUES($1,$2,$3,'__snapshot__',$4,$5,$6)`,[t.actorId,table,id,canonical(before),canonical(a),ACTION]);
  for(const d of historyDiff(before,a))await db.query(`INSERT INTO historial_cambios(usuario_id,tabla_afectada,registro_id,campo,valor_anterior,valor_nuevo,motivo) VALUES($1,$2,$3,$4,$5,$6,$7)`,[t.actorId,table,id,d.campo,d.valor_anterior,d.valor_nuevo,ACTION]);
 }
-function verifyAudit(s:DatabaseState,m:Manifest,env:Envelope){
+export function verifyAudit(s:DatabaseState,m:Manifest,env:Envelope){
  let runId:string|undefined;
  let expectedHistoryCount=0;
  for(const [table,id] of Object.entries(TARGETS)){
@@ -115,7 +115,7 @@ function verifyAudit(s:DatabaseState,m:Manifest,env:Envelope){
  if(s.auditoria_eventos?.filter(x=>x.accion===ACTION).length!==4||s.auditoria?.filter(x=>x.accion===ACTION).length!==4||s.historial_cambios?.filter(x=>x.motivo===ACTION).length!==expectedHistoryCount)fail('UNEXPECTED_AUDIT_ENTITY');
  return runId!;
 }
-function assertAfter(before:DatabaseState,after:DatabaseState,actorId:number,stamp:string){
+export function assertAfter(before:DatabaseState,after:DatabaseState,actorId:number,stamp:string){
  const changes:Record<string,Row>={nomina_movimientos:{cantidad:2,valor_calculado:195600,valor_total:195600,updated_by:actorId,updated_at:stamp},cobertura_cuenta_cobro_externa_detalle:{valor:195600},cobertura_cuentas_cobro_externas:{valor_total:195600,generado_bucket:null,generado_path:null,generado_at:null,updated_by:actorId,updated_at:stamp},nomina_revision_operativa:{estado_revision:'REQUIERE_REVISION',version_revision:31,revisado_por:null,revisado_at:null,invalidado_at:stamp,motivo_invalidacion:'TA_MODIFICADO',updated_at:stamp}};
  equal(Object.keys(after),Object.keys(before),'ADDITIONAL_TABLE_IN_WRITE_SET');
  for(const table of Object.keys(before)){
@@ -126,6 +126,15 @@ function assertAfter(before:DatabaseState,after:DatabaseState,actorId:number,sta
  for(const table of auditTables){const old=before[table]??[];for(const row of old)if(!after[table]?.some(x=>canonical(x)===canonical(row)))fail('EXISTING_AUDIT_MODIFIED');const added=after[table]!.filter(x=>!old.some(y=>y.id===x.id));if(table!=='historial_cambios'&&added.length!==4)fail('AUDIT_COUNT_INVALID');if(added.some(x=>(x.accion??x.motivo)!==ACTION))fail('UNEXPECTED_AUDIT_WRITE');}
 }
 export type ExecuteOptions={mode?:'PreviewOnly'|'Mutate';enableLocalMutate?:boolean;ticket?:Ticket;confirmation?:string;custodyKey:Buffer;custodyKeyId:string;store:LocalEvidenceStore};
+/** Shared in-process local ticket gate; does not enable a production route. */
+export function validateNativeLocalTicket(m:Manifest,o:ExecuteOptions){
+ const t=o.ticket;
+ if(o.mode!=='Mutate'||!o.enableLocalMutate||!t)throw Error('MUTATE_DISABLED_BY_DEFAULT');
+ if(o.custodyKey.length!==32)fail('LOCAL_CUSTODY_KEY_REQUIRED');
+ if(tickets.get(t)!==digest(t)||t.manifestHash!==manifestHash(m)||t.actorId!==m.actorId||o.confirmation!==t.confirmation||t.expiresAt<=Date.now())fail('CONFIRMATION_NONCE_OR_EXPIRATION_INVALID');
+ return t;
+}
+export function nativeLocalTicketConsumed(t:Ticket,mark=false){if(mark)consumed.add(t);return consumed.has(t);}
 export async function executeIntegralLocal(db:PGlite,m:Manifest,o:ExecuteOptions){
  assertLocal(db);
  const mutate=(o.mode??'PreviewOnly')==='Mutate';
