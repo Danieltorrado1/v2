@@ -1,0 +1,10 @@
+{
+  "cleanup.json": {
+    "raw_sha256": "d52044ee436d7fa42ce3be5f3bdb3f4348c401ae2923901e30179bc40df4cb2e",
+    "conversion": "JSON values unchanged; UTF-8 BOM removed and LF serialization applied for portable review"
+  },
+  "process-memory.json": {
+    "raw_sha256": "bea611f82ef35d9c40d9adac5de34ed02278d0b538268858a2daffc2d9e990c4",
+    "conversion": "JSON values unchanged; UTF-8 BOM removed and LF serialization applied for portable review"
+  }
+}

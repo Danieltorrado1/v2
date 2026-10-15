@@ -1,0 +1,152 @@
+{
+  "phases": {
+    "cluster_init": 4911.4687,
+    "full_restore": 6308.223400000001,
+    "sequence_initialization": 219.2430000000004,
+    "object_inventory": 57.47640000000138,
+    "initial_262_comparison": 2699.2510999999995,
+    "protected_rows_baseline": 19.21179999999913,
+    "executor_preflight_and_baseline": 164.7414000000008,
+    "native_guard_tests": 54.21490000000085,
+    "corrector": 61.15379999999641,
+    "postflight_262_comparison": 2658.428499999998,
+    "idempotent": 31.933799999998882,
+    "documents": 3437.7934999999998,
+    "explain_analyze": 37.59730000000127,
+    "rollback_restore": 13892.0396
+  },
+  "tests": {
+    "native_guards": {
+      "results": [
+        {
+          "label": "default_disabled",
+          "rejected": "MUTATE_DISABLED"
+        },
+        {
+          "label": "confirmation",
+          "rejected": "CONFIRMATION_NONCE"
+        },
+        {
+          "label": "forged_nonce",
+          "rejected": "CONFIRMATION_NONCE"
+        },
+        {
+          "label": "custody",
+          "rejected": "LOCAL_CUSTODY_KEY"
+        },
+        {
+          "label": "expired",
+          "rejected": "CONFIRMATION_NONCE"
+        },
+        {
+          "label": "protected_IBC_baseline",
+          "rejected": "EXACT_BEFORE_STATE_DRIFT"
+        },
+        {
+          "label": "trigger_function_hash",
+          "rejected": "TRIGGER_DRIFT"
+        }
+      ],
+      "frozen_manifest": true
+    },
+    "role_write_boundary": {
+      "tables": [
+        "auditoria",
+        "auditoria_eventos",
+        "cobertura_cuenta_cobro_externa_detalle",
+        "cobertura_cuentas_cobro_externas",
+        "historial_cambios",
+        "nomina_movimientos",
+        "nomina_revision_operativa"
+      ],
+      "institution_write_privilege": false
+    },
+    "historical_corpus": [
+      {
+        "table": "auditoria",
+        "count": "14878",
+        "sha256": "ec7f0bd446b49d09fb2ad6fa985ed5054d43b0acc6886a410d2cee7328b59138"
+      },
+      {
+        "table": "auditoria_eventos",
+        "count": "60068",
+        "sha256": "7dc4d79c304844acf0eb7c0f1d6eeb3b5c0bc0068fc97c8dbe1424ccf219fc20"
+      },
+      {
+        "table": "historial_cambios",
+        "count": "208425",
+        "sha256": "ecb31b71cbac6dca014370e58bd8e0fcff704e88626a977f188d2b62f7a0ab20"
+      }
+    ],
+    "idempotent": {
+      "all_262_tables_unchanged": true,
+      "all_213_sequences_unchanged": true,
+      "zero_new_rows": true
+    },
+    "document_failure": {
+      "failed_after_commit": true,
+      "economy_reexecuted": false
+    },
+    "document_recovery": {
+      "status": "DOCUMENT_VERIFIED_ACCOUNT_STILL_PENDING",
+      "intent": {
+        "runId": "d8fb9f1b-e79c-44a9-8016-a1411b3aa476",
+        "key": "cobertura/cuentas-cobro/77/versiones/d8fb9f1b-e79c-44a9-8016-a1411b3aa476/CUENTA_77_195600_8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9.pdf",
+        "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9",
+        "status": "PUBLISHED",
+        "expectedTotal": 195600,
+        "accountStatus": "PENDIENTE"
+      },
+      "model": {
+        "cuenta": 77,
+        "turno": 202,
+        "movimiento": 192,
+        "detalle": 220,
+        "dias": 2,
+        "unitario": 97800,
+        "total": 195600
+      },
+      "historical_sha256": "cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4",
+      "historical_preserved": true,
+      "object_count": 2,
+      "publish_adapter": "LOCAL_STUB_NO_DATABASE_OR_REMOTE_STORAGE"
+    },
+    "induced": {
+      "induced_sqlstate": "23514",
+      "ms": 92.63960000000225
+    },
+    "rollback": {
+      "data_equal_all_262_tables": true,
+      "new_persisted_rows": 0,
+      "sequence_gaps": [
+        {
+          "name": "public.auditoria_eventos_id_seq",
+          "before": "61428",
+          "after": "61432",
+          "delta": 4,
+          "called_before": true,
+          "called_after": true
+        },
+        {
+          "name": "public.auditoria_id_seq",
+          "before": "16979",
+          "after": "16980",
+          "delta": 1,
+          "called_before": true,
+          "called_after": true
+        },
+        {
+          "name": "public.nomina_revision_operativa_id_seq",
+          "before": "42583",
+          "after": "42584",
+          "delta": 1,
+          "called_before": true,
+          "called_after": true
+        }
+      ],
+      "monotonic_only": true,
+      "no_sequence_rewind": true,
+      "no_id_reuse": true
+    }
+  }
+}

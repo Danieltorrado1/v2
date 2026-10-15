@@ -1,0 +1,58 @@
+[
+  {
+    "runId": "d8fb9f1b-e79c-44a9-8016-a1411b3aa476",
+    "key": "cobertura/cuentas-cobro/77/versiones/d8fb9f1b-e79c-44a9-8016-a1411b3aa476/CUENTA_77_195600_8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9.pdf",
+    "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9",
+    "status": "PREPARED",
+    "expectedTotal": 195600,
+    "accountStatus": "PENDIENTE"
+  },
+  {
+    "runId": "d8fb9f1b-e79c-44a9-8016-a1411b3aa476",
+    "key": "cobertura/cuentas-cobro/77/versiones/d8fb9f1b-e79c-44a9-8016-a1411b3aa476/CUENTA_77_195600_8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9.pdf",
+    "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9",
+    "status": "UPLOADED",
+    "expectedTotal": 195600,
+    "accountStatus": "PENDIENTE"
+  },
+  {
+    "runId": "d8fb9f1b-e79c-44a9-8016-a1411b3aa476",
+    "key": "cobertura/cuentas-cobro/77/versiones/d8fb9f1b-e79c-44a9-8016-a1411b3aa476/CUENTA_77_195600_8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9.pdf",
+    "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9",
+    "status": "VERIFIED",
+    "expectedTotal": 195600,
+    "accountStatus": "PENDIENTE"
+  },
+  {
+    "runId": "d8fb9f1b-e79c-44a9-8016-a1411b3aa476",
+    "key": "cobertura/cuentas-cobro/77/versiones/d8fb9f1b-e79c-44a9-8016-a1411b3aa476/CUENTA_77_195600_8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9.pdf",
+    "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9",
+    "status": "PREPARED",
+    "expectedTotal": 195600,
+    "accountStatus": "PENDIENTE"
+  },
+  {
+    "runId": "d8fb9f1b-e79c-44a9-8016-a1411b3aa476",
+    "key": "cobertura/cuentas-cobro/77/versiones/d8fb9f1b-e79c-44a9-8016-a1411b3aa476/CUENTA_77_195600_8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9.pdf",
+    "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9",
+    "status": "UPLOADED",
+    "expectedTotal": 195600,
+    "accountStatus": "PENDIENTE"
+  },
+  {
+    "runId": "d8fb9f1b-e79c-44a9-8016-a1411b3aa476",
+    "key": "cobertura/cuentas-cobro/77/versiones/d8fb9f1b-e79c-44a9-8016-a1411b3aa476/CUENTA_77_195600_8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9.pdf",
+    "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9",
+    "status": "VERIFIED",
+    "expectedTotal": 195600,
+    "accountStatus": "PENDIENTE"
+  },
+  {
+    "runId": "d8fb9f1b-e79c-44a9-8016-a1411b3aa476",
+    "key": "cobertura/cuentas-cobro/77/versiones/d8fb9f1b-e79c-44a9-8016-a1411b3aa476/CUENTA_77_195600_8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9.pdf",
+    "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9",
+    "status": "PUBLISHED",
+    "expectedTotal": 195600,
+    "accountStatus": "PENDIENTE"
+  }
+]

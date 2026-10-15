@@ -1,0 +1,1067 @@
+[
+  {
+    "name": "auth.refresh_tokens_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.agenda_cierre_tareas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.agenda_cierres_diarios_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.agenda_tarea_asignaciones_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.agenda_tarea_seguimientos_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.agenda_tareas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.alertas_documentales_id_seq",
+    "last_value": "23",
+    "is_called": true
+  },
+  {
+    "name": "public.alertas_sistema_id_seq",
+    "last_value": "2",
+    "is_called": true
+  },
+  {
+    "name": "public.arl_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.asignaciones_operativas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.auditoria_eventos_id_seq",
+    "last_value": "61432",
+    "is_called": true
+  },
+  {
+    "name": "public.auditoria_id_seq",
+    "last_value": "16983",
+    "is_called": true
+  },
+  {
+    "name": "public.cajas_compensacion_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.calculadora_personal_config_id_seq",
+    "last_value": "30",
+    "is_called": true
+  },
+  {
+    "name": "public.calculadora_personal_rangos_id_seq",
+    "last_value": "210",
+    "is_called": true
+  },
+  {
+    "name": "public.cargos_operativos_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.cobertura_asignaciones_id_seq",
+    "last_value": "1286",
+    "is_called": true
+  },
+  {
+    "name": "public.cobertura_cuenta_cobro_externa_detalle_id_seq",
+    "last_value": "267",
+    "is_called": true
+  },
+  {
+    "name": "public.cobertura_cuentas_cobro_externas_id_seq",
+    "last_value": "90",
+    "is_called": true
+  },
+  {
+    "name": "public.cobertura_cuentas_cobro_numero_seq",
+    "last_value": "90",
+    "is_called": true
+  },
+  {
+    "name": "public.cobertura_externo_documentos_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.cobertura_externos_id_seq",
+    "last_value": "172",
+    "is_called": true
+  },
+  {
+    "name": "public.contrato_cargo_requisitos_id_seq",
+    "last_value": "24",
+    "is_called": true
+  },
+  {
+    "name": "public.contrato_cargos_id_seq",
+    "last_value": "42",
+    "is_called": true
+  },
+  {
+    "name": "public.contrato_documento_requisitos_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.contrato_eventos_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.contrato_excepciones_documentales_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.contrato_perfiles_licitacion_id_seq",
+    "last_value": "6",
+    "is_called": true
+  },
+  {
+    "name": "public.contrato_plantillas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.contrato_requisitos_generales_id_seq",
+    "last_value": "235",
+    "is_called": true
+  },
+  {
+    "name": "public.contrato_ubicaciones_laborales_id_seq",
+    "last_value": "13",
+    "is_called": true
+  },
+  {
+    "name": "public.contratos_id_seq",
+    "last_value": "32",
+    "is_called": true
+  },
+  {
+    "name": "public.departamentos_id_seq",
+    "last_value": "33",
+    "is_called": true
+  },
+  {
+    "name": "public.documentos_contrato_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.documentos_generados_id_seq",
+    "last_value": "3",
+    "is_called": true
+  },
+  {
+    "name": "public.documentos_persona_id_seq",
+    "last_value": "2035",
+    "is_called": true
+  },
+  {
+    "name": "public.documentos_requisitos_canonicos_id_seq",
+    "last_value": "104",
+    "is_called": true
+  },
+  {
+    "name": "public.documentos_requisitos_reglas_id_seq",
+    "last_value": "274",
+    "is_called": true
+  },
+  {
+    "name": "public.documentos_vinculacion_id_seq",
+    "last_value": "8",
+    "is_called": true
+  },
+  {
+    "name": "public.empresa_modulo_configuracion_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.empresa_modulo_overrides_id_seq",
+    "last_value": "5",
+    "is_called": true
+  },
+  {
+    "name": "public.empresa_suscripciones_id_seq",
+    "last_value": "5",
+    "is_called": true
+  },
+  {
+    "name": "public.empresas_id_seq",
+    "last_value": "33",
+    "is_called": true
+  },
+  {
+    "name": "public.eps_id_seq",
+    "last_value": "13",
+    "is_called": true
+  },
+  {
+    "name": "public.estados_civiles_id_seq",
+    "last_value": "6",
+    "is_called": true
+  },
+  {
+    "name": "public.evaluaciones_competencias_id_seq",
+    "last_value": "2",
+    "is_called": true
+  },
+  {
+    "name": "public.evaluaciones_desempeno_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.evaluaciones_persona_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.evaluaciones_planes_mejora_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.evaluaciones_planes_mejora_seguimientos_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.evaluaciones_respuestas_id_seq",
+    "last_value": "2",
+    "is_called": true
+  },
+  {
+    "name": "public.focalizacion_cargas_id_seq",
+    "last_value": "5",
+    "is_called": true
+  },
+  {
+    "name": "public.focalizacion_detallado_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.focalizacion_final_id_seq",
+    "last_value": "844",
+    "is_called": true
+  },
+  {
+    "name": "public.focalizacion_historial_cambios_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.focalizacion_novedades_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.focalizacion_preliminar_id_seq",
+    "last_value": "1164",
+    "is_called": true
+  },
+  {
+    "name": "public.focalizacion_validacion_cupos_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.focalizacion_vigencias_id_seq",
+    "last_value": "1172",
+    "is_called": true
+  },
+  {
+    "name": "public.fondos_pension_id_seq",
+    "last_value": "6",
+    "is_called": true
+  },
+  {
+    "name": "public.gestor_institucion_asignaciones_id_seq",
+    "last_value": "17",
+    "is_called": true
+  },
+  {
+    "name": "public.gestor_municipio_asignaciones_id_seq",
+    "last_value": "158",
+    "is_called": true
+  },
+  {
+    "name": "public.gestor_personal_asignaciones_id_seq",
+    "last_value": "2",
+    "is_called": true
+  },
+  {
+    "name": "public.historial_cambios_id_seq",
+    "last_value": "213698",
+    "is_called": true
+  },
+  {
+    "name": "public.importacion_errores_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.importacion_lotes_id_seq",
+    "last_value": "15",
+    "is_called": true
+  },
+  {
+    "name": "public.importacion_staging_maestro_id_seq",
+    "last_value": "29",
+    "is_called": true
+  },
+  {
+    "name": "public.importacion_staging_personas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.importacion_staging_vinculaciones_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.instituciones_id_seq",
+    "last_value": "112",
+    "is_called": true
+  },
+  {
+    "name": "public.instituciones_identidad_historial_id_seq",
+    "last_value": "112",
+    "is_called": true
+  },
+  {
+    "name": "public.integracion_evento_impactos_id_seq",
+    "last_value": "15",
+    "is_called": true
+  },
+  {
+    "name": "public.integracion_eventos_id_seq",
+    "last_value": "14",
+    "is_called": true
+  },
+  {
+    "name": "public.logistica_bodegas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.logistica_conductores_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.logistica_inventario_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.logistica_items_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.logistica_movimientos_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.logistica_novedades_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.logistica_recepciones_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.logistica_remision_items_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.logistica_remisiones_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.logistica_rutas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.logistica_vehiculos_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.modalidad_aliases_id_seq",
+    "last_value": "7",
+    "is_called": true
+  },
+  {
+    "name": "public.modalidades_id_seq",
+    "last_value": "5",
+    "is_called": true
+  },
+  {
+    "name": "public.modulos_id_seq",
+    "last_value": "38",
+    "is_called": true
+  },
+  {
+    "name": "public.municipios_id_seq",
+    "last_value": "1122",
+    "is_called": true
+  },
+  {
+    "name": "public.niveles_estudio_id_seq",
+    "last_value": "7",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_ajustes_manuales_id_seq",
+    "last_value": "214",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_areas_id_seq",
+    "last_value": "7",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_asistencia_diaria_id_seq",
+    "last_value": "26400",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_calendarios_contractuales_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.nomina_categorias_salariales_id_seq",
+    "last_value": "35",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_cesantias_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_coberturas_novedad_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.nomina_contextos_operativos_base_id_seq",
+    "last_value": "213249",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_correcciones_id_seq",
+    "last_value": "13",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_cuenta_cobro_ops_detalle_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.nomina_cuentas_cobro_ops_id_seq",
+    "last_value": "3",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_cuentas_cobro_ops_numero_seq",
+    "last_value": "3",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_cuentas_cobro_turnos_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.nomina_desprendibles_id_seq",
+    "last_value": "774",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_empleado_detalle_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.nomina_empleados_id_seq",
+    "last_value": "2386",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_exportes_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.nomina_intereses_cesantias_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_liquidacion_detalle_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.nomina_liquidaciones_finales_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_liquidaciones_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_movimiento_tarifas_id_seq",
+    "last_value": "10",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_movimientos_id_seq",
+    "last_value": "234",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_novedad_coberturas_id_seq",
+    "last_value": "365",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_novedad_documentos_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.nomina_novedad_turnos_id_seq",
+    "last_value": "246",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_novedades_canonicas_id_seq",
+    "last_value": "2",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_novedades_id_seq",
+    "last_value": "1494",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_pagos_pendientes_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.nomina_parametros_economicos_id_seq",
+    "last_value": "5",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_periodo_26_25_auditoria_id_seq",
+    "last_value": "9199",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_periodos_id_seq",
+    "last_value": "8",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_prima_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_recargos_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.nomina_responsabilidades_usuario_id_seq",
+    "last_value": "31",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_revision_operativa_id_seq",
+    "last_value": "42584",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_tipos_novedad_id_seq",
+    "last_value": "20",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_vacaciones_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_vacaciones_solicitudes_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.nomina_vinculacion_areas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.notificacion_destinatarios_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.notificacion_reglas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.notificaciones_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.novedades_operativas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.operacion_simat_importaciones_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.operacion_simat_registros_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.ops_cuentas_cobro_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.ops_soportes_cuenta_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.organizaciones_id_seq",
+    "last_value": "29",
+    "is_called": true
+  },
+  {
+    "name": "public.permisos_id_seq",
+    "last_value": "619",
+    "is_called": true
+  },
+  {
+    "name": "public.persona_contactos_emergencia_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.persona_cuentas_bancarias_id_seq",
+    "last_value": "9",
+    "is_called": true
+  },
+  {
+    "name": "public.persona_estudios_id_seq",
+    "last_value": "2",
+    "is_called": true
+  },
+  {
+    "name": "public.persona_experiencia_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.persona_formacion_academica_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.persona_identificaciones_id_seq",
+    "last_value": "1288",
+    "is_called": true
+  },
+  {
+    "name": "public.personal_asignaciones_laborales_id_seq",
+    "last_value": "86",
+    "is_called": true
+  },
+  {
+    "name": "public.personal_bank_export_profiles_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.personal_export_templates_id_seq",
+    "last_value": "3",
+    "is_called": true
+  },
+  {
+    "name": "public.personal_presentaciones_licitacion_id_seq",
+    "last_value": "269",
+    "is_called": true
+  },
+  {
+    "name": "public.personas_id_seq",
+    "last_value": "1291",
+    "is_called": true
+  },
+  {
+    "name": "public.planes_id_seq",
+    "last_value": "4",
+    "is_called": true
+  },
+  {
+    "name": "public.plantilla_cargo_requisitos_id_seq",
+    "last_value": "37",
+    "is_called": true
+  },
+  {
+    "name": "public.plantilla_cargos_id_seq",
+    "last_value": "18",
+    "is_called": true
+  },
+  {
+    "name": "public.plantilla_variables_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.plantillas_contrato_id_seq",
+    "last_value": "5",
+    "is_called": true
+  },
+  {
+    "name": "public.plantillas_id_seq",
+    "last_value": "2",
+    "is_called": true
+  },
+  {
+    "name": "public.rol_permisos_id_seq",
+    "last_value": "750",
+    "is_called": true
+  },
+  {
+    "name": "public.roles_id_seq",
+    "last_value": "15",
+    "is_called": true
+  },
+  {
+    "name": "public.sede_institucion_historial_id_seq",
+    "last_value": "608",
+    "is_called": true
+  },
+  {
+    "name": "public.sede_modalidades_id_seq",
+    "last_value": "691",
+    "is_called": true
+  },
+  {
+    "name": "public.sedes_id_seq",
+    "last_value": "608",
+    "is_called": true
+  },
+  {
+    "name": "public.sedes_identidad_historial_id_seq",
+    "last_value": "1341",
+    "is_called": true
+  },
+  {
+    "name": "public.sexos_id_seq",
+    "last_value": "3",
+    "is_called": true
+  },
+  {
+    "name": "public.sincronizaciones_operativas_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.sst_accidentes_acciones_id_seq",
+    "last_value": "5",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_accidentes_incidentes_id_seq",
+    "last_value": "26",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_capacitaciones_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_capacitaciones_persona_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_comite_miembros_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.sst_comite_reuniones_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.sst_comites_id_seq",
+    "last_value": "2",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_dotacion_epp_entregas_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_dotacion_epp_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_eventos_id_seq",
+    "last_value": "19",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_examenes_ocupacionales_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_examenes_persona_id_seq",
+    "last_value": "2",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_indicador_mediciones_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_indicadores_id_seq",
+    "last_value": "7",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_indicadores_periodos_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_inspecciones_acciones_id_seq",
+    "last_value": "7",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_inspecciones_hallazgos_id_seq",
+    "last_value": "12",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_inspecciones_id_seq",
+    "last_value": "22",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_investigaciones_accidente_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.sst_matriz_riesgos_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_perfil_demografico_id_seq",
+    "last_value": "678",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_perfil_demografico_versiones_id_seq",
+    "last_value": "679",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_perfil_restringido_id_seq",
+    "last_value": "678",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_plan_anual_actividades_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_plan_anual_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_planes_accion_id_seq",
+    "last_value": "19",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_planes_emergencia_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.sst_preparacion_personas_id_seq",
+    "last_value": "2625",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_revision_casos_id_seq",
+    "last_value": "138",
+    "is_called": true
+  },
+  {
+    "name": "public.sst_riesgos_cargo_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.sst_simulacros_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.staging_sincronizacion_operativa_id_seq",
+    "last_value": "1",
+    "is_called": false
+  },
+  {
+    "name": "public.tipos_documento_id_seq",
+    "last_value": "8",
+    "is_called": true
+  },
+  {
+    "name": "public.tipos_documentos_persona_id_seq",
+    "last_value": "57",
+    "is_called": true
+  },
+  {
+    "name": "public.tipos_jornada_id_seq",
+    "last_value": "4",
+    "is_called": true
+  },
+  {
+    "name": "public.tipos_novedad_operativa_id_seq",
+    "last_value": "11",
+    "is_called": true
+  },
+  {
+    "name": "public.tipos_sangre_id_seq",
+    "last_value": "8",
+    "is_called": true
+  },
+  {
+    "name": "public.tipos_vinculacion_id_seq",
+    "last_value": "6",
+    "is_called": true
+  },
+  {
+    "name": "public.usuario_contratos_id_seq",
+    "last_value": "59",
+    "is_called": true
+  },
+  {
+    "name": "public.usuario_empresas_id_seq",
+    "last_value": "65",
+    "is_called": true
+  },
+  {
+    "name": "public.usuario_municipio_visibilidad_id_seq",
+    "last_value": "102",
+    "is_called": true
+  },
+  {
+    "name": "public.usuario_roles_id_seq",
+    "last_value": "68",
+    "is_called": true
+  },
+  {
+    "name": "public.usuarios_id_seq",
+    "last_value": "36",
+    "is_called": true
+  },
+  {
+    "name": "public.vinculacion_afiliaciones_id_seq",
+    "last_value": "224",
+    "is_called": true
+  },
+  {
+    "name": "public.vinculacion_condiciones_economicas_id_seq",
+    "last_value": "12",
+    "is_called": true
+  },
+  {
+    "name": "public.vinculacion_historial_cambios_id_seq",
+    "last_value": "1",
+    "is_called": true
+  },
+  {
+    "name": "public.vinculaciones_id_seq",
+    "last_value": "1614",
+    "is_called": true
+  },
+  {
+    "name": "public.zona_id_seq",
+    "last_value": "2",
+    "is_called": true
+  },
+  {
+    "name": "realtime.subscription_id_seq",
+    "last_value": "1",
+    "is_called": false
+  }
+]

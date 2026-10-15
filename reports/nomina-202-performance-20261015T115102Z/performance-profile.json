@@ -1,0 +1,154 @@
+{
+  "legacy": {
+    "queries": 744,
+    "categories": {
+      "transaction_preflight_and_lock_gates": 12,
+      "baseline_full_capture": 225,
+      "dml": 3,
+      "audit_repositories": 8,
+      "historial_cambios": 42,
+      "postflight_full_captures": 450,
+      "role_and_transaction_timestamp": 2,
+      "commit": 1,
+      "test_instrumentation": 1,
+      "global_262_comparison_inside_744": 0
+    },
+    "server_nested_trigger_statements": "Not captured by prior client counters; cannot retrospectively assign their count/time. Their cost is included in the movement UPDATE.",
+    "source_capture_queries": 675,
+    "rss_bytes": 1062666240,
+    "rss_scope": "One Node process combined executor and certification runner; process.memoryUsage().rss excluded PostgreSQL and other processes. Three full public snapshots, parsed historical JSON and temporary canonical state strings contributed; precise historical allocation attribution was not recorded.",
+    "old_first_ms": 17393.4433,
+    "old_total_ms": 83308.3827,
+    "old_client_rows": 1037734
+  },
+  "current": {
+    "preflight_baseline_phases": {
+      "preflight": {
+        "queries": 2,
+        "returned_rows": 2,
+        "direct_written_rows": 0,
+        "client_sql_ms": 6.879499999999993
+      },
+      "baseline": {
+        "queries": 2,
+        "returned_rows": 15,
+        "direct_written_rows": 0,
+        "client_sql_ms": 24.703400000000016
+      }
+    },
+    "identity_checks_not_in_trace": 1,
+    "first_application_phases": {
+      "transaction_control": {
+        "queries": 4,
+        "returned_rows": 2,
+        "direct_written_rows": 0,
+        "client_sql_ms": 1.558100000000195
+      },
+      "gates": {
+        "queries": 7,
+        "returned_rows": 18,
+        "direct_written_rows": 0,
+        "client_sql_ms": 27.77329999999938
+      },
+      "dml": {
+        "queries": 3,
+        "returned_rows": 3,
+        "direct_written_rows": 3,
+        "client_sql_ms": 7.212399999999889
+      },
+      "scoped_postflight": {
+        "queries": 1,
+        "returned_rows": 14,
+        "direct_written_rows": 0,
+        "client_sql_ms": 2.2080000000000837
+      },
+      "audit_events": {
+        "queries": 1,
+        "returned_rows": 4,
+        "direct_written_rows": 4,
+        "client_sql_ms": 3.003700000000208
+      },
+      "audit_legacy": {
+        "queries": 1,
+        "returned_rows": 4,
+        "direct_written_rows": 4,
+        "client_sql_ms": 1.3227999999999156
+      },
+      "history": {
+        "queries": 1,
+        "returned_rows": 42,
+        "direct_written_rows": 42,
+        "client_sql_ms": 1.866899999999987
+      },
+      "test_instrumentation": {
+        "queries": 1,
+        "returned_rows": 9,
+        "direct_written_rows": 0,
+        "client_sql_ms": 1.1238000000003012
+      },
+      "commit": {
+        "queries": 1,
+        "returned_rows": 0,
+        "direct_written_rows": 0,
+        "client_sql_ms": 1.1730000000002292
+      }
+    },
+    "first_client_queries": 20,
+    "first_core_queries": 19,
+    "first_returned_rows": 96,
+    "first_direct_dml_rows": 53,
+    "trigger_modified_rows": 1,
+    "trigger_nested_sql": {
+      "calls": 4,
+      "exclusive_statement_ms": 0.1922,
+      "shapes": 4
+    },
+    "foreign_key_checks": {
+      "calls": 59,
+      "exclusive_statement_ms": 0.13740000000000005,
+      "indexed_required_constraints": true,
+      "client_N_plus_one": false
+    },
+    "instrumentation_external_to_executor": [
+      {
+        "queryid": "1228657661387928335",
+        "calls": 1,
+        "rows": 1,
+        "ms": 0.0029000000000000007,
+        "sql": "SELECT pg_stat_clear_snapshot()"
+      }
+    ],
+    "first_corrector_timings": {
+      "preflight_ms": 0.05719999999973879,
+      "gates_ms": 28.02619999999979,
+      "dml_including_trigger_ms": 7.2620999999999185,
+      "scoped_capture_and_payload_ms": 4.817900000000009,
+      "audit_batches_ms": 6.3124000000002525,
+      "scoped_verification_ms": 7.6141999999999825,
+      "transaction_ms": 58.846900000000005,
+      "commit_ms": 1.1754000000000815,
+      "lock_ms": 58.476900000000114,
+      "instrumentation_ms": 1.1430999999997766,
+      "corrector_excluding_instrumentation_ms": 57.769300000000385,
+      "total_ms": 58.91310000000021
+    },
+    "preflight_plus_baseline_ms": 56.318200000000004,
+    "initial_global_comparison_ms": 2699.2510999999995,
+    "postflight_global_comparison_ms": 2658.428499999998,
+    "all_full_global_digest_sql_ms": 18379.86079999999,
+    "all_full_global_digest_batch_queries": 35,
+    "full_global_comparison_passes": 7,
+    "historical_corpus_verification_ms": 1955.5013,
+    "total_certification_ms": 52387.8607,
+    "external_certification_excluding_first_apply_ms": 52328.9476,
+    "executor_peak_rss_bytes": 71262208,
+    "executor_apply_peak_rss_bytes": 70111232,
+    "runner_peak_working_set_bytes": 75313152,
+    "postgres_peak_working_set_sum_bytes": 499621888,
+    "memory_definitions": "Windows WorkingSet64; PostgreSQL sum can double-count shared pages; executor and runner reported separately",
+    "locks_sampled": 203,
+    "all_sampled_locks_granted": true,
+    "lock_client_observed_ms": 58.476900000000114,
+    "qualification": "No arbitrary threshold. Three domain UPDATEs plus original revision trigger, fifty canonical audit/history rows in three batches, full gates and verification hold the advisory/row locks for about 59ms. No application N+1 or historical materialization in the executor. Existing-schema operation-identity SQL scans are retained as necessary integrity gates; mandatory FK checks are indexed. Complete database digest scans and SQL ordered aggregation memory are certification-only, outside the economic transaction."
+  }
+}

@@ -1,0 +1,198 @@
+[
+  {
+    "queryid": "196816207970435046",
+    "calls": 1,
+    "rows": 4,
+    "ms": 1.8276,
+    "sql": "INSERT INTO auditoria_eventos(usuario_id,empresa_id,contrato_id,modulo,entidad,entidad_id,accion,descripcion,datos_anteriores,datos_nuevos) SELECT usuario_id,empresa_id,contrato_id,modulo,entidad,entidad_id,accion,descripcion,datos_anteriores,datos_nuevos FROM jsonb_to_recordset($1::jsonb) AS x(usuario_id bigint,empresa_id bigint,contrato_id bigint,modulo text,entidad text,entidad_id text,accion text,descripcion text,datos_anteriores jsonb,datos_nuevos jsonb) RETURNING to_jsonb(auditoria_eventos.*) AS row"
+  },
+  {
+    "queryid": "8405673634528217682",
+    "calls": 1,
+    "rows": 14,
+    "ms": 0.5067,
+    "sql": "SELECT * FROM (SELECT $2 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimientos WHERE id=$3 OR (externo_id=$4 AND periodo_id=$5 AND activo AND tipo_movimiento=$6 AND estado<>$7) LIMIT $8) t UNION ALL SELECT $9 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuenta_cobro_externa_detalle WHERE cuenta_id=$10 OR id=$11 LIMIT $12) t UNION ALL SELECT $13 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuentas_cobro_externas WHERE id=$14 OR (empresa_id=$15 AND contrato_id=$16 AND periodo_id=$17 AND externo_id=$18) LIMIT $19) t UNION ALL SELECT $20 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_revision_operativa WHERE id=$21 LIMIT $22) t UNION ALL SELECT $23 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_periodos WHERE id=$24 LIMIT $25) t UNION ALL SELECT $26 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedad_turnos WHERE id=$27 OR (movimiento_id=$28 AND activo) LIMIT $29) t UNION ALL SELECT $30 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedades WHERE id=$31 LIMIT $32) t UNION ALL SELECT $33 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimiento_tarifas WHERE id=$34 LIMIT $35) t UNION ALL SELECT $36 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.usuarios WHERE id=$1 LIMIT $37) t UNION ALL SELECT $38 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.contratos WHERE id=$39 LIMIT $40) t UNION ALL SELECT $41 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.empresas WHERE id=$42 LIMIT $43) t UNION ALL SELECT $44 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_empleados WHERE id=$45 LIMIT $46) t UNION ALL SELECT $47 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.vinculaciones WHERE id=$48 LIMIT $49) t UNION ALL SELECT $50 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.personas WHERE id=$51 LIMIT $52) t) scope ORDER BY table_name,row::text"
+  },
+  {
+    "queryid": "41664929598095932",
+    "calls": 1,
+    "rows": 0,
+    "ms": 23.211499999999997,
+    "sql": "SELECT $2 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.auditoria WHERE accion=$1 ORDER BY id LIMIT $3) t UNION ALL SELECT $4 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.auditoria_eventos WHERE accion=$1 ORDER BY id LIMIT $5) t UNION ALL SELECT $6 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.historial_cambios WHERE motivo=$1 ORDER BY id LIMIT $7) t"
+  },
+  {
+    "queryid": "-8548940348721952710",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.0103,
+    "sql": "SELECT to_jsonb(now()) AS stamp"
+  },
+  {
+    "queryid": "-6523390028020498150",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.1665,
+    "sql": "INSERT INTO nomina_revision_operativa(periodo_id,nomina_empleado_id,persona_id,vinculacion_id,estado_revision,invalidado_at,motivo_invalidacion,updated_at)\r\n  VALUES(v_periodo,v_empleado,v_persona,v_vinculacion,$19,NOW(),v_reason,NOW())\r\n  ON CONFLICT(periodo_id,nomina_empleado_id) DO UPDATE SET estado_revision=$20,revisado_por=$21,revisado_at=$22,\r\n    invalidado_at=NOW(),motivo_invalidacion=v_reason,version_revision=nomina_revision_operativa.version_revision+$23,updated_at=NOW()"
+  },
+  {
+    "queryid": "425311333927437418",
+    "calls": 1,
+    "rows": 1,
+    "ms": 4.007499999999999,
+    "sql": "UPDATE nomina_movimientos SET cantidad=$2,valor_calculado=$3,valor_total=$4,updated_by=$1,updated_at=now() WHERE id=$5 AND cantidad=$6 AND valor_total=$7 AND estado=$8 AND afecta_seguridad_social=$9 RETURNING id"
+  },
+  {
+    "queryid": "-4283465804126488021",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.003999999999999998,
+    "sql": "SELECT current_setting($1) AS isolation,pg_try_advisory_xact_lock($2,$3) AS locked"
+  },
+  {
+    "queryid": "-1616245501191806730",
+    "calls": 51,
+    "rows": 51,
+    "ms": 0.10380000000000005,
+    "sql": "SELECT $2 FROM ONLY \"public\".\"usuarios\" x WHERE \"id\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"
+  },
+  {
+    "queryid": "2116158575863625077",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.0129,
+    "sql": "SELECT ne.vinculacion_id,v.persona_id                              FROM nomina_empleados ne\r\n    JOIN vinculaciones v ON v.id=ne.vinculacion_id WHERE ne.id=v_empleado LIMIT $16"
+  },
+  {
+    "queryid": "3276598109844868867",
+    "calls": 1,
+    "rows": 4,
+    "ms": 0.6456,
+    "sql": "INSERT INTO auditoria(usuario_id,tabla_afectada,registro_id,accion,descripcion,datos_anteriores,datos_nuevos) SELECT usuario_id,tabla_afectada,registro_id,accion,descripcion,datos_anteriores,datos_nuevos FROM jsonb_to_recordset($1::jsonb) AS x(usuario_id bigint,tabla_afectada text,registro_id bigint,accion text,descripcion text,datos_anteriores jsonb,datos_nuevos jsonb) RETURNING to_jsonb(auditoria.*) AS row"
+  },
+  {
+    "queryid": "1333623858316519961",
+    "calls": 4,
+    "rows": 4,
+    "ms": 0.0187,
+    "sql": "SELECT $2 FROM ONLY \"public\".\"contratos\" x WHERE \"id\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"
+  },
+  {
+    "queryid": "-5337496229253204550",
+    "calls": 1,
+    "rows": 42,
+    "ms": 1.0086,
+    "sql": "INSERT INTO historial_cambios(usuario_id,tabla_afectada,registro_id,campo,valor_anterior,valor_nuevo,motivo) SELECT usuario_id,tabla_afectada,registro_id,campo,valor_anterior,valor_nuevo,motivo FROM jsonb_to_recordset($1::jsonb) AS x(usuario_id bigint,tabla_afectada text,registro_id bigint,campo text,valor_anterior text,valor_nuevo text,motivo text) RETURNING to_jsonb(historial_cambios.*) AS row"
+  },
+  {
+    "queryid": "3653330706275307246",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.08040000000000001,
+    "sql": "SELECT c.relname AS table_name,t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$2 AND c.relname=ANY($1::text[]) AND NOT t.tgisinternal ORDER BY c.relname,t.tgname"
+  },
+  {
+    "queryid": "6869023645256645554",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.0693,
+    "sql": "WITH m AS MATERIALIZED(SELECT id FROM nomina_movimientos WHERE id=$1 FOR UPDATE),d AS MATERIALIZED(SELECT id FROM cobertura_cuenta_cobro_externa_detalle WHERE id=$2 FOR UPDATE),c AS MATERIALIZED(SELECT id FROM cobertura_cuentas_cobro_externas WHERE id=$3 FOR UPDATE),r AS MATERIALIZED(SELECT id FROM nomina_revision_operativa WHERE id=$4 FOR UPDATE) SELECT (SELECT count(*)::int FROM m) AS m,(SELECT count(*)::int FROM d) AS d,(SELECT count(*)::int FROM c) AS c,(SELECT count(*)::int FROM r) AS r"
+  },
+  {
+    "queryid": "-2835399305386018931",
+    "calls": 1,
+    "rows": 0,
+    "ms": 0.0009,
+    "sql": "COMMIT"
+  },
+  {
+    "queryid": "8828770431171109961",
+    "calls": 1,
+    "rows": 0,
+    "ms": 0.04,
+    "sql": "SET LOCAL ROLE nomina202_integral_local"
+  },
+  {
+    "queryid": "8124973649078710620",
+    "calls": 1,
+    "rows": 0,
+    "ms": 0.005199999999999998,
+    "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE"
+  },
+  {
+    "queryid": "2297890019023301664",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.0066,
+    "sql": "SELECT familia_movimiento FROM nomina_movimientos WHERE id=$1"
+  },
+  {
+    "queryid": "4470240627823473057",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.4684,
+    "sql": "UPDATE cobertura_cuentas_cobro_externas SET valor_total=$2,generado_bucket=$3,generado_path=$4,generado_at=$5,updated_by=$1,updated_at=now() WHERE id=$6 AND estado=$7 AND valor_total=$8 AND firmado_path IS NULL RETURNING id"
+  },
+  {
+    "queryid": "-1700000807677192075",
+    "calls": 1,
+    "rows": 9,
+    "ms": 0.231,
+    "sql": "SELECT locktype,mode,granted,count(*)::int AS count FROM pg_locks WHERE pid=pg_backend_pid() GROUP BY 1,2,3 ORDER BY 1,2,3"
+  },
+  {
+    "queryid": "8405673634528217682",
+    "calls": 1,
+    "rows": 14,
+    "ms": 0.5435000000000001,
+    "sql": "SELECT * FROM (SELECT $2 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimientos WHERE id=$3 OR (externo_id=$4 AND periodo_id=$5 AND activo AND tipo_movimiento=$6 AND estado<>$7) LIMIT $8) t UNION ALL SELECT $9 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuenta_cobro_externa_detalle WHERE cuenta_id=$10 OR id=$11 LIMIT $12) t UNION ALL SELECT $13 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuentas_cobro_externas WHERE id=$14 OR (empresa_id=$15 AND contrato_id=$16 AND periodo_id=$17 AND externo_id=$18) LIMIT $19) t UNION ALL SELECT $20 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_revision_operativa WHERE id=$21 LIMIT $22) t UNION ALL SELECT $23 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_periodos WHERE id=$24 LIMIT $25) t UNION ALL SELECT $26 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedad_turnos WHERE id=$27 OR (movimiento_id=$28 AND activo) LIMIT $29) t UNION ALL SELECT $30 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedades WHERE id=$31 LIMIT $32) t UNION ALL SELECT $33 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimiento_tarifas WHERE id=$34 LIMIT $35) t UNION ALL SELECT $36 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.usuarios WHERE id=$1 LIMIT $37) t UNION ALL SELECT $38 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.contratos WHERE id=$39 LIMIT $40) t UNION ALL SELECT $41 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.empresas WHERE id=$42 LIMIT $43) t UNION ALL SELECT $44 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_empleados WHERE id=$45 LIMIT $46) t UNION ALL SELECT $47 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.vinculaciones WHERE id=$48 LIMIT $49) t UNION ALL SELECT $50 AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.personas WHERE id=$51 LIMIT $52) t) scope ORDER BY table_name,row::text"
+  },
+  {
+    "queryid": "-7231717357234271219",
+    "calls": 4,
+    "rows": 4,
+    "ms": 0.014900000000000002,
+    "sql": "SELECT $2 FROM ONLY \"public\".\"empresas\" x WHERE \"id\" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x"
+  },
+  {
+    "queryid": "1228657661387928335",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.0029000000000000007,
+    "sql": "SELECT pg_stat_clear_snapshot()"
+  },
+  {
+    "queryid": "-7670782526945080808",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.026400000000000007,
+    "sql": "SELECT pg_get_triggerdef(t.oid) AS definition,pg_get_functiondef(t.tgfoid) AS fn,t.tgenabled AS enabled FROM pg_trigger t WHERE t.tgrelid=$1::regclass AND t.tgname=$2"
+  },
+  {
+    "queryid": "-4815563550179833193",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.0062,
+    "sql": "NOT EXISTS (SELECT $15 FROM nomina_periodos WHERE id=v_periodo AND estado=$16)"
+  },
+  {
+    "queryid": "303693614199479387",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.1587,
+    "sql": "UPDATE cobertura_cuenta_cobro_externa_detalle SET valor=$1 WHERE id=$2 AND cuenta_id=$3 AND movimiento_id=$4 AND turno_id=$5 AND valor=$6 RETURNING id"
+  },
+  {
+    "queryid": "5735439972446702858",
+    "calls": 1,
+    "rows": 0,
+    "ms": 0.0314,
+    "sql": "SELECT rulename FROM pg_rules WHERE schemaname=$2 AND tablename=ANY($1::text[])"
+  },
+  {
+    "queryid": "8379974453916687502",
+    "calls": 1,
+    "rows": 1,
+    "ms": 0.0072,
+    "sql": "SELECT set_config($1,$2,$3),set_config($4,$5,$6)"
+  }
+]

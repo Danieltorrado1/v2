@@ -1,9 +1,10 @@
-param([Parameter(Mandatory=$true)][string[]]$ReportDirectory)
+param([Parameter(Mandatory=$true)][string[]]$ReportDirectory,[switch]$VerifyOnly)
 $ErrorActionPreference='Stop'
 $taskRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $reportsRoot=Join-Path $taskRoot 'reports'
 $tmpRoot=Join-Path $taskRoot 'tmp'
 $processes=@(Get-CimInstance Win32_Process -Filter "Name='postgres.exe'")
+$auxiliary=@(Get-CimInstance Win32_Process -Filter "Name='node.exe' OR Name='powershell.exe'")
 foreach($directory in $ReportDirectory){
     $evidenceRoot=[IO.Path]::GetFullPath($directory)
     $name=[IO.Path]::GetFileName($evidenceRoot)
@@ -13,6 +14,19 @@ foreach($directory in $ReportDirectory){
     $target=[IO.Path]::GetFullPath((Join-Path $tmpRoot ('nomina-202-performance-cluster-'+$stamp)))
     if([IO.Path]::GetDirectoryName($target) -ne $tmpRoot -or [IO.Path]::GetFullPath($receipt.cleanup.cluster) -ne $target -or -not $receipt.cleanup.stopped){throw 'CLUSTER_OWNERSHIP_OR_STOP_EVIDENCE_REJECTED'}
     if(-not $target.StartsWith($taskRoot+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'TARGET_OUTSIDE_WORKSPACE'}
+    $auxRemaining=@($auxiliary | Where-Object {$_.ProcessId -ne $PID -and $_.CommandLine -and (($_.CommandLine.Contains('nomina-202-native-worker.cjs') -and $_.CommandLine.Contains($target)) -or ($_.CommandLine.Contains('nomina-202-process-sampler.ps1') -and $_.CommandLine.Contains($evidenceRoot)) -or ($_.Name -eq 'node.exe' -and $_.CommandLine.Contains('certify-nomina-202-native-performance.cjs')))})
+    if($auxRemaining.Count){throw 'OWN_EXECUTOR_SAMPLER_OR_RUNNER_PROCESS_REMAINS'}
+    if($VerifyOnly){
+        $cleanupPath=Join-Path $evidenceRoot 'cleanup.json'
+        $clean=Get-Content -LiteralPath $cleanupPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if(-not $clean.removed -or (Test-Path -LiteralPath $target)){throw 'PRIOR_REMOVAL_NOT_VERIFIED'}
+        $clean | Add-Member -NotePropertyName owned_executor_processes -NotePropertyValue 0 -Force
+        $clean | Add-Member -NotePropertyName owned_sampler_processes -NotePropertyValue 0 -Force
+        $clean | Add-Member -NotePropertyName owned_runner_processes -NotePropertyValue 0 -Force
+        $clean | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $cleanupPath -Encoding UTF8
+        Write-Output ('AUXILIARY_PROCESSES_VERIFIED '+$stamp+' OWN_EXECUTOR=0 OWN_SAMPLER=0 OWN_RUNNER=0')
+        continue
+    }
     if((Get-Item -LiteralPath $target).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'REPARSE_CLUSTER_REFUSED'}
     if(@(Get-ChildItem -LiteralPath $target -Recurse -Force | Where-Object {$_.Attributes -band [IO.FileAttributes]::ReparsePoint}).Count){throw 'REPARSE_DESCENDANT_REFUSED'}
     $status=(& 'C:\Program Files\PostgreSQL\17\bin\pg_ctl.exe' -D $target status 2>&1 | Out-String)

@@ -1,0 +1,44 @@
+{
+  "tables": {
+    "expected": 496,
+    "actual": 496,
+    "equivalences": 0,
+    "differences": [],
+    "additions": []
+  },
+  "functions": {
+    "expected": 308,
+    "actual": 308,
+    "equivalences": 0,
+    "differences": [],
+    "additions": []
+  },
+  "constraints": {
+    "expected": 1332,
+    "actual": 1332,
+    "equivalences": 0,
+    "differences": [],
+    "additions": []
+  },
+  "indexes": {
+    "expected": 829,
+    "actual": 829,
+    "equivalences": 0,
+    "differences": [],
+    "additions": []
+  },
+  "triggers": {
+    "expected": 24,
+    "actual": 24,
+    "equivalences": 0,
+    "differences": [],
+    "additions": []
+  },
+  "events": {
+    "expected": 6,
+    "actual": 6,
+    "equivalences": 0,
+    "differences": [],
+    "additions": []
+  }
+}

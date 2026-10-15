@@ -1,0 +1,6 @@
+# Prevent checkout EOL conversion for all files covered by SHA256SUMS.
+* -text
+*.pdf binary
+*.png binary
+# Native pg_restore TOC output intentionally includes trailing spaces.
+restore-use-list.txt -diff

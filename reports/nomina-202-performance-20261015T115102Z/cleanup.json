@@ -1,0 +1,19 @@
+{
+  "verified_utc": "2026-10-15T11:54:55.9291759Z",
+  "stopped": true,
+  "removed": true,
+  "cluster": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\.worktrees\\nomina-turno-202-correction-preview\\tmp\\nomina-202-performance-cluster-20261015T115102Z",
+  "master_pid": 25540,
+  "owned_postgres_processes": 0,
+  "owned_listeners": 0,
+  "unrelated_clusters_touched": false,
+  "private_logs_removed": [
+    {
+      "name": "server.private.log",
+      "sha256": "ccf179d49968242261b13c46f0ff9dee28f09b7e9125fc136eb4f52e4f5fe31b"
+    }
+  ],
+  "owned_executor_processes": 0,
+  "owned_sampler_processes": 0,
+  "owned_runner_processes": 0
+}

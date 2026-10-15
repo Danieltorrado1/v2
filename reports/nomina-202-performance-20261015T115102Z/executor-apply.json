@@ -1,0 +1,282 @@
+{
+  "id": 3,
+  "result": {
+    "status": "APPLIED_LOCAL_ONLY",
+    "run_id": "d8fb9f1b-e79c-44a9-8016-a1411b3aa476",
+    "changed_rows": 4,
+    "audits_added": 8,
+    "history_added": 42,
+    "write_tables": [
+      "auditoria",
+      "auditoria_eventos",
+      "cobertura_cuenta_cobro_externa_detalle",
+      "cobertura_cuentas_cobro_externas",
+      "historial_cambios",
+      "nomina_movimientos",
+      "nomina_revision_operativa"
+    ],
+    "timings": {
+      "preflight_ms": 0.05719999999973879,
+      "gates_ms": 28.02619999999979,
+      "dml_including_trigger_ms": 7.2620999999999185,
+      "scoped_capture_and_payload_ms": 4.817900000000009,
+      "audit_batches_ms": 6.3124000000002525,
+      "scoped_verification_ms": 7.6141999999999825,
+      "transaction_ms": 58.846900000000005,
+      "commit_ms": 1.1754000000000815,
+      "lock_ms": 58.476900000000114,
+      "instrumentation_ms": 1.1430999999997766,
+      "corrector_excluding_instrumentation_ms": 57.769300000000385,
+      "total_ms": 58.91310000000021
+    },
+    "wall_ms": 60.00160000000005,
+    "locks": [
+      {
+        "locktype": "advisory",
+        "mode": "ExclusiveLock",
+        "granted": true,
+        "count": 1
+      },
+      {
+        "locktype": "page",
+        "mode": "SIReadLock",
+        "granted": true,
+        "count": 7
+      },
+      {
+        "locktype": "relation",
+        "mode": "AccessShareLock",
+        "granted": true,
+        "count": 108
+      },
+      {
+        "locktype": "relation",
+        "mode": "RowExclusiveLock",
+        "granted": true,
+        "count": 33
+      },
+      {
+        "locktype": "relation",
+        "mode": "RowShareLock",
+        "granted": true,
+        "count": 36
+      },
+      {
+        "locktype": "relation",
+        "mode": "SIReadLock",
+        "granted": true,
+        "count": 12
+      },
+      {
+        "locktype": "transactionid",
+        "mode": "ExclusiveLock",
+        "granted": true,
+        "count": 1
+      },
+      {
+        "locktype": "tuple",
+        "mode": "SIReadLock",
+        "granted": true,
+        "count": 4
+      },
+      {
+        "locktype": "virtualxid",
+        "mode": "ExclusiveLock",
+        "granted": true,
+        "count": 1
+      }
+    ]
+  },
+  "queries": [
+    {
+      "phase": "transaction_control",
+      "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+      "ms": 0.21880000000010114,
+      "returned": 0,
+      "written": 0,
+      "rss": 68734976,
+      "heap": 17464848
+    },
+    {
+      "phase": "transaction_control",
+      "sql": "SELECT set_config('?','?',true),set_config('?','?',true)",
+      "ms": 0.15250000000014552,
+      "returned": 1,
+      "written": 0,
+      "rss": 68734976,
+      "heap": 17473984
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT current_setting('?') AS isolation,pg_try_advisory_xact_lock(202,192) AS locked",
+      "ms": 0.10969999999997526,
+      "returned": 1,
+      "written": 0,
+      "rss": 68734976,
+      "heap": 17483440
+    },
+    {
+      "phase": "gates",
+      "sql": "WITH m AS MATERIALIZED(SELECT id FROM nomina_movimientos WHERE id=192 FOR UPDATE),d AS MATERIALIZED(SELECT id FROM cobertura_cuenta_cobro_externa_detalle WHERE id=220 FOR UPDATE),c AS MATERIALIZED(SELECT id FROM cobertura_cuentas_cobro_externas WHERE id=77 FOR UPDATE),r AS MATERIALIZED(SELECT id FROM nomina_revision_operativa WHERE id=20114 FOR UPDATE) SELECT (SELECT count(*)::int FROM m) AS m,(SELECT count(*)::int FROM d) AS d,(SELECT count(*)::int FROM c) AS c,(SELECT count(*)::int FROM r) AS r",
+      "ms": 0.46109999999998763,
+      "returned": 1,
+      "written": 0,
+      "rss": 68734976,
+      "heap": 17494648
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT pg_get_triggerdef(t.oid) AS definition,pg_get_functiondef(t.tgfoid) AS fn,t.tgenabled AS enabled FROM pg_trigger t WHERE t.tgrelid='?'::regclass AND t.tgname='?'",
+      "ms": 0.23319999999966967,
+      "returned": 1,
+      "written": 0,
+      "rss": 68734976,
+      "heap": 17507688
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT c.relname AS table_name,t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='?' AND c.relname=ANY($1::text[]) AND NOT t.tgisinternal ORDER BY c.relname,t.tgname",
+      "ms": 0.5282999999999447,
+      "returned": 1,
+      "written": 0,
+      "rss": 68734976,
+      "heap": 17536704
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT rulename FROM pg_rules WHERE schemaname='?' AND tablename=ANY($1::text[])",
+      "ms": 0.3786000000000058,
+      "returned": 0,
+      "written": 0,
+      "rss": 68800512,
+      "heap": 17563376
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT * FROM (SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimientos WHERE id=192 OR (externo_id=33 AND periodo_id=3 AND activo AND tipo_movimiento='?' AND estado<>'?') LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuenta_cobro_externa_detalle WHERE cuenta_id=77 OR id=220 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuentas_cobro_externas WHERE id=77 OR (empresa_id=15 AND contrato_id=24 AND periodo_id=3 AND externo_id=33) LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_revision_operativa WHERE id=20114 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_periodos WHERE id=3 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedad_turnos WHERE id=202 OR (movimiento_id=192 AND activo) LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedades WHERE id=929 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimiento_tarifas WHERE id=1 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.usuarios WHERE id=$1 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.contratos WHERE id=24 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.empresas WHERE id=15 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_empleados WHERE id=837 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.vinculaciones WHERE id=847 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.personas WHERE id=668 LIMIT 2) t) scope ORDER BY table_name,row::text",
+      "ms": 2.107300000000123,
+      "returned": 14,
+      "written": 0,
+      "rss": 68800512,
+      "heap": 17619864
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.auditoria WHERE accion=$1 ORDER BY id LIMIT 5) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.auditoria_eventos WHERE accion=$1 ORDER BY id LIMIT 5) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.historial_cambios WHERE motivo=$1 ORDER BY id LIMIT 43) t",
+      "ms": 23.955099999999675,
+      "returned": 0,
+      "written": 0,
+      "rss": 68800512,
+      "heap": 17652696
+    },
+    {
+      "phase": "transaction_control",
+      "sql": "SET LOCAL ROLE nomina202_integral_local",
+      "ms": 0.6480000000001382,
+      "returned": 0,
+      "written": 0,
+      "rss": 68874240,
+      "heap": 18125072
+    },
+    {
+      "phase": "transaction_control",
+      "sql": "SELECT to_jsonb(now()) AS stamp",
+      "ms": 0.5387999999998101,
+      "returned": 1,
+      "written": 0,
+      "rss": 68874240,
+      "heap": 18133664
+    },
+    {
+      "phase": "dml",
+      "sql": "UPDATE nomina_movimientos SET cantidad=2,valor_calculado=195600,valor_total=195600,updated_by=$1,updated_at=now() WHERE id=192 AND cantidad=1 AND valor_total=97800 AND estado='?' AND afecta_seguridad_social=false RETURNING id",
+      "ms": 5.353900000000067,
+      "returned": 1,
+      "written": 1,
+      "rss": 68878336,
+      "heap": 18147704
+    },
+    {
+      "phase": "dml",
+      "sql": "UPDATE cobertura_cuenta_cobro_externa_detalle SET valor=195600 WHERE id=220 AND cuenta_id=77 AND movimiento_id=192 AND turno_id=202 AND valor=97800 RETURNING id",
+      "ms": 0.758600000000115,
+      "returned": 1,
+      "written": 1,
+      "rss": 68878336,
+      "heap": 18157312
+    },
+    {
+      "phase": "dml",
+      "sql": "UPDATE cobertura_cuentas_cobro_externas SET valor_total=195600,generado_bucket=NULL,generado_path=NULL,generado_at=NULL,updated_by=$1,updated_at=now() WHERE id=77 AND estado='?' AND valor_total=97800 AND firmado_path IS NULL RETURNING id",
+      "ms": 1.0998999999997068,
+      "returned": 1,
+      "written": 1,
+      "rss": 68878336,
+      "heap": 18168680
+    },
+    {
+      "phase": "scoped_postflight",
+      "sql": "SELECT * FROM (SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimientos WHERE id=192 OR (externo_id=33 AND periodo_id=3 AND activo AND tipo_movimiento='?' AND estado<>'?') LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuenta_cobro_externa_detalle WHERE cuenta_id=77 OR id=220 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuentas_cobro_externas WHERE id=77 OR (empresa_id=15 AND contrato_id=24 AND periodo_id=3 AND externo_id=33) LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_revision_operativa WHERE id=20114 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_periodos WHERE id=3 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedad_turnos WHERE id=202 OR (movimiento_id=192 AND activo) LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedades WHERE id=929 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimiento_tarifas WHERE id=1 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.usuarios WHERE id=$1 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.contratos WHERE id=24 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.empresas WHERE id=15 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_empleados WHERE id=837 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.vinculaciones WHERE id=847 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.personas WHERE id=668 LIMIT 2) t) scope ORDER BY table_name,row::text",
+      "ms": 2.2080000000000837,
+      "returned": 14,
+      "written": 0,
+      "rss": 68882432,
+      "heap": 18224232
+    },
+    {
+      "phase": "audit_events",
+      "sql": "INSERT INTO auditoria_eventos(usuario_id,empresa_id,contrato_id,modulo,entidad,entidad_id,accion,descripcion,datos_anteriores,datos_nuevos) SELECT usuario_id,empresa_id,contrato_id,modulo,entidad,entidad_id,accion,descripcion,datos_anteriores,datos_nuevos FROM jsonb_to_recordset($1::jsonb) AS x(usuario_id bigint,empresa_id bigint,contrato_id bigint,modulo text,entidad text,entidad_id text,accion text,descripcion text,datos_anteriores jsonb,datos_nuevos jsonb) RETURNING to_jsonb(auditoria_eventos.*) AS row",
+      "ms": 3.003700000000208,
+      "returned": 4,
+      "written": 4,
+      "rss": 69431296,
+      "heap": 15628328
+    },
+    {
+      "phase": "audit_legacy",
+      "sql": "INSERT INTO auditoria(usuario_id,tabla_afectada,registro_id,accion,descripcion,datos_anteriores,datos_nuevos) SELECT usuario_id,tabla_afectada,registro_id,accion,descripcion,datos_anteriores,datos_nuevos FROM jsonb_to_recordset($1::jsonb) AS x(usuario_id bigint,tabla_afectada text,registro_id bigint,accion text,descripcion text,datos_anteriores jsonb,datos_nuevos jsonb) RETURNING to_jsonb(auditoria.*) AS row",
+      "ms": 1.3227999999999156,
+      "returned": 4,
+      "written": 4,
+      "rss": 69443584,
+      "heap": 15673520
+    },
+    {
+      "phase": "history",
+      "sql": "INSERT INTO historial_cambios(usuario_id,tabla_afectada,registro_id,campo,valor_anterior,valor_nuevo,motivo) SELECT usuario_id,tabla_afectada,registro_id,campo,valor_anterior,valor_nuevo,motivo FROM jsonb_to_recordset($1::jsonb) AS x(usuario_id bigint,tabla_afectada text,registro_id bigint,campo text,valor_anterior text,valor_nuevo text,motivo text) RETURNING to_jsonb(historial_cambios.*) AS row",
+      "ms": 1.866899999999987,
+      "returned": 42,
+      "written": 42,
+      "rss": 69480448,
+      "heap": 15770120
+    },
+    {
+      "phase": "test_instrumentation",
+      "sql": "SELECT locktype,mode,granted,count(*)::int AS count FROM pg_locks WHERE pid=pg_backend_pid() GROUP BY 1,2,3 ORDER BY 1,2,3",
+      "ms": 1.1238000000003012,
+      "returned": 9,
+      "written": 0,
+      "rss": 69918720,
+      "heap": 17990216
+    },
+    {
+      "phase": "commit",
+      "sql": "COMMIT",
+      "ms": 1.1730000000002292,
+      "returned": 0,
+      "written": 0,
+      "rss": 69918720,
+      "heap": 17996776
+    }
+  ],
+  "memory": {
+    "sampled_rss_peak": 69918720,
+    "sampled_heap_peak": 18152632,
+    "resource_max_rss": 70111232,
+    "scope": "this isolated Node executor PID only; excludes certification runner and PostgreSQL"
+  },
+  "cpu_delta_us": {
+    "user": 47000,
+    "system": 0
+  }
+}

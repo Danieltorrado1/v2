@@ -1,0 +1,18 @@
+{
+  "id": 5,
+  "result": {
+    "failed_after_commit": true,
+    "economy_reexecuted": false
+  },
+  "queries": [],
+  "memory": {
+    "sampled_rss_peak": 71229440,
+    "sampled_heap_peak": 18290800,
+    "resource_max_rss": 71262208,
+    "scope": "this isolated Node executor PID only; excludes certification runner and PostgreSQL"
+  },
+  "cpu_delta_us": {
+    "user": 15000,
+    "system": 0
+  }
+}

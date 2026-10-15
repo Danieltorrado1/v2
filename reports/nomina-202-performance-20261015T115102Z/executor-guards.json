@@ -1,0 +1,192 @@
+{
+  "id": 2,
+  "result": {
+    "results": [
+      {
+        "label": "default_disabled",
+        "rejected": "MUTATE_DISABLED"
+      },
+      {
+        "label": "confirmation",
+        "rejected": "CONFIRMATION_NONCE"
+      },
+      {
+        "label": "forged_nonce",
+        "rejected": "CONFIRMATION_NONCE"
+      },
+      {
+        "label": "custody",
+        "rejected": "LOCAL_CUSTODY_KEY"
+      },
+      {
+        "label": "expired",
+        "rejected": "CONFIRMATION_NONCE"
+      },
+      {
+        "label": "protected_IBC_baseline",
+        "rejected": "EXACT_BEFORE_STATE_DRIFT"
+      },
+      {
+        "label": "trigger_function_hash",
+        "rejected": "TRIGGER_DRIFT"
+      }
+    ],
+    "frozen_manifest": true
+  },
+  "queries": [
+    {
+      "phase": "transaction_control",
+      "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+      "ms": 0.6209999999999809,
+      "returned": 0,
+      "written": 0,
+      "rss": 68460544,
+      "heap": 14972344
+    },
+    {
+      "phase": "transaction_control",
+      "sql": "SELECT set_config('?','?',true),set_config('?','?',true)",
+      "ms": 0.5618000000000052,
+      "returned": 1,
+      "written": 0,
+      "rss": 68460544,
+      "heap": 14984760
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT current_setting('?') AS isolation,pg_try_advisory_xact_lock(202,192) AS locked",
+      "ms": 0.57650000000001,
+      "returned": 1,
+      "written": 0,
+      "rss": 68460544,
+      "heap": 15018464
+    },
+    {
+      "phase": "gates",
+      "sql": "WITH m AS MATERIALIZED(SELECT id FROM nomina_movimientos WHERE id=192 FOR UPDATE),d AS MATERIALIZED(SELECT id FROM cobertura_cuenta_cobro_externa_detalle WHERE id=220 FOR UPDATE),c AS MATERIALIZED(SELECT id FROM cobertura_cuentas_cobro_externas WHERE id=77 FOR UPDATE),r AS MATERIALIZED(SELECT id FROM nomina_revision_operativa WHERE id=20114 FOR UPDATE) SELECT (SELECT count(*)::int FROM m) AS m,(SELECT count(*)::int FROM d) AS d,(SELECT count(*)::int FROM c) AS c,(SELECT count(*)::int FROM r) AS r",
+      "ms": 0.9706999999999937,
+      "returned": 1,
+      "written": 0,
+      "rss": 68464640,
+      "heap": 15047320
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT pg_get_triggerdef(t.oid) AS definition,pg_get_functiondef(t.tgfoid) AS fn,t.tgenabled AS enabled FROM pg_trigger t WHERE t.tgrelid='?'::regclass AND t.tgname='?'",
+      "ms": 0.27129999999999654,
+      "returned": 1,
+      "written": 0,
+      "rss": 68476928,
+      "heap": 15068672
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT c.relname AS table_name,t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='?' AND c.relname=ANY($1::text[]) AND NOT t.tgisinternal ORDER BY c.relname,t.tgname",
+      "ms": 2.0343000000000018,
+      "returned": 1,
+      "written": 0,
+      "rss": 68550656,
+      "heap": 15113136
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT rulename FROM pg_rules WHERE schemaname='?' AND tablename=ANY($1::text[])",
+      "ms": 1.596100000000007,
+      "returned": 0,
+      "written": 0,
+      "rss": 68620288,
+      "heap": 15136720
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT * FROM (SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimientos WHERE id=192 OR (externo_id=33 AND periodo_id=3 AND activo AND tipo_movimiento='?' AND estado<>'?') LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuenta_cobro_externa_detalle WHERE cuenta_id=77 OR id=220 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuentas_cobro_externas WHERE id=77 OR (empresa_id=15 AND contrato_id=24 AND periodo_id=3 AND externo_id=33) LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_revision_operativa WHERE id=20114 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_periodos WHERE id=3 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedad_turnos WHERE id=202 OR (movimiento_id=192 AND activo) LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedades WHERE id=929 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimiento_tarifas WHERE id=1 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.usuarios WHERE id=$1 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.contratos WHERE id=24 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.empresas WHERE id=15 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_empleados WHERE id=837 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.vinculaciones WHERE id=847 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.personas WHERE id=668 LIMIT 2) t) scope ORDER BY table_name,row::text",
+      "ms": 2.056999999999988,
+      "returned": 14,
+      "written": 0,
+      "rss": 68710400,
+      "heap": 15197320
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.auditoria WHERE accion=$1 ORDER BY id LIMIT 5) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.auditoria_eventos WHERE accion=$1 ORDER BY id LIMIT 5) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.historial_cambios WHERE motivo=$1 ORDER BY id LIMIT 43) t",
+      "ms": 36.35419999999999,
+      "returned": 0,
+      "written": 0,
+      "rss": 68714496,
+      "heap": 15216624
+    },
+    {
+      "phase": "rollback",
+      "sql": "ROLLBACK",
+      "ms": 0.9175999999999931,
+      "returned": 0,
+      "written": 0,
+      "rss": 68714496,
+      "heap": 15675352
+    },
+    {
+      "phase": "transaction_control",
+      "sql": "BEGIN ISOLATION LEVEL SERIALIZABLE",
+      "ms": 0.13589999999999236,
+      "returned": 0,
+      "written": 0,
+      "rss": 68726784,
+      "heap": 16470888
+    },
+    {
+      "phase": "transaction_control",
+      "sql": "SELECT set_config('?','?',true),set_config('?','?',true)",
+      "ms": 0.1418000000000177,
+      "returned": 1,
+      "written": 0,
+      "rss": 68726784,
+      "heap": 16480144
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT current_setting('?') AS isolation,pg_try_advisory_xact_lock(202,192) AS locked",
+      "ms": 0.08490000000000464,
+      "returned": 1,
+      "written": 0,
+      "rss": 68726784,
+      "heap": 16489864
+    },
+    {
+      "phase": "gates",
+      "sql": "WITH m AS MATERIALIZED(SELECT id FROM nomina_movimientos WHERE id=192 FOR UPDATE),d AS MATERIALIZED(SELECT id FROM cobertura_cuenta_cobro_externa_detalle WHERE id=220 FOR UPDATE),c AS MATERIALIZED(SELECT id FROM cobertura_cuentas_cobro_externas WHERE id=77 FOR UPDATE),r AS MATERIALIZED(SELECT id FROM nomina_revision_operativa WHERE id=20114 FOR UPDATE) SELECT (SELECT count(*)::int FROM m) AS m,(SELECT count(*)::int FROM d) AS d,(SELECT count(*)::int FROM c) AS c,(SELECT count(*)::int FROM r) AS r",
+      "ms": 0.39509999999998513,
+      "returned": 1,
+      "written": 0,
+      "rss": 68726784,
+      "heap": 16501184
+    },
+    {
+      "phase": "gates",
+      "sql": "SELECT pg_get_triggerdef(t.oid) AS definition,pg_get_functiondef(t.tgfoid) AS fn,t.tgenabled AS enabled FROM pg_trigger t WHERE t.tgrelid='?'::regclass AND t.tgname='?'",
+      "ms": 0.16280000000000427,
+      "returned": 1,
+      "written": 0,
+      "rss": 68726784,
+      "heap": 16514600
+    },
+    {
+      "phase": "rollback",
+      "sql": "ROLLBACK",
+      "ms": 0.0671999999999855,
+      "returned": 0,
+      "written": 0,
+      "rss": 68726784,
+      "heap": 16536968
+    }
+  ],
+  "memory": {
+    "sampled_rss_peak": 68726784,
+    "sampled_heap_peak": 16896712,
+    "resource_max_rss": 68726784,
+    "scope": "this isolated Node executor PID only; excludes certification runner and PostgreSQL"
+  },
+  "cpu_delta_us": {
+    "user": 0,
+    "system": 0
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "id": 1,
+  "result": {
+    "identity": {
+      "version": "17.11",
+      "directory": "C:/Users/CORE ULTRA/Desktop/V2/.worktrees/nomina-turno-202-correction-preview/tmp/nomina-202-performance-cluster-20261015T115102Z",
+      "host": "127.0.0.1",
+      "port": 52268,
+      "database": "postgres",
+      "pid": 3076
+    },
+    "preflight_and_baseline_ms": 56.318200000000004,
+    "manifest_sha256": "064f58dcd28651617c7f30f10d7672274a9f25d1b3a844decd84ab138aeaa8a9",
+    "baseline_rows": {
+      "auditoria": 0,
+      "auditoria_eventos": 0,
+      "cobertura_cuenta_cobro_externa_detalle": 1,
+      "cobertura_cuentas_cobro_externas": 1,
+      "contratos": 1,
+      "empresas": 1,
+      "historial_cambios": 0,
+      "nomina_empleados": 1,
+      "nomina_movimiento_tarifas": 1,
+      "nomina_movimientos": 1,
+      "nomina_novedad_turnos": 1,
+      "nomina_novedades": 1,
+      "nomina_periodos": 1,
+      "nomina_revision_operativa": 1,
+      "personas": 1,
+      "usuarios": 1,
+      "vinculaciones": 1
+    }
+  },
+  "queries": [
+    {
+      "phase": "preflight",
+      "sql": "SELECT to_jsonb(t) AS row FROM cobertura_cuentas_cobro_externas t WHERE id=77",
+      "ms": 2.7719000000000023,
+      "returned": 1,
+      "written": 0,
+      "rss": 62685184,
+      "heap": 15023088
+    },
+    {
+      "phase": "preflight",
+      "sql": "SELECT u.id FROM usuarios u WHERE u.activo ORDER BY (u.id=(SELECT revisado_por FROM nomina_revision_operativa WHERE id=20114)) DESC,u.id LIMIT 1",
+      "ms": 4.107599999999991,
+      "returned": 1,
+      "written": 0,
+      "rss": 62685184,
+      "heap": 15038520
+    },
+    {
+      "phase": "baseline",
+      "sql": "SELECT * FROM (SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimientos WHERE id=192 OR (externo_id=33 AND periodo_id=3 AND activo AND tipo_movimiento='?' AND estado<>'?') LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuenta_cobro_externa_detalle WHERE cuenta_id=77 OR id=220 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.cobertura_cuentas_cobro_externas WHERE id=77 OR (empresa_id=15 AND contrato_id=24 AND periodo_id=3 AND externo_id=33) LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_revision_operativa WHERE id=20114 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_periodos WHERE id=3 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedad_turnos WHERE id=202 OR (movimiento_id=192 AND activo) LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_novedades WHERE id=929 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_movimiento_tarifas WHERE id=1 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.usuarios WHERE id=$1 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.contratos WHERE id=24 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.empresas WHERE id=15 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.nomina_empleados WHERE id=837 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.vinculaciones WHERE id=847 LIMIT 2) t UNION ALL SELECT '?' AS table_name,to_jsonb(t) AS row FROM (SELECT * FROM public.personas WHERE id=668 LIMIT 2) t) scope ORDER BY table_name,row::text",
+      "ms": 22.391500000000008,
+      "returned": 14,
+      "written": 0,
+      "rss": 64356352,
+      "heap": 16555064
+    },
+    {
+      "phase": "baseline",
+      "sql": "SELECT pg_get_triggerdef(t.oid) AS definition,pg_get_functiondef(t.tgfoid) AS fn,t.tgenabled AS enabled FROM pg_trigger t WHERE t.tgrelid='?'::regclass AND t.tgname='?'",
+      "ms": 2.3119000000000085,
+      "returned": 1,
+      "written": 0,
+      "rss": 64430080,
+      "heap": 16047472
+    }
+  ],
+  "memory": {
+    "sampled_rss_peak": 65040384,
+    "sampled_heap_peak": 16896712,
+    "resource_max_rss": 65040384,
+    "scope": "this isolated Node executor PID only; excludes certification runner and PostgreSQL"
+  },
+  "cpu_delta_us": {
+    "user": 0,
+    "system": 0
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "id": 8,
+  "result": {
+    "stopped": true
+  },
+  "queries": [],
+  "memory": {
+    "sampled_rss_peak": 71229440,
+    "sampled_heap_peak": 18290800,
+    "resource_max_rss": 71262208,
+    "scope": "this isolated Node executor PID only; excludes certification runner and PostgreSQL"
+  },
+  "cpu_delta_us": {
+    "user": 0,
+    "system": 0
+  }
+}

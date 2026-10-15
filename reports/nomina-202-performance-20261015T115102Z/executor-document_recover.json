@@ -1,0 +1,38 @@
+{
+  "id": 6,
+  "result": {
+    "status": "DOCUMENT_VERIFIED_ACCOUNT_STILL_PENDING",
+    "intent": {
+      "runId": "d8fb9f1b-e79c-44a9-8016-a1411b3aa476",
+      "key": "cobertura/cuentas-cobro/77/versiones/d8fb9f1b-e79c-44a9-8016-a1411b3aa476/CUENTA_77_195600_8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9.pdf",
+      "sha256": "8f9055a89b1cebf1a2964821648bc9b7692fb4e98222b8265663f4c1af4143c9",
+      "status": "PUBLISHED",
+      "expectedTotal": 195600,
+      "accountStatus": "PENDIENTE"
+    },
+    "model": {
+      "cuenta": 77,
+      "turno": 202,
+      "movimiento": 192,
+      "detalle": 220,
+      "dias": 2,
+      "unitario": 97800,
+      "total": 195600
+    },
+    "historical_sha256": "cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4",
+    "historical_preserved": true,
+    "object_count": 2,
+    "publish_adapter": "LOCAL_STUB_NO_DATABASE_OR_REMOTE_STORAGE"
+  },
+  "queries": [],
+  "memory": {
+    "sampled_rss_peak": 71229440,
+    "sampled_heap_peak": 18290800,
+    "resource_max_rss": 71262208,
+    "scope": "this isolated Node executor PID only; excludes certification runner and PostgreSQL"
+  },
+  "cpu_delta_us": {
+    "user": 0,
+    "system": 0
+  }
+}

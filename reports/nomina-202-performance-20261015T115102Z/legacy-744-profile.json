@@ -1,0 +1,22 @@
+{
+  "queries": 744,
+  "categories": {
+    "transaction_preflight_and_lock_gates": 12,
+    "baseline_full_capture": 225,
+    "dml": 3,
+    "audit_repositories": 8,
+    "historial_cambios": 42,
+    "postflight_full_captures": 450,
+    "role_and_transaction_timestamp": 2,
+    "commit": 1,
+    "test_instrumentation": 1,
+    "global_262_comparison_inside_744": 0
+  },
+  "server_nested_trigger_statements": "Not captured by prior client counters; cannot retrospectively assign their count/time. Their cost is included in the movement UPDATE.",
+  "source_capture_queries": 675,
+  "rss_bytes": 1062666240,
+  "rss_scope": "One Node process combined executor and certification runner; process.memoryUsage().rss excluded PostgreSQL and other processes. Three full public snapshots, parsed historical JSON and temporary canonical state strings contributed; precise historical allocation attribution was not recorded.",
+  "old_first_ms": 17393.4433,
+  "old_total_ms": 83308.3827,
+  "old_client_rows": 1037734
+}

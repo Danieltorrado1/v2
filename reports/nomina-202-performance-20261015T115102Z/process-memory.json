@@ -1,0 +1,18 @@
+{
+  "postgres_working_set_sum": 499621888,
+  "executor_working_set": 71163904,
+  "runner_working_set": 75313152,
+  "samples": 79,
+  "postgres_pids": [
+    25540,
+    17304,
+    14348,
+    13320,
+    20364,
+    3076,
+    10380,
+    16016,
+    17068
+  ],
+  "definition": "Windows WorkingSet64; PostgreSQL sum can double-count shared pages; executor and runner reported separately"
+}
