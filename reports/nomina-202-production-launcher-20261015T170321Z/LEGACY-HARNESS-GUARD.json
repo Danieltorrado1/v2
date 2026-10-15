@@ -1,0 +1,10 @@
+﻿{
+    "status":  "STOPPED_BEFORE_CLUSTER",
+    "code":  "WRONG_BRANCH",
+    "harness_branch_expected":  "fix/nomina-turno-202-correction-entry-gate",
+    "branch_used":  "fix/nomina-turno-202-production-launcher",
+    "production_connections":  0,
+    "production_writes":  0,
+    "cluster_created":  false,
+    "source_report_sha256":  "3da25239dbc940332278c9c9265f98b3340c459e2208b78dec5cb58950649dfa"
+}

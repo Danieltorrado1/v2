@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { mkdtemp, writeFile, symlink, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, symlink, rm, realpath } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
-import { ARGUMENT_ORDER, HISTORICAL_PDF_SIZE, PRODUCTION_HEALTH_URL, assertPrivateRegularFile, assertServiceRoleCredential, parseAllowlistedEnvironment, parseLauncherArguments, readHistoricalPdf, validateHealthUrl, validateServiceConfiguration } from '../scripts/nomina-turno-202-production-launcher';
-import { parseHealthPayload } from '../scripts/nomina-turno-202-readonly-runner';
+import { ARGUMENT_ORDER, HISTORICAL_PDF_SIZE, PRODUCTION_HEALTH_URL, assertPrivateRegularFile, assertServiceRoleCredential, makeEntryEvidence, parseAllowlistedEnvironment, parseLauncherArguments, readHistoricalPdf, validateHealthUrl, validateServiceConfiguration } from '../scripts/nomina-turno-202-production-launcher';
+import { parseHealthPayload, type PendingReceipt } from '../scripts/nomina-turno-202-readonly-runner';
+import { buildPendingEntryPhrase, verifyPendingEntryPhrase } from '../scripts/nomina-turno-202-entry-contract';
 
 const hash=(x:Buffer|string)=>createHash('sha256').update(x).digest('hex');
 const ref='abcdefghijklmnopqrst';
@@ -68,7 +69,7 @@ test('service-role parser never places synthetic token contents in errors',()=>{
 test('explicit env paths reject relative paths, symlinks and broad Windows ACL grants',async t=>{
   await assert.rejects(assertPrivateRegularFile('relative.env'),/ENV_PATH_NOT_ABSOLUTE/);
   if(process.platform!=='win32'){t.skip('Windows ACL behavior is certified only on Windows');return;}
-  const dir=await mkdtemp(path.join(os.tmpdir(),'nomina202-launcher-acl-')),file=path.join(dir,'synthetic.env'),link=path.join(dir,'link.env');
+  const dir=await realpath(await mkdtemp(path.join(os.tmpdir(),'nomina202-launcher-acl-'))),file=path.join(dir,'synthetic.env'),link=path.join(dir,'link.env');
   try{
     await writeFile(file,'SYNTHETIC_ONLY=not-a-secret\n',{mode:0o600});
     await execFileSync('icacls.exe',[file,'/grant','*S-1-1-0:(R)'],{windowsHide:true,stdio:'ignore'});
@@ -101,4 +102,12 @@ test('launcher and runner imports contain no mutator dependency',async()=>{
   const src=await readFile('src/scripts/nomina-turno-202-production-launcher.ts','utf8');
   assert.doesNotMatch(src,/nomina-turno-202-integral-local|executeIntegral|claimNonceThenReadCredentials|activateAuthorization/);
   assert.match(src,/runReadOnlyEntryPreflight/);assert.doesNotMatch(src,/setval\s*\(|nextval\s*\(|UPDATE\s+|INSERT\s+|DELETE\s+/i);
+});
+
+test('a successful local runner receipt creates a fresh, short-lived phrase accepted by the inert contract parser',()=>{
+  const now=Date.now(),digestSet=Object.fromEntries(['critical_schema','sources','movement_192','detail_220','account_77','revision_20114','related_audits','related_history','pdf_metadata','protected_tables','write_set_before','sequence_baseline'].map(k=>[k,hash(k)]));
+  const receipt={status:'PENDING_USER_CONFIRMATION',synthetic:true,generatedAt:new Date(now).toISOString(),connections:[{id:'1c4802f2-6720-4c76-b03e-1372f4f80b91',observedAt:new Date(now-1000).toISOString(),serverVersion:'17.11',tlsProtocol:'TLSv1.3',servername:'localhost',transactionReadOnly:true},{id:'fd23e33a-3c8b-4acf-aa8d-3a90be39c9ca',observedAt:new Date(now).toISOString(),serverVersion:'17.11',tlsProtocol:'TLSv1.3',servername:'localhost',transactionReadOnly:true}],digests:digestSet,sequenceBaseline:{'public.auditoria_id_seq':'10','public.auditoria_eventos_id_seq':'20','public.nomina_revision_operativa_id_seq':'30','public.historial_cambios_id_seq':'40'},pdf:{sha256:'cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4',size:3051,referenceSha256:hash('bucket/key'),mime:'application/pdf',etag:'"local-etag"'},checks:{health:{httpStatus:200,databaseStatus:'ok',outbox:false,sync:false,recalcRequested:false,recalcActive:false,workerStopped:true},syncConfirmation:{enabled:false},locks:{waiting:0,ddl:0}}} as unknown as PendingReceipt;
+  const evidence=makeEntryEvidence(receipt,'b'.repeat(40),now),phrase=buildPendingEntryPhrase(evidence,now);
+  assert.equal(verifyPendingEntryPhrase(phrase,evidence,now),true);assert.match(phrase,/PENDING_USER_CONFIRMATION/);assert.match(phrase,/public\.historial_cambios_id_seq=\+42/);assert.ok(Date.parse(evidence.expiresAt)-now<=15*60_000);
+  const next=makeEntryEvidence(receipt,'b'.repeat(40),now);assert.notEqual(next.runId,evidence.runId);assert.notEqual(next.nonce,evidence.nonce);
 });

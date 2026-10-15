@@ -1,0 +1,26 @@
+{
+  "decision": "OPERACIÓN DETENIDA — RENDIMIENTO NO ACEPTABLE",
+  "started_utc": "2026-10-15T17:00:34.357Z",
+  "branch": "fix/nomina-turno-202-correction-entry-gate",
+  "production_connections": 0,
+  "production_writes": 0,
+  "pglite_database_used": false,
+  "phases": {},
+  "commands": [],
+  "tests": {},
+  "measurements": {},
+  "failure": {
+    "code": "WRONG_BRANCH",
+    "stack_sha256": "777eb073298bc0bb2887545ccd9e2bbb5ac477c51069557d15ff5d02cfa9411c"
+  },
+  "external_queries": [],
+  "total_ms": 30.775600000000004,
+  "finished_utc": "2026-10-15T17:00:34.388Z",
+  "runner_memory": {
+    "rss": 57466880,
+    "heapTotal": 11956224,
+    "heapUsed": 7954544,
+    "external": 2199805,
+    "arrayBuffers": 17990
+  }
+}

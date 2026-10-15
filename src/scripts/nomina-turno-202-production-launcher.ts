@@ -1,6 +1,6 @@
 /** Strict production launcher. It only wires read-only dependencies to the certified runner. */
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { readFile, lstat, realpath, stat } from 'node:fs/promises';
+import { readFile, lstat, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
@@ -25,6 +25,7 @@ type MutableLauncherEnvironment={DATABASE_URL:string;SUPABASE_URL:string;SUPABAS
 const fail=(code:string):never=>{throw new Error(`LAUNCHER_STOPPED_${code}`);};
 const sha=(value:Buffer|string)=>createHash('sha256').update(value).digest('hex');
 const isAbsolute=(value:string)=>path.isAbsolute(value);
+const normalizedPath=(value:string)=>path.resolve(value).replace(/^\\\\\?\\/,'').toLowerCase();
 const REQUIRED_ENV=['DATABASE_URL','SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','SUPABASE_STORAGE_BUCKET'] as const;
 
 /** Exact ordered --flag=value grammar; no aliases, duplicates, positionals, or unknown options. */
@@ -49,6 +50,7 @@ export function parseLauncherArguments(argv:readonly string[]):LauncherArguments
 export async function assertPrivateRegularFile(file:string){
   if(!isAbsolute(file))fail('ENV_PATH_NOT_ABSOLUTE');
   const before=await lstat(file);if(!before.isFile()||before.isSymbolicLink()||(before as {isReparsePoint?:()=>boolean}).isReparsePoint?.())fail('ENV_FILE_NOT_REGULAR');
+  if(normalizedPath(await realpath(file))!==normalizedPath(file))fail('ENV_PATH_SYMLINK_OR_ALIAS');
   if(process.platform==='win32'){
     const escaped=file.replace(/'/g,"''"),script="(Get-Acl -LiteralPath '"+escaped+"').Access | ForEach-Object { $_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value + '|' + $_.FileSystemRights + '|' + $_.AccessControlType + '|' + $_.IsInherited }";
     const acl=execFileSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{encoding:'utf8',windowsHide:true});
@@ -57,7 +59,7 @@ export async function assertPrivateRegularFile(file:string){
   const after=await lstat(file);if(after.dev!==before.dev||after.ino!==before.ino||after.size!==before.size)fail('ENV_FILE_CHANGED');
   return Object.freeze({size:before.size,mtimeMs:before.mtimeMs,dev:before.dev,ino:before.ino});
 }
-async function assertRegularNoSymlink(file:string){if(!isAbsolute(file))fail('PATH_NOT_ABSOLUTE');const s=await lstat(file);if(!s.isFile()||s.isSymbolicLink())fail('FILE_NOT_REGULAR');const resolved=await realpath(file);if(resolved.toLowerCase()!==path.resolve(file).toLowerCase())fail('FILE_PATH_ALIAS');return s;}
+async function assertRegularNoSymlink(file:string){if(!isAbsolute(file))fail('PATH_NOT_ABSOLUTE');const s=await lstat(file);if(!s.isFile()||s.isSymbolicLink())fail('FILE_NOT_REGULAR');if(normalizedPath(await realpath(file))!==normalizedPath(file))fail('FILE_PATH_ALIAS');return s;}
 
 /** Read only allowlisted dotenv keys. Raw bytes are zeroed immediately after parsing. */
 export async function readExplicitEnvironment(file:string):Promise<MutableLauncherEnvironment>{

@@ -1,0 +1,240 @@
+﻿{
+    "status":  "PASS_LOCAL_ONLY",
+    "code_commit":  "bbb19734ad4ad3dec1d74af198365e070e82a3aa",
+    "source_report_sha256":  "99d5475a1f9faee1728be484a6374ebb904730dfe65b7c4787680a85e5799e2e",
+    "pg_version":  "17.11",
+    "transport":  "TLSv1.3 local synthetic CA; two independent Clients/snapshots; READ ONLY; 2 ROLLBACK and close",
+    "restore":  {
+                    "vault_exclusions":  10,
+                    "sequence_set_instructions_not_executed":  213,
+                    "application_table_data_excluded":  0,
+                    "sequence_initialization":  {
+                                                    "method":  "monotonic nextval replay from newly restored initial states; dump SEQUENCE SET commands never executed",
+                                                    "consumed_values":  614134,
+                                                    "sequences":  213,
+                                                    "exact":  true
+                                                }
+                },
+    "local_ca_sha256":  "a07e111d1c5db1cefd88bbc49a40eb776493c2cebf6fe10601c995ddf419f54d",
+    "backup_sha256":  "dd1f9d298e83fb9664d1795c4e452698c26b274569cca11715b2c2f03ff99d75",
+    "historical_pdf_sha256":  "cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4",
+    "phases_ms":  {
+                      "cluster_init":  5373.6418,
+                      "full_restore":  6619.7019,
+                      "sequence_initialization":  207.60649999999987,
+                      "object_inventory":  54.97009999999864,
+                      "initial_262_comparison":  2622.1501000000007,
+                      "readonly_entry_preflight":  16268.016500000002,
+                      "protected_rows_baseline":  17.816500000000815,
+                      "executor_preflight_and_baseline":  161.96160000000236,
+                      "native_guard_tests":  55.66960000000108,
+                      "corrector":  60.97479999999632,
+                      "postflight_262_comparison":  2638.5319999999992,
+                      "idempotent":  31.49210000000312,
+                      "documents":  3367.0449999999983,
+                      "explain_analyze":  31.54359999999724,
+                      "rollback_restore":  13788.001299999996
+                  },
+    "total_ms":  70021.59,
+    "readonly":  {
+                     "status":  "PENDING_USER_CONFIRMATION",
+                     "elapsed_ms":  1861.69,
+                     "connections":  [
+                                         {
+                                             "server_version":  "17.11",
+                                             "tls":  "TLSv1.3",
+                                             "servername":  "localhost",
+                                             "transaction_read_only":  true
+                                         },
+                                         {
+                                             "server_version":  "17.11",
+                                             "tls":  "TLSv1.3",
+                                             "servername":  "localhost",
+                                             "transaction_read_only":  true
+                                         }
+                                     ],
+                     "query_counts":  {
+                                          "capture":  22,
+                                          "transaction":  6,
+                                          "total":  28
+                                      },
+                     "digests":  {
+                                     "critical_schema":  "7dbedce501f61b4195e0dea7573f37d7fe4b8159b5383532f40c728eb0dd1f3d",
+                                     "sources":  "f1311c3825573ad017899740b7d6c8f8315a2b76dfabffb3142c873e19689963",
+                                     "movement_192":  "bd48d5f3fce2c69361a36ab906affc1eafa35793da2fc8ac2d2a769d3aef015f",
+                                     "detail_220":  "d2a34f142c3eff4e3a6883fe22a5393dae0cc423ed34ac058495bae4cc8ce01a",
+                                     "account_77":  "c51a5542d18c8822b81212752f6ba671d15f215f506bf36aec87d2e3537e137d",
+                                     "revision_20114":  "4a11d6150197d297bce1c9d800bf5046bc4a88189960985ac54e18faa3f33302",
+                                     "related_audits":  "1e1e668d297a40b2b1c603bb00bd156af545d66910603a1c706e09de64643af6",
+                                     "related_history":  "cc2643e26a9dcf944a552f9f82d3b97fd28c10c1e8ffa4c0135a95054e5dbeba",
+                                     "pdf_metadata":  "16113cd2141c950ac82ad380ef9d13fecb5152a245d0fb12ca9fa0f918322954",
+                                     "protected_tables":  "091aa63a5b2e12b60b48f5fd95a8c9fdd15eae6448e02e2489f313cba7e8ea04",
+                                     "write_set_before":  "95bfe3a5b6b57f4bdc7f7f3386673a83975866e96ce2c15c2ecec068359d1dc9",
+                                     "sequence_baseline":  "a9f0c7a20b6c9debcb01a4cfe65c65aafdd76ad37bc5c8e10cda97a3acbf7986"
+                                 },
+                     "sequence_baseline":  {
+                                               "public.auditoria_eventos_id_seq":  "61428",
+                                               "public.auditoria_id_seq":  "16979",
+                                               "public.historial_cambios_id_seq":  "213656",
+                                               "public.nomina_revision_operativa_id_seq":  "42583"
+                                           },
+                     "rollback_and_close_count":  2,
+                     "health_server":  "loopback synthetic"
+                 },
+    "economic_result":  {
+                            "movement":  {
+                                             "id":  192,
+                                             "cantidad":  2,
+                                             "total":  195600,
+                                             "afecta_seguridad_social":  false
+                                         },
+                            "detail":  {
+                                           "id":  220,
+                                           "total":  195600,
+                                           "identity_preserved":  true
+                                       },
+                            "account":  {
+                                            "id":  77,
+                                            "total":  195600,
+                                            "status":  "PENDIENTE",
+                                            "previous_reference_invalidated":  true
+                                        },
+                            "revision":  {
+                                             "id":  20114,
+                                             "status":  "REQUIERE_REVISION",
+                                             "version":  31
+                                         },
+                            "auditoria_added":  4,
+                            "auditoria_eventos_added":  4,
+                            "canonical_history_added":  42,
+                            "modified_tables":  7,
+                            "unmodified_tables":  255,
+                            "duplicates":  0
+                        },
+    "commit_sequence_advances":  [
+                                     {
+                                         "name":  "public.auditoria_eventos_id_seq",
+                                         "before":  "61428",
+                                         "after":  "61432",
+                                         "delta":  4,
+                                         "called_before":  true,
+                                         "called_after":  true
+                                     },
+                                     {
+                                         "name":  "public.auditoria_id_seq",
+                                         "before":  "16979",
+                                         "after":  "16983",
+                                         "delta":  4,
+                                         "called_before":  true,
+                                         "called_after":  true
+                                     },
+                                     {
+                                         "name":  "public.historial_cambios_id_seq",
+                                         "before":  "213656",
+                                         "after":  "213698",
+                                         "delta":  42,
+                                         "called_before":  true,
+                                         "called_after":  true
+                                     },
+                                     {
+                                         "name":  "public.nomina_revision_operativa_id_seq",
+                                         "before":  "42583",
+                                         "after":  "42584",
+                                         "delta":  1,
+                                         "called_before":  true,
+                                         "called_after":  true
+                                     }
+                                 ],
+    "idempotency":  {
+                        "all_262_tables_unchanged":  true,
+                        "all_213_sequences_unchanged":  true,
+                        "zero_new_rows":  true
+                    },
+    "rollback":  {
+                     "data_equal_all_262_tables":  true,
+                     "new_persisted_rows":  0,
+                     "sequence_gaps":  [
+                                           {
+                                               "name":  "public.auditoria_eventos_id_seq",
+                                               "before":  "61428",
+                                               "after":  "61432",
+                                               "delta":  4,
+                                               "called_before":  true,
+                                               "called_after":  true
+                                           },
+                                           {
+                                               "name":  "public.auditoria_id_seq",
+                                               "before":  "16979",
+                                               "after":  "16983",
+                                               "delta":  4,
+                                               "called_before":  true,
+                                               "called_after":  true
+                                           },
+                                           {
+                                               "name":  "public.historial_cambios_id_seq",
+                                               "before":  "213656",
+                                               "after":  "213657",
+                                               "delta":  1,
+                                               "called_before":  true,
+                                               "called_after":  true
+                                           },
+                                           {
+                                               "name":  "public.nomina_revision_operativa_id_seq",
+                                               "before":  "42583",
+                                               "after":  "42584",
+                                               "delta":  1,
+                                               "called_before":  true,
+                                               "called_after":  true
+                                           }
+                                       ],
+                     "sequence_max_advances":  {
+                                                   "public.auditoria_id_seq":  4,
+                                                   "public.auditoria_eventos_id_seq":  4,
+                                                   "public.nomina_revision_operativa_id_seq":  1,
+                                                   "public.historial_cambios_id_seq":  42
+                                               },
+                     "monotonic_only":  true,
+                     "no_sequence_rewind":  true,
+                     "no_id_reuse":  true
+                 },
+    "document_failure":  {
+                             "failed_after_commit":  true,
+                             "economy_reexecuted":  false
+                         },
+    "document_recovery":  {
+                              "status":  "DOCUMENT_VERIFIED_ACCOUNT_STILL_PENDING",
+                              "expected_total":  195600,
+                              "account_status":  "PENDIENTE",
+                              "historical_pdf_preserved":  true,
+                              "object_count":  2,
+                              "adapter":  "LOCAL_STUB_NO_DATABASE_OR_REMOTE_STORAGE"
+                          },
+    "readonly_guard_tests":  {
+                                 "operations":  [
+                                                    {
+                                                        "operation":  "ddl",
+                                                        "rejected":  true,
+                                                        "sqlstate":  "25006"
+                                                    },
+                                                    {
+                                                        "operation":  "dml",
+                                                        "rejected":  true,
+                                                        "sqlstate":  "25006"
+                                                    },
+                                                    {
+                                                        "operation":  "nextval",
+                                                        "rejected":  true,
+                                                        "sqlstate":  "25006"
+                                                    }
+                                                ],
+                                 "sequence_unchanged":  true,
+                                 "isolated_test_client":  true
+                             },
+    "readonly_stopped_case_count":  8,
+    "other_protected_tables_write_privilege":  false,
+    "cleanup":  {
+                    "cluster_stopped":  true
+                },
+    "production_connections":  0,
+    "production_writes":  0
+}
