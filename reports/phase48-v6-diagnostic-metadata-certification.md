@@ -51,3 +51,13 @@ The final pins for a future, separately authorized attempt are:
 - `mutator_commit`: `58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911` (unchanged logic, locally regression-tested).
 
 Pins `38f5242ddb283ab8af03d0ea5dca1aae5fe44922` for the runner pair are superseded for future attempts. No merge or deployment is included.
+
+## Branch-gate recertification (2026-10-15)
+
+The next STOPPED receipt reported `DIAGNOSTIC_BRANCH_INVALID` because the launcher still required the prior branch name `fix/phase48-v6-diagnostic-launcher`. Its preserved bytes are 1,341 bytes with SHA-256 `6dbec67ff2bdf74dc48493f63894b352fdbae1793c9d617ecf09051f446dca89`.
+
+The gate now requires exactly `fix/phase48-v6-diagnostic-metadata`, the certified parent HEAD `4a0fa3c19c1a101fc7378efeaad9c52a5859a77c`, matching `origin` branch ref and HEAD, and an empty tracked working tree. It rejects alternate/prefix/suffix/case variants, detached HEAD, incorrect parent/HEAD, remote divergence, and tracked modifications. Untracked receipt evidence is allowed and remains outside the gate. No branch override is accepted.
+
+The updated launcher test file passes 19/19 tests, including each gate rejection and the preserved STOPPED receipt check. The full local PostgreSQL 17.11/TLS 1.3 harness passed: 164 queries, 740 candidates, 17 digests, explicit ROLLBACK, and closed Client. The run used port 54159 and postmaster PID 33756; the owned temporary cluster was stopped and removed. The certificate `reports/phase48-v6-read-query-certificate-20261015T175551493Z-f295f064d3fd44eda0bd2abbd5f8cab3.local.json` is 2,499 bytes, SHA-256 `ec9f46e75372aae4eb0b403a888e851ae9303b1ed61e4f0694f6259007310f04`; its receipt `reports/phase48-v6-read-query-20261015T175551493Z-f295f064d3fd44eda0bd2abbd5f8cab3.receipt.json` is 34,378 bytes, SHA-256 `22f2bed3c39e007db7f50c5dde088ee2002503e5417426663d2da3149e3e3dda`. The launcher pin-checks these files. No production health request, credential read, connection, or write was made for this branch-gate correction.
+
+For the next separately authorized diagnostic, the branch-gate runner pins are `4a0fa3c19c1a101fc7378efeaad9c52a5859a77c` for both diagnostic and read-only runner; the mutator remains `58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911`. Launcher pin `febba7042337fe9a0055f5e7882ac01640b59b06` and runner pin `f9e9c53a4a0c8bbd9cfd7821d0d15b1c5667cbaa` are revoked for future attempts. The launcher commit is the final branch HEAD after this recertification commit.
