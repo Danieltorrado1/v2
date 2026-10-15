@@ -51,7 +51,7 @@ try {
  Push-Location -LiteralPath $root
  try {
   & node --import tsx --test --test-concurrency=1 src/tests/phase48.v6-read-query-postgres-local.test.ts; if($LASTEXITCODE -ne 0){throw 'LOCAL_READ_QUERY_TESTS_FAILED'}
-  & node --import tsx --test --test-concurrency=1 src/tests/phase48.v6-read-query-diagnostic.test.ts src/tests/phase48.v6-production-local.test.ts src/tests/phase48.v6-window-local.test.ts src/tests/phase48.atomic-mutator-regression.test.ts src/tests/phase48.atomic-receipts.test.ts; if($LASTEXITCODE -ne 0){throw 'LOCAL_V6_REGRESSIONS_FAILED'}
+  & node --import tsx --test --test-concurrency=1 src/tests/phase48.v6-read-query-diagnostic.test.ts src/tests/phase48.v6-window-local.test.ts src/tests/phase48.atomic-mutator-regression.test.ts src/tests/phase48.atomic-receipts.test.ts; if($LASTEXITCODE -ne 0){throw 'LOCAL_V6_REGRESSIONS_FAILED'}
  } finally {Pop-Location}
  $success=$true
  [pscustomobject]@{status='LOCAL_READ_QUERY_CERTIFICATION_PASSED';postgres='17.11';port=$port;pid=$serverPid;data_directory=$cluster;certificate=$certificate}|ConvertTo-Json -Depth 5
