@@ -8,7 +8,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {fetchProductionHealth,PHASE48_HEALTH_URL,requestHealthAtUrl,validateProductionHealthUrl} from '../modules/cobertura/phase48-v6-diagnostic-health';
-import {launchReadQueryDiagnostic,parseDiagnosticLauncherArgs,type LauncherDependencies} from '../modules/cobertura/phase48-v6-diagnostic-launcher';
+import {DIAGNOSTIC_PINS,launchReadQueryDiagnostic,parseDiagnosticLauncherArgs,type LauncherDependencies} from '../modules/cobertura/phase48-v6-diagnostic-launcher';
 import {publishAtomicReceipt} from '../modules/cobertura/phase48-readonly-receipts';
 
 const good={success:true,data:{database:{status:'ok'},integracion_outbox:{configured:false,enabled:false,recalc:{requested:false,active:false},started:false,running:false}}};
@@ -26,6 +26,7 @@ test('launcher parser rejects unknown, duplicate, missing and non-false sync con
  const valid=['--mode=ProductiveDiagnostic','--receipt-directory=./reports','--credential-path=C:/secure/db.env','--ca-path=C:/secure/root.crt','--ca-sha256='+'a'.repeat(64),'--sync-manually-confirmed=false'];assert.equal(parseDiagnosticLauncherArgs(valid).mode,'ProductiveDiagnostic');
  for(const a of [[],[...valid,'--unknown=x'],[...valid,'--mode=ProductiveDiagnostic'],valid.filter(x=>!x.startsWith('--ca-sha256=')),valid.map(x=>x==='--sync-manually-confirmed=false'?'--sync-manually-confirmed=true':x)])assert.throws(()=>parseDiagnosticLauncherArgs(a));
 });
+test('diagnostic launcher pins the recertified runners and keeps the unchanged mutator pin',()=>{assert.deepEqual(DIAGNOSTIC_PINS,{diagnostic_runner_commit:'38f5242ddb283ab8af03d0ea5dca1aae5fe44922',readonly_runner_commit:'38f5242ddb283ab8af03d0ea5dca1aae5fe44922',mutator_commit:'58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911'});assert.notEqual(DIAGNOSTIC_PINS.diagnostic_runner_commit,'0160238c317637196bb38c8abde1ced5e4737339');assert.notEqual(DIAGNOSTIC_PINS.readonly_runner_commit,'154dbdaf01d75685c6306a81a92bf7ab11a69585');});
 test('local HTTP fixture accepts a valid health response',async()=>{const x=await serve((_q,r)=>{r.writeHead(200,{'content-type':'application/json'});r.end(JSON.stringify(good));});try{const result=await requestHealthAtUrl(x.url,(url,init)=>fetch(url,init),opts);assert.equal(result.http_status,200);assert.equal(result.outbox,false);}finally{await close(x.server);}});
 test('local HTTPS fixture performs a verified TLS handshake with the test-only CA',async()=>{
  const fixture=join(process.cwd(),'src/tests/fixtures/phase48-tls'),server=createTlsServer({key:readFs(join(fixture,'server-test-only.key')),cert:readFs(join(fixture,'server.crt'))},(_q,r)=>{r.writeHead(200,{'content-type':'application/json'});r.end(JSON.stringify(good));});await new Promise<void>(resolve=>server.listen(0,'::1',resolve));const address=server.address();assert.ok(address&&typeof address==='object');const url=`https://localhost:${address.port}/api/health`;

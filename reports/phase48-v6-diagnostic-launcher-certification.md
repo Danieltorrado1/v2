@@ -2,6 +2,14 @@
 
 Date: 2026-10-15 (America/Bogota)
 
+Recertified pins for a future authorized diagnostic:
+
+- `diagnostic_runner_commit`: `38f5242ddb283ab8af03d0ea5dca1aae5fe44922`
+- `readonly_runner_commit`: `38f5242ddb283ab8af03d0ea5dca1aae5fe44922`
+- `mutator_commit`: `58a187cbf7f0f6fe4fa0ed7b6abd3416a6996911` (same logic and commit; regression suite passed)
+
+Previous diagnostic and read-only runner pins `0160238c317637196bb38c8abde1ced5e4737339` and `154dbdaf01d75685c6306a81a92bf7ab11a69585` are revoked for future diagnostic launch.
+
 ## Forensic findings
 
 The previous `NullReferenceException` was raised by PowerShell's `Invoke-WebRequest` command. The captured PowerShell error identifies that cmdlet (`FullyQualifiedErrorId: Invoke-WebRequest`); no Node launcher or versioned READ_QUERY code was on that HTTP path. The available exception does not identify a deeper PowerShell runtime defect, so the internal cause remains unproven.
