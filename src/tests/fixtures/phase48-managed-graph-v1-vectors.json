@@ -1,0 +1,65 @@
+[
+  {
+    "label": "empty",
+    "nodes": [],
+    "edges": [],
+    "nodes_json": "{\"graph_serialization_version\":\"phase48-managed-dependency-graph-v1\",\"nodes\":[]}",
+    "edges_json": "{\"graph_serialization_version\":\"phase48-managed-dependency-graph-v1\",\"edges\":[]}",
+    "nodes_utf8_hex": "7b2267726170685f73657269616c697a6174696f6e5f76657273696f6e223a22706861736534382d6d616e616765642d646570656e64656e63792d67726170682d7631222c226e6f646573223a5b5d7d",
+    "edges_utf8_hex": "7b2267726170685f73657269616c697a6174696f6e5f76657273696f6e223a22706861736534382d6d616e616765642d646570656e64656e63792d67726170682d7631222c226564676573223a5b5d7d",
+    "dependency_nodes_digest": "4a387a7ad8893b5f8771be13807c7e23522165fb0dc5e08862c14621e01a87d3",
+    "dependency_edges_digest": "cc0a6f200871acde07b3f7ff31f6dc375ffa243ff5d424bfce6721256acc5da0"
+  },
+  {
+    "label": "unicode-self-edge",
+    "nodes": [
+      {
+        "catalog_class": "pg_catalog.pg_proc",
+        "namespace": "extensions",
+        "object_type": "function",
+        "structural_identity": "extensions.ñ()",
+        "extension_identity": null,
+        "owner_class": null,
+        "owner_sha256": null,
+        "normalized_definition_sha256": null
+      }
+    ],
+    "edges": [
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "extensions",
+          "object_type": "function",
+          "structural_identity": "extensions.ñ()",
+          "extension_identity": null,
+          "owner_class": null,
+          "owner_sha256": null,
+          "normalized_definition_sha256": null
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "extensions",
+          "object_type": "function",
+          "structural_identity": "extensions.ñ()",
+          "extension_identity": null,
+          "owner_class": null,
+          "owner_sha256": null,
+          "normalized_definition_sha256": null
+        },
+        "deptype": "n",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      }
+    ],
+    "nodes_json": "{\"graph_serialization_version\":\"phase48-managed-dependency-graph-v1\",\"nodes\":[{\"catalog_class\":\"pg_catalog.pg_proc\",\"namespace\":\"extensions\",\"object_type\":\"function\",\"structural_identity\":\"extensions.ñ()\",\"extension_identity\":null,\"owner_class\":null,\"owner_sha256\":null,\"normalized_definition_sha256\":null}]}",
+    "edges_json": "{\"graph_serialization_version\":\"phase48-managed-dependency-graph-v1\",\"edges\":[{\"from\":{\"catalog_class\":\"pg_catalog.pg_proc\",\"namespace\":\"extensions\",\"object_type\":\"function\",\"structural_identity\":\"extensions.ñ()\",\"extension_identity\":null,\"owner_class\":null,\"owner_sha256\":null,\"normalized_definition_sha256\":null},\"to\":{\"catalog_class\":\"pg_catalog.pg_proc\",\"namespace\":\"extensions\",\"object_type\":\"function\",\"structural_identity\":\"extensions.ñ()\",\"extension_identity\":null,\"owner_class\":null,\"owner_sha256\":null,\"normalized_definition_sha256\":null},\"deptype\":\"n\",\"direction\":\"referenced\",\"relation\":{\"catalog\":\"pg_catalog.pg_depend\",\"source_subobject\":null,\"target_subobject\":null}}]}",
+    "nodes_utf8_hex": "7b2267726170685f73657269616c697a6174696f6e5f76657273696f6e223a22706861736534382d6d616e616765642d646570656e64656e63792d67726170682d7631222c226e6f646573223a5b7b22636174616c6f675f636c617373223a2270675f636174616c6f672e70675f70726f63222c226e616d657370616365223a22657874656e73696f6e73222c226f626a6563745f74797065223a2266756e6374696f6e222c227374727563747572616c5f6964656e74697479223a22657874656e73696f6e732ec3b12829222c22657874656e73696f6e5f6964656e74697479223a6e756c6c2c226f776e65725f636c617373223a6e756c6c2c226f776e65725f736861323536223a6e756c6c2c226e6f726d616c697a65645f646566696e6974696f6e5f736861323536223a6e756c6c7d5d7d",
+    "edges_utf8_hex": "7b2267726170685f73657269616c697a6174696f6e5f76657273696f6e223a22706861736534382d6d616e616765642d646570656e64656e63792d67726170682d7631222c226564676573223a5b7b2266726f6d223a7b22636174616c6f675f636c617373223a2270675f636174616c6f672e70675f70726f63222c226e616d657370616365223a22657874656e73696f6e73222c226f626a6563745f74797065223a2266756e6374696f6e222c227374727563747572616c5f6964656e74697479223a22657874656e73696f6e732ec3b12829222c22657874656e73696f6e5f6964656e74697479223a6e756c6c2c226f776e65725f636c617373223a6e756c6c2c226f776e65725f736861323536223a6e756c6c2c226e6f726d616c697a65645f646566696e6974696f6e5f736861323536223a6e756c6c7d2c22746f223a7b22636174616c6f675f636c617373223a2270675f636174616c6f672e70675f70726f63222c226e616d657370616365223a22657874656e73696f6e73222c226f626a6563745f74797065223a2266756e6374696f6e222c227374727563747572616c5f6964656e74697479223a22657874656e73696f6e732ec3b12829222c22657874656e73696f6e5f6964656e74697479223a6e756c6c2c226f776e65725f636c617373223a6e756c6c2c226f776e65725f736861323536223a6e756c6c2c226e6f726d616c697a65645f646566696e6974696f6e5f736861323536223a6e756c6c7d2c2264657074797065223a226e222c22646972656374696f6e223a227265666572656e636564222c2272656c6174696f6e223a7b22636174616c6f67223a2270675f636174616c6f672e70675f646570656e64222c22736f757263655f7375626f626a656374223a6e756c6c2c227461726765745f7375626f626a656374223a6e756c6c7d7d5d7d",
+    "dependency_nodes_digest": "aa7f6e3201077383eb33a7e678ee03171e23c45adc61f8896a7550edc73aafe3",
+    "dependency_edges_digest": "9ec8e46aba2c6cbe3ec3ad98771b8a8980b218ee22701b59c4b13100f91e66fd"
+  }
+]

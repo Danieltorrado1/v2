@@ -1,0 +1,17 @@
+import {readFileSync,existsSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+import {validateGraphInventory,validateGraphEvidence} from '../src/modules/cobertura/phase48-managed-dependency-graph';
+import {sha256HexEqual} from '../src/modules/cobertura/phase48-sha256';
+import {MANAGED_AUDIT_QUERY_MANIFEST_DIGEST} from '../src/modules/cobertura/phase48-managed-dependency-audit';
+const path='reports/phase48-managed-dependency-audit-local-8d0a839df8e94af7b2558c1394bdba97.json';
+const bytes=readFileSync(path),cert=JSON.parse(bytes.toString('utf8'));
+const summary=validateGraphInventory(cert.audit,cert);validateGraphEvidence(summary,cert);
+assert.ok(sha256HexEqual(summary.query_manifest_digest,MANAGED_AUDIT_QUERY_MANIFEST_DIGEST));
+const receiptBytes=readFileSync(cert.receipt.path),receipt=JSON.parse(receiptBytes.toString('utf8'));
+validateGraphEvidence(receipt.graph,summary);assert.equal('nodes' in receipt.graph,false);assert.equal('edges' in receipt.graph,false);
+assert.ok(sha256HexEqual(createHash('sha256').update(receiptBytes).digest('hex'),cert.receipt.sha256));
+for(const [file,expected] of Object.entries(cert.source_hashes))assert.ok(sha256HexEqual(createHash('sha256').update(readFileSync(file,'utf8').replace(/\r\n/g,'\n')).digest('hex'),expected),file);
+assert.equal(existsSync(cert.cluster.data_directory),false);
+for(const [file,expected] of [['reports/phase48-diagnostic-6d2df967-4c7e-4865-a385-2f0381b6d82d.receipt.json','5b8ee4eb8a1c8f50897e125d53d217eef0ce5f03e56d3bd186cb9ec2de869956'],['reports/phase48-adc1f509-b069-45cd-9824-927ee144f6b3.stopped.json','5349128c048b1033a2b6e2a3f7d1b2780962b1e725228b3ad1cd9f5d81828bc6']])assert.ok(sha256HexEqual(createHash('sha256').update(readFileSync(file!)).digest('hex'),expected));
+console.log(JSON.stringify({status:'PASS',...summary,certificate:path,certificate_sha256:createHash('sha256').update(bytes).digest('hex'),receipt:cert.receipt,source_files_verified:Object.keys(cert.source_hashes).length},null,2));

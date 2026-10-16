@@ -1,10 +1,12 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {resolve} from 'node:path';
+import {join} from 'node:path';
 import {readFileSync} from 'node:fs';
-import {execFileSync} from 'node:child_process';
-import {isV6ArgumentName,parseV6Cli,runV6Cli} from '../scripts/phase48-v6-production';
+import {isV6ArgumentName,parseV6Cli} from '../scripts/phase48-v6-production';
 import {buildV6Phrase,V6_ASSERTIONS,V6_ORDER} from '../modules/cobertura/phase48-v6-contract';
+import {V6_BASE} from '../modules/cobertura/phase48-v6-evidence';
+import {validateDiagnosticGitState,EXPECTED_DIAGNOSTIC_BRANCH,CERTIFIED_DIAGNOSTIC_BASE_HEAD} from '../modules/cobertura/phase48-v6-diagnostic-launcher';
+import {v6CliGitFixture,FIXTURE_HEAD,FIXTURE_BRANCH} from './fixtures/phase48-v6-cli-git-fixture';
 
 const validNames=['ca-sha256','backup-sha256','readonly-runner-commit','mutator-commit','preflight-receipt-sha256'];
 const invalidNames=['','Ca-sha256','ca_sha256','-ca-sha256','ca-sha256-','ca--sha256','ca.sha256','ca/sha256','ca sha256','ca=sha256','ca\u2014sha256','c\u0430-sha256'];
@@ -58,17 +60,41 @@ test('V6 authorization builder rejects both previously certified runner and muta
  }
 });
 
-test('synthetic V6 launcher either reaches its certified branch gate or fails closed on diagnostic branch',async()=>{
- const args=completeArgs().map(a=>a
-  .replace('C:/synthetic/backup',resolve('tmp/phase48-v6-window-local/parser-no-evidence'))
-  .replace('C:/synthetic/certified.json',resolve('tmp/phase48-v6-window-local/parser-no-certified.json'))
-  .replace('C:/synthetic/blocked.json',resolve('tmp/phase48-v6-window-local/parser-no-blocked.json'))
-  .replace('C:/synthetic/credential-sentinel.env',resolve('tmp/phase48-v6-window-local/NEVER_READ_parser_credential.env'))
-  .replace('C:/synthetic/ca-sentinel.crt',resolve('tmp/phase48-v6-window-local/NEVER_READ_parser_ca.crt'))
-  .replace('C:/synthetic/receipts',resolve('tmp/phase48-v6-window-local')));
- const branch=execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim();
- if(branch==='fix/phase48-v6-diagnostic-launcher'||branch==='fix/phase48-v6-diagnostic-metadata'||branch==='fix/phase48-v6-ca-hash-normalization'||branch==='fix/phase48-v6-sha-comparison-unification')await assert.rejects(runV6Cli(args),(error:any)=>error?.message==='V6_CLEAN_RELEASE_BRANCH_REQUIRED');
- else await assert.rejects(runV6Cli(args),(error:any)=>error?.code==='ENOENT'&&String(error.path).includes('parser-no-evidence')&&!String(error.path).includes('NEVER_READ'));
+test('hermetic V6 launcher reaches ENOENT for only the missing full.dump after valid Git gates',()=>{
+ const f=v6CliGitFixture();let passed=false;try{
+  assert.equal(f.git(['status','--porcelain=v1']),'');
+  const error=f.run();assert.equal(error.code,'ENOENT');assert.equal(error.path,join(f.backup,'full.dump'));passed=true;
+ }finally{f.dispose(passed);}
+});
+
+test('hermetic V6 launcher rejects invalid branch before missing evidence',()=>{
+ const f=v6CliGitFixture({branch:'fix/invalid-fixture'});let passed=false;try{assert.equal(f.run().message,'V6_CLEAN_RELEASE_BRANCH_REQUIRED');passed=true;}finally{f.dispose(passed);}
+});
+
+test('hermetic V6 launcher rejects dirty tree before missing evidence',()=>{
+ const f=v6CliGitFixture({dirty:true});let passed=false;try{assert.equal(f.run().message,'V6_CLEAN_RELEASE_BRANCH_REQUIRED');passed=true;}finally{f.dispose(passed);}
+});
+
+test('hermetic V6 launcher rejects incorrect HEAD ancestry before missing evidence',()=>{
+ const f=v6CliGitFixture({head:V6_BASE});let passed=false;try{
+  const error=f.run();assert.equal(error.status,1);assert.match(error.message,/merge-base --is-ancestor/);assert.equal(error.code,undefined);passed=true;
+ }finally{f.dispose(passed);}
+});
+
+test('diagnostic launcher rejects divergent remote through its exact Git state contract',()=>{
+ const head='a'.repeat(40),state={branch:EXPECTED_DIAGNOSTIC_BRANCH,head,parentHead:CERTIFIED_DIAGNOSTIC_BASE_HEAD,remoteHead:head,remoteRef:`refs/heads/${EXPECTED_DIAGNOSTIC_BRANCH}`,trackedStatus:''};
+ assert.doesNotThrow(()=>validateDiagnosticGitState(state));
+ assert.throws(()=>validateDiagnosticGitState({...state,remoteHead:'b'.repeat(40)}),/DIAGNOSTIC_REMOTE_HEAD_MISMATCH/);
+});
+
+test('hermetic V6 fixture never selects expectations from developer active branch or HEAD',()=>{
+ const source=readFileSync('src/tests/fixtures/phase48-v6-cli-git-fixture.ts','utf8');
+ assert.equal(source.includes("rawGit(workspace,['branch'"),false);
+ assert.equal(source.includes("rawGit(workspace,['rev-parse','HEAD']"),false);
+ const f=v6CliGitFixture();let passed=false;try{
+  assert.equal(f.git(['branch','--show-current']),FIXTURE_BRANCH);assert.equal(f.git(['rev-parse','HEAD']),FIXTURE_HEAD);
+  assert.equal(f.run().path,join(f.backup,'full.dump'));passed=true;
+ }finally{f.dispose(passed);}
 });
 
 test('V6 release gate pins the exact read-query observability branch and retains HEAD ancestry checks',()=>{

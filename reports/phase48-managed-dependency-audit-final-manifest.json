@@ -1,0 +1,1021 @@
+{
+  "schema_version": 1,
+  "classification": "LOCAL_FIXTURE_ONLY",
+  "branch": "fix/phase48-managed-dependency-audit-entry",
+  "base_head": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+  "graph": {
+    "graph_serialization_version": "phase48-managed-dependency-graph-v1",
+    "node_count": 10,
+    "edge_count": 13,
+    "dependency_nodes_digest": "2d3055156f153f95f0663e997fde0a3a0b12a8dbc67711b69b681eb27870bc73",
+    "dependency_edges_digest": "e0663c4c107efc27ded410794f1e77a69fc800904dcec4e3b0ffc48419739d0f",
+    "root_digests": {
+      "extensions.pgrst_ddl_watch": "bb2adad04de8a9826b1c5e5cc424cfe318d259c9d54a12807dce465bc9091f68",
+      "extensions.pgrst_drop_watch": "bd8731e2dadaab8ae955e2df86e4e3c34deff10dce65b83bd7715b8f334fc5b6"
+    },
+    "query_manifest_digest": "5a61d17be65a21b552bf3451ff0cd35cccf0498af2f47652b6ba3d6ad0d3ff1e"
+  },
+  "query_manifest": [
+    {
+      "query_id": "session.identity",
+      "catalogs": [],
+      "purpose": "session and read-only transaction identity",
+      "max_rows": 1,
+      "sql_sha256": "6393155eb7da3edc0ff49d5f53bad0179223d31286b6acc353b13f30acc2c6a2",
+      "classification": "READ_ONLY"
+    },
+    {
+      "query_id": "session.virtual_transaction",
+      "catalogs": [
+        "pg_catalog.pg_locks"
+      ],
+      "purpose": "virtual transaction id for the current backend only",
+      "max_rows": 1,
+      "sql_sha256": "435dc0f6531c6e05316c2f34d09f4c42c6e0d88a6a95096c9d9f40333f4351f6",
+      "classification": "READ_ONLY"
+    },
+    {
+      "query_id": "roots.managed_event_triggers",
+      "catalogs": [
+        "pg_catalog.pg_event_trigger",
+        "pg_catalog.pg_proc",
+        "pg_catalog.pg_namespace",
+        "pg_catalog.pg_language",
+        "pg_catalog.pg_depend",
+        "pg_catalog.pg_extension",
+        "pg_catalog.pg_roles"
+      ],
+      "purpose": "resolve the two compiled roots and their invoking event triggers",
+      "max_rows": 2,
+      "sql_sha256": "ed15c9312a8a922157adc9f7c383c43678c3395c1ad9eca4f965a10b639c9031",
+      "classification": "READ_ONLY"
+    },
+    {
+      "query_id": "graph.dependency_closure",
+      "catalogs": [
+        "pg_catalog.pg_event_trigger",
+        "pg_catalog.pg_proc",
+        "pg_catalog.pg_namespace",
+        "pg_catalog.pg_depend"
+      ],
+      "purpose": "bounded referenced dependency closure; each reachable node and physical dependency row once",
+      "max_rows": 512,
+      "sql_sha256": "6e91448feef8f41a693b0054feb0de845ba204d5903fc21d2eed83423a5f7ddb",
+      "classification": "READ_ONLY"
+    },
+    {
+      "query_id": "graph.node_details",
+      "catalogs": [
+        "pg_catalog.pg_depend",
+        "pg_catalog.pg_extension",
+        "pg_catalog.pg_class",
+        "pg_catalog.pg_type",
+        "pg_catalog.pg_proc",
+        "pg_catalog.pg_namespace",
+        "pg_catalog.pg_language",
+        "pg_catalog.pg_operator",
+        "pg_catalog.pg_constraint",
+        "pg_catalog.pg_trigger",
+        "pg_catalog.pg_collation",
+        "pg_catalog.pg_roles"
+      ],
+      "purpose": "sanitized structural node metadata, ownership hash, extension membership and definition hash",
+      "max_rows": 256,
+      "sql_sha256": "2935a1957d85cd8aefad224f838c80438957ded8dde63757409e3d4c1eecc0b2",
+      "classification": "READ_ONLY"
+    }
+  ],
+  "source_hash_encoding": "UTF-8 with CRLF normalized to LF",
+  "normalized_source_hashes": {
+    "src/modules/cobertura/phase48-managed-dependency-graph.ts": "3e2c0e274c2576ff3cdf249b8bc9acea342cafeddb5c179d92397e4f31b4c23d",
+    "src/tests/phase48.managed-dependency-graph.test.ts": "34ff5e92a0f5b327383edc59347341e8fadb20a72e5df5a30ed1589d8e572fee",
+    "src/tests/fixtures/phase48-managed-graph-v1-vectors.json": "1b074e3409641b3d8a004f6992193a159151d23d42994b91c862a2b453e8308a",
+    "src/modules/cobertura/phase48-managed-dependency-audit.ts": "fb5caaa2fe336b1766d47e5600987a4a1533314222e22283a5a338c6e4859aba",
+    "src/modules/cobertura/phase48-managed-dependency-audit-entry.ts": "b4b1ffa5b15255dff86c30d929d36f8644c7c7a9d0e8ca6ab3d7d24c52a12886",
+    "src/modules/cobertura/phase48-readonly-contract.ts": "3f3d07377e95438b165e81ac164965b93893508d5e817a2e9a11fcb1f002dcd5",
+    "src/modules/cobertura/phase48-sha256.ts": "ac725ff35cf8db1c12ddef2f9fbff2fda5a9bc93d069af9e10644c4c91bfe9bb",
+    "src/tests/phase48.managed-dependency-audit.test.ts": "312979e99e975df66bdff83087f9c2f39825e399d0aaeabc379a55e9269a8969",
+    "src/tests/phase48.managed-dependency-audit-entry.test.ts": "05a31b0eaad4782fed201e2c9955fed5e3233087ead12e87761c2ce95ba7c3f1",
+    "src/tests/phase48.authorization-tls-contract.test.ts": "f7d6216e636e9edd30a17d3823e7eac6d17bc1820ab66170e44d44dfdf17a8c0",
+    "src/tests/phase48.readonly-runner.test.ts": "48d98bd0a4588c8566edf65109e9bbcc04bd59331a05341fbfad61ff7cfd9f4b",
+    "src/tests/phase48.v6-cli-parser.test.ts": "2cd9b84b432d55b9e7dfd5af42bcc2f9ffba0f3e3bf9997570286cc62c0cce7d",
+    "src/tests/fixtures/phase48-v6-cli-git-fixture.ts": "acb360fa87253c979368fdcd0e20e9a31a5cab8b49856c9c29552a57b387f9f8",
+    "tmp/certify-phase48-managed-audit-local.ps1": "6f25bcdc0e721b39cedfdce20f47ed9f55398c8d5cfcb3a98728af337aa82204"
+  },
+  "sources": [
+    {
+      "path": "src/modules/cobertura/phase48-managed-dependency-graph.ts",
+      "size_bytes": 8519,
+      "sha256": "3e2c0e274c2576ff3cdf249b8bc9acea342cafeddb5c179d92397e4f31b4c23d"
+    },
+    {
+      "path": "src/tests/phase48.managed-dependency-graph.test.ts",
+      "size_bytes": 11572,
+      "sha256": "34ff5e92a0f5b327383edc59347341e8fadb20a72e5df5a30ed1589d8e572fee"
+    },
+    {
+      "path": "src/tests/fixtures/phase48-managed-graph-v1-vectors.json",
+      "size_bytes": 5572,
+      "sha256": "1b074e3409641b3d8a004f6992193a159151d23d42994b91c862a2b453e8308a"
+    },
+    {
+      "path": "src/modules/cobertura/phase48-managed-dependency-audit.ts",
+      "size_bytes": 24602,
+      "sha256": "fb5caaa2fe336b1766d47e5600987a4a1533314222e22283a5a338c6e4859aba"
+    },
+    {
+      "path": "src/modules/cobertura/phase48-managed-dependency-audit-entry.ts",
+      "size_bytes": 6207,
+      "sha256": "b4b1ffa5b15255dff86c30d929d36f8644c7c7a9d0e8ca6ab3d7d24c52a12886"
+    },
+    {
+      "path": "src/modules/cobertura/phase48-readonly-contract.ts",
+      "size_bytes": 9210,
+      "sha256": "3f3d07377e95438b165e81ac164965b93893508d5e817a2e9a11fcb1f002dcd5"
+    },
+    {
+      "path": "src/modules/cobertura/phase48-sha256.ts",
+      "size_bytes": 570,
+      "sha256": "ac725ff35cf8db1c12ddef2f9fbff2fda5a9bc93d069af9e10644c4c91bfe9bb"
+    },
+    {
+      "path": "src/tests/phase48.managed-dependency-audit.test.ts",
+      "size_bytes": 18246,
+      "sha256": "312979e99e975df66bdff83087f9c2f39825e399d0aaeabc379a55e9269a8969"
+    },
+    {
+      "path": "src/tests/phase48.managed-dependency-audit-entry.test.ts",
+      "size_bytes": 2707,
+      "sha256": "05a31b0eaad4782fed201e2c9955fed5e3233087ead12e87761c2ce95ba7c3f1"
+    },
+    {
+      "path": "src/tests/phase48.authorization-tls-contract.test.ts",
+      "size_bytes": 10356,
+      "sha256": "f7d6216e636e9edd30a17d3823e7eac6d17bc1820ab66170e44d44dfdf17a8c0"
+    },
+    {
+      "path": "src/tests/phase48.readonly-runner.test.ts",
+      "size_bytes": 9561,
+      "sha256": "48d98bd0a4588c8566edf65109e9bbcc04bd59331a05341fbfad61ff7cfd9f4b"
+    },
+    {
+      "path": "src/tests/phase48.v6-cli-parser.test.ts",
+      "size_bytes": 7339,
+      "sha256": "2cd9b84b432d55b9e7dfd5af42bcc2f9ffba0f3e3bf9997570286cc62c0cce7d"
+    },
+    {
+      "path": "src/tests/fixtures/phase48-v6-cli-git-fixture.ts",
+      "size_bytes": 6425,
+      "sha256": "acb360fa87253c979368fdcd0e20e9a31a5cab8b49856c9c29552a57b387f9f8"
+    },
+    {
+      "path": "tmp/certify-phase48-managed-audit-local.ps1",
+      "size_bytes": 6868,
+      "sha256": "6f25bcdc0e721b39cedfdce20f47ed9f55398c8d5cfcb3a98728af337aa82204"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "reports/phase48-managed-dependency-audit-local-8d0a839df8e94af7b2558c1394bdba97.json",
+      "size_bytes": 29161,
+      "sha256": "f6eb861096a53a72b467009b9b214908760c08b09697989606b4248f7c7ded99"
+    },
+    {
+      "path": "reports/phase48-managed-dependency-audit-receipts/phase48-managed-audit-ad8f674e1f244ae99d94eca6940cbd5d/phase48-064bc35c-86d1-44f1-b7d5-a290f406dbc0.receipt.json",
+      "size_bytes": 6663,
+      "sha256": "d14f32f3d3e1e275fcd8d68d04efb336fab56de3bbbe00ffbbb9234ce3116c8d"
+    },
+    {
+      "path": "reports/phase48-managed-dependency-audit-final.md",
+      "size_bytes": 5595,
+      "sha256": "fcc4d1224467f3307645e719638ad17c174c4990b07d4f15377d37ed7bdea379"
+    },
+    {
+      "path": "docs/phase48-managed-dependency-audit.md",
+      "size_bytes": 5929,
+      "sha256": "a90b3cb2bf148b673bceda98d4ed12c071bc67ec0500c8effb1aa66a9350cafe"
+    },
+    {
+      "path": "docs/phase48-enoent-classification.md",
+      "size_bytes": 3732,
+      "sha256": "4f17637b094f9d8433cb46b75a434681e1558d39e47894fcb0c071d6ca417c5f"
+    },
+    {
+      "path": "docs/phase48-three-failures-classification.md",
+      "size_bytes": 4243,
+      "sha256": "5d1a968cdff5ff95c954d8a4a6ef92bbf97f523f2c3ae1237e18c12859b2a027"
+    },
+    {
+      "path": "tmp/verify-managed-graph-final.ts",
+      "size_bytes": 2036,
+      "sha256": "f684bc69be29554ef0e41c05dc94d9eb064bd4417bd80b464517e89478407c01"
+    },
+    {
+      "path": "tmp/manifest-managed-graph-final.ts",
+      "size_bytes": 4196,
+      "sha256": "4a99187b63cd49867acbf58b1bd127b1bbadc83447552def095f71cc7ad0391e"
+    },
+    {
+      "path": "tmp/final-enoent-result.md",
+      "size_bytes": 2963,
+      "sha256": "3ec26616df053494c284373658654849f30f9db5332782fef0095c046c9a53f8"
+    },
+    {
+      "path": "tmp/resume-managed-inventory.txt",
+      "size_bytes": 1937112,
+      "sha256": "e16edf5f90602bbf5272ed2ea2e7fbcb24b6c6930f7d9796c3f07b8202710958"
+    },
+    {
+      "path": "tmp/graph-digests-contracts.log",
+      "size_bytes": 4262,
+      "sha256": "c6e42c803fa2aeefc0c3a23c42a05e303fc5d3c2d4bcf0863d0a54ce8b65ce73"
+    },
+    {
+      "path": "tmp/graph-digests-expanded.log",
+      "size_bytes": 23368,
+      "sha256": "36f81adccbf88836fe684d467242d62d45677a279291529be66d8170e17c0e75"
+    },
+    {
+      "path": "tmp/graph-digests-regressions.log",
+      "size_bytes": 13270,
+      "sha256": "a7b957f59695d0f821b2bfbcfb24c75766361caf08acc233bc78c890eb35bd6f"
+    },
+    {
+      "path": "tmp/graph-digests-postgres-final.log",
+      "size_bytes": 2650,
+      "sha256": "c2693096abb725e565fd352cdd5d6b6f13c7fb33c82d58e14812e2495db48405"
+    },
+    {
+      "path": "tmp/graph-digests-final-typecheck.log",
+      "size_bytes": 118,
+      "sha256": "10e8173d848e9bd84129831f65f963691f6fc706a90ac791119d9e470ec16166"
+    },
+    {
+      "path": "tmp/graph-digests-final-build.log",
+      "size_bytes": 126,
+      "sha256": "aa0c9fbfb8dd3118909895044e762df0e2306ed167ebed471615297df4cf25dc"
+    },
+    {
+      "path": "tmp/graph-digests-final-frontend.log",
+      "size_bytes": 3734,
+      "sha256": "27fa3685361dacbc9ede3cbea000ecc2e6c242e81c1e706190937c1590e0bcd8"
+    },
+    {
+      "path": "tmp/graph-digests-final-validation.json",
+      "size_bytes": 2538,
+      "sha256": "5c4e8840786980e1b203d5a72249f5e926305956d3f7fdfccc1bbacc7ead9cbd"
+    },
+    {
+      "path": "reports/phase48-managed-dependency-audit-local-bf984c52971e487bbb77a56af37c5ba2.json",
+      "size_bytes": 20862,
+      "sha256": "dee0ccaa696ab4e03edaef2868a7ba7900cb25bdb3a97836b0812ddeab4946de"
+    },
+    {
+      "path": "reports/phase48-managed-dependency-audit-local-bf22ee7915b9499fba321a43cc17de21.json",
+      "size_bytes": 19281,
+      "sha256": "426b4de155a4eb9013c8facb96d4f4564e8780108c962e54fd750c3089bf38c8"
+    }
+  ],
+  "protected_receipts": [
+    {
+      "path": "reports/phase48-diagnostic-6d2df967-4c7e-4865-a385-2f0381b6d82d.receipt.json",
+      "size_bytes": 145131,
+      "sha256": "5b8ee4eb8a1c8f50897e125d53d217eef0ce5f03e56d3bd186cb9ec2de869956"
+    },
+    {
+      "path": "reports/phase48-adc1f509-b069-45cd-9824-927ee144f6b3.stopped.json",
+      "size_bytes": 1448,
+      "sha256": "5349128c048b1033a2b6e2a3f7d1b2780962b1e725228b3ad1cd9f5d81828bc6"
+    }
+  ],
+  "fixtures": [
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-52GCEw",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-52GCEw/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-52GCEw/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-52GCEw/manifest.json",
+          "size_bytes": 1120,
+          "sha256": "1f73766f811d97b8c8f91953a10a4c6effc04f0391ce52114f04d8205424c88b"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-52GCEw/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "c0add7167a381df7e23be573283ade7976f2bf40d749164a141c76a625009fe0"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-52GCEw/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-52GCEw/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-52GCEw/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-6wufkn",
+      "tracked_files": 1516,
+      "source_ref": "4588fa2e00fafc9ceb396c3f13c18297bc6350a1",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-6wufkn/fixture-index.nul",
+          "size_bytes": 145402,
+          "sha256": "5cd58ff5c04cae151818c1a6c41af4a07fe0b2522a8c9b0aee445725cc4eeea2"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-6wufkn/fixture-names.nul",
+          "size_bytes": 69602,
+          "sha256": "9b3eff0037673537b92b7f13ce9972f1319ac753901965b4c351a7aca635e453"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-6wufkn/manifest.json",
+          "size_bytes": 1231,
+          "sha256": "eac86301443d45b3a95d84acbe4797e4c7daf3d88ad3a0a1322f1df1777ec9fe"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-6wufkn/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "d40ca7652b2a94b405b6c93d04182a08d6cdd3633b15c448a8331059f329629a"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-6wufkn/source-names.nul",
+          "size_bytes": 69602,
+          "sha256": "9b3eff0037673537b92b7f13ce9972f1319ac753901965b4c351a7aca635e453"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-6wufkn/source-tree.nul",
+          "size_bytes": 149950,
+          "sha256": "75f929115350556a95d1669c1550b6a05c582e750b6307759f0f02a677bbc3dd"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-6wufkn/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-8548fK",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-8548fK/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-8548fK/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-8548fK/manifest.json",
+          "size_bytes": 1120,
+          "sha256": "407ab115c13e55e8917f863df1fe8a98d4dd25b6309fe3d89cf6b208c26db01c"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-8548fK/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "839c7a0389dd1c0b7907963ae1b2284a1ba4c67c41e42288bee9bbe230791a54"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-8548fK/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-8548fK/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-8548fK/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-9tqsGM",
+      "tracked_files": 1516,
+      "source_ref": "4588fa2e00fafc9ceb396c3f13c18297bc6350a1",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-9tqsGM/fixture-index.nul",
+          "size_bytes": 145402,
+          "sha256": "5cd58ff5c04cae151818c1a6c41af4a07fe0b2522a8c9b0aee445725cc4eeea2"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-9tqsGM/fixture-names.nul",
+          "size_bytes": 69602,
+          "sha256": "9b3eff0037673537b92b7f13ce9972f1319ac753901965b4c351a7aca635e453"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-9tqsGM/manifest.json",
+          "size_bytes": 1231,
+          "sha256": "ead64424e038ac7f90f745f702c3c92b3216111913d23e73b9124e3e0eb08dd0"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-9tqsGM/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "a5e1f8dec9c54a23f7b06bd5a89ee5338717f1c8794009953560ca4ab2cdbbb7"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-9tqsGM/source-names.nul",
+          "size_bytes": 69602,
+          "sha256": "9b3eff0037673537b92b7f13ce9972f1319ac753901965b4c351a7aca635e453"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-9tqsGM/source-tree.nul",
+          "size_bytes": 149950,
+          "sha256": "75f929115350556a95d1669c1550b6a05c582e750b6307759f0f02a677bbc3dd"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-9tqsGM/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-bqegSu",
+      "tracked_files": 1516,
+      "source_ref": "4588fa2e00fafc9ceb396c3f13c18297bc6350a1",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-bqegSu/fixture-index.nul",
+          "size_bytes": 145402,
+          "sha256": "5cd58ff5c04cae151818c1a6c41af4a07fe0b2522a8c9b0aee445725cc4eeea2"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-bqegSu/fixture-names.nul",
+          "size_bytes": 69602,
+          "sha256": "9b3eff0037673537b92b7f13ce9972f1319ac753901965b4c351a7aca635e453"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-bqegSu/manifest.json",
+          "size_bytes": 1231,
+          "sha256": "598f1a2d072e814c9508dd8bbeb84c52c9de53c829e2315e3da1fd3ad3bb683e"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-bqegSu/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "4b41b6c177120d66b6960d0bca7f29f1086bdcda84e48fb1b48ef1f829f1587c"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-bqegSu/source-names.nul",
+          "size_bytes": 69602,
+          "sha256": "9b3eff0037673537b92b7f13ce9972f1319ac753901965b4c351a7aca635e453"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-bqegSu/source-tree.nul",
+          "size_bytes": 149950,
+          "sha256": "75f929115350556a95d1669c1550b6a05c582e750b6307759f0f02a677bbc3dd"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-bqegSu/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-BxIShU",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-BxIShU/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-BxIShU/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-BxIShU/manifest.json",
+          "size_bytes": 1076,
+          "sha256": "99dadd849dd1bc478e258a6649095583559c6632e35920aa41e53be499aed134"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-BxIShU/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "1b59851dd55e440852a78c52b4e371f9ec36df0e63cf852ed6c010b9b5c54a14"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-BxIShU/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-BxIShU/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-BxIShU/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-fBCJVl",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-fBCJVl/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-fBCJVl/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-fBCJVl/manifest.json",
+          "size_bytes": 1423,
+          "sha256": "f17ee30ead6d17e16f7598ada933d32b5704953e888ff02ed664e67d2fe0ddf2"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-fBCJVl/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "aebff4df75c63c238410fd57502049251d4c0af0845e9c762ce95e07027180f8"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-fBCJVl/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-fBCJVl/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-fBCJVl/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-iujECl",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-iujECl/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-iujECl/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-iujECl/manifest.json",
+          "size_bytes": 1076,
+          "sha256": "1a3c0816c5c75fdba3e0eb98494075e9c29b436d238aa6f5157736224c57b0af"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-iujECl/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "06b2c384ce4e67fe9d5521745525a504975a273ed8e0fe7a0f9b7405599b51ca"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-iujECl/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-iujECl/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-iujECl/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-mVbJlh",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-mVbJlh/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-mVbJlh/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-mVbJlh/manifest.json",
+          "size_bytes": 1120,
+          "sha256": "6110dfa2f9c732c5b1526899a4fd05b9d0f539233c20f12c0058c81e128d78dc"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-mVbJlh/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "7d6cfe19114f5f8381fcffbc742230a41820f396de631cd4292b78599fa460ef"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-mVbJlh/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-mVbJlh/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-mVbJlh/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-SRvneX",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-SRvneX/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-SRvneX/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-SRvneX/manifest.json",
+          "size_bytes": 1423,
+          "sha256": "a1d0b11b17b1d194225d588bf4033741f3426dc965ee7c5ae1c83c3aadc907e9"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-SRvneX/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "bcb2820e0feb7455230d91ee0b071f92df4e2cd13331bcbce0ed38620e059909"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-SRvneX/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-SRvneX/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-SRvneX/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-TodbMC",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-TodbMC/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-TodbMC/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-TodbMC/manifest.json",
+          "size_bytes": 1076,
+          "sha256": "ba8296825d51dd116b11a328a38dd3b6d3c3be96cbcff4479b28cfa7d1f9d621"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-TodbMC/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "5c88b4d1982c7931b50de958b2c726baaf407a4c0e982344cce3ee4fa5a0d025"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-TodbMC/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-TodbMC/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-TodbMC/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-Xykq5y",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-Xykq5y/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-Xykq5y/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-Xykq5y/manifest.json",
+          "size_bytes": 1423,
+          "sha256": "5a4c7a58e6cb53463c1ed3b52c55019389e473fc273ef91dc252cf79b828bd6d"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-Xykq5y/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "7dc6f340df019e0b18022f98ed13ceebcc4aa87c59dea3c08b75a7da0c7d8444"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-Xykq5y/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-Xykq5y/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-Xykq5y/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-yfDPTa",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-yfDPTa/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-yfDPTa/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-yfDPTa/manifest.json",
+          "size_bytes": 1423,
+          "sha256": "17c96e2c45b06e2942316d6e3701cda56b9e70bc2547196b2f7025f30ac0ae51"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-yfDPTa/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "fb3784a521ef255a99fc8290f4258717d6d9268b7732c8ea046aa187113ba4ae"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-yfDPTa/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-yfDPTa/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-yfDPTa/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-ZMxT3a",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-ZMxT3a/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-ZMxT3a/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-ZMxT3a/manifest.json",
+          "size_bytes": 1423,
+          "sha256": "ce6bd1388427c2bfc8a3fd3cee574183fa411b415320d0f9a6ea54dbbccf4313"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-ZMxT3a/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "20036bd682701ebb93ab8da12c306da2eceac4d7f58b114e302d7150f2c5ef06"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-ZMxT3a/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-ZMxT3a/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-ZMxT3a/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "directory": "tmp/phase48-v6-cli-fixtures/run-zOYRHV",
+      "tracked_files": 1582,
+      "source_ref": "d740cd902888cbe45bc60c22a2fd3f8ec9625b70",
+      "xlsx": {
+        "path": "data/SST/Caracterización adicional (respuestas).xlsx",
+        "blob": "54d429496874d9462f69d3449ceaf065a56b59d4",
+        "physical_name": "Caracterización adicional (respuestas).xlsx"
+      },
+      "evidence": [
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-zOYRHV/fixture-index.nul",
+          "size_bytes": 152474,
+          "sha256": "ccf0a9ba57c6cb7806ce1b98402ae617d2626944f069b24594d2073a581dd718"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-zOYRHV/fixture-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-zOYRHV/manifest.json",
+          "size_bytes": 1423,
+          "sha256": "0cf3bc4fc2a93b3276a3ab11bc1a139dc05a1c648421d912f710386446d71c0b"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-zOYRHV/manifest.sha256",
+          "size_bytes": 65,
+          "sha256": "5dbfefdaecd8e975695b415128b811e6215660bf2303782f2eaba923a031d155"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-zOYRHV/source-names.nul",
+          "size_bytes": 73374,
+          "sha256": "2a8cf01499bc27f3ff3226bf5ee8c5509e384720cbb7d86f1c42aa4aff5ed867"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-zOYRHV/source-tree.nul",
+          "size_bytes": 157220,
+          "sha256": "1682568740e4e38b20c906ce98e9c28d05e3ca8cdc1933eb7878a0d305d4ecf5"
+        },
+        {
+          "path": "tmp/phase48-v6-cli-fixtures/run-zOYRHV/status.nul",
+          "size_bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "expanded": {
+      "pass": 127,
+      "fail": 0,
+      "skip": 1,
+      "skip_executed_in_postgres": true
+    },
+    "regressions": {
+      "pass": 70,
+      "fail": 0,
+      "skip": 0
+    },
+    "postgres_tls": {
+      "pass": 9,
+      "fail": 0,
+      "skip": 0
+    },
+    "typecheck": true,
+    "backend_build": true,
+    "frontend_build": true,
+    "static_audit": true,
+    "published_graph_recomputed": true
+  }
+}

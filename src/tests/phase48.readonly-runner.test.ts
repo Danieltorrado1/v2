@@ -2,10 +2,40 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
+import {createHash} from 'node:crypto';
+import {sha256HexEqual} from '../modules/cobertura/phase48-sha256';
 import {assertReadQuery} from '../modules/cobertura/phase48-readonly-repository';
 import {validateReadOptions,READ_BACKUP_SHA,productionReadOnlyPreflight} from '../modules/cobertura/phase48-readonly-preflight';
 import {contractDigest,buildAuthorizationPhrase,authorizationFields,DIGEST_FIELDS,CERTIFICATE_SHA256} from '../modules/cobertura/phase48-readonly-contract';
 const options={target:'Local' as const,commit:'f'.repeat(40),backupSha:READ_BACKUP_SHA,certificateSha:CERTIFICATE_SHA256,observeFlags:async()=>({health200:true,databaseOk:true,outbox:false,sync:false,recalc:false,worker:false})};
+
+function auditPureShaHelper(text:string){
+ const source=ts.createSourceFile('phase48-sha256.ts',text,ts.ScriptTarget.Latest,true);
+ const statements=source.statements;
+ assert.equal(statements.length,4,'SHA helper top-level shape');
+ const dependency=statements[0]!;
+ assert.ok(ts.isImportDeclaration(dependency));
+ assert.equal((dependency.moduleSpecifier as ts.StringLiteral).text,'node:crypto');
+ assert.equal(dependency.importClause?.name,undefined);
+ const bindings=dependency.importClause?.namedBindings;
+ assert.ok(bindings&&ts.isNamedImports(bindings));
+ assert.deepEqual(bindings.elements.map(x=>({name:x.name.text,alias:x.propertyName?.text})),[{name:'timingSafeEqual',alias:undefined}]);
+ const constant=statements[1]!;
+ assert.ok(ts.isVariableStatement(constant));
+ assert.equal(constant.declarationList.declarations.length,1);
+ assert.equal(constant.declarationList.declarations[0]!.initializer?.kind,ts.SyntaxKind.RegularExpressionLiteral);
+ assert.ok(statements.slice(2).every(s=>ts.isFunctionDeclaration(s)&&!!s.body));
+ // Pin the complete audited functions as well as the inert top-level shape:
+ // any injected calls, env access, dynamic imports or side effects fail closed.
+ const observed=createHash('sha256').update(text.replace(/\r\n/g,'\n')).digest('hex');
+ assert.ok(sha256HexEqual(observed,'ac725ff35cf8db1c12ddef2f9fbff2fda5a9bc93d069af9e10644c4c91bfe9bb'),'SHA helper source changed');
+}
+
+test('certified SHA helper is pure and rejects injected side effects or dependencies',()=>{
+ const source=readFileSync('src/modules/cobertura/phase48-sha256.ts','utf8');
+ auditPureShaHelper(source);
+ for(const altered of [source+'\nconsole.log("effect");',source.replace("'node:crypto'","'node:fs'"),source.replace('return value.toLowerCase();','process.env.SHA; return value.toLowerCase();'),source.replace('return value.toLowerCase();','fetch("https://invalid"); return value.toLowerCase();'),source.replace('return value.toLowerCase();','require("node:fs"); return value.toLowerCase();'),source.replace('return value.toLowerCase();','import("./phase48-production-executor"); return value.toLowerCase();')])assert.throws(()=>auditPureShaHelper(altered));
+});
 test('read modes never accept mutation, resume or enabling options',()=>{
  for(const mode of ['PreflightOnly','PreviewOnly','PreflightAndPreview'])validateReadOptions({...options,mode});
  for(const mode of ['MutateProduction','Mutate','Apply','Resume','UNKNOWN'])assert.throws(()=>validateReadOptions({...options,mode}),/UNKNOWN_READ_MODE/);
@@ -16,11 +46,12 @@ test('repository blocks writable CTE, statement stacking, row locks and side-eff
  for(const sql of ["WITH x AS (DELETE FROM t RETURNING *) SELECT * FROM x","SELECT nextval('s')","SELECT public.lower('x')","SELECT pg_catalog.set_config('x','y',false)",'SELECT * INTO t FROM a','SELECT 1; DELETE FROM t','SELECT * FROM t FOR SHARE','SELECT custom_function()','INSERT INTO t VALUES(1)'])assert.throws(()=>assertReadQuery(sql));
 });
 test('static dependency barrier: no imports or dispatch to mutation modules',()=>{
+ auditPureShaHelper(readFileSync('src/modules/cobertura/phase48-sha256.ts','utf8'));
  const files=['src/modules/cobertura/phase48-readonly-connection.ts','src/modules/cobertura/phase48-readonly-schema-catalog.ts','src/modules/cobertura/phase48-readonly-schema-identity.ts','src/modules/cobertura/phase48-readonly-schema-scope.ts','src/modules/cobertura/phase48-readonly-tls.ts','src/modules/cobertura/phase48-readonly-target.ts','src/modules/cobertura/phase48-readonly-contract.ts','src/modules/cobertura/phase48-readonly-repository.ts','src/modules/cobertura/phase48-readonly-preflight.ts','src/modules/cobertura/phase48-readonly-receipts.ts','src/scripts/phase48-production-readonly.ts'];
  for(const file of files){
   const source=ts.createSourceFile(file,readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true);
   const visit=(node:ts.Node)=>{
-   if(ts.isImportDeclaration(node)){const name=(node.moduleSpecifier as ts.StringLiteral).text;assert.ok(name==='pg'||name==='typescript'||name.startsWith('node:')||/phase48-readonly-(connection|repository|preflight|receipts|contract|target|tls|schema-catalog|schema-identity|schema-scope)$/.test(name),'Forbidden dependency '+name);}
+   if(ts.isImportDeclaration(node)){const name=(node.moduleSpecifier as ts.StringLiteral).text;assert.ok(name==='pg'||name==='typescript'||name.startsWith('node:')||name==='./phase48-sha256'||/phase48-readonly-(connection|repository|preflight|receipts|contract|target|tls|schema-catalog|schema-identity|schema-scope)$/.test(name),'Forbidden dependency '+name);}
    if(ts.isCallExpression(node)&&node.expression.kind===ts.SyntaxKind.ImportKeyword)assert.fail('Dynamic imports are forbidden');
    if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&['require','eval','Function','applyProductionMutation','executeAtomic'].includes(node.expression.text))assert.fail('Forbidden call '+node.expression.text);
    if(ts.isCallExpression(node)&&ts.isPropertyAccessExpression(node.expression)&&node.expression.name.text==='query'&&node.arguments[0]){
@@ -32,6 +63,8 @@ test('static dependency barrier: no imports or dispatch to mutation modules',()=
    ts.forEachChild(node,visit);
   };visit(source);
   const fixture=(text:string)=>ts.createSourceFile('forbidden-fixture.ts',text,ts.ScriptTarget.Latest,true);
+  visit(fixture("import {sha256HexEqual} from './phase48-sha256';"));
+  for(const path of ['./new-helper','./phase48-sha256.ts','./phase48-sha256.js','../cobertura/phase48-sha256','./nested/../phase48-sha256','././phase48-sha256','@/phase48-sha256','phase48-sha256','./phase48-sha256-extra'])assert.throws(()=>visit(fixture(`import {sha256HexEqual} from '${path}';`)),/Forbidden dependency/);
   assert.throws(()=>visit(fixture("import {executeAtomic} from './phase48-production-executor';")),/Forbidden dependency/);
   assert.throws(()=>visit(fixture("import('./phase48-production-executor');")),/Dynamic imports/);
   assert.throws(()=>visit(fixture("require('./phase48-production-executor');")),/Forbidden call/);

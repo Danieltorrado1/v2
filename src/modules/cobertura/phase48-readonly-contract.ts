@@ -13,7 +13,17 @@ export function exactEqual(a:unknown,b:unknown):boolean {
  const left=Buffer.from(a),right=Buffer.from(b);
  return left.length===right.length&&timingSafeEqual(left,right);
 }
-export function validateCertificateHash(hash:unknown){if(!sha256HexEqual(hash,CERTIFICATE_SHA256))throw Error('CERTIFICATE_SHA256_INVALID');}
+export function validateCertificateHash(hash:unknown){
+ let matches:boolean;
+ try{matches=sha256HexEqual(hash,CERTIFICATE_SHA256);}
+ catch(error){
+  if(error instanceof Error&&error.message==='SHA256_FORMAT_INVALID')throw Error('CERTIFICATE_SHA256_INVALID');
+  throw error;
+ }
+ // This serialized certificate contract requires uppercase ASCII hex. Digest
+ // identity still uses the shared normalized, timing-safe byte comparison.
+ if(!matches||typeof hash!=='string'||!/^[0-9A-F]{64}$/.test(hash))throw Error('CERTIFICATE_SHA256_INVALID');
+}
 // Publishing the certified commit pin is the only permitted contract change
 // after the mutator code commit; any other contract drift blocks connection.
 export function assertCertifiedContract(currentCommit:string){

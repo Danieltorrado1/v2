@@ -1,0 +1,200 @@
+{
+  "kind": "PHASE48_MANAGED_DEPENDENCY_AUDIT",
+  "run_id": "phase48-064bc35c-86d1-44f1-b7d5-a290f406dbc0",
+  "status": "CAPTURED",
+  "phase": "complete",
+  "health_initial": {
+    "http_status": 200,
+    "success": true,
+    "database_status": "ok",
+    "outbox": false,
+    "recalc": false,
+    "worker_stopped": true
+  },
+  "health_final": {
+    "http_status": 200,
+    "success": true,
+    "database_status": "ok",
+    "outbox": false,
+    "recalc": false,
+    "worker_stopped": true
+  },
+  "health_final_error": null,
+  "credential_read_attempted": true,
+  "client_created": true,
+  "connect_attempted": true,
+  "tls": {
+    "protocol": "TLSv1.3",
+    "encrypted": true,
+    "authorized": true,
+    "rejectUnauthorized": true,
+    "ca_pinned": true,
+    "hostname_verified": true,
+    "servername_matches": true,
+    "authorization_error": null
+  },
+  "transaction_started": true,
+  "rollback_attempted": true,
+  "rollback_confirmed": true,
+  "rollback_error": null,
+  "client_end_attempted": true,
+  "client_closed": true,
+  "close_error": null,
+  "connection_count": 1,
+  "graph": {
+    "status": "CAPTURED",
+    "started_at_utc": "2026-10-16T14:52:42.196Z",
+    "server_version": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35228, 64-bit",
+    "backend_pid": 37464,
+    "virtual_transaction": "2/2",
+    "snapshot": "739:739:",
+    "read_only": "on",
+    "isolation": "repeatable read",
+    "roots": [
+      "extensions.pgrst_ddl_watch",
+      "extensions.pgrst_drop_watch"
+    ],
+    "root_events": [
+      {
+        "event_name": "pgrst_ddl_watch",
+        "event_type": "ddl_command_end",
+        "event_tags": null,
+        "enabled": "O",
+        "root": "extensions.pgrst_ddl_watch",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "definition_sha256": "35373762ba69ae05cf280c664fc5023362c747f1d5442d33e48c7908bc9aa5e2",
+        "owning_extension": null
+      },
+      {
+        "event_name": "pgrst_drop_watch",
+        "event_type": "sql_drop",
+        "event_tags": null,
+        "enabled": "O",
+        "root": "extensions.pgrst_drop_watch",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "definition_sha256": "5d7ccf556b433fc43ab6a0612dce88028e5929e7691e2e7b4ada46d803026d9f",
+        "owning_extension": null
+      }
+    ],
+    "root_digests": {
+      "extensions.pgrst_ddl_watch": "bb2adad04de8a9826b1c5e5cc424cfe318d259c9d54a12807dce465bc9091f68",
+      "extensions.pgrst_drop_watch": "bd8731e2dadaab8ae955e2df86e4e3c34deff10dce65b83bd7715b8f334fc5b6"
+    },
+    "graph_serialization_version": "phase48-managed-dependency-graph-v1",
+    "dependency_nodes_digest": "2d3055156f153f95f0663e997fde0a3a0b12a8dbc67711b69b681eb27870bc73",
+    "dependency_edges_digest": "e0663c4c107efc27ded410794f1e77a69fc800904dcec4e3b0ffc48419739d0f",
+    "node_count": 10,
+    "edge_count": 13,
+    "cycle_count": 0,
+    "max_depth": 3,
+    "definition_sha256": {
+      "extensions.pgrst_ddl_watch": "35373762ba69ae05cf280c664fc5023362c747f1d5442d33e48c7908bc9aa5e2",
+      "extensions.pgrst_drop_watch": "5d7ccf556b433fc43ab6a0612dce88028e5929e7691e2e7b4ada46d803026d9f"
+    },
+    "query_invocations": [
+      {
+        "query_id": "session.identity",
+        "duration_ms": 1
+      },
+      {
+        "query_id": "session.virtual_transaction",
+        "duration_ms": 1
+      },
+      {
+        "query_id": "roots.managed_event_triggers",
+        "duration_ms": 5
+      },
+      {
+        "query_id": "graph.dependency_closure",
+        "duration_ms": 2
+      },
+      {
+        "query_id": "graph.node_details",
+        "duration_ms": 3
+      }
+    ],
+    "query_manifest_digest": "5a61d17be65a21b552bf3451ff0cd35cccf0498af2f47652b6ba3d6ad0d3ff1e",
+    "query_manifest": [
+      {
+        "query_id": "session.identity",
+        "catalogs": [],
+        "purpose": "session and read-only transaction identity",
+        "max_rows": 1,
+        "sql_sha256": "6393155eb7da3edc0ff49d5f53bad0179223d31286b6acc353b13f30acc2c6a2",
+        "classification": "READ_ONLY"
+      },
+      {
+        "query_id": "session.virtual_transaction",
+        "catalogs": [
+          "pg_catalog.pg_locks"
+        ],
+        "purpose": "virtual transaction id for the current backend only",
+        "max_rows": 1,
+        "sql_sha256": "435dc0f6531c6e05316c2f34d09f4c42c6e0d88a6a95096c9d9f40333f4351f6",
+        "classification": "READ_ONLY"
+      },
+      {
+        "query_id": "roots.managed_event_triggers",
+        "catalogs": [
+          "pg_catalog.pg_event_trigger",
+          "pg_catalog.pg_proc",
+          "pg_catalog.pg_namespace",
+          "pg_catalog.pg_language",
+          "pg_catalog.pg_depend",
+          "pg_catalog.pg_extension",
+          "pg_catalog.pg_roles"
+        ],
+        "purpose": "resolve the two compiled roots and their invoking event triggers",
+        "max_rows": 2,
+        "sql_sha256": "ed15c9312a8a922157adc9f7c383c43678c3395c1ad9eca4f965a10b639c9031",
+        "classification": "READ_ONLY"
+      },
+      {
+        "query_id": "graph.dependency_closure",
+        "catalogs": [
+          "pg_catalog.pg_event_trigger",
+          "pg_catalog.pg_proc",
+          "pg_catalog.pg_namespace",
+          "pg_catalog.pg_depend"
+        ],
+        "purpose": "bounded referenced dependency closure; each reachable node and physical dependency row once",
+        "max_rows": 512,
+        "sql_sha256": "6e91448feef8f41a693b0054feb0de845ba204d5903fc21d2eed83423a5f7ddb",
+        "classification": "READ_ONLY"
+      },
+      {
+        "query_id": "graph.node_details",
+        "catalogs": [
+          "pg_catalog.pg_depend",
+          "pg_catalog.pg_extension",
+          "pg_catalog.pg_class",
+          "pg_catalog.pg_type",
+          "pg_catalog.pg_proc",
+          "pg_catalog.pg_namespace",
+          "pg_catalog.pg_language",
+          "pg_catalog.pg_operator",
+          "pg_catalog.pg_constraint",
+          "pg_catalog.pg_trigger",
+          "pg_catalog.pg_collation",
+          "pg_catalog.pg_roles"
+        ],
+        "purpose": "sanitized structural node metadata, ownership hash, extension membership and definition hash",
+        "max_rows": 256,
+        "sql_sha256": "2935a1957d85cd8aefad224f838c80438957ded8dde63757409e3d4c1eecc0b2",
+        "classification": "READ_ONLY"
+      }
+    ],
+    "rollback_attempted": true,
+    "rollback_confirmed": true,
+    "client_end_attempted": true,
+    "client_closed": true,
+    "writes": 0,
+    "mutator_invoked": false,
+    "transaction_started": true
+  },
+  "error": null,
+  "writes": 0,
+  "mutator_invoked": false,
+  "nonce_generated": false,
+  "phrase_generated": false
+}

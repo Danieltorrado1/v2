@@ -1,0 +1,690 @@
+{
+  "schema_version": 4,
+  "classification": "LOCAL_FIXTURE_ONLY",
+  "created_at_utc": "2026-10-16T14:52:42.372Z",
+  "postgres_version": "PostgreSQL 17.11 on x86_64-windows, compiled by msvc-19.44.35228, 64-bit",
+  "tls": {
+    "protocol": "TLSv1.3",
+    "encrypted": true,
+    "authorized": true,
+    "servername": "localhost"
+  },
+  "cluster": {
+    "host": "127.0.0.1",
+    "port": 50496,
+    "data_directory": "C:\\Users\\CORE ULTRA\\Desktop\\V2-instituciones-modalidad\\tmp\\phase48-managed-audit-ad8f674e1f244ae99d94eca6940cbd5d\\cluster",
+    "postmaster_pid": 32888
+  },
+  "connection_count": 1,
+  "transaction": {
+    "backend_pid": 37464,
+    "virtual_transaction": "2/2",
+    "snapshot": "739:739:",
+    "read_only": "on",
+    "isolation": "repeatable read"
+  },
+  "audit": {
+    "graph_serialization_version": "phase48-managed-dependency-graph-v1",
+    "status": "CAPTURED",
+    "roots": [
+      "extensions.pgrst_ddl_watch",
+      "extensions.pgrst_drop_watch"
+    ],
+    "root_events": [
+      {
+        "event_name": "pgrst_ddl_watch",
+        "event_type": "ddl_command_end",
+        "event_tags": null,
+        "enabled": "O",
+        "root": "extensions.pgrst_ddl_watch",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "definition_sha256": "35373762ba69ae05cf280c664fc5023362c747f1d5442d33e48c7908bc9aa5e2",
+        "owning_extension": null
+      },
+      {
+        "event_name": "pgrst_drop_watch",
+        "event_type": "sql_drop",
+        "event_tags": null,
+        "enabled": "O",
+        "root": "extensions.pgrst_drop_watch",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "definition_sha256": "5d7ccf556b433fc43ab6a0612dce88028e5929e7691e2e7b4ada46d803026d9f",
+        "owning_extension": null
+      }
+    ],
+    "nodes": [
+      {
+        "catalog_class": "pg_catalog.pg_event_trigger",
+        "namespace": null,
+        "object_type": "event trigger",
+        "structural_identity": "pgrst_ddl_watch",
+        "extension_identity": null,
+        "owner_class": null,
+        "owner_sha256": null,
+        "normalized_definition_sha256": "0f00603716ba9d71f2df5def52b1185c285fddaf1e880b7420dc7fa143760e2b"
+      },
+      {
+        "catalog_class": "pg_catalog.pg_event_trigger",
+        "namespace": null,
+        "object_type": "event trigger",
+        "structural_identity": "pgrst_drop_watch",
+        "extension_identity": null,
+        "owner_class": null,
+        "owner_sha256": null,
+        "normalized_definition_sha256": "35a42eb562a0eebb58b4cb96d2511d72bfe7c618036c510f9fd34e6c4d03d259"
+      },
+      {
+        "catalog_class": "pg_catalog.pg_extension",
+        "namespace": null,
+        "object_type": "extension",
+        "structural_identity": "plpgsql",
+        "extension_identity": null,
+        "owner_class": "role",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "normalized_definition_sha256": "332e96f5c2a6b00b5083c67ea2beed92eff77da630ebcde5e6901bae81845e60"
+      },
+      {
+        "catalog_class": "pg_catalog.pg_language",
+        "namespace": null,
+        "object_type": "language",
+        "structural_identity": "plpgsql",
+        "extension_identity": "plpgsql",
+        "owner_class": "role",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "normalized_definition_sha256": "41bf8f7ff18ab8cd8e1b8c88d25c83949047e229f9eafb49f4a82d1d8008ea68"
+      },
+      {
+        "catalog_class": "pg_catalog.pg_namespace",
+        "namespace": null,
+        "object_type": "schema",
+        "structural_identity": "extensions",
+        "extension_identity": null,
+        "owner_class": "role",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "normalized_definition_sha256": "6afbfcd132063a5fe647e52a0c40e428d2cc0ae35a800b648a212fd571a52b34"
+      },
+      {
+        "catalog_class": "pg_catalog.pg_proc",
+        "namespace": "extensions",
+        "object_type": "function",
+        "structural_identity": "extensions.pgrst_ddl_watch()",
+        "extension_identity": null,
+        "owner_class": "role",
+        "owner_sha256": "adeb8faabfcb35dd4e7a46bacedd94b0c9f2d83d37acc58b6de1dfc403d4a68d",
+        "normalized_definition_sha256": "35373762ba69ae05cf280c664fc5023362c747f1d5442d33e48c7908bc9aa5e2"
+      },
+      {
+        "catalog_class": "pg_catalog.pg_proc",
+        "namespace": "extensions",
+        "object_type": "function",
+        "structural_identity": "extensions.pgrst_drop_watch()",
+        "extension_identity": null,
+        "owner_class": "role",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "normalized_definition_sha256": "5d7ccf556b433fc43ab6a0612dce88028e5929e7691e2e7b4ada46d803026d9f"
+      },
+      {
+        "catalog_class": "pg_catalog.pg_proc",
+        "namespace": "pg_catalog",
+        "object_type": "function",
+        "structural_identity": "pg_catalog.plpgsql_call_handler()",
+        "extension_identity": "plpgsql",
+        "owner_class": "role",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "normalized_definition_sha256": "186212651aac07d438031509dc466accb2a37763a7866bc32cb41d6f096d084e"
+      },
+      {
+        "catalog_class": "pg_catalog.pg_proc",
+        "namespace": "pg_catalog",
+        "object_type": "function",
+        "structural_identity": "pg_catalog.plpgsql_inline_handler(pg_catalog.internal)",
+        "extension_identity": "plpgsql",
+        "owner_class": "role",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "normalized_definition_sha256": "1bfef96971bd4287ebb98c00e886e7596d67c08a1345ae9a08541cf9d269f4a2"
+      },
+      {
+        "catalog_class": "pg_catalog.pg_proc",
+        "namespace": "pg_catalog",
+        "object_type": "function",
+        "structural_identity": "pg_catalog.plpgsql_validator(pg_catalog.oid)",
+        "extension_identity": "plpgsql",
+        "owner_class": "role",
+        "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+        "normalized_definition_sha256": "37715133ec797c4779f242e5ebcd26331d0dd127d9f67451f8fe99e9c51b96dd"
+      }
+    ],
+    "edges": [
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_event_trigger",
+          "namespace": null,
+          "object_type": "event trigger",
+          "structural_identity": "pgrst_ddl_watch",
+          "extension_identity": null,
+          "owner_class": null,
+          "owner_sha256": null,
+          "normalized_definition_sha256": "0f00603716ba9d71f2df5def52b1185c285fddaf1e880b7420dc7fa143760e2b"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "extensions",
+          "object_type": "function",
+          "structural_identity": "extensions.pgrst_ddl_watch()",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "adeb8faabfcb35dd4e7a46bacedd94b0c9f2d83d37acc58b6de1dfc403d4a68d",
+          "normalized_definition_sha256": "35373762ba69ae05cf280c664fc5023362c747f1d5442d33e48c7908bc9aa5e2"
+        },
+        "deptype": "n",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_event_trigger",
+          "namespace": null,
+          "object_type": "event trigger",
+          "structural_identity": "pgrst_drop_watch",
+          "extension_identity": null,
+          "owner_class": null,
+          "owner_sha256": null,
+          "normalized_definition_sha256": "35a42eb562a0eebb58b4cb96d2511d72bfe7c618036c510f9fd34e6c4d03d259"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "extensions",
+          "object_type": "function",
+          "structural_identity": "extensions.pgrst_drop_watch()",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "5d7ccf556b433fc43ab6a0612dce88028e5929e7691e2e7b4ada46d803026d9f"
+        },
+        "deptype": "n",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_language",
+          "namespace": null,
+          "object_type": "language",
+          "structural_identity": "plpgsql",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "41bf8f7ff18ab8cd8e1b8c88d25c83949047e229f9eafb49f4a82d1d8008ea68"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_extension",
+          "namespace": null,
+          "object_type": "extension",
+          "structural_identity": "plpgsql",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "332e96f5c2a6b00b5083c67ea2beed92eff77da630ebcde5e6901bae81845e60"
+        },
+        "deptype": "e",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_language",
+          "namespace": null,
+          "object_type": "language",
+          "structural_identity": "plpgsql",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "41bf8f7ff18ab8cd8e1b8c88d25c83949047e229f9eafb49f4a82d1d8008ea68"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "pg_catalog",
+          "object_type": "function",
+          "structural_identity": "pg_catalog.plpgsql_call_handler()",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "186212651aac07d438031509dc466accb2a37763a7866bc32cb41d6f096d084e"
+        },
+        "deptype": "n",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_language",
+          "namespace": null,
+          "object_type": "language",
+          "structural_identity": "plpgsql",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "41bf8f7ff18ab8cd8e1b8c88d25c83949047e229f9eafb49f4a82d1d8008ea68"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "pg_catalog",
+          "object_type": "function",
+          "structural_identity": "pg_catalog.plpgsql_inline_handler(pg_catalog.internal)",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "1bfef96971bd4287ebb98c00e886e7596d67c08a1345ae9a08541cf9d269f4a2"
+        },
+        "deptype": "n",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_language",
+          "namespace": null,
+          "object_type": "language",
+          "structural_identity": "plpgsql",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "41bf8f7ff18ab8cd8e1b8c88d25c83949047e229f9eafb49f4a82d1d8008ea68"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "pg_catalog",
+          "object_type": "function",
+          "structural_identity": "pg_catalog.plpgsql_validator(pg_catalog.oid)",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "37715133ec797c4779f242e5ebcd26331d0dd127d9f67451f8fe99e9c51b96dd"
+        },
+        "deptype": "n",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "extensions",
+          "object_type": "function",
+          "structural_identity": "extensions.pgrst_ddl_watch()",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "adeb8faabfcb35dd4e7a46bacedd94b0c9f2d83d37acc58b6de1dfc403d4a68d",
+          "normalized_definition_sha256": "35373762ba69ae05cf280c664fc5023362c747f1d5442d33e48c7908bc9aa5e2"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_language",
+          "namespace": null,
+          "object_type": "language",
+          "structural_identity": "plpgsql",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "41bf8f7ff18ab8cd8e1b8c88d25c83949047e229f9eafb49f4a82d1d8008ea68"
+        },
+        "deptype": "n",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "extensions",
+          "object_type": "function",
+          "structural_identity": "extensions.pgrst_ddl_watch()",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "adeb8faabfcb35dd4e7a46bacedd94b0c9f2d83d37acc58b6de1dfc403d4a68d",
+          "normalized_definition_sha256": "35373762ba69ae05cf280c664fc5023362c747f1d5442d33e48c7908bc9aa5e2"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_namespace",
+          "namespace": null,
+          "object_type": "schema",
+          "structural_identity": "extensions",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "6afbfcd132063a5fe647e52a0c40e428d2cc0ae35a800b648a212fd571a52b34"
+        },
+        "deptype": "n",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "extensions",
+          "object_type": "function",
+          "structural_identity": "extensions.pgrst_drop_watch()",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "5d7ccf556b433fc43ab6a0612dce88028e5929e7691e2e7b4ada46d803026d9f"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_language",
+          "namespace": null,
+          "object_type": "language",
+          "structural_identity": "plpgsql",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "41bf8f7ff18ab8cd8e1b8c88d25c83949047e229f9eafb49f4a82d1d8008ea68"
+        },
+        "deptype": "n",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "extensions",
+          "object_type": "function",
+          "structural_identity": "extensions.pgrst_drop_watch()",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "5d7ccf556b433fc43ab6a0612dce88028e5929e7691e2e7b4ada46d803026d9f"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_namespace",
+          "namespace": null,
+          "object_type": "schema",
+          "structural_identity": "extensions",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "6afbfcd132063a5fe647e52a0c40e428d2cc0ae35a800b648a212fd571a52b34"
+        },
+        "deptype": "n",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "pg_catalog",
+          "object_type": "function",
+          "structural_identity": "pg_catalog.plpgsql_call_handler()",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "186212651aac07d438031509dc466accb2a37763a7866bc32cb41d6f096d084e"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_extension",
+          "namespace": null,
+          "object_type": "extension",
+          "structural_identity": "plpgsql",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "332e96f5c2a6b00b5083c67ea2beed92eff77da630ebcde5e6901bae81845e60"
+        },
+        "deptype": "e",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "pg_catalog",
+          "object_type": "function",
+          "structural_identity": "pg_catalog.plpgsql_inline_handler(pg_catalog.internal)",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "1bfef96971bd4287ebb98c00e886e7596d67c08a1345ae9a08541cf9d269f4a2"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_extension",
+          "namespace": null,
+          "object_type": "extension",
+          "structural_identity": "plpgsql",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "332e96f5c2a6b00b5083c67ea2beed92eff77da630ebcde5e6901bae81845e60"
+        },
+        "deptype": "e",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      },
+      {
+        "from": {
+          "catalog_class": "pg_catalog.pg_proc",
+          "namespace": "pg_catalog",
+          "object_type": "function",
+          "structural_identity": "pg_catalog.plpgsql_validator(pg_catalog.oid)",
+          "extension_identity": "plpgsql",
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "37715133ec797c4779f242e5ebcd26331d0dd127d9f67451f8fe99e9c51b96dd"
+        },
+        "to": {
+          "catalog_class": "pg_catalog.pg_extension",
+          "namespace": null,
+          "object_type": "extension",
+          "structural_identity": "plpgsql",
+          "extension_identity": null,
+          "owner_class": "role",
+          "owner_sha256": "a942b37ccfaf5a813b1432caa209a43b9d144e47ad0de1549c289c253e556cd5",
+          "normalized_definition_sha256": "332e96f5c2a6b00b5083c67ea2beed92eff77da630ebcde5e6901bae81845e60"
+        },
+        "deptype": "e",
+        "direction": "referenced",
+        "relation": {
+          "catalog": "pg_catalog.pg_depend",
+          "source_subobject": null,
+          "target_subobject": null
+        }
+      }
+    ],
+    "node_count": 10,
+    "edge_count": 13,
+    "cycle_count": 0,
+    "max_depth": 3,
+    "root_digests": {
+      "extensions.pgrst_ddl_watch": "bb2adad04de8a9826b1c5e5cc424cfe318d259c9d54a12807dce465bc9091f68",
+      "extensions.pgrst_drop_watch": "bd8731e2dadaab8ae955e2df86e4e3c34deff10dce65b83bd7715b8f334fc5b6"
+    },
+    "dependency_nodes_digest": "2d3055156f153f95f0663e997fde0a3a0b12a8dbc67711b69b681eb27870bc73",
+    "dependency_edges_digest": "e0663c4c107efc27ded410794f1e77a69fc800904dcec4e3b0ffc48419739d0f",
+    "query_manifest_digest": "5a61d17be65a21b552bf3451ff0cd35cccf0498af2f47652b6ba3d6ad0d3ff1e",
+    "query_manifest": [
+      {
+        "query_id": "session.identity",
+        "catalogs": [],
+        "purpose": "session and read-only transaction identity",
+        "max_rows": 1,
+        "sql_sha256": "6393155eb7da3edc0ff49d5f53bad0179223d31286b6acc353b13f30acc2c6a2",
+        "classification": "READ_ONLY"
+      },
+      {
+        "query_id": "session.virtual_transaction",
+        "catalogs": [
+          "pg_catalog.pg_locks"
+        ],
+        "purpose": "virtual transaction id for the current backend only",
+        "max_rows": 1,
+        "sql_sha256": "435dc0f6531c6e05316c2f34d09f4c42c6e0d88a6a95096c9d9f40333f4351f6",
+        "classification": "READ_ONLY"
+      },
+      {
+        "query_id": "roots.managed_event_triggers",
+        "catalogs": [
+          "pg_catalog.pg_event_trigger",
+          "pg_catalog.pg_proc",
+          "pg_catalog.pg_namespace",
+          "pg_catalog.pg_language",
+          "pg_catalog.pg_depend",
+          "pg_catalog.pg_extension",
+          "pg_catalog.pg_roles"
+        ],
+        "purpose": "resolve the two compiled roots and their invoking event triggers",
+        "max_rows": 2,
+        "sql_sha256": "ed15c9312a8a922157adc9f7c383c43678c3395c1ad9eca4f965a10b639c9031",
+        "classification": "READ_ONLY"
+      },
+      {
+        "query_id": "graph.dependency_closure",
+        "catalogs": [
+          "pg_catalog.pg_event_trigger",
+          "pg_catalog.pg_proc",
+          "pg_catalog.pg_namespace",
+          "pg_catalog.pg_depend"
+        ],
+        "purpose": "bounded referenced dependency closure; each reachable node and physical dependency row once",
+        "max_rows": 512,
+        "sql_sha256": "6e91448feef8f41a693b0054feb0de845ba204d5903fc21d2eed83423a5f7ddb",
+        "classification": "READ_ONLY"
+      },
+      {
+        "query_id": "graph.node_details",
+        "catalogs": [
+          "pg_catalog.pg_depend",
+          "pg_catalog.pg_extension",
+          "pg_catalog.pg_class",
+          "pg_catalog.pg_type",
+          "pg_catalog.pg_proc",
+          "pg_catalog.pg_namespace",
+          "pg_catalog.pg_language",
+          "pg_catalog.pg_operator",
+          "pg_catalog.pg_constraint",
+          "pg_catalog.pg_trigger",
+          "pg_catalog.pg_collation",
+          "pg_catalog.pg_roles"
+        ],
+        "purpose": "sanitized structural node metadata, ownership hash, extension membership and definition hash",
+        "max_rows": 256,
+        "sql_sha256": "2935a1957d85cd8aefad224f838c80438957ded8dde63757409e3d4c1eecc0b2",
+        "classification": "READ_ONLY"
+      }
+    ],
+    "query_invocations": [
+      {
+        "query_id": "session.identity",
+        "duration_ms": 1
+      },
+      {
+        "query_id": "session.virtual_transaction",
+        "duration_ms": 1
+      },
+      {
+        "query_id": "roots.managed_event_triggers",
+        "duration_ms": 5
+      },
+      {
+        "query_id": "graph.dependency_closure",
+        "duration_ms": 2
+      },
+      {
+        "query_id": "graph.node_details",
+        "duration_ms": 3
+      }
+    ]
+  },
+  "cycle_detection_fixture": {
+    "source": "synthetic catalog-edge unit fixture",
+    "cycle_marked": true,
+    "rows": 3
+  },
+  "rollback_attempted": true,
+  "rollback_confirmed": true,
+  "client_end_attempted": true,
+  "client_closed": true,
+  "writes": 0,
+  "mutator_invoked": false,
+  "source_sha256": "fb5caaa2fe336b1766d47e5600987a4a1533314222e22283a5a338c6e4859aba",
+  "graph_serialization_version": "phase48-managed-dependency-graph-v1",
+  "node_count": 10,
+  "edge_count": 13,
+  "dependency_nodes_digest": "2d3055156f153f95f0663e997fde0a3a0b12a8dbc67711b69b681eb27870bc73",
+  "dependency_edges_digest": "e0663c4c107efc27ded410794f1e77a69fc800904dcec4e3b0ffc48419739d0f",
+  "root_digests": {
+    "extensions.pgrst_ddl_watch": "bb2adad04de8a9826b1c5e5cc424cfe318d259c9d54a12807dce465bc9091f68",
+    "extensions.pgrst_drop_watch": "bd8731e2dadaab8ae955e2df86e4e3c34deff10dce65b83bd7715b8f334fc5b6"
+  },
+  "query_manifest_digest": "5a61d17be65a21b552bf3451ff0cd35cccf0498af2f47652b6ba3d6ad0d3ff1e",
+  "supersedes": "phase48-managed-dependency-audit-local-bf984c52971e487bbb77a56af37c5ba2.json",
+  "supersedes_sha256": "dee0ccaa696ab4e03edaef2868a7ba7900cb25bdb3a97836b0812ddeab4946de",
+  "supersedes_reason": "Versioned global node and edge digests now generated by the executed module; prior incomplete certificate preserved.",
+  "source_hash_encoding": "UTF-8 with CRLF normalized to LF",
+  "source_hashes": {
+    "src/modules/cobertura/phase48-managed-dependency-graph.ts": "3e2c0e274c2576ff3cdf249b8bc9acea342cafeddb5c179d92397e4f31b4c23d",
+    "src/tests/phase48.managed-dependency-graph.test.ts": "34ff5e92a0f5b327383edc59347341e8fadb20a72e5df5a30ed1589d8e572fee",
+    "src/tests/fixtures/phase48-managed-graph-v1-vectors.json": "1b074e3409641b3d8a004f6992193a159151d23d42994b91c862a2b453e8308a",
+    "src/modules/cobertura/phase48-managed-dependency-audit.ts": "fb5caaa2fe336b1766d47e5600987a4a1533314222e22283a5a338c6e4859aba",
+    "src/modules/cobertura/phase48-managed-dependency-audit-entry.ts": "b4b1ffa5b15255dff86c30d929d36f8644c7c7a9d0e8ca6ab3d7d24c52a12886",
+    "src/modules/cobertura/phase48-readonly-contract.ts": "3f3d07377e95438b165e81ac164965b93893508d5e817a2e9a11fcb1f002dcd5",
+    "src/modules/cobertura/phase48-sha256.ts": "ac725ff35cf8db1c12ddef2f9fbff2fda5a9bc93d069af9e10644c4c91bfe9bb",
+    "src/tests/phase48.managed-dependency-audit.test.ts": "312979e99e975df66bdff83087f9c2f39825e399d0aaeabc379a55e9269a8969",
+    "src/tests/phase48.managed-dependency-audit-entry.test.ts": "05a31b0eaad4782fed201e2c9955fed5e3233087ead12e87761c2ce95ba7c3f1",
+    "src/tests/phase48.authorization-tls-contract.test.ts": "f7d6216e636e9edd30a17d3823e7eac6d17bc1820ab66170e44d44dfdf17a8c0",
+    "src/tests/phase48.readonly-runner.test.ts": "48d98bd0a4588c8566edf65109e9bbcc04bd59331a05341fbfad61ff7cfd9f4b",
+    "src/tests/phase48.v6-cli-parser.test.ts": "2cd9b84b432d55b9e7dfd5af42bcc2f9ffba0f3e3bf9997570286cc62c0cce7d",
+    "src/tests/fixtures/phase48-v6-cli-git-fixture.ts": "acb360fa87253c979368fdcd0e20e9a31a5cab8b49856c9c29552a57b387f9f8",
+    "tmp/certify-phase48-managed-audit-local.ps1": "6f25bcdc0e721b39cedfdce20f47ed9f55398c8d5cfcb3a98728af337aa82204"
+  },
+  "aggregate_contract_verified": true,
+  "local_health_adapter": "controlled fixture; no HTTP requests",
+  "receipt": {
+    "path": "C:\\Users\\CORE ULTRA\\Desktop\\V2-instituciones-modalidad\\reports\\phase48-managed-dependency-audit-receipts\\phase48-managed-audit-ad8f674e1f244ae99d94eca6940cbd5d\\phase48-064bc35c-86d1-44f1-b7d5-a290f406dbc0.receipt.json",
+    "sha256": "d14f32f3d3e1e275fcd8d68d04efb336fab56de3bbbe00ffbbb9234ce3116c8d",
+    "size_bytes": 6663
+  },
+  "entry_source_sha256": "b4b1ffa5b15255dff86c30d929d36f8644c7c7a9d0e8ca6ab3d7d24c52a12886"
+}

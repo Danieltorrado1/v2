@@ -1,0 +1,28 @@
+import {readFileSync,writeFileSync,readdirSync,existsSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {join,relative} from 'node:path';
+import assert from 'node:assert/strict';
+import {validateGraphInventory,validateGraphEvidence} from '../src/modules/cobertura/phase48-managed-dependency-graph';
+import {sha256HexEqual} from '../src/modules/cobertura/phase48-sha256';
+const hash=(b:Buffer|string)=>createHash('sha256').update(b).digest('hex');
+const artifact=(path:string)=>{const b=readFileSync(path);return {path:path.replaceAll('\\','/'),size_bytes:b.length,sha256:hash(b)};};
+const certificate='reports/phase48-managed-dependency-audit-local-8d0a839df8e94af7b2558c1394bdba97.json';
+const c=JSON.parse(readFileSync(certificate,'utf8'));
+const graph=validateGraphInventory(c.audit,c);validateGraphEvidence(JSON.parse(readFileSync(c.receipt.path,'utf8')).graph,graph);
+for(const [path,expected] of Object.entries(c.source_hashes))assert.ok(sha256HexEqual(hash(readFileSync(path,'utf8').replace(/\r\n/g,'\n')),expected),path);
+const sources=Object.keys(c.source_hashes).map(artifact);
+const paths=[certificate,relative(process.cwd(),c.receipt.path),'reports/phase48-managed-dependency-audit-final.md','docs/phase48-managed-dependency-audit.md','docs/phase48-enoent-classification.md','docs/phase48-three-failures-classification.md','tmp/verify-managed-graph-final.ts','tmp/manifest-managed-graph-final.ts','tmp/final-enoent-result.md','tmp/resume-managed-inventory.txt','tmp/graph-digests-contracts.log','tmp/graph-digests-expanded.log','tmp/graph-digests-regressions.log','tmp/graph-digests-postgres-final.log','tmp/graph-digests-final-typecheck.log','tmp/graph-digests-final-build.log','tmp/graph-digests-final-frontend.log','tmp/graph-digests-final-validation.json','reports/phase48-managed-dependency-audit-local-bf984c52971e487bbb77a56af37c5ba2.json','reports/phase48-managed-dependency-audit-local-bf22ee7915b9499fba321a43cc17de21.json'];
+const fixtureRoot='tmp/phase48-v6-cli-fixtures';
+const fixtures=readdirSync(fixtureRoot,{withFileTypes:true}).filter(d=>d.isDirectory()).map(d=>{
+ const directory=join(fixtureRoot,d.name),m=JSON.parse(readFileSync(join(directory,'manifest.json'),'utf8'));
+ assert.equal(m.verified,true);assert.equal(m.test_passed,true);assert.equal(existsSync(join(directory,'repo')),false);
+ const evidence=readdirSync(directory).filter(file=>file.endsWith('.nul')||file==='manifest.json'||file==='manifest.sha256').map(file=>artifact(join(directory,file)));
+ return {directory:directory.replaceAll('\\','/'),tracked_files:m.tracked_files,source_ref:m.source_ref,xlsx:m.xlsx,evidence};
+});
+const protectedFiles=[['reports/phase48-diagnostic-6d2df967-4c7e-4865-a385-2f0381b6d82d.receipt.json',145131,'5b8ee4eb8a1c8f50897e125d53d217eef0ce5f03e56d3bd186cb9ec2de869956'],['reports/phase48-adc1f509-b069-45cd-9824-927ee144f6b3.stopped.json',1448,'5349128c048b1033a2b6e2a3f7d1b2780962b1e725228b3ad1cd9f5d81828bc6']] as const;
+const protected_receipts=protectedFiles.map(([path,size,expected])=>{const item=artifact(path);assert.equal(item.size_bytes,size);assert.ok(sha256HexEqual(item.sha256,expected));return item;});
+assert.equal(existsSync(c.cluster.data_directory),false);assert.equal(existsSync('tmp/phase48-managed-audit-8a6addda9ccc4e659b9d5670b2502d3f/cluster'),true);
+const manifest={schema_version:1,classification:'LOCAL_FIXTURE_ONLY',branch:'fix/phase48-managed-dependency-audit-entry',base_head:'d740cd902888cbe45bc60c22a2fd3f8ec9625b70',graph,query_manifest:c.audit.query_manifest,source_hash_encoding:c.source_hash_encoding,normalized_source_hashes:c.source_hashes,sources,artifacts:paths.map(artifact),protected_receipts,fixtures,checks:{expanded:{pass:127,fail:0,skip:1,skip_executed_in_postgres:true},regressions:{pass:70,fail:0,skip:0},postgres_tls:{pass:9,fail:0,skip:0},typecheck:true,backend_build:true,frontend_build:true,static_audit:true,published_graph_recomputed:true}};
+const path='reports/phase48-managed-dependency-audit-final-manifest.json';
+writeFileSync(path,JSON.stringify(manifest,null,2)+'\n',{flag:'wx'});
+console.log(JSON.stringify({...artifact(path),fixture_runs:fixtures.length,source_files:sources.length}));

@@ -4,7 +4,8 @@ import {mkdtempSync,readFileSync,writeFileSync,readdirSync,unlinkSync,rmdirSync}
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {checkServerIdentity} from 'node:tls';
-import {CERTIFICATE_SHA256,MUTATOR_COMMIT,BACKUP_SHA256,PROJECT_REF,DIGEST_FIELDS,authorizationFields,buildAuthorizationPhrase,parseAuthorizationPhrase} from '../modules/cobertura/phase48-readonly-contract';
+import {CERTIFICATE_SHA256,MUTATOR_COMMIT,BACKUP_SHA256,PROJECT_REF,DIGEST_FIELDS,authorizationFields,buildAuthorizationPhrase,parseAuthorizationPhrase,validateCertificateHash} from '../modules/cobertura/phase48-readonly-contract';
+import {normalizeSha256Hex,sha256HexEqual} from '../modules/cobertura/phase48-sha256';
 import {parseProductionGrant} from '../modules/cobertura/phase48-production-authorization';
 import {saveReadReceipt,consumeCurrentNonce,validateCurrentNonce,RECEIPT_FILE} from '../modules/cobertura/phase48-readonly-receipts';
 import {verifiedProductionConfig,assertVerifiedTls} from '../modules/cobertura/phase48-readonly-tls';
@@ -12,6 +13,21 @@ import {runReadOnlyLifecycle,READ_BACKUP_SHA} from '../modules/cobertura/phase48
 import {confirmation,validateOptions,type Options} from '../modules/cobertura/phase48-production-executor';
 
 function receipt(){const now=Date.now();const r:any={commit:'f'.repeat(40),backup_sha:BACKUP_SHA256,certificate_sha256:CERTIFICATE_SHA256,project_ref:PROJECT_REF,scope:{empresa:15,contrato:24,actor:12},phase48_rows:730,digests:Object.fromEntries(DIGEST_FIELDS.map(k=>[k,'a'.repeat(64)])),nonce:'b'.repeat(64),issued_at:new Date(now-1000).toISOString(),expires_at:new Date(now+60000).toISOString(),status:'PENDIENTE_DE_AUTORIZACION',authorization_status:'PENDIENTE_DE_AUTORIZACION',rollback:'CONFIRMED',principal_connection_closed:true,post_rollback_verification:{status:'STABLE',rollback:'CONFIRMED',connection_closed:true},writes:0,run_id:'phase48-preflight-local-fixture'};r.stable=true;r.first_digests={...r.digests};r.post_rollback_digests={...r.digests};r.digest_comparison=Object.fromEntries(DIGEST_FIELDS.map(k=>[k,true]));r.first_snapshot={pid:1,virtual_transaction:'1/1',read_only:'on'};r.post_rollback_snapshot={pid:2,virtual_transaction:'2/1',read_only:'on'};r.authorization_phrase=buildAuthorizationPhrase(authorizationFields(r));return r;}
+
+test('certificate boundary preserves canonical representation and maps only its own SHA error',()=>{
+ assert.doesNotThrow(()=>validateCertificateHash(CERTIFICATE_SHA256));
+ assert.equal(sha256HexEqual(CERTIFICATE_SHA256,CERTIFICATE_SHA256.toLowerCase()),true);
+ assert.equal(normalizeSha256Hex(CERTIFICATE_SHA256),CERTIFICATE_SHA256.toLowerCase());
+ for(const value of [undefined,null,42,'','a'.repeat(63),'a'.repeat(65),'ａ'.repeat(64),'g'.repeat(64),CERTIFICATE_SHA256+'\n']){
+  assert.throws(()=>sha256HexEqual(value,CERTIFICATE_SHA256),/^Error: SHA256_FORMAT_INVALID$/);
+  assert.throws(()=>validateCertificateHash(value),/^Error: CERTIFICATE_SHA256_INVALID$/);
+ }
+ for(const value of ['0'.repeat(64),CERTIFICATE_SHA256.toLowerCase()])assert.throws(()=>validateCertificateHash(value),/^Error: CERTIFICATE_SHA256_INVALID$/);
+ assert.equal(sha256HexEqual('0'.repeat(64),CERTIFICATE_SHA256),false);
+ const fields=authorizationFields(receipt());
+ assert.throws(()=>buildAuthorizationPhrase({...fields,backup_sha256:'bad'}),/^Error: SHA256_FORMAT_INVALID$/);
+ assert.throws(()=>buildAuthorizationPhrase({...fields,source_digest:'bad'}),/^Error: AUTHORIZATION_FIELD_INVALID$/);
+});
 test('strict phrase rejects missing/wrong/duplicate/unknown certificate, whitespace and ambiguous values',()=>{
  const r=receipt(),phrase=r.authorization_phrase;assert.equal(parseAuthorizationPhrase(phrase).certificate_sha256,CERTIFICATE_SHA256);
  assert.equal(parseAuthorizationPhrase(phrase).mutator_commit,MUTATOR_COMMIT);
