@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "revocations": [
+    {
+      "run_id": "59579751-dccf-49e2-9bc1-18608f02d07f",
+      "nonce_sha256": "ec6488c8f31ebcb69191037968f67bed4f7b1a0f57c677131204168140b76520",
+      "status": "REVOKED_NO_UTILIZABLE",
+      "reason": "FINAL_HEALTH_AFTER_RECEIPT_AND_EXPIRY",
+      "expired_at": "2026-10-16T00:55:04.611Z"
+    }
+  ]
+}

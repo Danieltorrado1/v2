@@ -5,11 +5,11 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
 import { ENTRY_CASE, buildPendingEntryPhrase, verifyPendingEntryPhrase, type EntryEvidence } from './nomina-turno-202-entry-contract';
-import { ENTRY_READONLY_REPORT_SHA256, CERTIFIED_REPORT_SHA256, CORRECTOR_COMMIT, DUMP_SHA256, HISTORICAL_PDF_SHA256, PRODUCTION_CA_SHA256, PRODUCTION_TARGET_PIN, PRODUCTION_TARGET_PIN_SHA256, matchesSha256, canonicalizeWindowsPath, sameCanonicalWindowsPath, validateOfflinePlan, runReadOnlyEntryPreflight, readHealthHttp, publishReadOnlyReceipt, type OfflinePlan, type PdfRead } from './nomina-turno-202-readonly-runner';
+import { ENTRY_READONLY_REPORT_SHA256, CERTIFIED_REPORT_SHA256, CORRECTOR_COMMIT, DUMP_SHA256, HISTORICAL_PDF_SHA256, PRODUCTION_CA_SHA256, PRODUCTION_TARGET_PIN, PRODUCTION_TARGET_PIN_SHA256, matchesSha256, canonicalizeWindowsPath, sameCanonicalWindowsPath, validateOfflinePlan, runReadOnlyEntryPreflight, readHealthHttp, publishReadOnlyReceipt, assertOrderedReadonlyReceipt, type OfflinePlan, type PdfRead, type HealthResponse, type PendingReceipt } from './nomina-turno-202-readonly-runner';
 
 export const PRODUCTION_HEALTH_URL='https://api.empiriasuite.com/api/health';
 export const BASE_CONTRACT_COMMIT='610dd263d8f7734ac504a4b5fbb7d05c01a4ea9b';
-export const PRODUCTION_LAUNCHER_BRANCH='fix/nomina-turno-202-offline-precheck-observability';
+export const PRODUCTION_LAUNCHER_BRANCH='fix/nomina-turno-202-final-health-before-receipt';
 export const UNTRACKED_AGGREGATE_SHA256='9c77ae07a8f4478b6e3a9d92d72f5074816a2888c2a98ef807c2ec19354f11c7';
 export const HISTORICAL_PDF_SIZE=3051;
 export const MEASUREMENT_ARTIFACT_CLASS='NON_EXECUTABLE_MEASUREMENT_ARTIFACT_UNAVAILABLE';
@@ -242,7 +242,7 @@ export async function readHistoricalPdf(env:LauncherEnvironment,expected:Readonl
   }finally{bytes?.fill(0);client=undefined as never;}
 }
 
-export function makeEntryEvidence(receipt:Awaited<ReturnType<typeof runReadOnlyEntryPreflight>>,head:string,now=Date.now()):EntryEvidence{
+export function makeEntryEvidence(receipt:PendingReceipt,head:string,healthFinal:HealthResponse,executionTimeline:EntryEvidence['executionTimeline'],runId=randomUUID(),now=Date.now()):EntryEvidence{
   const d=receipt.digests,pdf=receipt.pdf;
   const beforeSha=sha(JSON.stringify(Object.fromEntries(Object.entries(ENTRY_CASE.before).sort(([a],[b])=>a.localeCompare(b)))));
   const pdfMetadata=sha(JSON.stringify(Object.fromEntries(Object.entries({sha256:pdf.sha256,referenceSha256:pdf.referenceSha256,size:pdf.size,mime:pdf.mime,etag:pdf.etag}).sort(([a],[b])=>a.localeCompare(b)))));
@@ -255,9 +255,47 @@ export function makeEntryEvidence(receipt:Awaited<ReturnType<typeof runReadOnlyE
   const seq=receipt.sequenceBaseline;
   const sequenceBaseline={auditoria:seq['public.auditoria_id_seq']!,auditoria_eventos:seq['public.auditoria_eventos_id_seq']!,nomina_revision_operativa:seq['public.nomina_revision_operativa_id_seq']!,historial_cambios:seq['public.historial_cambios_id_seq']!};
   if(Object.values(sequenceBaseline).some(x=>!/^\d+$/.test(x)))fail('SEQUENCE_RECEIPT_INVALID');
-  const evidence:EntryEvidence={codeSha:sha(head),evidenceSha:ENTRY_READONLY_REPORT_SHA256,dumpSha:DUMP_SHA256,historicalPdfSha:HISTORICAL_PDF_SHA256,runId:randomUUID(),nonce:randomBytes(24).toString('hex'),expiresAt:new Date(now+15*60_000).toISOString(),first:snapshots[0],second:snapshots[1],runIdUnique:true,nonceUnused:true,health:healthEvidence,pdfAttestation:'NOT_SENT_OR_DELIVERED_NOT_APPROVED_OR_SIGNED_NOT_PAID_OR_POSTED_NOT_USED_OFFICIALLY',historyHasNoLaterRelatedAudit:true,duplicateCount:0,priorRepairCount:0,lifecycleBlockerCount:0,pdf:{sha256:pdf.sha256,referenceSha256:pdf.referenceSha256,size:pdf.size,mime:'application/pdf',etag:pdf.etag},exactBeforeState:true,sequenceBaseline};
   if(h?.httpStatus!==200||h?.databaseStatus!=='ok'||h?.outbox!==false||checks.syncConfirmation?.enabled!==false||h?.recalcRequested||h?.recalcActive||h?.workerStopped!==true||checks.locks?.waiting!==0||checks.locks?.ddl!==0)fail('RECEIPT_CHECKS_INVALID');
+  if(healthFinal.httpStatus!==200||healthFinal.databaseStatus!=='ok'||healthFinal.outbox||healthFinal.sync||healthFinal.recalcRequested||healthFinal.recalcActive||!healthFinal.workerStopped)fail('FINAL_HEALTH_GATE_FAILED');
+  const evidence:EntryEvidence={codeSha:sha(head),evidenceSha:ENTRY_READONLY_REPORT_SHA256,dumpSha:DUMP_SHA256,historicalPdfSha:HISTORICAL_PDF_SHA256,runId,nonce:randomBytes(24).toString('hex'),expiresAt:new Date(now+15*60_000).toISOString(),first:snapshots[0],second:snapshots[1],healthFinal:healthFinal as EntryEvidence['healthFinal'],executionTimeline,runIdUnique:true,nonceUnused:true,health:healthEvidence,pdfAttestation:'NOT_SENT_OR_DELIVERED_NOT_APPROVED_OR_SIGNED_NOT_PAID_OR_POSTED_NOT_USED_OFFICIALLY',historyHasNoLaterRelatedAudit:true,duplicateCount:0,priorRepairCount:0,lifecycleBlockerCount:0,pdf:{sha256:pdf.sha256,referenceSha256:pdf.referenceSha256,size:pdf.size,mime:pdf.mime as 'application/pdf',etag:pdf.etag},exactBeforeState:true,sequenceBaseline};
   return evidence;
+}
+
+type OrderedFinalizationOptions=Readonly<{
+  receipt:PendingReceipt;plan:OfflinePlan;output:string;state:LauncherExecutionState;
+  readFinalHealth:()=>Promise<HealthResponse>;
+  publish:typeof publishReadOnlyReceipt;
+  now?:()=>number;
+}>;
+const nextOrderedIso=(after:string,now=Date.now())=>new Date(Math.max(now,Date.parse(after)+1)).toISOString();
+export async function finalizeOrderedReadOnlyRun(options:OrderedFinalizationOptions){
+  const {receipt,plan,output,state}=options,t=receipt.executionTimeline,now=options.now??Date.now;
+  const order=[t.read1_rollback_completed_at,t.read1_closed_at,t.read2_rollback_completed_at,t.read2_closed_at].map(Date.parse);
+  if(order.some(x=>!Number.isFinite(x))||order.some((x,i)=>i>0&&x<=order[i-1]!))fail('READONLY_CLEANUP_ORDER_INVALID');
+  state.phase='HEALTH_FINAL';state.health_final_attempted=true;
+  const healthFinal=await options.readFinalHealth();
+  if(healthFinal.httpStatus!==200||healthFinal.databaseStatus!=='ok'||healthFinal.outbox||healthFinal.sync||healthFinal.recalcRequested||healthFinal.recalcActive||!healthFinal.workerStopped)fail('HEALTH_FINAL_OR_FLAGS');
+  const passedHealthFinal={httpStatus:200,databaseStatus:'ok',outbox:false,sync:false,recalcRequested:false,recalcActive:false,workerStopped:true} as const;
+  state.health_final_completed=true;
+  const finalHealthAt=nextOrderedIso(t.read2_closed_at,now());
+  const runId=randomUUID();
+  const baselineAt=nextOrderedIso(finalHealthAt,now());
+  const timeline={...t,final_health_completed_at:finalHealthAt,baseline_published_at:baselineAt};
+  const baselineBody={status:'BASELINE_VERIFIED',run_id:runId,head:plan.head,correctorCommit:CORRECTOR_COMMIT,reportSha256:CERTIFIED_REPORT_SHA256,entryReportSha256:ENTRY_READONLY_REPORT_SHA256,dumpSha256:DUMP_SHA256,pdfSha256:HISTORICAL_PDF_SHA256,digests:receipt.digests,sequenceBaseline:receipt.sequenceBaseline,checks:receipt.checks,healthFinal:passedHealthFinal,executionTimeline:timeline};
+  assertOrderedReadonlyReceipt(baselineBody,'baseline');
+  state.phase='BASELINE_PUBLICATION';
+  const baseline=await options.publish(output,'baseline',randomUUID(),baselineBody);
+  state.baseline_published=true;
+  const issuedAt=now(),evidence=makeEntryEvidence(receipt,plan.head,passedHealthFinal,timeline,runId,issuedAt),phrase=buildPendingEntryPhrase(evidence,issuedAt);
+  if(!verifyPendingEntryPhrase(phrase,evidence,issuedAt))fail('PENDING_PHRASE_SELF_CHECK');
+  const sanitized={...receipt,connections:receipt.connections.map(c=>({id:c.id,observedAt:c.observedAt,serverVersion:c.serverVersion,tlsProtocol:c.tlsProtocol,servernameSha256:sha(c.servername),transactionReadOnly:c.transactionReadOnly}))};
+  const pendingAt=nextOrderedIso(baselineAt,now()),pendingTimeline={...timeline,pending_receipt_published_at:pendingAt};
+  const pendingBody={...sanitized,healthFinal:passedHealthFinal,executionTimeline:pendingTimeline,baseline:{path:path.relative(output,baseline.path).replace(/\\/g,'/'),sha256:baseline.sha256},phrase};
+  assertOrderedReadonlyReceipt(pendingBody,'pending');
+  state.phase='PENDING_PUBLICATION';
+  const pending=await options.publish(output,'pending',randomUUID(),pendingBody);
+  state.final_receipt_published=true;
+  return Object.freeze({status:'PENDING_USER_CONFIRMATION',phrase,receiptPath:path.relative(plan.workspaceRoot,pending.path).replace(/\\/g,'/'),receiptSha256:pending.sha256,baselinePath:path.relative(plan.workspaceRoot,baseline.path).replace(/\\/g,'/'),baselineSha256:baseline.sha256,healthFinal,executionTimeline:pendingTimeline});
 }
 
 /** Runs only after offline pins. Secrets remain local to this call and never enter logs or receipts. */
@@ -273,19 +311,13 @@ export async function runProductionLauncher(args:LauncherArguments){
     assertServiceRoleCredential(env.SUPABASE_SERVICE_ROLE_KEY);
     const syncConfirmation={source:'MANUAL_CURRENT' as const,enabled:false as const,observedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+5*60_000).toISOString()};
     state.phase='SNAPSHOTS';const receipt=await runReadOnlyEntryPreflight(plan,{plan,readCredentials:async()=>{const target=validateServiceConfiguration(env!);assertTargetMatchesPin(target);return{user:decodeURIComponent(new URL(env!.DATABASE_URL).username),password:decodeURIComponent(new URL(env!.DATABASE_URL).password),database:target.databaseName};},readPdf:ref=>readHistoricalPdf(env!,ref),syncConfirmation,onExecutionEvent:event=>observeRunnerEvent(state,event)});
-    const issuedAt=Date.now(),evidence=makeEntryEvidence(receipt,plan.head,issuedAt),phrase=buildPendingEntryPhrase(evidence,issuedAt);if(!verifyPendingEntryPhrase(phrase,evidence,issuedAt))fail('PENDING_PHRASE_SELF_CHECK');
     state.phase='RECEIPT_DIRECTORY';
     const output=await realpath(canonicalizeWindowsPath(args['--output-directory'])).catch(()=>fail('OUTPUT_DIRECTORY_MISSING'));if(!sameCanonicalWindowsPath(output,args['--output-directory']))fail('OUTPUT_DIRECTORY_SYMLINK_OR_PATH_MISMATCH');
-    state.phase='BASELINE_PUBLICATION';
-    const id=randomUUID(),baseline=await publishReadOnlyReceipt(output,'baseline',id,{status:'BASELINE_VERIFIED',run_id:evidence.runId,head:plan.head,correctorCommit:CORRECTOR_COMMIT,reportSha256:CERTIFIED_REPORT_SHA256,entryReportSha256:ENTRY_READONLY_REPORT_SHA256,dumpSha256:DUMP_SHA256,pdfSha256:HISTORICAL_PDF_SHA256,digests:receipt.digests,sequenceBaseline:receipt.sequenceBaseline,checks:receipt.checks});
-    state.baseline_published=true;state.phase='PENDING_PUBLICATION';
-    const sanitized={...receipt,connections:receipt.connections.map(c=>({id:c.id,observedAt:c.observedAt,serverVersion:c.serverVersion,tlsProtocol:c.tlsProtocol,servernameSha256:sha(c.servername),transactionReadOnly:c.transactionReadOnly}))};
-    const pending=await publishReadOnlyReceipt(output,'pending',randomUUID(),{...sanitized,baseline:{path:path.relative(output,baseline.path).replace(/\\/g,'/'),sha256:baseline.sha256},phrase});
-    state.final_receipt_published=true;result=Object.freeze({status:'PENDING_USER_CONFIRMATION',phrase,receiptPath:path.relative(plan.workspaceRoot,pending.path).replace(/\\/g,'/'),receiptSha256:pending.sha256,baselinePath:path.relative(plan.workspaceRoot,baseline.path).replace(/\\/g,'/'),baselineSha256:baseline.sha256});
+    result=await finalizeOrderedReadOnlyRun({receipt,plan,output,state,readFinalHealth:()=>readHealthHttp(plan!),publish:publishReadOnlyReceipt});
   }catch(error){original=error;failed=true;failurePhase=state.phase;}
   finally{
     state.phase='CLEANUP';if(env){env.DATABASE_URL='';env.SUPABASE_URL='';env.SUPABASE_SERVICE_ROLE_KEY='';env.SUPABASE_STORAGE_BUCKET='';env=undefined;}
-    if(failed&&state.offline_precheck_started){const recorded=await recordLauncherFailure(state,canonicalizeWindowsPath(args['--output-directory']),original,failurePhase,plan&&state.health_initial_attempted?()=>readHealthHttp(plan!):undefined);stoppedReceiptPublished='published'in recorded;receiptPublishError='publicationFailure'in recorded?recorded.publicationFailure:undefined;}
+    if(failed&&state.offline_precheck_started){const recorded=await recordLauncherFailure(state,canonicalizeWindowsPath(args['--output-directory']),original,failurePhase);stoppedReceiptPublished='published'in recorded;receiptPublishError='publicationFailure'in recorded?recorded.publicationFailure:undefined;}
   }
   if(failed){const safe=sanitizeLauncherFailure(original,failurePhase,state.precheck_step_id);const err=new Error(`LAUNCHER_STOPPED_${safe.code}`);Object.defineProperty(err,'cause',{value:original,enumerable:false});Object.defineProperty(err,'failure_phase',{value:failurePhase,enumerable:false});Object.defineProperty(err,'precheck_step_id',{value:state.precheck_step_id,enumerable:false});Object.defineProperty(err,'stoppedReceiptPublished',{value:stoppedReceiptPublished,enumerable:false});if(receiptPublishError!==undefined)Object.defineProperty(err,'receiptPublicationFailure',{value:sanitizeLauncherFailure(receiptPublishError,'STOPPED_RECEIPT_PUBLICATION'),enumerable:false});throw err;}
   return result;

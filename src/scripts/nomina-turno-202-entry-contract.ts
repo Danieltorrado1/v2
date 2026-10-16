@@ -4,6 +4,7 @@
  * It can validate/build a pending confirmation string; it cannot activate or execute it.
  */
 import { createHash } from 'node:crypto';
+import revokedNonceRegistry from './nomina-turno-202-revoked-nonces.json';
 
 export const ENTRY_CASE = Object.freeze({
   empresa: 15, contrato: 24, periodo: 3, actor: 12, turno: 202, movimiento: 192,
@@ -24,6 +25,8 @@ export type EntryEvidence = Readonly<{
   codeSha: string; evidenceSha: string; dumpSha: string; historicalPdfSha: string;
   runId: string; nonce: string; expiresAt: string;
   first: ReadSnapshot; second: ReadSnapshot;
+  healthFinal: Readonly<{httpStatus:200;databaseStatus:'ok';outbox:false;sync:false;recalcRequested:false;recalcActive:false;workerStopped:true}>;
+  executionTimeline: Readonly<{read1_rollback_completed_at:string;read1_closed_at:string;read2_rollback_completed_at:string;read2_closed_at:string;final_health_completed_at:string}>;
   runIdUnique: true; nonceUnused: true;
   health: Readonly<{ http: 200; database: 'ok'; outbox: false; sync: false; recalc: false; worker: false; waitingLocks: 0; activeDdl: 0 }>;
   pdfAttestation: 'NOT_SENT_OR_DELIVERED_NOT_APPROVED_OR_SIGNED_NOT_PAID_OR_POSTED_NOT_USED_OFFICIALLY';
@@ -40,6 +43,7 @@ const fail = (code: string): never => { throw new Error(code); };
 const sha = (s: string) => /^[a-f0-9]{64}$/.test(s);
 const noncePattern = /^[a-f0-9]{48}$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const revokedNonceHashes = new Set(revokedNonceRegistry.revocations.map((x)=>x.nonce_sha256));
 const REQUIRED_DIGESTS = ['critical_schema','sources','movement_192','detail_220','account_77','revision_20114','related_audits','related_history','pdf_metadata','protected_tables','write_set_before','sequence_baseline'] as const;
 const SEQUENCE_ADVANCES_CANONICAL = 'public.auditoria_id_seq=+4;public.auditoria_eventos_id_seq=+4;public.nomina_revision_operativa_id_seq=+1;public.historial_cambios_id_seq=+42';
 const sorted = (o: Record<string, unknown>) => JSON.stringify(Object.fromEntries(Object.entries(o).sort(([a],[b])=>a.localeCompare(b))));
@@ -49,6 +53,7 @@ const sequenceAdvancesSha = createHash('sha256').update(sorted(ENTRY_CASE.allowe
 function validate(e: EntryEvidence, now: number) {
   for (const [name, value] of Object.entries({code:e.codeSha,evidence:e.evidenceSha,dump:e.dumpSha,pdf:e.historicalPdfSha})) if (!sha(value)) fail(`INVALID_${name.toUpperCase()}_SHA`);
   if (!uuidPattern.test(e.runId) || !noncePattern.test(e.nonce)) fail('INVALID_RUN_OR_NONCE');
+  if(revokedNonceHashes.has(createHash('sha256').update(Buffer.from(e.nonce,'hex')).digest('hex')))fail('NONCE_REVOKED_NO_UTILIZABLE');
   if (e.runIdUnique !== true || e.nonceUnused !== true) fail('RUN_OR_NONCE_REUSED');
   const expiry = Date.parse(e.expiresAt);
   if (!Number.isFinite(expiry) || expiry <= now || expiry > now + 15 * 60_000) fail('EXPIRY_OUTSIDE_15_MINUTES');
@@ -56,6 +61,9 @@ function validate(e: EntryEvidence, now: number) {
   if (REQUIRED_DIGESTS.some(k => !sha(e.first.digestSet[k] ?? '')) || Object.keys(e.first.digestSet).length !== REQUIRED_DIGESTS.length) fail('REQUIRED_DIGEST_SET_INCOMPLETE');
   if (e.first.values.beforeStateSha !== digest(ENTRY_CASE.before) || e.second.values.beforeStateSha !== digest(ENTRY_CASE.before)) fail('BEFORE_STATE_MISMATCH');
   if (e.health.http !== 200 || e.health.database !== 'ok' || e.health.outbox || e.health.sync || e.health.recalc || e.health.worker || e.health.waitingLocks !== 0 || e.health.activeDdl !== 0) fail('HEALTH_OR_QUIESCENCE_GATE_FAILED');
+  const timeline=[e.executionTimeline.read1_rollback_completed_at,e.executionTimeline.read1_closed_at,e.executionTimeline.read2_rollback_completed_at,e.executionTimeline.read2_closed_at,e.executionTimeline.final_health_completed_at].map(Date.parse);
+  if(timeline.some(x=>!Number.isFinite(x))||timeline.some((x,i)=>i>0&&x<=timeline[i-1]!))fail('EXECUTION_TIMELINE_INVALID');
+  if(e.healthFinal.httpStatus!==200||e.healthFinal.databaseStatus!=='ok'||e.healthFinal.outbox||e.healthFinal.sync||e.healthFinal.recalcRequested||e.healthFinal.recalcActive||!e.healthFinal.workerStopped)fail('FINAL_HEALTH_GATE_FAILED');
   if (e.pdfAttestation !== 'NOT_SENT_OR_DELIVERED_NOT_APPROVED_OR_SIGNED_NOT_PAID_OR_POSTED_NOT_USED_OFFICIALLY') fail('DOCUMENT_ATTESTATION_MISSING');
   if (!e.exactBeforeState || e.historyHasNoLaterRelatedAudit !== true || e.duplicateCount !== 0 || e.priorRepairCount !== 0 || e.lifecycleBlockerCount !== 0) fail('CASE_GATES_FAILED');
   if (e.pdf.sha256 !== e.historicalPdfSha || !sha(e.pdf.referenceSha256) || e.pdf.size <= 0 || !e.pdf.etag) fail('HISTORICAL_DOCUMENT_MISMATCH');
@@ -75,6 +83,7 @@ export function buildPendingEntryPhrase(e: EntryEvidence, now = Date.now()): str
     `empresa=15 contrato=24 periodo=3 actor=12 turno=202 movimiento=192 cuenta=77 detalle=220 empleado=837 revision=20114`,
     'before=cantidad:1,tarifa:97800,total:97800,cuenta:PENDIENTE,revision:REVISADO/v30,afecta_seguridad_social:false',
     'after=cantidad:2,tarifa:97800,total:195600,cuenta:PENDIENTE,revision:REQUIERE_REVISION/v31,referencia_anterior:INVALIDADA,afecta_seguridad_social:false',
+    `final_health=HTTP${e.healthFinal.httpStatus},database:${e.healthFinal.databaseStatus},outbox:${e.healthFinal.outbox},sync:${e.healthFinal.sync},recalc_requested:${e.healthFinal.recalcRequested},recalc_active:${e.healthFinal.recalcActive},worker_stopped:${e.healthFinal.workerStopped}`,
     `digest_set=${digestSet} write_set=${ENTRY_CASE.writeSet.join(',')} allowed_sequence_advances=${SEQUENCE_ADVANCES_CANONICAL} allowed_sequence_advances_sha256=${sequenceAdvancesSha}`,
     `run_id=${e.runId} nonce=${e.nonce} expires_at=${new Date(Date.parse(e.expiresAt)).toISOString()}`,
     'AUDITORIAS_ESTRICTAS=4+4 HISTORIAL_CANONICO=42 IDEMPOTENCIA=ALREADY_APPLIED ROLLBACK=DATOS_SIN_FILAS_PERSISTIDAS_SECUENCIAS_SOLO_MONOTONICAS_SIN_SETVAL_RESTART_NI_REUTILIZACION',

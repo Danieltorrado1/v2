@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { parse as parsePgConnectionString } from 'pg-connection-string';
 import { readFile } from 'node:fs/promises';
 import { mkdtemp, writeFile, symlink, rm, realpath, mkdir } from 'node:fs/promises';
@@ -8,8 +8,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
-import { ARGUMENT_ORDER, HISTORICAL_PDF_SIZE, PRODUCTION_HEALTH_URL, assertPrivateRegularFile, assertServiceRoleCredential, assertTargetDetailsMatchPin, assertTargetMatchesPin, createLauncherExecutionState, makeEntryEvidence, parseAllowlistedEnvironment, parseLauncherArguments, publishStoppedExecutionReceipt, readHistoricalPdf, recordLauncherFailure, sanitizeLauncherFailure, validateHealthUrl, validateServiceConfiguration } from '../scripts/nomina-turno-202-production-launcher';
-import { canonicalizeWindowsPath, parseHealthPayload, PRODUCTION_CA_SHA256, PRODUCTION_TARGET_PIN, publishReadOnlyReceipt, sameCanonicalWindowsPath, type PendingReceipt } from '../scripts/nomina-turno-202-readonly-runner';
+import { ARGUMENT_ORDER, HISTORICAL_PDF_SIZE, PRODUCTION_HEALTH_URL, assertPrivateRegularFile, assertServiceRoleCredential, assertTargetDetailsMatchPin, assertTargetMatchesPin, createLauncherExecutionState, finalizeOrderedReadOnlyRun, makeEntryEvidence, parseAllowlistedEnvironment, parseLauncherArguments, publishStoppedExecutionReceipt, readHistoricalPdf, recordLauncherFailure, sanitizeLauncherFailure, validateHealthUrl, validateServiceConfiguration } from '../scripts/nomina-turno-202-production-launcher';
+import { canonicalizeWindowsPath, parseHealthPayload, PRODUCTION_CA_SHA256, PRODUCTION_TARGET_PIN, publishReadOnlyReceipt, sameCanonicalWindowsPath, assertOrderedReadonlyReceipt, type PendingReceipt, type OfflinePlan, type HealthResponse } from '../scripts/nomina-turno-202-readonly-runner';
 import { buildPendingEntryPhrase, verifyPendingEntryPhrase } from '../scripts/nomina-turno-202-entry-contract';
 
 const hash=(x:Buffer|string)=>createHash('sha256').update(x).digest('hex');
@@ -231,8 +231,71 @@ test('STOPPED publication failure retries atomically on the reserved STOPPED rou
 
 test('a successful local runner receipt creates a fresh, short-lived phrase accepted by the inert contract parser',()=>{
   const now=Date.now(),digestSet=Object.fromEntries(['critical_schema','sources','movement_192','detail_220','account_77','revision_20114','related_audits','related_history','pdf_metadata','protected_tables','write_set_before','sequence_baseline'].map(k=>[k,hash(k)]));
-  const receipt={status:'PENDING_USER_CONFIRMATION',synthetic:true,generatedAt:new Date(now).toISOString(),connections:[{id:'1c4802f2-6720-4c76-b03e-1372f4f80b91',observedAt:new Date(now-1000).toISOString(),serverVersion:'17.11',tlsProtocol:'TLSv1.3',servername:'localhost',transactionReadOnly:true},{id:'fd23e33a-3c8b-4acf-aa8d-3a90be39c9ca',observedAt:new Date(now).toISOString(),serverVersion:'17.11',tlsProtocol:'TLSv1.3',servername:'localhost',transactionReadOnly:true}],digests:digestSet,sequenceBaseline:{'public.auditoria_id_seq':'10','public.auditoria_eventos_id_seq':'20','public.nomina_revision_operativa_id_seq':'30','public.historial_cambios_id_seq':'40'},pdf:{sha256:'cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4',size:3051,referenceSha256:hash('bucket/key'),mime:'application/pdf',etag:'"local-etag"'},checks:{health:{httpStatus:200,databaseStatus:'ok',outbox:false,sync:false,recalcRequested:false,recalcActive:false,workerStopped:true},syncConfirmation:{enabled:false},locks:{waiting:0,ddl:0}}} as unknown as PendingReceipt;
-  const evidence=makeEntryEvidence(receipt,'b'.repeat(40),now),phrase=buildPendingEntryPhrase(evidence,now);
+  const at=(n:number)=>new Date(now+n).toISOString(),timeline={read1_rollback_completed_at:at(-6000),read1_closed_at:at(-5000),read2_rollback_completed_at:at(-4000),read2_closed_at:at(-3000),final_health_completed_at:at(-2000)},healthFinal={httpStatus:200,databaseStatus:'ok',outbox:false,sync:false,recalcRequested:false,recalcActive:false,workerStopped:true} as const;
+  const receipt={status:'PENDING_USER_CONFIRMATION',synthetic:true,generatedAt:new Date(now).toISOString(),connections:[{id:'1c4802f2-6720-4c76-b03e-1372f4f80b91',observedAt:new Date(now-1000).toISOString(),serverVersion:'17.11',tlsProtocol:'TLSv1.3',servername:'localhost',transactionReadOnly:true},{id:'fd23e33a-3c8b-4acf-aa8d-3a90be39c9ca',observedAt:new Date(now).toISOString(),serverVersion:'17.11',tlsProtocol:'TLSv1.3',servername:'localhost',transactionReadOnly:true}],digests:digestSet,sequenceBaseline:{'public.auditoria_id_seq':'10','public.auditoria_eventos_id_seq':'20','public.nomina_revision_operativa_id_seq':'30','public.historial_cambios_id_seq':'40'},pdf:{sha256:'cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4',size:3051,referenceSha256:hash('bucket/key'),mime:'application/pdf',etag:'"local-etag"'},checks:{health:healthFinal,syncConfirmation:{enabled:false},locks:{waiting:0,ddl:0}},executionTimeline:timeline} as unknown as PendingReceipt;
+  const evidence=makeEntryEvidence(receipt,'b'.repeat(40),healthFinal,timeline,'11111111-1111-4111-8111-111111111111',now),phrase=buildPendingEntryPhrase(evidence,now);
   assert.equal(verifyPendingEntryPhrase(phrase,evidence,now),true);assert.match(phrase,/PENDING_USER_CONFIRMATION/);assert.match(phrase,/public\.historial_cambios_id_seq=\+42/);assert.ok(Date.parse(evidence.expiresAt)-now<=15*60_000);
-  const next=makeEntryEvidence(receipt,'b'.repeat(40),now);assert.notEqual(next.runId,evidence.runId);assert.notEqual(next.nonce,evidence.nonce);
+  const next=makeEntryEvidence(receipt,'b'.repeat(40),healthFinal,timeline,undefined,now);assert.notEqual(next.runId,evidence.runId);assert.notEqual(next.nonce,evidence.nonce);
+});
+
+function orderedFixture(now=Date.now()):{receipt:PendingReceipt;plan:OfflinePlan;health:HealthResponse}{
+  const at=(n:number)=>new Date(now+n).toISOString(),digests=Object.fromEntries(['critical_schema','sources','movement_192','detail_220','account_77','revision_20114','related_audits','related_history','pdf_metadata','protected_tables','write_set_before','sequence_baseline'].map(k=>[k,hash(k)]));
+  const health={httpStatus:200,databaseStatus:'ok',outbox:false,sync:false,recalcRequested:false,recalcActive:false,workerStopped:true} as const;
+  const receipt={status:'PENDING_USER_CONFIRMATION',synthetic:true,generatedAt:at(-1000),connections:[{id:'c1',observedAt:at(-7000),serverVersion:'17.11',tlsProtocol:'TLSv1.3',servername:'localhost',transactionReadOnly:true},{id:'c2',observedAt:at(-2000),serverVersion:'17.11',tlsProtocol:'TLSv1.3',servername:'localhost',transactionReadOnly:true}],digests,sequenceBaseline:{'public.auditoria_id_seq':'10','public.auditoria_eventos_id_seq':'20','public.nomina_revision_operativa_id_seq':'30','public.historial_cambios_id_seq':'40'},pdf:{sha256:'cf061de69f85976bd884439e12a58281bde4d32d2542b36e653a96a3a9c7d8a4',size:3051,referenceSha256:hash('bucket/key'),mime:'application/pdf',etag:'"sealed"'},checks:{health,syncConfirmation:{enabled:false},locks:{waiting:0,ddl:0}},executionTimeline:{read1_rollback_completed_at:at(-6000),read1_closed_at:at(-5000),read2_rollback_completed_at:at(-4000),read2_closed_at:at(-3000)}} as unknown as PendingReceipt;
+  return{receipt,plan:{workspaceRoot:os.tmpdir(),head:'a'.repeat(40)} as OfflinePlan,health};
+}
+
+test('ordered finalization runs final health before baseline, phrase, and pending publication',async()=>{
+  const root=await realpath(await mkdtemp(path.join(os.tmpdir(),'nomina202-order-success-'))),now=Date.now(),f=orderedFixture(now),state=createLauncherExecutionState(),events:string[]=[];
+  try{
+    const result=await finalizeOrderedReadOnlyRun({receipt:f.receipt,plan:f.plan,output:root,state,readFinalHealth:async()=>{events.push('health_final');return f.health;},publish:async(r,k,id,v)=>{events.push(k);return publishReadOnlyReceipt(r,k,id,v);},now:()=>now});
+    assert.deepEqual(events,['health_final','baseline','pending']);assert.equal(result.status,'PENDING_USER_CONFIRMATION');
+    const baseline=JSON.parse(await readFile(path.join(f.plan.workspaceRoot,result.baselinePath),'utf8')),pending=JSON.parse(await readFile(path.join(f.plan.workspaceRoot,result.receiptPath),'utf8'));
+    assert.deepEqual(baseline.healthFinal,f.health);assert.deepEqual(pending.healthFinal,f.health);
+    const ts=pending.executionTimeline;assert.ok(Date.parse(ts.read1_rollback_completed_at)<Date.parse(ts.read1_closed_at));assert.ok(Date.parse(ts.read1_closed_at)<Date.parse(ts.read2_rollback_completed_at));assert.ok(Date.parse(ts.read2_rollback_completed_at)<Date.parse(ts.read2_closed_at));assert.ok(Date.parse(ts.read2_closed_at)<Date.parse(ts.final_health_completed_at));assert.ok(Date.parse(ts.final_health_completed_at)<Date.parse(ts.baseline_published_at));assert.ok(Date.parse(ts.baseline_published_at)<Date.parse(ts.pending_receipt_published_at));
+    assert.equal(state.health_final_completed,true);assert.equal(state.baseline_published,true);assert.equal(state.final_receipt_published,true);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('failed final health publishes no baseline, nonce, phrase, or pending receipt',async()=>{
+  const root=await realpath(await mkdtemp(path.join(os.tmpdir(),'nomina202-order-health-fail-'))),f=orderedFixture(),state=createLauncherExecutionState(),events:string[]=[];
+  try{
+    await assert.rejects(finalizeOrderedReadOnlyRun({receipt:f.receipt,plan:f.plan,output:root,state,readFinalHealth:async()=>({...f.health,outbox:true}),publish:async(_r,k)=>{events.push(k);throw Error('must not publish');}}),/HEALTH_FINAL_OR_FLAGS/);
+    assert.deepEqual(events,[]);assert.equal(state.health_final_completed,false);assert.equal(state.baseline_published,false);assert.equal(state.final_receipt_published,false);
+    const files=await import('node:fs/promises').then(m=>m.readdir(path.join(root,'reports','nomina-202-entry')).catch(()=>[]));assert.deepEqual(files,[]);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('receipt publisher rejects health or publication timestamps that are missing or out of order',async()=>{
+  const root=await realpath(await mkdtemp(path.join(os.tmpdir(),'nomina202-order-guards-'))),f=orderedFixture(),now=Date.now(),at=(n:number)=>new Date(now+n).toISOString(),baseTimeline={...f.receipt.executionTimeline,final_health_completed_at:at(0),baseline_published_at:at(1)};
+  try{
+    await assert.rejects(publishReadOnlyReceipt(root,'baseline',randomUUID(),{status:'BASELINE_VERIFIED',executionTimeline:{},healthFinal:f.health}),/RECEIPT_ORDER_TIMESTAMPS_MISSING/);
+    await assert.rejects(publishReadOnlyReceipt(root,'pending',randomUUID(),{status:'PENDING_USER_CONFIRMATION',executionTimeline:{...baseTimeline,pending_receipt_published_at:at(3)},healthFinal:{...f.health,outbox:true},baseline:{path:'b',sha256:'b'.repeat(64)}}),/RECEIPT_FINAL_HEALTH_INVALID/);
+    await assert.rejects(publishReadOnlyReceipt(root,'baseline',randomUUID(),{status:'BASELINE_VERIFIED',executionTimeline:{...baseTimeline,final_health_completed_at:at(2)},healthFinal:f.health}),/RECEIPT_ORDER_TIMESTAMPS_INVALID/);
+    await assert.rejects(publishReadOnlyReceipt(root,'pending',randomUUID(),{status:'PENDING_USER_CONFIRMATION',executionTimeline:{...baseTimeline,pending_receipt_published_at:at(0)},healthFinal:f.health,baseline:{path:'b',sha256:'b'.repeat(64)}}),/RECEIPT_ORDER_TIMESTAMPS_INVALID/);
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('incomplete rollback or close prevents final health and all publication',async()=>{
+  const f=orderedFixture(),state=createLauncherExecutionState(),calls:string[]=[];
+  const bad={...f.receipt,executionTimeline:{...f.receipt.executionTimeline,read1_closed_at:f.receipt.executionTimeline.read1_rollback_completed_at}} as PendingReceipt;
+  await assert.rejects(finalizeOrderedReadOnlyRun({receipt:bad,plan:f.plan,output:os.tmpdir(),state,readFinalHealth:async()=>{calls.push('health');return f.health;},publish:async()=>{calls.push('publish');throw Error('unexpected');}}),/READONLY_CLEANUP_ORDER_INVALID/);
+  assert.deepEqual(calls,[]);
+});
+
+test('baseline and pending publication failures route to STOPPED without authorizing or reusing a nonce',async()=>{
+  for(const failAt of ['baseline','pending'] as const){
+    const root=await realpath(await mkdtemp(path.join(os.tmpdir(),`nomina202-order-${failAt}-fail-`))),f=orderedFixture(),state=createLauncherExecutionState();state.offline_precheck_started=true;
+    try{
+      const publisher=async(r:string,k:'baseline'|'pending'|'stopped',id:string,v:Readonly<Record<string,unknown>>)=>{
+        if(k===failAt)throw Object.assign(new Error('synthetic publish failure'),{code:'EIO'});
+        return publishReadOnlyReceipt(r,k,id,v);
+      };
+      let caught:unknown;try{await finalizeOrderedReadOnlyRun({receipt:f.receipt,plan:f.plan,output:root,state,readFinalHealth:async()=>f.health,publish:publisher});}catch(error){caught=error;}
+      assert.ok(caught);const failurePhase=state.phase,stopped=await recordLauncherFailure(state,root,caught,failurePhase);assert.ok('published'in stopped);
+      const stopBody=JSON.parse(await readFile(stopped.published.path,'utf8'));assert.equal(stopBody.status,'STOPPED');assert.equal(stopBody.phase,failurePhase);assert.equal(stopBody.writes,0);assert.equal(stopBody.mutator_invoked,false);
+      assert.equal(state.final_receipt_published,false);assert.equal(state.baseline_published,failAt==='pending');
+      const pendingDir=path.join(root,'reports','nomina-202-entry','pending');await assert.rejects(import('node:fs/promises').then(m=>m.readdir(pendingDir)),{code:'ENOENT'});
+    }finally{await rm(root,{recursive:true,force:true});}
+  }
 });

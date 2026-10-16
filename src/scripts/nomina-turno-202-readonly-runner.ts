@@ -18,7 +18,7 @@ export const HISTORICAL_PDF_SHA256='cf061de69f85976bd884439e12a58281bde4d32d2542
 export const DUMP_SHA256='dd1f9d298e83fb9664d1795c4e452698c26b274569cca11715b2c2f03ff99d75';
 export const CORRECTOR_COMMIT='95fc6bb6879409d37a088e451fb64f2edafacb5f';
 export const PRODUCTION_CA_SHA256='700723581420dd1ac98fd7e9ac529f0ef210eadcaf87fc868a3ad7d114c2f3b7';
-export const PRODUCTION_LAUNCHER_BRANCH='fix/nomina-turno-202-database-url-policy';
+export const PRODUCTION_LAUNCHER_BRANCH='fix/nomina-turno-202-final-health-before-receipt';
 export const CERTIFIED_REPORT_SHA256='4d9456973bc1433b5c6175d347497d603999fb1ed35995e7e2493415cda3da41';
 export const ENTRY_READONLY_REPORT_SHA256='1e2d8cfed0889bd238383054296870c1226be0f5fc89793d652755c584cabca8';
 export const POSTGRES17_BIN='C:/Program Files/PostgreSQL/17/bin';
@@ -100,8 +100,27 @@ export type PendingReceipt=Readonly<{
   digests:Readonly<Record<string,string>>; sequenceBaseline:Readonly<Record<string,string>>;
   pdf:Readonly<{sha256:string;size:number;referenceSha256:string;mime:string;etag:string}>;
   checks:Readonly<Record<string,unknown>>;
+  executionTimeline:Readonly<{
+    read1_rollback_completed_at:string;read1_closed_at:string;
+    read2_rollback_completed_at:string;read2_closed_at:string;
+  }>;
 }>;
 export const READONLY_RECEIPT_ROUTES=Object.freeze({baseline:'baseline',pending:'pending',stopped:'stopped'});
+export function assertOrderedReadonlyReceipt(value:Readonly<Record<string,unknown>>,kind:'baseline'|'pending'){
+  const timeline=value.executionTimeline as Record<string,unknown>|undefined,health=value.healthFinal as Record<string,unknown>|undefined;
+  const fields=['read1_rollback_completed_at','read1_closed_at','read2_rollback_completed_at','read2_closed_at','final_health_completed_at','baseline_published_at',...(kind==='pending'?['pending_receipt_published_at']:[])];
+  if(!timeline)fail('RECEIPT_ORDER_TIMESTAMPS_MISSING');
+  const orderedTimeline=timeline??fail('RECEIPT_ORDER_TIMESTAMPS_MISSING');
+  if(fields.some(field=>typeof orderedTimeline[field]!=='string'))fail('RECEIPT_ORDER_TIMESTAMPS_MISSING');
+  const times=fields.map(field=>Date.parse(String(orderedTimeline[field])));
+  if(times.some(time=>!Number.isFinite(time))||times.some((time,index)=>index>0&&time<=times[index-1]!)||times.some(time=>time>Date.now()+1000))fail('RECEIPT_ORDER_TIMESTAMPS_INVALID');
+  if(!health||health.httpStatus!==200||health.databaseStatus!=='ok'||health.outbox!==false||health.sync!==false||health.recalcRequested!==false||health.recalcActive!==false||health.workerStopped!==true)fail('RECEIPT_FINAL_HEALTH_INVALID');
+  if(kind==='pending'){
+    const baseline=value.baseline as Record<string,unknown>|undefined;
+    if(!baseline||typeof baseline.path!=='string'||typeof baseline.sha256!=='string'||!/^([a-f0-9]{64})$/.test(baseline.sha256))fail('RECEIPT_BASELINE_LINK_INVALID');
+  }
+  return true;
+}
 export type RunnerDependencies=Readonly<{
   plan:OfflinePlan;
   readCredentials:()=>Promise<DbCredentials>;
@@ -152,6 +171,18 @@ export async function validateUntrackedArtifactInventory(workspaceRoot:string){
   if(!sameCanonicalWindowsPath(await realpath(canonicalRoot),canonicalRoot))fail('UNTRACKED_ARTIFACT_ROOT_ALIAS');
   const expected=untrackedArtifactManifest.files;
   const allActual=execFileSync('git',['ls-files','--others','--exclude-standard'],{cwd:canonicalRoot,env:OFFLINE_GIT_ENV,encoding:'utf8',windowsHide:true}).split(/\r?\n/).filter(Boolean).map(p=>p.replace(/\\/g,'/')).sort();
+  const supersededReceiptPins=[
+    {path:'reports/nomina-202-entry/baseline/7f982fe9-94ac-45c6-97f8-dcb7b4f1c247.json',size:3352,sha256:'57ae3c57755a99b21e4970c2926ffd990856d56391668b81e5f1664f52beb7f3',status:'BASELINE_VERIFIED'},
+    {path:'reports/nomina-202-entry/pending/70774b49-bef1-4a35-a0c4-0f0a152fe5a9.json',size:5848,sha256:'33e7d7e8c30cedca25b68da58304bb3165e9a479e8ff7cf23e212b6df0818b82',status:'PENDING_USER_CONFIRMATION'},
+  ] as const;
+  const supersededReceipts:string[]=[];
+  for(const pin of supersededReceiptPins){
+    if(!allActual.includes(pin.path))fail('SUPERSEDED_RECEIPT_MISSING');
+    const file=canonicalizeWindowsPath(path.win32.join(canonicalRoot,...pin.path.split('/'))),st=await lstat(file);
+    if(!st.isFile()||st.isSymbolicLink()||(st as {isReparsePoint?:()=>boolean}).isReparsePoint?.()||st.size!==pin.size||!sameCanonicalWindowsPath(await realpath(file),file))fail('SUPERSEDED_RECEIPT_METADATA_DRIFT');
+    const bytes=await readFile(file);try{if(hash(bytes)!==pin.sha256)fail('SUPERSEDED_RECEIPT_HASH_DRIFT');const value=JSON.parse(bytes.toString('utf8'));if(value?.status!==pin.status)fail('SUPERSEDED_RECEIPT_SCHEMA_DRIFT');}catch(error){if(error instanceof Error&&error.message.startsWith('STOPPED_'))throw error;fail('SUPERSEDED_RECEIPT_INVALID');}finally{bytes.fill(0);}
+    supersededReceipts.push(pin.path);
+  }
   // Launcher-owned sanitized STOPPED receipts are runtime outputs, not certification inputs.
   // Admit only the reserved directory and exact schema; everything else remains sealed by the manifest.
   const runtimeReceipts=allActual.filter(p=>/^reports\/nomina-202-entry\/stopped\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.json$/i.test(p));
@@ -161,7 +192,7 @@ export async function validateUntrackedArtifactInventory(workspaceRoot:string){
     const bytes=await readFile(file);let value:any;try{value=JSON.parse(bytes.toString('utf8'));}catch{bytes.fill(0);fail('UNTRACKED_RUNTIME_RECEIPT_INVALID');}finally{bytes.fill(0);}
     if(value?.status!=='STOPPED'||value?.schema_version!==1||value?.writes!==0||value?.mutator_invoked!==false||!/^([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(value?.execution_id??''))fail('UNTRACKED_RUNTIME_RECEIPT_INVALID');
   }
-  const actual=allActual.filter(p=>!runtimeReceipts.includes(p));
+  const actual=allActual.filter(p=>!runtimeReceipts.includes(p)&&!supersededReceipts.includes(p));
   const expectedPaths=expected.map(x=>x.path).sort();
   if(actual.length!==untrackedArtifactManifest.expectedCount||JSON.stringify(actual)!==JSON.stringify(expectedPaths))fail('UNTRACKED_ARTIFACT_INVENTORY_SET_DRIFT');
   const rows=[] as {path:string;size:number;sha256:string}[];
@@ -260,7 +291,7 @@ export async function validateOfflinePlan(inputPlan:OfflinePlan):Promise<Readonl
 
 function makeTlsConfig(plan:OfflinePlan,credentials:DbCredentials,caPem:Buffer):ClientConfig{
   if(!credentials.user||typeof credentials.password!=='string'||!credentials.database||!matchesSha256(credentials.database,plan.databaseSha256))fail('CREDENTIALS_INVALID');
-  if(!caPem.length||hash(caPem)!==PRODUCTION_CA_SHA256||plan.servername!==plan.expectedServername)fail('TLS_CONFIGURATION_MISMATCH');
+  if(!caPem.length||hash(caPem)!==plan.expectedCaSha256||plan.servername!==plan.expectedServername)fail('TLS_CONFIGURATION_MISMATCH');
   return {
     host:plan.host,port:plan.port,database:credentials.database,user:credentials.user,password:credentials.password,
     connectionTimeoutMillis:8000,application_name:'nomina202_readonly_preflight',options:'-c statement_timeout=15000 -c lock_timeout=3000',
@@ -396,6 +427,9 @@ export async function runReadOnlyEntryPreflight(plan:OfflinePlan,dependencies:Ru
   const validatedOffline=offline??fail('OFFLINE_VALIDATION_FAILED');
   let validatedCredentials:DbCredentials|undefined=credentials??fail('CREDENTIAL_SOURCE_FAILED');
   const snapshots:unknown[]=[],connections:PendingReceipt['connections'][number][]=[];
+  const executionTimeline:{read1_rollback_completed_at?:string;read1_closed_at?:string;read2_rollback_completed_at?:string;read2_closed_at?:string}={};
+  let lastTimelineMs=0;
+  const markTimeline=()=>{const now=(dependencies.now?.()??new Date()).getTime(),next=Math.max(now,lastTimelineMs+1);lastTimelineMs=next;return new Date(next).toISOString();};
   try{for(let index=0;index<2;index++){
     dependencies.onExecutionEvent?.({name:'client_create_attempted',index});
     let opened:Awaited<ReturnType<typeof openReadOnlyClient>>|undefined,started=false,rolledBack=false,snapshotError:unknown;
@@ -414,19 +448,21 @@ export async function runReadOnlyEntryPreflight(plan:OfflinePlan,dependencies:Ru
       try{if(hash(pdf.bytes)!==captured.pdfMeta.sha256||pdf.bytes.length!==captured.pdfMeta.size||pdf.etag!==captured.pdfMeta.etag||hash(pdf.reference)!==captured.pdfMeta.referenceSha256)fail('PDF_CHANGED_DURING_SNAPSHOT');snapshots.push(captured);connections.push(Object.freeze({id:active.id,observedAt:(dependencies.now?.()??new Date()).toISOString(),serverVersion:captured.session.serverVersion,tlsProtocol:active.stream.getProtocol()??'',servername:String(active.stream.servername??''),transactionReadOnly:true}));}finally{pdf.bytes.fill(0);}
     }catch(error){snapshotError=error instanceof Error&&error.message.startsWith('STOPPED_')?error:Object.assign(new Error('STOPPED_SNAPSHOT_CAPTURE_FAILED'),{cause:error});}
     finally{
-      if(opened){try{if(started){dependencies.onExecutionEvent?.({name:'rollback_attempted',index,id:opened.id});dependencies.onQuery?.('transaction');await opened.client.query('ROLLBACK');rolledBack=true;dependencies.onExecutionEvent?.({name:'rollback_confirmed',index,id:opened.id});}}catch(error){const code=error&&typeof error==='object'&&typeof (error as {code?:unknown}).code==='string'&&/^[0-9A-Z_]{1,40}$/.test((error as {code:string}).code)?(error as {code:string}).code:'UNCLASSIFIED';dependencies.onExecutionEvent?.({name:'cleanup_failed',index,stage:'ROLLBACK',code});if(snapshotError===undefined)snapshotError=Object.assign(new Error('STOPPED_SNAPSHOT_ROLLBACK_FAILED'),{cause:error});}finally{try{await opened.client.end();}catch(error){const code=error&&typeof error==='object'&&typeof (error as {code?:unknown}).code==='string'&&/^[0-9A-Z_]{1,40}$/.test((error as {code:string}).code)?(error as {code:string}).code:'UNCLASSIFIED';dependencies.onExecutionEvent?.({name:'cleanup_failed',index,stage:'CLIENT_CLOSE',code});if(snapshotError===undefined)snapshotError=Object.assign(new Error('STOPPED_SNAPSHOT_CLIENT_CLOSE_FAILED'),{cause:error});}finally{dependencies.onConnectionClosed?.(opened.id);dependencies.onExecutionEvent?.({name:'client_closed',index,id:opened.id});}}if(started&&!rolledBack&&snapshotError===undefined)snapshotError=new Error('STOPPED_SNAPSHOT_ROLLBACK_MISSING');}
+      if(opened){try{if(started){dependencies.onExecutionEvent?.({name:'rollback_attempted',index,id:opened.id});dependencies.onQuery?.('transaction');await opened.client.query('ROLLBACK');rolledBack=true;if(index===0)executionTimeline.read1_rollback_completed_at=markTimeline();else executionTimeline.read2_rollback_completed_at=markTimeline();dependencies.onExecutionEvent?.({name:'rollback_confirmed',index,id:opened.id});}}catch(error){const code=error&&typeof error==='object'&&typeof (error as {code?:unknown}).code==='string'&&/^[0-9A-Z_]{1,40}$/.test((error as {code:string}).code)?(error as {code:string}).code:'UNCLASSIFIED';dependencies.onExecutionEvent?.({name:'cleanup_failed',index,stage:'ROLLBACK',code});if(snapshotError===undefined)snapshotError=Object.assign(new Error('STOPPED_SNAPSHOT_ROLLBACK_FAILED'),{cause:error});}finally{try{await opened.client.end();}catch(error){const code=error&&typeof error==='object'&&typeof (error as {code?:unknown}).code==='string'&&/^[0-9A-Z_]{1,40}$/.test((error as {code:string}).code)?(error as {code:string}).code:'UNCLASSIFIED';dependencies.onExecutionEvent?.({name:'cleanup_failed',index,stage:'CLIENT_CLOSE',code});if(snapshotError===undefined)snapshotError=Object.assign(new Error('STOPPED_SNAPSHOT_CLIENT_CLOSE_FAILED'),{cause:error});}finally{if(index===0)executionTimeline.read1_closed_at=markTimeline();else executionTimeline.read2_closed_at=markTimeline();dependencies.onConnectionClosed?.(opened.id);dependencies.onExecutionEvent?.({name:'client_closed',index,id:opened.id});}}if(started&&!rolledBack&&snapshotError===undefined)snapshotError=new Error('STOPPED_SNAPSHOT_ROLLBACK_MISSING');}
     }
     if(snapshotError!==undefined)throw snapshotError;
   }}finally{credentials=undefined;validatedCredentials=undefined;}
   if(connections[0]!.id===connections[1]!.id||canonical(snapshots[0])!==canonical(snapshots[1]))fail('SNAPSHOT_DRIFT');
   const data=snapshots[0] as Awaited<ReturnType<typeof captureDatabase>>;
-  return Object.freeze({status:'PENDING_USER_CONFIRMATION',synthetic:plan.localCertification,generatedAt:(dependencies.now?.()??new Date()).toISOString(),connections:Object.freeze(connections),digests:Object.freeze(data.digestSet),sequenceBaseline:Object.freeze(data.sequences),pdf:Object.freeze(data.pdfMeta),checks:Object.freeze({target:data.target,actor:data.actor,locks:data.locks,writeSet:data.tableSet,duplicates:data.duplicates,priorRepair:data.priorRepair,lifecycle:data.blockers,audits:data.auditCounts,historyRows:data.historyRows,health:data.health,syncConfirmation:data.syncConfirmation,readOnly:true,rollbackCompleted:true})});
+  if(!executionTimeline.read1_rollback_completed_at||!executionTimeline.read1_closed_at||!executionTimeline.read2_rollback_completed_at||!executionTimeline.read2_closed_at||!(Date.parse(executionTimeline.read1_rollback_completed_at)<Date.parse(executionTimeline.read1_closed_at)&&Date.parse(executionTimeline.read1_closed_at)<Date.parse(executionTimeline.read2_rollback_completed_at)&&Date.parse(executionTimeline.read2_rollback_completed_at)<Date.parse(executionTimeline.read2_closed_at)))fail('READONLY_CLEANUP_TIMELINE_INVALID');
+  return Object.freeze({status:'PENDING_USER_CONFIRMATION',synthetic:plan.localCertification,generatedAt:(dependencies.now?.()??new Date()).toISOString(),connections:Object.freeze(connections),digests:Object.freeze(data.digestSet),sequenceBaseline:Object.freeze(data.sequences),pdf:Object.freeze(data.pdfMeta),checks:Object.freeze({target:data.target,actor: data.actor,locks:data.locks,writeSet:data.tableSet,duplicates:data.duplicates,priorRepair:data.priorRepair,lifecycle:data.blockers,audits:data.auditCounts,historyRows:data.historyRows,health:data.health,syncConfirmation:data.syncConfirmation,readOnly:true,rollbackCompleted:true}),executionTimeline:Object.freeze(executionTimeline as Required<typeof executionTimeline>)});
 }
 
 /** Atomic, no-replace publication for read-only receipts. No COMMITTED route is exposed here. */
 export async function publishReadOnlyReceipt(root:string,kind:'baseline'|'pending'|'stopped',receiptId:string,value:Readonly<Record<string,unknown>>){
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(receiptId))fail('RECEIPT_ID_INVALID');
   const expected={baseline:'BASELINE_VERIFIED',pending:'PENDING_USER_CONFIRMATION',stopped:'STOPPED'}[kind];if(value.status!==expected)fail('RECEIPT_STATUS_ROUTE_MISMATCH');
+  if(kind==='baseline'||kind==='pending')assertOrderedReadonlyReceipt(value,kind);
   if(kind==='stopped'){
     const v=value as Record<string,any>,state=v.state,cleanup=v.cleanup,error=v.error;
     if(v.schema_version!==1||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.execution_id)||!Number.isFinite(Date.parse(v.generated_at))||typeof v.phase!=='string'||!state||typeof state!=='object'||!cleanup||typeof cleanup!=='object'||!error||typeof error!=='object'||typeof error.error_type!=='string'||!/^[A-Z0-9_]{1,48}$/.test(error.code)||typeof error.category!=='string'||error.phase!==v.phase||!/^[a-f0-9]{64}$/.test(error.stack_hash)||v.writes!==0||v.mutator_invoked!==false)fail('STOPPED_RECEIPT_SCHEMA_INVALID');

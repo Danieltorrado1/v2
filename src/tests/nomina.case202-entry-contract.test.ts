@@ -17,6 +17,8 @@ function evidence(): EntryEvidence {
   return {
     codeSha:sha('code'), evidenceSha:sha('evidence'), dumpSha:sha('dump'), historicalPdfSha:sha('historical pdf'),
     runId:'c00dbeef-1111-4111-8111-123456789abc', nonce:'a'.repeat(48), expiresAt:'2026-10-15T14:14:00.000Z', first, second, runIdUnique:true, nonceUnused:true,
+    healthFinal:{httpStatus:200,databaseStatus:'ok',outbox:false,sync:false,recalcRequested:false,recalcActive:false,workerStopped:true},
+    executionTimeline:{read1_rollback_completed_at:'2026-10-15T13:59:00.000Z',read1_closed_at:'2026-10-15T13:59:01.000Z',read2_rollback_completed_at:'2026-10-15T13:59:02.000Z',read2_closed_at:'2026-10-15T13:59:03.000Z',final_health_completed_at:'2026-10-15T13:59:04.000Z'},
     health:{http:200,database:'ok',outbox:false,sync:false,recalc:false,worker:false,waitingLocks:0,activeDdl:0},
     pdfAttestation:'NOT_SENT_OR_DELIVERED_NOT_APPROVED_OR_SIGNED_NOT_PAID_OR_POSTED_NOT_USED_OFFICIALLY',
     historyHasNoLaterRelatedAudit:true,duplicateCount:0,priorRepairCount:0,lifecycleBlockerCount:0,
@@ -42,6 +44,16 @@ test('entry fails closed on read drift, unresolved health and an expired or over
   assert.throws(()=>buildPendingEntryPhrase({...e,health:{...e.health,sync:true} as unknown as EntryEvidence['health']},now),/HEALTH_OR_QUIESCENCE/);
   assert.throws(()=>buildPendingEntryPhrase({...e,expiresAt:'2026-10-15T14:15:01.000Z'},now),/EXPIRY/);
   assert.throws(()=>buildPendingEntryPhrase({...e,expiresAt:'2026-10-15T13:59:59.000Z'},now),/EXPIRY/);
+});
+
+test('entry rejects the historically revoked nonce and missing or reordered publication timestamps',()=>{
+  const e=evidence();
+  const revoked='43ab161c1c007f373a531352f063ad0a243cbfc7d5b5fd6a';
+  assert.throws(()=>buildPendingEntryPhrase({...e,nonce:revoked},now),/NONCE_REVOKED_NO_UTILIZABLE/);
+  assert.throws(()=>buildPendingEntryPhrase({...e,executionTimeline:{...e.executionTimeline,read2_closed_at:''}},now),/EXECUTION_TIMELINE_INVALID/);
+  assert.throws(()=>buildPendingEntryPhrase({...e,executionTimeline:{...e.executionTimeline,final_health_completed_at:'2026-10-15T13:59:02.000Z'}},now),/EXECUTION_TIMELINE_INVALID/);
+  assert.throws(()=>buildPendingEntryPhrase({...e,runIdUnique:false as unknown as true},now),/RUN_OR_NONCE_REUSED/);
+  assert.throws(()=>buildPendingEntryPhrase({...e,nonceUnused:false as unknown as true},now),/RUN_OR_NONCE_REUSED/);
 });
 
 test('entry binds the current-use PDF attestation and exact before state',()=>{

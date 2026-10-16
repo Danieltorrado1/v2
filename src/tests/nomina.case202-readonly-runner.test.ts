@@ -81,7 +81,8 @@ test('read-only receipts are routed separately, atomic, and cannot be replaced o
   const root=await mkdtemp(path.join(os.tmpdir(),'nomina202-readonly-receipt-'));
   try{
     const id=randomUUID();
-    const pending={status:'PENDING_USER_CONFIRMATION',synthetic:true,digests:{movement_192:'a'.repeat(64)}};
+    const baseTime=Date.now()-10_000,executionTimeline={read1_rollback_completed_at:new Date(baseTime).toISOString(),read1_closed_at:new Date(baseTime+1000).toISOString(),read2_rollback_completed_at:new Date(baseTime+2000).toISOString(),read2_closed_at:new Date(baseTime+3000).toISOString(),final_health_completed_at:new Date(baseTime+4000).toISOString(),baseline_published_at:new Date(baseTime+5000).toISOString(),pending_receipt_published_at:new Date(baseTime+6000).toISOString()},healthFinal={httpStatus:200,databaseStatus:'ok',outbox:false,sync:false,recalcRequested:false,recalcActive:false,workerStopped:true};
+    const pending={status:'PENDING_USER_CONFIRMATION',synthetic:true,digests:{movement_192:'a'.repeat(64)},healthFinal,executionTimeline,baseline:{path:'reports/nomina-202-entry/baseline/test.json',sha256:'b'.repeat(64)}};
     const published=await publishReadOnlyReceipt(root,'pending',id,pending);
     const bytes=await readFile(published.path);
     assert.equal(createHash('sha256').update(bytes).digest('hex'),published.sha256);
