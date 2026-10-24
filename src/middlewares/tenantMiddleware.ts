@@ -64,8 +64,8 @@ export const loadTenantAccess = async (
     ? await client.query<RoleRow>(
     `
       SELECT r.nombre_rol
-      FROM usuario_roles ur
-      INNER JOIN roles r ON r.id = ur.rol_id
+      FROM public.usuario_roles ur
+      INNER JOIN public.roles r ON r.id = ur.rol_id
       WHERE ur.usuario_id = $1::bigint
         AND COALESCE(ur.activo, TRUE) = TRUE
         AND COALESCE(r.activo, TRUE) = TRUE
@@ -75,8 +75,8 @@ export const loadTenantAccess = async (
     : await dbQuery<RoleRow>(
         `
       SELECT r.nombre_rol
-      FROM usuario_roles ur
-      INNER JOIN roles r ON r.id = ur.rol_id
+      FROM public.usuario_roles ur
+      INNER JOIN public.roles r ON r.id = ur.rol_id
       WHERE ur.usuario_id = $1::bigint
         AND COALESCE(ur.activo, TRUE) = TRUE
         AND COALESCE(r.activo, TRUE) = TRUE
@@ -88,14 +88,14 @@ export const loadTenantAccess = async (
 
   const empresasQuery = `
         SELECT ue.empresa_id::text AS id
-        FROM usuario_empresas ue
+        FROM public.usuario_empresas ue
         WHERE ue.usuario_id = $1::bigint
           AND COALESCE(ue.activo, TRUE) = TRUE
         ORDER BY ue.empresa_id ASC
       `;
   const contratosQuery = `
         SELECT uc.contrato_id::text AS id
-        FROM usuario_contratos uc
+        FROM public.usuario_contratos uc
         WHERE uc.usuario_id = $1::bigint
           AND COALESCE(uc.activo, TRUE) = TRUE
         ORDER BY uc.contrato_id ASC

@@ -46,8 +46,8 @@ export const AUTH_USER_LOOKUP_QUERY = `
     COALESCE(
       ARRAY(
         SELECT DISTINCT r.nombre_rol
-        FROM usuario_roles ur
-        INNER JOIN roles r ON r.id = ur.rol_id
+        FROM public.usuario_roles ur
+        INNER JOIN public.roles r ON r.id = ur.rol_id
         WHERE ur.usuario_id = u.id
           AND COALESCE(ur.activo, TRUE) = TRUE
           AND COALESCE(r.activo, TRUE) = TRUE
@@ -58,10 +58,10 @@ export const AUTH_USER_LOOKUP_QUERY = `
     COALESCE(
       ARRAY(
         SELECT DISTINCT CONCAT_WS('.', p.modulo, p.accion)
-        FROM usuario_roles ur
-        INNER JOIN rol_permisos rp ON rp.rol_id = ur.rol_id
-        INNER JOIN permisos p ON p.id = rp.permiso_id
-        INNER JOIN roles r ON r.id = ur.rol_id
+        FROM public.usuario_roles ur
+        INNER JOIN public.rol_permisos rp ON rp.rol_id = ur.rol_id
+        INNER JOIN public.permisos p ON p.id = rp.permiso_id
+        INNER JOIN public.roles r ON r.id = ur.rol_id
         WHERE ur.usuario_id = u.id
           AND COALESCE(ur.activo, TRUE) = TRUE
           AND COALESCE(r.activo, TRUE) = TRUE
@@ -72,11 +72,11 @@ export const AUTH_USER_LOOKUP_QUERY = `
       ARRAY[]::text[]
     ) AS permissions
     ,(
-      EXISTS (SELECT 1 FROM usuario_roles ur_global INNER JOIN roles r_global ON r_global.id = ur_global.rol_id WHERE ur_global.usuario_id = u.id AND r_global.nombre_rol = 'ADMINISTRADOR' AND COALESCE(ur_global.activo, TRUE) = TRUE AND COALESCE(r_global.activo, TRUE) = TRUE)
-      AND NOT EXISTS (SELECT 1 FROM usuario_empresas ue_global WHERE ue_global.usuario_id = u.id AND COALESCE(ue_global.activo, TRUE) = TRUE)
-      AND NOT EXISTS (SELECT 1 FROM usuario_contratos uc_global WHERE uc_global.usuario_id = u.id AND COALESCE(uc_global.activo, TRUE) = TRUE)
+      EXISTS (SELECT 1 FROM public.usuario_roles ur_global INNER JOIN public.roles r_global ON r_global.id = ur_global.rol_id WHERE ur_global.usuario_id = u.id AND r_global.nombre_rol = 'ADMINISTRADOR' AND COALESCE(ur_global.activo, TRUE) = TRUE AND COALESCE(r_global.activo, TRUE) = TRUE)
+      AND NOT EXISTS (SELECT 1 FROM public.usuario_empresas ue_global WHERE ue_global.usuario_id = u.id AND COALESCE(ue_global.activo, TRUE) = TRUE)
+      AND NOT EXISTS (SELECT 1 FROM public.usuario_contratos uc_global WHERE uc_global.usuario_id = u.id AND COALESCE(uc_global.activo, TRUE) = TRUE)
     ) AS "isGlobalAdmin"
-  FROM usuarios u
+  FROM public.usuarios u
   WHERE u.id = $1
   LIMIT 1
 `;

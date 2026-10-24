@@ -1,0 +1,42 @@
+{
+  "baseSha": "1effd71930d23a6e3fc26e9f8792858c6ef5995a",
+  "branch": "fix/auth-public-schema",
+  "worktree": "C:\\Users\\CORE ULTRA\\Desktop\\V2\\.worktrees\\hotfix-auth-public-schema",
+  "functionalFiles": [
+    "src/middlewares/authMiddleware.ts",
+    "src/middlewares/tenantMiddleware.ts",
+    "src/modules/auditoria/auditoria.helper.ts",
+    "src/modules/auditoria/auditoria.service.ts",
+    "src/modules/saas/saas.service.ts",
+    "src/modules/tenant/tenant.service.ts",
+    "src/modules/users/users.service.ts"
+  ],
+  "tests": {
+    "tests": 60,
+    "pass": 60,
+    "fail": 0
+  },
+  "checks": {
+    "backendTypecheck": "passed",
+    "backendBuild": "passed",
+    "frontendNuevoBuild": "passed; chunk-size warning only",
+    "diffCheck": "passed"
+  },
+  "originalWorkspace": {
+    "branch": "fix/nomina-mutador-controlado-234",
+    "head": "0984122694651a836902638c61463a71d43e1a59",
+    "protectedFilesVerified": 10,
+    "hashesUnchanged": true
+  },
+  "productionAccess": false,
+  "productionChanges": false,
+  "commitCreated": false,
+  "push": false,
+  "merge": false,
+  "deployment": false,
+  "limits": [
+    "PGlite integration; no live Supavisor execution",
+    "Unqualified queries outside documented auth/bootstrap functions remain",
+    "Production catalog preflight required for relations other than usuarios"
+  ]
+}

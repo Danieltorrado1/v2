@@ -236,8 +236,8 @@ const buildEventContext = async (
       SELECT
         v.contrato_id::text AS contrato_id,
         c.empresa_id::text AS empresa_id
-      FROM vinculaciones v
-      INNER JOIN contratos c ON c.id = v.contrato_id
+      FROM public.vinculaciones v
+      INNER JOIN public.contratos c ON c.id = v.contrato_id
       WHERE v.id = $1::bigint
       LIMIT 1
     `,
@@ -260,7 +260,7 @@ const insertAuditEventRow = async (
 
   await client.query(
     `
-      INSERT INTO auditoria_eventos (
+      INSERT INTO public.auditoria_eventos (
         usuario_id,
         empresa_id,
         contrato_id,

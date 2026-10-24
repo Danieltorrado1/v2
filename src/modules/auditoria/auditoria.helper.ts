@@ -119,7 +119,7 @@ const insertHistorialDiffRows = async (
 
   await client.query(
     `
-      INSERT INTO historial_cambios (
+      INSERT INTO public.historial_cambios (
         usuario_id,
         tabla_afectada,
         registro_id,
@@ -213,7 +213,7 @@ const insertLegacyAuditRows = async (
 
   await client.query(
     `
-      INSERT INTO auditoria (
+      INSERT INTO public.auditoria (
         usuario_id,
         accion,
         tabla_afectada,
@@ -245,7 +245,7 @@ const insertLegacyAuditRows = async (
 
   await client.query(
     `
-      INSERT INTO historial_cambios (
+      INSERT INTO public.historial_cambios (
         usuario_id,
         tabla_afectada,
         registro_id,

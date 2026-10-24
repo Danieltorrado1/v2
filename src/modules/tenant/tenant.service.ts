@@ -131,8 +131,8 @@ export const getTenantMeContext = async (tenant: TenantAccessContext): Promise<T
             o.codigo AS organizacion_codigo,
             o.nombre AS organizacion_nombre,
             o.estado AS organizacion_estado
-          FROM empresas e
-          LEFT JOIN organizaciones o ON o.id = e.organizacion_id
+          FROM public.empresas e
+          LEFT JOIN public.organizaciones o ON o.id = e.organizacion_id
           ORDER BY e.nombre_empresa ASC
         `
       )
@@ -147,8 +147,8 @@ export const getTenantMeContext = async (tenant: TenantAccessContext): Promise<T
               o.codigo AS organizacion_codigo,
               o.nombre AS organizacion_nombre,
               o.estado AS organizacion_estado
-            FROM empresas e
-            LEFT JOIN organizaciones o ON o.id = e.organizacion_id
+            FROM public.empresas e
+            LEFT JOIN public.organizaciones o ON o.id = e.organizacion_id
             WHERE e.id = ANY($1::bigint[])
             ORDER BY e.nombre_empresa ASC
           `,
@@ -159,7 +159,7 @@ export const getTenantMeContext = async (tenant: TenantAccessContext): Promise<T
     ? await dbQuery<TenantMeContratoRow>(
         `
           SELECT id::text AS id, numero_contrato, entidad_contratante, empresa_id::text AS empresa_id
-          FROM contratos
+          FROM public.contratos
           ORDER BY numero_contrato ASC NULLS LAST, id ASC
         `
       )
@@ -168,7 +168,7 @@ export const getTenantMeContext = async (tenant: TenantAccessContext): Promise<T
       : await dbQuery<TenantMeContratoRow>(
           `
             SELECT id::text AS id, numero_contrato, entidad_contratante, empresa_id::text AS empresa_id
-            FROM contratos
+            FROM public.contratos
             WHERE id = ANY($1::bigint[])
             ORDER BY numero_contrato ASC NULLS LAST, id ASC
           `,

@@ -41,22 +41,22 @@ export async function getEmpresaCapabilities(empresaId: number, tenant?: TenantA
     SELECT e.id::text empresa_id,e.nombre_empresa empresa_nombre,o.id::text organizacion_id,o.nombre organizacion_nombre,
       es.id::text suscripcion_id,es.estado,es.fecha_inicio::text,es.fecha_fin::text,
       p.id::text plan_id,p.codigo plan_codigo,p.nombre plan_nombre
-    FROM empresas e LEFT JOIN organizaciones o ON o.id=e.organizacion_id
+    FROM public.empresas e LEFT JOIN public.organizaciones o ON o.id=e.organizacion_id
     LEFT JOIN LATERAL (
-      SELECT x.* FROM empresa_suscripciones x WHERE x.empresa_id=e.id
+      SELECT x.* FROM public.empresa_suscripciones x WHERE x.empresa_id=e.id
         AND x.fecha_inicio<=CURRENT_DATE AND (x.fecha_fin IS NULL OR x.fecha_fin>=CURRENT_DATE)
       ORDER BY x.fecha_inicio DESC,x.id DESC LIMIT 1
-    ) es ON TRUE LEFT JOIN planes p ON p.id=es.plan_id
+    ) es ON TRUE LEFT JOIN public.planes p ON p.id=es.plan_id
     WHERE e.id=$1::bigint LIMIT 1`, [empresaId]);
   const row = header.rows[0];
   if (!row) throw new AppError('Empresa not found', 404, 'EMPRESA_NOT_FOUND');
   const modules = await dbQuery<{ codigo: string; activo: boolean; plan_habilitado: boolean | null }>(`
-    SELECT m.codigo,m.activo,pm.habilitado plan_habilitado FROM modulos m
-    LEFT JOIN plan_modulos pm ON pm.modulo_id=m.id AND pm.plan_id=$1::bigint
+    SELECT m.codigo,m.activo,pm.habilitado plan_habilitado FROM public.modulos m
+    LEFT JOIN public.plan_modulos pm ON pm.modulo_id=m.id AND pm.plan_id=$1::bigint
     ORDER BY m.orden,m.id`, [row.plan_id]);
   const overrides = await dbQuery<{ id: string; codigo: string; habilitado: boolean; motivo: string; fecha_inicio: string; fecha_fin: string | null }>(`
     SELECT emo.id::text,m.codigo,emo.habilitado,emo.motivo,emo.fecha_inicio::text,emo.fecha_fin::text
-    FROM empresa_modulo_overrides emo INNER JOIN modulos m ON m.id=emo.modulo_id
+    FROM public.empresa_modulo_overrides emo INNER JOIN public.modulos m ON m.id=emo.modulo_id
     WHERE emo.empresa_id=$1::bigint AND emo.fecha_inicio<=CURRENT_DATE
       AND emo.fecha_fin IS NULL
     ORDER BY emo.fecha_inicio,emo.id`, [empresaId]);
@@ -86,7 +86,7 @@ export async function assertEmpresaModuleEnabled(empresaId: number, code: string
   return capabilities;
 }
 
-export async function listModules() { return (await dbQuery('SELECT * FROM modulos ORDER BY orden,id')).rows; }
+export async function listModules() { return (await dbQuery('SELECT * FROM public.modulos ORDER BY orden,id')).rows; }
 export async function listPlans() {
   return (await dbQuery(`SELECT p.*,COALESCE(json_agg(json_build_object('id',m.id,'codigo',m.codigo,'nombre',m.nombre,'habilitado',pm.habilitado) ORDER BY m.orden) FILTER (WHERE m.id IS NOT NULL),'[]') modulos FROM planes p LEFT JOIN plan_modulos pm ON pm.plan_id=p.id LEFT JOIN modulos m ON m.id=pm.modulo_id GROUP BY p.id ORDER BY p.orden,p.id`)).rows;
 }
@@ -122,18 +122,18 @@ export async function listGlobalCompanyControl(query: GlobalCompanyControlQuery,
   if (query.has_contracts === true) clauses.push('COALESCE(contract_counts.contratos, 0) > 0');
   if (query.has_contracts === false) clauses.push('COALESCE(contract_counts.contratos, 0) = 0');
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-  const base = `FROM empresas e
-    LEFT JOIN LATERAL (SELECT x.* FROM empresa_suscripciones x WHERE x.empresa_id=e.id AND x.fecha_inicio<=CURRENT_DATE AND (x.fecha_fin IS NULL OR x.fecha_fin>=CURRENT_DATE) ORDER BY x.fecha_inicio DESC,x.id DESC LIMIT 1) es ON TRUE
-    LEFT JOIN planes p ON p.id=es.plan_id
-    LEFT JOIN LATERAL (SELECT COUNT(*)::int contratos FROM contratos c WHERE c.empresa_id=e.id) contract_counts ON TRUE
-    LEFT JOIN LATERAL (SELECT COUNT(DISTINCT v.persona_id)::int personal FROM vinculaciones v INNER JOIN contratos c ON c.id=v.contrato_id WHERE c.empresa_id=e.id AND v.estado_vinculacion='ACTIVA') personal_counts ON TRUE
-    LEFT JOIN LATERAL (SELECT COUNT(DISTINCT ue.usuario_id)::int usuarios FROM usuario_empresas ue WHERE ue.empresa_id=e.id AND COALESCE(ue.activo, TRUE)) user_counts ON TRUE
-    LEFT JOIN LATERAL (SELECT COUNT(*)::int modulos_activos FROM modulos m WHERE m.activo=TRUE AND COALESCE((SELECT emo.habilitado FROM empresa_modulo_overrides emo WHERE emo.empresa_id=e.id AND emo.modulo_id=m.id AND emo.fecha_inicio<=CURRENT_DATE AND emo.fecha_fin IS NULL ORDER BY emo.fecha_inicio DESC,emo.id DESC LIMIT 1),(SELECT pm.habilitado FROM plan_modulos pm WHERE pm.plan_id=es.plan_id AND pm.modulo_id=m.id),FALSE)=TRUE) module_counts ON TRUE`;
+  const base = `FROM public.empresas e
+    LEFT JOIN LATERAL (SELECT x.* FROM public.empresa_suscripciones x WHERE x.empresa_id=e.id AND x.fecha_inicio<=CURRENT_DATE AND (x.fecha_fin IS NULL OR x.fecha_fin>=CURRENT_DATE) ORDER BY x.fecha_inicio DESC,x.id DESC LIMIT 1) es ON TRUE
+    LEFT JOIN public.planes p ON p.id=es.plan_id
+    LEFT JOIN LATERAL (SELECT COUNT(*)::int contratos FROM public.contratos c WHERE c.empresa_id=e.id) contract_counts ON TRUE
+    LEFT JOIN LATERAL (SELECT COUNT(DISTINCT v.persona_id)::int personal FROM public.vinculaciones v INNER JOIN public.contratos c ON c.id=v.contrato_id WHERE c.empresa_id=e.id AND v.estado_vinculacion='ACTIVA') personal_counts ON TRUE
+    LEFT JOIN LATERAL (SELECT COUNT(DISTINCT ue.usuario_id)::int usuarios FROM public.usuario_empresas ue WHERE ue.empresa_id=e.id AND COALESCE(ue.activo, TRUE)) user_counts ON TRUE
+    LEFT JOIN LATERAL (SELECT COUNT(*)::int modulos_activos FROM public.modulos m WHERE m.activo=TRUE AND COALESCE((SELECT emo.habilitado FROM public.empresa_modulo_overrides emo WHERE emo.empresa_id=e.id AND emo.modulo_id=m.id AND emo.fecha_inicio<=CURRENT_DATE AND emo.fecha_fin IS NULL ORDER BY emo.fecha_inicio DESC,emo.id DESC LIMIT 1),(SELECT pm.habilitado FROM public.plan_modulos pm WHERE pm.plan_id=es.plan_id AND pm.modulo_id=m.id),FALSE)=TRUE) module_counts ON TRUE`;
   const totalResult = await dbQuery<{ total: number }>(`SELECT COUNT(*)::int total ${base} ${where}`, params);
   const total = totalResult.rows[0]?.total ?? 0;
   const offset = (query.page - 1) * query.limit;
   const listParams = [...params, query.limit, offset];
-  const rows = await dbQuery(`SELECT e.id::int empresa_id,e.nombre_empresa empresa,e.nit,COALESCE(p.nombre,'LEGACY / SIN PLAN CONFIGURADO') plan,CASE WHEN COALESCE(e.activo, TRUE) THEN COALESCE(es.estado,'LEGACY') ELSE 'INACTIVA' END estado,es.fecha_inicio::text fecha_inicio,es.fecha_fin::text fecha_renovacion,COALESCE(contract_counts.contratos,0)::int contratos,COALESCE(user_counts.usuarios,0)::int usuarios,COALESCE(personal_counts.personal,0)::int personal,COALESCE(module_counts.modulos_activos,0)::int modulos,(SELECT MAX(a.fecha_evento)::text FROM auditoria_eventos a WHERE a.empresa_id=e.id) ultima_actividad ${base} ${where} ORDER BY e.nombre_empresa ASC,e.id ASC LIMIT $${listParams.length-1}::int OFFSET $${listParams.length}::int`, listParams);
+  const rows = await dbQuery(`SELECT e.id::int empresa_id,e.nombre_empresa empresa,e.nit,COALESCE(p.nombre,'LEGACY / SIN PLAN CONFIGURADO') plan,CASE WHEN COALESCE(e.activo, TRUE) THEN COALESCE(es.estado,'LEGACY') ELSE 'INACTIVA' END estado,es.fecha_inicio::text fecha_inicio,es.fecha_fin::text fecha_renovacion,COALESCE(contract_counts.contratos,0)::int contratos,COALESCE(user_counts.usuarios,0)::int usuarios,COALESCE(personal_counts.personal,0)::int personal,COALESCE(module_counts.modulos_activos,0)::int modulos,(SELECT MAX(a.fecha_evento)::text FROM public.auditoria_eventos a WHERE a.empresa_id=e.id) ultima_actividad ${base} ${where} ORDER BY e.nombre_empresa ASC,e.id ASC LIMIT $${listParams.length-1}::int OFFSET $${listParams.length}::int`, listParams);
   return { items: rows.rows, pagination: { page: query.page, limit: query.limit, total, total_pages: total ? Math.ceil(total / query.limit) : 0 } };
 }
 
