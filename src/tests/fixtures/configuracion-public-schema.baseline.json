@@ -1,0 +1,8 @@
+{
+  "baseSha": "06b2bbab2ffd0d802e0f58b9609d2681998c5ff7",
+  "file": "src/modules/configuracion/configuracion.admin.service.ts",
+  "normalizedSourceHash": "e737c893fde2f17139ba1202b42fc9089c58dd3bc1aba59d891470480f97b642",
+  "existingPublicReferences": 0,
+  "originalDocumentCountSql": "SELECT COUNT(*)::int AS total FROM tipos_documentos ",
+  "originalContractCountSql": "SELECT COUNT(*)::int AS total FROM contratos c INNER JOIN empresas e ON e.id = c.empresa_id "
+}

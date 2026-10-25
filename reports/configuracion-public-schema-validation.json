@@ -1,0 +1,50 @@
+{
+  "baseSha": "06b2bbab2ffd0d802e0f58b9609d2681998c5ff7",
+  "branch": "fix/configuracion-public-schema",
+  "functionalFiles": [
+    "src/modules/configuracion/configuracion.admin.service.ts"
+  ],
+  "sqlScope": {
+    "functions": [
+      "listCatalogoSimple",
+      "listContratos"
+    ],
+    "addedSchemaQualifications": 6,
+    "changedLines": 5,
+    "verifiedPublicRelations": 15
+  },
+  "productionPreflight": {
+    "source": "user-provided Render Shell output",
+    "shaMatches": true,
+    "expected": 15,
+    "found": 15,
+    "missing": [],
+    "insufficientPrivileges": [],
+    "approved": true
+  },
+  "tests": {
+    "configuration": 21,
+    "existingAuthenticationFocused": 60,
+    "combined": {
+      "tests": 81,
+      "pass": 81,
+      "fail": 0
+    },
+    "originalFailureReproduced": "42P01 at position 36 for both count queries",
+    "equivalence": "same outputs and SQL parameters/order after schema-only normalization"
+  },
+  "checks": {
+    "typecheck": "passed",
+    "backendBuild": "passed",
+    "diffCheck": "passed",
+    "lint": "no backend script"
+  },
+  "protectedOriginalWorkspaceFilesVerified": 5,
+  "protectedOriginalWorkspaceUnchanged": true,
+  "liveDatabaseAccess": false,
+  "productionWrites": false,
+  "commit": false,
+  "push": false,
+  "merge": false,
+  "deployment": false
+}

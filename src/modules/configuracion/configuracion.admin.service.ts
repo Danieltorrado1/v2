@@ -840,7 +840,7 @@ const listCatalogoSimple = async (
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
   const countResult = await dbQuery<CountRow>(
-    `SELECT COUNT(*)::int AS total FROM ${tableName} ${whereClause}`,
+    `SELECT COUNT(*)::int AS total FROM public.${tableName} ${whereClause}`,
     params
   );
   const total = countResult.rows[0]?.total ?? 0;
@@ -856,7 +856,7 @@ const listCatalogoSimple = async (
     `
       SELECT
         ${selectColumns}
-      FROM ${tableName}
+      FROM public.${tableName}
       ${whereClause}
       ORDER BY ${orderBy}
       LIMIT $${listParams.length - 1}::int OFFSET $${listParams.length}::int
@@ -1305,7 +1305,7 @@ export const listContratos = async (query: ConfiguracionContratosListQuery, tena
   });
 
   const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
-  const countResult = await dbQuery<CountRow>(`SELECT COUNT(*)::int AS total FROM contratos c INNER JOIN empresas e ON e.id = c.empresa_id ${whereClause}`, params);
+  const countResult = await dbQuery<CountRow>(`SELECT COUNT(*)::int AS total FROM public.contratos c INNER JOIN public.empresas e ON e.id = c.empresa_id ${whereClause}`, params);
   const total = countResult.rows[0]?.total ?? 0;
   const offset = (query.page - 1) * query.limit;
   const listParams = [...params, query.limit, offset];
@@ -1328,8 +1328,8 @@ export const listContratos = async (query: ConfiguracionContratosListQuery, tena
         c.observaciones,
         c.aplica_cobertura,
         COALESCE(c.activo, TRUE) AS activo
-      FROM contratos c
-      INNER JOIN empresas e ON e.id = c.empresa_id
+      FROM public.contratos c
+      INNER JOIN public.empresas e ON e.id = c.empresa_id
       ${whereClause}
       ORDER BY c.fecha_inicio DESC, c.id DESC
       LIMIT $${listParams.length - 1}::int OFFSET $${listParams.length}::int
