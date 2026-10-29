@@ -85,21 +85,23 @@ export function createPlanillaImporter(dependencies=defaultDependencies) {
         WHERE ca.vinculacion_id=ANY($1::bigint[]) AND ca.activo=TRUE AND ff.activo=TRUE AND ff.contrato_id=$2::bigint
           AND ca.fecha_inicio<=$4::date AND (ca.fecha_fin IS NULL OR ca.fecha_fin>=$3::date)`,
       [upload.baseline.trabajadores.map(w=>w.vinculacion_id),current.periodo.contrato_id,current.periodo.fecha_inicio,current.periodo.fecha_fin]);
-      for (const op of plan.filas.filter(r=>['CREAR','SUSTITUIR','ASISTENCIA'].includes(r.accion))) {
+      for (const op of plan.filas.filter(r=>['CREAR','SUSTITUIR','RETIRAR','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion))) {
         const worker=current.trabajadores.find(w=>w.id===op.empleado_id)!;
         const matches=coverage.rows.filter(c=>c.vinculacion_id===worker.vinculacion_id && c.desde<=op.fecha && (!c.hasta || c.hasta>=op.fecha));
         if (!matches.length || matches.some(c=>['municipio_id','institucion_id','sede_id','modalidad_id'].some(k=>c[k]!==worker[k as keyof typeof worker]))) {
-          if (op.accion==='CREAR') plan.nuevas--; else if (op.accion==='SUSTITUIR') plan.sustituciones--; else plan.asistencias--;
+          if (op.accion==='CREAR') plan.nuevas--; else if (op.accion==='SUSTITUIR') plan.sustituciones--; else if (op.accion==='RETIRAR') plan.retiradas--; else {
+            plan.asistencias--; if (op.accion==='SUSTITUIR_ASISTENCIA') plan.sustituciones--;
+          }
           op.accion='CONFLICTO'; op.motivo='CONTEXTO_LABORAL_NO_CORRESPONDE_A_LA_FECHA'; plan.conflictos++;
         }
       }
-      const operated=new Set(plan.filas.filter(r=>['CREAR','SUSTITUIR','ASISTENCIA'].includes(r.accion)).map(r=>r.empleado_id));
+      const operated=new Set(plan.filas.filter(r=>['CREAR','SUSTITUIR','RETIRAR','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion)).map(r=>r.empleado_id));
       plan.filas_omitidas=upload.baseline.trabajadores.filter(w=>!operated.has(w.id)).length;
       const ids=new Set(upload.baseline.trabajadores.map(w=>w.id));
       const state=digest({ guards:current.import_guard!.filter(g=>ids.has(g.id)), catalogo:current.catalogo, periodo:current.periodo });
       const planHash=digest(plan);
       const binding={ actor:input.tenant.userId,periodo:input.periodoId,template:upload.templateKey,content,state,plan:planHash };
-      const operations=plan.filas.filter(r=>['CREAR','SUSTITUIR','ASISTENCIA'].includes(r.accion));
+      const operations=plan.filas.filter(r=>['CREAR','SUSTITUIR','RETIRAR','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion));
       operationReport=operations.map(r=>({empleado_id:r.empleado_id,fecha:r.fecha,accion:r.accion,codigo:r.nuevo}));
       if (!confirmation) {
         await client.query('COMMIT');
@@ -124,8 +126,11 @@ export function createPlanillaImporter(dependencies=defaultDependencies) {
         const context={ municipio_id:worker.municipio_id,institucion_id:worker.institucion_id,sede_id:worker.sede_id,modalidad_id:worker.modalidad_id };
         const previous=current.novedades.filter(n=>op.sustituir_ids.includes(n.id));
         let newId:string|null=null; let created:unknown;
-        if (op.accion==='ASISTENCIA') {
+        if (op.accion==='ASISTENCIA' || op.accion==='SUSTITUIR_ASISTENCIA') {
+          for (const old of previous) await dependencies.deactivate(old.id,String(input.tenant.userId),mutationScope,input.auditMeta,client);
           created=await dependencies.attendance(input.periodoId,worker.vinculacion_id,op.fecha,op.nuevo==='PRESENTE',String(input.tenant.userId),mutationScope,input.auditMeta,client);
+        } else if (op.accion==='RETIRAR') {
+          for (const old of previous) await dependencies.deactivate(old.id,String(input.tenant.userId),mutationScope,input.auditMeta,client);
         } else {
           for (const old of previous) await dependencies.deactivate(old.id,String(input.tenant.userId),mutationScope,input.auditMeta,client);
           const type=current.catalogo.find(t=>t.id===op.tipo_id)!;
@@ -137,15 +142,18 @@ export function createPlanillaImporter(dependencies=defaultDependencies) {
         const originals=op.accion==='ASISTENCIA' ? current.asistencias.filter(a=>a.vinculacion_id===worker.vinculacion_id && a.fecha===op.fecha) : previous;
         // Mandatory history: any failure here rolls back both deactivations and
         // creations. Complements the existing V1 audit (which is best-effort).
+        const auditAction=op.accion==='RETIRAR' ? 'SUSTITUIR' : op.accion==='SUSTITUIR_ASISTENCIA' ? 'ASISTENCIA' : op.accion;
+        const auditNew=op.accion==='RETIRAR' ? {accion:'RETIRAR',valor:null} : created ?? null;
+        const auditReason=op.accion==='RETIRAR' ? `RETIRAR: ${confirmation.motivo.trim()}` : op.accion==='SUSTITUIR_ASISTENCIA' ? `SUSTITUIR_ASISTENCIA: ${confirmation.motivo.trim()}` : confirmation.motivo.trim();
         await client.query(`INSERT INTO nomina_planilla_importacion_operaciones
           (importacion_id,usuario_id,municipio_id,nomina_empleado_id,vinculacion_id,fecha,accion,contexto,anteriores,nuevos,motivo)
           VALUES ($1::uuid,$2::bigint,$3::bigint,$4::bigint,$5::bigint,$6::date,$7,$8::jsonb,$9::jsonb,$10::jsonb,$11)`,
-        [id,String(input.tenant.userId),worker.municipio_id,worker.id,worker.vinculacion_id,op.fecha,op.accion,JSON.stringify(context),JSON.stringify(originals),JSON.stringify(created),confirmation.motivo.trim()]);
+        [id,String(input.tenant.userId),worker.municipio_id,worker.id,worker.vinculacion_id,op.fecha,auditAction,JSON.stringify(context),JSON.stringify(originals),JSON.stringify(auditNew),auditReason]);
         applied.push({empleado_id:worker.id,municipio:worker.municipio,municipio_id:worker.municipio_id!,trabajadora:worker.nombre,fecha:op.fecha,accion:op.accion,anteriores:op.sustituir_ids,nuevo_id:newId,codigo:op.nuevo});
       }
       const resultado={ id,atomicidad:'ARCHIVO_COMPLETO',origen:'EXCEL_OPERATIVO',usuario_id:String(input.tenant.userId),
         aplicadas:applied,omitidas:plan.filas_omitidas,rechazadas:0,conservadas:plan.celdas_vacias,sin_cambios:plan.sin_cambios,
-        recalculo:'Sin calculo alternativo ni recalc directo; conserva invalidacion y eventos del flujo V1.' };
+        retiradas:plan.retiradas,recalculo:'Sin calculo alternativo ni recalc directo; conserva invalidacion y eventos del flujo V1.' };
       await client.query('UPDATE nomina_planilla_importaciones SET resultado=$2::jsonb WHERE id=$1::uuid',[id,JSON.stringify(resultado)]);
       commitAttempted=true;
       await client.query('COMMIT');

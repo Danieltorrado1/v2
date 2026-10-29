@@ -56,7 +56,7 @@ test('espacios exteriores se comparan simetricamente sin cambiar el original; ca
   const changed=f.analyze(f.edit(f.name,'I7',mark)).plan;assert.equal(changed.conflictos,1);assert.equal(changed.sin_cambios,0);
  }
  const empty=f.analyze(f.edit(f.name,'I7','')).plan;
- assert.equal(empty.conflictos,0);assert.equal(empty.nuevas+empty.sustituciones+empty.asistencias,0);assert.ok(empty.celdas_vacias>0);
+  assert.equal(empty.conflictos,0);assert.equal(empty.nuevas+empty.sustituciones+empty.asistencias,0);assert.equal(empty.retiradas,1);assert.ok(empty.celdas_vacias>0);
 });
 
 test('valores no textuales o formulas no eluden controles por equivalencia de texto',()=>{

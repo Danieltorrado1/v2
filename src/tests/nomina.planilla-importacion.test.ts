@@ -34,13 +34,65 @@ test('prevalece Excel: sustituye incompatible con baja logica, anterior/nuevo y 
 
 test('vacio conserva original; equivalente no duplica',async()=>{
   const h=await importHarness();try {
-    const id=await h.seed();const original=await h.download();
+    const original=await h.download();
     const empty=await h.preview(h.edit(original,[{id:'101',fecha:'2026-10-27',value:''}]));
     assert.equal(empty.plan?.sustituciones,0);assert.equal(empty.plan?.nuevas,0);assert.equal(empty.token,null);
-    const same=await h.preview(original);assert.equal(same.plan?.sin_cambios,1);assert.equal(same.token,null);
+    await h.seed();const current=await h.download();const same=await h.preview(current);assert.equal(same.plan?.sin_cambios,1);assert.equal(same.token,null);
+    const id=(await h.db.query<Record<string,any>>('SELECT id::text FROM nomina_novedades')).rows[0]!.id;
     assert.equal((await h.db.query<Record<string, any>>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[id])).rows[0]!.activo,true);
   }finally{await h.close();}
 });
+
+test('borrar una S original propone RETIRAR, confirma baja logica auditada e idempotente',async()=>{const h=await importHarness();try{
+  const id=await h.seed('12');const other=await h.seed('13','2026-10-28');const original=await h.download();const file=h.edit(original,[{id:'101',fecha:'2026-10-27',value:''}]);
+  const p=await h.preview(file);assert.equal(p.plan!.retiradas,1);assert.equal(p.plan!.filas.find(r=>r.accion==='RETIRAR')!.anterior,'S');assert.deepEqual(p.plan!.filas.find(r=>r.accion==='RETIRAR')!.sustituir_ids,[id]);
+  assert.equal((await h.db.query<Record<string,any>>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[id])).rows[0]!.activo,true);
+  const result=await h.confirm(file,p.token!);assert.equal(result.resultado!.retiradas,1);assert.equal((await h.db.query<Record<string,any>>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[id])).rows[0]!.activo,false);
+  assert.equal((await h.db.query<Record<string,any>>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[other])).rows[0]!.activo,true);
+  const audit=(await h.db.query<Record<string,any>>('SELECT accion,anteriores,nuevos,motivo FROM nomina_planilla_importacion_operaciones')).rows[0]!;assert.equal(audit.accion,'SUSTITUIR');assert.equal(String(audit.anteriores[0].id),id);assert.deepEqual(audit.nuevos,{accion:'RETIRAR',valor:null});assert.match(audit.motivo,/RETIRAR/);
+  assert.equal((await h.confirm(file,p.token!)).estado,'YA_APLICADO');assert.equal((await h.db.query<Record<string,any>>('SELECT count(*)::int AS n FROM nomina_novedades')).rows[0]!.n,2);
+}finally{await h.close();}});
+
+test('borrar original sin permiso de baja logica produce conflicto y no habilita confirmacion',async()=>{const h=await importHarness();try{
+  const id=await h.seed('12');await h.db.exec('UPDATE rol_permisos SET activo=FALSE WHERE rol_id=3 AND permiso_id=5');
+  const file=h.edit(await h.download(),[{id:'101',fecha:'2026-10-27',value:''}]);const p=await h.preview(file);
+  assert.equal(p.plan!.retiradas,0);assert.ok(p.plan!.conflictos>0);assert.equal(p.token,null);
+  assert.equal((await h.db.query<Record<string,any>>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[id])).rows[0]!.activo,true);
+}finally{await h.close();}});
+
+test('PNR original cambiado a PRESENTE propone sustitucion y conserva baja/auditoria dentro de la transaccion',async()=>{const h=await importHarness();try{
+  const id=await h.seed('11');const original=await h.download();const file=h.edit(original,[{id:'101',fecha:'2026-10-27',value:'PRESENTE'}]);
+  const p=await h.preview(file);const op=p.plan!.filas.find(r=>r.accion==='SUSTITUIR_ASISTENCIA')!;assert.equal(p.plan!.sustituciones,1);assert.equal(p.plan!.asistencias,1);assert.equal(op.anterior,'PNR');assert.equal(op.nuevo,'PRESENTE');assert.deepEqual(op.sustituir_ids,[id]);
+  await h.confirm(file,p.token!);assert.equal((await h.db.query<Record<string,any>>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[id])).rows[0]!.activo,false);
+  assert.equal((await h.db.query<Record<string,any>>('SELECT estado_dia FROM nomina_asistencia_diaria WHERE fecha=\'2026-10-27\'')).rows[0]!.estado_dia,'PRESENTE');
+  const audit=(await h.db.query<Record<string,any>>('SELECT accion,anteriores,nuevos,motivo FROM nomina_planilla_importacion_operaciones')).rows[0]!;assert.equal(audit.accion,'ASISTENCIA');assert.equal(String(audit.anteriores[0].id),id);assert.equal(audit.nuevos.estado_dia,'PRESENTE');assert.match(audit.motivo,/SUSTITUIR_ASISTENCIA/);
+}finally{await h.close();}});
+
+test('DCO original cambiado a S propone sustitucion ordinaria sin borrar fisicamente el anterior',async()=>{const h=await importHarness();try{
+  const id=await h.seed('13');const file=h.edit(await h.download(),[{id:'101',fecha:'2026-10-27',value:'S'}]);const p=await h.preview(file);
+  assert.equal(p.plan!.sustituciones,1);assert.equal(p.plan!.filas.find(r=>r.accion==='SUSTITUIR')!.anterior,'DCO');await h.confirm(file,p.token!);
+  assert.equal((await h.db.query<Record<string,any>>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[id])).rows[0]!.activo,false);
+  assert.equal((await h.db.query<Record<string,any>>('SELECT count(*)::int AS n FROM nomina_novedades WHERE activo=TRUE AND tipo_novedad_id=12')).rows[0]!.n,1);
+}finally{await h.close();}});
+
+test('retiro de rango, evento multiple, soporte y procesamiento permanece bloqueado',async()=>{const h=await importHarness();try{
+  const ranged=await h.seed('12');await h.db.exec(`UPDATE nomina_novedades SET fecha_inicio='2026-10-26',fecha_fin='2026-10-28' WHERE id=${ranged}`);
+  let file=h.edit(await h.download(),[{id:'101',fecha:'2026-10-27',value:''}]);let p=await h.preview(file);assert.ok(p.plan!.conflictos>0);assert.equal(p.token,null);
+  await h.db.exec(`UPDATE nomina_novedades SET fecha_inicio='2026-10-27',fecha_fin='2026-10-27' WHERE id=${ranged}; INSERT INTO nomina_novedades(periodo_id,nomina_empleado_id,vinculacion_id,tipo_novedad_id,fecha_inicio,fecha_fin,dias,observacion) VALUES(71,101,81,13,'2026-10-27','2026-10-27',1,'Evento independiente')`);
+  file=h.edit(await h.download(),[{id:'101',fecha:'2026-10-27',value:''}]);p=await h.preview(file);assert.ok(p.plan!.conflictos>0);assert.equal(p.token,null);
+  await h.db.exec('DELETE FROM nomina_novedades WHERE tipo_novedad_id=13');await h.db.query('INSERT INTO nomina_novedad_documentos VALUES(1,$1::bigint)',[ranged]);
+  file=h.edit(await h.download(),[{id:'101',fecha:'2026-10-27',value:''}]);p=await h.preview(file);assert.ok(p.plan!.conflictos>0);assert.equal(p.token,null);
+  await h.db.exec('DELETE FROM nomina_novedad_documentos');await h.db.exec('INSERT INTO nomina_movimientos VALUES(1,71,81,101,TRUE)');
+  file=h.edit(await h.download(),[{id:'101',fecha:'2026-10-27',value:''}]);p=await h.preview(file);assert.ok(p.plan!.conflictos>0);assert.equal(p.token,null);
+  assert.equal((await h.db.query<Record<string,any>>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[ranged])).rows[0]!.activo,true);
+}finally{await h.close();}});
+
+for(const dependency of ['nomina_novedad_turnos','nomina_novedad_coberturas'])test(`retiro bloqueado con dependencia ${dependency}`,async()=>{const h=await importHarness();try{
+  const id=await h.seed('12');await h.db.query(`INSERT INTO ${dependency} VALUES(1,$1::bigint)`,[id]);
+  const file=h.edit(await h.download(),[{id:'101',fecha:'2026-10-27',value:''}]);const p=await h.preview(file);
+  assert.ok(p.plan!.conflictos>0);assert.equal(p.plan!.retiradas,0);assert.equal(p.token,null);
+  assert.equal((await h.db.query<Record<string,any>>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[id])).rows[0]!.activo,true);
+}finally{await h.close();}});
 
 test('archivo dos veces y reintento confirmacion no duplican; plantilla consumida no admite otro contenido',async()=>{
   const h=await importHarness();try {
