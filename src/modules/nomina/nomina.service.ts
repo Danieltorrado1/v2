@@ -1,4 +1,9 @@
 import PDFDocument from 'pdfkit';
+import { createHmac } from 'node:crypto';
+import { env } from '../../config/env';
+import { planillaBaseline, type PlanillaSnapshot } from './planilla-operativa.xlsx';
+import { resolvePlanillaAuthorizedContexts } from './planilla-operativa.scope';
+import { loadPlanillaImportGuards } from './planilla-importacion.guard';
 import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
@@ -5132,7 +5137,7 @@ const blocksNominaNovedadOverlap = (
   toBooleanValue(tipo.es_incapacidad) ||
   normalizeNominaGrupoExclusividad(tipo.grupo_exclusividad) !== 'NINGUNA';
 
-const isIncompatibleNominaNovedadOverlap = (
+export const isIncompatibleNominaNovedadOverlap = (
   current: NominaNovedadOverlapTypeMeta,
   existing: NominaNovedadOverlapRow
 ): boolean => {
@@ -6622,6 +6627,122 @@ export const listNominaEmpleados = async (
       total_pages: total === 0 ? 0 : Math.ceil(total / query.limit)
     }
   };
+};
+
+export const loadPlanillaOperativaSnapshot = async (
+  periodoId: string,
+  tenant: TenantAccessContext,
+  selected: { empresa_id?: string; contrato_id?: string } = {},
+  clientOverride?: PoolClient
+): Promise<{ snapshot: PlanillaSnapshot; signature: string }> => {
+  if (!tenant?.userId) throw new AppError('Authentication required', 401, 'UNAUTHORIZED');
+  const ownsClient = !clientOverride;
+  const client = clientOverride ?? await dbPool.connect();
+  try {
+    if (ownsClient) await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+    const period = await loadRealPeriodoOrThrow(periodoId, tenant, client);
+    if ((selected.empresa_id && selected.empresa_id !== period.contrato_empresa_id) ||
+        (selected.contrato_id && selected.contrato_id !== period.contrato_id)) {
+      throw new AppError('El período no corresponde a la empresa/contrato seleccionado', 403, 'PLANILLA_SCOPE_MISMATCH');
+    }
+    const territorial = await resolvePlanillaAuthorizedContexts(client, tenant.userId, period);
+    // Authorization above is export-specific and current. Shared legacy read helpers
+    // are only used internally; every returned record is intersected with this map.
+    const readScope = { ...tenant, isGlobalAdmin: true };
+    const rows = (await loadNominaEmpleadoRowsForPeriodo(periodoId, {}, readScope, client))
+      .filter(row => territorial.contexts.has(row.id));
+    if (rows.length !== territorial.contexts.size) throw new AppError('Poblacion incompleta para el alcance autorizado', 409, 'PLANILLA_LECTURA_INCOMPLETA');
+    const workers = rows.map(row => mapRealEmpleado(row));
+    if (workers.some(w => w.contrato_id !== period.contrato_id || w.vinculacion.empresa_id !== period.contrato_empresa_id)) {
+      throw new AppError('Hay personal con pertenencia inconsistente; revise la población', 409, 'PLANILLA_PERSONAL_INCONSISTENTE');
+    }
+    const allowed = new Set(workers.map(w => w.id));
+    const links = new Set(workers.map(w => w.vinculacion_id));
+    const catalogRows = await loadNominaTiposNovedadCatalog(client);
+    const catalogById = new Map(catalogRows.map(t => [t.id, t]));
+    const novedades = (await nominaNovedadRepository.list({ periodoId, activo: true, tenant: readScope, excludeInformative: false }, client))
+      .map(row => mapRealNovedad(row as NominaNovedadRealRow)).filter(n => allowed.has(n.nomina_empleado_id));
+    const range = { start: toDateString(period.fecha_inicio)!, end: toDateString(period.fecha_fin)! };
+    const canonical = await loadNominaNovedadesCanonicasForPeriodo(client, range, [...links]);
+    const employeeByLink = new Map(rows.map(row => [row.vinculacion_id, row]));
+    for (const event of canonical) {
+      const tipo = catalogById.get(event.tipo_novedad_id);
+      const empleado = employeeByLink.get(event.vinculacion_id);
+      if (!tipo || !empleado) throw new AppError('Novedad canónica sin catálogo o trabajador', 409, 'PLANILLA_NOVEDAD_INCONSISTENTE');
+      const projected = buildProjectedNominaNovedadFromCanonica({ canonical: event, empleado, periodo: range, tipo });
+      if (projected) novedades.push(projected);
+    }
+    const asistencias: PlanillaSnapshot['asistencias'] = [];
+    let page = 1;
+    while (true) {
+      const result = await nominaAsistenciaRepository.listByPeriodo({ periodoId, activo: true, page, limit: 1000, tenant: readScope }, client);
+      for (const row of result.rows) if (links.has(row.vinculacion_id)) asistencias.push({ id: row.id,
+        vinculacion_id: row.vinculacion_id, fecha: toDateString(row.fecha)!, estado_dia: row.estado_dia });
+      if (page * 1000 >= result.total) break;
+      if (!result.rows.length) throw new AppError('Lectura de asistencia incompleta', 409, 'PLANILLA_LECTURA_INCOMPLETA');
+      page += 1;
+    }
+    const cambios = await client.query<NonNullable<PlanillaSnapshot['cambios_operativos']>[number]>(
+      `SELECT nm.id::text, nm.nomina_empleado_id::text, nm.vinculacion_id::text,
+        nm.fecha::text AS desde, nm.fecha_fin_efectiva::text AS hasta, nm.tipo_movimiento AS tipo, nm.motivo_operativo AS motivo,
+        nm.contexto_anterior ->> 'institucion' AS institucion_anterior, nm.contexto_anterior ->> 'sede' AS sede_anterior,
+        nm.contexto_anterior ->> 'modalidad' AS modalidad_anterior,
+        nm.contexto_nuevo ->> 'institucion' AS institucion_nueva, nm.contexto_nuevo ->> 'sede' AS sede_nueva,
+        nm.contexto_nuevo ->> 'modalidad' AS modalidad_nueva
+       FROM nomina_movimientos nm WHERE nm.periodo_id = $1::bigint
+        AND nm.nomina_empleado_id = ANY($2::bigint[]) AND nm.familia_movimiento = 'CAMBIO_OPERATIVO'
+        AND COALESCE(nm.activo, TRUE) = TRUE ORDER BY nm.fecha, nm.id`, [periodoId, [...allowed]]);
+    // Related people and context labels are also data: hidden sheets cannot bypass
+    // territorial authorization. Unresolvable cross-scope detail fails closed.
+    // The workbook projects related identities through planillaBaseline. Keep
+    // full originals here, on the server, for conflict checks and mandatory audit.
+    for (const change of cambios.rows) {
+      const contexts = territorial.allContexts.filter(c => c.empleado_id === change.nomina_empleado_id);
+      for (const side of ['anterior', 'nueva'] as const) {
+        if (!contexts.some(c => c.institucion === change[`institucion_${side}`] && c.sede === change[`sede_${side}`]
+          && c.modalidad === change[`modalidad_${side}`])) {
+          change[`institucion_${side}`] = null;
+          change[`sede_${side}`] = null;
+          change[`modalidad_${side}`] = null;
+          change.motivo = 'Contexto relacionado reservado; original conservado en EMPIRIA.';
+        }
+      }
+    }
+    const snapshot: PlanillaSnapshot = {
+      periodo: { id: period.id, contrato_id: period.contrato_id, empresa_id: period.contrato_empresa_id ?? '',
+        numero_contrato: period.contrato_numero ?? '', nombre: period.nombre_periodo, estado: period.estado,
+        fecha_inicio: range.start, fecha_fin: range.end },
+      trabajadores: workers.map(w => ({ id: w.id, vinculacion_id: w.vinculacion_id, persona_id: w.persona.id,
+        documento: w.persona.numero_documento ?? '', nombre: w.persona.nombre_completo,
+        institucion: territorial.contexts.get(w.id)!.institucion,
+        sede: territorial.contexts.get(w.id)!.sede,
+        modalidad: territorial.contexts.get(w.id)!.modalidad,
+        municipio_id: territorial.contexts.get(w.id)!.municipio_id,
+        institucion_id: territorial.contexts.get(w.id)!.institucion_id,
+        sede_id: territorial.contexts.get(w.id)!.sede_id,
+        modalidad_id: territorial.contexts.get(w.id)!.modalidad_id,
+        municipio: territorial.contexts.get(w.id)!.municipio, estado: w.estado ?? '',
+        ...(territorial.contexts.get(w.id)!.tipo_contexto==='CONTRACTUAL' ? {
+          tipo_contexto: 'CONTRACTUAL' as const, solo_lectura: 'Sin contexto municipal: consultar y resolver novedades en V1'
+        } : !toBooleanValue(rows.find(r=>r.id===w.id)!.activo) ? {
+          solo_lectura: 'Registro historico inactivo: resolver cambios mediante V1'
+        } : {}),
+        fecha_inicio: w.vinculacion.fecha_inicio ?? range.start, fecha_fin: w.vinculacion.fecha_fin })),
+      asistencias, novedades, cambios_operativos: cambios.rows, catalogo: catalogRows.map(mapNominaTipoNovedad), generado_at: new Date().toISOString(),
+      alcance: `Usuario ${tenant.userId}; empresa ${period.contrato_empresa_id}; contrato ${period.contrato_id}; alcance municipal vigente aplicado`
+    };
+    snapshot.import_guard = await loadPlanillaImportGuards(client, periodoId, [...allowed]);
+    if (snapshot.import_guard.length !== workers.length) throw new AppError('Revision de importacion incompleta', 409, 'PLANILLA_LECTURA_INCOMPLETA');
+    const signature = createHmac('sha256', env.JWT_SECRET).update(JSON.stringify({
+      purpose: 'planilla-operativa-export-2A', generado_at: snapshot.generado_at, alcance: snapshot.alcance,
+      baseline: planillaBaseline(snapshot)
+    })).digest('hex');
+    if (ownsClient) await client.query('COMMIT');
+    return { snapshot, signature };
+  } catch (error) {
+    if (ownsClient) await client.query('ROLLBACK');
+    throw error;
+  } finally { if (ownsClient) client.release(); }
 };
 
 export const listNominaEmpleadosOperativos = async (
@@ -10401,10 +10522,11 @@ export const createNominaNovedad = async (
   } finally { if (ownsClient) client.release(); }
 };
 
-export const markNominaAsistencia = async (periodoId: string, vinculacionId: string, fecha: string, presente: boolean, actorUserId: string, tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta) => {
-  const client = await dbPool.connect();
+export const markNominaAsistencia = async (periodoId: string, vinculacionId: string, fecha: string, presente: boolean, actorUserId: string, tenant?: TenantAccessContext, auditMeta?: AuditRequestMeta, clientOverride?: PoolClient) => {
+  const ownsClient = !clientOverride;
+  const client = clientOverride ?? await dbPool.connect();
   try {
-    await client.query('BEGIN');
+    if (ownsClient) await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
     assertPeriodoAllowsOpenMutations(periodo.estado, 'marking payroll attendance');
     const empleado = await loadNominaEmpleadoOperativoContextByPeriodoVinculacionOrThrow(client, periodoId, vinculacionId);
@@ -10428,13 +10550,13 @@ export const markNominaAsistencia = async (periodoId: string, vinculacionId: str
     await invalidateNominaEmpleadoRevisionState(client, empleado.nomina_empleado_id);
     await registerAuditEntry({ client, usuario_id: actorUserId, accion: presente ? 'NOMINA_ASISTENCIA_CREATE' : 'NOMINA_ASISTENCIA_UPDATE', tabla: 'nomina_asistencia_diaria', registro_id: persisted.id ?? `${periodoId}:${vinculacionId}:${fecha}`, descripcion: 'Marcacion rapida de asistencia desde planilla', after: { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha, presente }, ip: auditMeta?.ip ?? null, user_agent: auditMeta?.user_agent ?? null });
     await registrarEventoLaboralNomina(client, { eventType: 'ASISTENCIA_CAMBIADA', periodoId, vinculacionId, effectiveDate: fecha, operationId: `single:${fecha}`, summary: { fecha_desde: fecha, fecha_hasta: fecha, dias_afectados: [fecha], cantidad: 1, origen: 'Planilla' } });
-    await client.query('COMMIT');
+    if (ownsClient) await client.query('COMMIT');
     return { periodo_id: periodoId, vinculacion_id: vinculacionId, fecha, estado_dia: presente ? 'PRESENTE' : 'PENDIENTE', activo: presente };
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (ownsClient) await client.query('ROLLBACK');
     throw error;
   } finally {
-    client.release();
+    if (ownsClient) client.release();
   }
 };
 
@@ -11366,12 +11488,14 @@ export const deactivateNominaNovedad = async (
   novedadId: string,
   actorUserId: string,
   tenant?: TenantAccessContext,
-  auditMeta?: AuditRequestMeta
+  auditMeta?: AuditRequestMeta,
+  clientOverride?: PoolClient
 ): Promise<NominaNovedad> => {
-  const client = await dbPool.connect();
+  const ownsClient = !clientOverride;
+  const client = clientOverride ?? await dbPool.connect();
 
   try {
-    await client.query('BEGIN');
+    if (ownsClient) await client.query('BEGIN');
     const parsedId = parseNominaNovedadRecordId(novedadId);
 
     if (parsedId.registro_tipo === 'CANONICA_PROYECTADA') {
@@ -11463,8 +11587,10 @@ export const deactivateNominaNovedad = async (
 
       await registrarEventoLaboralNomina(client, { eventType: 'NOVEDAD_DESACTIVADA', periodoId, vinculacionId: current.vinculacion_id, effectiveDate: toDateString(current.fecha_inicio) ?? (toDateString(periodo.fecha_inicio) ?? ''), operationId: `novedad-canonica-deactivate:${current.id}`, summary: { fecha_desde: toDateString(current.fecha_inicio), fecha_hasta: toDateString(current.fecha_fin), cantidad: 1, origen: 'Novedades' } });
 
-      await client.query('COMMIT');
-      await recalculateNominaPeriodo(periodoId, { force: true }, actorUserId, tenant, auditMeta);
+      if (ownsClient) {
+        await client.query('COMMIT');
+        await recalculateNominaPeriodo(periodoId, { force: true }, actorUserId, tenant, auditMeta);
+      }
 
       if (after) {
         return after;
@@ -11607,14 +11733,16 @@ export const deactivateNominaNovedad = async (
 
     await registrarEventoLaboralNomina(client, { eventType: 'NOVEDAD_DESACTIVADA', periodoId: current.periodo_id, vinculacionId: current.vinculacion_id, effectiveDate: toDateString(current.fecha_inicio) ?? (toDateString(periodo.fecha_inicio) ?? ''), operationId: `novedad-deactivate:${parsedId.entidad_id}`, summary: { fecha_desde: toDateString(current.fecha_inicio), fecha_hasta: toDateString(current.fecha_fin), cantidad: 1, origen: 'Novedades' } });
 
-    await client.query('COMMIT');
-    await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
+    if (ownsClient) {
+      await client.query('COMMIT');
+      await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
+    }
     return updated;
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (ownsClient) await client.query('ROLLBACK');
     throw error;
   } finally {
-    client.release();
+    if (ownsClient) client.release();
   }
 };
 

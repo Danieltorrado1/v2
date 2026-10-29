@@ -1,4 +1,7 @@
 import { Router } from 'express';
+import { downloadPlanillaOperativaHandler } from './planilla-operativa.controller';
+import { previewPlanillaImportHandler, confirmPlanillaImportHandler } from './planilla-importacion.controller';
+import { PLANILLA_MAX_BYTES } from './planilla-importacion.xlsx';
 import multer from 'multer';
 
 import { authMiddleware } from '../../middlewares/authMiddleware';
@@ -161,10 +164,18 @@ import {
 
 const nominaRoutes = Router();
 const coberturaUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+const planillaImportUpload = multer({storage:multer.memoryStorage(),limits:{fileSize:PLANILLA_MAX_BYTES,files:1,fields:5,fieldSize:8192,parts:6}});
 
 nominaRoutes.use(authMiddleware);
 nominaRoutes.use(tenantMiddleware);
 nominaRoutes.use(requireModule('NOMINA'));
+
+nominaRoutes.get('/periodos/:id/planilla-operativa.xlsx',
+  requirePermissions('nomina.export', 'nomina.operativa.read'), downloadPlanillaOperativaHandler);
+nominaRoutes.post('/periodos/:id/planilla-operativa/importacion/preview',
+  requirePermissions('nomina.export','nomina.operativa.read'),planillaImportUpload.single('file'),previewPlanillaImportHandler);
+nominaRoutes.post('/periodos/:id/planilla-operativa/importacion/confirmar',
+  requirePermissions('nomina.export','nomina.operativa.read'),planillaImportUpload.single('file'),confirmPlanillaImportHandler);
 
 nominaRoutes.get('/procesos/acceso', requirePermissions('nomina.read'), getNominaProcessAccessHandler);
 nominaRoutes.get('/procesos/areas', requirePermissions('nomina.read'), listNominaAreasHandler);
