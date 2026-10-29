@@ -1121,6 +1121,15 @@ export async function generateNominaDesprendibles(
   return response.data;
 }
 
+export async function exportPlanillaOperativaXlsx(periodoId: string, empresaId: string): Promise<NominaExportMetadata> {
+  const { blob, metadata } = await fetchNominaFile(
+    `/nomina/periodos/${encodeURIComponent(periodoId)}/planilla-operativa.xlsx`,
+    toParams({ empresa_id: empresaId }),
+  );
+  triggerBrowserDownload(blob, metadata.file_name);
+  return metadata;
+}
+
 export async function exportNomina(
   periodoId: string,
   request: NominaExportRequest = {},

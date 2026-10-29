@@ -15,6 +15,7 @@ import { ApiClientError, apiClient } from "../../services/apiClient";
 import {
   getNominaPeriodoDashboard,
   importNominaEmpleados,
+  exportPlanillaOperativaXlsx,
   createNominaNovedad,
   createNominaNovedadConTurno,
   closeNominaEmpleadoOperativo,
@@ -55,6 +56,7 @@ import NominaModuleShell from "./NominaModuleShell";
 import CambioOperativoFields from './CambioOperativoFields';
 import TurnContextFields, { type TurnContext } from './TurnContextFields';
 import { requiresNovedadTurnContext, novedadTurnContext, isNovedadTurnContextMissing } from './novedadTurnContext';
+import PlanillaExcelImport from './PlanillaExcelImport';
 import { tipoCambioOperativo } from './cambioOperativo.domain';
 import {
   buildTramos,
@@ -582,6 +584,7 @@ export default function PlanillaOperativaPage() {
   const [types, setTypes] = useState<NominaTipoNovedad[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [exportingPlanilla, setExportingPlanilla] = useState(false);
   const [periodsLoading, setPeriodsLoading] = useState(true);
   const [reloadVersion, setReloadVersion] = useState(0);
   const [isSyncingPersonal, setIsSyncingPersonal] = useState(false);
@@ -1037,6 +1040,17 @@ export default function PlanillaOperativaPage() {
     }
     return () => { cancelled = true; };
   }, [periodId, empresaId, reloadVersion, canReadPopulationDashboard]);
+
+  const downloadPlanilla = async () => {
+    if (!periodId || !empresaId || exportingPlanilla) return;
+    setExportingPlanilla(true);
+    setError("");
+    try {
+      await exportPlanillaOperativaXlsx(periodId, String(empresaId));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo descargar la planilla operativa.");
+    } finally { setExportingPlanilla(false); }
+  };
 
   const syncPersonal = async () => {
     if (!periodId || isSyncingPersonal) return;
@@ -1938,6 +1952,18 @@ export default function PlanillaOperativaPage() {
     )}>
       <section className="op-sheet-page">
       <section className="op-summary" aria-label="Resumen de la planilla">
+        {user?.permissions.includes('nomina.export') && user.permissions.includes('nomina.operativa.read') &&
+          (user.permissions.includes('nomina.novedades.create') || user.permissions.includes('nomina.periodos.update')) ?
+          <PlanillaExcelImport key={`${empresaId}:${periodId}`} periodId={periodId} empresaId={String(empresaId ?? '')}
+            disabled={loading || isSyncingPersonal || pendingAttendanceChanges.size>0 || period?.estado!=='ABIERTO'} onApplied={()=>setReloadVersion(v=>v+1)} /> : null}
+        {user?.permissions.includes("nomina.export") && user.permissions.includes("nomina.operativa.read") ? (
+          <button type="button" onClick={() => void downloadPlanilla()}
+            disabled={!periodId || !empresaId || exportingPlanilla || loading || isSyncingPersonal}
+            title="Descarga los datos guardados del contrato y período; incluye todo el personal autorizado. No sincroniza personal.">
+            {exportingPlanilla ? "DESCARGANDO..." : "DESCARGAR EXCEL OPERATIVO"}
+          </button>
+        ) : null}
+        {pendingAttendanceChanges.size > 0 ? <span>El Excel incluye únicamente asistencia guardada en el servidor.</span> : null}
         <strong>{employees.length} trabajadores</strong>
         <span aria-live="polite">
           {totalFiltered} personas · {activeFilterCount} {activeFilterCount === 1 ? "filtro activo" : "filtros activos"}
