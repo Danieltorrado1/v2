@@ -6897,15 +6897,16 @@ export const importNominaEmpleados = async (
 
 export const recalculateNominaPeriodo = async (
   periodoId: string,
-  options: { force?: boolean; nomina_empleado_id?: string } | undefined,
+  options: { force?: boolean; nomina_empleado_id?: string; executor?: PoolClient } | undefined,
   actorUserId: string,
   tenant?: TenantAccessContext,
   auditMeta?: AuditRequestMeta
 ): Promise<NominaRecalculateResult> => {
-  const client = await dbPool.connect();
+  const ownsClient = !options?.executor;
+  const client = options?.executor ?? await dbPool.connect();
 
   try {
-    await client.query('BEGIN');
+    if (ownsClient) await client.query('BEGIN');
     const periodo = await loadRealPeriodoOrThrow(periodoId, tenant, client);
     await assertNominaPeriodoCoberturaScope(periodoId, tenant, client);
     const recalculateMode = assertPeriodoAllowsRecalculate(
@@ -8085,7 +8086,7 @@ export const recalculateNominaPeriodo = async (
 
     const updatedPeriodo = mapRealPeriodo(await loadRealPeriodoOrThrow(periodoId, tenant, client));
 
-    await client.query('COMMIT');
+    if (ownsClient) await client.query('COMMIT');
 
     return {
       periodo: updatedPeriodo,
@@ -8093,10 +8094,10 @@ export const recalculateNominaPeriodo = async (
       liquidaciones_generadas: 0
     };
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (ownsClient) await client.query('ROLLBACK');
     throw error;
   } finally {
-    client.release();
+    if (ownsClient) client.release();
   }
 };
 
@@ -11035,12 +11036,14 @@ export const updateNominaNovedad = async (
   input: UpdateNominaNovedadInput,
   actorUserId: string,
   tenant?: TenantAccessContext,
-  auditMeta?: AuditRequestMeta
+  auditMeta?: AuditRequestMeta,
+  clientOverride?: PoolClient
 ): Promise<NominaNovedad> => {
-  const client = await dbPool.connect();
+  const ownsClient = !clientOverride;
+  const client = clientOverride ?? await dbPool.connect();
 
   try {
-    await client.query('BEGIN');
+    if (ownsClient) await client.query('BEGIN');
     const parsedId = parseNominaNovedadRecordId(novedadId);
 
     if (parsedId.registro_tipo === 'CANONICA_PROYECTADA') {
@@ -11240,8 +11243,10 @@ export const updateNominaNovedad = async (
 
       await registrarEventoLaboralNomina(client, { eventType: 'NOVEDAD_ACTUALIZADA', periodoId, vinculacionId: current.vinculacion_id, effectiveDate: toDateString(updatedCanonical.fecha_inicio) ?? (toDateString(periodo.fecha_inicio) ?? ''), operationId: `novedad-canonica-update:${current.id}:${updatedCanonical.updated_at?.toString() ?? ''}`, summary: { fecha_desde: toDateString(updatedCanonical.fecha_inicio), fecha_hasta: toDateString(updatedCanonical.fecha_fin), cantidad: 1, origen: 'Novedades' } });
 
-      await client.query('COMMIT');
-      await recalculateNominaPeriodo(periodoId, { force: true }, actorUserId, tenant, auditMeta);
+      if (ownsClient) {
+        await client.query('COMMIT');
+        await recalculateNominaPeriodo(periodoId, { force: true }, actorUserId, tenant, auditMeta);
+      }
       if (updated) {
         return updated;
       }
@@ -11475,13 +11480,15 @@ export const updateNominaNovedad = async (
 
     await registrarEventoLaboralNomina(client, { eventType: 'NOVEDAD_ACTUALIZADA', periodoId: current.periodo_id, vinculacionId: current.vinculacion_id, effectiveDate: nextFechaInicio ?? (toDateString(periodo.fecha_inicio) ?? ''), operationId: `novedad-update:${parsedId.entidad_id}:${nextFechaInicio ?? ''}`, summary: { fecha_desde: nextFechaInicio, fecha_hasta: nextFechaFin, cantidad: 1, origen: 'Novedades' } });
 
-    await client.query('COMMIT');
-    await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
+    if (ownsClient) {
+      await client.query('COMMIT');
+      await recalculateNominaPeriodo(current.periodo_id, { force: true }, actorUserId, tenant, auditMeta);
+    }
     return updated;
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (ownsClient) await client.query('ROLLBACK');
     throw error;
-  } finally { client.release(); }
+  } finally { if (ownsClient) client.release(); }
 };
 
 export const deactivateNominaNovedad = async (

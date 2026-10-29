@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS nomina_planilla_importacion_operaciones (
   nomina_empleado_id bigint NOT NULL REFERENCES nomina_empleados(id),
   vinculacion_id bigint NOT NULL,
   fecha date NOT NULL,
-  accion text NOT NULL CHECK (accion IN ('CREAR','SUSTITUIR','ASISTENCIA')),
+  accion text NOT NULL CHECK (accion IN ('CREAR','SUSTITUIR','ASISTENCIA','MODIFICAR_RANGO')),
   contexto jsonb NOT NULL,
   anteriores jsonb NOT NULL,
   nuevos jsonb NOT NULL,

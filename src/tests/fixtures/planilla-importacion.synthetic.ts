@@ -9,15 +9,17 @@ import type { PlanillaSnapshot } from '../../modules/nomina/planilla-operativa.x
 import { buildPlanillaOperativaXlsx, planillaBaseline } from '../../modules/nomina/planilla-operativa.xlsx';
 import type { NominaNovedad } from '../../modules/nomina/nomina.service';
 
-export async function importHarness(options:{count?:number;database?:PGlite;connect?:()=>Promise<PoolClient>}={}) {
+export async function importHarness(options:{count?:number;database?:PGlite;connect?:()=>Promise<PoolClient>;period?:{start:string;end:string}}={}) {
   const {resolvePlanillaAuthorizedContexts}=require('../../modules/nomina/planilla-operativa.scope') as typeof import('../../modules/nomina/planilla-operativa.scope');
   const {loadPlanillaImportGuards}=require('../../modules/nomina/planilla-importacion.guard') as typeof import('../../modules/nomina/planilla-importacion.guard');
   const {createPlanillaImporter}=require('../../modules/nomina/planilla-importacion.service') as typeof import('../../modules/nomina/planilla-importacion.service');
   const db=options.database ?? await municipalAuthorizationDatabase();
+  const periodStart=options.period?.start ?? '2026-10-26',periodEnd=options.period?.end ?? '2026-11-25';
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(periodStart) || !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd)) throw new Error('Invalid synthetic period');
   await db.exec(`
     CREATE UNIQUE INDEX synthetic_user_id ON usuarios(id); CREATE UNIQUE INDEX synthetic_employee_id ON nomina_empleados(id);
     CREATE TABLE nomina_periodos(id bigint PRIMARY KEY,contrato_id bigint,fecha_inicio date,fecha_fin date,estado text);
-    INSERT INTO nomina_periodos VALUES(71,51,'2026-10-26','2026-11-25','ABIERTO');
+    INSERT INTO nomina_periodos VALUES(71,51,'${periodStart}','${periodEnd}','ABIERTO');
     CREATE TABLE personas(id bigint PRIMARY KEY);
     ALTER TABLE vinculaciones ADD COLUMN persona_id bigint;
     UPDATE vinculaciones SET persona_id=id+10;
@@ -37,11 +39,11 @@ export async function importHarness(options:{count?:number;database?:PGlite;conn
     CREATE TABLE nomina_novedad_documentos(id bigint,nomina_novedad_id bigint);
     CREATE TABLE nomina_novedad_turnos(id bigint,nomina_novedad_id bigint);
     CREATE TABLE nomina_novedad_coberturas(id bigint,nomina_novedad_id bigint);
-    INSERT INTO permisos VALUES(4,'nomina','novedades.create',TRUE),(5,'nomina','novedades.deactivate',TRUE),(6,'nomina','periodos.update',TRUE);
+    INSERT INTO permisos VALUES(4,'nomina','novedades.create',TRUE),(5,'nomina','novedades.deactivate',TRUE),(6,'nomina','periodos.update',TRUE),(7,'nomina','novedades.update',TRUE);
     INSERT INTO rol_permisos SELECT r.id,p.id,TRUE FROM roles r CROSS JOIN permisos p WHERE r.id<5 AND p.id>=4;
   `);
   await db.exec(readFileSync('src/tests/fixtures/planilla-importacion.synthetic-schema.sql','utf8'));
-  const types=[syntheticType('11','PNR',{es_permiso:true}),syntheticType('12','S',{es_suspension:true}),syntheticType('13','DCO',{es_evento_operativo:true,requiere_dias:true,permite_asistencia_simultanea:true}),
+  const types=[syntheticType('11','PNR',{es_permiso:true}),syntheticType('12','S',{es_suspension:true,requiere_dias:true}),syntheticType('13','DCO',{es_evento_operativo:true,requiere_dias:true,permite_asistencia_simultanea:true}),
     syntheticType('14','TA',{permite_asistencia_simultanea:true}),syntheticType('15','DNC',{activo:false})];
   for(const t of types) await db.query('INSERT INTO nomina_tipos_novedad VALUES($1::bigint,$2,$3::jsonb)',[t.id,t.codigo_operativo,JSON.stringify(t)]);
   if(options.count && options.count>3) await db.exec(`
@@ -51,11 +53,12 @@ export async function importHarness(options:{count?:number;database?:PGlite;conn
   `);
   const queries:string[]=[];
   const client={ query:async(text:string,values:unknown[]=[])=>{queries.push(text);return db.query(text,values);},release(){} } as unknown as PoolClient;
-  const period={id:'71',contrato_id:'51',contrato_empresa_id:'41',fecha_inicio:'2026-10-26',fecha_fin:'2026-11-25'};
+  const period={id:'71',contrato_id:'51',contrato_empresa_id:'41',fecha_inicio:periodStart,fecha_fin:periodEnd};
   const loadSnapshot:typeof import('../../modules/nomina/nomina.service').loadPlanillaOperativaSnapshot=async(_id,tenant,_selected,executor)=>{
     const c=executor ?? client;
     const territory=await resolvePlanillaAuthorizedContexts(c,tenant.userId!,period);
     const snapshot=syntheticSnapshot();
+    snapshot.periodo.fecha_inicio=periodStart;snapshot.periodo.fecha_fin=periodEnd;
     snapshot.periodo.estado=(await c.query('SELECT estado FROM nomina_periodos WHERE id=71')).rows[0].estado;
     snapshot.catalogo=(await c.query('SELECT perfil FROM nomina_tipos_novedad ORDER BY id')).rows.map(r=>r.perfil);
     snapshot.trabajadores=[];
@@ -68,7 +71,7 @@ export async function importHarness(options:{count?:number;database?:PGlite;conn
     }
     const ids=snapshot.trabajadores.map(w=>w.id), links=snapshot.trabajadores.map(w=>w.vinculacion_id);
     const novels=(await c.query('SELECT nn.*,id::text,nomina_empleado_id::text,vinculacion_id::text,tipo_novedad_id::text,fecha_inicio::text,fecha_fin::text FROM nomina_novedades nn WHERE nomina_empleado_id=ANY($1::bigint[]) AND activo=TRUE ORDER BY nn.id',[ids])).rows;
-    snapshot.novedades=novels.map(n=>({...syntheticSnapshot().novedades[0]!,...n,periodo_id:'71',valor_manual:null,
+    snapshot.novedades=novels.map(n=>({...syntheticSnapshot().novedades[0]!,...n,dias:n.dias==null?null:Number(n.dias),periodo_id:'71',valor_manual:null,
       tipo_novedad:{...snapshot.catalogo.find(t=>t.id===n.tipo_novedad_id)!,codigo_operativo_registrado:snapshot.catalogo.find(t=>t.id===n.tipo_novedad_id)!.codigo_operativo}} as NominaNovedad));
     snapshot.asistencias=(await c.query('SELECT id::text,vinculacion_id::text,fecha::text,estado_dia FROM nomina_asistencia_diaria WHERE vinculacion_id=ANY($1::bigint[]) AND activo=TRUE ORDER BY id',[links])).rows as PlanillaSnapshot['asistencias'];
     snapshot.import_guard=await loadPlanillaImportGuards(c,'71',ids);
@@ -76,7 +79,7 @@ export async function importHarness(options:{count?:number;database?:PGlite;conn
     const signature=createHmac('sha256','test-only').update(JSON.stringify({purpose:'planilla-operativa-export-2A',generado_at:snapshot.generado_at,alcance:snapshot.alcance,baseline:planillaBaseline(snapshot)})).digest('hex');
     return {snapshot,signature};
   };
-  let failAt=0,writes=0;
+  let failAt=0,writes=0,failRecalculation=false;
   const create:typeof import('../../modules/nomina/nomina.service').createNominaNovedad=async(input,_actor,_tenant,_meta,executor)=>{
     if(++writes===failAt) throw new Error('Synthetic injected failure');
     const r=await executor!.query(`INSERT INTO nomina_novedades(periodo_id,nomina_empleado_id,vinculacion_id,tipo_novedad_id,fecha_inicio,fecha_fin,dias,observacion)
@@ -93,18 +96,36 @@ export async function importHarness(options:{count?:number;database?:PGlite;conn
       ON CONFLICT(periodo_id,vinculacion_id,fecha) DO UPDATE SET estado_dia=EXCLUDED.estado_dia,activo=EXCLUDED.activo`,[periodId,link,date,presente?'PRESENTE':'PENDIENTE',presente]);
     return {periodo_id:periodId,vinculacion_id:link,fecha:date,estado_dia:presente?'PRESENTE':'PENDIENTE',activo:presente};
   };
-  const execute=createPlanillaImporter({connect:options.connect ?? (async()=>client),loadSnapshot,create,deactivate,attendance});
+  const updateCalls:{id:string;fecha_inicio:string|null|undefined;fecha_fin:string|null|undefined;dias:number|null|undefined}[]=[];
+  const update:typeof import('../../modules/nomina/nomina.service').updateNominaNovedad=async(id,input,_actor,_tenant,_meta,executor)=>{
+    updateCalls.push({id,fecha_inicio:input.fecha_inicio,fecha_fin:input.fecha_fin,dias:input.dias});
+    const r=await executor!.query(`UPDATE nomina_novedades SET fecha_inicio=$2::date,fecha_fin=$3::date,dias=$4,updated_at=clock_timestamp()
+      WHERE id=$1::bigint RETURNING id::text,nomina_empleado_id::text,vinculacion_id::text,fecha_inicio::text,fecha_fin::text,dias`,[id,input.fecha_inicio,input.fecha_fin,input.dias]);
+    const row=r.rows[0]!;const type=types.find(t=>t.id==='12')!;
+    return {...syntheticSnapshot().novedades[0]!,id:row.id,nomina_empleado_id:row.nomina_empleado_id,vinculacion_id:row.vinculacion_id,
+      fecha_inicio:row.fecha_inicio,fecha_fin:row.fecha_fin,dias:Number(row.dias),activo:true,valor_manual:null,
+      tipo_novedad:{...type,codigo_operativo_registrado:'S'}};
+  };
+  const recalculations:{periodo_id:string;nomina_empleado_id:string|undefined;transactional:boolean}[]=[];
+  const recalculate:typeof import('../../modules/nomina/nomina.service').recalculateNominaPeriodo=async(periodoId,opts)=>{
+    if(failRecalculation) throw new Error('Synthetic recalculation failure');
+    recalculations.push({periodo_id:periodoId,nomina_empleado_id:opts?.nomina_empleado_id,transactional:!!opts?.executor});
+    return {periodo:{...period,estado:'ABIERTO'},empleados_procesados:1,liquidaciones_generadas:0} as unknown as Awaited<ReturnType<typeof import('../../modules/nomina/nomina.service').recalculateNominaPeriodo>>;
+  };
+  const execute=createPlanillaImporter({connect:options.connect ?? (async()=>client),loadSnapshot,create,update,deactivate,attendance,recalculate});
   const tenant=(actor=3)=>({userId:actor,empresaIds:[41],contratoIds:[51],roleNames:['ADMINISTRADOR'],isGlobalAdmin:true});
   const download=async(actor=3)=>{const r=await loadSnapshot('71',tenant(actor));return buildPlanillaOperativaXlsx(r.snapshot,r.signature);};
   const edit=(buffer:Buffer,changes:{id?:string;fecha?:string;value?:string;sheet?:string;address?:string;formula?:string}[])=>{
     const book=XLSX.read(buffer,{type:'buffer'});
     for(const change of changes) {
       let sheet=change.sheet ? book.Sheets[change.sheet] : undefined, address=change.address;
-      if(!sheet) for(const name of book.SheetNames.filter(n=>n.startsWith('Municipio'))) {
+      if(!sheet) for(const name of book.SheetNames.filter(n=>!n.startsWith('_') && !['Detalle_novedades','Catalogo'].includes(n))) {
         const ws=book.Sheets[name]!;
         const end=XLSX.utils.decode_range(ws['!ref']!).e.r;
-        for(let row=6;row<=end;row++) if(ws[`AM${row+1}`]?.v===change.id) {
-          sheet=ws;const dateCol=Array.from({length:31},(_,i)=>i+7).find(col=>ws[XLSX.utils.encode_cell({r:5,c:col})]?.v===change.fecha)!;
+        const dayCols=Array.from({length:31},(_,i)=>i+7).filter(col=>/^\d{4}-\d{2}-\d{2}$/.test(String(ws[XLSX.utils.encode_cell({r:5,c:col})]?.v??'')));
+        const employeeColumn=XLSX.utils.encode_col(7+dayCols.length);
+        for(let row=6;row<=end;row++) if(String(ws[`${employeeColumn}${row+1}`]?.v??'')===change.id) {
+          sheet=ws;const dateCol=dayCols.find(col=>String(ws[XLSX.utils.encode_cell({r:5,c:col})]?.v??'')===change.fecha)!;
           address=XLSX.utils.encode_cell({r:row,c:dateCol}); break;
         }
         if(sheet) break;
@@ -118,7 +139,13 @@ export async function importHarness(options:{count?:number;database?:PGlite;conn
     const r=await db.query<{id:string}>(`INSERT INTO nomina_novedades(periodo_id,nomina_empleado_id,vinculacion_id,tipo_novedad_id,fecha_inicio,fecha_fin,dias,observacion)
       VALUES(71,$1::bigint,$2::bigint,$3::bigint,$4::date,$4::date,1,'Original sintetico') RETURNING id::text`,[id,link,type,date]);return r.rows[0]!.id;
   };
+  const seedRange=async({id,employeeId='101',linkId='81',type='12',start='2026-11-08',end='2026-11-12',days=5}:{id:number;employeeId?:string;linkId?:string;type?:string;start?:string;end?:string;days?:number})=>{
+    await db.query(`INSERT INTO nomina_novedades(id,periodo_id,nomina_empleado_id,vinculacion_id,tipo_novedad_id,fecha_inicio,fecha_fin,dias,observacion,activo,updated_at)
+      VALUES($1,71,$2::bigint,$3::bigint,$4::bigint,$5::date,$6::date,$7,'Suspensión sintética',TRUE,clock_timestamp())`,[id,employeeId,linkId,type,start,end,days]);
+    return String(id);
+  };
   const preview=(archivo:Buffer,actor=3)=>execute({archivo,periodoId:'71',tenant:tenant(actor),empresaId:'41'});
   const confirm=(archivo:Buffer,token:string,actor=3)=>execute({archivo,periodoId:'71',tenant:tenant(actor),empresaId:'41',confirmacion:{token,confirmar:'CONFIRMAR',motivo:'Revision expresa del archivo sintetico'}});
-  return {db,client,queries,download,edit,seed,preview,confirm,execute,tenant,loadSnapshot,injectFailure:(at:number)=>{failAt=at;writes=0;},close:()=>db.close()};
+  return {db,client,queries,download,edit,seed,seedRange,preview,confirm,execute,tenant,loadSnapshot,updateCalls,recalculations,
+    injectFailure:(at:number)=>{failAt=at;writes=0;},injectRecalculationFailure:(value:boolean)=>{failRecalculation=value;},close:()=>db.close()};
 }

@@ -5,10 +5,10 @@ import {syntheticAuthEnvironment} from './fixtures/planilla-operativa.authorizat
 import {syntheticType} from './fixtures/planilla-operativa.synthetic';
 Object.assign(process.env,syntheticAuthEnvironment);
 const {dbPool}=require('../config/db') as typeof import('../config/db');
-const {createNominaNovedad,deactivateNominaNovedad,markNominaAsistencia}=require('../modules/nomina/nomina.service') as typeof import('../modules/nomina/nomina.service');
+const {createNominaNovedad,updateNominaNovedad,deactivateNominaNovedad,markNominaAsistencia}=require('../modules/nomina/nomina.service') as typeof import('../modules/nomina/nomina.service');
 const {createNominaNovedadSchema}=require('../modules/nomina/nomina.schemas') as typeof import('../modules/nomina/nomina.schemas');
 
-for(const action of ['create','deactivate','attendance'] as const)test(`servicio V1 real ${action} participa en transaccion externa sin commit/recalculo/conexion propios`,async t=>{
+for(const action of ['create','update','deactivate','attendance'] as const)test(`servicio V1 real ${action} participa en transaccion externa sin commit/recalculo/conexion propios`,async t=>{
   t.mock.method(dbPool,'connect',async()=>{throw new Error('No debe abrir conexion ni recalculo independiente');});
   const sql:string[]=[];let active=true;
   const worker={id:'101',nomina_empleado_id:'101',periodo_id:'71',periodo_estado:'ABIERTO',vinculacion_id:'81',activo:true,estado:'PENDIENTE',
@@ -30,6 +30,7 @@ for(const action of ['create','deactivate','attendance'] as const)test(`servicio
     return {rows,rowCount:rows.length};
   },release(){assert.fail('No debe liberar el cliente externo');}} as unknown as PoolClient;
   if(action==='create') await createNominaNovedad(createNominaNovedadSchema.parse({periodo_id:'71',nomina_empleado_id:'101',vinculacion_id:'81',tipo_novedad_id:'11',fecha_inicio:'2026-10-27',fecha_fin:'2026-10-27'}),'3',undefined,undefined,client);
+  else if(action==='update') await updateNominaNovedad('301',{fecha_inicio:'2026-10-27',fecha_fin:'2026-10-27',dias:1},'3',undefined,undefined,client);
   else if(action==='deactivate') await deactivateNominaNovedad('301','3',undefined,undefined,client);
   else await markNominaAsistencia('71','81','2026-10-27',true,'3',undefined,undefined,client);
   assert.ok(!sql.some(q=>/^\s*(BEGIN|COMMIT|ROLLBACK)\s*$/.test(q)));
