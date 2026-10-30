@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { populationSync } from './populationSync';
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Clock3, Plus, RefreshCw, Search, Settings, X } from "lucide-react";
 
@@ -587,7 +588,10 @@ export default function PlanillaOperativaPage() {
   const [exportingPlanilla, setExportingPlanilla] = useState(false);
   const [periodsLoading, setPeriodsLoading] = useState(true);
   const [reloadVersion, setReloadVersion] = useState(0);
-  const [isSyncingPersonal, setIsSyncingPersonal] = useState(false);
+  const populationSyncState = useSyncExternalStore(populationSync.subscribe, populationSync.getSnapshot);
+  const isSyncingPersonal = populationSyncState.pending > 0 || populationSyncState.uncertain > 0;
+  const populationScopeRef = useRef('');
+  populationScopeRef.current = `${empresaId ?? 'global'}:${periodId}`;
   const populationSyncKeyRef = useRef<string | null>(null);
   const [availableEmployees, setAvailableEmployees] = useState<number | null>(null);
   const [availabilityError, setAvailabilityError] = useState("");
@@ -897,21 +901,18 @@ export default function PlanillaOperativaPage() {
         if (
           selectedPeriod?.estado === "ABIERTO" &&
           canImportPopulation &&
-          populationSyncKeyRef.current !== populationSyncKey
+          (populationSyncKeyRef.current !== populationSyncKey || populationSync.hasPending(populationSyncKey))
         ) {
           populationSyncKeyRef.current = populationSyncKey;
-          setIsSyncingPersonal(true);
           try {
-            await importNominaEmpleados(periodId);
+            await populationSync.run(populationSyncKey, () => importNominaEmpleados(periodId));
           } catch (syncError) {
-            populationSyncKeyRef.current = null;
+            if (populationSyncKeyRef.current === populationSyncKey) populationSyncKeyRef.current = null;
             throw syncError;
-          } finally {
-            if (!cancelled) {
-              setIsSyncingPersonal(false);
-            }
           }
         }
+
+        if (cancelled) return;
 
         const employeeLoader = user?.permissions.includes("nomina.economico.read") === true
           ? getAllNominaPeriodoEmpleados
@@ -996,15 +997,18 @@ export default function PlanillaOperativaPage() {
   useEffect(() => onPersonalInvalidation((change) => {
     if (!periodId) return;
     if (change.kind === 'POBLACION' && periods.find((item) => String(item.id) === periodId)?.estado === 'ABIERTO' && user?.permissions.includes('nomina.empleados.import')) {
-      void importNominaEmpleados(periodId, { personaId: change.personaId, vinculacionId: change.vinculacionId }).then(() => {
+      const scope = `${empresaId ?? 'global'}:${periodId}`;
+      void populationSync.run(`${scope}:personal:${change.personaId ?? ''}:${change.vinculacionId ?? ''}`, () => importNominaEmpleados(periodId, { personaId: change.personaId, vinculacionId: change.vinculacionId })).then(() => {
+        if (populationScopeRef.current !== scope) return;
         setReloadVersion((value) => value + 1);
       }).catch(() => {
+        if (populationScopeRef.current !== scope) return;
         setError('El trabajador cambió en Personal, pero la población operativa requiere revisión.');
       });
       return;
     }
     setReloadVersion((value) => value + 1);
-  }), [periodId, periods, user?.permissions]);
+  }), [empresaId, periodId, periods, user?.permissions]);
 
   useEffect(() => {
     setSelected(null);
@@ -1042,7 +1046,7 @@ export default function PlanillaOperativaPage() {
   }, [periodId, empresaId, reloadVersion, canReadPopulationDashboard]);
 
   const downloadPlanilla = async () => {
-    if (!periodId || !empresaId || exportingPlanilla) return;
+    if (!periodId || !empresaId || exportingPlanilla || populationSync.getSnapshot().pending > 0 || populationSync.getSnapshot().uncertain > 0) return;
     setExportingPlanilla(true);
     setError("");
     try {
@@ -1054,17 +1058,18 @@ export default function PlanillaOperativaPage() {
 
   const syncPersonal = async () => {
     if (!periodId || isSyncingPersonal) return;
-    setIsSyncingPersonal(true);
+    const scope = `${empresaId ?? 'global'}:${periodId}`;
     setError("");
     setSuccessMessage("");
     try {
-      const result = await importNominaEmpleados(periodId);
+      const result = await populationSync.run(scope, () => importNominaEmpleados(periodId));
+      if (populationScopeRef.current !== scope) return;
+      populationSyncKeyRef.current = scope;
       setSuccessMessage(`Sincronización completada. Nuevos: ${result.nuevos ?? result.imported}. Actualizados: ${result.actualizados_contexto ?? 0}. Excluidos: ${result.excluded}. Sin cambios: ${result.sin_cambios ?? result.skipped_duplicates}. Requieren revisión: ${(result.requires_review?.length ?? 0) + (result.skipped_requires_review ?? 0)}.`);
       setReloadVersion(value => value + 1);
     } catch (value) {
+      if (populationScopeRef.current !== scope) return;
       setError(value instanceof Error ? value.message : "No fue posible cargar el personal");
-    } finally {
-      setIsSyncingPersonal(false);
     }
   };
 
@@ -1978,7 +1983,8 @@ export default function PlanillaOperativaPage() {
         {pendingAttendanceChanges.size ? <button type="button" onClick={() => setAttendanceDetailsOpen(true)}>Ver detalles</button> : null}
         {pendingAttendanceChanges.size ? <button type="button" onClick={() => void attendanceFlushRef.current()} disabled={attendanceSaveState === "saving"}>{attendanceSaveState === "error" ? "Reintentar envío" : `Enviar ${pendingAttendanceChanges.size} cambios`}</button> : null}
         {employees.length > 0 && period?.estado === "ABIERTO" && user?.permissions.includes("nomina.empleados.import") ?
-          <button type="button" className="op-sync-action" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={15} />{isSyncingPersonal ? "Sincronizando..." : "SINCRONIZAR AHORA"}</button> : null}
+          <button type="button" className="op-sync-action" onClick={() => void syncPersonal()} disabled={isSyncingPersonal || loading}><RefreshCw size={15} />{populationSyncState.pending > 0 ? "Sincronizando..." : populationSyncState.uncertain > 0 ? "SINCRONIZACIÓN POR VERIFICAR" : "SINCRONIZAR AHORA"}</button> : null}
+        {populationSyncState.uncertain > 0 ? <span role="alert">No se pudo confirmar el resultado de la sincronización. Excel permanece bloqueado hasta verificar que el proceso terminó en el servidor.</span> : null}
       </section>
 
       {attendanceAlertVisible && attendanceSaveState === "error" ? <div className="planilla-queue-alert" role="alert">
@@ -2094,7 +2100,7 @@ export default function PlanillaOperativaPage() {
         <h2>{error ? "No fue posible mostrar el personal" : availableEmployees === 0 ? "No existen empleados elegibles" : "Sin personal materializado"}</h2>
         <p>{error ? "Reintenta la consulta del periodo." : availableEmployees === null ? "Este periodo aun no tiene personal operativo cargado." : availableEmployees === 0 ? "No hay personal elegible para las fechas de este periodo." : `Este periodo tiene ${availableEmployees} empleados disponibles, pero aun no se ha cargado el personal operativo.`}</p>
         {availabilityError ? <p role="alert">{availabilityError}</p> : null}
-        {!error && availableEmployees !== 0 && period?.estado === "ABIERTO" ? user?.permissions.includes("nomina.empleados.import") ? <button type="button" onClick={() => void syncPersonal()} disabled={isSyncingPersonal}><RefreshCw size={17} />{isSyncingPersonal ? "Cargando personal..." : "CARGAR PERSONAL"}</button> : <p>Solicita la carga a un usuario con permiso para importar personal.</p> : null}
+        {!error && availableEmployees !== 0 && period?.estado === "ABIERTO" ? user?.permissions.includes("nomina.empleados.import") ? <button type="button" onClick={() => void syncPersonal()} disabled={isSyncingPersonal}><RefreshCw size={17} />{populationSyncState.pending > 0 ? "Cargando personal..." : populationSyncState.uncertain > 0 ? "SINCRONIZACIÓN POR VERIFICAR" : "CARGAR PERSONAL"}</button> : <p>Solicita la carga a un usuario con permiso para importar personal.</p> : null}
         <button type="button" onClick={() => setReloadVersion(value => value + 1)} disabled={isSyncingPersonal}>Reintentar</button>
       </div> : totalFiltered === 0 ? <div className="op-population-empty" role="status"><h2>Sin coincidencias</h2><p>No hay trabajadores que coincidan con los filtros actuales.</p></div> : (
         <div className="op-matrix-card">

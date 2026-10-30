@@ -161,7 +161,7 @@ test('carga inicial paraleliza empleados y asistencia en una sola lectura',()=>{
 test('carga inicial sincroniza una vez la poblacion V1 de periodos abiertos',()=>{
   assert.ok(source.includes('populationSyncKeyRef'));
   assert.ok(source.includes('selectedPeriod?.estado === "ABIERTO"'));
-  assert.ok(source.includes('await importNominaEmpleados(periodId);'));
+  assert.ok(source.includes('await populationSync.run(populationSyncKey, () => importNominaEmpleados(periodId))'));
   assert.ok(source.includes('nomina.empleados.import'));
 });
 
