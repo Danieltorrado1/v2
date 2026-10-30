@@ -222,7 +222,8 @@ export function buildPlanillaOperativaXlsx(snapshot: PlanillaSnapshot, signature
       return `<c${attrs.replace(/\s+s="\d+"/, '')} s="${styleId}">`;
     });
     source = source.replace(/<sheetViews>.*?<\/sheetViews>/s, `<sheetViews><sheetView workbookViewId="0"><pane xSplit="${main ? 6 : 0}" ySplit="${main ? 6 : 1}" topLeftCell="${main ? 'G7' : 'A2'}" activePane="${main ? 'bottomRight' : 'bottomLeft'}" state="frozen"/></sheetView></sheetViews>`);
-    source = source.replace('</sheetData>', '</sheetData><sheetProtection sheet="1" objects="1" scenarios="1" autoFilter="0" selectLockedCells="0" selectUnlockedCells="1"/>');
+    // OOXML flags prohibit selection when true; allow both locked and unlocked cells.
+    source = source.replace('</sheetData>', '</sheetData><sheetProtection sheet="1" objects="1" scenarios="1" autoFilter="0" selectLockedCells="0" selectUnlockedCells="0"/>');
     if (main) {
       const endRow = XLSX.utils.decode_range(book.Sheets[name]!['!ref']!).e.r + 1;
       const modalityColumn = col(7 + days.length);

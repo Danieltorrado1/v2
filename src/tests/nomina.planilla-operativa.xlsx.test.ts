@@ -55,7 +55,7 @@ test('todas las hojas municipal y Personal contrato habilitan días y conservan 
   assert.deepEqual(visible,['Municipio sintético','Personal contrato']);
   for(let i=0;i<visible.length;i++){
     const sheetXml=xml(`xl/worksheets/sheet${i+1}.xml`);
-    assert.match(sheetXml,/selectUnlockedCells="1"/);
+    assert.match(sheetXml,/selectLockedCells="0"[^>]*selectUnlockedCells="0"/);
     assert.match(sheetXml,/r="H7"[^>]*s="2"/);
     assert.match(sheetXml,/r="A7"[^>]*s="0"/);
     assert.match(sheetXml,/r="AM7"[^>]*s="0"/); // protected employee ID after the 26–25 day columns
@@ -65,7 +65,10 @@ test('validacion con catalogo activo real, proteccion y filtros OOXML', () => {
   const { xml, book } = read(); const sheet = xml('xl/worksheets/sheet1.xml');
   assert.match(sheet, /sqref="H7:AL8"/); assert.match(sheet, /<formula1>MarcasDiarias<\/formula1>/);
   assert.match(sheet, /errorStyle="stop"/); assert.match(sheet, /allowBlank="1"/);
-  assert.match(sheet, /<sheetProtection[^>]*autoFilter="0"[^>]*selectLockedCells="0"[^>]*selectUnlockedCells="1"/);
+  assert.match(sheet, /<sheetProtection[^>]*autoFilter="0"[^>]*selectLockedCells="0"[^>]*selectUnlockedCells="0"/);
+  for (let i = 1; i <= book.SheetNames.length; i++) {
+    assert.match(xml(`xl/worksheets/sheet${i}.xml`), /<sheetProtection sheet="1"[^>]*selectLockedCells="0"[^>]*selectUnlockedCells="0"/);
+  }
   assert.match(sheet, /<pane xSplit="6" ySplit="6"/);
   assert.match(sheet, /<autoFilter ref="A6:AO8"/);
   assert.match(xml('xl/styles.xml'), /<protection locked="0"/);
