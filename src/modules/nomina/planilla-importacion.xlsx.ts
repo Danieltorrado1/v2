@@ -17,6 +17,93 @@ export interface ImportCell { empleado_id: string; municipio: string; hoja: stri
 const fail = (message: string, code = 'PLANILLA_ARCHIVO_INVALIDO'): never => { throw new AppError(message, 422, code); };
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 const xmlValue=(value:string)=>value.replace(/&#(x[0-9a-f]+|\d+);|&(quot|apos|amp|lt|gt);/gi,(_m,n:string,k:string)=>n ? String.fromCodePoint(n[0]!.toLowerCase()==='x' ? parseInt(n.slice(1),16) : Number(n)) : ({quot:'"',apos:"'",amp:'&',lt:'<',gt:'>'}[k.toLowerCase()] ?? ''));
+const printerPart = /^xl\/printerSettings\/printerSettings[1-9]\d*\.bin$/;
+const printerMime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.printerSettings';
+const documentRels = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+
+/** Excel saves an inert DEVMODEW print-settings part. Admit only that part,
+ * with its declared MIME, internal worksheet relationship and pageSetup link.
+ * Driver-private bytes are bounded opaque data; never load a printer or driver.
+ */
+function validatePrinterSettings(parts: Map<string, Buffer>): void {
+  const printers = [...parts.keys()].filter(name => printerPart.test(name));
+  if (!printers.length && ![...parts.values()].some(data => data.includes('printerSettings'))) return;
+  const invalid = (): never => fail('Configuracion de impresion XLSX no valida');
+  const attributes = (text: string): Record<string, string> => {
+    const result: Record<string, string> = Object.create(null);
+    const attr = /\s+([\w:.-]+)\s*=\s*(["'])([^<>]*?)\2/gy;
+    let position = 0;
+    while (position < text.length && text.slice(position).trim()) {
+      attr.lastIndex = position; const match = attr.exec(text);
+      if (!match || Object.hasOwn(result, match[1]!)) return invalid();
+      result[match[1]!] = xmlValue(match[3]!); position = attr.lastIndex;
+    }
+    return result;
+  };
+  // Metadata consists only of a namespace-qualified root and empty leaf tags.
+  // Reject unparsed markup, duplicate attributes, entities and namespace tricks.
+  const metadata = (data: Buffer, root: string, namespace: string, leaf: string) => {
+    if (data.length > 256*1024) return invalid();
+    const xml = data.toString('utf8');
+    if (!Buffer.from(xml, 'utf8').equals(data) || /<!|<\?(?!xml\s)/.test(xml)) return invalid();
+    const match = new RegExp(`^\\s*(?:<\\?xml\\s+[^?]*\\?>\\s*)?<${root}\\b([^>]*)>([\\s\\S]*)</${root}>\\s*$`).exec(xml);
+    if (!match) return invalid();
+    const attrs = attributes(match[1]!);
+    const namespaces: Record<string, string> = { xmlns: namespace, 'xmlns:xsd': 'http://www.w3.org/2001/XMLSchema', 'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance' };
+    if (attrs.xmlns !== namespace || Object.keys(attrs).some(key => attrs[key] !== namespaces[key])) return invalid();
+    const tags = new RegExp(`\\s*<(${leaf})\\b([^<>]*?)/>`, 'gy');
+    const entries: {tag: string; attrs: Record<string, string>}[] = []; let position = 0;
+    while (position < match[2]!.length && match[2]!.slice(position).trim()) {
+      tags.lastIndex = position; const tag = tags.exec(match[2]!);
+      if (!tag) return invalid();
+      entries.push({tag: tag[1]!, attrs: attributes(tag[2]!)}); position = tags.lastIndex;
+    }
+    return entries;
+  };
+  const types = metadata(parts.get('[Content_Types].xml')!, 'Types', 'http://schemas.openxmlformats.org/package/2006/content-types', 'Default|Override');
+  const defaults = new Map<string, string>(), overrides = new Map<string, string>();
+  for (const {tag, attrs} of types) {
+    const key = tag === 'Default' ? attrs.Extension : attrs.PartName;
+    const map = tag === 'Default' ? defaults : overrides;
+    if (!key || !attrs.ContentType || Object.keys(attrs).length !== 2 || map.has(key)) return invalid();
+    map.set(key, attrs.ContentType);
+  }
+  const referenced = new Set<string>();
+  for (const [name, data] of parts) {
+    if (!name.endsWith('.rels')) continue;
+    const relations = metadata(data, 'Relationships', 'http://schemas.openxmlformats.org/package/2006/relationships', 'Relationship');
+    const ids = new Set<string>(); let printerCount = 0;
+    for (const {attrs} of relations) {
+      if (!attrs.Id || !attrs.Type || !attrs.Target || ids.has(attrs.Id)) return invalid();
+      ids.add(attrs.Id);
+      if (attrs.Type !== `${documentRels}/printerSettings` && !/printerSettings|\.bin$/i.test(attrs.Target)) continue;
+      const source = /^xl\/worksheets\/_rels\/(sheet[1-9]\d*\.xml)\.rels$/.exec(name);
+      const target = /^\.\.\/(printerSettings\/printerSettings[1-9]\d*\.bin)$/.exec(attrs.Target);
+      if (!source || !target || attrs.Type !== `${documentRels}/printerSettings` ||
+          attrs.TargetMode && attrs.TargetMode !== 'Internal' ||
+          Object.keys(attrs).some(k => !['Id','Type','Target','TargetMode'].includes(k)) || ++printerCount > 1) return invalid();
+      const part = `xl/${target[1]}`;
+      if (!parts.has(part)) return invalid();
+      const worksheet = parts.get(`xl/worksheets/${source[1]}`)?.toString('utf8');
+      if (!worksheet) return invalid();
+      const root = /<worksheet\b([^>]*)>/.exec(worksheet);
+      const setup = [...worksheet.matchAll(/<pageSetup\b([^<>]*?)\/>/g)];
+      if (!root || attributes(root[1]!)['xmlns:r'] !== documentRels || setup.length !== 1 ||
+          attributes(setup[0]![1]!)['r:id'] !== attrs.Id || Object.hasOwn(attributes(setup[0]![1]!), 'xmlns:r')) return invalid();
+      referenced.add(part);
+    }
+  }
+  for (const name of printers) {
+    const data = parts.get(name)!;
+    const declared = overrides.get('/' + name) ?? defaults.get('bin');
+    // DEVMODEW public header: dmSpecVersion at 64, dmSize at 68,
+    // dmDriverExtra at 70. Require the complete 220-byte Windows structure.
+    if (declared !== printerMime || !referenced.has(name) || data.length < 220 || data.length > 220+65535 ||
+        data.readUInt16LE(64) !== 0x0401 || data.readUInt16LE(68) !== 220 ||
+        data.readUInt16LE(68) + data.readUInt16LE(70) !== data.length ||
+        [...parts.keys()].some(p => p.startsWith('xl/printerSettings/') && !printerPart.test(p))) return invalid();
+  }
+}
 
 /** Bound actual decompression before SheetJS allocates a workbook. No XLS/XLSM,
  * ZIP64, encrypted parts, duplicates, formulas, embedded objects or external links.
@@ -30,6 +117,7 @@ export function validatePlanillaZip(buffer: Buffer): void {
   if (!entries || entries > 512 || entries !== buffer.readUInt16LE(end+8)) fail('Demasiadas partes XLSX');
   let offset = buffer.readUInt32LE(end+16); let total = 0; let cellCount=0;
   const names = new Set<string>();
+  const printParts = new Map<string, Buffer>();
   for (let i = 0; i < entries; i++) {
     if (offset+46>buffer.length || buffer.readUInt32LE(offset)!==0x02014b50) fail('Directorio XLSX invalido');
     const flags=buffer.readUInt16LE(offset+8), method=buffer.readUInt16LE(offset+10);
@@ -38,7 +126,8 @@ export function validatePlanillaZip(buffer: Buffer): void {
     const local=buffer.readUInt32LE(offset+42);
     const name=buffer.subarray(offset+46,offset+46+length).toString('utf8');
     if ((flags&1) || ![0,8].includes(method) || [...names].some(n=>n.toLowerCase()===name.toLowerCase()) || name.includes('..') || name.startsWith('/') || name.includes('\\') ||
-      expanded===0xffffffff || compressed===0xffffffff || /vbaProject|externalLinks|embeddings|connections|customUI|macrosheets|\.bin$/i.test(name)) fail('Parte XLSX no permitida');
+      expanded===0xffffffff || compressed===0xffffffff || /vbaProject|externalLinks|embeddings|connections|customUI|macrosheets/i.test(name) ||
+      /\.bin$/i.test(name) && !printerPart.test(name)) fail('Parte XLSX no permitida');
     names.add(name); total+=expanded;
     if (total>96*1024*1024 || expanded>64*1024*1024 || local+30>buffer.length || buffer.readUInt32LE(local)!==0x04034b50) fail('XLSX excede los limites de expansion');
     const start=local+30+buffer.readUInt16LE(local+26)+buffer.readUInt16LE(local+28);
@@ -48,6 +137,7 @@ export function validatePlanillaZip(buffer: Buffer): void {
     const raw=buffer.subarray(start,start+compressed);
     const data=method===8 ? inflateRawSync(raw,{ maxOutputLength: Math.max(1,expanded) }) : raw;
     if (data.length!==expanded) fail('Longitud XLSX inconsistente');
+    if (printerPart.test(name) || name === '[Content_Types].xml' || name.endsWith('.rels') || /^xl\/worksheets\/sheet[1-9]\d*\.xml$/.test(name)) printParts.set(name, data);
     if (name.endsWith('.xml') || name.endsWith('.rels')) {
       const xml=data.toString('utf8');
       if (xml.includes('\u0000')) fail('Solo XML UTF-8 sin caracteres nulos');
@@ -70,6 +160,7 @@ export function validatePlanillaZip(buffer: Buffer): void {
     offset+=46+length+extra+comment;
   }
   if (!names.has('xl/workbook.xml') || !names.has('[Content_Types].xml')) fail('No es un libro XLSX');
+  validatePrinterSettings(printParts);
 }
 
 export function readUploadedPlanilla(buffer: Buffer): UploadedPlanilla {
