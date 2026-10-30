@@ -4,6 +4,7 @@ import { env } from '../../config/env';
 import { planillaBaseline, type PlanillaSnapshot } from './planilla-operativa.xlsx';
 import { resolvePlanillaAuthorizedContexts } from './planilla-operativa.scope';
 import { loadPlanillaImportGuards } from './planilla-importacion.guard';
+import { isInnocuousPendingAttendance } from './planilla-importacion.asistencia';
 import { PoolClient, QueryResultRow } from 'pg';
 
 import { dbPool, dbQuery } from '../../config/db';
@@ -6673,11 +6674,14 @@ export const loadPlanillaOperativaSnapshot = async (
       if (projected) novedades.push(projected);
     }
     const asistencias: PlanillaSnapshot['asistencias'] = [];
+    const pendientesInocuas: string[] = [];
     let page = 1;
     while (true) {
       const result = await nominaAsistenciaRepository.listByPeriodo({ periodoId, activo: true, page, limit: 1000, tenant: readScope }, client);
-      for (const row of result.rows) if (links.has(row.vinculacion_id)) asistencias.push({ id: row.id,
-        vinculacion_id: row.vinculacion_id, fecha: toDateString(row.fecha)!, estado_dia: row.estado_dia });
+      for (const row of result.rows) if (links.has(row.vinculacion_id)) {
+        asistencias.push({ id: row.id, vinculacion_id: row.vinculacion_id, fecha: toDateString(row.fecha)!, estado_dia: row.estado_dia });
+        if (isInnocuousPendingAttendance(row)) pendientesInocuas.push(row.id);
+      }
       if (page * 1000 >= result.total) break;
       if (!result.rows.length) throw new AppError('Lectura de asistencia incompleta', 409, 'PLANILLA_LECTURA_INCOMPLETA');
       page += 1;
@@ -6728,7 +6732,8 @@ export const loadPlanillaOperativaSnapshot = async (
           solo_lectura: 'Registro historico inactivo: resolver cambios mediante V1'
         } : {}),
         fecha_inicio: w.vinculacion.fecha_inicio ?? range.start, fecha_fin: w.vinculacion.fecha_fin })),
-      asistencias, novedades, cambios_operativos: cambios.rows, catalogo: catalogRows.map(mapNominaTipoNovedad), generado_at: new Date().toISOString(),
+      asistencias, asistencias_pendientes_inocuas: pendientesInocuas,
+      novedades, cambios_operativos: cambios.rows, catalogo: catalogRows.map(mapNominaTipoNovedad), generado_at: new Date().toISOString(),
       alcance: `Usuario ${tenant.userId}; empresa ${period.contrato_empresa_id}; contrato ${period.contrato_id}; alcance municipal vigente aplicado`
     };
     const authorizedSiteIds = [...new Set(snapshot.trabajadores.map(worker => worker.sede_id).filter((id): id is string => !!id))];

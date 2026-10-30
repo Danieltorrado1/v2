@@ -17,6 +17,8 @@ export interface PlanillaSnapshot {
     nombre: string; estado: string; fecha_inicio: string; fecha_fin: string };
   trabajadores: PlanillaWorker[];
   asistencias: { id: string; vinculacion_id: string; fecha: string; estado_dia: string | null }[];
+  /** Current server evidence; deliberately excluded from planillaBaseline/HMAC. */
+  asistencias_pendientes_inocuas?: string[];
   novedades: NominaNovedad[];
   catalogo: NominaTipoNovedadCatalogItem[];
   /** Contract-authorized suggestions for the non-importable modality review column. */

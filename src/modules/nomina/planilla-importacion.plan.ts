@@ -38,6 +38,12 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
   for (const n of current.novedades) byWorker.set(n.nomina_empleado_id,[...(byWorker.get(n.nomina_empleado_id) ?? []),n]);
   const attendance=new Map<string,PlanillaSnapshot['asistencias']>();
   for (const a of current.asistencias) { const k=`${a.vinculacion_id}:${a.fecha}`; attendance.set(k,[...(attendance.get(k) ?? []),a]); }
+  const innocuousPendingIds = new Set(current.asistencias_pendientes_inocuas ?? []);
+  const signedAttendance = new Map<string, typeof upload.baseline.asistencias>();
+  for (const a of upload.baseline.asistencias) {
+    const key = `${a.vinculacion_id}:${a.fecha}`;
+    signedAttendance.set(key, [...(signedAttendance.get(key) ?? []), a]);
+  }
   const plan:ImportPlan={registros_analizados:cells.length,nuevas:0,sustituciones:0,modificaciones_rango:0,retiradas:0,asistencias:0,sin_cambios:0,filas_omitidas:0,celdas_vacias:0,conflictos:0,filas:[]};
   const row=(w:PlanillaWorker,fecha:string,anterior:string,nuevo:string,accion:ImportAction,motivo:string,replace:string[]=[],type?:string):ImportPlanRow=>({
     empleado_id:w.id,vinculacion_id:w.vinculacion_id,municipio:w.municipio,municipio_id:w.municipio_id!,trabajadora:w.nombre,documento:w.documento,
@@ -75,22 +81,44 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
     const complete=rangeCells as NonNullable<typeof rangeCells[number]>[];
     const changed=complete.some(c=>c.valor!==c.original.trim());
     if(!changed) continue;
-    const retainedDates=complete.filter(c=>c.valor===originalCode).map(c=>c.fecha).sort();
-    const newDates=retainedDates.length?dayRange(retainedDates[0]!,retainedDates[retainedDates.length-1]!):[];
-    const allCleared=complete.every(c=>c.valor==='');
-    const fullyRepresented=visibleDates.length===dates.length;
-    const contiguous=fullyRepresented && retainedDates.length>0 && newDates.length===retainedDates.length &&
-      complete.every(c=>c.valor==='' || c.valor===originalCode) && retainedDates[0]!>=oldStart && retainedDates.at(-1)!<=oldEnd;
-    const start=retainedDates[0]??oldStart,end=retainedDates.at(-1)??oldEnd;
     const currentEvent=current.novedades.find(n=>n.id===base.id && n.nomina_empleado_id===base.nomina_empleado_id);
     const type=current.catalogo.find(t=>t.id===base.tipo_id);
     const guard=guards.get(worker.id);
     const otherEvents=current.novedades.filter(n=>n.nomina_empleado_id===worker.id && n.id!==base.id && n.fecha_inicio && n.fecha_fin &&
-      n.fecha_inicio<=end && n.fecha_fin>=start);
+      n.fecha_inicio<=oldEnd && n.fecha_fin>=oldStart);
     const dependency=!!currentEvent && (currentEvent.requiere_cobertura || currentEvent.cobertura || currentEvent.documento_persona_id ||
       currentEvent.valor_manual!==null && currentEvent.valor_manual!==undefined || currentEvent.revisado ||
       Object.values(currentEvent.documentos).some(d=>d.cargado));
     const hasAttendance=complete.some(c=>(attendance.get(`${worker.vinculacion_id}:${c.fecha}`)??[]).length>0);
+    const innocuousSignedPending = (c: ImportCell): boolean => {
+      const key = `${worker.vinculacion_id}:${c.fecha}`;
+      const live = attendance.get(key) ?? [], signed = signedAttendance.get(key) ?? [];
+      return live.length === 1 && signed.length === 1 && live[0]!.id === signed[0]!.id &&
+        live[0]!.estado_dia === 'PENDIENTE' && signed[0]!.estado_dia === 'PENDIENTE' && innocuousPendingIds.has(live[0]!.id);
+    };
+    // Only range reduction may preserve an unchanged, signed, inert pending row.
+    // Keep the original strict attendance/original checks for RETIRAR_RANGO.
+    const hasBlockingRangeAttendance = complete.some(c =>
+      (attendance.get(`${worker.vinculacion_id}:${c.fecha}`) ?? []).length > 0 && !innocuousSignedPending(c));
+    const originalMatchesRange = (c: ImportCell): boolean => {
+      if (!c.texto) return false;
+      if (c.original.trim() === originalCode) return true;
+      const signedEvents = upload.baseline.novedades.filter(n => n.nomina_empleado_id === worker.id &&
+        n.fecha_inicio && n.fecha_fin && n.fecha_inicio <= c.fecha && n.fecha_fin >= c.fecha);
+      return originalCode === 'S' && c.original === 'PENDIENTE + S [DET]' && innocuousSignedPending(c) &&
+        signedEvents.length === 1 && signedEvents[0]!.id === base.id;
+    };
+    // An unchanged signed aggregate retains this event only with the same
+    // strict evidence used to validate its original. It cannot hide a gap.
+    const retainsOriginal = (c: ImportCell): boolean => c.valor === originalCode ||
+      c.valor === c.original.trim() && originalMatchesRange(c);
+    const retainedDates=complete.filter(retainsOriginal).map(c=>c.fecha).sort();
+    const newDates=retainedDates.length?dayRange(retainedDates[0]!,retainedDates[retainedDates.length-1]!):[];
+    const allCleared=complete.every(c=>c.valor==='');
+    const fullyRepresented=visibleDates.length===dates.length;
+    const contiguous=fullyRepresented && retainedDates.length>0 && newDates.length===retainedDates.length &&
+      complete.every(c=>c.valor==='' || retainsOriginal(c)) && retainedDates[0]!>=oldStart && retainedDates.at(-1)!<=oldEnd;
+    const start=retainedDates[0]??oldStart,end=retainedDates.at(-1)??oldEnd;
     const retireSafe=allCleared && fullyRepresented && complete.every(c=>c.original.trim()===originalCode && c.texto) &&
       !!currentEvent && currentEvent.activo!==false && currentEvent.fecha_inicio===oldStart && currentEvent.fecha_fin===oldEnd &&
       currentEvent.dias===base.dias && currentEvent.tipo_novedad.id===base.tipo_id && code(currentEvent).trim()===originalCode &&
@@ -99,12 +127,12 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
       !!guard && !guard.bloqueado && !guard.novedades_dependientes.includes(base.id) && !otherEvents.length && !hasAttendance &&
       oldStart>=worker.fecha_inicio && (!worker.fecha_fin || oldEnd<=worker.fecha_fin) && current.periodo.estado==='ABIERTO' &&
       !['CERRADO','CERRADA','INACTIVO','RETIRADO'].includes(worker.estado.toUpperCase()) && permissions.includes('nomina.novedades.deactivate');
-    const safe=contiguous && complete.every(c=>c.original.trim()===originalCode && c.texto) &&
+    const safe=contiguous && complete.every(originalMatchesRange) &&
       !!currentEvent && currentEvent.activo!==false && currentEvent.registro_tipo==='ORDINARIA' && currentEvent.fecha_inicio===oldStart && currentEvent.fecha_fin===oldEnd &&
       currentEvent.dias===base.dias && currentEvent.tipo_novedad.id===base.tipo_id && code(currentEvent).trim()===originalCode &&
       base.registro_tipo==='ORDINARIA' && !base.evento_canonico_id && !currentEvent.evento_canonico_id &&
       !!type?.activo && type.permite_rango && !specialImportType(type) && !base.detalle_restringido && !dependency &&
-      !!guard && !guard.bloqueado && !guard.novedades_dependientes.includes(base.id) && !otherEvents.length && !hasAttendance &&
+      !!guard && !guard.bloqueado && !guard.novedades_dependientes.includes(base.id) && !otherEvents.length && !hasBlockingRangeAttendance &&
       start>=worker.fecha_inicio && (!worker.fecha_fin || end<=worker.fecha_fin) && current.periodo.estado==='ABIERTO' &&
       !['CERRADO','CERRADA','INACTIVO','RETIRADO'].includes(worker.estado.toUpperCase()) && permissions.includes('nomina.novedades.update');
     const reason=retireSafe?'Rango completo retirado por baja lógica V1; conserva auditoría':safe?'Rango actualizado por V1; conserva ID y auditoría':
@@ -117,7 +145,7 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
       !contiguous?'MODIFICACION_RANGO_NO_CONTIGUA_O_SIN_DIAS_RESTANTES':
       !currentEvent || currentEvent.fecha_inicio!==oldStart || currentEvent.fecha_fin!==oldEnd || currentEvent.dias!==base.dias?'NOVEDAD_CAMBIO_DESDE_DESCARGA':
       !guard || guard.bloqueado || guard.novedades_dependientes.includes(base.id) || dependency?'RANGO_CON_DEPENDENCIA_O_PROCESAMIENTO':
-      otherEvents.length || hasAttendance?'RANGO_CON_EVENTO_O_ASISTENCIA_CONCURRENTE':
+      otherEvents.length || hasBlockingRangeAttendance?'RANGO_CON_EVENTO_O_ASISTENCIA_CONCURRENTE':
       base.registro_tipo!=='ORDINARIA' || base.evento_canonico_id || !type?.activo || !type.permite_rango || specialImportType(type)?'TIPO_O_ESTADO_REQUIERE_FLUJO_V1':
       'RANGO_NO_EDITABLE_POR_ESTADO_O_VINCULACION';
     for(const c of complete) handledRangeCells.add(`${c.empleado_id}:${c.fecha}`);
