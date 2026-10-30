@@ -1,7 +1,7 @@
 import { apiClient } from './apiClient';
 import type { ApiResponse } from '../types/api.types';
 export interface PlanillaImportRow { empleado_id:string; municipio:string; trabajadora:string; documento:string; fecha:string;
-  anterior:string; nuevo:string; accion:'CREAR'|'SUSTITUIR'|'MODIFICAR_RANGO'|'RETIRAR'|'ASISTENCIA'|'SUSTITUIR_ASISTENCIA'|'SIN_CAMBIOS'|'CONSERVAR'|'CONFLICTO'; motivo:string; sustituir_ids:string[];
+  anterior:string; nuevo:string; accion:'CREAR'|'SUSTITUIR'|'MODIFICAR_RANGO'|'RETIRAR'|'RETIRAR_RANGO'|'ASISTENCIA'|'SUSTITUIR_ASISTENCIA'|'SIN_CAMBIOS'|'CONSERVAR'|'CONFLICTO'; motivo:string; sustituir_ids:string[];
   novedad_id?:string; rango_anterior?:{fecha_inicio:string;fecha_fin:string;dias:number}; rango_nuevo?:{fecha_inicio:string;fecha_fin:string;dias:number} }
 export interface PlanillaImportResponse {
   estado:'VISTA_PREVIA'|'APLICADO'|'YA_APLICADO'; token:string|null;
