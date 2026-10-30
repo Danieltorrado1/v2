@@ -6739,7 +6739,7 @@ export const loadPlanillaOperativaSnapshot = async (
         INNER JOIN sedes s ON s.id=sm.sede_id AND COALESCE(s.activo,TRUE)=TRUE
         INNER JOIN modalidades m ON m.id=sm.modalidad_id AND COALESCE(m.activo,TRUE)=TRUE
         WHERE sm.contrato_id=$1::bigint AND sm.sede_id=ANY($2::bigint[]) AND COALESCE(sm.activo,TRUE)=TRUE
-        ORDER BY m.nombre_modalidad, m.id`, [period.contrato_id, authorizedSiteIds])).rows;
+        ORDER BY m.nombre_modalidad, m.id::text`, [period.contrato_id, authorizedSiteIds])).rows;
     }
     snapshot.import_guard = await loadPlanillaImportGuards(client, periodoId, [...allowed]);
     if (snapshot.import_guard.length !== workers.length) throw new AppError('Revision de importacion incompleta', 409, 'PLANILLA_LECTURA_INCOMPLETA');
