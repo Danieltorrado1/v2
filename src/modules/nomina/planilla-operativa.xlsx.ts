@@ -19,6 +19,8 @@ export interface PlanillaSnapshot {
   asistencias: { id: string; vinculacion_id: string; fecha: string; estado_dia: string | null }[];
   novedades: NominaNovedad[];
   catalogo: NominaTipoNovedadCatalogItem[];
+  /** Contract-authorized suggestions for the non-importable modality review column. */
+  modalidades_catalogo?: { id: string; nombre: string }[];
   cambios_operativos?: { id: string; nomina_empleado_id: string; vinculacion_id: string; desde: string;
     hasta: string | null; tipo: string; motivo: string | null; institucion_anterior: string | null;
     sede_anterior: string | null; modalidad_anterior: string | null; institucion_nueva: string | null;
@@ -85,7 +87,8 @@ export function planillaBaseline(snapshot: PlanillaSnapshot) {
       categoria_anterior_id: n.categoria_anterior_id, categoria_nueva_id: n.categoria_nueva_id })),
     cambios_operativos: snapshot.cambios_operativos ?? [],
     catalogo: snapshot.catalogo.map(t => ({ id: t.id, codigo: t.codigo_operativo, activo: t.activo,
-      modelo: t.modelo_registro, requisitos: planillaTypeRequirements(t) }))
+      modelo: t.modelo_registro, requisitos: planillaTypeRequirements(t) })),
+    ...(snapshot.modalidades_catalogo?.length ? { modalidades_catalogo: snapshot.modalidades_catalogo } : {})
   };
 }
 
@@ -117,6 +120,9 @@ export function buildPlanillaOperativaXlsx(snapshot: PlanillaSnapshot, signature
   }
   const activeCodes = [...new Set(snapshot.catalogo.filter(t => t.activo && t.codigo_operativo?.trim()).map(t => t.codigo_operativo!))];
   const options = [...new Set(['PRESENTE', 'PENDIENTE', ...activeCodes])];
+  const modalityOptions = [...new Map((snapshot.modalidades_catalogo ?? []).filter(m => m.id && m.nombre)
+    .map(m => [m.id, `${m.id} · ${m.nombre}`])).values()];
+  const hasModalitySuggestions = modalityOptions.length > 0;
   const editable = new Map<string, Set<string>>();
   const original: (string | number | null)[][] = [['Hoja', 'Fila', 'Municipio ID', 'Empleado ID', 'Vinculacion ID', 'Fecha', 'Valor original', 'Eventos', 'Asistencias', 'Editable']];
   const add = (name: string, data: (string | number | boolean | null | undefined)[][], widths: number[], header = 1) => {
@@ -138,10 +144,11 @@ export function buildPlanillaOperativaXlsx(snapshot: PlanillaSnapshot, signature
     const data: (string | number | null)[][] = [
       [`EMPIRIA · PLANILLA OPERATIVA · ${workers[0]!.tipo_contexto==='CONTRACTUAL' ? 'Personal del contrato · sin municipio registrado' : workers[0]!.municipio}`],
       [`${snapshot.periodo.numero_contrato} · ${snapshot.periodo.nombre} · ${days[0]} al ${days.at(-1)}`],
-      [workers[0]!.tipo_contexto==='CONTRACTUAL' ? 'Solo consulta: identidad contractual verificada; falta contexto municipal para importar cambios. No se infieren asistencias.' : 'Edite los días verdes: PRESENTE, PENDIENTE o código del catálogo. Vacío no significa falta ni elimina originales.'],
-      ['[DET] = múltiples eventos o procedimiento especial; celda protegida. Consulte Detalle_novedades mediante Mostrar hoja.'],
+      [workers[0]!.tipo_contexto==='CONTRACTUAL' ? 'Solo consulta: identidad contractual verificada; falta contexto municipal para importar cambios. No se infieren asistencias.' : 'Edite los días verdes: PRESENTE, PENDIENTE o código del catálogo. Vacío no significa falta; revise siempre la vista previa.'],
+      ['[DET] = múltiples eventos o procedimiento especial. La celda es editable, pero algunos cambios requieren el flujo V1. Consulte Detalle_novedades mediante Mostrar hoja.'],
       ['Solo diligenciamiento: no confirma trabajo, no importa datos ni calcula pagos. Filtros disponibles en los encabezados.'],
-      ['Municipio', 'Institución', 'Sede', 'Modalidad', 'Cédula', 'Nombre completo', 'Detalle', ...days, 'Empleado ID', 'Vinculación ID', 'Persona ID']
+      ['Municipio', 'Institución', 'Sede', 'Modalidad', 'Cédula', 'Nombre completo', 'Detalle', ...days,
+        ...(hasModalitySuggestions ? ['Modalidad propuesta · no importable'] : []), 'Empleado ID', 'Vinculación ID', 'Persona ID']
     ];
     const inputs = new Set<string>();
     for (const worker of workers) {
@@ -159,20 +166,23 @@ export function buildPlanillaOperativaXlsx(snapshot: PlanillaSnapshot, signature
         const text = [...records.map(a => a.estado_dia ?? ''), ...events.map(codeOf)].filter(Boolean).join(' + ');
         const detail = multiple || special || change;
         const value = text + (detail ? ' [DET]' : '');
-        const eligible = day >= worker.fecha_inicio && (!worker.fecha_fin || day <= worker.fecha_fin);
-        // Editable blanks are pending information, never an inferred working day.
-        const unlocked = eligible && !detail && !worker.solo_lectura && !['CERRADO', 'CERRADA', 'INACTIVO', 'RETIRADO'].includes(worker.estado.toUpperCase());
+        // All daily cells are editable in Excel. Import V1 still independently
+        // enforces date, status, identity, permission and dependency rules.
+        const unlocked = true;
         if (unlocked) inputs.add(`${col(index + 7)}${row}`);
         original.push([name, row, municipalityId, worker.id, worker.vinculacion_id, day, value, events.length, records.length, unlocked ? 'SI' : 'NO']);
         return value;
       });
       data.push([worker.municipio, worker.institucion, worker.sede, worker.modalidad, worker.documento, worker.nombre,
         worker.solo_lectura || (workerEvents.length ? `${workerEvents.length} evento(s)${undated ? ' · sin fecha: revisar' : ''}` : ''),
-        ...values, worker.id, worker.vinculacion_id, worker.persona_id]);
+        ...values, ...(hasModalitySuggestions ? [''] : []), worker.id, worker.vinculacion_id, worker.persona_id]);
+      if (hasModalitySuggestions) inputs.add(`${col(7 + days.length)}${row}`);
     }
-    const sheet = add(name, data, [21, 32, 30, 22, 18, 36, 23, ...days.map(() => 14), 23, 23, 23], 6);
+    const sheet = add(name, data, [21, 32, 30, 22, 18, 36, 23, ...days.map(() => 14),
+      ...(hasModalitySuggestions ? [30] : []), 23, 23, 23], 6);
     sheet['!merges'] = [0, 1, 2, 3, 4].map(r => ({ s: { r, c: 0 }, e: { r, c: 7 + days.length - 1 } }));
-    for (let c = 7 + days.length; c < 10 + days.length; c++) sheet['!cols']![c]!.hidden = true;
+    const identifiersStart = 7 + days.length + (hasModalitySuggestions ? 1 : 0);
+    for (let c = identifiersStart; c < identifiersStart + 3; c++) sheet['!cols']![c]!.hidden = true;
     editable.set(name, inputs);
   }
   add('Detalle_novedades', [['Novedad ID', 'Empleado ID', 'Vinculación ID', 'Código original', 'Desde', 'Hasta', 'Días evento', 'Horas', 'Observación', 'Origen', 'Evento canónico ID', 'Requisitos'],
@@ -188,13 +198,16 @@ export function buildPlanillaOperativaXlsx(snapshot: PlanillaSnapshot, signature
     ['Edición', 'Valores diarios = ajustes manuales; originales firmados separados. Sin propuestas calculadas.'],
     ['Importación', 'Disponible en EMPIRIA V1 mediante validación, vista previa y confirmación; permisos actuales, identidades, catálogo y conflictos se validan en backend.'],
     ['Protección', 'Evita ediciones accidentales; no es una autorización ni cifrado.']], [28, 120]);
-  add('_Listas', [['MarcasDiarias'], ...options.map(v => [v])], [36]);
+  const lists = [['MarcasDiarias', ...(hasModalitySuggestions ? ['ModalidadesContrato'] : [])],
+    ...Array.from({ length: Math.max(options.length, modalityOptions.length) }, (_, i) => [options[i] ?? '', ...(hasModalitySuggestions ? [modalityOptions[i] ?? ''] : [])])];
+  add('_Listas', lists, [36, 48]);
   const payload = Array.from(JSON.stringify({ purpose: 'planilla-operativa-export-2A', generado_at: snapshot.generado_at, alcance: snapshot.alcance, baseline }));
   const chunks: (string | number)[][] = [['Parte', 'Original firmado sin valores económicos']];
   for (let i = 0; i < payload.length; i += 15000) chunks.push([chunks.length, payload.slice(i, i + 15000).join('')]);
   add('_Base', chunks, [12, 110]);
   book.Workbook = { Sheets: book.SheetNames.map(name => ({ name, Hidden: editable.has(name) ? 0 : ['Detalle_novedades', 'Catalogo'].includes(name) ? 1 : 2 })),
-    Names: [{ Name: 'MarcasDiarias', Ref: `'_Listas'!$A$2:$A$${options.length + 1}` }] };
+    Names: [{ Name: 'MarcasDiarias', Ref: `'_Listas'!$A$2:$A$${options.length + 1}` },
+      ...(hasModalitySuggestions ? [{ Name: 'ModalidadesContrato', Ref: `'_Listas'!$B$2:$B$${modalityOptions.length + 1}` }] : [])] };
   const zip = XLSX.CFB.read(XLSX.write(book, { bookType: 'xlsx', type: 'buffer' }), { type: 'buffer' });
   const read = (path: string) => Buffer.from(XLSX.CFB.find(zip, '/' + path).content).toString('utf8');
   const write = (path: string, value: string) => XLSX.CFB.utils.cfb_add(zip, '/' + path, Buffer.from(value));
@@ -209,10 +222,12 @@ export function buildPlanillaOperativaXlsx(snapshot: PlanillaSnapshot, signature
       return `<c${attrs.replace(/\s+s="\d+"/, '')} s="${styleId}">`;
     });
     source = source.replace(/<sheetViews>.*?<\/sheetViews>/s, `<sheetViews><sheetView workbookViewId="0"><pane xSplit="${main ? 6 : 0}" ySplit="${main ? 6 : 1}" topLeftCell="${main ? 'G7' : 'A2'}" activePane="${main ? 'bottomRight' : 'bottomLeft'}" state="frozen"/></sheetView></sheetViews>`);
-    source = source.replace('</sheetData>', '</sheetData><sheetProtection sheet="1" objects="1" scenarios="1" autoFilter="0" selectLockedCells="0" selectUnlockedCells="0"/>');
+    source = source.replace('</sheetData>', '</sheetData><sheetProtection sheet="1" objects="1" scenarios="1" autoFilter="0" selectLockedCells="0" selectUnlockedCells="1"/>');
     if (main) {
       const endRow = XLSX.utils.decode_range(book.Sheets[name]!['!ref']!).e.r + 1;
-      const correct = `<dataValidations count="1"><dataValidation type="list" errorStyle="stop" allowBlank="1" showInputMessage="1" showErrorMessage="1" errorTitle="Marca no válida" error="Seleccione asistencia o un código vigente; revise detalles especiales en la aplicación." promptTitle="Diligenciamiento" prompt="Vacío es pendiente. No elimina eventos originales." sqref="H7:${col(6 + days.length)}${endRow}"><formula1>MarcasDiarias</formula1></dataValidation></dataValidations>`;
+      const modalityColumn = col(7 + days.length);
+      const modalityValidation = `<dataValidation type="list" errorStyle="stop" allowBlank="1" showInputMessage="1" showErrorMessage="1" errorTitle="Modalidad no válida" error="Seleccione una modalidad del contrato. Esta sugerencia no se importa." promptTitle="Modalidad propuesta" prompt="Solo revisión; corrija la modalidad mediante el formulario V1." sqref="${modalityColumn}7:${modalityColumn}${endRow}"><formula1>ModalidadesContrato</formula1></dataValidation>`;
+      const correct = `<dataValidations count="${hasModalitySuggestions ? 2 : 1}"><dataValidation type="list" errorStyle="stop" allowBlank="1" showInputMessage="1" showErrorMessage="1" errorTitle="Marca no válida" error="Seleccione asistencia o un código vigente; revise detalles especiales en la aplicación." promptTitle="Diligenciamiento" prompt="Vacío es pendiente. No elimina eventos originales." sqref="H7:${col(6 + days.length)}${endRow}"><formula1>MarcasDiarias</formula1></dataValidation>${hasModalitySuggestions ? modalityValidation : ''}</dataValidations>`;
       const offset = source.search(/<(?:hyperlinks|printOptions|pageMargins|pageSetup|headerFooter|ignoredErrors|drawing|extLst)\b/);
       source = offset < 0 ? source.replace('</worksheet>', correct + '</worksheet>') : source.slice(0, offset) + correct + source.slice(offset);
     }

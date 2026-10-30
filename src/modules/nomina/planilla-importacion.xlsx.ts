@@ -108,6 +108,7 @@ export function validatePlanillaValues(upload: UploadedPlanilla, current: Planil
   });
   const snapshot:PlanillaSnapshot={ periodo:b.periodo, trabajadores:b.trabajadores, asistencias:b.asistencias,
     catalogo:catalog, generado_at:upload.generado_at, alcance:upload.alcance, cambios_operativos:b.cambios_operativos,
+    modalidades_catalogo:b.modalidades_catalogo,
     import_guard:b.import_guard,
     novedades:b.novedades.map(n=> ({ ...n, tipo_novedad:{ ...catalog.find(t=>t.id===n.tipo_id)!, codigo_operativo_registrado:n.codigo },
       cobertura:n.cobertura_id ? { id:n.cobertura_id, tipo_cobertura:n.tipo_cobertura, persona_cubre_id:n.persona_cubre_id,
@@ -126,14 +127,23 @@ export function validatePlanillaValues(upload: UploadedPlanilla, current: Planil
     const main=!name.startsWith('_') && !['Detalle_novedades','Catalogo'].includes(name);
     const days=planillaDates(b.periodo.fecha_inicio,b.periodo.fecha_fin);
     const max=XLSX.utils.decode_range(expected['!ref']!).e;
+    const expectedRows=XLSX.utils.sheet_to_json<(string|number)[]>(expected,{header:1,defval:''});
+    const headers=expectedRows[5] ?? [];
+    const employeeIdColumn=headers.indexOf('Empleado ID');
+    const modalityProposalColumn=headers.indexOf('Modalidad propuesta · no importable');
+    if(main && employeeIdColumn<0) fail('Falta la columna protegida de identidad del empleado');
     const addresses=new Set([...Object.keys(expected),...Object.keys(actual)].filter(k=>!k.startsWith('!')));
     for (const address of addresses) {
       const location=XLSX.utils.decode_cell(address);
       const daily=main && location.r>=6 && location.r<=max.r && location.c>=7 && location.c<7+days.length;
       const a=actual[address], e=expected[address];
       if (a?.f) fail('Formula no permitida');
+      if (main && modalityProposalColumn>=0 && location.r>=6 && location.c===modalityProposalColumn &&
+          JSON.stringify(a?.v ?? '')!==JSON.stringify(e?.v ?? '')) {
+        fail('La modalidad propuesta es solo para revisión; use el formulario V1 para corregirla','PLANILLA_MODALIDAD_NO_IMPORTABLE');
+      }
       if (!daily && (JSON.stringify(a?.v ?? '')!==JSON.stringify(e?.v ?? '') || ((e?.v ?? '')!=='' && a?.t!==e?.t))) fail(`Dato protegido alterado en ${name}!${address}`,'PLANILLA_DATO_PROTEGIDO');
-      if (daily) cells.push({ empleado_id:String(expected[XLSX.utils.encode_cell({r:location.r,c:7+days.length})]!.v), municipio:String(expected[`A${location.r+1}`]!.v),
+      if (daily) cells.push({ empleado_id:String(expected[XLSX.utils.encode_cell({r:location.r,c:employeeIdColumn})]!.v), municipio:String(expected[`A${location.r+1}`]!.v),
         hoja:name, fila:location.r+1, fecha:days[location.c-7]!, original:String(e?.v ?? ''), valor:String(a?.v ?? '').trim(), editable:unlocked.has(address), texto:!a || a.t==='s' || a.t==='z' });
     }
   });

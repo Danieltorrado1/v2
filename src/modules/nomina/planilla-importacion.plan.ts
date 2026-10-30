@@ -3,7 +3,7 @@ import type { PlanillaSnapshot, PlanillaWorker } from './planilla-operativa.xlsx
 import { isIncompatibleNominaNovedadOverlap, type NominaNovedad, type NominaTipoNovedadCatalogItem } from './nomina.service';
 import type { ImportCell, UploadedPlanilla } from './planilla-importacion.xlsx';
 
-export type ImportAction='CREAR'|'SUSTITUIR'|'MODIFICAR_RANGO'|'RETIRAR'|'ASISTENCIA'|'SUSTITUIR_ASISTENCIA'|'SIN_CAMBIOS'|'CONSERVAR'|'CONFLICTO';
+export type ImportAction='CREAR'|'SUSTITUIR'|'MODIFICAR_RANGO'|'RETIRAR'|'RETIRAR_RANGO'|'ASISTENCIA'|'SUSTITUIR_ASISTENCIA'|'SIN_CAMBIOS'|'CONSERVAR'|'CONFLICTO';
 export interface ImportPlanRow { empleado_id:string; vinculacion_id:string; municipio:string; municipio_id:string; trabajadora:string;
   documento:string; fecha:string; anterior:string; nuevo:string; accion:ImportAction; motivo:string; sustituir_ids:string[]; tipo_id?:string; equivalente_id?:string;
   novedad_id?:string; rango_anterior?:{fecha_inicio:string;fecha_fin:string;dias:number}; rango_nuevo?:{fecha_inicio:string;fecha_fin:string;dias:number} }
@@ -68,14 +68,18 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
     if(!worker || staleWorkers.has(worker.id)) continue;
     const originalCode=base.codigo.trim();
     const dates=dayRange(oldStart,oldEnd);
-    const rangeCells=dates.map(date=>cellsByWorkerDate.get(`${worker.id}:${date}`));
+    const visibleDates=dates.filter(date=>cellsByWorkerDate.has(`${worker.id}:${date}`));
+    if(!visibleDates.length) continue;
+    const rangeCells=visibleDates.map(date=>cellsByWorkerDate.get(`${worker.id}:${date}`));
     if(rangeCells.some(c=>!c)) continue;
     const complete=rangeCells as NonNullable<typeof rangeCells[number]>[];
     const changed=complete.some(c=>c.valor!==c.original.trim());
     if(!changed) continue;
     const retainedDates=complete.filter(c=>c.valor===originalCode).map(c=>c.fecha).sort();
     const newDates=retainedDates.length?dayRange(retainedDates[0]!,retainedDates[retainedDates.length-1]!):[];
-    const contiguous=retainedDates.length>0 && newDates.length===retainedDates.length &&
+    const allCleared=complete.every(c=>c.valor==='');
+    const fullyRepresented=visibleDates.length===dates.length;
+    const contiguous=fullyRepresented && retainedDates.length>0 && newDates.length===retainedDates.length &&
       complete.every(c=>c.valor==='' || c.valor===originalCode) && retainedDates[0]!>=oldStart && retainedDates.at(-1)!<=oldEnd;
     const start=retainedDates[0]??oldStart,end=retainedDates.at(-1)??oldEnd;
     const currentEvent=current.novedades.find(n=>n.id===base.id && n.nomina_empleado_id===base.nomina_empleado_id);
@@ -87,7 +91,15 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
       currentEvent.valor_manual!==null && currentEvent.valor_manual!==undefined || currentEvent.revisado ||
       Object.values(currentEvent.documentos).some(d=>d.cargado));
     const hasAttendance=complete.some(c=>(attendance.get(`${worker.vinculacion_id}:${c.fecha}`)??[]).length>0);
-    const safe=contiguous && complete.every(c=>c.original.trim()===originalCode && c.editable && c.texto) &&
+    const retireSafe=allCleared && fullyRepresented && complete.every(c=>c.original.trim()===originalCode && c.texto) &&
+      !!currentEvent && currentEvent.activo!==false && currentEvent.fecha_inicio===oldStart && currentEvent.fecha_fin===oldEnd &&
+      currentEvent.dias===base.dias && currentEvent.tipo_novedad.id===base.tipo_id && code(currentEvent).trim()===originalCode &&
+      currentEvent.registro_tipo==='ORDINARIA' && base.registro_tipo==='ORDINARIA' && !base.evento_canonico_id && !currentEvent.evento_canonico_id &&
+      !!type?.activo && type.permite_rango && !specialImportType(type) && !base.detalle_restringido && !dependency &&
+      !!guard && !guard.bloqueado && !guard.novedades_dependientes.includes(base.id) && !otherEvents.length && !hasAttendance &&
+      oldStart>=worker.fecha_inicio && (!worker.fecha_fin || oldEnd<=worker.fecha_fin) && current.periodo.estado==='ABIERTO' &&
+      !['CERRADO','CERRADA','INACTIVO','RETIRADO'].includes(worker.estado.toUpperCase()) && permissions.includes('nomina.novedades.deactivate');
+    const safe=contiguous && complete.every(c=>c.original.trim()===originalCode && c.texto) &&
       !!currentEvent && currentEvent.activo!==false && currentEvent.registro_tipo==='ORDINARIA' && currentEvent.fecha_inicio===oldStart && currentEvent.fecha_fin===oldEnd &&
       currentEvent.dias===base.dias && currentEvent.tipo_novedad.id===base.tipo_id && code(currentEvent).trim()===originalCode &&
       base.registro_tipo==='ORDINARIA' && !base.evento_canonico_id && !currentEvent.evento_canonico_id &&
@@ -95,7 +107,12 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
       !!guard && !guard.bloqueado && !guard.novedades_dependientes.includes(base.id) && !otherEvents.length && !hasAttendance &&
       start>=worker.fecha_inicio && (!worker.fecha_fin || end<=worker.fecha_fin) && current.periodo.estado==='ABIERTO' &&
       !['CERRADO','CERRADA','INACTIVO','RETIRADO'].includes(worker.estado.toUpperCase()) && permissions.includes('nomina.novedades.update');
-    const reason=safe?'Rango actualizado por V1; conserva ID y auditoría':
+    const reason=retireSafe?'Rango completo retirado por baja lógica V1; conserva auditoría':safe?'Rango actualizado por V1; conserva ID y auditoría':
+      !fullyRepresented?'RANGO_EXCEDE_PERIODO_NO_REPRESENTABLE':
+      allCleared && !permissions.includes('nomina.novedades.deactivate')?'SIN_PERMISO_RETIRAR_NOVEDAD':
+      allCleared && (!guard || guard.bloqueado || guard.novedades_dependientes.includes(base.id) || dependency)?'RETIRO_RANGO_CON_DEPENDENCIA_O_PROCESAMIENTO':
+      allCleared && (otherEvents.length || hasAttendance)?'RETIRO_RANGO_CON_EVENTO_O_ASISTENCIA_CONCURRENTE':
+      allCleared && (base.registro_tipo!=='ORDINARIA' || base.evento_canonico_id || !type?.activo || !type.permite_rango || specialImportType(type))?'RETIRO_RANGO_REQUIERE_FLUJO_V1':
       !permissions.includes('nomina.novedades.update')?'SIN_PERMISO_MODIFICAR_RANGO':
       !contiguous?'MODIFICACION_RANGO_NO_CONTIGUA_O_SIN_DIAS_RESTANTES':
       !currentEvent || currentEvent.fecha_inicio!==oldStart || currentEvent.fecha_fin!==oldEnd || currentEvent.dias!==base.dias?'NOVEDAD_CAMBIO_DESDE_DESCARGA':
@@ -107,7 +124,8 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
     const oldRange={fecha_inicio:oldStart,fecha_fin:oldEnd,dias:Number(base.dias??dates.length)};
     const nextRange=contiguous?{fecha_inicio:start,fecha_fin:end,dias:newDates.length}:undefined;
     const display=(r:{fecha_inicio:string;fecha_fin:string;dias:number})=>`${originalCode} · ${r.fecha_inicio} a ${r.fecha_fin} · ${r.dias} días`;
-    plan.filas.push({...row(worker,start,display(oldRange),nextRange?display(nextRange):'No aplicable',safe?'MODIFICAR_RANGO':'CONFLICTO',reason,safe?[base.id]:[],base.tipo_id),
+    const action=retireSafe?'RETIRAR_RANGO':safe?'MODIFICAR_RANGO':'CONFLICTO';
+    plan.filas.push({...row(worker,retireSafe?oldStart:start,display(oldRange),nextRange?display(nextRange):retireSafe?'Vacío':'No aplicable',action,reason,(safe||retireSafe)?[base.id]:[],base.tipo_id),
       novedad_id:base.id,rango_anterior:oldRange,...(nextRange?{rango_nuevo:nextRange}:{})});
   }
   for (const cell of cells) {
@@ -118,11 +136,20 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
     const asist=attendance.get(`${w.vinculacion_id}:${cell.fecha}`) ?? [];
     const anterior=[...asist.map(a=>a.estado_dia ?? ''),...events.map(code)].filter(Boolean).join(' + ');
     const add=(action:ImportAction,reason:string,replace:string[]=[],type?:string,equivalent?:string)=>plan.filas.push({...row(w,cell.fecha,anterior,cell.valor,action,reason,replace,type),...(equivalent?{equivalente_id:equivalent}:{})});
+    if (cell.valor!==cell.original.trim() && w.solo_lectura) { add('CONFLICTO',`CONSULTA_PROTEGIDA: ${w.solo_lectura}`); continue; }
+    const simpleMultiple=events.length>1 && !asist.length && events.every(n=>n.registro_tipo==='ORDINARIA' && !specialImportType(n.tipo_novedad) && !n.requiere_cobertura && !n.cobertura);
+    // Daily input styling is a usability affordance only. Signed aggregate
+    // markers remain blocked unless the existing per-event logic can safely
+    // resolve ordinary independent records.
+    if (cell.original.includes('[DET]') && cell.valor!==cell.original.trim() && !simpleMultiple) {
+      add('CONFLICTO','DETALLE_NO_REPRESENTABLE_EN_CELDA: resolver con el flujo V1 correspondiente'); continue;
+    }
     if (!cell.valor && !cell.original.trim()) { add('CONSERVAR','Celda vacia y original vacio: sin cambios'); plan.celdas_vacias++; continue; }
     if (!cell.valor && cell.original.trim()) {
       plan.celdas_vacias++;
       if (w.solo_lectura) { add('CONFLICTO',`CONSULTA_PROTEGIDA: ${w.solo_lectura}`); continue; }
-      if (!cell.editable) { add('CONFLICTO','CELDA_PROTEGIDA: no autoriza retirar originales'); continue; }
+      // Workbook protection is only a usability control. The signed baseline,
+      // current V1 record, context, status, period and permissions authorize it.
       if (!permissions.includes('nomina.novedades.deactivate')) { add('CONFLICTO','SIN_PERMISO_RETIRAR_NOVEDAD'); continue; }
       if (cell.fecha<w.fecha_inicio || (w.fecha_fin && cell.fecha>w.fecha_fin)) { add('CONFLICTO','FUERA_VINCULACION'); continue; }
       if (current.periodo.estado!=='ABIERTO' || w.estado.toUpperCase()!=='PENDIENTE' && ['CERRADO','CERRADA','INACTIVO','RETIRADO'].includes(w.estado.toUpperCase())) { add('CONFLICTO','PERIODO_O_PERSONA_NO_EDITABLE'); continue; }
@@ -139,7 +166,6 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
     // normalize internal spaces/case, or treat a non-text cell as unchanged.
     if (cell.texto && cell.valor===cell.original.trim()) { add('SIN_CAMBIOS','Valor original sin cambios: preserva todos los eventos'); continue; }
     if (w.solo_lectura) { add('CONFLICTO',`CONSULTA_PROTEGIDA: ${w.solo_lectura}`); continue; }
-    const simpleMultiple=events.length>1 && !asist.length && events.every(n=>n.registro_tipo==='ORDINARIA' && !specialImportType(n.tipo_novedad) && !n.requiere_cobertura && !n.cobertura);
     if (!cell.editable && !simpleMultiple) { add('CONFLICTO','CELDA_PROTEGIDA: detalle multiple/especial, estado o fecha fuera de vinculacion'); continue; }
     if (!cell.texto) { add('CONFLICTO','CODIGO_NO_TEXTO: seleccione un codigo del catalogo'); continue; }
     if (cell.fecha<w.fecha_inicio || (w.fecha_fin && cell.fecha>w.fecha_fin)) { add('CONFLICTO','FUERA_VINCULACION'); continue; }
@@ -181,11 +207,11 @@ export function buildImportPlan(upload:UploadedPlanilla,current:PlanillaSnapshot
   plan.nuevas=plan.filas.filter(r=>r.accion==='CREAR').length;
   plan.sustituciones=plan.filas.filter(r=>r.accion==='SUSTITUIR' || r.accion==='SUSTITUIR_ASISTENCIA').length;
   plan.modificaciones_rango=plan.filas.filter(r=>r.accion==='MODIFICAR_RANGO').length;
-  plan.retiradas=plan.filas.filter(r=>r.accion==='RETIRAR').length;
+  plan.retiradas=plan.filas.filter(r=>r.accion==='RETIRAR' || r.accion==='RETIRAR_RANGO').length;
   plan.asistencias=plan.filas.filter(r=>r.accion==='ASISTENCIA' || r.accion==='SUSTITUIR_ASISTENCIA').length;
   plan.sin_cambios=plan.filas.filter(r=>r.accion==='SIN_CAMBIOS').length;
   plan.conflictos=plan.filas.filter(r=>r.accion==='CONFLICTO').length;
-  const changed=new Set(plan.filas.filter(r=>['CREAR','SUSTITUIR','MODIFICAR_RANGO','RETIRAR','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion)).map(r=>r.empleado_id));
+  const changed=new Set(plan.filas.filter(r=>['CREAR','SUSTITUIR','MODIFICAR_RANGO','RETIRAR','RETIRAR_RANGO','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion)).map(r=>r.empleado_id));
   plan.filas_omitidas=upload.baseline.trabajadores.filter(w=>!changed.has(w.id)).length;
   return plan;
 }

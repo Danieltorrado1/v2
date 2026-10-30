@@ -6731,6 +6731,16 @@ export const loadPlanillaOperativaSnapshot = async (
       asistencias, novedades, cambios_operativos: cambios.rows, catalogo: catalogRows.map(mapNominaTipoNovedad), generado_at: new Date().toISOString(),
       alcance: `Usuario ${tenant.userId}; empresa ${period.contrato_empresa_id}; contrato ${period.contrato_id}; alcance municipal vigente aplicado`
     };
+    const authorizedSiteIds = [...new Set(snapshot.trabajadores.map(worker => worker.sede_id).filter((id): id is string => !!id))];
+    if (authorizedSiteIds.length) {
+      snapshot.modalidades_catalogo = (await client.query<{ id: string; nombre: string }>(`
+        SELECT DISTINCT m.id::text AS id, m.nombre_modalidad AS nombre
+        FROM sede_modalidades sm
+        INNER JOIN sedes s ON s.id=sm.sede_id AND COALESCE(s.activo,TRUE)=TRUE
+        INNER JOIN modalidades m ON m.id=sm.modalidad_id AND COALESCE(m.activo,TRUE)=TRUE
+        WHERE sm.contrato_id=$1::bigint AND sm.sede_id=ANY($2::bigint[]) AND COALESCE(sm.activo,TRUE)=TRUE
+        ORDER BY m.nombre_modalidad, m.id`, [period.contrato_id, authorizedSiteIds])).rows;
+    }
     snapshot.import_guard = await loadPlanillaImportGuards(client, periodoId, [...allowed]);
     if (snapshot.import_guard.length !== workers.length) throw new AppError('Revision de importacion incompleta', 409, 'PLANILLA_LECTURA_INCOMPLETA');
     const signature = createHmac('sha256', env.JWT_SECRET).update(JSON.stringify({

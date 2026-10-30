@@ -100,3 +100,54 @@ test('fallo del recálculo V1 revierte las tres modificaciones, sus auditorías 
     assert.equal((await h.db.query('SELECT * FROM nomina_planilla_importacion_operaciones')).rows.length,0);
   }finally{await h.close();}
 });
+
+test('vaciar todas las celdas de un rango S produce una sola RETIRAR_RANGO auditada por ID',async()=>{
+  const h=await importHarness({period:rangePeriod});try{
+    await h.seedRange({id:1531,start:'2026-10-08',end:'2026-10-12',days:5});
+    const sibling=await h.seed('13','2026-10-15','101','81');
+    const economicsBefore=(await h.db.query<{id:number;neto_pagar:number;dias_pagados:number}>('SELECT id,neto_pagar,dias_pagados FROM nomina_empleados ORDER BY id')).rows;
+    const original=await h.download();
+    const file=h.edit(original,['2026-10-08','2026-10-09','2026-10-10','2026-10-11','2026-10-12'].map(fecha=>({id:'101',fecha,value:''})));
+    const preview=await h.preview(file);
+    const ops=preview.plan!.filas.filter(r=>r.accion==='RETIRAR_RANGO');
+    assert.equal(ops.length,1);assert.equal(preview.plan!.retiradas,1);assert.equal(preview.plan!.conflictos,0);assert.ok(preview.token);
+    assert.equal(ops[0]!.novedad_id,'1531');assert.deepEqual(ops[0]!.sustituir_ids,['1531']);
+    assert.deepEqual(ops[0]!.rango_anterior,{fecha_inicio:'2026-10-08',fecha_fin:'2026-10-12',dias:5});
+    assert.equal((await h.db.query<{activo:boolean}>('SELECT activo FROM nomina_novedades WHERE id=1531')).rows[0]!.activo,true);
+    const applied=await h.confirm(file,preview.token!);
+    assert.equal(applied.resultado!.retiradas,1);assert.equal((await h.db.query<{activo:boolean}>('SELECT activo FROM nomina_novedades WHERE id=1531')).rows[0]!.activo,false);
+    assert.equal((await h.db.query<{activo:boolean}>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[sibling])).rows[0]!.activo,true);
+    assert.deepEqual((await h.db.query<{id:number;neto_pagar:number;dias_pagados:number}>('SELECT id,neto_pagar,dias_pagados FROM nomina_empleados ORDER BY id')).rows,economicsBefore);
+    const audit=(await h.db.query<{accion:string;anteriores:Record<string,unknown>[];nuevos:Record<string,unknown>;motivo:string}>(
+      'SELECT accion,anteriores,nuevos,motivo FROM nomina_planilla_importacion_operaciones')).rows[0]!;
+    assert.equal(audit.accion,'SUSTITUIR');assert.equal(String(audit.anteriores[0]!.id),'1531');
+    assert.equal(audit.nuevos.accion,'RETIRAR_RANGO');assert.deepEqual(audit.nuevos.rango_anterior,ops[0]!.rango_anterior);assert.match(audit.motivo,/RETIRAR_RANGO/);
+    assert.equal(h.recalculations.length,0);
+  }finally{await h.close();}
+});
+
+test('vaciar un rango con dependencia produce un conflicto único y bloquea el archivo',async()=>{
+  const h=await importHarness({period:rangePeriod});try{
+    const id=await h.seedRange({id:1531,start:'2026-10-08',end:'2026-10-12',days:5});
+    await h.db.query('INSERT INTO nomina_novedad_documentos VALUES(1,$1::bigint)',[id]);
+    const file=h.edit(await h.download(),['2026-10-08','2026-10-09','2026-10-10','2026-10-11','2026-10-12'].map(fecha=>({id:'101',fecha,value:''})));
+    const preview=await h.preview(file);
+    const conflicts=preview.plan!.filas.filter(r=>r.accion==='CONFLICTO' && r.novedad_id===String(id));
+    assert.equal(conflicts.length,1);assert.equal(conflicts[0]!.motivo,'RETIRO_RANGO_CON_DEPENDENCIA_O_PROCESAMIENTO');
+    assert.equal(preview.plan!.retiradas,0);assert.equal(preview.token,null);
+    assert.equal((await h.db.query<{activo:boolean}>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[id])).rows[0]!.activo,true);
+  }finally{await h.close();}
+});
+
+test('fallo de auditoría durante RETIRAR_RANGO revierte la baja lógica y el recibo completo',async()=>{
+  const h=await importHarness({period:rangePeriod});try{
+    const id=await h.seedRange({id:1531,start:'2026-10-08',end:'2026-10-12',days:5});
+    const file=h.edit(await h.download(),['2026-10-08','2026-10-09','2026-10-10','2026-10-11','2026-10-12'].map(fecha=>({id:'101',fecha,value:''})));
+    const preview=await h.preview(file);assert.equal(preview.plan!.retiradas,1);assert.ok(preview.token);
+    await h.db.exec("CREATE FUNCTION fail_import_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic audit failure'; END $$; CREATE TRIGGER fail_import BEFORE INSERT ON nomina_planilla_importacion_operaciones FOR EACH ROW EXECUTE FUNCTION fail_import_audit()");
+    await assert.rejects(h.confirm(file,preview.token!),{code:'P0001'});
+    assert.equal((await h.db.query<{activo:boolean}>('SELECT activo FROM nomina_novedades WHERE id=$1::bigint',[id])).rows[0]!.activo,true);
+    assert.equal((await h.db.query('SELECT * FROM nomina_planilla_importaciones')).rows.length,0);
+    assert.equal((await h.db.query('SELECT * FROM nomina_planilla_importacion_operaciones')).rows.length,0);
+  }finally{await h.close();}
+});

@@ -34,12 +34,12 @@ function fixture(protectedDetail=true,historical=false){
 for(const historical of [false,true])test(`original protegido ' [DET]' no genera conflicto al normalizar bordes; historico=${historical}`,()=>{
  const f=fixture(true,historical),{cells,plan,upload}=f.analyze();
  const cell=cells.find(c=>c.fecha==='2026-10-27')!;
- assert.equal(cell.original,' [DET]');assert.equal(cell.valor,'[DET]');assert.equal(cell.editable,false);
+ assert.equal(cell.original,' [DET]');assert.equal(cell.valor,'[DET]');assert.equal(cell.editable,true); // editing is enabled; signed [DET] remains server-side protected
  assert.equal(plan.conflictos,0);assert.equal(plan.sin_cambios,1);
  assert.equal(plan.nuevas+plan.sustituciones+plan.asistencias,0);
  assert.deepEqual(upload.baseline,f.baseline);assert.equal(cell.original,' [DET]');
  const changed=f.analyze(f.edit(f.name,'I7','DCO')).plan;
- assert.equal(changed.conflictos,1);assert.match(changed.filas.find(r=>r.accion==='CONFLICTO')!.motivo,/CONSULTA_PROTEGIDA|CELDA_PROTEGIDA/);
+ assert.equal(changed.conflictos,1);assert.match(changed.filas.find(r=>r.accion==='CONFLICTO')!.motivo,/CONSULTA_PROTEGIDA|CELDA_PROTEGIDA|DETALLE_NO_REPRESENTABLE/);
 });
 
 test('espacios exteriores se comparan simetricamente sin cambiar el original; cambios reales siguen detectados',()=>{

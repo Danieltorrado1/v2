@@ -86,25 +86,26 @@ export function createPlanillaImporter(dependencies=defaultDependencies) {
         WHERE ca.vinculacion_id=ANY($1::bigint[]) AND ca.activo=TRUE AND ff.activo=TRUE AND ff.contrato_id=$2::bigint
           AND ca.fecha_inicio<=$4::date AND (ca.fecha_fin IS NULL OR ca.fecha_fin>=$3::date)`,
       [upload.baseline.trabajadores.map(w=>w.vinculacion_id),current.periodo.contrato_id,current.periodo.fecha_inicio,current.periodo.fecha_fin]);
-      for (const op of plan.filas.filter(r=>['CREAR','SUSTITUIR','MODIFICAR_RANGO','RETIRAR','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion))) {
+      for (const op of plan.filas.filter(r=>['CREAR','SUSTITUIR','MODIFICAR_RANGO','RETIRAR','RETIRAR_RANGO','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion))) {
         const worker=current.trabajadores.find(w=>w.id===op.empleado_id)!;
-        const dates=op.rango_nuevo ? (()=>{const out:string[]=[];for(let d=new Date(`${op.rango_nuevo!.fecha_inicio}T00:00:00.000Z`),end=new Date(`${op.rango_nuevo!.fecha_fin}T00:00:00.000Z`);d<=end;d.setUTCDate(d.getUTCDate()+1))out.push(d.toISOString().slice(0,10));return out;})() : [op.fecha];
+        const range=op.rango_nuevo ?? (op.accion==='RETIRAR_RANGO' ? op.rango_anterior : undefined);
+        const dates=range ? (()=>{const out:string[]=[];for(let d=new Date(`${range.fecha_inicio}T00:00:00.000Z`),end=new Date(`${range.fecha_fin}T00:00:00.000Z`);d<=end;d.setUTCDate(d.getUTCDate()+1))out.push(d.toISOString().slice(0,10));return out;})() : [op.fecha];
         const invalidDate=dates.some(date=>{const matches=coverage.rows.filter(c=>c.vinculacion_id===worker.vinculacion_id && c.desde<=date && (!c.hasta || c.hasta>=date));
           return !matches.length || matches.some(c=>['municipio_id','institucion_id','sede_id','modalidad_id'].some(k=>c[k]!==worker[k as keyof typeof worker]))});
         if (invalidDate) {
-          if (op.accion==='CREAR') plan.nuevas--; else if (op.accion==='SUSTITUIR') plan.sustituciones--; else if (op.accion==='MODIFICAR_RANGO') plan.modificaciones_rango--; else if (op.accion==='RETIRAR') plan.retiradas--; else {
+          if (op.accion==='CREAR') plan.nuevas--; else if (op.accion==='SUSTITUIR') plan.sustituciones--; else if (op.accion==='MODIFICAR_RANGO') plan.modificaciones_rango--; else if (op.accion==='RETIRAR' || op.accion==='RETIRAR_RANGO') plan.retiradas--; else {
             plan.asistencias--; if (op.accion==='SUSTITUIR_ASISTENCIA') plan.sustituciones--;
           }
           op.accion='CONFLICTO'; op.motivo='CONTEXTO_LABORAL_NO_CORRESPONDE_A_LA_FECHA'; plan.conflictos++;
         }
       }
-      const operated=new Set(plan.filas.filter(r=>['CREAR','SUSTITUIR','MODIFICAR_RANGO','RETIRAR','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion)).map(r=>r.empleado_id));
+      const operated=new Set(plan.filas.filter(r=>['CREAR','SUSTITUIR','MODIFICAR_RANGO','RETIRAR','RETIRAR_RANGO','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion)).map(r=>r.empleado_id));
       plan.filas_omitidas=upload.baseline.trabajadores.filter(w=>!operated.has(w.id)).length;
       const ids=new Set(upload.baseline.trabajadores.map(w=>w.id));
       const state=digest({ guards:current.import_guard!.filter(g=>ids.has(g.id)), catalogo:current.catalogo, periodo:current.periodo });
       const planHash=digest(plan);
       const binding={ actor:input.tenant.userId,periodo:input.periodoId,template:upload.templateKey,content,state,plan:planHash };
-      const operations=plan.filas.filter(r=>['CREAR','SUSTITUIR','MODIFICAR_RANGO','RETIRAR','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion));
+      const operations=plan.filas.filter(r=>['CREAR','SUSTITUIR','MODIFICAR_RANGO','RETIRAR','RETIRAR_RANGO','ASISTENCIA','SUSTITUIR_ASISTENCIA'].includes(r.accion));
       operationReport=operations.map(r=>({empleado_id:r.empleado_id,fecha:r.fecha,accion:r.accion,codigo:r.nuevo}));
       if (!confirmation) {
         await client.query('COMMIT');
@@ -133,7 +134,7 @@ export function createPlanillaImporter(dependencies=defaultDependencies) {
         if (op.accion==='ASISTENCIA' || op.accion==='SUSTITUIR_ASISTENCIA') {
           for (const old of previous) await dependencies.deactivate(old.id,String(input.tenant.userId),mutationScope,input.auditMeta,client);
           created=await dependencies.attendance(input.periodoId,worker.vinculacion_id,op.fecha,op.nuevo==='PRESENTE',String(input.tenant.userId),mutationScope,input.auditMeta,client);
-        } else if (op.accion==='RETIRAR') {
+        } else if (op.accion==='RETIRAR' || op.accion==='RETIRAR_RANGO') {
           for (const old of previous) await dependencies.deactivate(old.id,String(input.tenant.userId),mutationScope,input.auditMeta,client);
         } else if (op.accion==='MODIFICAR_RANGO') {
           if (!op.novedad_id || !op.rango_nuevo) throw new AppError('La operacion de rango quedo incompleta',409,'PLANILLA_RANGO_INVALIDO');
@@ -154,9 +155,10 @@ export function createPlanillaImporter(dependencies=defaultDependencies) {
           op.accion==='MODIFICAR_RANGO' ? previous[0] : previous;
         // Mandatory history: any failure here rolls back both deactivations and
         // creations. Complements the existing V1 audit (which is best-effort).
-        const auditAction=op.accion==='RETIRAR' ? 'SUSTITUIR' : op.accion==='SUSTITUIR_ASISTENCIA' ? 'ASISTENCIA' : op.accion;
-        const auditNew=op.accion==='RETIRAR' ? {accion:'RETIRAR',valor:null} : created ?? null;
-        const auditReason=op.accion==='RETIRAR' ? `RETIRAR: ${confirmation.motivo.trim()}` : op.accion==='SUSTITUIR_ASISTENCIA' ? `SUSTITUIR_ASISTENCIA: ${confirmation.motivo.trim()}` : confirmation.motivo.trim();
+        const isRetirement=op.accion==='RETIRAR' || op.accion==='RETIRAR_RANGO';
+        const auditAction=isRetirement ? 'SUSTITUIR' : op.accion==='SUSTITUIR_ASISTENCIA' ? 'ASISTENCIA' : op.accion;
+        const auditNew=isRetirement ? {accion:op.accion,valor:null,...(op.rango_anterior?{rango_anterior:op.rango_anterior}:{})} : created ?? null;
+        const auditReason=isRetirement ? `${op.accion}: ${confirmation.motivo.trim()}` : op.accion==='SUSTITUIR_ASISTENCIA' ? `SUSTITUIR_ASISTENCIA: ${confirmation.motivo.trim()}` : confirmation.motivo.trim();
         await client.query(`INSERT INTO nomina_planilla_importacion_operaciones
           (importacion_id,usuario_id,municipio_id,nomina_empleado_id,vinculacion_id,fecha,accion,contexto,anteriores,nuevos,motivo)
           VALUES ($1::uuid,$2::bigint,$3::bigint,$4::bigint,$5::bigint,$6::date,$7,$8::jsonb,$9::jsonb,$10::jsonb,$11)`,

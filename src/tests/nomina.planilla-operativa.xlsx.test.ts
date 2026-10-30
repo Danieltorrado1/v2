@@ -36,19 +36,36 @@ test('edicion directa sin formulas ni controles y originales independientes', ()
   assert.doesNotMatch(sheet, /<f[ >]/);
   assert.doesNotMatch(sheet, /ACTIVAR|APLICA|Corregir|Volver/);
   assert.match(sheet, /r="J8"[^>]*s="2"/);
-  assert.match(sheet, /r="H8"[^>]*s="0"/); // before entry
+  assert.match(sheet, /r="H8"[^>]*s="2"/); // editable blanks remain pending until explicitly set
   assert.match(sheet, /r="H7"[^>]*s="2"/); // manual edit cannot delete the separate undated original
+  assert.match(sheet, /r="A7"[^>]*s="0"/); // master identity/context remains protected
+  assert.match(sheet, /r="AM7"[^>]*s="0"/); // hidden employee identifier remains protected
   assert.equal(book.Sheets['Municipio sintético']!.I7.v, 'PNR + TA [DET]');
   assert.equal(XLSX.utils.sheet_to_json(book.Sheets.Detalle_novedades!).length, 4);
   const original = XLSX.utils.sheet_to_json(book.Sheets._Original!);
   assert.equal(original.length, 62);
   assert.equal(book.Workbook!.Sheets!.find(s => s.name === '_Base')!.Hidden, 2);
 });
+test('todas las hojas municipal y Personal contrato habilitan días y conservan identidades bloqueadas', () => {
+  const s=syntheticSnapshot();
+  s.trabajadores[1]={...s.trabajadores[1]!,tipo_contexto:'CONTRACTUAL',solo_lectura:'Sin contexto municipal',
+    municipio:'',municipio_id:undefined,institucion:'',institucion_id:undefined,sede:'',sede_id:undefined,modalidad:'',modalidad_id:undefined};
+  const {book,xml}=read(s);
+  const visible=book.Workbook!.Sheets!.filter(sh=>!sh.Hidden).map(sh=>sh.name!);
+  assert.deepEqual(visible,['Municipio sintético','Personal contrato']);
+  for(let i=0;i<visible.length;i++){
+    const sheetXml=xml(`xl/worksheets/sheet${i+1}.xml`);
+    assert.match(sheetXml,/selectUnlockedCells="1"/);
+    assert.match(sheetXml,/r="H7"[^>]*s="2"/);
+    assert.match(sheetXml,/r="A7"[^>]*s="0"/);
+    assert.match(sheetXml,/r="AM7"[^>]*s="0"/); // protected employee ID after the 26–25 day columns
+  }
+});
 test('validacion con catalogo activo real, proteccion y filtros OOXML', () => {
   const { xml, book } = read(); const sheet = xml('xl/worksheets/sheet1.xml');
   assert.match(sheet, /sqref="H7:AL8"/); assert.match(sheet, /<formula1>MarcasDiarias<\/formula1>/);
   assert.match(sheet, /errorStyle="stop"/); assert.match(sheet, /allowBlank="1"/);
-  assert.match(sheet, /<sheetProtection[^>]*autoFilter="0"/);
+  assert.match(sheet, /<sheetProtection[^>]*autoFilter="0"[^>]*selectLockedCells="0"[^>]*selectUnlockedCells="1"/);
   assert.match(sheet, /<pane xSplit="6" ySplit="6"/);
   assert.match(sheet, /<autoFilter ref="A6:AO8"/);
   assert.match(xml('xl/styles.xml'), /<protection locked="0"/);
